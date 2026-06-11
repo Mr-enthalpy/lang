@@ -125,6 +125,17 @@ A line break is top-level only if the current nesting depth of `()`, `[]`, `{}` 
 
 This is a provisional v0.1 rule.
 
+**Negative / diagnostic example:**
+
+```text
+let x = (a
++ b)
+```
+
+Line 1 ends inside `(...)`, nesting depth is 1, so the line break is NOT a
+form boundary. The form continues through line 2. The parser should consume
+both lines and diagnose `UnclosedParen` if the `)` is never found.
+
 ## 4. Let statements
 
 ### 4.1 Let statement shape
@@ -234,6 +245,24 @@ Let.Simple(
 )
 ```
 
+**Negative / diagnostic example:**
+
+```text
+let t: = int Option Vec
+```
+
+The parser expects a `KindExpr` after `:`. If `=` follows immediately, emit
+`UnexpectedToken` at `=`, insert `ErrorAst` for the kind, and continue
+parsing the value.
+
+```text
+let t: 42 = x
+```
+
+`42` is a valid `Literal` which is a valid `PipeExpr` which is a valid
+`KindExpr` by grammar. Kind checking is deferred, so this is syntactically
+valid in v0.1 (even if semantically nonsensical).
+
 ## 5. Deduce lists
 
 ### 5.1 Meaning
@@ -270,6 +299,23 @@ BinderDeclAst {
 Outside strong binding contexts, `<` and `>` are ordinary symbol tokens.
 
 The parser must not globally recognize angle-bracket groups.
+
+**Negative / diagnostic example:**
+
+```text
+let x = a < b > c
+```
+
+Here `<` and `>` are NOT a deduce list. They are ordinary `Symbol("<")` and
+`Symbol(">")` tokens. The expression parses as three atoms:
+
+```text
+Atom(Name(a))  Symbol(<)  Atom(Name(b))  Symbol(>)  Atom(Name(c))
+```
+
+No special AST node is created for the angle-bracket sequence. This is
+correct behavior: < and > remain ordinary symbols until the parser is in
+a strong binding context (binder, closure head, param, return).
 
 ## 6. Canonical skeleton
 
@@ -407,6 +453,25 @@ At top-level expression nesting depth, split the token sequence at `|>`.
 
 Each part becomes a `Segment`.
 
+**Negative / diagnostic example:**
+
+```text
+|> f
+```
+
+A `|>` at form start with no left operand. The parser should emit a
+diagnostic (unexpected `|>` at position 0) and treat the left side as
+empty or insert an `ErrorAst`. The right side `f` still forms a valid
+segment.
+
+```text
+x |> |> g
+```
+
+A double `|>` with an empty middle segment. The parser should diagnose the
+empty segment between the two `|>` operators. Recovery: skip the second
+`|>` or insert an `ErrorAst` for the missing segment body.
+
 AST:
 
 ```text
@@ -480,6 +545,18 @@ A group is valid only if its contents do not contain a top-level comma.
 If a parenthesized form contains top-level commas, it is an `ArgPack`, not a group.
 
 Non-ArgPack `(a, b)` is invalid in v0.1.
+
+**Negative / diagnostic example:**
+
+```text
+let x = (a, b)
+```
+
+At the top level of a form, `(a, b)` is interpreted as an `ArgPack` because
+it contains a top-level comma. In expression position, a bare `ArgPack` with
+no incoming segment or preceding atom triggers `InvalidArgPack` or
+`TopLevelComma` diagnostics. The parser should produce a diagnostic and
+still parse the `ArgPack` node.
 
 ### 8.3 Atom suffix folding
 
@@ -561,6 +638,24 @@ Invalid:
 obj.(field)
 ```
 
+**Negative / diagnostic example:**
+
+```text
+obj.42
+```
+
+The token after `.` is `IntLiteral`, not `Name`. Emit `ExpectedNameAfterDot`
+with primary span on `.`. Consume the `.` and stop suffix folding; the atom
+is just `Name(obj)` without member sugar. The `42` remains as a following
+atom.
+
+```text
+obj.(field)
+```
+
+The token after `.` is `Symbol("(")`, not `Name`. Same diagnostic and
+recovery as above.
+
 ### 8.6 Double-dot sugar
 
 Input:
@@ -591,6 +686,32 @@ Invalid:
 obj..method
 obj..(method)
 ```
+
+**Negative / diagnostic examples:**
+
+```text
+obj..42
+```
+
+The token after `..` is `IntLiteral`, not `Name`. Emit
+`ExpectedNameAfterDoubleDot` with primary span on `..`. Consume `..` and
+continue without double-dot sugar.
+
+```text
+obj..method
+```
+
+`..` is followed by `Name("method")` which is valid, but `method` is NOT
+followed by `ArgPack`. Emit `ExpectedArgPackAfterDoubleDotName` with
+primary span on `method`. The atom is constructed as a partial
+`DoubleDotSugar` with empty args.
+
+```text
+obj..(method)
+```
+
+`..` is followed by `Symbol("(")` which is not `Name`. Same as
+`ExpectedNameAfterDoubleDot` case.
 
 ## 9. ArgPack
 
@@ -936,6 +1057,23 @@ When the expression parser expects an atom:
 
 This is finite lookahead, not semantic backtracking.
 
+**Negative / diagnostic example:**
+
+```text
+x => { }
+```
+
+In a context where `x` is an atom (not a closure head prefix), the parser
+attempts finite lookahead: `Name("x")` followed by `=>` and `{` triggers
+explicit closure parsing. If `x` is not intended as a closure head, the
+grammar provides no escape; the parser always interprets `Name => { }` as
+`ExplicitClosureAst` with param `x`. This is a known interaction between
+atom parsing and closure head lookahead.
+
+If the lookahead sees `Name("x")` followed by something that cannot start
+a clause (e.g., another Name), it backtracks and treats `x` as an ordinary
+atom.
+
 ## 12. Match-style expression
 
 The parser must not special-case `match`.
@@ -962,6 +1100,45 @@ PipeExpr
 ```
 
 Whether `match` consumes the closure AST arms is a future semantic/meta-function pass.
+
+**Negative / diagnostic example:**
+
+```text
+match obj
+```
+
+At form start, `match` is a `Name` token, not syntax. The parser produces:
+
+```text
+Form.Expr(
+  PipeExpr(
+    Segment(
+      Atom(Name("match")),
+      Atom(Name("obj"))
+    )
+  )
+)
+```
+
+No `MatchExpr` is created. This is correct v0.1 behavior.
+
+```text
+obj match (a) { }
+```
+
+The parser sees `Name("obj")`, then `Name("match")`, then `ArgPack(a)`,
+then `InlineClosureAst`. The high-level AST is:
+
+```text
+PipeExpr
+  Segment
+    Atom Name(obj)
+    Atom Name(match)
+    ArgPack RightTargetSubsegment
+    Atom InlineClosure({ })
+```
+
+No special match-arm relationship exists at the parser level.
 
 ## 13. Error nodes
 
@@ -1062,3 +1239,28 @@ A conforming v0.1 frontend can:
 6. pass golden tests.
 
 A conforming v0.1 frontend does not need to run any program.
+
+## 17. Negative / diagnostic examples index
+
+Every major rule should have at least one positive and one negative example.
+This index cross-references the negative/diagnostic examples throughout this
+document.
+
+| Section | Negative / diagnostic example | Expected diagnostic |
+|---|---|---|
+| §3.3 Form boundary | `let x = (a` with newline | `UnclosedParen` if `)` never found |
+| §4.5 Kind expr | `let t: = x` after `let` | `UnexpectedToken` at `=` |
+| §4.5 Kind expr | `let t: 42 = x` (syntactically valid) | No diagnostic (valid syntax) |
+| §5.3 Non-context `<>` | `a < b > c` in expr | No diagnostic (ordinary symbols) |
+| §7.2 Pipe split | `\|> f` at form start | `UnexpectedToken` at `\|>` |
+| §7.2 Pipe split | `x \|> \|> g` (empty middle) | Diagnostic on empty segment |
+| §8.2 Group | `let x = (a, b)` at expr top | `TopLevelComma` or `InvalidArgPack` |
+| §8.5 Member `.` | `obj.42` | `ExpectedNameAfterDot` |
+| §8.5 Member `.` | `obj.(field)` | `ExpectedNameAfterDot` |
+| §8.6 Double-dot `..` | `obj..42` | `ExpectedNameAfterDoubleDot` |
+| §8.6 Double-dot `..` | `obj..method` (no `ArgPack`) | `ExpectedArgPackAfterDoubleDotName` |
+| §8.6 Double-dot `..` | `obj..(method)` | `ExpectedNameAfterDoubleDot` |
+| §11.9 Closure lookahead | `x => { }` always parsed as closure | No diagnostic (by design) |
+| §12 Match non-special | `match obj` at form start | No diagnostic (name, not syntax) |
+| §12 Match non-special | `obj match (a) { }` | No diagnostic (name + argpack + closure) |
+

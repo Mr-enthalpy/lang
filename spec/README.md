@@ -1,0 +1,29 @@
+# Specification Index
+
+This directory contains the specification documents for the `lang` language
+frontend. Each document has a defined authority level.
+
+## Document list
+
+| File | Authority | Role |
+|---|---|---|
+| `frontend-v0.1.md` | Non-normative overview | Reader entry point. Describes the v0.1 pipeline, document division, spec priority, and the boundaries between tokens, AST, and diagnostics. |
+| `ast-construction-v0.1.md` | Normative for parser behavior | Defines every syntax rule, AST shape, and parser constraint in v0.1. |
+| `diagnostics-v0.1.md` | Normative for error reporting | Defines diagnostic categories, span policy, and recovery behavior. |
+| `roadmap.md` | Authoritative for scope; non-normative for scheduling | Defines stage boundaries (v0.1–v1.0) and what must not leak between stages. |
+| `glossary.md` | Normative for terminology | Resolves naming ambiguity across all documents. |
+| `open-questions.md` | Non-normative | Tracks unresolved design questions. Not implementation authority. |
+
+## Reading order
+
+1. `frontend-v0.1.md` — Understand the pipeline.
+2. `ast-construction-v0.1.md` — Implement the parser.
+3. `diagnostics-v0.1.md` — Understand error reporting.
+4. `glossary.md` — Resolve terminology ambiguity.
+5. `roadmap.md` — Understand scope boundaries.
+6. `open-questions.md` — Recognize known gaps.
+
+## Spec priority
+
+If two spec documents conflict, `ast-construction-v0.1.md` takes priority for parser
+behavior. This `README.md` is not itself a spec document.
