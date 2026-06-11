@@ -208,9 +208,9 @@ Simple binder:
 ```text
 SimpleLetBinder ::= Name ":" DeclAnnotation
 
-DeclAnnotation ::= TypeAnnotation [ ":" RankAnnotation ]
+DeclAnnotation ::= TypeObjectAnnotation [ ":" RankAnnotation ]
 
-TypeAnnotation ::= PipeExpr | TypeHole
+TypeObjectAnnotation ::= PipeExpr | TypeHole
 
 TypeHole ::= "_"
 
@@ -237,22 +237,22 @@ LetBinderAst ::=
     }
 
 DeclAnnotationAst ::=
-    RawExpr(ExprAst)
-  | TypeWithRank {
-        type_annotation: TypeAnnotationAst,
+    RawTypeObjectAnnotation(ExprAst)
+  | TypeObjectWithRank {
+        type_object_annotation: TypeObjectAnnotationAst,
         rank_annotation: ExprAst
     }
 
-TypeAnnotationAst ::=
+TypeObjectAnnotationAst ::=
     Expr(ExprAst)
   | Hole
 ```
 
-The `DeclAnnotationAst::RawExpr` variant covers the surface forms `let f: fn = ...`
-(single name as annotation) and `let t: type = ...`. These are preserved
-as raw expressions without semantic desugaring.
+The `DeclAnnotationAst::RawTypeObjectAnnotation` variant covers the surface
+forms `let f: fn = ...` (single name as annotation) and `let t: type = ...`.
+These are preserved as raw expressions without semantic desugaring.
 
-The `DeclAnnotationAst::TypeWithRank` variant covers the form
+The `DeclAnnotationAst::TypeObjectWithRank` variant covers the form
 `let f: _: fn = ...`, where `_` is a `TypeHole` and `fn` is a rank annotation.
 
 v0.1 does not check that annotation names resolve to anything. Annotation
@@ -263,35 +263,89 @@ validity is a future semantic pass.
 **Positive examples:**
 
 ```text
+let f: _: fn = expr
+```
+
+AST-level reading:
+
+```text
+SimpleLetBinder {
+    name: f,
+    annotation: TypeObjectWithRank {
+        type_object_annotation: TypeHole("_"),
+        rank_annotation: Expr(Name("fn"))
+    }
+}
+```
+
+Deferred semantic reading: `f` has an anonymous type-object whose kind/rank
+is the source name `fn`.
+
+```text
 let t: type = expr
 ```
 
-Declares `t` through `let`. The annotation `type` is parsed as
-`DeclAnnotationAst::RawExpr(Name("type"))`. v0.1 does not check that the
-source name `type` denotes a kind/rank-like object.
+AST-level reading:
+
+```text
+SimpleLetBinder {
+    name: t,
+    annotation: RawTypeObjectAnnotation(Expr(Name("type")))
+}
+```
+
+Deferred semantic reading: `t` is declared as a type-object whose kind/rank
+is the source name `type`.
 
 ```text
 let ns1: namespace = expr
 ```
 
-Declares `ns1` through `let`. `namespace` is a source name in annotation
-position, not a lexical keyword and not a separate declaration form.
+AST-level reading:
 
 ```text
-let f: _: fn = expr
+SimpleLetBinder {
+    name: ns1,
+    annotation: RawTypeObjectAnnotation(Expr(Name("namespace")))
+}
 ```
 
-Declares `f` through `let`. The annotation has an anonymous type annotation
-`_` and a rank annotation `fn`. Produces `TypeWithRank { type_annotation: Hole, rank_annotation: Name("fn") }`.
+`namespace` is a source name in annotation position, not a lexical keyword
+and not a separate declaration form.
 
 ```text
 let f: fn = expr
 ```
 
 Surface sugar: the annotation is written as bare `fn`. The parser produces
-`DeclAnnotationAst::RawExpr(Name("fn"))` and preserves the raw written form.
-A future declaration-analysis pass may treat it as equivalent to `_: fn` when
-`fn` resolves as a rank annotation. v0.1 must not perform semantic desugaring.
+
+```text
+SimpleLetBinder {
+    name: f,
+    annotation: RawTypeObjectAnnotation(Expr(Name("fn")))
+}
+```
+
+and preserves the raw written form. A future declaration-analysis pass may
+treat bare `fn` as equivalent to `_: fn` when `fn` resolves as a
+kind/rank annotation. v0.1 must not perform semantic desugaring.
+
+**Alignment:**
+
+```text
+let f: _: fn = ...    let t:    type = ...
+    │   │  │              │       │
+    │   │  └─ rank         │       └─ rank (source name `type`)
+    │   └─ type-object     └─ itself a type-object
+    └─ declared object
+```
+
+The declared object (`f`) aligns with the declared object (`t`).
+The anonymous type-object (`_`) aligns with the type-object layer occupied by `t` itself.
+The rank annotation (`fn`) aligns with the rank annotation (`type`).
+
+More precisely: `t` and `_` occupy the type-object layer. `fn` and the
+source name `type` occupy the kind/rank annotation layer.
 
 **Negative / non-declaration examples:**
 
@@ -326,13 +380,25 @@ mod ns { }
 
 ### 4.6 Terminology note
 
-* The English word "type" (the type of a value) must not be confused with the
-  source name `type` that a user writes in annotation position.
-* The source name `type` may later denote a kind/rank-like object in the
-  language, but `type` is not a lexical keyword.
+A **type-object** is a type-theoretic object: the type of some value, or an
+object that itself represents a type.
+
+A **kind/rank object** classifies type-objects. In source text, names such as
+`fn` and `type` may appear in kind/rank annotation position.
+
+These terms must be distinguished from source names:
+
+* The declared object may be a type-object. The source name `type`, when used
+  in declaration annotation position, may denote the kind/rank of type-objects.
+* The source name `fn`, when used in declaration annotation position, may
+  denote the kind/rank of function type-objects.
 * `fn` is not a lexical keyword.
+* `type` is not a lexical keyword.
 * `namespace` is not a lexical keyword.
 * `fn <: type` is a future semantic/rank relation, not a v0.1 parser rule.
+
+The parser does not check these meanings in v0.1. It only preserves the
+annotation structure.
 
 **Negative / diagnostic example:**
 
@@ -349,8 +415,8 @@ let t: 42 = x
 ```
 
 `42` is a valid `Literal` which is a valid `PipeExpr` which is a valid
-`DeclAnnotation::RawExpr`. Annotation validity is deferred, so this is
-syntactically valid in v0.1 (even if semantically nonsensical).
+`DeclAnnotationAst::RawTypeObjectAnnotation`. Annotation validity is deferred,
+so this is syntactically valid in v0.1 (even if semantically nonsensical).
 
 ## 5. Deduce lists
 

@@ -254,38 +254,40 @@ Let bindings are the only declaration path in v0.1.
 ## DeclAnnotation
 
 The annotation following `:` in a `SimpleLetBinder`. It describes the
-type/rank of the declared name. The grammar is `TypeAnnotation [ ":" RankAnnotation ]`.
-Parsed into `DeclAnnotationAst::RawExpr` (single expression) or
-`DeclAnnotationAst::TypeWithRank` (type annotation + rank annotation).
+type-object / rank of the declared name. The grammar is
+`TypeObjectAnnotation [ ":" RankAnnotation ]`.
+Parsed into `DeclAnnotationAst::RawTypeObjectAnnotation` (single expression)
+or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 
 > **Distinction**: `DeclAnnotation` is a parser-level construct, not a
 > semantic type. v0.1 does not check that annotation names resolve to
 > anything.
 
-*See also: TypeAnnotation, RankAnnotation, DeclAnnotationSugar.*
+*See also: TypeObjectAnnotation, RankAnnotation, Type-object.*
 
 ---
 
-## TypeAnnotation
+## TypeObjectAnnotation
 
 The first part of a `DeclAnnotation` before an optional `:` rank annotation.
 Can be a `PipeExpr` or a `TypeHole` (`_`). In the sugar form `let f: fn = ...`,
-there is no separate type annotation — the whole annotation is `RawExpr`.
+there is no separate type-object annotation — the whole annotation is
+`RawTypeObjectAnnotation`.
 
-*See also: DeclAnnotation, TypeHole, RankAnnotation.*
+*See also: DeclAnnotation, TypeHole, RankAnnotation, Type-object.*
 
 ---
 
 ## TypeHole
 
-The token `_` used as a type annotation placeholder. Appears in forms like
-`let f: _: fn = ...`, where the type is anonymous and only the rank is
-specified. Represented as `TypeAnnotationAst::Hole`.
+The token `_` used as a type-object annotation placeholder. Appears in
+forms like `let f: _: fn = ...`, where the type-object is anonymous and only
+the rank is specified. Represented as `TypeObjectAnnotationAst::Hole`.
 
-> **Distinction**: `TypeHole` is a type-level placeholder, distinct from
-> a canonical skeleton wildcard `_`.
+> **Distinction**: `TypeHole` is a type-object level placeholder, distinct
+> from a canonical skeleton wildcard `_`.
 
-*See also: TypeAnnotation, CanonicalSkeleton.*
+*See also: TypeObjectAnnotation, CanonicalSkeleton, Type-object.*
 
 ---
 
@@ -295,7 +297,7 @@ The second part of a `DeclAnnotation` after the second `:`. Appears in
 forms like `let f: _: fn = ...` where `fn` is the rank annotation. Stored
 as an `ExprAst`. v0.1 does not check rank validity.
 
-*See also: DeclAnnotation, TypeAnnotation.*
+*See also: DeclAnnotation, TypeObjectAnnotation.*
 
 ---
 
@@ -303,11 +305,42 @@ as an `ExprAst`. v0.1 does not check rank validity.
 
 A parser flag or variant indicating that the declaration annotation was
 written in a surface-sugar form. For example, `let f: fn = ...` writes the
-annotation as bare `fn`, which the parser preserves as `RawExpr(Name("fn"))`
-without desugaring to `_: fn`. The sugar status is tracked by the
-`DeclAnnotationAst` variant (`RawExpr` vs `TypeWithRank`).
+annotation as bare `fn`, which the parser preserves as
+`RawTypeObjectAnnotation(Name("fn"))` without desugaring to `_: fn`. The
+sugar status is tracked by the `DeclAnnotationAst` variant
+(`RawTypeObjectAnnotation` vs `TypeObjectWithRank`).
 
 *See also: DeclAnnotation.*
+
+---
+
+## Type-object
+
+A type-theoretic object: the type of some value, or an object that itself
+represents a type. In v0.1 declarations:
+
+- In `let t: type = ...`, the declared object `t` is a type-object.
+- In `let f: _: fn = ...`, `_` is an anonymous type-object (a `TypeHole`)
+  whose kind/rank is given by the source name `fn`.
+
+*See also: Kind/rank object, TypeObjectAnnotation, TypeHole.*
+
+---
+
+## Kind/rank object
+
+An object that classifies type-objects. In source text, names such as `fn`
+and `type` may appear in kind/rank annotation position:
+
+- `let t: type = ...` — the source name `type` occupies the kind/rank
+  annotation position for the type-object `t`.
+- `let f: _: fn = ...` — the source name `fn` occupies the kind/rank
+  annotation position for the anonymous type-object `_`.
+
+v0.1 does not check kind/rank validity. The parser preserves the annotation
+structure only.
+
+*See also: Type-object, RankAnnotation, DeclAnnotation.*
 
 ---
 
@@ -325,18 +358,19 @@ but the parser does not interpret it semantically.
 
 ---
 
-## Function object (source name)
+## Function object (source name `fn`)
 
 The source-level name `fn` as written by a user. In v0.1, `fn` is an
-ordinary `Name` token, not a keyword. It may appear in let declaration
-annotations as a rank annotation (e.g., `let f: _: fn = ...`) or in the
-sugar form `let f: fn = ...`. The parser does not interpret `fn` as
+ordinary `Name` token, not a keyword. It may denote the kind/rank of
+function type-objects when used in declaration annotation position
+(e.g., `let f: _: fn = ...`). The parser does not interpret `fn` as
 implying function object construction — that is a future semantic pass.
 
 > **Distinction**: The conceptual "function object" that `fn` may denote
-> in the language is distinct from the source name `fn`.
+> in the language is a kind/rank classification for function type-objects,
+> distinct from the source name `fn` itself.
 
-*See also: Name, Declaration, RankAnnotation.*
+*See also: Name, Declaration, Kind/rank object, Type-object.*
 
 ---
 
