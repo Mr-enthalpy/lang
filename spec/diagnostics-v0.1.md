@@ -100,8 +100,14 @@ spanning the failed region.
 - **Trigger**: An opening `(` without a matching `)` by the end of the current
   form or input.
 - **Primary span**: The opening `(`.
-- **Recovery**: Insert an implicit `)` at the form boundary. Parse contents as
-  `ArgPack`.
+- **Recovery**: Insert an implicit `)` at the form boundary. Preserve the
+  parser's original parse context:
+  - If the parser was attempting a `Group ::= "(" PipeExpr ")"` (no top-level
+    commas in the content), recover as `Group`.
+  - If the parser was attempting an `ArgPack` (top-level commas present),
+    recover as `ArgPack`.
+  - If the context cannot be determined from the partially parsed content,
+    produce an `ErrorAst` and preserve whatever content was already parsed.
 - **AST effect**: The `ArgPack` (or group) is created with whatever contents
   were parsed before recovery.
 

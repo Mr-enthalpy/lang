@@ -132,6 +132,11 @@ let x = (a
 + b)
 ```
 
+Here `let x = ` is missing the required `: KindExpr` before `=`, so the
+form is structurally invalid before reaching the `(`. The parser should
+diagnose the missing kind annotation. For this example to be structurally
+valid, it must be `let x: type = (a` (see §4.1 for the full let grammar).
+
 Line 1 ends inside `(...)`, nesting depth is 1, so the line break is NOT a
 form boundary. The form continues through line 2. The parser should consume
 both lines and diagnose `UnclosedParen` if the `)` is never found.
@@ -143,6 +148,9 @@ both lines and diagnose `UnclosedParen` if the `)` is never found.
 ```text
 LetStmt ::= "let" LetAttr* LetBinder LetWithClause? "=" PipeExpr
 ```
+
+The kind annotation after `:` is required for simple binders. v0.1 does not
+make it optional.
 
 AST:
 
@@ -303,19 +311,26 @@ The parser must not globally recognize angle-bracket groups.
 **Negative / diagnostic example:**
 
 ```text
-let x = a < b > c
+let x: type = a < b > c
 ```
 
-Here `<` and `>` are NOT a deduce list. They are ordinary `Symbol("<")` and
-`Symbol(">")` tokens. The expression parses as three atoms:
+Since `SegmentElement ::= Atom | ArgPack` and `Atom` does not include a
+`SymbolAtom` or operator-atom variant, there is no syntactic slot for `<`
+and `>` in ordinary expression position. The lexer still produces
+`Symbol("<")` and `Symbol(">")` tokens, but the parser must emit
+`UnexpectedToken` for each such symbol when encountered outside a
+deduce-list context.
+
+The parser should produce:
 
 ```text
-Atom(Name(a))  Symbol(<)  Atom(Name(b))  Symbol(>)  Atom(Name(c))
+Atom(Name(a))  ErrorAst(<)  Atom(Name(b))  ErrorAst(>)  Atom(Name(c))
 ```
 
-No special AST node is created for the angle-bracket sequence. This is
-correct behavior: < and > remain ordinary symbols until the parser is in
-a strong binding context (binder, closure head, param, return).
+or skip to the next synchronization point after the first `<`.
+
+In v0.1, `<` and `>` in non-binding contexts are parse errors, not valid
+expression symbols.
 
 ## 6. Canonical skeleton
 
@@ -549,7 +564,7 @@ Non-ArgPack `(a, b)` is invalid in v0.1.
 **Negative / diagnostic example:**
 
 ```text
-let x = (a, b)
+let x: type = (a, b)
 ```
 
 At the top level of a form, `(a, b)` is interpreted as an `ArgPack` because
@@ -1063,16 +1078,22 @@ This is finite lookahead, not semantic backtracking.
 x => { }
 ```
 
-In a context where `x` is an atom (not a closure head prefix), the parser
-attempts finite lookahead: `Name("x")` followed by `=>` and `{` triggers
-explicit closure parsing. If `x` is not intended as a closure head, the
-grammar provides no escape; the parser always interprets `Name => { }` as
-`ExplicitClosureAst` with param `x`. This is a known interaction between
-atom parsing and closure head lookahead.
+The closure recognition algorithm first checks:
+- Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
+  ParamClause? FnItemTraitClause? ReturnClause? WhereClause? AcquireClause?`.
+  A bare `Name("x")` does not match any of these clauses.
+- Therefore the lookahead fails. The parser backtracks and parses `x` as an
+  ordinary `Atom(Name("x"))`.
+- Then `=>` is encountered in a non-closure-head context. Since `=>` is only
+  valid as a closure-head `=> BodyBlock` separator, emit `UnexpectedToken`
+  at `=>`.
+- If the parser encounters `{` next, it may parse it as an `InlineClosureAst`
+  depending on remaining context.
 
-If the lookahead sees `Name("x")` followed by something that cannot start
-a clause (e.g., another Name), it backtracks and treats `x` as an ordinary
-atom.
+v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
+forms remain `() => {}` and `(x) => {}` where the `()` is a `ParamClause`.
+`(x) => {}` with a single param inside parens is the simplest parametrized
+explicit closure form.
 
 ## 12. Match-style expression
 
@@ -1248,19 +1269,19 @@ document.
 
 | Section | Negative / diagnostic example | Expected diagnostic |
 |---|---|---|
-| §3.3 Form boundary | `let x = (a` with newline | `UnclosedParen` if `)` never found |
+| §3.3 Form boundary | `let x: type = (a` with newline | `UnclosedParen` if `)` never found |
 | §4.5 Kind expr | `let t: = x` after `let` | `UnexpectedToken` at `=` |
 | §4.5 Kind expr | `let t: 42 = x` (syntactically valid) | No diagnostic (valid syntax) |
-| §5.3 Non-context `<>` | `a < b > c` in expr | No diagnostic (ordinary symbols) |
+| §5.3 Non-context `<>` | `a < b > c` in expr | `UnexpectedToken` at `<` |
 | §7.2 Pipe split | `\|> f` at form start | `UnexpectedToken` at `\|>` |
 | §7.2 Pipe split | `x \|> \|> g` (empty middle) | Diagnostic on empty segment |
-| §8.2 Group | `let x = (a, b)` at expr top | `TopLevelComma` or `InvalidArgPack` |
+| §8.2 Group | `let x: type = (a, b)` at expr top | `TopLevelComma` or `InvalidArgPack` |
 | §8.5 Member `.` | `obj.42` | `ExpectedNameAfterDot` |
 | §8.5 Member `.` | `obj.(field)` | `ExpectedNameAfterDot` |
 | §8.6 Double-dot `..` | `obj..42` | `ExpectedNameAfterDoubleDot` |
 | §8.6 Double-dot `..` | `obj..method` (no `ArgPack`) | `ExpectedArgPackAfterDoubleDotName` |
 | §8.6 Double-dot `..` | `obj..(method)` | `ExpectedNameAfterDoubleDot` |
-| §11.9 Closure lookahead | `x => { }` always parsed as closure | No diagnostic (by design) |
+| §11.9 Closure lookahead | `x => { }` rejected as non-closure-head | `UnexpectedToken` at `=>` |
 | §12 Match non-special | `match obj` at form start | No diagnostic (name, not syntax) |
 | §12 Match non-special | `obj match (a) { }` | No diagnostic (name + argpack + closure) |
 

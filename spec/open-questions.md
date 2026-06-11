@@ -162,18 +162,15 @@ annotations) for a future CFG construction pass.
 
 ---
 
-## 10. Workspace readiness: cargo test fails with empty crates
+## 10. Workspace readiness: cargo test passes with minimal crates
 
-**Status:** Open
+**Status:** Resolved
 
-**Current v0.1 decision:**
-Crates `lang_syntax` and `lang_cli` have empty source files. `cargo test`
-fails because there are no tests and possibly no compilable lib/main entry
-points. The `xtask` crate has empty Cargo.toml and main.rs.
+**Resolution:**
+Crates `lang_syntax`, `lang_cli`, and `xtask` now have valid `[package]`
+definitions in their `Cargo.toml` files. `lib.rs`, `main.rs`, and test stubs
+contain minimal placeholder content. `cargo check --workspace` and
+`cargo test` both pass (0 tests, all crates compile).
 
-**Why it does not block v0.1:**
-The workspace will compile and pass tests once the crates contain a minimal
-`fn main() {}` or `#![allow(dead_code)]` lib.rs plus at least one test.
-This is tracked as a setup task rather than a design question.
-
-**Future stage:** v0.1 baseline setup.
+This was fixed during the v0.1 documentation layer setup and is no longer an
+open question.
