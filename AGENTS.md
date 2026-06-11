@@ -55,14 +55,6 @@ cargo test
 If the workspace is not initialized yet, create the minimal Rust workspace
 first, then make these commands valid.
 
-The project should keep a single command path for agents:
-
-```bash
-make test
-```
-
-which should delegate to `cargo test`.
-
 ## Preferred technology
 
 Use Rust stable.
@@ -196,7 +188,6 @@ arms, but parser code must not special-case the name `match`.
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── Makefile
 ├── docs/
 │   └── decisions/
 ├── spec/

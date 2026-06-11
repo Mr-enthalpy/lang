@@ -124,7 +124,6 @@ It is not generic-call syntax, template syntax, or meta-function syntax.
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── Makefile
 ├── docs/
 │   └── decisions/
 ├── spec/
@@ -155,11 +154,7 @@ cargo check --workspace
 cargo test
 ```
 
-Convenience:
 
-```bash
-make test
-```
 
 ## CLI target
 

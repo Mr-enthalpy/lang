@@ -132,9 +132,6 @@ cargo check --workspace
 
 # Run all tests
 cargo test
-
-# Convenience (delegates to cargo test)
-make test
 ```
 
 ## 10. Spec update rules
