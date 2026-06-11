@@ -116,6 +116,15 @@ It is only recognized in binding contexts.
 
 It is not generic-call syntax, template syntax, or meta-function syntax.
 
+### 7. Declarations enter through `let`
+
+All user-visible declarations use `let`. There is no dedicated parser syntax for
+function, type, namespace, or module declarations.
+
+`fn`, `type`, and `namespace` are ordinary `Name` tokens, not lexer keywords.
+v0.1 parses and preserves declaration annotations but does not check their
+semantic validity.
+
 ## Workspace layout
 
 ```text

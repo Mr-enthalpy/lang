@@ -104,8 +104,8 @@ It should output tokens such as:
 * `Eof`
 
 The lexer must not classify names such as `return`, `else`, `match`, `drop`,
-`move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, or `compile` as
-special keyword tokens.
+`move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, `compile`,
+`namespace`, `mod`, or `struct` as special keyword tokens.
 
 These are ordinary names at the lexical level.
 
@@ -179,6 +179,29 @@ expression atoms unless some later semantic pass interprets them.
 
 A future compiler-provided meta-function named `match` may consume closure AST
 arms, but parser code must not special-case the name `match`.
+
+### Declaration model
+
+All user-visible declarations in v0.1 enter through `let`.
+
+There is no dedicated parser syntax for:
+
+```text
+fn f(...) { ... }
+type T = ...
+namespace ns = ...
+mod ns { ... }
+struct S { ... }
+```
+
+Do not invent semantic AST nodes such as `FnDecl`, `TypeDecl`, `NamespaceDecl`,
+`ModDecl`, or `StructDecl`.
+
+At parser level, `fn`, `type`, `namespace` remain ordinary `Name` tokens except
+in documented strong annotation contexts within `let` binders.
+
+Declaration annotations (`: type`, `: _ : fn`, `: fn`) are parsed and
+preserved but not semantically checked.
 
 ## Repository layout
 

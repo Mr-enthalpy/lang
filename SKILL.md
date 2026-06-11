@@ -40,6 +40,7 @@ The following are ordinary names in v0.1:
 ```text
 return  else  match  drop  move  ref
 sync  effect  fn  type  meta  runtime  compile
+namespace  mod  struct
 ```
 
 Parser contexts may interpret selected names structurally, but only when
@@ -98,6 +99,7 @@ If a requested task requires any of the following, stop at AST preservation:
 | `drop` / `move` | Parse as names; do not mark blue nodes |
 | `guard` / `with` | Preserve annotations in AST; do not run lifetime analysis |
 | Type checking | Parse kind annotations; do not check them |
+| `fn f(x) { }` | Parse as expression; do not create FnDecl or distinguish from ordinary let |
 | Canonical matching | Build canonical skeleton AST; do not execute matching |
 | Closure materialization | Build closure AST; do not create callable objects |
 | Effect / sync | Parse as names; do not interpret effect system |

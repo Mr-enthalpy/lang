@@ -230,6 +230,116 @@ rather than on runtime values. Examples (future): `match`, `effect`, `sync`.
 
 ---
 
+## Declaration
+
+A user-visible binding introduced by `let`. In v0.1, all declarations enter
+through `let`. There is no separate `fn`, `type`, `namespace`, or `mod`
+declaration syntax. Declarations carry a `DeclAnnotation` that is parsed
+and preserved but not semantically checked.
+
+*See also: Let binding, DeclAnnotation.*
+
+---
+
+## Let binding
+
+A top-level `let` form that introduces a name with an optional type/rank
+annotation and a value. The grammar is `let LetAttr* LetBinder LetWithClause? "=" PipeExpr`.
+Let bindings are the only declaration path in v0.1.
+
+*See also: Declaration, LetBinder, DeclAnnotation.*
+
+---
+
+## DeclAnnotation
+
+The annotation following `:` in a `SimpleLetBinder`. It describes the
+type/rank of the declared name. The grammar is `TypeAnnotation [ ":" RankAnnotation ]`.
+Parsed into `DeclAnnotationAst::RawExpr` (single expression) or
+`DeclAnnotationAst::TypeWithRank` (type annotation + rank annotation).
+
+> **Distinction**: `DeclAnnotation` is a parser-level construct, not a
+> semantic type. v0.1 does not check that annotation names resolve to
+> anything.
+
+*See also: TypeAnnotation, RankAnnotation, DeclAnnotationSugar.*
+
+---
+
+## TypeAnnotation
+
+The first part of a `DeclAnnotation` before an optional `:` rank annotation.
+Can be a `PipeExpr` or a `TypeHole` (`_`). In the sugar form `let f: fn = ...`,
+there is no separate type annotation — the whole annotation is `RawExpr`.
+
+*See also: DeclAnnotation, TypeHole, RankAnnotation.*
+
+---
+
+## TypeHole
+
+The token `_` used as a type annotation placeholder. Appears in forms like
+`let f: _: fn = ...`, where the type is anonymous and only the rank is
+specified. Represented as `TypeAnnotationAst::Hole`.
+
+> **Distinction**: `TypeHole` is a type-level placeholder, distinct from
+> a canonical skeleton wildcard `_`.
+
+*See also: TypeAnnotation, CanonicalSkeleton.*
+
+---
+
+## RankAnnotation
+
+The second part of a `DeclAnnotation` after the second `:`. Appears in
+forms like `let f: _: fn = ...` where `fn` is the rank annotation. Stored
+as an `ExprAst`. v0.1 does not check rank validity.
+
+*See also: DeclAnnotation, TypeAnnotation.*
+
+---
+
+## DeclAnnotationSugar
+
+A parser flag or variant indicating that the declaration annotation was
+written in a surface-sugar form. For example, `let f: fn = ...` writes the
+annotation as bare `fn`, which the parser preserves as `RawExpr(Name("fn"))`
+without desugaring to `_: fn`. The sugar status is tracked by the
+`DeclAnnotationAst` variant (`RawExpr` vs `TypeWithRank`).
+
+*See also: DeclAnnotation.*
+
+---
+
+## Namespace (source name)
+
+The source-level name `namespace` as written by a user in a program. In
+v0.1, `namespace` is an ordinary `Name` token, not a keyword. Users may
+write it in let declaration annotations (e.g., `let ns: namespace = ...`),
+but the parser does not interpret it semantically.
+
+> **Distinction**: The conceptual notion of "namespace" as a module/scope
+> is distinct from the source name `namespace`.
+
+*See also: Name, Declaration.*
+
+---
+
+## Function object (source name)
+
+The source-level name `fn` as written by a user. In v0.1, `fn` is an
+ordinary `Name` token, not a keyword. It may appear in let declaration
+annotations as a rank annotation (e.g., `let f: _: fn = ...`) or in the
+sugar form `let f: fn = ...`. The parser does not interpret `fn` as
+implying function object construction — that is a future semantic pass.
+
+> **Distinction**: The conceptual "function object" that `fn` may denote
+> in the language is distinct from the source name `fn`.
+
+*See also: Name, Declaration, RankAnnotation.*
+
+---
+
 ## Raw AST
 
 The AST produced directly by the parser, before any lowering or normalization.
