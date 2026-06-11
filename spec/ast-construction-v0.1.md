@@ -125,6 +125,22 @@ A line break is top-level only if the current nesting depth of `()`, `[]`, `{}` 
 
 This is a provisional v0.1 rule.
 
+**Negative / diagnostic example:**
+
+```text
+let x = (a
++ b)
+```
+
+Here `let x = ` is missing the required `: KindExpr` before `=`, so the
+form is structurally invalid before reaching the `(`. The parser should
+diagnose the missing kind annotation. For this example to be structurally
+valid, it must be `let x: type = (a` (see §4.1 for the full let grammar).
+
+Line 1 ends inside `(...)`, nesting depth is 1, so the line break is NOT a
+form boundary. The form continues through line 2. The parser should consume
+both lines and diagnose `UnclosedParen` if the `)` is never found.
+
 ## 4. Let statements
 
 ### 4.1 Let statement shape
@@ -132,6 +148,9 @@ This is a provisional v0.1 rule.
 ```text
 LetStmt ::= "let" LetAttr* LetBinder LetWithClause? "=" PipeExpr
 ```
+
+The kind annotation after `:` is required for simple binders. v0.1 does not
+make it optional.
 
 AST:
 
@@ -234,6 +253,24 @@ Let.Simple(
 )
 ```
 
+**Negative / diagnostic example:**
+
+```text
+let t: = int Option Vec
+```
+
+The parser expects a `KindExpr` after `:`. If `=` follows immediately, emit
+`UnexpectedToken` at `=`, insert `ErrorAst` for the kind, and continue
+parsing the value.
+
+```text
+let t: 42 = x
+```
+
+`42` is a valid `Literal` which is a valid `PipeExpr` which is a valid
+`KindExpr` by grammar. Kind checking is deferred, so this is syntactically
+valid in v0.1 (even if semantically nonsensical).
+
 ## 5. Deduce lists
 
 ### 5.1 Meaning
@@ -270,6 +307,30 @@ BinderDeclAst {
 Outside strong binding contexts, `<` and `>` are ordinary symbol tokens.
 
 The parser must not globally recognize angle-bracket groups.
+
+**Negative / diagnostic example:**
+
+```text
+let x: type = a < b > c
+```
+
+Since `SegmentElement ::= Atom | ArgPack` and `Atom` does not include a
+`SymbolAtom` or operator-atom variant, there is no syntactic slot for `<`
+and `>` in ordinary expression position. The lexer still produces
+`Symbol("<")` and `Symbol(">")` tokens, but the parser must emit
+`UnexpectedToken` for each such symbol when encountered outside a
+deduce-list context.
+
+The parser should produce:
+
+```text
+Atom(Name(a))  ErrorAst(<)  Atom(Name(b))  ErrorAst(>)  Atom(Name(c))
+```
+
+or skip to the next synchronization point after the first `<`.
+
+In v0.1, `<` and `>` in non-binding contexts are parse errors, not valid
+expression symbols.
 
 ## 6. Canonical skeleton
 
@@ -407,6 +468,25 @@ At top-level expression nesting depth, split the token sequence at `|>`.
 
 Each part becomes a `Segment`.
 
+**Negative / diagnostic example:**
+
+```text
+|> f
+```
+
+A `|>` at form start with no left operand. The parser should emit a
+diagnostic (unexpected `|>` at position 0) and treat the left side as
+empty or insert an `ErrorAst`. The right side `f` still forms a valid
+segment.
+
+```text
+x |> |> g
+```
+
+A double `|>` with an empty middle segment. The parser should diagnose the
+empty segment between the two `|>` operators. Recovery: skip the second
+`|>` or insert an `ErrorAst` for the missing segment body.
+
 AST:
 
 ```text
@@ -480,6 +560,18 @@ A group is valid only if its contents do not contain a top-level comma.
 If a parenthesized form contains top-level commas, it is an `ArgPack`, not a group.
 
 Non-ArgPack `(a, b)` is invalid in v0.1.
+
+**Negative / diagnostic example:**
+
+```text
+let x: type = (a, b)
+```
+
+At the top level of a form, `(a, b)` is interpreted as an `ArgPack` because
+it contains a top-level comma. In expression position, a bare `ArgPack` with
+no incoming segment or preceding atom triggers `InvalidArgPack` or
+`TopLevelComma` diagnostics. The parser should produce a diagnostic and
+still parse the `ArgPack` node.
 
 ### 8.3 Atom suffix folding
 
@@ -561,6 +653,24 @@ Invalid:
 obj.(field)
 ```
 
+**Negative / diagnostic example:**
+
+```text
+obj.42
+```
+
+The token after `.` is `IntLiteral`, not `Name`. Emit `ExpectedNameAfterDot`
+with primary span on `.`. Consume the `.` and stop suffix folding; the atom
+is just `Name(obj)` without member sugar. The `42` remains as a following
+atom.
+
+```text
+obj.(field)
+```
+
+The token after `.` is `Symbol("(")`, not `Name`. Same diagnostic and
+recovery as above.
+
 ### 8.6 Double-dot sugar
 
 Input:
@@ -591,6 +701,33 @@ Invalid:
 obj..method
 obj..(method)
 ```
+
+**Negative / diagnostic examples:**
+
+```text
+obj..42
+```
+
+The token after `..` is `IntLiteral`, not `Name`. Emit
+`ExpectedNameAfterDoubleDot` with primary span on `..`. Consume `..` and
+continue without double-dot sugar.
+
+```text
+obj..method
+```
+
+`..` is followed by `Name("method")` which is valid, but `method` is NOT
+followed by `ArgPack`. Emit `ExpectedArgPackAfterDoubleDotName` with
+primary span on `method`. Do not construct a `DoubleDotSugar` node.
+The atom is left as the base object (before `..`) or wrapped in
+`ErrorAtom(DoubleDotMissingArgPack { object, method })`.
+
+```text
+obj..(method)
+```
+
+`..` is followed by `Symbol("(")` which is not `Name`. Same as
+`ExpectedNameAfterDoubleDot` case.
 
 ## 9. ArgPack
 
@@ -804,7 +941,11 @@ CaptureClause ::= "[" CaptureItemList? "]"
 CaptureItemList ::= CaptureItem ("," CaptureItem)*
 ```
 
-v0.1 may store capture items as token trees or expressions.
+v0.1 parses `CaptureClause` as a bracket-delimited clause. Capture items are
+stored as token-tree-like `CaptureItemAst` placeholders. The exact internal
+structure of capture items is not specified in v0.1; parsing depth is
+determined by the concrete `CaptureItemAst` definition chosen at
+implementation time.
 
 Suggested AST:
 
@@ -936,6 +1077,29 @@ When the expression parser expects an atom:
 
 This is finite lookahead, not semantic backtracking.
 
+**Negative / diagnostic example:**
+
+```text
+x => { }
+```
+
+The closure recognition algorithm first checks:
+- Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
+  ParamClause? FnItemTraitClause? ReturnClause? WhereClause? AcquireClause?`.
+  A bare `Name("x")` does not match any of these clauses.
+- Therefore the lookahead fails. The parser backtracks and parses `x` as an
+  ordinary `Atom(Name("x"))`.
+- Then `=>` is encountered in a non-closure-head context. Since `=>` is only
+  valid as a closure-head `=> BodyBlock` separator, emit `UnexpectedToken`
+  at `=>`.
+- If the parser encounters `{` next, it may parse it as an `InlineClosureAst`
+  depending on remaining context.
+
+v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
+forms remain `() => {}` and `(x) => {}` where the `()` is a `ParamClause`.
+`(x) => {}` with a single param inside parens is the simplest parametrized
+explicit closure form.
+
 ## 12. Match-style expression
 
 The parser must not special-case `match`.
@@ -962,6 +1126,45 @@ PipeExpr
 ```
 
 Whether `match` consumes the closure AST arms is a future semantic/meta-function pass.
+
+**Negative / diagnostic example:**
+
+```text
+match obj
+```
+
+At form start, `match` is a `Name` token, not syntax. The parser produces:
+
+```text
+Form.Expr(
+  PipeExpr(
+    Segment(
+      Atom(Name("match")),
+      Atom(Name("obj"))
+    )
+  )
+)
+```
+
+No `MatchExpr` is created. This is correct v0.1 behavior.
+
+```text
+obj match (a) { }
+```
+
+The parser sees `Name("obj")`, then `Name("match")`, then `ArgPack(a)`,
+then `InlineClosureAst`. The high-level AST is:
+
+```text
+PipeExpr
+  Segment
+    Atom Name(obj)
+    Atom Name(match)
+    ArgPack RightTargetSubsegment
+    Atom InlineClosure({ })
+```
+
+No special match-arm relationship exists at the parser level.
 
 ## 13. Error nodes
 
@@ -1062,3 +1265,28 @@ A conforming v0.1 frontend can:
 6. pass golden tests.
 
 A conforming v0.1 frontend does not need to run any program.
+
+## 17. Negative / diagnostic examples index
+
+Every major rule should have at least one positive and one negative example.
+This index cross-references the negative/diagnostic examples throughout this
+document.
+
+| Section | Negative / diagnostic example | Expected diagnostic |
+|---|---|---|
+| §3.3 Form boundary | `let x: type = (a` with newline | `UnclosedParen` if `)` never found |
+| §4.5 Kind expr | `let t: = x` after `let` | `UnexpectedToken` at `=` |
+| §4.5 Kind expr | `let t: 42 = x` (syntactically valid) | No diagnostic (valid syntax) |
+| §5.3 Non-context `<>` | `a < b > c` in expr | `UnexpectedToken` at `<` |
+| §7.2 Pipe split | `\|> f` at form start | `UnexpectedToken` at `\|>` |
+| §7.2 Pipe split | `x \|> \|> g` (empty middle) | Diagnostic on empty segment |
+| §8.2 Group | `let x: type = (a, b)` at expr top | `TopLevelComma` or `InvalidArgPack` |
+| §8.5 Member `.` | `obj.42` | `ExpectedNameAfterDot` |
+| §8.5 Member `.` | `obj.(field)` | `ExpectedNameAfterDot` |
+| §8.6 Double-dot `..` | `obj..42` | `ExpectedNameAfterDoubleDot` |
+| §8.6 Double-dot `..` | `obj..method` (no `ArgPack`) | `ExpectedArgPackAfterDoubleDotName` |
+| §8.6 Double-dot `..` | `obj..(method)` | `ExpectedNameAfterDoubleDot` |
+| §11.9 Closure lookahead | `x => { }` rejected as non-closure-head | `UnexpectedToken` at `=>` |
+| §12 Match non-special | `match obj` at form start | No diagnostic (name, not syntax) |
+| §12 Match non-special | `obj match (a) { }` | No diagnostic (name + argpack + closure) |
+

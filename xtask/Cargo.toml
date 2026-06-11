@@ -1,0 +1,6 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+description = "Build automation tasks (placeholder, not part of v0.1 semantics)"
+publish = false

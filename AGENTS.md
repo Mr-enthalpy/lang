@@ -1,6 +1,20 @@
-# File: AGENTS.md
-
 # Agent Instructions for `lang`
+
+## Read these files first
+
+Before making any code changes, read:
+
+```text
+AGENTS.md              (this file)
+README.md              (repository overview)
+SKILL.md               (operational workflow)
+spec/frontend-v0.1.md  (pipeline overview)
+spec/ast-construction-v0.1.md  (normative parser rules)
+spec/diagnostics-v0.1.md       (normative diagnostic rules)
+spec/roadmap.md        (scope boundaries)
+spec/glossary.md       (terminology)
+spec/open-questions.md (known gaps)
+```
 
 ## Scope
 
@@ -26,7 +40,8 @@ Do not implement:
 * code generation
 * IR/HIR/MIR/lowering beyond raw AST construction
 
-If a change requires any of the above, stop at syntax/AST representation and leave the semantic behavior as a documented future pass.
+If a change requires any of the above, stop at syntax/AST representation and
+leave the semantic behavior as a documented future pass.
 
 ## Required commands
 
@@ -37,15 +52,8 @@ cargo fmt --all
 cargo test
 ```
 
-If the workspace is not initialized yet, create the minimal Rust workspace first, then make these commands valid.
-
-The project should keep a single command path for agents:
-
-```bash
-make test
-```
-
-which should delegate to `cargo test`.
+If the workspace is not initialized yet, create the minimal Rust workspace
+first, then make these commands valid.
 
 ## Preferred technology
 
@@ -95,7 +103,9 @@ It should output tokens such as:
 * `Invalid`
 * `Eof`
 
-The lexer must not classify names such as `return`, `else`, `match`, `drop`, `move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, or `compile` as special keyword tokens.
+The lexer must not classify names such as `return`, `else`, `match`, `drop`,
+`move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, or `compile` as
+special keyword tokens.
 
 These are ordinary names at the lexical level.
 
@@ -140,7 +150,8 @@ f(args)
 
 as a normal function call.
 
-Parenthesized argument packs participate only in the expression skeleton rules described in `spec/ast-construction-v0.1.md`.
+Parenthesized argument packs participate only in the expression skeleton rules
+described in `spec/ast-construction-v0.1.md`.
 
 ### Blocks and closures
 
@@ -148,7 +159,8 @@ Parenthesized argument packs participate only in the expression skeleton rules d
 
 In expression/atom position, `{ ... }` produces a closure AST.
 
-Closure literals initially produce AST, not callable objects. Object materialization is a future semantic pass.
+Closure literals initially produce AST, not callable objects. Object
+materialization is a future semantic pass.
 
 ### Control-flow names
 
@@ -158,17 +170,17 @@ Do not add syntax nodes such as:
 * `ElseExpr`
 * `MatchExpr`
 
-At `v0.1`, `return`, `else`, and `match` remain ordinary names and ordinary expression atoms unless some later semantic pass interprets them.
+At `v0.1`, `return`, `else`, and `match` remain ordinary names and ordinary
+expression atoms unless some later semantic pass interprets them.
 
 ### Match
 
 `match` is not syntax in `v0.1`.
 
-A future compiler-provided meta-function named `match` may consume closure AST arms, but parser code must not special-case the name `match`.
+A future compiler-provided meta-function named `match` may consume closure AST
+arms, but parser code must not special-case the name `match`.
 
 ## Repository layout
-
-Preferred layout:
 
 ```text
 .
@@ -176,11 +188,16 @@ Preferred layout:
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── Makefile
+├── docs/
+│   └── decisions/
 ├── spec/
+│   ├── README.md
 │   ├── frontend-v0.1.md
 │   ├── ast-construction-v0.1.md
-│   └── diagnostics-v0.1.md
+│   ├── diagnostics-v0.1.md
+│   ├── roadmap.md
+│   ├── glossary.md
+│   └── open-questions.md
 ├── crates/
 │   ├── lang_syntax/
 │   │   ├── Cargo.toml
@@ -210,11 +227,11 @@ Preferred layout:
 │       └── src/main.rs
 └── tests/
     ├── lexer_golden.rs
-    ├── ast_golden.rs
+    ├── parser_golden.rs
     ├── diagnostics_golden.rs
     └── cases/
         ├── lexer/
-        ├── ast/
+        ├── parser/
         └── diagnostics/
 ```
 
@@ -254,6 +271,8 @@ over aborting the parse.
 
 Every diagnostic must carry a span.
 
+Refer to `spec/diagnostics-v0.1.md` for the full diagnostic catalog.
+
 ## Tests
 
 Every syntax rule must have golden tests.
@@ -267,7 +286,7 @@ lexer/
   comments
   invalid
 
-ast/
+parser/
   let_simple
   let_extract
   pipe_basic
@@ -296,5 +315,22 @@ When changing parser behavior:
 3. Run `cargo fmt --all`.
 4. Run `cargo test`.
 
-Do not change parser behavior without updating the corresponding spec or tests.
+When changing diagnostic behavior:
 
+1. Update `spec/diagnostics-v0.1.md`.
+2. Update or add golden tests.
+3. Run `cargo fmt --all`.
+4. Run `cargo test`.
+
+Do not change parser or diagnostic behavior without updating the corresponding
+spec or tests.
+
+## Spec awareness
+
+* `spec/roadmap.md` defines scope boundaries. If a change would cross a stage
+  boundary (e.g., implementing semantic analysis), stop and document the
+  limitation instead.
+* `spec/open-questions.md` records unresolved design issues. Before implementing
+  behavior that touches an open question, check the file and update its status
+  if a decision is reached.
+* `spec/glossary.md` enforces terminology. Use terms consistently.

@@ -1,29 +1,34 @@
-# File: README.md
-
 # lang
 
 `lang` is an experimental programming language frontend.
 
-The current repository target is `v0.1`.
+The current repository target is **v0.1**.
 
-`v0.1` is deliberately narrow:
+## Current stage
 
 ```text
 source text -> tokens -> AST -> diagnostics
 ```
 
-It does not type-check, interpret, lower, compile, or execute programs.
+v0.1 is a syntax frontend only. It lexes, parses, builds AST, and produces
+diagnostics. It does not type-check, interpret, lower, or execute programs.
 
-## Current status
+## Documentation map
 
-The repository is in the syntax-front-end stage.
+| Document | Purpose |
+|---|---|
+| `spec/frontend-v0.1.md` | Reader entry point — explains the pipeline and spec organization |
+| `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
+| `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery |
+| `spec/roadmap.md` | Stage model v0.1–v1.0 and scope boundaries |
+| `spec/glossary.md` | Terminology definitions and critical distinctions |
+| `spec/open-questions.md` | Unresolved design questions |
+| `spec/README.md` | Spec index with authority levels |
+| `AGENTS.md` | Agent instructions — read before making code changes |
+| `SKILL.md` | Operational workflow for frontend work |
 
-The first implementation should produce:
-
-* token dumps
-* AST dumps
-* diagnostic dumps
-* golden tests for the above
+Start with `spec/frontend-v0.1.md` to understand the pipeline, then
+`spec/ast-construction-v0.1.md` to implement.
 
 ## Design summary
 
@@ -49,11 +54,11 @@ Some names can act as structure delimiters only in strong parser contexts.
 
 Examples:
 
-* `let` at form start
-* `where` in closure heads
-* `acquire` in closure heads
-* `guard` inside let bindings
-* `with` inside let bindings
+- `let` at form start
+- `where` in closure heads
+- `acquire` in closure heads
+- `guard` inside let bindings
+- `with` inside let bindings
 
 Outside their context, they remain ordinary names.
 
@@ -67,7 +72,8 @@ f(args)
 
 as a general call form.
 
-Parenthesized argument packs participate in the expression skeleton through pipe and segment rules.
+Parenthesized argument packs participate in the expression skeleton through
+pipe and segment rules.
 
 ### 4. `|>` as expression skeleton
 
@@ -93,7 +99,8 @@ Examples:
 () => {}
 ```
 
-A later semantic pass may materialize closure AST into callable objects in binding or call contexts.
+A later semantic pass may materialize closure AST into callable objects in
+binding or call contexts.
 
 Compiler meta-functions may directly consume closure AST.
 
@@ -109,7 +116,7 @@ It is only recognized in binding contexts.
 
 It is not generic-call syntax, template syntax, or meta-function syntax.
 
-## Suggested workspace
+## Workspace layout
 
 ```text
 .
@@ -117,35 +124,37 @@ It is not generic-call syntax, template syntax, or meta-function syntax.
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── Makefile
+├── docs/
+│   └── decisions/
 ├── spec/
+│   ├── README.md
 │   ├── frontend-v0.1.md
 │   ├── ast-construction-v0.1.md
-│   └── diagnostics-v0.1.md
+│   ├── diagnostics-v0.1.md
+│   ├── roadmap.md
+│   ├── glossary.md
+│   └── open-questions.md
 ├── crates/
 │   ├── lang_syntax/
 │   └── lang_cli/
 └── tests/
     ├── lexer_golden.rs
-    ├── ast_golden.rs
+    ├── parser_golden.rs
     ├── diagnostics_golden.rs
     └── cases/
+        ├── lexer/
+        ├── parser/
+        └── diagnostics/
 ```
 
 ## Build
-
-After workspace initialization:
 
 ```bash
 cargo check --workspace
 cargo test
 ```
 
-Convenience command:
 
-```bash
-make test
-```
 
 ## CLI target
 
@@ -161,31 +170,46 @@ The output format should be stable and suitable for golden tests.
 
 Use a hand-written dump format rather than Rust `Debug` output.
 
-## Specification files
-
-Primary specification files:
-
-```text
-spec/ast-construction-v0.1.md
-spec/diagnostics-v0.1.md
-```
-
-The implementation must follow the spec rather than undocumented parser behavior.
-
 ## Non-goals for v0.1
 
 Do not implement:
 
-* type checking
-* overload resolution
-* borrow checking
-* lifetime/NLL analysis
-* drop insertion
-* canonical-form matching
-* closure materialization
-* match semantics
-* effect system
-* code generation
+- type checking
+- kind checking
+- overload resolution
+- canonical-form evaluation
+- universal extraction matching
+- closure AST materialization into callable objects
+- match / effect / sync semantics
+- ownership, lifetime, NLL, drop insertion
+- interpretation
+- code generation
+- IR / HIR / MIR lowering
+- parser generators (hand-written parser only)
 
-The parser should preserve syntax sufficient for these future passes, but must not perform them.
+The parser should preserve syntax sufficient for these future passes, but
+must not perform them.
 
+## How to read the spec
+
+1. `spec/frontend-v0.1.md` — Understand the pipeline.
+2. `spec/ast-construction-v0.1.md` — Implement the parser.
+3. `spec/diagnostics-v0.1.md` — Understand error reporting.
+4. `spec/glossary.md` — Resolve terminology.
+5. `spec/roadmap.md` — Understand scope boundaries.
+6. `spec/open-questions.md` — Recognize known gaps.
+
+## Expected future workspace shape
+
+Future stages may add crates under `crates/` such as:
+
+```text
+crates/
+  lang_syntax/
+  lang_cli/
+  lang_typeck/       (v0.7+)
+  lang_nll/          (v0.8+)
+  lang_codegen/      (v1.0+)
+```
+
+No semantic crate should be added before its corresponding design stage.
