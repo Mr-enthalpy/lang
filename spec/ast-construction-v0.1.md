@@ -431,7 +431,7 @@ The parser only recognizes a deduce list in strong binding contexts.
 ```text
 DeduceList ::= "<" BinderDeclList? ">"
 BinderDeclList ::= BinderDecl ("," BinderDecl)*
-BinderDecl ::= Name [ ":" KindExpr ]
+BinderDecl ::= Name [ ":" TypeObjectAnnotation ]
 ```
 
 AST:
@@ -444,7 +444,7 @@ DeduceListAst {
 
 BinderDeclAst {
     name: NameAst,
-    kind: Option<ExprAst>,
+    annotation: Option<TypeObjectAnnotationAst>,
     span: Span
 }
 ```
@@ -1125,8 +1125,8 @@ ParamClauseAst {
 
 ```text
 ParamItem ::=
-    Name [ ":" KindExpr ]
-  | DeduceList? CanonicalSkeleton [ ":" KindExpr ]
+    Name [ ":" TypeObjectAnnotation ]
+  | DeduceList? CanonicalSkeleton [ ":" TypeObjectAnnotation ]
 ```
 
 AST:
@@ -1135,13 +1135,13 @@ AST:
 ParamItemAst ::=
     NameParam {
         name: NameAst,
-        kind: Option<ExprAst>,
+        type_object_annotation: Option<TypeObjectAnnotationAst>,
         span: Span
     }
   | ExtractParam {
         deduce: Option<DeduceListAst>,
         skeleton: CanonicalSkeletonAst,
-        kind: Option<ExprAst>,
+        type_object_annotation: Option<TypeObjectAnnotationAst>,
         span: Span
     }
 ```
@@ -1167,7 +1167,7 @@ ReturnClause ::= "->" ReturnBinder [ ":" ReturnConstraint ]
 
 ```text
 ReturnBinder ::=
-    KindExpr
+    TypeObjectAnnotation
   | DeduceList CanonicalSkeleton
 ```
 
@@ -1187,7 +1187,7 @@ ReturnClauseAst {
 
 ```text
 ReturnBinderAst ::=
-    TypeExpr(ExprAst)
+    TypeObjectAnnotation(TypeObjectAnnotationAst)
   | ExtractType {
         deduce: DeduceListAst,
         skeleton: CanonicalSkeletonAst

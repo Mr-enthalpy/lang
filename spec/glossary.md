@@ -30,8 +30,8 @@ discard trivia after consumption.
 
 A token class representing an identifier. Names include what traditional languages
 call keywords. In v0.1, `return`, `else`, `match`, `drop`, `move`, `sync`,
-`effect`, `fn`, `type`, `meta`, `runtime`, and `compile` are all ordinary `Name`
-tokens at the lexical level.
+`effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, `mod`, and
+`struct` are all ordinary `Name` tokens at the lexical level.
 
 > **Distinction**: A `Name` token is not a keyword. Semantic strength does not
 > imply lexical keyword status.
@@ -243,8 +243,10 @@ and preserved but not semantically checked.
 
 ## Let binding
 
-A top-level `let` form that introduces a name with an optional type/rank
-annotation and a value. The grammar is `let LetAttr* LetBinder LetWithClause? "=" PipeExpr`.
+A top-level `let` form that introduces a name. A simple let binding requires
+a `DeclAnnotation` (`Name ":" DeclAnnotation`); an extract let binding uses
+`DeduceList CanonicalSkeleton` instead. Both are followed by `=` and a value.
+The grammar is `let LetAttr* LetBinder LetWithClause? "=" PipeExpr`.
 Let bindings are the only declaration path in v0.1.
 
 *See also: Declaration, LetBinder, DeclAnnotation.*
@@ -253,8 +255,11 @@ Let bindings are the only declaration path in v0.1.
 
 ## DeclAnnotation
 
-The annotation following `:` in a `SimpleLetBinder`. It describes the
-type-object / rank of the declared name. The grammar is
+The annotation following `:` in a `SimpleLetBinder`. It preserves the written
+annotation associated with a declared name. It may contain a type-object
+annotation and, optionally, a rank annotation. v0.1 does not determine whether
+the declared object is a value, type-object, namespace-like object, or
+function-like object. The grammar is
 `TypeObjectAnnotation [ ":" RankAnnotation ]`.
 Parsed into `DeclAnnotationAst::RawTypeObjectAnnotation` (single expression)
 or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
@@ -358,7 +363,7 @@ but the parser does not interpret it semantically.
 
 ---
 
-## Function object (source name `fn`)
+## `fn` source name
 
 The source-level name `fn` as written by a user. In v0.1, `fn` is an
 ordinary `Name` token, not a keyword. It may denote the kind/rank of
