@@ -941,7 +941,11 @@ CaptureClause ::= "[" CaptureItemList? "]"
 CaptureItemList ::= CaptureItem ("," CaptureItem)*
 ```
 
-v0.1 may store capture items as token trees or expressions.
+v0.1 parses `CaptureClause` as a bracket-delimited clause. Capture items are
+stored as token-tree-like `CaptureItemAst` placeholders. The exact internal
+structure of capture items is not specified in v0.1; parsing depth is
+determined by the concrete `CaptureItemAst` definition chosen at
+implementation time.
 
 Suggested AST:
 

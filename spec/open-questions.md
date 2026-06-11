@@ -80,9 +80,9 @@ may restructure the AST to make right-target subsegments explicit sub-trees.
 **Status:** Open
 
 **Current v0.1 decision:**
-The capture clause `[ ... ]` stores items as structured `CaptureItemAst`
-nodes with basic syntax fields (name, optional kind). The exact depth of
-parsing within capture items is not fully specified.
+`CaptureClause` is parsed as a bracket-delimited clause, but capture items
+are stored as token-tree-like `CaptureItemAst` placeholders. The exact
+internal structure of capture items is not specified in v0.1.
 
 **Why it does not block v0.1:**
 The parser can recognize `[ item, item ]` at the token level. Deeper
