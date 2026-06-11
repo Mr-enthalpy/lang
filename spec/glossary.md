@@ -102,8 +102,9 @@ They are not traditional function call arguments.
 
 The syntactic function assigned to each `ArgPack` within a `Segment`:
 
-- **SourcePack**: the first element of a segment with no incoming pipe;
-  provides the initial data flow.
+- **SourcePack**: an `ArgPack` at segment index 0. Starts the
+  segment-local source pack. This role is assigned positionally,
+  before considering non-initial insert packs or incoming pipe state.
 - **InsertPack**: the first `ArgPack` after position 0 in a segment that
   receives an incoming pipe; accepts the piped value.
 - **RightTargetSubsegment**: any `ArgPack` after `InsertPack` has been used;

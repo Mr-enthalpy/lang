@@ -22,8 +22,14 @@ v0.1.
 The parser is error-tolerant. When an error is detected:
 
 1. Emit a diagnostic with a primary span.
-2. Insert an `ErrorAst` node into the AST at the recovery point.
+2. If recovery requires replacing a missing construct, insert an `ErrorAst`
+   node at the recovery point.
 3. Continue parsing from a reasonable resynchronization point.
+
+Some token-local diagnostics may consume or drop the offending token
+without inserting `ErrorAst` (e.g., `ExpectedNameAfterDot` drops the `.`,
+`TopLevelComma` discards the comma). The per-diagnostic rule is
+authoritative.
 
 The goal is to produce as much valid AST as possible, even from partially
 invalid input. A form that cannot be recovered becomes a single `ErrorAst`
@@ -90,10 +96,12 @@ spanning the failed region.
 - **Trigger**: A `.. Name` suffix is not followed by an `ArgPack` (parenthesized
   list).
 - **Primary span**: The `Name` after `..`.
-- **Recovery**: Consume the `Name` and stop. The atom includes the `.. Name`
-  prefix but no args.
-- **AST effect**: The atom becomes a partial `DoubleDotSugar` node with an
-  empty or missing args field.
+- **Recovery**: Consume the `..` and `Name`, then resynchronize to the next
+  segment boundary or form end. Do not construct a partial `DoubleDotSugar`.
+- **AST effect**: The atom is either left as the base object (before `..`)
+  or wrapped in an `ErrorAtom(DoubleDotMissingArgPack { object, method })`.
+  No partial `DoubleDotSugar` node is created. The syntactic sugar is
+  not complete.
 
 #### `UnclosedParen`
 

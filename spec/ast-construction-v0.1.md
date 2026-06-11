@@ -718,8 +718,9 @@ obj..method
 
 `..` is followed by `Name("method")` which is valid, but `method` is NOT
 followed by `ArgPack`. Emit `ExpectedArgPackAfterDoubleDotName` with
-primary span on `method`. The atom is constructed as a partial
-`DoubleDotSugar` with empty args.
+primary span on `method`. Do not construct a `DoubleDotSugar` node.
+The atom is left as the base object (before `..`) or wrapped in
+`ErrorAtom(DoubleDotMissingArgPack { object, method })`.
 
 ```text
 obj..(method)
