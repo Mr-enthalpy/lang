@@ -208,7 +208,9 @@ Simple binder:
 ```text
 SimpleLetBinder ::= Name ":" DeclAnnotation
 
-DeclAnnotation ::= TypeObjectAnnotation [ ":" RankAnnotation ]
+DeclAnnotation ::= BareDeclAnnotation | TypeObjectAnnotation ":" RankAnnotation
+
+BareDeclAnnotation ::= PipeExpr
 
 TypeObjectAnnotation ::= PipeExpr | TypeHole
 
@@ -237,7 +239,7 @@ LetBinderAst ::=
     }
 
 DeclAnnotationAst ::=
-    RawTypeObjectAnnotation(ExprAst)
+    Bare(ExprAst)
   | TypeObjectWithRank {
         type_object_annotation: TypeObjectAnnotationAst,
         rank_annotation: ExprAst
@@ -248,9 +250,9 @@ TypeObjectAnnotationAst ::=
   | Hole
 ```
 
-The `DeclAnnotationAst::RawTypeObjectAnnotation` variant covers the surface
+The `DeclAnnotationAst::Bare` variant covers the surface
 forms `let f: fn = ...` (single name as annotation) and `let t: type = ...`.
-These are preserved as raw expressions without semantic desugaring.
+These are preserved as bare expressions without semantic desugaring.
 
 The `DeclAnnotationAst::TypeObjectWithRank` variant covers the form
 `let f: _: fn = ...`, where `_` is a `TypeHole` and `fn` is a rank annotation.
@@ -333,7 +335,7 @@ AST-level reading:
 ```text
 SimpleLetBinder {
     name: t,
-    annotation: RawTypeObjectAnnotation(Expr(Name("type")))
+    annotation: Bare(Expr(Name("type")))
 }
 ```
 
@@ -349,7 +351,7 @@ AST-level reading:
 ```text
 SimpleLetBinder {
     name: ns1,
-    annotation: RawTypeObjectAnnotation(Expr(Name("namespace")))
+    annotation: Bare(Expr(Name("namespace")))
 }
 ```
 
@@ -365,7 +367,7 @@ Surface sugar: the annotation is written as bare `fn`. The parser produces
 ```text
 SimpleLetBinder {
     name: f,
-    annotation: RawTypeObjectAnnotation(Expr(Name("fn")))
+    annotation: Bare(Expr(Name("fn")))
 }
 ```
 
@@ -423,9 +425,10 @@ The `=` may produce `UnexpectedToken`. No `NamespaceDecl` AST node is created.
 mod ns { }
 ```
 
-`mod` is an ordinary `Name` token followed by a closure literal. Parses as
-`ExprStmt` containing `Atom(Name("mod"))` + `Atom(InlineClosure({ }))`. No
-`ModDecl` or `StructDecl` AST node.
+`mod` is an ordinary `Name` token. The weak lexer treats unrecognized words
+as `Name` tokens — this does not make `mod` a language construct. The form
+parses as an ordinary `ExprStmt` containing `Atom(Name("mod"))` +
+`Atom(InlineClosure({ }))`. No `ModDecl` AST node.
 
 ### 4.7 Terminology note
 
@@ -464,7 +467,7 @@ let t: 42 = x
 ```
 
 `42` is a valid `Literal` which is a valid `PipeExpr` which is a valid
-`DeclAnnotationAst::RawTypeObjectAnnotation`. Annotation validity is deferred,
+`DeclAnnotationAst::Bare`. Annotation validity is deferred,
 so this is syntactically valid in v0.1 (even if semantically nonsensical).
 
 ## 5. Deduce lists

@@ -47,6 +47,17 @@ Parser contexts may interpret selected names structurally, but only when
 explicitly defined by the spec (e.g., `let` at form start, `where`/`acquire`
 in closure heads, `guard`/`with` in let bindings).
 
+The weak lexer treats unrecognized words as `Name` tokens. This does not
+make those words language constructs.
+
+## 2a. Parser owns shape, semantics owns meaning
+
+The parser constructs and preserves raw AST shape. Semantic or meta-function
+passes may later interpret preserved shapes. v0.1 must not add special AST
+nodes just because a future built-in meta-function may understand a shape.
+
+Parse left to right. Do not go back to reinterpret meaning.
+
 ## 3. Expected outputs
 
 | Phase | Output | Dump format |
@@ -103,6 +114,9 @@ If a requested task requires any of the following, stop at AST preservation:
 | Canonical matching | Build canonical skeleton AST; do not execute matching |
 | Closure materialization | Build closure AST; do not create callable objects |
 | Effect / sync | Parse as names; do not interpret effect system |
+| Library / import / export | v0.1 has no such syntax; preserve raw :: paths only |
+| Meta-function AST consumption | Built-in privilege; do not generalize to user macros |
+| `struct` / field syntax | Not parser syntax; future built-in meta-function may consume raw AST |
 
 ## 8. What tests to add
 

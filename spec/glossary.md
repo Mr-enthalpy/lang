@@ -233,7 +233,7 @@ rather than on runtime values. Examples (future): `match`, `effect`, `sync`.
 ## Declaration
 
 A user-visible binding introduced by `let`. In v0.1, all declarations enter
-through `let`. There is no separate `fn`, `type`, `namespace`, or `mod`
+through `let`. There is no separate `fn`, `type`, or `namespace`
 declaration syntax. Declarations carry a `DeclAnnotation` that is parsed
 and preserved but not semantically checked.
 
@@ -261,7 +261,7 @@ annotation and, optionally, a rank annotation. v0.1 does not determine whether
 the declared object is a value, type-object, namespace-like object, or
 function-like object. The grammar is
 `TypeObjectAnnotation [ ":" RankAnnotation ]`.
-Parsed into `DeclAnnotationAst::RawTypeObjectAnnotation` (single expression)
+Parsed into `DeclAnnotationAst::Bare` (single expression)
 or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 
 > **Distinction**: `DeclAnnotation` is a parser-level construct, not a
@@ -277,7 +277,7 @@ or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 The first part of a `DeclAnnotation` before an optional `:` rank annotation.
 Can be a `PipeExpr` or a `TypeHole` (`_`). In the sugar form `let f: fn = ...`,
 there is no separate type-object annotation — the whole annotation is
-`RawTypeObjectAnnotation`.
+`Bare`.
 
 *See also: DeclAnnotation, TypeHole, RankAnnotation, Type-object.*
 
@@ -311,9 +311,9 @@ as an `ExprAst`. v0.1 does not check rank validity.
 A parser flag or variant indicating that the declaration annotation was
 written in a surface-sugar form. For example, `let f: fn = ...` writes the
 annotation as bare `fn`, which the parser preserves as
-`RawTypeObjectAnnotation(Name("fn"))` without desugaring to `_: fn`. The
+`Bare(Name("fn"))` without desugaring to `_: fn`. The
 sugar status is tracked by the `DeclAnnotationAst` variant
-(`RawTypeObjectAnnotation` vs `TypeObjectWithRank`).
+(`Bare` vs `TypeObjectWithRank`).
 
 *See also: DeclAnnotation.*
 

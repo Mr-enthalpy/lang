@@ -190,18 +190,64 @@ There is no dedicated parser syntax for:
 fn f(...) { ... }
 type T = ...
 namespace ns = ...
-mod ns { ... }
-struct S { ... }
 ```
 
-Do not invent semantic AST nodes such as `FnDecl`, `TypeDecl`, `NamespaceDecl`,
-`ModDecl`, or `StructDecl`.
+Do not invent semantic AST nodes such as `FnDecl`, `TypeDecl`, or
+`NamespaceDecl`.
 
 At parser level, `fn`, `type`, `namespace` remain ordinary `Name` tokens except
 in documented strong annotation contexts within `let` binders.
 
 Declaration annotations (`: type`, `: _ : fn`, `: fn`) are parsed and
 preserved but not semantically checked.
+
+### `struct` and field declarations
+
+`struct` is not parser syntax. A future built-in meta-function named `struct`
+may consume raw AST and return a type-object. This is a semantic/meta-function
+behavior, not a parser rule.
+
+The parser must not introduce `StructDecl`, `FieldDecl`, `MemberDecl`,
+`BitfieldDecl`, `LayoutDecl`, or similar semantic AST nodes in v0.1.
+
+### Parser owns shape, semantics owns meaning
+
+The parser constructs and preserves raw AST shape. It does not decide whether
+an AST fragment is a field, a struct member, a namespace object, a function
+declaration, a return statement, a match arm, or an import. Semantic or
+meta-function passes may later interpret preserved shapes.
+
+v0.1 must not add special AST nodes just because a future built-in
+meta-function may understand a shape.
+
+Parse left to right. Do not go back to reinterpret meaning. The parser should
+be streaming-friendly. Contextual parsing is allowed only for explicitly
+specified strong syntax contexts. Semantic meaning must not feed back into
+v0.1 parsing.
+
+### Privileged AST-consuming meta-functions
+
+Some future built-in meta-functions may consume raw AST directly. Examples may
+include future built-ins such as `match`, `struct`, `effect`, and `sync`.
+
+Accepting raw AST as input is a privileged capability of built-in
+meta-functions. User-defined functions must not be assumed to have unrestricted
+AST-consuming power in v0.1.
+
+AST-consuming meta-functions are built-in privileges until the language is
+stable enough to define a controlled user-facing macro/metaprogramming system.
+v0.1 only preserves AST shape; it does not decide which functions may consume
+AST.
+
+### No library/import/export/package syntax
+
+v0.1 has no library, import, export, module, or package syntax. The parser
+only preserves raw namespace path syntax such as `std::Vec`,
+`mylib::math::vector::Vec3`, and `((int)std::Vec)::ns1` where expressible by
+raw AST rules.
+
+Do not create AST nodes such as `ImportDecl`, `UseDecl`, `IncludeDecl`,
+`ModuleDecl`, `LibraryDecl`, `PackageDecl`, or `ExportDecl`.
 
 ## Repository layout
 
@@ -219,6 +265,7 @@ preserved but not semantically checked.
 │   ├── ast-construction-v0.1.md
 │   ├── diagnostics-v0.1.md
 │   ├── roadmap.md
+│   ├── library-namespace-design-note.md
 │   ├── glossary.md
 │   └── open-questions.md
 ├── crates/

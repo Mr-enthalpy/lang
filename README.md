@@ -125,6 +125,16 @@ function, type, namespace, or module declarations.
 v0.1 parses and preserves declaration annotations but does not check their
 semantic validity.
 
+### 8. Parser owns shape, semantics owns meaning
+
+The parser constructs and preserves raw AST shape. It does not decide what an
+AST fragment semantically represents. Future semantic or meta-function passes
+may interpret preserved shapes.
+
+Parse left to right. Do not go back to reinterpret meaning. v0.1 must not add
+special AST nodes just because a future built-in meta-function may understand
+a shape.
+
 ## Workspace layout
 
 ```text
@@ -141,6 +151,7 @@ semantic validity.
 │   ├── ast-construction-v0.1.md
 │   ├── diagnostics-v0.1.md
 │   ├── roadmap.md
+│   ├── library-namespace-design-note.md
 │   ├── glossary.md
 │   └── open-questions.md
 ├── crates/
@@ -195,9 +206,13 @@ Do not implement:
 - code generation
 - IR / HIR / MIR lowering
 - parser generators (hand-written parser only)
+- library / import / export / module / package syntax
 
 The parser should preserve syntax sufficient for these future passes, but
 must not perform them.
+
+v0.1 only preserves raw namespace path shapes such as `std::Vec`,
+`mylib::math::vector::Vec3`.
 
 ## How to read the spec
 
