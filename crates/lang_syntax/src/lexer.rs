@@ -1,4 +1,6 @@
-use crate::{Diagnostic, DiagnosticCode, Span, Symbol, Token, TokenKind, TriviaKind};
+use crate::{
+    normalize_source_text, Diagnostic, DiagnosticCode, Span, Symbol, Token, TokenKind, TriviaKind,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LexOutput {
@@ -7,7 +9,8 @@ pub struct LexOutput {
 }
 
 pub fn lex(source: &str) -> LexOutput {
-    Lexer::new(source).lex()
+    let normalized = normalize_source_text(source);
+    Lexer::new(&normalized).lex()
 }
 
 struct Lexer<'src> {

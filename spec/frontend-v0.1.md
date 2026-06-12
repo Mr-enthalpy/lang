@@ -54,6 +54,8 @@ The lexer handles character-level concerns only:
 
 - Recognize identifiers, literals, symbols, trivia, invalid sequences.
 - Produce tokens with spans.
+- Normalize CRLF and CR line endings to LF before tokenization. Token byte
+  spans, lines, and columns refer to this normalized LF source text.
 - **Do not** classify names as keywords.
 - **Do not** interpret `<...>` as deduce lists.
 - **Do not** balance groups or track parser state.

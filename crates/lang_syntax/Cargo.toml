@@ -7,3 +7,7 @@ publish = false
 [[test]]
 name = "lexer_golden"
 path = "../../tests/lexer_golden.rs"
+
+[[test]]
+name = "parser_golden"
+path = "../../tests/parser_golden.rs"

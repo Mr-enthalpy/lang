@@ -1,0 +1,19 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple name=x
+        annotation:
+          Bare
+            Expr
+              Segment
+                Name type
+    with:
+    value:
+      Expr
+        Segment
+          Path
+            base:
+              Name a
+            names:
+              b

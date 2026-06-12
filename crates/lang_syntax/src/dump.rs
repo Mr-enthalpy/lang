@@ -1,4 +1,8 @@
-use crate::{Diagnostic, DiagnosticCode, Symbol, Token, TokenKind, TriviaKind};
+use crate::{
+    AtomAst, AtomKind, DeclAnnotationAst, Diagnostic, DiagnosticCode, ExprAst, ExprKind, FormAst,
+    LetAst, LetAttrAst, LetBinderAst, ProgramAst, Symbol, Token, TokenKind, TriviaKind,
+    TypeObjectAnnotationAst,
+};
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
     let mut output = String::new();
@@ -34,6 +38,169 @@ pub fn dump_diagnostics(diagnostics: &[Diagnostic]) -> String {
     }
 
     output
+}
+
+pub fn dump_ast(program: &ProgramAst) -> String {
+    let mut output = String::new();
+    line(&mut output, 0, "Program");
+
+    for form in &program.forms {
+        dump_form(&mut output, form, 1);
+    }
+
+    output
+}
+
+fn dump_form(output: &mut String, form: &FormAst, indent: usize) {
+    match form {
+        FormAst::Let(let_ast) => dump_let(output, let_ast, indent),
+        FormAst::Expr(expr) => {
+            line(output, indent, "ExprForm");
+            dump_expr(output, expr, indent + 1);
+        }
+        FormAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_let(output: &mut String, let_ast: &LetAst, indent: usize) {
+    line(output, indent, "Let");
+    line(output, indent + 1, "attrs:");
+    for attr in &let_ast.attrs {
+        match attr {
+            LetAttrAst::Guard => line(output, indent + 2, "Guard"),
+        }
+    }
+    line(output, indent + 1, "binder:");
+    dump_binder(output, &let_ast.binder, indent + 2);
+    line(output, indent + 1, "with:");
+    for dep in &let_ast.with_deps {
+        line(output, indent + 2, &dep.text);
+    }
+    line(output, indent + 1, "value:");
+    dump_expr(output, &let_ast.value, indent + 2);
+}
+
+fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
+    match binder {
+        LetBinderAst::Simple {
+            name, annotation, ..
+        } => {
+            line(output, indent, &format!("Simple name={}", name.text));
+            line(output, indent + 1, "annotation:");
+            dump_decl_annotation(output, annotation, indent + 2);
+        }
+        LetBinderAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_decl_annotation(output: &mut String, annotation: &DeclAnnotationAst, indent: usize) {
+    match annotation {
+        DeclAnnotationAst::Bare(expr) => {
+            line(output, indent, "Bare");
+            dump_expr(output, expr, indent + 1);
+        }
+        DeclAnnotationAst::TypeObjectWithRank {
+            type_object_annotation,
+            rank_annotation,
+            ..
+        } => {
+            line(output, indent, "TypeObjectWithRank");
+            line(output, indent + 1, "type_object:");
+            dump_type_object_annotation(output, type_object_annotation, indent + 2);
+            line(output, indent + 1, "rank:");
+            dump_expr(output, rank_annotation, indent + 2);
+        }
+        DeclAnnotationAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_type_object_annotation(
+    output: &mut String,
+    annotation: &TypeObjectAnnotationAst,
+    indent: usize,
+) {
+    match annotation {
+        TypeObjectAnnotationAst::Expr(expr) => {
+            line(output, indent, "Expr");
+            dump_expr(output, expr, indent + 1);
+        }
+        TypeObjectAnnotationAst::Hole { .. } => line(output, indent, "Hole _"),
+    }
+}
+
+fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
+    line(output, indent, "Expr");
+    match &expr.kind {
+        ExprKind::Segment(atoms) => {
+            line(output, indent + 1, "Segment");
+            for atom in atoms {
+                dump_atom(output, atom, indent + 2);
+            }
+        }
+        ExprKind::Error(error) => {
+            line(
+                output,
+                indent + 1,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
+    match &atom.kind {
+        AtomKind::Name(name) => line(output, indent, &format!("Name {}", name.text)),
+        AtomKind::IntLiteral(value) => line(output, indent, &format!("IntLiteral {}", value)),
+        AtomKind::StringLiteral(value) => {
+            line(
+                output,
+                indent,
+                &format!("StringLiteral \"{}\"", escape_text(value)),
+            );
+        }
+        AtomKind::Path { base, names } => {
+            line(output, indent, "Path");
+            line(output, indent + 1, "base:");
+            dump_atom(output, base, indent + 2);
+            line(output, indent + 1, "names:");
+            for name in names {
+                line(output, indent + 2, &name.text);
+            }
+        }
+        AtomKind::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn line(output: &mut String, indent: usize, text: &str) {
+    for _ in 0..indent {
+        output.push_str("  ");
+    }
+    output.push_str(text);
+    output.push('\n');
 }
 
 fn token_kind_label(kind: &TokenKind) -> String {
@@ -84,6 +251,11 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidToken => "InvalidToken",
         DiagnosticCode::UnclosedString => "UnclosedString",
         DiagnosticCode::UnclosedComment => "UnclosedComment",
+        DiagnosticCode::UnexpectedToken => "UnexpectedToken",
+        DiagnosticCode::ExpectedName => "ExpectedName",
+        DiagnosticCode::ExpectedColon => "ExpectedColon",
+        DiagnosticCode::ExpectedDeclAnnotation => "ExpectedDeclAnnotation",
+        DiagnosticCode::ExpectedEqual => "ExpectedEqual",
     }
 }
 

@@ -1,0 +1,15 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple name=f
+        annotation:
+          Bare
+            Expr
+              Segment
+                Name fn
+    with:
+    value:
+      Expr
+        Segment
+          Name body

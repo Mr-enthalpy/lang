@@ -1,0 +1,18 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple name=f
+        annotation:
+          TypeObjectWithRank
+            type_object:
+              Hole _
+            rank:
+              Expr
+                Segment
+                  Name fn
+    with:
+    value:
+      Expr
+        Segment
+          Name body
