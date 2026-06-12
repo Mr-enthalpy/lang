@@ -1,6 +1,6 @@
 use crate::{AtomAst, AtomKind, DiagnosticCode, NameAst, Symbol, TokenKind};
 
-use super::form::Parser;
+use super::{form::Parser, pipe::parse_pipe_expr};
 
 pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
     let token = parser.cursor.peek_non_trivia();
@@ -30,6 +30,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span: token.span,
             }
         }
+        TokenKind::Symbol(Symbol::LParen) => return parse_group(parser),
         _ => return None,
     };
 
@@ -66,4 +67,44 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             },
         })
     }
+}
+
+fn parse_group(parser: &mut Parser<'_>) -> Option<AtomAst> {
+    let lparen = parser
+        .cursor
+        .consume_symbol(Symbol::LParen)
+        .expect("parse_group called at `(`");
+
+    let expr = parse_pipe_expr(parser, |p| {
+        p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RParen)
+    });
+
+    if parser.cursor.at_symbol(Symbol::Comma) {
+        let comma_span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::UnexpectedToken,
+            "unexpected top-level comma",
+            comma_span,
+        );
+        parser.cursor.bump_non_trivia();
+        parser.recover_to_paren_close();
+    }
+
+    let end = if parser.cursor.consume_symbol(Symbol::RParen).is_some() {
+        lparen.span
+    } else {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::UnclosedParen,
+            "unclosed parentheses",
+            lparen.span,
+        );
+        span
+    };
+
+    let span = lparen.span.join(end);
+    Some(AtomAst {
+        kind: AtomKind::Group(Box::new(expr)),
+        span,
+    })
 }

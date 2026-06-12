@@ -1,5 +1,13 @@
 use crate::{Span, Symbol, Token, TokenKind, TriviaKind};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ParenClassification {
+    NotParen,
+    Group,
+    ArgPack,
+    Unclosed,
+}
+
 pub struct Cursor<'tokens> {
     tokens: &'tokens [Token],
     index: usize,
@@ -79,20 +87,139 @@ impl<'tokens> Cursor<'tokens> {
         self.peek_non_trivia().span
     }
 
-    // TODO: v0.1 full spec lists `;`, top-level newline, `}`, and EOF as
-    // form boundaries. Currently only semicolon and EOF are implemented;
-    // newline-sensitive parsing and closing-brace boundary detection are
-    // pending parser refinement.
+    pub fn current_index(&self) -> usize {
+        self.index
+    }
+
+    pub fn peek_at(&self, index: usize) -> &'tokens Token {
+        &self.tokens[index]
+    }
+
+    pub fn len(&self) -> usize {
+        self.tokens.len()
+    }
+
+    pub fn peek_at_skip_trivia(&self, mut index: usize) -> (usize, &'tokens Token) {
+        while index < self.tokens.len() && matches!(self.tokens[index].kind, TokenKind::Trivia(_)) {
+            index += 1;
+        }
+        if index < self.tokens.len() {
+            (index, &self.tokens[index])
+        } else {
+            (index, &self.tokens[self.tokens.len() - 1])
+        }
+    }
+
+    pub fn can_start_segment_element(token: &Token) -> bool {
+        matches!(
+            token.kind,
+            TokenKind::Name
+                | TokenKind::IntLiteral
+                | TokenKind::StringLiteral
+                | TokenKind::Symbol(Symbol::LParen)
+        )
+    }
+
+    pub fn classify_paren_at_segment_position(&self) -> (ParenClassification, Option<usize>) {
+        let (mut i, first) = self.peek_at_skip_trivia(self.index);
+        if !matches!(first.kind, TokenKind::Symbol(Symbol::LParen)) {
+            return (ParenClassification::NotParen, None);
+        }
+
+        let _start = i;
+        let mut depth: usize = 0;
+        let mut has_comma = false;
+
+        loop {
+            if i >= self.tokens.len() {
+                return (ParenClassification::Unclosed, None);
+            }
+            let token = &self.tokens[i];
+
+            if matches!(token.kind, TokenKind::Trivia(_)) {
+                i += 1;
+                continue;
+            }
+
+            match &token.kind {
+                TokenKind::Symbol(Symbol::LParen)
+                | TokenKind::Symbol(Symbol::LBracket)
+                | TokenKind::Symbol(Symbol::LBrace) => {
+                    depth += 1;
+                }
+                TokenKind::Symbol(Symbol::RParen)
+                | TokenKind::Symbol(Symbol::RBracket)
+                | TokenKind::Symbol(Symbol::RBrace) => {
+                    if depth == 1 {
+                        if matches!(token.kind, TokenKind::Symbol(Symbol::RParen)) {
+                            i += 1;
+                            break;
+                        }
+                        break;
+                    }
+                    depth -= 1;
+                }
+                TokenKind::Symbol(Symbol::Comma) => {
+                    if depth == 1 {
+                        has_comma = true;
+                    }
+                }
+                TokenKind::Eof => {
+                    return (ParenClassification::Unclosed, None);
+                }
+                _ => {}
+            }
+
+            if depth == 0 {
+                return (ParenClassification::Unclosed, None);
+            }
+
+            i += 1;
+        }
+
+        if has_comma {
+            return (ParenClassification::ArgPack, Some(i));
+        }
+
+        let (_, after) = self.peek_at_skip_trivia(i);
+        if Self::can_start_segment_element(after) {
+            (ParenClassification::ArgPack, Some(i))
+        } else {
+            (ParenClassification::Group, Some(i))
+        }
+    }
+
+    pub fn is_at_segment_element_start(&self) -> bool {
+        let (_, token) = self.peek_at_skip_trivia(self.index);
+        Self::can_start_segment_element(token)
+    }
+
+    pub fn is_at_pipe_element(&mut self) -> bool {
+        matches!(
+            self.peek_non_trivia().kind,
+            TokenKind::Symbol(Symbol::PipeGreater)
+        )
+    }
+
+    // TODO(parser-refinement): full v0.1 form boundaries include top-level
+    // newline. Current parser phase supports only `;`, `}`, and EOF.
+    // Implement newline boundary after parser tracks nesting depth
+    // across (), [], {}.
     pub fn is_form_boundary(&mut self) -> bool {
         matches!(
             self.peek_non_trivia().kind,
-            TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon)
+            TokenKind::Eof
+                | TokenKind::Symbol(Symbol::Semicolon)
+                | TokenKind::Symbol(Symbol::RBrace)
         )
     }
 
     pub fn consume_form_boundary(&mut self) {
         self.skip_trivia();
-        if matches!(self.peek().kind, TokenKind::Symbol(Symbol::Semicolon)) {
+        if matches!(
+            self.peek().kind,
+            TokenKind::Symbol(Symbol::Semicolon) | TokenKind::Symbol(Symbol::RBrace)
+        ) {
             self.bump();
         }
     }

@@ -1,7 +1,6 @@
 Program
   Let
     attrs:
-      Guard
     binder:
       Simple name=x
         annotation:
@@ -12,11 +11,14 @@ Program
                   Atom
                     Name type
     with:
-      a
-      b
     value:
       Expr
         Pipe
           Segment has_incoming=false
-            Atom
-              Name y
+            ArgPack role=SourcePack
+              args:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      Atom
+                        Name a

@@ -8,5 +8,7 @@ Program
     with:
     value:
       Expr
-        Segment
-          Name y
+        Pipe
+          Segment has_incoming=false
+            Atom
+              Name y

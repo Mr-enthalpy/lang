@@ -1,0 +1,29 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple name=x
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  Atom
+                    Name type
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            ArgPack role=SourcePack
+              args:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      Atom
+                        Name a
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      Atom
+                        Name b

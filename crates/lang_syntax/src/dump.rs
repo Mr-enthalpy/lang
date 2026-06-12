@@ -1,7 +1,7 @@
 use crate::{
-    AtomAst, AtomKind, DeclAnnotationAst, Diagnostic, DiagnosticCode, ExprAst, ExprKind, FormAst,
-    LetAst, LetAttrAst, LetBinderAst, ProgramAst, Symbol, Token, TokenKind, TriviaKind,
-    TypeObjectAnnotationAst,
+    ArgPackAst, ArgPackRole, AtomAst, AtomKind, DeclAnnotationAst, Diagnostic, DiagnosticCode,
+    ExprAst, ExprKind, FormAst, LetAst, LetAttrAst, LetBinderAst, PipeExprAst, ProgramAst,
+    SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind, TypeObjectAnnotationAst,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -149,12 +149,7 @@ fn dump_type_object_annotation(
 fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
     line(output, indent, "Expr");
     match &expr.kind {
-        ExprKind::Segment(atoms) => {
-            line(output, indent + 1, "Segment");
-            for atom in atoms {
-                dump_atom(output, atom, indent + 2);
-            }
-        }
+        ExprKind::Pipe(pipe) => dump_pipe(output, pipe, indent + 1),
         ExprKind::Error(error) => {
             line(
                 output,
@@ -162,6 +157,46 @@ fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
                 &format!("Error \"{}\"", escape_text(&error.message)),
             );
         }
+    }
+}
+
+fn dump_pipe(output: &mut String, pipe: &PipeExprAst, indent: usize) {
+    line(output, indent, "Pipe");
+    for segment in &pipe.segments {
+        dump_segment(output, segment, indent + 1);
+    }
+}
+
+fn dump_segment(output: &mut String, segment: &SegmentAst, indent: usize) {
+    line(
+        output,
+        indent,
+        &format!("Segment has_incoming={}", segment.has_incoming),
+    );
+    for element in &segment.elements {
+        dump_segment_element(output, element, indent + 1);
+    }
+}
+
+fn dump_segment_element(output: &mut String, element: &SegmentElementAst, indent: usize) {
+    match element {
+        SegmentElementAst::Atom(atom) => {
+            line(output, indent, "Atom");
+            dump_atom(output, atom, indent + 1);
+        }
+        SegmentElementAst::ArgPack(argpack) => dump_argpack(output, argpack, indent),
+    }
+}
+
+fn dump_argpack(output: &mut String, argpack: &ArgPackAst, indent: usize) {
+    line(
+        output,
+        indent,
+        &format!("ArgPack role={}", argpack_role_label(argpack.role)),
+    );
+    line(output, indent + 1, "args:");
+    for arg in &argpack.args {
+        dump_expr(output, arg, indent + 2);
     }
 }
 
@@ -175,6 +210,10 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
                 indent,
                 &format!("StringLiteral \"{}\"", escape_text(value)),
             );
+        }
+        AtomKind::Group(expr) => {
+            line(output, indent, "Group");
+            dump_expr(output, expr, indent + 1);
         }
         AtomKind::Path { base, names } => {
             line(output, indent, "Path");
@@ -256,6 +295,17 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::ExpectedColon => "ExpectedColon",
         DiagnosticCode::ExpectedDeclAnnotation => "ExpectedDeclAnnotation",
         DiagnosticCode::ExpectedEqual => "ExpectedEqual",
+        DiagnosticCode::UnclosedParen => "UnclosedParen",
+        DiagnosticCode::EmptyPipeSegment => "EmptyPipeSegment",
+    }
+}
+
+fn argpack_role_label(role: ArgPackRole) -> &'static str {
+    match role {
+        ArgPackRole::SourcePack => "SourcePack",
+        ArgPackRole::InsertPack => "InsertPack",
+        ArgPackRole::RightTargetSubsegment => "RightTargetSubsegment",
+        ArgPackRole::Unknown => "Unknown",
     }
 }
 

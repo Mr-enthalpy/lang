@@ -6,14 +6,18 @@ Program
         annotation:
           Bare
             Expr
-              Segment
-                Name type
+              Pipe
+                Segment has_incoming=false
+                  Atom
+                    Name type
     with:
     value:
       Expr
-        Segment
-          Path
-            base:
-              Name a
-            names:
-              b
+        Pipe
+          Segment has_incoming=false
+            Atom
+              Path
+                base:
+                  Name a
+                names:
+                  b

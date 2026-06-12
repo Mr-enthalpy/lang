@@ -74,4 +74,16 @@ impl<'tokens> Parser<'tokens> {
             self.cursor.bump_non_trivia();
         }
     }
+
+    pub fn recover_to_paren_close(&mut self) {
+        while !self.cursor.at_eof()
+            && !self.cursor.at_symbol(Symbol::RParen)
+            && !self.cursor.is_form_boundary()
+        {
+            self.cursor.bump_non_trivia();
+        }
+        if self.cursor.at_symbol(Symbol::RParen) {
+            self.cursor.bump_non_trivia();
+        }
+    }
 }
