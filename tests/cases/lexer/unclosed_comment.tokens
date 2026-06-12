@@ -1,0 +1,2 @@
+Trivia.BlockComment "/* unterminated\n" @ 1:1 [0..16]
+Eof "" @ 2:1 [16..16]

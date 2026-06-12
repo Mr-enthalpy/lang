@@ -1,0 +1,5 @@
+StringLiteral "\"unterminated" @ 1:1 [0..13]
+Trivia.Whitespace "\n" @ 1:14 [13..14]
+Name "next" @ 2:1 [14..18]
+Trivia.Whitespace "\n" @ 2:5 [18..19]
+Eof "" @ 3:1 [19..19]

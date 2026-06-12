@@ -3,3 +3,7 @@ name = "lang_syntax"
 version = "0.1.0"
 edition = "2021"
 publish = false
+
+[[test]]
+name = "lexer_golden"
+path = "../../tests/lexer_golden.rs"
