@@ -30,7 +30,7 @@ discard trivia after consumption.
 
 A token class representing an identifier. Names include what traditional languages
 call keywords. In v0.1, `return`, `else`, `match`, `drop`, `move`, `sync`,
-`effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, `mod`, and
+`effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, and
 `struct` are all ordinary `Name` tokens at the lexical level.
 
 > **Distinction**: A `Name` token is not a keyword. Semantic strength does not
@@ -260,7 +260,7 @@ annotation associated with a declared name. It may contain a type-object
 annotation and, optionally, a rank annotation. v0.1 does not determine whether
 the declared object is a value, type-object, namespace-like object, or
 function-like object. The grammar is
-`TypeObjectAnnotation [ ":" RankAnnotation ]`.
+`DeclAnnotation ::= BareDeclAnnotation | TypeObjectAnnotation ":" RankAnnotation`.
 Parsed into `DeclAnnotationAst::Bare` (single expression)
 or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 

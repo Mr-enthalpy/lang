@@ -421,15 +421,6 @@ namespace ns = expr
 `namespace` is an ordinary `Name` token. Form selected as `ExprStmt`.
 The `=` may produce `UnexpectedToken`. No `NamespaceDecl` AST node is created.
 
-```text
-mod ns { }
-```
-
-`mod` is an ordinary `Name` token. The weak lexer treats unrecognized words
-as `Name` tokens — this does not make `mod` a language construct. The form
-parses as an ordinary `ExprStmt` containing `Atom(Name("mod"))` +
-`Atom(InlineClosure({ }))`. No `ModDecl` AST node.
-
 ### 4.7 Terminology note
 
 A **type-object** is a type-theoretic object: the type of some value, or an

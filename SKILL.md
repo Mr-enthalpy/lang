@@ -40,7 +40,7 @@ The following are ordinary names in v0.1:
 ```text
 return  else  match  drop  move  ref
 sync  effect  fn  type  meta  runtime  compile
-namespace  mod  struct
+namespace  struct
 ```
 
 Parser contexts may interpret selected names structurally, but only when

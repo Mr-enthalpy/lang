@@ -105,9 +105,12 @@ It should output tokens such as:
 
 The lexer must not classify names such as `return`, `else`, `match`, `drop`,
 `move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, `compile`,
-`namespace`, `mod`, or `struct` as special keyword tokens.
+`namespace`, or `struct` as special keyword tokens.
 
 These are ordinary names at the lexical level.
+
+Any other unrecognized word is still lexed as `Name`. This does not make
+that word a language construct.
 
 ### Contextual structure words
 
