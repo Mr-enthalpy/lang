@@ -132,9 +132,9 @@ let x = (a
 + b)
 ```
 
-Here `let x = ` is missing the required `: KindExpr` before `=`, so the
+Here `let x = ` is missing the required `: DeclAnnotation` before `=`, so the
 form is structurally invalid before reaching the `(`. The parser should
-diagnose the missing kind annotation. For this example to be structurally
+diagnose the missing declaration annotation. For this example to be structurally
 valid, it must be `let x: type = (a` (see §4.1 for the full let grammar).
 
 Line 1 ends inside `(...)`, nesting depth is 1, so the line break is NOT a
@@ -149,8 +149,8 @@ both lines and diagnose `UnclosedParen` if the `)` is never found.
 LetStmt ::= "let" LetAttr* LetBinder LetWithClause? "=" PipeExpr
 ```
 
-The kind annotation after `:` is required for simple binders. v0.1 does not
-make it optional.
+The declaration annotation after `:` is required for simple binders. v0.1 does
+not make it optional.
 
 AST:
 
@@ -206,7 +206,17 @@ LetBinder ::= SimpleLetBinder | ExtractLetBinder
 Simple binder:
 
 ```text
-SimpleLetBinder ::= Name ":" KindExpr
+SimpleLetBinder ::= Name ":" DeclAnnotation
+
+DeclAnnotation ::= BareDeclAnnotation | TypeObjectAnnotation ":" RankAnnotation
+
+BareDeclAnnotation ::= PipeExpr
+
+TypeObjectAnnotation ::= PipeExpr | TypeHole
+
+TypeHole ::= "_"
+
+RankAnnotation ::= PipeExpr
 ```
 
 Extract binder:
@@ -221,55 +231,235 @@ AST:
 LetBinderAst ::=
     Simple {
         name: NameAst,
-        kind: ExprAst
+        annotation: DeclAnnotationAst
     }
   | Extract {
         deduce: DeduceListAst,
         skeleton: CanonicalSkeletonAst
     }
+
+DeclAnnotationAst ::=
+    Bare(ExprAst)
+  | TypeObjectWithRank {
+        type_object_annotation: TypeObjectAnnotationAst,
+        rank_annotation: ExprAst
+    }
+
+TypeObjectAnnotationAst ::=
+    Expr(ExprAst)
+  | Hole
 ```
 
-### 4.5 Kind expression
+The `DeclAnnotationAst::Bare` variant covers the surface
+forms `let f: fn = ...` (single name as annotation) and `let t: type = ...`.
+These are preserved as bare expressions without semantic desugaring.
 
-```text
-KindExpr ::= PipeExpr
-```
+The `DeclAnnotationAst::TypeObjectWithRank` variant covers the form
+`let f: _: fn = ...`, where `_` is a `TypeHole` and `fn` is a rank annotation.
 
-Kind validity is not checked in v0.1.
+v0.1 does not check that annotation names resolve to anything. Annotation
+validity is a future semantic pass.
+
+### 4.5 Annotation parsing boundaries
+
+Because `TypeObjectAnnotation ::= PipeExpr | TypeHole` and
+`RankAnnotation ::= PipeExpr`, the parser must know where the annotation
+sub-expressions stop in each strong context. The termination tokens are
+determined by the surrounding syntactic frame.
+
+**In `SimpleLetBinder` context** (parsing the binder after `let`):
+
+- `TypeObjectAnnotation` stops at a top-level `:` (which starts a rank
+  annotation), `with`, or `=`.
+- If `TypeObjectAnnotation` stopped at `:`, the following expression is
+  `RankAnnotation`.
+- `RankAnnotation` stops at a top-level `with` or `=`.
 
 Example:
 
 ```text
-let t: type = int Option Vec
+let f: _: fn = expr
+     ^^^^^^---- TypeObjectAnnotation stops at the second `:`
+            ^^--- RankAnnotation, stops at `=`
+
+let f: _: fn with deps = expr
+     ^^^^---- TypeObjectAnnotation, containing `_`
+          ^---- this `:` starts RankAnnotation
+           ^^--------- RankAnnotation, stops at `with`
 ```
 
-constructs:
+**In `DeduceList BinderDecl` context** (inside `<...>`):
+
+- `TypeObjectAnnotation` stops at a top-level `,` or `>`.
+
+**In `ParamItem` context** (inside closure-head parameter list):
+
+- `TypeObjectAnnotation` stops at a top-level `,` or `)`.
+
+**In `ReturnBinder` context** (after `->` in a closure head):
+
+- `TypeObjectAnnotation` stops at a top-level `:`, `where`, `acquire`,
+  `=>`, or `{`.
+- If stopped by `:`, the following expression is `ReturnConstraint`, not
+  `RankAnnotation`.
+
+### 4.6 Declaration annotation examples
+
+**Positive examples:**
 
 ```text
-Let.Simple(
-  name = t,
-  kind = PipeExpr(...),
-  value = PipeExpr(...)
-)
+let f: _: fn = expr
 ```
+
+AST-level reading:
+
+```text
+SimpleLetBinder {
+    name: f,
+    annotation: TypeObjectWithRank {
+        type_object_annotation: TypeHole("_"),
+        rank_annotation: Expr(Name("fn"))
+    }
+}
+```
+
+Deferred semantic reading: `f` has an anonymous type-object whose kind/rank
+is the source name `fn`.
+
+```text
+let t: type = expr
+```
+
+AST-level reading:
+
+```text
+SimpleLetBinder {
+    name: t,
+    annotation: Bare(Expr(Name("type")))
+}
+```
+
+Deferred semantic reading: `t` is declared as a type-object whose kind/rank
+is the source name `type`.
+
+```text
+let ns1: namespace = expr
+```
+
+AST-level reading:
+
+```text
+SimpleLetBinder {
+    name: ns1,
+    annotation: Bare(Expr(Name("namespace")))
+}
+```
+
+`namespace` is a source name in annotation position, not a lexical keyword
+and not a separate declaration form.
+
+```text
+let f: fn = expr
+```
+
+Surface sugar: the annotation is written as bare `fn`. The parser produces
+
+```text
+SimpleLetBinder {
+    name: f,
+    annotation: Bare(Expr(Name("fn")))
+}
+```
+
+and preserves the raw written form. A future declaration-analysis pass may
+treat bare `fn` as equivalent to `_: fn` when `fn` resolves as a
+kind/rank annotation. v0.1 must not perform semantic desugaring.
+
+**Alignment:**
+
+```text
+let f: _: fn = ...    let t:    type = ...
+    │   │  │              │       │
+    │   │  └─ rank         │       └─ rank (source name `type`)
+    │   └─ type-object     └─ itself a type-object
+    └─ declared object
+```
+
+The declared object (`f`) aligns with the declared object (`t`).
+The anonymous type-object (`_`) aligns with the type-object layer occupied by `t` itself.
+The rank annotation (`fn`) aligns with the rank annotation (`type`).
+
+More precisely: `t` and `_` occupy the type-object layer. `fn` and the
+source name `type` occupy the kind/rank annotation layer.
+
+**Negative / non-declaration examples:**
+
+```text
+fn f(x) { x }
+```
+
+`fn` is an ordinary `Name` token. The parser sees `Name("fn")`, then `Name("f")`,
+then `ArgPack(x)`, then `InlineClosureAst`. Since the first token is not
+`Name("let")`, the form is selected as `ExprStmt`. The parser must not
+create a `FnDecl` AST node. Depending on future expression adjacency rules,
+tokens such as `(` or `{` after `f(x)` may produce diagnostics, but the
+core conclusion is: no function declaration syntax exists in v0.1.
+
+```text
+type T = expr
+```
+
+`type` is an ordinary `Name` token. Form selected as `ExprStmt` because the
+first token is not `Name("let")`. The `=` token is not an ordinary expression
+operator and may produce `UnexpectedToken` according to the expression grammar.
+The parser must not create a `TypeDecl` AST node.
+
+```text
+namespace ns = expr
+```
+
+`namespace` is an ordinary `Name` token. Form selected as `ExprStmt`.
+The `=` may produce `UnexpectedToken`. No `NamespaceDecl` AST node is created.
+
+### 4.7 Terminology note
+
+A **type-object** is a type-theoretic object: the type of some value, or an
+object that itself represents a type.
+
+A **kind/rank object** classifies type-objects. In source text, names such as
+`fn` and `type` may appear in kind/rank annotation position.
+
+These terms must be distinguished from source names:
+
+* The declared object may be a type-object. The source name `type`, when used
+  in declaration annotation position, may denote the kind/rank of type-objects.
+* The source name `fn`, when used in declaration annotation position, may
+  denote the kind/rank of function type-objects.
+* `fn` is not a lexical keyword.
+* `type` is not a lexical keyword.
+* `namespace` is not a lexical keyword.
+* `fn <: type` is a future semantic/rank relation, not a v0.1 parser rule.
+
+The parser does not check these meanings in v0.1. It only preserves the
+annotation structure.
 
 **Negative / diagnostic example:**
 
 ```text
-let t: = int Option Vec
+let t: = expr
 ```
 
-The parser expects a `KindExpr` after `:`. If `=` follows immediately, emit
-`UnexpectedToken` at `=`, insert `ErrorAst` for the kind, and continue
-parsing the value.
+The parser expects a `DeclAnnotation` after `:`. If `=` follows immediately,
+emit `UnexpectedToken` at `=`, insert `ErrorAst` for the annotation, and
+continue parsing the value.
 
 ```text
 let t: 42 = x
 ```
 
 `42` is a valid `Literal` which is a valid `PipeExpr` which is a valid
-`KindExpr` by grammar. Kind checking is deferred, so this is syntactically
-valid in v0.1 (even if semantically nonsensical).
+`DeclAnnotationAst::Bare`. Annotation validity is deferred,
+so this is syntactically valid in v0.1 (even if semantically nonsensical).
 
 ## 5. Deduce lists
 
@@ -284,7 +474,7 @@ The parser only recognizes a deduce list in strong binding contexts.
 ```text
 DeduceList ::= "<" BinderDeclList? ">"
 BinderDeclList ::= BinderDecl ("," BinderDecl)*
-BinderDecl ::= Name [ ":" KindExpr ]
+BinderDecl ::= Name [ ":" TypeObjectAnnotation ]
 ```
 
 AST:
@@ -297,7 +487,7 @@ DeduceListAst {
 
 BinderDeclAst {
     name: NameAst,
-    kind: Option<ExprAst>,
+    annotation: Option<TypeObjectAnnotationAst>,
     span: Span
 }
 ```
@@ -978,8 +1168,8 @@ ParamClauseAst {
 
 ```text
 ParamItem ::=
-    Name [ ":" KindExpr ]
-  | DeduceList? CanonicalSkeleton [ ":" KindExpr ]
+    Name [ ":" TypeObjectAnnotation ]
+  | DeduceList? CanonicalSkeleton [ ":" TypeObjectAnnotation ]
 ```
 
 AST:
@@ -988,13 +1178,13 @@ AST:
 ParamItemAst ::=
     NameParam {
         name: NameAst,
-        kind: Option<ExprAst>,
+        type_object_annotation: Option<TypeObjectAnnotationAst>,
         span: Span
     }
   | ExtractParam {
         deduce: Option<DeduceListAst>,
         skeleton: CanonicalSkeletonAst,
-        kind: Option<ExprAst>,
+        type_object_annotation: Option<TypeObjectAnnotationAst>,
         span: Span
     }
 ```
@@ -1020,7 +1210,7 @@ ReturnClause ::= "->" ReturnBinder [ ":" ReturnConstraint ]
 
 ```text
 ReturnBinder ::=
-    KindExpr
+    TypeObjectAnnotation
   | DeduceList CanonicalSkeleton
 ```
 
@@ -1040,7 +1230,7 @@ ReturnClauseAst {
 
 ```text
 ReturnBinderAst ::=
-    TypeExpr(ExprAst)
+    TypeObjectAnnotation(TypeObjectAnnotationAst)
   | ExtractType {
         deduce: DeduceListAst,
         skeleton: CanonicalSkeletonAst
@@ -1210,6 +1400,8 @@ type
 meta
 runtime
 compile
+namespace
+struct
 ```
 
 They remain names inside expression AST unless appearing in explicitly defined strong contexts.
@@ -1222,6 +1414,12 @@ Implement tests for at least:
 let t: type = int Option Vec
 
 let val: std::int Vec::elements_type = expr
+
+let ns1: namespace = expr
+
+let f: _: fn = expr
+
+let f: fn = expr
 
 let <head, tail> (head, tail) List::Cons = xs
 
@@ -1275,8 +1473,11 @@ document.
 | Section | Negative / diagnostic example | Expected diagnostic |
 |---|---|---|
 | §3.3 Form boundary | `let x: type = (a` with newline | `UnclosedParen` if `)` never found |
-| §4.5 Kind expr | `let t: = x` after `let` | `UnexpectedToken` at `=` |
-| §4.5 Kind expr | `let t: 42 = x` (syntactically valid) | No diagnostic (valid syntax) |
+| §4.6 DeclAnnotation | `let t: = x` after `let` | `UnexpectedToken` at `=` |
+| §4.6 DeclAnnotation | `let t: 42 = x` (syntactically valid) | No diagnostic (valid syntax) |
+| §4.6 DeclAnnotation | `fn f(x) { x }` — not a FnDecl | No diagnostic (ordinary expr; adjacencies may vary) |
+| §4.6 DeclAnnotation | `type T = expr` — not a TypeDecl | `=` may produce `UnexpectedToken` |
+| §4.6 DeclAnnotation | `namespace ns = expr` — not a NamespaceDecl | `=` may produce `UnexpectedToken` |
 | §5.3 Non-context `<>` | `a < b > c` in expr | `UnexpectedToken` at `<` |
 | §7.2 Pipe split | `\|> f` at form start | `UnexpectedToken` at `\|>` |
 | §7.2 Pipe split | `x \|> \|> g` (empty middle) | Diagnostic on empty segment |

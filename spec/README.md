@@ -11,6 +11,7 @@ frontend. Each document has a defined authority level.
 | `ast-construction-v0.1.md` | Normative for parser behavior | Defines every syntax rule, AST shape, and parser constraint in v0.1. |
 | `diagnostics-v0.1.md` | Normative for error reporting | Defines diagnostic categories, span policy, and recovery behavior. |
 | `roadmap.md` | Authoritative for scope; non-normative for scheduling | Defines stage boundaries (v0.1–v1.0) and what must not leak between stages. |
+| `library-namespace-design-note.md` | Non-normative future design note | Describes the intended library/namespace/import model. Not a v0.1 parser rule. |
 | `glossary.md` | Normative for terminology | Resolves naming ambiguity across all documents. |
 | `open-questions.md` | Non-normative | Tracks unresolved design questions. Not implementation authority. |
 
