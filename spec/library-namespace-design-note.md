@@ -48,15 +48,42 @@ layout such as:
 
 ```text
 mylib/
-  math/
-    vector.lang
-    matrix.lang
+  lang.pkg
+  src/
+    math/
+      vector/
+        impl.lang
+        ops.lang
+      matrix/
+        impl.lang
 ```
 
 may correspond to the namespace paths `mylib::math::vector` and
 `mylib::math::matrix`, but this mapping is performed by the build layer,
-not the source language. The file names `vector.lang` and `matrix.lang`
-are not namespace segments.
+not the source language.
+
+For example, both implementation files:
+
+```text
+src/math/vector/impl.lang
+src/math/vector/ops.lang
+```
+
+contribute to:
+
+```text
+mylib::math::vector
+```
+
+They do not create:
+
+```text
+mylib::math::vector::impl
+mylib::math::vector::ops
+```
+
+Directory paths provide the physical namespace skeleton. Implementation
+file names do not create namespace segments.
 
 ## 7. Namespace graph node kinds
 
