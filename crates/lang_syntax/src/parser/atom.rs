@@ -90,8 +90,8 @@ fn parse_group(parser: &mut Parser<'_>) -> Option<AtomAst> {
         parser.recover_to_paren_close();
     }
 
-    let end = if parser.cursor.consume_symbol(Symbol::RParen).is_some() {
-        lparen.span
+    let end = if let Some(rparen) = parser.cursor.consume_symbol(Symbol::RParen) {
+        rparen.span
     } else {
         let span = parser.cursor.current_span();
         parser.error(

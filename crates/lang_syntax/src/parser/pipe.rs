@@ -33,6 +33,11 @@ pub fn parse_pipe_expr(
 
         if stop(parser) {
             let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::EmptyPipeSegment,
+                "empty pipe segment after `|>`",
+                span,
+            );
             segments.push(empty_error_segment(parser, "empty pipe segment", span));
             break;
         }

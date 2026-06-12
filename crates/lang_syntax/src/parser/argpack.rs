@@ -31,8 +31,8 @@ pub fn parse_argpack(parser: &mut Parser<'_>) -> ArgPackAst {
         break;
     }
 
-    let end = if parser.cursor.consume_symbol(Symbol::RParen).is_some() {
-        lparen.span
+    let end = if let Some(rparen) = parser.cursor.consume_symbol(Symbol::RParen) {
+        rparen.span
     } else {
         let span = parser.cursor.current_span();
         parser.error(
