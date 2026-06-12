@@ -6,10 +6,14 @@ Program
         annotation:
           Bare
             Expr
-              Segment
-                Name fn
+              Pipe
+                Segment has_incoming=false
+                  Atom
+                    Name fn
     with:
     value:
       Expr
-        Segment
-          Name body
+        Pipe
+          Segment has_incoming=false
+            Atom
+              Name body

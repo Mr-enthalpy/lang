@@ -1,0 +1,16 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          Atom
+            Name f
+          ArgPack role=RightTargetSubsegment
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    Atom
+                      Name a
+          Atom
+            Name g

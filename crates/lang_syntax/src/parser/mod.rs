@@ -1,8 +1,10 @@
+pub mod argpack;
 pub mod atom;
 pub mod cursor;
 pub mod expr;
 pub mod form;
 pub mod let_stmt;
+pub mod pipe;
 
 use crate::{lex, Diagnostic, ProgramAst, Token};
 

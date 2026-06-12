@@ -1,10 +1,12 @@
 Program
   ExprForm
     Expr
-      Segment
-        Path
-          base:
-            Name a
-          names:
-            b
-            c
+      Pipe
+        Segment has_incoming=false
+          Atom
+            Path
+              base:
+                Name a
+              names:
+                b
+                c

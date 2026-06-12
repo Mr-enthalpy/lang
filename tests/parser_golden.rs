@@ -81,3 +81,58 @@ fn invalid_missing_colon() {
 fn invalid_unexpected_symbol() {
     assert_parser_case("invalid_unexpected_symbol", true);
 }
+
+#[test]
+fn pipe_basic() {
+    assert_parser_case("pipe_basic", false);
+}
+
+#[test]
+fn argpack_source() {
+    assert_parser_case("argpack_source", false);
+}
+
+#[test]
+fn argpack_right_target() {
+    assert_parser_case("argpack_right_target", false);
+}
+
+#[test]
+fn argpack_insert() {
+    assert_parser_case("argpack_insert", false);
+}
+
+#[test]
+fn argpack_multiple() {
+    assert_parser_case("argpack_multiple", false);
+}
+
+#[test]
+fn group_basic() {
+    assert_parser_case("group_basic", false);
+}
+
+#[test]
+fn let_pipe_value() {
+    assert_parser_case("let_pipe_value", false);
+}
+
+#[test]
+fn let_argpack_value() {
+    assert_parser_case("let_argpack_value", false);
+}
+
+#[test]
+fn invalid_empty_pipe_segment() {
+    assert_parser_case("invalid_empty_pipe_segment", true);
+}
+
+#[test]
+fn invalid_top_level_comma() {
+    assert_parser_case("invalid_top_level_comma", true);
+}
+
+#[test]
+fn unclosed_paren() {
+    assert_parser_case("unclosed_paren", true);
+}

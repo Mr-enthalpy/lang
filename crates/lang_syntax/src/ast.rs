@@ -58,6 +58,8 @@ pub enum TypeObjectAnnotationAst {
     Hole { span: Span },
 }
 
+// --- Expression skeleton ---
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExprAst {
     pub kind: ExprKind,
@@ -66,9 +68,45 @@ pub struct ExprAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprKind {
-    Segment(Vec<AtomAst>),
+    Pipe(PipeExprAst),
     Error(ErrorAst),
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PipeExprAst {
+    pub segments: Vec<SegmentAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SegmentAst {
+    pub elements: Vec<SegmentElementAst>,
+    pub has_incoming: bool,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SegmentElementAst {
+    Atom(AtomAst),
+    ArgPack(ArgPackAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArgPackAst {
+    pub args: Vec<ExprAst>,
+    pub role: ArgPackRole,
+    pub span: Span,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ArgPackRole {
+    SourcePack,
+    InsertPack,
+    RightTargetSubsegment,
+    Unknown,
+}
+
+// --- Atoms ---
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AtomAst {
@@ -81,6 +119,7 @@ pub enum AtomKind {
     Name(NameAst),
     IntLiteral(String),
     StringLiteral(String),
+    Group(Box<ExprAst>),
     Path {
         base: Box<AtomAst>,
         names: Vec<NameAst>,

@@ -110,6 +110,16 @@ spanning the failed region.
 - **Recovery**: Skip to the current form boundary.
 - **AST effect**: Use an error expression as the let value.
 
+#### `EmptyPipeSegment`
+
+- **Trigger**: A `|>` operator at the start of a pipe expression (no left
+  operand), or two consecutive `|>` operators with no segment between them.
+- **Primary span**: The `|>` token at the point of failure.
+- **Recovery**: Insert an `ErrorAst` node as the missing segment body and
+  continue parsing remaining segments.
+- **AST effect**: An `ErrorAst` atom representing the empty segment appears
+  inside the pipe expression.
+
 #### `ExpectedNameAfterDot`
 
 - **Trigger**: A `.` atom suffix is followed by a token that is not `Name`.
@@ -208,6 +218,12 @@ spanning the failed region.
 - **Recovery**: Produce diagnostic and continue; the comma is consumed but
   does not create additional AST structure.
 - **AST effect**: No change to AST. The comma is discarded.
+
+> **Implementation note (parser phase 2)**: `TopLevelComma` and `InvalidArgPack`
+> remain specified v0.1 diagnostic categories, but this parser phase may report
+> them as `UnexpectedToken` with a specific message (e.g. `"unexpected
+> top-level comma"`, `"invalid argument pack position"`) until the diagnostic
+> taxonomy is expanded.
 
 #### `UnusedClosureAst`
 

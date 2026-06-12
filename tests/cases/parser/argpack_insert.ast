@@ -1,0 +1,19 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          Atom
+            Name x
+        Segment has_incoming=true
+          Atom
+            Name f
+          ArgPack role=InsertPack
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    Atom
+                      Name a
+          Atom
+            Name g
