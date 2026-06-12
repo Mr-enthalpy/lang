@@ -1,8 +1,7 @@
 //! v0.1 frontend library.
 //!
-//! The current implementation includes the minimal lexer loop:
-//! source text -> tokens + lexer diagnostics + stable token dump.
-//! Parser, AST construction, and parser diagnostics are intentionally deferred.
+//! The current implementation includes the lexer loop and the first
+//! parser skeleton: source text -> tokens -> AST + diagnostics.
 
 pub mod ast;
 pub mod diagnostic;

@@ -72,8 +72,11 @@ spanning the failed region.
   current parser position.
 - **Primary span**: The unexpected token's span.
 - **Recovery**: Skip tokens until a synchronization point (`;`, `}`, `)`, `]`,
-  or form boundary). Insert `ErrorAst` at the failure site.
-- **AST effect**: An `ErrorAst` node replaces the expected construct.
+  or form boundary), or in expression-local recovery, consume the offending
+  token and continue collecting later atoms without inserting `ErrorAst` when
+  the surrounding expression remains structurally recoverable.
+- **AST effect**: An `ErrorAst` node replaces the expected construct, unless
+  the expression-local recovery path is taken.
 
 #### `ExpectedName`
 
