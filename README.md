@@ -221,7 +221,8 @@ v0.1 only preserves raw namespace path shapes such as `std::Vec`,
 3. `spec/diagnostics-v0.1.md` — Understand error reporting.
 4. `spec/glossary.md` — Resolve terminology.
 5. `spec/roadmap.md` — Understand scope boundaries.
-6. `spec/open-questions.md` — Recognize known gaps.
+6. `spec/library-namespace-design-note.md` — Non-normative future design note.
+7. `spec/open-questions.md` — Recognize known gaps.
 
 ## Expected future workspace shape
 

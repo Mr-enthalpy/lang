@@ -26,31 +26,101 @@ Library import is conceptually a namespace mount performed by the build/package
 layer. The source language sees namespace paths, not packages, libraries, files,
 static libraries, dynamic libraries, source packages, or cache entries.
 
-## 4. Physical namespace skeleton
+## 4. Package layer versus language namespace layer
 
-Filesystem directories provide only a physical namespace skeleton.
-Implementation file names do not create namespace segments. The physical
-filesystem skeleton is a proper subset of the full namespace graph. The full
-graph may contain physical namespace nodes, declared namespace objects, and
-virtual namespace nodes.
+The package/build layer and the language namespace layer are distinct.
+Package managers, build systems, linkers, and dependency resolvers operate
+in the package layer. The source language only queries and traverses the
+assembled namespace graph. Source-level namespace paths are resolved against
+that graph, not directly against packages or files.
 
-## 5. `let ns1: namespace = ...` is a language-level declaration
+## 5. Library/application/distribution form
+
+How a library or application is distributed (source archive, object archive,
+dynamic library, executable, bytecode container) does not affect source-level
+namespace paths. Distribution form is a build-layer concern.
+
+## 6. Directory structure and namespace structure
+
+Filesystem directories provide a physical namespace skeleton only.
+Implementation file names do not create namespace segments. A directory
+layout such as:
+
+```text
+mylib/
+  math/
+    vector.lang
+    matrix.lang
+```
+
+may correspond to the namespace paths `mylib::math::vector` and
+`mylib::math::matrix`, but this mapping is performed by the build layer,
+not the source language. The file names `vector.lang` and `matrix.lang`
+are not namespace segments.
+
+## 7. Namespace graph node kinds
+
+The full namespace graph may contain three kinds of nodes:
+
+- **Physical namespace nodes**: contributed by filesystem skeleton, build
+  descriptors, or package manifests.
+- **Declared namespace objects**: created by `let ns: namespace = ...` at
+  the language level.
+- **Virtual namespace nodes**: synthesized by the namespace assembler,
+  metaprogramming, or the resolver. Not tied to any physical source file.
+
+## 8. Physical and virtual namespace layers
+
+The physical filesystem skeleton is a proper subset of the full namespace
+graph. The language may reference virtual namespace nodes that have no
+corresponding filesystem directory.
+
+## 9. `let ns1: namespace = ...` is a language-level declaration
 
 `let ns1: namespace = ...` is a language-level namespace object declaration
 or description, not a package mount or import. The source name `namespace`
 is an ordinary `Name` token in v0.1.
 
-## 6. Export and visibility
+## 10. Export model
 
-Export and visibility are namespace assembly, resolver, or package metadata
-concerns. They are not source-level syntax in v0.1.
+Export is not the dual of import. Export is a namespace assembly, resolver,
+or package metadata concern. A namespace object may be accessible through
+multiple namespace paths. Visibility and re-export are namespace graph
+organization decisions, not source-level syntax.
 
-## 7. Versioning and caching
+## 11. Dependency visibility
+
+Dependency visibility (which libraries can see which other libraries)
+is determined at the build/package layer. The source language receives
+the assembled namespace graph and does not perform dependency visibility
+checks.
+
+## 12. Access control
+
+Access control (public, private, restricted visibility) is a namespace
+graph and resolver concern, not source-level syntax.
+
+## 13. Metaprogramming injection rule
+
+Parent-to-child metaprogramming injection (a parent namespace synthesizing
+or modifying child namespace content) is a future meta-function /
+metaprogramming capability. It is not v0.1 and must not be assumed as
+general language semantics.
+
+## 14. Versioning and caching
 
 Versioning and caching must not appear in ordinary source namespace paths.
+Version resolution and artifact caching are package-layer operations.
 
-## 8. v0.1 prohibition
+## 15. Relationship to `namespace` in source
+
+The source name `namespace` is an ordinary `Name` token in v0.1. It carries
+no special lexical or parser status. It may appear in declaration annotation
+position as a source-level token. Future semantic passes may interpret it.
+
+## 16. Relationship to v0.1
 
 v0.1 must not implement package resolution, namespace resolution, imports,
-exports, visibility, versioning, caching, filesystem lookup, or
-metaprogramming injection.
+exports, visibility, versioning, caching, filesystem lookup, namespace
+graph assembly, dependency resolution, access control, or metaprogramming
+injection.

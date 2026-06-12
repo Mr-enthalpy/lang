@@ -220,11 +220,14 @@ object construction. This is not implemented in v0.1.
 ## Meta-function
 
 A compiler-provided function that operates on AST or normalized syntax forms
-rather than on runtime values. Examples (future): `match`, `effect`, `sync`.
+rather than on runtime values. Examples (future): `match`, `struct`, `effect`,
+`sync`. Some future built-in meta-functions may consume raw AST directly;
+this is a built-in privilege, not unrestricted user macro power.
 
 > **Distinction**: `match` is a name at the parser level, not syntax. A future
 > meta-function named `match` may consume closure AST arms, but parser code
-> must not special-case the name `match`.
+> must not special-case the name `match`. `struct` may be such a future
+> built-in meta-function.
 
 *See also: Name, Strong context.*
 
