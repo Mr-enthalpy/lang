@@ -47,6 +47,35 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
+**Current implementation status (parser phase 1):**
+
+The current implementation is parser phase 1. It includes:
+
+- Lexer loop with CRLF/LF normalization and stable token dumps.
+- Cursor, form parser, expression parser, and atom parser.
+- Simple `let` forms with declaration annotations (`: type`, `: fn`, `_: fn`),
+  `guard` attributes, and `with` clauses.
+- Name, integer literal, string literal, and `::`-path expression atoms.
+- Group atoms (`(expr)` without top-level commas).
+- Pipe segmentation (`|>`) and ArgPack role assignment (SourcePack,
+  InsertPack, RightTargetSubsegment).
+- Expression-local error recovery and permissive atom collection.
+- 10 parser diagnostic codes, 2 lexer diagnostic codes.
+
+It does **not** yet include:
+
+- Extract-let binders (`let <head, tail> (...) = ...`).
+- Canonical skeleton parsing.
+- Closure AST (inline `{}`, explicit `() => {}`, closure heads).
+- Member sugar (`.`), double-dot sugar (`..`).
+- Deduce-list (`<...>`) recognition in binding contexts.
+- Top-level newline form boundaries (only `;`, `}`, EOF are current).
+- The full v0.1 diagnostic catalog (some categories reuse `UnexpectedToken`
+  with specific messages).
+
+The next implementation phases must fill the gap between this skeleton and
+`spec/ast-construction-v0.1.md`.
+
 ---
 
 ### v0.2 — Frontend robustness

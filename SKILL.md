@@ -126,7 +126,10 @@ Every syntax rule requires a golden test with:
 2. Test function in the corresponding `tests/*_golden.rs` file.
 3. Expected output snapshot.
 
-Minimum golden case groups (from `AGENTS.md`):
+Minimum golden case groups (from `AGENTS.md`). Golden tests are added
+incrementally as parser phases are implemented; the case groups below are the
+full v0.1 target. The current test suite covers parser phase 1 only (see
+`spec/roadmap.md` for current coverage):
 
 ```text
 lexer/        names, symbols, comments, invalid

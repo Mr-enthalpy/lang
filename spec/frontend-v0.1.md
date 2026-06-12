@@ -89,3 +89,13 @@ Diagnostics in v0.1 cover lexer and parser errors only:
 5. Check `roadmap.md` to understand what is deferred.
 6. Check `open-questions.md` for unresolved design items before making
    decisions.
+
+## Current implementation status
+
+The current implementation is parser phase 1. It covers the lexer loop,
+stable token/AST/diagnostic dumps, simple let forms, name/literal/path atoms,
+groups, pipe segmentation, and ArgPack role assignment. It does not yet cover
+extract-let binders, canonical skeletons, closure AST, member/double-dot
+sugar, deduce lists, or the full diagnostic catalog.
+
+See `spec/roadmap.md` for a detailed phase breakdown and current coverage.

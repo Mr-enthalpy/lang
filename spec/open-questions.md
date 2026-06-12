@@ -167,10 +167,13 @@ annotations) for a future CFG construction pass.
 **Status:** Resolved
 
 **Resolution:**
-Crates `lang_syntax`, `lang_cli`, and `xtask` now have valid `[package]`
-definitions in their `Cargo.toml` files. `lib.rs`, `main.rs`, and test stubs
-contain minimal placeholder content. `cargo check --workspace` and
-`cargo test` both pass (0 tests, all crates compile).
+The workspace is ready. `crates/lang_syntax`, `crates/lang_cli`, and `xtask`
+exist as valid workspace members. `cargo check --workspace` passes.
 
-This was fixed during the v0.1 documentation layer setup and is no longer an
-open question.
+Lexer golden tests (7 cases) and parser golden tests (20 cases under parser
+phase 1) exist and pass. Diagnostic golden tests in
+`tests/diagnostics_golden.rs` are not yet fully populated; that file is
+currently a stub.
+
+Remaining test coverage gaps are tracked as v0.1 implementation work, not as
+workspace-readiness uncertainty. This entry is closed.

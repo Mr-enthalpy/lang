@@ -184,7 +184,7 @@ make fmt
 
 ## CLI target
 
-The `lang_cli` crate should eventually support:
+The `lang_cli` crate currently exposes:
 
 ```bash
 lang tokens path/to/file.lang
@@ -192,17 +192,20 @@ lang ast path/to/file.lang
 lang diag path/to/file.lang
 ```
 
-Currently implemented:
+These commands are implemented as entry points for the current frontend
+skeleton.
 
-```bash
-lang tokens path/to/file.lang
-lang ast path/to/file.lang
-lang diag path/to/file.lang
-```
+Current coverage:
 
-The output format should be stable and suitable for golden tests.
+* `tokens`: backed by the current lexer implementation and lexer golden tests.
+* `ast`: backed by parser phase 1; it does not yet cover the full v0.1 AST
+  construction spec (see `spec/roadmap.md` for phase boundaries).
+* `diag`: emits lexer/parser diagnostics available in the current
+  implementation; the full v0.1 diagnostic catalog and diagnostics golden
+  suite are still incomplete.
 
-Use a hand-written dump format rather than Rust `Debug` output.
+The output format is stable and suitable for golden tests. All dump output
+uses hand-written formatting, not Rust `Debug`.
 
 ## Non-goals for v0.1
 
