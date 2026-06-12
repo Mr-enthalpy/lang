@@ -1,6 +1,4 @@
-use crate::{
-    Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token, TokenKind,
-};
+use crate::{Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token};
 
 use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let};
 
@@ -76,20 +74,4 @@ impl<'tokens> Parser<'tokens> {
             self.cursor.bump_non_trivia();
         }
     }
-}
-
-pub fn token_is_unsupported_expr_symbol(token: &Token) -> bool {
-    matches!(
-        token.kind,
-        TokenKind::Invalid
-            | TokenKind::Symbol(Symbol::Dot)
-            | TokenKind::Symbol(Symbol::DotDot)
-            | TokenKind::Symbol(Symbol::LBrace)
-            | TokenKind::Symbol(Symbol::LParen)
-            | TokenKind::Symbol(Symbol::LBracket)
-            | TokenKind::Symbol(Symbol::Less)
-            | TokenKind::Symbol(Symbol::Greater)
-            | TokenKind::Symbol(Symbol::FatArrow)
-            | TokenKind::Symbol(Symbol::PipeGreater)
-    )
 }

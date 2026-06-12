@@ -79,6 +79,10 @@ impl<'tokens> Cursor<'tokens> {
         self.peek_non_trivia().span
     }
 
+    // TODO: v0.1 full spec lists `;`, top-level newline, `}`, and EOF as
+    // form boundaries. Currently only semicolon and EOF are implemented;
+    // newline-sensitive parsing and closing-brace boundary detection are
+    // pending parser refinement.
     pub fn is_form_boundary(&mut self) -> bool {
         matches!(
             self.peek_non_trivia().kind,
