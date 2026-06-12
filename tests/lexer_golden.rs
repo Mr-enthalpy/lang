@@ -13,15 +13,17 @@ fn case_path(name: &str, extension: &str) -> PathBuf {
 
 fn assert_lexer_case(name: &str, expect_diagnostics: bool) {
     let source = fs::read_to_string(case_path(name, "lang")).expect("read source fixture");
-    let expected_tokens =
-        fs::read_to_string(case_path(name, "tokens")).expect("read token fixture");
+    let expected_tokens = lang_syntax::normalize_source_text(
+        &fs::read_to_string(case_path(name, "tokens")).expect("read token fixture"),
+    );
     let output = lang_syntax::lex(&source);
 
     assert_eq!(lang_syntax::dump_tokens(&output.tokens), expected_tokens);
 
     if expect_diagnostics {
-        let expected_diagnostics =
-            fs::read_to_string(case_path(name, "diag")).expect("read diagnostic fixture");
+        let expected_diagnostics = lang_syntax::normalize_source_text(
+            &fs::read_to_string(case_path(name, "diag")).expect("read diagnostic fixture"),
+        );
         assert_eq!(
             lang_syntax::dump_diagnostics(&output.diagnostics),
             expected_diagnostics

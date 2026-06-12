@@ -1,0 +1,18 @@
+Program
+  Let
+    attrs:
+      Guard
+    binder:
+      Simple name=x
+        annotation:
+          Bare
+            Expr
+              Segment
+                Name type
+    with:
+      a
+      b
+    value:
+      Expr
+        Segment
+          Name y

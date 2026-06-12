@@ -196,6 +196,8 @@ Currently implemented:
 
 ```bash
 lang tokens path/to/file.lang
+lang ast path/to/file.lang
+lang diag path/to/file.lang
 ```
 
 The output format should be stable and suitable for golden tests.

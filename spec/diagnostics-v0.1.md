@@ -75,6 +75,38 @@ spanning the failed region.
   or form boundary). Insert `ErrorAst` at the failure site.
 - **AST effect**: An `ErrorAst` node replaces the expected construct.
 
+#### `ExpectedName`
+
+- **Trigger**: A parser context requires a `Name` token, but the current token
+  is not a name.
+- **Primary span**: The current token.
+- **Recovery**: Consume or skip to the next local recovery point, depending on
+  context.
+- **AST effect**: Insert an `ErrorAst` where the missing name-dependent node
+  would appear.
+
+#### `ExpectedColon`
+
+- **Trigger**: A simple let binder name is not followed by `:`.
+- **Primary span**: The token where `:` was expected.
+- **Recovery**: Skip to `=` or the current form boundary.
+- **AST effect**: Preserve the let binder name and attach an error annotation.
+
+#### `ExpectedDeclAnnotation`
+
+- **Trigger**: A simple let binder has `:` but no declaration annotation before
+  `=` or `with`.
+- **Primary span**: The token where the annotation was expected.
+- **Recovery**: Continue at `=` or `with`.
+- **AST effect**: Use `DeclAnnotationAst::Error`.
+
+#### `ExpectedEqual`
+
+- **Trigger**: A let binder and optional `with` clause are not followed by `=`.
+- **Primary span**: The token where `=` was expected.
+- **Recovery**: Skip to the current form boundary.
+- **AST effect**: Use an error expression as the let value.
+
 #### `ExpectedNameAfterDot`
 
 - **Trigger**: A `.` atom suffix is followed by a token that is not `Name`.

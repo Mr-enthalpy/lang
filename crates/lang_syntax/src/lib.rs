@@ -4,16 +4,24 @@
 //! source text -> tokens + lexer diagnostics + stable token dump.
 //! Parser, AST construction, and parser diagnostics are intentionally deferred.
 
+pub mod ast;
 pub mod diagnostic;
 pub mod dump;
 pub mod lexer;
+pub mod parser;
 pub mod source;
 pub mod span;
 pub mod token;
 
+pub use ast::{
+    AtomAst, AtomKind, DeclAnnotationAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAst, LetAttrAst,
+    LetBinderAst, NameAst, ProgramAst, TypeObjectAnnotationAst,
+};
 pub use diagnostic::{Diagnostic, DiagnosticCode};
-pub use dump::{dump_diagnostics, dump_tokens};
+pub use dump::{dump_ast, dump_diagnostics, dump_tokens};
 pub use lexer::{lex, LexOutput};
+pub use parser::{parse, ParseOutput};
+pub use source::normalize_source_text;
 pub use span::Span;
 pub use token::{Symbol, Token, TokenKind, TriviaKind};
 

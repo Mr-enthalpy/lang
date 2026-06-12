@@ -1,0 +1,12 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple name=x
+        annotation:
+          Error "expected declaration annotation"
+    with:
+    value:
+      Expr
+        Segment
+          Name y

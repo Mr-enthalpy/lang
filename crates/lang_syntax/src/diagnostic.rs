@@ -5,6 +5,11 @@ pub enum DiagnosticCode {
     InvalidToken,
     UnclosedString,
     UnclosedComment,
+    UnexpectedToken,
+    ExpectedName,
+    ExpectedColon,
+    ExpectedDeclAnnotation,
+    ExpectedEqual,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
