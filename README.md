@@ -174,7 +174,13 @@ cargo check --workspace
 cargo test
 ```
 
+With `make` available:
 
+```bash
+make check
+make test
+make fmt
+```
 
 ## CLI target
 
