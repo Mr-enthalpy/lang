@@ -192,6 +192,12 @@ lang ast path/to/file.lang
 lang diag path/to/file.lang
 ```
 
+Currently implemented:
+
+```bash
+lang tokens path/to/file.lang
+```
+
 The output format should be stable and suitable for golden tests.
 
 Use a hand-written dump format rather than Rust `Debug` output.

@@ -1,0 +1,7 @@
+IntLiteral "123" @ 1:1 [0..3]
+Trivia.Whitespace " " @ 1:4 [3..4]
+StringLiteral "\"abc\"" @ 1:5 [4..9]
+Trivia.Whitespace " " @ 1:10 [9..10]
+StringLiteral "\"a\\\"b\"" @ 1:11 [10..16]
+Trivia.Whitespace "\n" @ 1:17 [16..17]
+Eof "" @ 2:1 [17..17]
