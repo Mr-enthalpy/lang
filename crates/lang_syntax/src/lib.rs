@@ -1,7 +1,8 @@
-//! v0.1 frontend library placeholder.
+//! v0.1 frontend library.
 //!
-//! Real lexer, parser, AST, diagnostics, and dump modules will be added in later
-//! commits. This crate exists now so the workspace can compile.
+//! The current implementation includes the minimal lexer loop:
+//! source text -> tokens + lexer diagnostics + stable token dump.
+//! Parser, AST construction, and parser diagnostics are intentionally deferred.
 
 pub mod diagnostic;
 pub mod dump;
