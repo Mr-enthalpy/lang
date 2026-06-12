@@ -129,10 +129,15 @@ graph and resolver concern, not source-level syntax.
 
 ## 13. Metaprogramming injection rule
 
-Parent-to-child metaprogramming injection (a parent namespace synthesizing
-or modifying child namespace content) is a future meta-function /
-metaprogramming capability. It is not v0.1 and must not be assumed as
-general language semantics.
+Parent-to-child metaprogramming injection means a parent or instantiated node
+may create declarations below its own node.
+
+It must not inject into parents, siblings, unrelated globals, or arbitrarily
+rewrite existing namespace content unless a later specification explicitly
+permits that.
+
+This is a future meta-function / metaprogramming capability. It is not v0.1
+and must not be assumed as general language semantics.
 
 ## 14. Versioning and caching
 

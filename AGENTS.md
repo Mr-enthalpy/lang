@@ -105,9 +105,14 @@ It should output tokens such as:
 
 The lexer must not classify names such as `return`, `else`, `match`, `drop`,
 `move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, `compile`,
-`namespace`, or `struct` as special keyword tokens.
+or `namespace` as special keyword tokens.
 
 These are ordinary names at the lexical level.
+
+`namespace` is listed because it appears in declaration annotation examples.
+`struct` is mentioned only as a possible future built-in meta-function name,
+not as parser syntax, a lexical keyword, or a planned source-level declaration
+form.
 
 Any other unrecognized word is still lexed as `Name`. This does not make
 that word a language construct.
