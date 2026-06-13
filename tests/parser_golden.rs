@@ -53,8 +53,8 @@ fn let_simple_type() {
 }
 
 #[test]
-fn let_simple_fn() {
-    assert_parser_case("let_simple_fn", false);
+fn let_bare_annotation_fn() {
+    assert_parser_case("let_bare_annotation_fn", false);
 }
 
 #[test]

@@ -259,17 +259,17 @@ Let bindings are the only declaration path in v0.1.
 ## DeclAnnotation
 
 The annotation following `:` in a `SimpleLetBinder`. It preserves the written
-annotation associated with a declared name. It may contain a type-object
-annotation and, optionally, a rank annotation. v0.1 does not determine whether
-the declared object is a value, type-object, namespace-like object, or
-function-like object. The grammar is
+annotation associated with a declared name. It has two explicit forms: a bare
+annotation expression, or a type-object annotation followed by a rank
+annotation. v0.1 does not determine whether the declared object is a value,
+type-object, namespace-like object, or function-like object. The grammar is
 `DeclAnnotation ::= BareDeclAnnotation | TypeObjectAnnotation ":" RankAnnotation`.
 Parsed into `DeclAnnotationAst::Bare` (single expression)
 or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 
 > **Distinction**: `DeclAnnotation` is a parser-level construct, not a
 > semantic type. v0.1 does not check that annotation names resolve to
-> anything.
+> anything. A bare declaration annotation is preserved exactly as written.
 
 *See also: TypeObjectAnnotation, RankAnnotation, Type-object.*
 
@@ -277,10 +277,9 @@ or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 
 ## TypeObjectAnnotation
 
-The first part of a `DeclAnnotation` before an optional `:` rank annotation.
-Can be a `PipeExpr` or a `TypeHole` (`_`). In the sugar form `let f: fn = ...`,
-there is no separate type-object annotation — the whole annotation is
-`Bare`.
+The first part of an explicit rank `DeclAnnotation`, before the second `:`.
+Can be a `PipeExpr` or a `TypeHole` (`_`). In `let f: fn = ...`, there is no
+type-object annotation; the whole annotation is `Bare(Name("fn"))`.
 
 *See also: DeclAnnotation, TypeHole, RankAnnotation, Type-object.*
 
@@ -309,25 +308,12 @@ as an `ExprAst`. v0.1 does not check rank validity.
 
 ---
 
-## DeclAnnotationSugar
-
-A parser flag or variant indicating that the declaration annotation was
-written in a surface-sugar form. For example, `let f: fn = ...` writes the
-annotation as bare `fn`, which the parser preserves as
-`Bare(Name("fn"))` without desugaring to `_: fn`. The
-sugar status is tracked by the `DeclAnnotationAst` variant
-(`Bare` vs `TypeObjectWithRank`).
-
-*See also: DeclAnnotation.*
-
----
-
 ## Type-object
 
 A type-theoretic object: the type of some value, or an object that itself
 represents a type. In v0.1 declarations:
 
-- In `let t: type = ...`, the declared object `t` is a type-object.
+- In `let t: type = ...`, `type` is preserved as a bare annotation expression.
 - In `let f: _: fn = ...`, `_` is an anonymous type-object (a `TypeHole`)
   whose kind/rank is given by the source name `fn`.
 
@@ -338,11 +324,11 @@ represents a type. In v0.1 declarations:
 ## Kind/rank object
 
 An object that classifies type-objects. In source text, names such as `fn`
-and `type` may appear in kind/rank annotation position:
+and `type` may appear in explicit rank annotation position:
 
-- `let t: type = ...` — the source name `type` occupies the kind/rank
-  annotation position for the type-object `t`.
-- `let f: _: fn = ...` — the source name `fn` occupies the kind/rank
+- `let t: _: type = ...` - the source name `type` occupies the kind/rank
+  annotation position for the anonymous type-object `_`.
+- `let f: _: fn = ...` - the source name `fn` occupies the kind/rank
   annotation position for the anonymous type-object `_`.
 
 v0.1 does not check kind/rank validity. The parser preserves the annotation
@@ -370,7 +356,7 @@ but the parser does not interpret it semantically.
 
 The source-level name `fn` as written by a user. In v0.1, `fn` is an
 ordinary `Name` token, not a keyword. It may denote the kind/rank of
-function type-objects when used in declaration annotation position
+function type-objects when used in explicit rank annotation position
 (e.g., `let f: _: fn = ...`). The parser does not interpret `fn` as
 implying function object construction — that is a future semantic pass.
 
