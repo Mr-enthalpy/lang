@@ -567,6 +567,11 @@ BinderDeclList ::= BinderDecl ("," BinderDecl)*
 BinderDecl ::= Name [ ":" TypeObjectAnnotation ]
 ```
 
+An empty deduce list (`<>`) is syntactically valid (the `BinderDeclList?` is
+optional). However, an extract-let binder requires at least one hole declaration;
+an empty deduce list in extract-let context produces an `InvalidDeduceList`
+diagnostic.
+
 AST:
 
 ```text

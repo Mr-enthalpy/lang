@@ -10,7 +10,7 @@ Program
                 annotation:
                   None
         skeleton:
-          CanonicalName role=NodeName name=y
+          Error "expected canonical skeleton element"
     with:
     value:
       Expr

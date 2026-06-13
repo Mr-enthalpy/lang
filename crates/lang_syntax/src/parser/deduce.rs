@@ -85,6 +85,7 @@ pub fn parse_deduce_list(parser: &mut Parser<'_>) -> DeduceListAst {
             "unclosed deduce list, expected `>`",
             less.span,
         );
+        recover_to_binder_end(parser);
         span
     };
 
@@ -136,6 +137,15 @@ fn type_object_span(annotation: &TypeObjectAnnotationAst) -> Span {
     match annotation {
         TypeObjectAnnotationAst::Expr(expr) => expr.span,
         TypeObjectAnnotationAst::Hole { span } => *span,
+    }
+}
+
+fn recover_to_binder_end(parser: &mut Parser<'_>) {
+    while !parser.cursor.at_eof()
+        && !parser.cursor.at_symbol(Symbol::Equal)
+        && !parser.is_form_boundary()
+    {
+        parser.cursor.bump_non_trivia();
     }
 }
 
