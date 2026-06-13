@@ -1,4 +1,6 @@
-use crate::{Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token};
+use crate::{
+    Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token, TokenKind,
+};
 
 use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let};
 
@@ -6,6 +8,7 @@ pub struct Parser<'tokens> {
     pub cursor: Cursor<'tokens>,
     diagnostics: Vec<Diagnostic>,
     nesting_depth: usize,
+    pub pipe_side_right: bool,
 }
 
 impl<'tokens> Parser<'tokens> {
@@ -14,6 +17,7 @@ impl<'tokens> Parser<'tokens> {
             cursor: Cursor::new(tokens),
             diagnostics,
             nesting_depth: 0,
+            pipe_side_right: false,
         }
     }
 
@@ -50,10 +54,35 @@ impl<'tokens> Parser<'tokens> {
     }
 
     pub fn is_form_boundary(&mut self) -> bool {
-        if self.nesting_depth == 0 && self.cursor.has_newline_trivia_ahead() {
+        if self.can_promote_newline_to_form_sep() {
             return true;
         }
         self.cursor.is_form_boundary()
+    }
+
+    fn can_promote_newline_to_form_sep(&self) -> bool {
+        if self.nesting_depth != 0 {
+            return false;
+        }
+        if self.pipe_side_right {
+            return false;
+        }
+        if !self.cursor.has_newline_trivia_ahead() {
+            return false;
+        }
+        let (_, next) = self.cursor.peek_at_skip_trivia(self.cursor.current_index());
+        Self::can_start_form_token(next)
+    }
+
+    fn can_start_form_token(token: &Token) -> bool {
+        matches!(
+            token.kind,
+            TokenKind::Name
+                | TokenKind::IntLiteral
+                | TokenKind::StringLiteral
+                | TokenKind::Symbol(Symbol::LParen)
+                | TokenKind::Symbol(Symbol::LBrace)
+        )
     }
 
     pub fn enter_nesting(&mut self) {

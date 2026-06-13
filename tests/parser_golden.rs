@@ -229,5 +229,15 @@ fn semicolon_still_boundary() {
 
 #[test]
 fn newline_before_pipe() {
-    assert_parser_case("newline_before_pipe", true);
+    assert_parser_case("newline_before_pipe", false);
+}
+
+#[test]
+fn newline_between_dot_and_field() {
+    assert_parser_case("newline_between_dot_and_field", false);
+}
+
+#[test]
+fn newline_between_coloncolon_and_leaf() {
+    assert_parser_case("newline_between_coloncolon_and_leaf", false);
 }

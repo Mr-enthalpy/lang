@@ -27,6 +27,7 @@ pub fn parse_pipe_expr(
     }
 
     loop {
+        parser.pipe_side_right = false;
         let seg = parse_segment(parser, |p| {
             p.is_form_boundary() || p.cursor.is_at_pipe_element() || stop(p)
         });
@@ -39,6 +40,8 @@ pub fn parse_pipe_expr(
         if !parser.cursor.consume_symbol(Symbol::PipeGreater).is_some() {
             break;
         }
+
+        parser.pipe_side_right = true;
 
         if stop(parser) || parser.is_form_boundary() {
             let span = parser.cursor.current_span();

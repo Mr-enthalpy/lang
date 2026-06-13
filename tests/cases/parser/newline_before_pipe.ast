@@ -6,12 +6,6 @@ Program
           OperatorExpr
             Atom
               Name a
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
-          OperatorExpr
-            Error "unexpected `|>` at expression start"
         Segment has_incoming=true
           OperatorExpr
             Atom
