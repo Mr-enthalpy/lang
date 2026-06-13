@@ -128,7 +128,5 @@ fn recover_to_greater(parser: &mut Parser<'_>) {
     {
         parser.cursor.bump_non_trivia();
     }
-    if parser.cursor.at_symbol(Symbol::Greater) {
-        parser.cursor.bump_non_trivia();
-    }
+    // Do not consume `>` here; let the main loop handle it.
 }
