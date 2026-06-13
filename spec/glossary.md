@@ -11,7 +11,7 @@ The output of the lexer. A token is the smallest lexical unit: a `Name`, `Litera
 `Symbol`, `Trivia`, `Invalid`, or `Eof`. Tokens carry a span and are consumed by
 the parser. The lexer does not assign semantic roles to tokens.
 
-*See also: Trivia, Name, Literal, Symbol, Span.*
+_See also: Trivia, Name, Literal, Symbol, Span._
 
 ---
 
@@ -22,7 +22,7 @@ Trivia tokens are skipped by the parser but their spans must remain available
 for diagnostic positioning. The lexer must preserve trivia spans; the parser may
 discard trivia after consumption.
 
-*See also: Token.*
+_See also: Token._
 
 ---
 
@@ -36,7 +36,7 @@ call keywords. In v0.1, `return`, `else`, `match`, `drop`, `move`, `sync`,
 > **Distinction**: A `Name` token is not a keyword. Semantic strength does not
 > imply lexical keyword status.
 
-*See also: Token, Strong context.*
+_See also: Token, Strong context._
 
 ---
 
@@ -49,7 +49,7 @@ structurally. Examples: `let` at form start, `where`/`acquire` in closure heads,
 Outside a strong context, these tokens retain their ordinary `Name` or `Symbol`
 identity.
 
-*See also: Name, Hole, DeduceList.*
+_See also: Name, Hole, DeduceList._
 
 ---
 
@@ -57,9 +57,10 @@ identity.
 
 A sequence of hole declarations enclosed in `<...>`, recognized only in strong
 binding contexts such as extract-let binders, closure heads, parameter binders,
-and return binders. Outside these contexts, `<` and `>` are ordinary symbols.
+and return binders. Outside these contexts, `<` and `>` are ordinary symbols;
+in expression/operator contexts they may be operator spellings.
 
-*See also: Hole, Strong context, CanonicalSkeleton.*
+_See also: Hole, Strong context, CanonicalSkeleton._
 
 ---
 
@@ -69,7 +70,7 @@ A name declared in a `DeduceList` that acts as a wildcard standing for an
 unknown type or value in following syntax. Holes appear inside a
 `CanonicalSkeleton` with the `CanonicalNameRole::Hole` annotation.
 
-*See also: DeduceList, CanonicalSkeleton.*
+_See also: DeduceList, CanonicalSkeleton._
 
 ---
 
@@ -80,7 +81,7 @@ parameter, extract return). The skeleton is a sequence of `CanonicalElement`
 items representing the shape of a value to be matched against. In v0.1, the
 parser builds canonical skeleton AST but does not execute matching.
 
-*See also: DeduceList, Hole, ArgPack, CanonicalNameRole.*
+_See also: DeduceList, Hole, ArgPack, CanonicalNameRole._
 
 ---
 
@@ -94,7 +95,7 @@ They are not traditional function call arguments.
 > is an `ArgPack` that receives a role (`SourcePack`, `InsertPack`, or
 > `RightTargetSubsegment`) within a `Segment`.
 
-*See also: ArgPackRole, Segment, PipeExpr.*
+_See also: ArgPackRole, Segment, PipeExpr._
 
 ---
 
@@ -111,7 +112,7 @@ The syntactic function assigned to each `ArgPack` within a `Segment`:
   starts a recursive subsegment.
 - **Unknown**: error-recovery placeholder.
 
-*See also: ArgPack, Segment.*
+_See also: ArgPack, Segment._
 
 ---
 
@@ -124,17 +125,18 @@ A top-level expression formed by splitting tokens at `|>` into segments.
 PipeExpr ::= Segment ("|>" Segment)*
 ```
 
-*See also: Segment, ArgPackRole.*
+_See also: Segment, ArgPackRole._
 
 ---
 
 ## Segment
 
-One part of a `PipeExpr`, containing a sequence of `Atom` and `ArgPack`
-elements. Each segment has an `has_incoming` flag indicating whether a prior
-segment exists.
+One part of a `PipeExpr`, containing a sequence of `OperatorExpr` and `ArgPack`
+elements in the operator-aware design. The current parser phase may still store
+plain `Atom` elements until operator parsing is implemented. Each segment has
+an `has_incoming` flag indicating whether a prior segment exists.
 
-*See also: PipeExpr, Atom, ArgPack.*
+_See also: PipeExpr, Atom, ArgPack._
 
 ---
 
@@ -146,15 +148,116 @@ The smallest self-contained expression unit. Atoms include:
 - `Literal`
 - `Group(PipeExpr)`
 - `Closure(ClosureAst)`
-- `Path(base, names)`
+- `Path(base, leaves)`
 - `MemberSugar(object, field)`
 - `DoubleDotSugar(object, method, args)`
 - `Error`
 
 Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
-`..`).
+`..`, and postfix operators once implemented). Operator sugar itself is stored
+at the `OperatorExpr` layer, not as a general `Atom` variant.
 
-*See also: ClosureAST, ArgPack.*
+_See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator._
+
+---
+
+## OperatorName
+
+A symbol spelling that can be used as an operator identity component and, in
+future parser work, as a binder name or path leaf. Operator names are not
+keywords, and their spelling does not imply arithmetic, comparison, mutation,
+assignment, lookup, or evaluation semantics.
+
+Operator identity is `spelling + fixity + arity`.
+
+_See also: Fixity, Arity, PathLeaf, OperatorSugar._
+
+---
+
+## Fixity
+
+The syntactic position of an operator relative to its operands. The operator
+design uses `Prefix`, `Postfix`, and `Binary` fixities. Fixity is part of
+operator identity.
+
+_See also: OperatorName, Arity, PrefixNegative, PostfixOperator._
+
+---
+
+## Arity
+
+The number of operands associated with an operator syntax form. Arity is part
+of operator identity.
+
+_See also: OperatorName, Fixity._
+
+---
+
+## OperatorSugar
+
+An AST shape inside `OperatorExprAst` that preserves operator syntax without
+lowering it to an ordinary call. Planned shape:
+
+```text
+OperatorExprAst ::=
+  | OperatorSugarAst {
+    operator: OperatorName,
+    fixity: Prefix | Postfix | Binary,
+    args: Vec<OperatorExprAst>
+  }
+```
+
+Operator lookup is a future semantic pass and follows ordinary visible binding
+lookup, not ADL or type-directed parser lookup.
+
+_See also: OperatorName, Fixity, Arity._
+
+---
+
+## PostfixOperator
+
+A unary operator suffix that composes with other atom suffixes. In the
+operator-aware design, postfix operators do not terminate suffix parsing, so
+`obj!.field` has the same shape as `(obj!).field`.
+
+_See also: OperatorSugar, Atom, PathLeaf._
+
+---
+
+## PrefixNegative
+
+The prefix `-x` operator sugar form. It is not a negative literal; the lexer
+produces `-` and the following literal or atom separately.
+
+_See also: OperatorSugar, Fixity._
+
+---
+
+## PathLeaf
+
+The final lookup component after `::`. In the operator-aware design:
+
+```text
+PathLeaf ::= Name | OperatorName
+```
+
+Operator names may appear only as leaves, not as namespace-like intermediate
+path nodes.
+
+_See also: OperatorName, Atom._
+
+---
+
+## Non-associative operator
+
+An operator class that cannot be chained without explicit grouping in the
+operator-aware parser design. Comparison, equality, and compound-looking
+operators are non-associative in this phase, so `a < b < c`, `a == b == c`,
+and `a += b += c` require grouping.
+
+Semantic validity of grouped expressions remains outside parser scope.
+
+_See also: OperatorSugar._
 
 ---
 
@@ -173,7 +276,7 @@ callable object. Two forms:
 > **Distinction**: `{ ... }` in atom position always produces a `ClosureAST`,
 > not a normal block expression. There is no block-expression node in v0.1 AST.
 
-*See also: InlineClosureAST, ExplicitClosureAST, ClosureObject, Materialization.*
+_See also: InlineClosureAST, ExplicitClosureAST, ClosureObject, Materialization._
 
 ---
 
@@ -182,7 +285,7 @@ callable object. Two forms:
 A closure literal without `=>`. Minimal form: `{}`. May be prefixed with a
 `FnHeadPrefix`. Parsed when the parser sees `{` in atom position.
 
-*See also: ClosureAST, ExplicitClosureAST, FnHeadPrefix.*
+_See also: ClosureAST, ExplicitClosureAST, FnHeadPrefix._
 
 ---
 
@@ -190,7 +293,7 @@ A closure literal without `=>`. Minimal form: `{}`. May be prefixed with a
 
 A closure literal with `=>`: `FnHeadPrefix => BodyBlock`. Minimal form: `() => {}`.
 
-*See also: ClosureAST, InlineClosureAST, FnHeadPrefix.*
+_See also: ClosureAST, InlineClosureAST, FnHeadPrefix._
 
 ---
 
@@ -203,7 +306,7 @@ only closure AST.
 > **Distinction**: `ClosureObject` is a semantic concept, not a parser concept.
 > Materialization is explicitly out of scope for v0.1.
 
-*See also: ClosureAST, Materialization.*
+_See also: ClosureAST, Materialization._
 
 ---
 
@@ -213,7 +316,7 @@ The future semantic pass that converts `ClosureAST` into a `ClosureObject`.
 Materialization involves capture analysis, environment layout, and callable
 object construction. This is not implemented in v0.1.
 
-*See also: ClosureAST, ClosureObject.*
+_See also: ClosureAST, ClosureObject._
 
 ---
 
@@ -229,7 +332,7 @@ this is a built-in privilege, not unrestricted user macro power.
 > must not special-case the name `match`. `struct` may be such a future
 > built-in meta-function.
 
-*See also: Name, Strong context.*
+_See also: Name, Strong context._
 
 ---
 
@@ -240,7 +343,7 @@ through `let`. There is no separate `fn`, `type`, or `namespace`
 declaration syntax. Declarations carry a `DeclAnnotation` that is parsed
 and preserved but not semantically checked.
 
-*See also: Let binding, DeclAnnotation.*
+_See also: Let binding, DeclAnnotation._
 
 ---
 
@@ -252,7 +355,7 @@ a `DeclAnnotation` (`Name ":" DeclAnnotation`); an extract let binding uses
 The grammar is `let LetAttr* LetBinder LetWithClause? "=" PipeExpr`.
 Let bindings are the only declaration path in v0.1.
 
-*See also: Declaration, LetBinder, DeclAnnotation.*
+_See also: Declaration, LetBinder, DeclAnnotation._
 
 ---
 
@@ -271,7 +374,7 @@ or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
 > semantic type. v0.1 does not check that annotation names resolve to
 > anything. A bare declaration annotation is preserved exactly as written.
 
-*See also: TypeObjectAnnotation, RankAnnotation, Type-object.*
+_See also: TypeObjectAnnotation, RankAnnotation, Type-object._
 
 ---
 
@@ -281,7 +384,7 @@ The first part of an explicit rank `DeclAnnotation`, before the second `:`.
 Can be a `PipeExpr` or a `TypeHole` (`_`). In `let f: fn = ...`, there is no
 type-object annotation; the whole annotation is `Bare(Name("fn"))`.
 
-*See also: DeclAnnotation, TypeHole, RankAnnotation, Type-object.*
+_See also: DeclAnnotation, TypeHole, RankAnnotation, Type-object._
 
 ---
 
@@ -294,7 +397,7 @@ the rank is specified. Represented as `TypeObjectAnnotationAst::Hole`.
 > **Distinction**: `TypeHole` is a type-object level placeholder, distinct
 > from a canonical skeleton wildcard `_`.
 
-*See also: TypeObjectAnnotation, CanonicalSkeleton, Type-object.*
+_See also: TypeObjectAnnotation, CanonicalSkeleton, Type-object._
 
 ---
 
@@ -304,7 +407,7 @@ The second part of a `DeclAnnotation` after the second `:`. Appears in
 forms like `let f: _: fn = ...` where `fn` is the rank annotation. Stored
 as an `ExprAst`. v0.1 does not check rank validity.
 
-*See also: DeclAnnotation, TypeObjectAnnotation.*
+_See also: DeclAnnotation, TypeObjectAnnotation._
 
 ---
 
@@ -317,7 +420,7 @@ represents a type. In v0.1 declarations:
 - In `let f: _: fn = ...`, `_` is an anonymous type-object (a `TypeHole`)
   whose kind/rank is given by the source name `fn`.
 
-*See also: Kind/rank object, TypeObjectAnnotation, TypeHole.*
+_See also: Kind/rank object, TypeObjectAnnotation, TypeHole._
 
 ---
 
@@ -334,7 +437,7 @@ and `type` may appear in explicit rank annotation position:
 v0.1 does not check kind/rank validity. The parser preserves the annotation
 structure only.
 
-*See also: Type-object, RankAnnotation, DeclAnnotation.*
+_See also: Type-object, RankAnnotation, DeclAnnotation._
 
 ---
 
@@ -348,7 +451,7 @@ but the parser does not interpret it semantically.
 > **Distinction**: The conceptual notion of "namespace" as a module/scope
 > is distinct from the source name `namespace`.
 
-*See also: Name, Declaration.*
+_See also: Name, Declaration._
 
 ---
 
@@ -364,7 +467,7 @@ implying function object construction — that is a future semantic pass.
 > in the language is a kind/rank classification for function type-objects,
 > distinct from the source name `fn` itself.
 
-*See also: Name, Declaration, Kind/rank object, Type-object.*
+_See also: Name, Declaration, Kind/rank object, Type-object._
 
 ---
 
@@ -374,7 +477,7 @@ The AST produced directly by the parser, before any lowering or normalization.
 Raw AST preserves surface syntax faithfully; it does not desugar or canonicalize
 forms. In v0.1, only raw AST exists.
 
-*See also: AST (as defined in ast-construction-v0.1.md).*
+_See also: AST (as defined in ast-construction-v0.1.md)._
 
 ---
 
@@ -384,7 +487,7 @@ A structured error, warning, or note produced during lexing or parsing. Every
 diagnostic must carry a span. The parser is error-tolerant: it produces
 `ErrorAst` nodes alongside diagnostics and continues parsing.
 
-*See also: ErrorAst, Span, diagnostics-v0.1.md.*
+_See also: ErrorAst, Span, diagnostics-v0.1.md._
 
 ---
 
@@ -394,4 +497,4 @@ A test that compares tool output (token dump, AST dump, or diagnostic dump)
 against a checked-in expected file. Golden tests must be used for every syntax
 rule. The dump format must be stable and hand-written, not Rust `Debug` output.
 
-*See also: lexer_golden.rs, parser_golden.rs, diagnostics_golden.rs.*
+_See also: lexer_golden.rs, parser_golden.rs, diagnostics_golden.rs._

@@ -32,13 +32,14 @@ executed, type-checked, or lowered.
 
 ## Document division
 
-| Document | What it covers |
-|---|---|
+| Document                   | What it covers                                                                                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
-| `diagnostics-v0.1.md` | Diagnostic categories, trigger conditions, span policy, recovery behavior. |
-| `glossary.md` | Terminology definitions and distinctions. |
-| `roadmap.md` | Stage model from v0.1 to v1.0, scope boundaries. |
-| `open-questions.md` | Unresolved design questions. |
+| `operator-design.md`       | Planned operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                  |
+| `diagnostics-v0.1.md`      | Diagnostic categories, trigger conditions, span policy, recovery behavior.                                                                                              |
+| `glossary.md`              | Terminology definitions and distinctions.                                                                                                                               |
+| `roadmap.md`               | Stage model from v0.1 to v1.0, scope boundaries.                                                                                                                        |
+| `open-questions.md`        | Unresolved design questions.                                                                                                                                            |
 
 ## Spec priority
 
@@ -66,9 +67,12 @@ The parser handles token-level concerns only:
 
 - Consume tokens, build AST.
 - Recognize strong contexts (let, closure head, etc.).
+- Recognize syntax-level operator shape when the operator parser is implemented.
 - Produce diagnostics for malformed input.
 - **Do not** type-check, kind-check, resolve names, or perform semantic analysis.
 - **Do not** materialize closures into callable objects.
+- **Do not** lower operator syntax into ordinary calls.
+- **Do not** perform operator lookup, overload resolution, ADL, or evaluation.
 - **Do not** special-case `match`, `return`, `else`, `drop`, `move`, `sync`,
   `effect`, `fn`, `type`, `meta`, `runtime`, or `compile`.
 
@@ -96,6 +100,16 @@ The current implementation is parser phase 1. It covers the lexer loop,
 stable token/AST/diagnostic dumps, simple let forms, name/literal/path atoms,
 groups, pipe segmentation, and ArgPack role assignment. It does not yet cover
 extract-let binders, canonical skeletons, closure AST, member/double-dot
-sugar, deduce lists, or the full diagnostic catalog.
+sugar, deduce lists, operator syntax, or the full diagnostic catalog.
+
+When operator syntax is enabled, the expression segment design becomes:
+
+```text
+SegmentElement := OperatorExpr | ArgPack
+```
+
+`OperatorExpr` is a segment-local expression layer built from atoms. Operator
+syntax remains AST sugar and does not imply lookup, type checking, evaluation,
+or lowering.
 
 See `spec/roadmap.md` for a detailed phase breakdown and current coverage.

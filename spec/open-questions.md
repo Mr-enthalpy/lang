@@ -177,3 +177,76 @@ currently a stub.
 
 Remaining test coverage gaps are tracked as v0.1 implementation work, not as
 workspace-readiness uncertainty. This entry is closed.
+
+---
+
+## 11. Operator precedence relative to pipe and whitespace auto-pipe
+
+**Status:** Resolved
+
+**Resolution:**
+Ordinary operators bind more tightly than both whitespace auto-pipe and `|>`.
+Operator precedence is a segment-local sugar layer inside the existing
+pipe/segment architecture, not a traditional C-like expression model.
+
+**Implementation TODO:**
+Implement the operator-aware `OperatorExpr` layer inside segments.
+
+---
+
+## 12. Angle brackets outside deduce-list contexts
+
+**Status:** Resolved
+
+**Resolution:**
+`<...>` remains a `DeduceList` only in strong binding contexts. In
+expression/operator contexts, `<`, `>`, `<=`, and `>=` are operator spellings.
+`<>` has no generic-call meaning.
+
+**Implementation TODO:**
+Update expression parsing so `<` and `>` are accepted as operators outside
+strong binding contexts.
+
+---
+
+## 13. Postfix operator suffix composition
+
+**Status:** Resolved
+
+**Resolution:**
+Postfix unary operators compose in the atom suffix loop with `::`, `.`, and
+`..`. They do not terminate suffix parsing; `obj!.field` has the shape
+`(obj!).field`.
+
+**Implementation TODO:**
+Add `PostfixOperator` to the atom suffix loop when operator parsing is added.
+
+---
+
+## 14. Operator names in binders and paths
+
+**Status:** Resolved
+
+**Resolution:**
+Operator names may appear as binder names and as path leaves:
+`BinderName := Name | OperatorName` and `PathLeaf := Name | OperatorName`.
+Operator names may only be leaves, not namespace-like intermediate path nodes.
+
+**Implementation TODO:**
+Add operator binder-name parsing and operator path-leaf parsing in the operator
+parser PR.
+
+---
+
+## 15. Comparison, equality, and compound-looking chaining
+
+**Status:** Resolved
+
+**Resolution:**
+Comparison, equality, and compound-looking operators are non-associative in
+this phase. Ungrouped chains such as `a < b < c`, `a == b == c`, and
+`a += b += c` require explicit grouping.
+
+**Implementation TODO:**
+Add parser diagnostics for chained non-associative operators when operator
+parsing is implemented.

@@ -25,6 +25,7 @@ backed by golden tests.
 **What v0.1 IS:**
 
 A syntax frontend that:
+
 - Lexes source text into tokens (Name, Literal, Symbol, Trivia, Invalid, Eof).
 - Parses tokens into raw AST (forms, lets, expressions, closures, canonical
   skeletons, deduce lists).
@@ -33,12 +34,14 @@ A syntax frontend that:
   formats suitable for golden testing.
 
 **Deliverables:**
+
 - Crate `lang_syntax` with lexer, parser, AST, dumper, diagnostics.
 - Crate `lang_cli` with CLI subcommands: `tokens`, `ast`, `diag`.
 - Golden test suite covering all syntax rules.
 - Specification documents for AST construction and diagnostics.
 
 **Non-goals (deferred to later stages):**
+
 - Type checking / kind checking / overload resolution.
 - Canonical-form evaluation / universal extraction matching.
 - Closure AST materialization into callable objects.
@@ -69,6 +72,8 @@ It does **not** yet include:
 - Closure AST (inline `{}`, explicit `() => {}`, closure heads).
 - Member sugar (`.`), double-dot sugar (`..`).
 - Deduce-list (`<...>`) recognition in binding contexts.
+- Operator syntax (`spec/operator-design.md`), including operator binders,
+  operator path leaves, precedence, associativity, and operator-sugar AST.
 - Top-level newline form boundaries (only `;`, `}`, EOF are current).
 - The full v0.1 diagnostic catalog (some categories reuse `UnexpectedToken`
   with specific messages).
@@ -101,6 +106,7 @@ The next implementation phases must fill the gap between this skeleton and
 This is a documentation stage. Do not implement HIR yet.
 
 Define:
+
 - Normalized form for let bindings (desugared guard/with).
 - Normalized form for pipe expressions (flattened segments).
 - Normalized form for closure heads (canonicalized clause order).
@@ -116,6 +122,7 @@ lowering to HIR is deferred.
 **Goal**: Document value/type canonical forms and universal extraction matching.
 
 Define:
+
 - Value canonical form and type canonical form.
 - How universal extraction matching relates to canonical skeletons.
 - The relationship between deduce lists and canonical forms.
@@ -133,6 +140,7 @@ Define the interface for compiler-provided meta-functions such as `match`,
 syntax. They are not ordinary library functions and not special syntax.
 
 Specify:
+
 - How meta-functions receive AST/normalized-syntax arguments.
 - How meta-functions produce results.
 - The relationship between meta-functions and closure AST.
@@ -146,6 +154,7 @@ Do not implement any meta-function.
 **Goal**: Document ClosureAST → ClosureObject model.
 
 Define:
+
 - Contexts in which closure AST is materialized into callable objects.
 - Capture rules (what is captured, how).
 - Inline closure vs explicit closure materialization defaults.
@@ -161,6 +170,7 @@ is stable.
 **Goal**: Design and document kind/type checking.
 
 Define:
+
 - Kind system (types of types).
 - Type checking rules for each AST node.
 - Bidirectional or deductive checking algorithm.
@@ -175,6 +185,7 @@ Implementation may be partial. The primary output is a design document.
 **Goal**: Design and document ownership, always-NLL, and drop semantics.
 
 Define:
+
 - Always-NLL borrow-checking model.
 - `guard` and `with` semantics in let bindings.
 - User-defined drop and move points.
@@ -191,6 +202,7 @@ Do not implement drop insertion in any v0.x frontend stage.
 Prerequisite: Frontend AST and specification documents are stable.
 
 v1.0 may include:
+
 - Type checking.
 - Kind checking (if designed in v0.7).
 - Canonical-form evaluation and extraction matching (if specified in v0.4).
