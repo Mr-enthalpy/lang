@@ -15,20 +15,22 @@ diagnostics. It does not type-check, interpret, lower, or execute programs.
 
 ## Documentation map
 
-| Document | Purpose |
-|---|---|
-| `spec/frontend-v0.1.md` | Reader entry point — explains the pipeline and spec organization |
-| `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
-| `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery |
-| `spec/roadmap.md` | Stage model v0.1–v1.0 and scope boundaries |
-| `spec/glossary.md` | Terminology definitions and critical distinctions |
-| `spec/open-questions.md` | Unresolved design questions |
-| `spec/README.md` | Spec index with authority levels |
-| `AGENTS.md` | Agent instructions — read before making code changes |
-| `SKILL.md` | Operational workflow for frontend work |
+| Document                        | Purpose                                                          |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `spec/frontend-v0.1.md`         | Reader entry point — explains the pipeline and spec organization |
+| `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this    |
+| `spec/operator-design.md`       | Normative operator design for future parser work                 |
+| `spec/diagnostics-v0.1.md`      | Normative diagnostic categories, span policy, recovery           |
+| `spec/roadmap.md`               | Stage model v0.1–v1.0 and scope boundaries                       |
+| `spec/glossary.md`              | Terminology definitions and critical distinctions                |
+| `spec/open-questions.md`        | Unresolved design questions                                      |
+| `spec/README.md`                | Spec index with authority levels                                 |
+| `AGENTS.md`                     | Agent instructions — read before making code changes             |
+| `SKILL.md`                      | Operational workflow for frontend work                           |
 
 Start with `spec/frontend-v0.1.md` to understand the pipeline, then
-`spec/ast-construction-v0.1.md` to implement.
+`spec/ast-construction-v0.1.md` for parser behavior. Read
+`spec/operator-design.md` before changing planned operator syntax.
 
 ## Design summary
 
@@ -77,16 +79,24 @@ pipe and segment rules.
 
 ### 4. `|>` as expression skeleton
 
-Expression construction is not based on a traditional operator-precedence table.
+Expression construction is not based on a traditional C-like
+operator-precedence table.
 
-The expression frontend is organized as:
+The expression frontend is organized around `|>` as the outer skeleton:
 
 ```text
-atom folding
-  -> top-level |> segmentation
-  -> segment-local automatic pipe
+top-level |> segmentation
+  -> per-segment atom folding
+  -> per-segment operator sugar (planned)
+  -> per-segment automatic pipe
   -> argpack role assignment
 ```
+
+Operator syntax is documented as a planned segment-local expression layer. It
+is AST sugar only: no lookup, type checking, evaluation, mutation semantics, or
+lowering is performed by the parser. The ordering above describes binding
+structure, not a required parser implementation order. Operator parsing is local
+to one pipe segment and does not cross `|>` boundaries.
 
 ### 5. Closure literals produce AST first
 
@@ -115,6 +125,8 @@ declare names that act as holes in following syntax
 It is only recognized in binding contexts.
 
 It is not generic-call syntax, template syntax, or meta-function syntax.
+Individual `<`, `>`, `<=`, and `>=` spellings are documented as planned
+operator names in expression/operator contexts.
 
 ### 7. Declarations enter through `let`
 
@@ -200,10 +212,10 @@ skeleton.
 
 Current coverage:
 
-* `tokens`: backed by the current lexer implementation and lexer golden tests.
-* `ast`: backed by parser phase 1; it does not yet cover the full v0.1 AST
+- `tokens`: backed by the current lexer implementation and lexer golden tests.
+- `ast`: backed by parser phase 1; it does not yet cover the full v0.1 AST
   construction spec (see `spec/roadmap.md` for phase boundaries).
-* `diag`: emits lexer/parser diagnostics available in the current
+- `diag`: emits lexer/parser diagnostics available in the current
   implementation; the full v0.1 diagnostic catalog and diagnostics golden
   suite are still incomplete.
 
@@ -238,11 +250,12 @@ v0.1 only preserves raw namespace path shapes such as `std::Vec`,
 
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
 2. `spec/ast-construction-v0.1.md` — Implement the parser.
-3. `spec/diagnostics-v0.1.md` — Understand error reporting.
-4. `spec/glossary.md` — Resolve terminology.
-5. `spec/roadmap.md` — Understand scope boundaries.
-6. `spec/library-namespace-design-note.md` — Non-normative future design note.
-7. `spec/open-questions.md` — Recognize known gaps.
+3. `spec/operator-design.md` - Understand planned operator syntax.
+4. `spec/diagnostics-v0.1.md` - Understand error reporting.
+5. `spec/glossary.md` - Resolve terminology.
+6. `spec/roadmap.md` - Understand scope boundaries.
+7. `spec/library-namespace-design-note.md` - Non-normative future design note.
+8. `spec/open-questions.md` - Recognize known gaps.
 
 ## Expected future workspace shape
 

@@ -222,7 +222,7 @@ spanning the failed region.
 > **Implementation note (parser phase 2)**: `TopLevelComma` and `InvalidArgPack`
 > remain specified v0.1 diagnostic categories, but this parser phase may report
 > them as `UnexpectedToken` with a specific message (e.g. `"unexpected
-> top-level comma"`, `"invalid argument pack position"`) until the diagnostic
+top-level comma"`, `"invalid argument pack position"`) until the diagnostic
 > taxonomy is expanded.
 
 #### `UnusedClosureAst`
@@ -239,6 +239,23 @@ spanning the failed region.
 
 This diagnostic is de-emphasized in v0.1. The parser should always produce
 the closure AST node regardless of context.
+
+### 3.4 Planned operator-parser diagnostics
+
+These diagnostics are design placeholders for the future operator parser. The
+current parser is not required to emit them until operator syntax is
+implemented.
+
+#### `ChainedNonAssociativeOperator`
+
+- **Trigger**: An ungrouped chain of non-associative operators appears inside
+  one operator expression, such as `a < b < c`, `a == b == c`, or
+  `a += b += c`.
+- **Primary span**: The second non-associative operator in the chain.
+- **Recovery**: Preserve an `ErrorAst` or best-effort `OperatorSugar` shape and
+  continue to the segment boundary.
+- **AST effect**: Grouped forms such as `(a < b) < c` and `a < (b < c)` remain
+  syntactically valid at AST level. Semantic validity is outside parser scope.
 
 ## 4. Diagnostic format
 

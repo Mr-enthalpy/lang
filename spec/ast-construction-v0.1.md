@@ -10,16 +10,16 @@ It defines syntax recognition and AST construction only.
 
 It does not define:
 
-* type checking
-* kind checking
-* overload resolution
-* canonical matching
-* closure object materialization
-* match semantics
-* effect semantics
-* NLL/lifetime analysis
-* drop insertion
-* code generation
+- type checking
+- kind checking
+- overload resolution
+- canonical matching
+- closure object materialization
+- match semantics
+- effect semantics
+- NLL/lifetime analysis
+- drop insertion
+- code generation
 
 ## 1. Notation
 
@@ -45,10 +45,10 @@ means syntax node `X` is represented as AST node `Y`.
 
 This document distinguishes:
 
-* lexical token
-* parser context
-* AST node
-* future semantic interpretation
+- lexical token
+- parser context
+- AST node
+- future semantic interpretation
 
 Only AST construction is normative here.
 
@@ -72,6 +72,23 @@ Symbols include at least:
 ```text
 ( ) [ ] { } , : = . .. :: |> => -> < > ;
 ```
+
+Design rule, not yet implemented in the current lexer/parser:
+operator-aware tokenization preserves these additional operator spellings as
+syntax-level operator names:
+
+```text
++  -  *  /
+<  <=  >=  >  ==  !=
+<<  >>
+!  &  @  ~  ^  $  ++  --  ?
++=  -=  *=  /=  <<=  >>=
+```
+
+Operator-aware tokenization uses maximal munch: when multiple operator
+spellings can start at the same source position, choose the longest spelling.
+For example, `<<=`, `<=`, `++`, and `==` are each single operator spellings,
+not shorter operator spellings followed by another symbol.
 
 Trivia is skipped by the parser, but spans must remain available.
 
@@ -116,10 +133,10 @@ FormAst ::=
 
 For v0.1, a form ends at:
 
-* `;`
-* top-level line break
-* `}`
-* EOF
+- `;`
+- top-level line break
+- `}`
+- EOF
 
 A line break is top-level only if the current nesting depth of `()`, `[]`, `{}` is zero.
 
@@ -248,6 +265,20 @@ DeclAnnotationAst ::=
 TypeObjectAnnotationAst ::=
     Expr(ExprAst)
   | Hole
+```
+
+Design rule, not yet implemented in the current parser:
+
+```text
+BinderName ::= Name | OperatorName
+SimpleLetBinder ::= BinderName ":" DeclAnnotation
+```
+
+Operator binder names use the same declaration annotation rules as ordinary
+names. For example, future operator declarations use the explicit rank form:
+
+```text
+let +: _: operator = expr
 ```
 
 The `DeclAnnotationAst::Bare` variant covers a single written annotation
@@ -437,16 +468,16 @@ A **kind/rank object** classifies type-objects. In source text, names such as
 
 These terms must be distinguished from source names:
 
-* The declared object may be a type-object. The source name `type`, when used
+- The declared object may be a type-object. The source name `type`, when used
   in bare declaration annotation position, is just a preserved `Name`.
-* The source name `type`, when used after the second `:` in an explicit rank
+- The source name `type`, when used after the second `:` in an explicit rank
   annotation, may denote the kind/rank of type-objects.
-* The source name `fn`, when used after the second `:` in an explicit rank
+- The source name `fn`, when used after the second `:` in an explicit rank
   annotation, may denote the kind/rank of function type-objects.
-* `fn` is not a lexical keyword.
-* `type` is not a lexical keyword.
-* `namespace` is not a lexical keyword.
-* `fn <: type` is a future semantic/rank relation, not a v0.1 parser rule.
+- `fn` is not a lexical keyword.
+- `type` is not a lexical keyword.
+- `namespace` is not a lexical keyword.
+- `fn <: type` is a future semantic/rank relation, not a v0.1 parser rule.
 
 The parser does not check these meanings in v0.1. It only preserves the
 annotation structure.
@@ -502,22 +533,22 @@ BinderDeclAst {
 
 ### 5.3 Non-context rule
 
-Outside strong binding contexts, `<` and `>` are ordinary symbol tokens.
+Outside strong binding contexts, `<` and `>` are ordinary symbol tokens. They
+do not introduce generic-call syntax or angle-bracket grouping.
 
-The parser must not globally recognize angle-bracket groups.
+Design rule, not yet implemented in the current parser:
+in expression/operator contexts, `<`, `>`, `<=`, and `>=` are operator
+spellings. The parser must still not globally recognize angle-bracket groups.
 
-**Negative / diagnostic example:**
+**Current-parser diagnostic example:**
 
 ```text
 let x: type = a < b > c
 ```
 
-Since `SegmentElement ::= Atom | ArgPack` and `Atom` does not include a
-`SymbolAtom` or operator-atom variant, there is no syntactic slot for `<`
-and `>` in ordinary expression position. The lexer still produces
-`Symbol("<")` and `Symbol(">")` tokens, but the parser must emit
-`UnexpectedToken` for each such symbol when encountered outside a
-deduce-list context.
+The current parser does not yet implement operator syntax. Until operator-aware
+expression parsing lands, it may emit `UnexpectedToken` for `<` and `>` in
+ordinary expression position.
 
 The parser should produce:
 
@@ -527,8 +558,8 @@ Atom(Name(a))  ErrorAst(<)  Atom(Name(b))  ErrorAst(>)  Atom(Name(c))
 
 or skip to the next synchronization point after the first `<`.
 
-In v0.1, `<` and `>` in non-binding contexts are parse errors, not valid
-expression symbols.
+Once operator syntax is implemented, the same source is parsed using `<` and
+`>` as expression operators, not as a deduce list.
 
 ## 6. Canonical skeleton
 
@@ -704,7 +735,8 @@ has_incoming = i > 0
 
 ```text
 Segment ::= SegmentElement+
-SegmentElement ::= Atom | ArgPack
+SegmentElement ::= OperatorExpr | ArgPack
+OperatorExpr ::= segment-local operator expression built from Atom
 ```
 
 AST:
@@ -720,6 +752,52 @@ SegmentAst {
 Segment parsing does not directly execute function application.
 
 It records element sequence and ArgPack roles.
+
+Design rule, not yet implemented in the current parser:
+`OperatorExpr` is the ordinary-operator expression layer built from atoms.
+Ordinary operators bind more tightly than both whitespace auto-pipe and `|>`.
+
+Planned operator-aware AST shape:
+
+```text
+OperatorExprAst ::=
+    AtomExpr(AtomAst)
+  | OperatorSugarAst {
+        operator: OperatorName,
+        fixity: Prefix | Postfix | Binary,
+        args: Vec<OperatorExprAst>,
+        span: Span
+    }
+```
+
+Binary and prefix operator sugar belong to `OperatorExprAst`, not to
+`AtomAst`. Postfix operator suffixes compose with atom suffix parsing, but the
+resulting sugar is still represented at the operator-expression layer.
+
+```text
+a + b |> f
+```
+
+groups as:
+
+```text
+(a + b) |> f
+```
+
+and:
+
+```text
+a b + c
+```
+
+groups as:
+
+```text
+a (b + c)
+```
+
+Operator precedence remains segment-local inside the pipe/segment architecture.
+See `spec/operator-design.md` for the full precedence and associativity table.
 
 ## 8. Atom construction
 
@@ -778,12 +856,18 @@ After parsing `AtomBase`, repeatedly fold atom suffixes.
 Suffixes:
 
 ```text
-:: Name
+:: PathLeaf
 . Name
 .. Name ArgPack
+PostfixOperator
 ```
 
 Folding order is left-to-right.
+
+Design rule, not yet implemented in the current parser:
+postfix unary operators participate in the same left-folding suffix loop as
+`::`, `.`, and `..`. Therefore `obj!.field` has the shape `(obj!).field`; the
+postfix operator does not terminate suffix parsing.
 
 ### 8.4 Path folding
 
@@ -798,7 +882,7 @@ AST:
 ```text
 Path {
     base,
-    names: [a, b]
+    leaves: [a, b]
 }
 ```
 
@@ -813,15 +897,62 @@ is parsed as:
 ```text
 Segment[
   Atom(Name(a)),
-  Atom(Path(base=Name(b), names=[c]))
+  Atom(Path(base=Name(b), leaves=[c]))
 ]
 ```
 
 not as:
 
 ```text
-Path(base = Segment[a, b], names=[c])
+Path(base = Segment[a, b], leaves=[c])
 ```
+
+Design rule, not yet implemented in the current parser:
+
+```text
+PathLeaf ::= Name | OperatorName
+```
+
+Operator names may only be path leaves. Valid future shapes include `t::+` and
+`std::int::+`. Invalid future shapes include `+::x`, `t::+::x`, and `t::+::-`.
+
+### 8.4a Operator sugar
+
+Design rule, not yet implemented in the current parser:
+
+```text
+OperatorExprAst ::=
+    AtomExpr(AtomAst)
+  | OperatorSugarAst {
+        operator: OperatorName,
+        fixity: Prefix | Postfix | Binary,
+        args: Vec<OperatorExprAst>,
+        span: Span
+    }
+```
+
+Operator syntax is preserved as AST sugar at the `OperatorExprAst` layer. The
+parser must not lower it into ordinary calls in v0.1.
+
+Examples:
+
+```text
+obj!    => postfix OperatorSugarAst
+a + b   => binary OperatorSugarAst
+-x      => prefix OperatorSugarAst
+```
+
+Prefix `-x` is not a negative literal; the lexer emits `-` and `x`
+separately.
+
+Comparison, equality, and compound-looking operator chains are
+non-associative in this phase. A future parser may diagnose:
+
+```text
+chained non-associative operator requires explicit grouping
+```
+
+for ungrouped syntax such as `a < b < c`, `a == b == c`, and `a += b += c`.
 
 ### 8.5 Member sugar
 
@@ -890,8 +1021,8 @@ DoubleDotSugar {
 
 Parser constraints:
 
-* `..` must be followed by `Name`.
-* The `Name` must be followed by `ArgPack`.
+- `..` must be followed by `Name`.
+- The `Name` must be followed by `ArgPack`.
 
 Invalid:
 
@@ -967,7 +1098,7 @@ Given:
 Segment(elements, has_incoming)
 ```
 
-where elements are `Atom` or `ArgPack`.
+where elements are `OperatorExpr` or `ArgPack`.
 
 Process left-to-right.
 
@@ -982,10 +1113,10 @@ Rules:
 
 1. If an `ArgPack` appears at index `0`, mark it `SourcePack`.
 
-2. If an `ArgPack` appears at index `> 0`, and:
+2. If an `ArgPack` appears after an `OperatorExpr`, and:
 
-    * `has_incoming == true`
-    * `insert_used == false`
+   - `has_incoming == true`
+   - `insert_used == false`
 
    then mark it `InsertPack` and set `insert_used = true`.
 
@@ -995,8 +1126,8 @@ Rules:
 
 The AST may either:
 
-* store the flat segment with roles, or
-* explicitly nest right-target subsegments.
+- store the flat segment with roles, or
+- explicitly nest right-target subsegments.
 
 v0.1 should prefer a flat representation with roles unless a later pass needs nested structure.
 
@@ -1282,8 +1413,9 @@ x => { }
 ```
 
 The closure recognition algorithm first checks:
+
 - Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
-  ParamClause? FnItemTraitClause? ReturnClause? WhereClause? AcquireClause?`.
+ParamClause? FnItemTraitClause? ReturnClause? WhereClause? AcquireClause?`.
   A bare `Name("x")` does not match any of these clauses.
 - Therefore the lookahead fails. The parser backtracks and parses `x` as an
   ordinary `Atom(Name("x"))`.
@@ -1379,16 +1511,16 @@ ErrorAst {
 
 Recommended recoverable errors:
 
-* expected `Name` after `.`
-* expected `Name` after `..`
-* expected `ArgPack` after `.. Name`
-* unclosed `(`
-* unclosed `[`
-* unclosed `{`
-* top-level comma outside `ArgPack`
-* invalid deduce list
-* invalid closure head
-* invalid canonical skeleton
+- expected `Name` after `.`
+- expected `Name` after `..`
+- expected `ArgPack` after `.. Name`
+- unclosed `(`
+- unclosed `[`
+- unclosed `{`
+- top-level comma outside `ArgPack`
+- invalid deduce list
+- invalid closure head
+- invalid canonical skeleton
 
 ## 14. Normative non-interpretation list
 
@@ -1478,24 +1610,23 @@ Every major rule should have at least one positive and one negative example.
 This index cross-references the negative/diagnostic examples throughout this
 document.
 
-| Section | Negative / diagnostic example | Expected diagnostic |
-|---|---|---|
-| §3.3 Form boundary | `let x: type = (a` with newline | `UnclosedParen` if `)` never found |
-| §4.6 DeclAnnotation | `let t: = x` after `let` | `UnexpectedToken` at `=` |
-| §4.6 DeclAnnotation | `let t: 42 = x` (syntactically valid) | No diagnostic (valid syntax) |
-| §4.6 DeclAnnotation | `fn f(x) { x }` — not a FnDecl | No diagnostic (ordinary expr; adjacencies may vary) |
-| §4.6 DeclAnnotation | `type T = expr` — not a TypeDecl | `=` may produce `UnexpectedToken` |
-| §4.6 DeclAnnotation | `namespace ns = expr` — not a NamespaceDecl | `=` may produce `UnexpectedToken` |
-| §5.3 Non-context `<>` | `a < b > c` in expr | `UnexpectedToken` at `<` |
-| §7.2 Pipe split | `\|> f` at form start | `UnexpectedToken` at `\|>` |
-| §7.2 Pipe split | `x \|> \|> g` (empty middle) | Diagnostic on empty segment |
-| §8.2 Group | `let x: type = (a, b)` at expr top | `TopLevelComma` or `InvalidArgPack` |
-| §8.5 Member `.` | `obj.42` | `ExpectedNameAfterDot` |
-| §8.5 Member `.` | `obj.(field)` | `ExpectedNameAfterDot` |
-| §8.6 Double-dot `..` | `obj..42` | `ExpectedNameAfterDoubleDot` |
-| §8.6 Double-dot `..` | `obj..method` (no `ArgPack`) | `ExpectedArgPackAfterDoubleDotName` |
-| §8.6 Double-dot `..` | `obj..(method)` | `ExpectedNameAfterDoubleDot` |
-| §11.9 Closure lookahead | `x => { }` rejected as non-closure-head | `UnexpectedToken` at `=>` |
-| §12 Match non-special | `match obj` at form start | No diagnostic (name, not syntax) |
-| §12 Match non-special | `obj match (a) { }` | No diagnostic (name + argpack + closure) |
-
+| Section                              | Negative / diagnostic example               | Expected diagnostic                                                                      |
+| ------------------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| §3.3 Form boundary                   | `let x: type = (a` with newline             | `UnclosedParen` if `)` never found                                                       |
+| §4.6 DeclAnnotation                  | `let t: = x` after `let`                    | `UnexpectedToken` at `=`                                                                 |
+| §4.6 DeclAnnotation                  | `let t: 42 = x` (syntactically valid)       | No diagnostic (valid syntax)                                                             |
+| §4.6 DeclAnnotation                  | `fn f(x) { x }` — not a FnDecl              | No diagnostic (ordinary expr; adjacencies may vary)                                      |
+| §4.6 DeclAnnotation                  | `type T = expr` — not a TypeDecl            | `=` may produce `UnexpectedToken`                                                        |
+| §4.6 DeclAnnotation                  | `namespace ns = expr` — not a NamespaceDecl | `=` may produce `UnexpectedToken`                                                        |
+| §5.3 Current parser non-context `<>` | `a < b > c` before operator parser lands    | May emit `UnexpectedToken` at `<`; operator-aware parser treats `<` and `>` as operators |
+| §7.2 Pipe split                      | `\|> f` at form start                       | `UnexpectedToken` at `\|>`                                                               |
+| §7.2 Pipe split                      | `x \|> \|> g` (empty middle)                | Diagnostic on empty segment                                                              |
+| §8.2 Group                           | `let x: type = (a, b)` at expr top          | `TopLevelComma` or `InvalidArgPack`                                                      |
+| §8.5 Member `.`                      | `obj.42`                                    | `ExpectedNameAfterDot`                                                                   |
+| §8.5 Member `.`                      | `obj.(field)`                               | `ExpectedNameAfterDot`                                                                   |
+| §8.6 Double-dot `..`                 | `obj..42`                                   | `ExpectedNameAfterDoubleDot`                                                             |
+| §8.6 Double-dot `..`                 | `obj..method` (no `ArgPack`)                | `ExpectedArgPackAfterDoubleDotName`                                                      |
+| §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
+| §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |
+| §12 Match non-special                | `match obj` at form start                   | No diagnostic (name, not syntax)                                                         |
+| §12 Match non-special                | `obj match (a) { }`                         | No diagnostic (name + argpack + closure)                                                 |
