@@ -97,7 +97,7 @@ fn parse_group(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.cursor.at_symbol(Symbol::Comma) {
         let comma_span = parser.cursor.current_span();
         parser.error(
-            DiagnosticCode::UnexpectedToken,
+            DiagnosticCode::TopLevelComma,
             "unexpected top-level comma",
             comma_span,
         );

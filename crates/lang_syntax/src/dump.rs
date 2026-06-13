@@ -315,8 +315,18 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::ExpectedColon => "ExpectedColon",
         DiagnosticCode::ExpectedDeclAnnotation => "ExpectedDeclAnnotation",
         DiagnosticCode::ExpectedEqual => "ExpectedEqual",
-        DiagnosticCode::UnclosedParen => "UnclosedParen",
         DiagnosticCode::EmptyPipeSegment => "EmptyPipeSegment",
+        DiagnosticCode::ExpectedNameAfterDot => "ExpectedNameAfterDot",
+        DiagnosticCode::ExpectedNameAfterDoubleDot => "ExpectedNameAfterDoubleDot",
+        DiagnosticCode::ExpectedArgPackAfterDoubleDotName => "ExpectedArgPackAfterDoubleDotName",
+        DiagnosticCode::UnclosedParen => "UnclosedParen",
+        DiagnosticCode::UnclosedBracket => "UnclosedBracket",
+        DiagnosticCode::UnclosedBrace => "UnclosedBrace",
+        DiagnosticCode::InvalidDeduceList => "InvalidDeduceList",
+        DiagnosticCode::InvalidCanonicalSkeleton => "InvalidCanonicalSkeleton",
+        DiagnosticCode::InvalidClosureHead => "InvalidClosureHead",
+        DiagnosticCode::TopLevelComma => "TopLevelComma",
+        DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
     }
 }
 

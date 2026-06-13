@@ -93,7 +93,17 @@ fn parse_segment(
             if matches!(token.kind, TokenKind::Eof) {
                 break;
             }
-            parser.unexpected_current();
+            if matches!(token.kind, TokenKind::Symbol(Symbol::Comma)) {
+                let span = token.span;
+                parser.cursor.bump_non_trivia();
+                parser.error(
+                    DiagnosticCode::TopLevelComma,
+                    "unexpected top-level comma",
+                    span,
+                );
+            } else {
+                parser.unexpected_current();
+            }
         }
     }
 

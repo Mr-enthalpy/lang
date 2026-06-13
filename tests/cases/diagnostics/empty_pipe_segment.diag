@@ -1,0 +1,1 @@
+error EmptyPipeSegment "empty pipe segment after `|>`" @ 1:6 [5..7]
