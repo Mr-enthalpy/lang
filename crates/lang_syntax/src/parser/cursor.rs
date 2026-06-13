@@ -264,4 +264,15 @@ impl<'tokens> Cursor<'tokens> {
             TokenKind::Trivia(TriviaKind::Whitespace) if self.peek().text.contains('\n')
         )
     }
+
+    pub fn peek_prev_significant(&self, from_index: usize) -> &Token {
+        let mut i = from_index;
+        while i > 0 {
+            i -= 1;
+            if !matches!(self.tokens[i].kind, TokenKind::Trivia(_) | TokenKind::Eof) {
+                return &self.tokens[i];
+            }
+        }
+        &self.tokens[0]
+    }
 }

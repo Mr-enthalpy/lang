@@ -246,3 +246,13 @@ fn newline_between_coloncolon_and_leaf() {
 fn newline_after_pipe_before_segment() {
     assert_parser_case("newline_after_pipe_before_segment", false);
 }
+
+#[test]
+fn newline_before_dot() {
+    assert_parser_case("newline_before_dot", false);
+}
+
+#[test]
+fn newline_before_coloncolon() {
+    assert_parser_case("newline_before_coloncolon", false);
+}

@@ -25,7 +25,16 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
 
     loop {
         if parser.at_top_level_newline() {
-            break;
+            let (_, next) = parser
+                .cursor
+                .peek_at_skip_trivia(parser.cursor.current_index());
+            if !matches!(
+                next.kind,
+                TokenKind::Symbol(Symbol::ColonColon | Symbol::Dot | Symbol::DotDot)
+                    | TokenKind::Operator(_)
+            ) {
+                break;
+            }
         }
         if parser.is_form_boundary() {
             break;

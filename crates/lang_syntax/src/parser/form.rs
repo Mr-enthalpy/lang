@@ -87,8 +87,31 @@ impl<'tokens> Parser<'tokens> {
         if !self.cursor.has_newline_trivia_ahead() {
             return false;
         }
-        let (_, next) = self.cursor.peek_at_skip_trivia(self.cursor.current_index());
-        Self::can_start_form_token(next)
+        let cursor_index = self.cursor.current_index();
+        let prev = self.cursor.peek_prev_significant(cursor_index);
+        if !Self::can_end_form_token(prev) {
+            return false;
+        }
+        let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
+        if !Self::can_start_form_token(next) {
+            return false;
+        }
+        if Self::is_continuation_token(prev) || Self::is_continuation_token(next) {
+            return false;
+        }
+        true
+    }
+
+    fn can_end_form_token(token: &Token) -> bool {
+        matches!(
+            token.kind,
+            TokenKind::Name
+                | TokenKind::IntLiteral
+                | TokenKind::StringLiteral
+                | TokenKind::Symbol(Symbol::RParen)
+                | TokenKind::Symbol(Symbol::RBracket)
+                | TokenKind::Symbol(Symbol::RBrace)
+        )
     }
 
     fn can_start_form_token(token: &Token) -> bool {
@@ -99,6 +122,24 @@ impl<'tokens> Parser<'tokens> {
                 | TokenKind::StringLiteral
                 | TokenKind::Symbol(Symbol::LParen)
                 | TokenKind::Symbol(Symbol::LBrace)
+        )
+    }
+
+    fn is_continuation_token(token: &Token) -> bool {
+        matches!(
+            token.kind,
+            TokenKind::Symbol(
+                Symbol::PipeGreater
+                    | Symbol::Dot
+                    | Symbol::DotDot
+                    | Symbol::ColonColon
+                    | Symbol::Comma
+                    | Symbol::FatArrow
+                    | Symbol::ThinArrow
+                    | Symbol::Equal
+                    | Symbol::Colon
+                    | Symbol::Less
+            ) | TokenKind::Operator(_)
         )
     }
 
