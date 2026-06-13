@@ -447,19 +447,26 @@ SimpleLetBinder {
 and not a separate declaration form.
 
 ```text
-let f: fn = expr
+let f: _: fn = expr
 ```
 
-This is a bare annotation containing the expression `fn`. The parser produces
+This is an explicit rank-annotation form. The parser produces:
 
 ```text
 SimpleLetBinder {
     name: f,
-    annotation: Bare(Expr(Name("fn")))
+    annotation: TypeObjectWithRank {
+        type_object_annotation: TypeHole("_"),
+        rank_annotation: Expr(Name("fn"))
+    }
 }
 ```
 
-and preserves the raw written form.
+A bare annotation such as `let f: fn = expr` is preserved as raw syntax
+(`Bare(Expr(Name("fn")))`) but is **not** function declaration sugar.
+The language does not define `let f: fn = ...` as a normative function
+declaration spelling.  A function-like declaration must use the explicit
+rank-annotation form `let f: _: fn = ...`.
 
 **Alignment:**
 
@@ -468,11 +475,6 @@ let f: _: fn = ...
     |  |  |
     |  |  +-- rank annotation
     |  +----- type-object annotation
-    +-------- declared object
-
-let f: fn = ...
-    |  |
-    |  +----- bare annotation expression
     +-------- declared object
 ```
 
