@@ -109,7 +109,7 @@ If a requested task requires any of the following, stop at AST preservation:
 | `else` | Parse as a name; do not implement else branching |
 | `drop` / `move` | Parse as names; do not mark blue nodes |
 | `guard` / `with` | Preserve annotations in AST; do not run lifetime analysis |
-| Type/rank checking | Parse declaration annotations; preserve type-object and rank annotation structure; do not check semantic validity |
+| Type/rank checking | Preserve bare annotations exactly; parse explicit `type_object_annotation : rank_annotation`; do not check semantic validity |
 | `fn f(x) { }` | Parse as an expression form or emit syntax diagnostics as required; never create FnDecl |
 | Canonical matching | Build canonical skeleton AST; do not execute matching |
 | Closure materialization | Build closure AST; do not create callable objects |

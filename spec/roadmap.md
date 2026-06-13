@@ -53,8 +53,8 @@ The current implementation is parser phase 1. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Cursor, form parser, expression parser, and atom parser.
-- Simple `let` forms with declaration annotations (`: type`, `: fn`, `_: fn`),
-  `guard` attributes, and `with` clauses.
+- Simple `let` forms with bare declaration annotations (`: type`, `: fn`),
+  explicit rank annotations (`: _: fn`), `guard` attributes, and `with` clauses.
 - Name, integer literal, string literal, and `::`-path expression atoms.
 - Group atoms (`(expr)` without top-level commas).
 - Pipe segmentation (`|>`) and ArgPack role assignment (SourcePack,

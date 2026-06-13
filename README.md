@@ -125,6 +125,9 @@ function, type, or namespace declarations.
 v0.1 parses and preserves declaration annotations but does not check their
 semantic validity.
 
+Bare declaration annotations are preserved exactly as written. Rank annotations
+require the explicit `type_object_annotation : rank_annotation` form.
+
 ### 8. Parser owns shape, semantics owns meaning
 
 The parser constructs and preserves raw AST shape. It does not decide what an

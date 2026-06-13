@@ -250,9 +250,15 @@ TypeObjectAnnotationAst ::=
   | Hole
 ```
 
-The `DeclAnnotationAst::Bare` variant covers the surface
-forms `let f: fn = ...` (single name as annotation) and `let t: type = ...`.
-These are preserved as bare expressions without semantic desugaring.
+The `DeclAnnotationAst::Bare` variant covers a single written annotation
+expression, such as `let f: fn = ...` and `let t: type = ...`. A bare
+declaration annotation is preserved exactly as written.
+
+Rank annotation syntax requires the explicit form:
+
+```text
+type_object_annotation : rank_annotation
+```
 
 The `DeclAnnotationAst::TypeObjectWithRank` variant covers the form
 `let f: _: fn = ...`, where `_` is a `TypeHole` and `fn` is a rank annotation.
@@ -339,8 +345,8 @@ SimpleLetBinder {
 }
 ```
 
-Deferred semantic reading: `t` is declared as a type-object whose kind/rank
-is the source name `type`.
+This is a bare annotation containing the expression `type`. v0.1 preserves
+that syntax exactly and does not decide whether `type` is semantically valid.
 
 ```text
 let ns1: namespace = expr
@@ -362,7 +368,7 @@ and not a separate declaration form.
 let f: fn = expr
 ```
 
-Surface sugar: the annotation is written as bare `fn`. The parser produces
+This is a bare annotation containing the expression `fn`. The parser produces
 
 ```text
 SimpleLetBinder {
@@ -371,26 +377,26 @@ SimpleLetBinder {
 }
 ```
 
-and preserves the raw written form. A future declaration-analysis pass may
-treat bare `fn` as equivalent to `_: fn` when `fn` resolves as a
-kind/rank annotation. v0.1 must not perform semantic desugaring.
+and preserves the raw written form.
 
 **Alignment:**
 
 ```text
-let f: _: fn = ...    let t:    type = ...
-    │   │  │              │       │
-    │   │  └─ rank         │       └─ rank (source name `type`)
-    │   └─ type-object     └─ itself a type-object
-    └─ declared object
+let f: _: fn = ...
+    |  |  |
+    |  |  +-- rank annotation
+    |  +----- type-object annotation
+    +-------- declared object
+
+let f: fn = ...
+    |  |
+    |  +----- bare annotation expression
+    +-------- declared object
 ```
 
-The declared object (`f`) aligns with the declared object (`t`).
-The anonymous type-object (`_`) aligns with the type-object layer occupied by `t` itself.
-The rank annotation (`fn`) aligns with the rank annotation (`type`).
-
-More precisely: `t` and `_` occupy the type-object layer. `fn` and the
-source name `type` occupy the kind/rank annotation layer.
+The explicit rank form has two annotation layers:
+`type_object_annotation : rank_annotation`. The bare form has one annotation
+expression and must not be lowered or reinterpreted by the parser.
 
 **Negative / non-declaration examples:**
 
@@ -427,14 +433,16 @@ A **type-object** is a type-theoretic object: the type of some value, or an
 object that itself represents a type.
 
 A **kind/rank object** classifies type-objects. In source text, names such as
-`fn` and `type` may appear in kind/rank annotation position.
+`fn` and `type` may appear in explicit rank annotation position.
 
 These terms must be distinguished from source names:
 
 * The declared object may be a type-object. The source name `type`, when used
-  in declaration annotation position, may denote the kind/rank of type-objects.
-* The source name `fn`, when used in declaration annotation position, may
-  denote the kind/rank of function type-objects.
+  in bare declaration annotation position, is just a preserved `Name`.
+* The source name `type`, when used after the second `:` in an explicit rank
+  annotation, may denote the kind/rank of type-objects.
+* The source name `fn`, when used after the second `:` in an explicit rank
+  annotation, may denote the kind/rank of function type-objects.
 * `fn` is not a lexical keyword.
 * `type` is not a lexical keyword.
 * `namespace` is not a lexical keyword.
