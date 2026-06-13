@@ -7,7 +7,6 @@ Program
             Atom
               Path
                 base:
-                  Name a
+                  Name uint8
                 names:
-                  TextName b
-                  TextName c
+                  NumericName 1

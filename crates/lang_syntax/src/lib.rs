@@ -14,8 +14,9 @@ pub mod token;
 
 pub use ast::{
     ArgPackAst, ArgPackRole, AtomAst, AtomKind, DeclAnnotationAst, ErrorAst, ExprAst, ExprKind,
-    FormAst, LetAst, LetAttrAst, LetBinderAst, NameAst, OperatorExprAst, OperatorExprKind,
-    PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, TypeObjectAnnotationAst,
+    FormAst, LetAst, LetAttrAst, LetBinderAst, NameAst, NumericNameAst, OperatorExprAst,
+    OperatorExprKind, PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, SelectorAst,
+    TypeObjectAnnotationAst,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};

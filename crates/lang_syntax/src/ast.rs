@@ -123,6 +123,21 @@ pub enum ArgPackRole {
     Unknown,
 }
 
+// --- Selectors ---
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SelectorAst {
+    Text(NameAst),
+    Numeric(NumericNameAst),
+    // Future operator parser phase: Operator(OperatorSpelling) for operator selectors.
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NumericNameAst {
+    pub text: String,
+    pub span: Span,
+}
+
 // --- Atoms ---
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -137,10 +152,18 @@ pub enum AtomKind {
     IntLiteral(String),
     StringLiteral(String),
     Group(Box<ExprAst>),
-    // Future operator parser phase: path leaves will allow operator names.
     Path {
         base: Box<AtomAst>,
-        names: Vec<NameAst>,
+        names: Vec<SelectorAst>,
+    },
+    MemberSugar {
+        object: Box<AtomAst>,
+        selector: SelectorAst,
+    },
+    DoubleDotSugar {
+        object: Box<AtomAst>,
+        selector: SelectorAst,
+        args: ArgPackAst,
     },
     Error(ErrorAst),
 }

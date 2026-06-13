@@ -1,0 +1,21 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              DoubleDotSugar
+                object:
+                  Name obj
+                selector:
+                  NumericName 1
+                args:
+                  ArgPack role=Unknown
+                    args:
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name args

@@ -250,3 +250,100 @@ this phase. Ungrouped chains such as `a < b < c`, `a == b == c`, and
 **Implementation TODO:**
 Add parser diagnostics for chained non-associative operators when operator
 parsing is implemented.
+
+---
+
+## 16. Numeric selectors: positional access vs. general sugar
+
+**Status:** Open
+
+**Current v0.1 decision:**
+Numeric tokens in selector/name-leaf position produce `NumericNameAst`. The
+parser treats `obj.1`, `tuple.1`, and `pack.1` identically as
+`MemberSugar { object, selector: NumericName("1") }`. No special AST nodes
+such as `TupleIndex`, `TupleField`, or `PackIndex` are created.
+
+**Why it does not block v0.1:**
+Any future tuple/pack positional access semantics must be implemented by later
+semantic lookup, namespace forwarding, or compiler-provided functions. The
+parser must not hard-code positional access semantics.
+
+**Future stage:** v0.7 (type design) or v1.0.
+
+---
+
+## 17. Float, scientific, and unit-adjacent numeric literals
+
+**Status:** Open
+
+**Current v0.1 decision:**
+The spellings `1.2`, `1.2ms`, `1e3ms`, `1.2e3`, and `1.2e3ms` are reserved
+for future numeric literal design. The current parser must not add golden tests
+that force a particular interpretation of these forms.
+
+The natural unit syntax `1ms` and `1 ms` remain equivalent as
+`IntLiteral(1)` followed by `Name(ms)` at the non-trivia token/parser
+structure level. No `UnitLiteral` AST node exists.
+
+**Why it does not block v0.1:**
+The existing lexer does not yet produce `FloatLiteral`, `ScientificLiteral`, or
+`FloatScientificLiteral` tokens. Numeric tokens in selector position go through
+the same token class but produce `NumericNameAst` rather than numeric literal
+atoms. The boundary between `Digit+ "." Digit+` (future float) and
+`object "." Name` (member sugar) will be decided with future lexer changes.
+
+**Future stage:** v0.2 (frontend robustness) or later numeric literal design.
+
+---
+
+## 18. Numeric token AST identity depends on syntactic position
+
+**Status:** Resolved
+
+**Resolution:**
+`IntLiteral` token in atom-base position → numeric literal atom (`IntLiteral`).
+`IntLiteral` token in selector position → `NumericNameAst`.
+`IntLiteral` token in path-leaf position → `NumericNameAst`.
+`IntLiteral` token in argument expression position → numeric literal atom.
+
+The distinction is mandatory and implemented in the current phase.
+
+---
+
+## 19. Name-polymorphic lookup boundary
+
+**Status:** Open (design note, not implemented)
+
+**Current v0.1 decision:**
+`MemberSugar` and `DoubleDotSugar` preserve selector syntax (`TextNameAst` /
+`NumericNameAst`) for later lookup. Selectors may participate in future
+name-polymorphic lookup.
+
+Name-polymorphic lookup is a compile-time-only extension of name binding:
+function-name positions may contain explicitly declared name holes such as
+`<f: TextNameAst>` or `<i: NumericNameAst>`.
+
+This does **not** make lookup dynamic. Concrete names shadow abstract name
+holes. If concrete candidates are found but fail to apply, the compiler reports
+that failure and does **not** fall back to abstract name-polymorphic
+candidates.
+
+Only declarations that explicitly bind the function-name position as a name AST
+hole participate in name-polymorphic lookup. Ordinary functions do not accept
+arbitrary names.
+
+Name constraints must be locally decidable at compile time, and candidate
+ordering must be stable. If multiple applicable name-polymorphic candidates
+remain unordered, lookup is ambiguous.
+
+**Why it does not block v0.1:**
+The selector AST already distinguishes `TextNameAst` and `NumericNameAst`
+as distinct selector classes. This distinction is sufficient to support future
+name-polymorphic lookup without requiring AST changes. v0.1 does not implement
+lookup, binding, or name resolution. The parser only preserves selector shape.
+
+**Future stage:** v0.7 (type/kind/checking design) or later name-resolution
+design. A future decision document (e.g.
+`docs/decisions/0005-name-polymorphic-lookup-boundary.md`) may formalize the
+exact rules. The parser must not be changed to accommodate lookup before that
+specification exists.

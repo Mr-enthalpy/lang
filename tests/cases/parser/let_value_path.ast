@@ -22,4 +22,4 @@ Program
                   base:
                     Name a
                   names:
-                    b
+                    TextName b

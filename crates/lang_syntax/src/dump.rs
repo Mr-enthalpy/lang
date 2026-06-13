@@ -237,9 +237,29 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent + 1, "base:");
             dump_atom(output, base, indent + 2);
             line(output, indent + 1, "names:");
-            for name in names {
-                line(output, indent + 2, &name.text);
+            for selector in names {
+                dump_selector(output, selector, indent + 2);
             }
+        }
+        AtomKind::MemberSugar { object, selector } => {
+            line(output, indent, "MemberSugar");
+            line(output, indent + 1, "object:");
+            dump_atom(output, object, indent + 2);
+            line(output, indent + 1, "selector:");
+            dump_selector(output, selector, indent + 2);
+        }
+        AtomKind::DoubleDotSugar {
+            object,
+            selector,
+            args,
+        } => {
+            line(output, indent, "DoubleDotSugar");
+            line(output, indent + 1, "object:");
+            dump_atom(output, object, indent + 2);
+            line(output, indent + 1, "selector:");
+            dump_selector(output, selector, indent + 2);
+            line(output, indent + 1, "args:");
+            dump_argpack(output, args, indent + 2);
         }
         AtomKind::Error(error) => {
             line(
@@ -247,6 +267,15 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
                 indent,
                 &format!("Error \"{}\"", escape_text(&error.message)),
             );
+        }
+    }
+}
+
+fn dump_selector(output: &mut String, selector: &crate::SelectorAst, indent: usize) {
+    match selector {
+        crate::SelectorAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
+        crate::SelectorAst::Numeric(num) => {
+            line(output, indent, &format!("NumericName {}", num.text))
         }
     }
 }
