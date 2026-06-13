@@ -1346,6 +1346,13 @@ BodyBlockAst {
 }
 ```
 
+Inside `{ ... }`, form boundaries are `;`, `}`, and EOF.  Newline promotion
+to form separator is suppressed because nesting depth is non-zero inside the
+body block.  This means `{ x \n y }` parses as a single form containing a
+segment with two atoms `x y`, not as two separate forms.  This is the
+provisional v0.1 rule; the broader language-design question of body-block
+form separation remains open.
+
 ## 11. Closure head
 
 ### 11.1 Full order

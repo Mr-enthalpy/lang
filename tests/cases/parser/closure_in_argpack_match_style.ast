@@ -1,0 +1,81 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name obj
+          ArgPack role=RightTargetSubsegment
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name val
+                    OperatorExpr
+                      Atom
+                        Name _
+                    OperatorExpr
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name val
+                                OperatorExpr
+                                  Atom
+                                    Path
+                                      base:
+                                        Name option
+                                      names:
+                                        TextName Sum
+                    OperatorExpr
+                      Atom
+                        Closure Inline
+                          BodyBlock
+                            forms:
+                              ExprForm
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name val
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name _
+                                OperatorExpr
+                                  Atom
+                                    Path
+                                      base:
+                                        Name option
+                                      names:
+                                        TextName None
+                    OperatorExpr
+                      Atom
+                        Closure Inline
+                          BodyBlock
+                            forms:
+                              ExprForm
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name none
+          OperatorExpr
+            Atom
+              Name match

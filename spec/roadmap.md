@@ -50,10 +50,10 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 plus parser phase 2 binding-context syntax):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3 closure AST):**
 
-The current implementation includes parser phase 1 plus parser phase 2
-binding-context syntax. It includes:
+The current implementation includes parser phase 1, parser phase 2
+binding-context syntax, and parser phase 3 closure surface AST. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;

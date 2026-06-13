@@ -388,6 +388,21 @@ fn closure_explicit_multi_typed_param() {
 }
 
 #[test]
+fn closure_in_argpack_match_style() {
+    assert_parser_case("closure_in_argpack_match_style", true);
+}
+
+#[test]
+fn invalid_closure_where_not_parsed() {
+    assert_parser_case("invalid_closure_where_not_parsed", true);
+}
+
+#[test]
+fn invalid_closure_acquire_not_parsed() {
+    assert_parser_case("invalid_closure_acquire_not_parsed", true);
+}
+
+#[test]
 fn invalid_deduce_unclosed() {
     assert_parser_case("invalid_deduce_unclosed", true);
 }
