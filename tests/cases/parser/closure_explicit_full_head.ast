@@ -1,0 +1,62 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  deduce:
+                    DeduceList
+                      binders:
+                        BinderDecl name=T
+                          annotation:
+                            None
+                  captures:
+                    CaptureClause
+                      items:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name cap
+                  params:
+                    ParamClause
+                      params:
+                        NameParam name=x
+                          annotation:
+                            Expr
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Name T
+                  fn_item_trait:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name runtime
+                  returns:
+                    ReturnClause
+                      binder:
+                        TypeExpr
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name T
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

@@ -1,6 +1,7 @@
 pub mod argpack;
 pub mod atom;
 pub mod canonical;
+pub mod closure;
 pub mod cursor;
 pub mod deduce;
 pub mod expr;

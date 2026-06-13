@@ -74,14 +74,16 @@ binding-context syntax. It includes:
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (58 cases), and diagnostics (27
+- Golden test infra for tokens (9 cases), AST (82 cases), and diagnostics (27
   cases).
 - Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
   parsing, and canonical skeleton parsing.
+- Closure AST (inline `{}`, explicit `() => {}`, closure heads with
+  deduce/capture/parameter/fn-item-trait/return clauses).  `where` and
+  `acquire` are reserved closure-head positions, not implemented.
 
 It does **not** yet include:
 
-- Closure AST (inline `{}`, explicit `() => {}`, closure heads).
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are
   not yet implemented).

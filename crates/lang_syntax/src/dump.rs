@@ -357,6 +357,7 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent + 1, "args:");
             dump_argpack(output, args, indent + 2);
         }
+        AtomKind::Closure(closure) => dump_closure(output, closure, indent),
         AtomKind::Error(error) => {
             line(
                 output,
@@ -372,6 +373,150 @@ fn dump_selector(output: &mut String, selector: &crate::SelectorAst, indent: usi
         crate::SelectorAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
         crate::SelectorAst::Numeric(num) => {
             line(output, indent, &format!("NumericName {}", num.text))
+        }
+    }
+}
+
+fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize) {
+    match closure {
+        crate::ClosureAst::Inline(inner) => {
+            line(output, indent, "Closure Inline");
+            if let Some(head) = &inner.head {
+                dump_fn_head_prefix(output, head, indent + 1);
+            }
+            dump_body_block(output, &inner.body, indent + 1);
+        }
+        crate::ClosureAst::Explicit(inner) => {
+            line(output, indent, "Closure Explicit");
+            if let Some(head) = &inner.head {
+                dump_fn_head_prefix(output, head, indent + 1);
+            }
+            dump_body_block(output, &inner.body, indent + 1);
+        }
+    }
+}
+
+fn dump_body_block(output: &mut String, body: &crate::BodyBlockAst, indent: usize) {
+    line(output, indent, "BodyBlock");
+    line(output, indent + 1, "forms:");
+    for form in &body.forms {
+        dump_form(output, form, indent + 2);
+    }
+}
+
+fn dump_fn_head_prefix(output: &mut String, head: &crate::FnHeadPrefixAst, indent: usize) {
+    line(output, indent, "FnHeadPrefix");
+    if let Some(deduce) = &head.deduce {
+        line(output, indent + 1, "deduce:");
+        dump_deduce_list(output, deduce, indent + 2);
+    }
+    if let Some(captures) = &head.captures {
+        line(output, indent + 1, "captures:");
+        dump_capture_clause(output, captures, indent + 2);
+    }
+    if let Some(params) = &head.params {
+        line(output, indent + 1, "params:");
+        dump_param_clause(output, params, indent + 2);
+    }
+    if let Some(trait_expr) = &head.fn_item_trait {
+        line(output, indent + 1, "fn_item_trait:");
+        dump_expr(output, trait_expr, indent + 2);
+    }
+    if let Some(returns) = &head.returns {
+        line(output, indent + 1, "returns:");
+        dump_return_clause(output, returns, indent + 2);
+    }
+}
+
+fn dump_capture_clause(output: &mut String, clause: &crate::CaptureClauseAst, indent: usize) {
+    line(output, indent, "CaptureClause");
+    line(output, indent + 1, "items:");
+    for item in &clause.items {
+        dump_expr(output, &item.expr, indent + 2);
+    }
+}
+
+fn dump_param_clause(output: &mut String, clause: &crate::ParamClauseAst, indent: usize) {
+    line(output, indent, "ParamClause");
+    line(output, indent + 1, "params:");
+    for param in &clause.params {
+        dump_param_item(output, param, indent + 2);
+    }
+}
+
+fn dump_param_item(output: &mut String, item: &crate::ParamItemAst, indent: usize) {
+    match item {
+        crate::ParamItemAst::NameParam {
+            name, annotation, ..
+        } => {
+            line(output, indent, &format!("NameParam name={}", name.text));
+            line(output, indent + 1, "annotation:");
+            match annotation {
+                Some(a) => dump_type_object_annotation(output, a, indent + 2),
+                None => line(output, indent + 2, "None"),
+            }
+        }
+        crate::ParamItemAst::ExtractParam {
+            deduce,
+            skeleton,
+            annotation,
+            ..
+        } => {
+            line(output, indent, "ExtractParam");
+            line(output, indent + 1, "deduce:");
+            match deduce {
+                Some(d) => dump_deduce_list(output, d, indent + 2),
+                None => line(output, indent + 2, "None"),
+            }
+            line(output, indent + 1, "skeleton:");
+            dump_canonical_skeleton(output, skeleton, indent + 2);
+            line(output, indent + 1, "annotation:");
+            match annotation {
+                Some(a) => dump_type_object_annotation(output, a, indent + 2),
+                None => line(output, indent + 2, "None"),
+            }
+        }
+        crate::ParamItemAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_return_clause(output: &mut String, clause: &crate::ReturnClauseAst, indent: usize) {
+    line(output, indent, "ReturnClause");
+    line(output, indent + 1, "binder:");
+    dump_return_binder(output, &clause.binder, indent + 2);
+    if let Some(constraint) = &clause.constraint {
+        line(output, indent + 1, "constraint:");
+        dump_expr(output, constraint, indent + 2);
+    }
+}
+
+fn dump_return_binder(output: &mut String, binder: &crate::ReturnBinderAst, indent: usize) {
+    match binder {
+        crate::ReturnBinderAst::TypeExpr(expr) => {
+            line(output, indent, "TypeExpr");
+            dump_expr(output, expr, indent + 1);
+        }
+        crate::ReturnBinderAst::ExtractType {
+            deduce, skeleton, ..
+        } => {
+            line(output, indent, "ExtractType");
+            line(output, indent + 1, "deduce:");
+            dump_deduce_list(output, deduce, indent + 2);
+            line(output, indent + 1, "skeleton:");
+            dump_canonical_skeleton(output, skeleton, indent + 2);
+        }
+        crate::ReturnBinderAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
         }
     }
 }

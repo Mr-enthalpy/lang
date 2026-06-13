@@ -1,0 +1,2 @@
+error UnexpectedToken "unexpected token `=>`" @ 1:4 [3..5]
+error UnclosedParen "unclosed parentheses" @ 1:1 [0..1]

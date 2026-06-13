@@ -1,0 +1,1 @@
+<T>[cap](x: T): runtime -> T => { x }

@@ -1,0 +1,31 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name T
+          ArgPack role=RightTargetSubsegment
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name x
+                    OperatorExpr
+                      Atom
+                        Name T
+                    OperatorExpr
+                      Atom
+                        Closure Inline
+                          BodyBlock
+                            forms:
+                              ExprForm
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name x

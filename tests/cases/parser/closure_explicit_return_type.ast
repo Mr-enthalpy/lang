@@ -1,0 +1,34 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
+                        NameParam name=x
+                          annotation:
+                            None
+                  returns:
+                    ReturnClause
+                      binder:
+                        TypeExpr
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name T
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x
