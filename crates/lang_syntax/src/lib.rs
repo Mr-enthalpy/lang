@@ -13,10 +13,10 @@ pub mod span;
 pub mod token;
 
 pub use ast::{
-    ArgPackAst, ArgPackRole, AtomAst, AtomKind, DeclAnnotationAst, ErrorAst, ExprAst, ExprKind,
-    FormAst, LetAst, LetAttrAst, LetBinderAst, NameAst, NumericNameAst, OperatorExprAst,
-    OperatorExprKind, PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, SelectorAst,
-    TypeObjectAnnotationAst,
+    ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderDeclAst, CanonicalNameRole,
+    CanonicalSkeletonAst, DeclAnnotationAst, DeduceListAst, ErrorAst, ExprAst, ExprKind, FormAst,
+    LetAst, LetAttrAst, LetBinderAst, NameAst, NumericNameAst, OperatorExprAst, OperatorExprKind,
+    PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, SelectorAst, TypeObjectAnnotationAst,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};

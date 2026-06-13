@@ -1,6 +1,8 @@
 pub mod argpack;
 pub mod atom;
+pub mod canonical;
 pub mod cursor;
+pub mod deduce;
 pub mod expr;
 pub mod form;
 pub mod let_stmt;

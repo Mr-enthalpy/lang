@@ -1,0 +1,18 @@
+Program
+  Let
+    attrs:
+    binder:
+      Extract
+        deduce:
+          DeduceList
+            binders:
+        skeleton:
+          CanonicalName role=NodeName name=x
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name y

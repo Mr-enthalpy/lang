@@ -1,0 +1,1 @@
+error InvalidCanonicalSkeleton "trailing comma in canonical argument pack" @ 1:13 [12..13]

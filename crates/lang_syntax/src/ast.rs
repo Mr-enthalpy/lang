@@ -39,6 +39,11 @@ pub enum LetBinderAst {
         annotation: DeclAnnotationAst,
         span: Span,
     },
+    Extract {
+        deduce: DeduceListAst,
+        skeleton: CanonicalSkeletonAst,
+        span: Span,
+    },
     Error(ErrorAst),
 }
 
@@ -57,6 +62,59 @@ pub enum DeclAnnotationAst {
 pub enum TypeObjectAnnotationAst {
     Expr(ExprAst),
     Hole { span: Span },
+}
+
+// --- Deduce lists ---
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeduceListAst {
+    pub binders: Vec<BinderDeclAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BinderDeclAst {
+    pub name: NameAst,
+    pub annotation: Option<TypeObjectAnnotationAst>,
+    pub span: Span,
+}
+
+// --- Canonical skeleton ---
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CanonicalNameRole {
+    Hole,
+    NodeName,
+    Unknown,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CanonicalSkeletonAst {
+    Segment {
+        elements: Vec<CanonicalSkeletonAst>,
+        span: Span,
+    },
+    ArgPack {
+        elements: Vec<CanonicalSkeletonAst>,
+        span: Span,
+    },
+    Wildcard {
+        span: Span,
+    },
+    Name {
+        name: NameAst,
+        role: CanonicalNameRole,
+        span: Span,
+    },
+    Path {
+        names: Vec<NameAst>,
+        span: Span,
+    },
+    Literal {
+        text: String,
+        span: Span,
+    },
+    Error(ErrorAst),
 }
 
 // --- Expression skeleton ---

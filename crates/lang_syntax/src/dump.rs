@@ -96,6 +96,15 @@ fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
             line(output, indent + 1, "annotation:");
             dump_decl_annotation(output, annotation, indent + 2);
         }
+        LetBinderAst::Extract {
+            deduce, skeleton, ..
+        } => {
+            line(output, indent, "Extract");
+            line(output, indent + 1, "deduce:");
+            dump_deduce_list(output, deduce, indent + 2);
+            line(output, indent + 1, "skeleton:");
+            dump_canonical_skeleton(output, skeleton, indent + 2);
+        }
         LetBinderAst::Error(error) => {
             line(
                 output,
@@ -103,6 +112,93 @@ fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
                 &format!("Error \"{}\"", escape_text(&error.message)),
             );
         }
+    }
+}
+
+fn dump_deduce_list(output: &mut String, deduce: &crate::DeduceListAst, indent: usize) {
+    line(output, indent, "DeduceList");
+    line(output, indent + 1, "binders:");
+    for binder in &deduce.binders {
+        dump_binder_decl(output, binder, indent + 2);
+    }
+}
+
+fn dump_binder_decl(output: &mut String, binder: &crate::BinderDeclAst, indent: usize) {
+    line(
+        output,
+        indent,
+        &format!("BinderDecl name={}", binder.name.text),
+    );
+    line(output, indent + 1, "annotation:");
+    match &binder.annotation {
+        Some(annotation) => dump_type_object_annotation(output, annotation, indent + 2),
+        None => line(output, indent + 2, "None"),
+    }
+}
+
+fn dump_canonical_skeleton(
+    output: &mut String,
+    skeleton: &crate::CanonicalSkeletonAst,
+    indent: usize,
+) {
+    match skeleton {
+        crate::CanonicalSkeletonAst::Segment { elements, .. } => {
+            line(output, indent, "CanonicalSegment");
+            line(output, indent + 1, "elements:");
+            for elem in elements {
+                dump_canonical_skeleton(output, elem, indent + 2);
+            }
+        }
+        crate::CanonicalSkeletonAst::ArgPack { elements, .. } => {
+            line(output, indent, "CanonicalArgPack");
+            line(output, indent + 1, "elements:");
+            for elem in elements {
+                dump_canonical_skeleton(output, elem, indent + 2);
+            }
+        }
+        crate::CanonicalSkeletonAst::Wildcard { .. } => {
+            line(output, indent, "CanonicalWildcard _");
+        }
+        crate::CanonicalSkeletonAst::Name { name, role, .. } => {
+            line(
+                output,
+                indent,
+                &format!(
+                    "CanonicalName role={} name={}",
+                    canonical_name_role_label(*role),
+                    name.text
+                ),
+            );
+        }
+        crate::CanonicalSkeletonAst::Path { names, .. } => {
+            line(output, indent, "CanonicalPath");
+            line(output, indent + 1, "names:");
+            for name in names {
+                line(output, indent + 2, &name.text);
+            }
+        }
+        crate::CanonicalSkeletonAst::Literal { text, .. } => {
+            line(
+                output,
+                indent,
+                &format!("CanonicalLiteral \"{}\"", escape_text(text)),
+            );
+        }
+        crate::CanonicalSkeletonAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn canonical_name_role_label(role: crate::CanonicalNameRole) -> &'static str {
+    match role {
+        crate::CanonicalNameRole::Hole => "Hole",
+        crate::CanonicalNameRole::NodeName => "NodeName",
+        crate::CanonicalNameRole::Unknown => "Unknown",
     }
 }
 

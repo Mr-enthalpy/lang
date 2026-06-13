@@ -238,6 +238,76 @@ fn newline_between_dot_and_field() {
 }
 
 #[test]
+fn let_extract_pair() {
+    assert_parser_case("let_extract_pair", false);
+}
+
+#[test]
+fn let_extract_wildcard() {
+    assert_parser_case("let_extract_wildcard", false);
+}
+
+#[test]
+fn let_extract_path() {
+    assert_parser_case("let_extract_path", false);
+}
+
+#[test]
+fn let_extract_literal() {
+    assert_parser_case("let_extract_literal", false);
+}
+
+#[test]
+fn let_extract_nested_argpack() {
+    assert_parser_case("let_extract_nested_argpack", false);
+}
+
+#[test]
+fn let_extract_annotated_deduce() {
+    assert_parser_case("let_extract_annotated_deduce", false);
+}
+
+#[test]
+fn let_extract_name_hole() {
+    assert_parser_case("let_extract_name_hole", false);
+}
+
+#[test]
+fn let_extract_empty_deduce() {
+    assert_parser_case("let_extract_empty_deduce", false);
+}
+
+#[test]
+fn invalid_deduce_trailing_comma() {
+    assert_parser_case("invalid_deduce_trailing_comma", true);
+}
+
+#[test]
+fn invalid_deduce_missing_name() {
+    assert_parser_case("invalid_deduce_missing_name", true);
+}
+
+#[test]
+fn invalid_deduce_unclosed() {
+    assert_parser_case("invalid_deduce_unclosed", true);
+}
+
+#[test]
+fn invalid_canonical_missing_skeleton() {
+    assert_parser_case("invalid_canonical_missing_skeleton", true);
+}
+
+#[test]
+fn invalid_canonical_unclosed_argpack() {
+    assert_parser_case("invalid_canonical_unclosed_argpack", true);
+}
+
+#[test]
+fn invalid_canonical_trailing_comma() {
+    assert_parser_case("invalid_canonical_trailing_comma", true);
+}
+
+#[test]
 fn newline_between_coloncolon_and_leaf() {
     assert_parser_case("newline_between_coloncolon_and_leaf", false);
 }
