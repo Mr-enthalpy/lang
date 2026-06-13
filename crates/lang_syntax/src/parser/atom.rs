@@ -18,9 +18,15 @@ pub fn parse_operator_expr_current_phase(parser: &mut Parser<'_>) -> Option<Oper
 }
 
 pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
+    if parser.is_form_boundary() {
+        return None;
+    }
     let mut atom = parse_atom_base(parser)?;
 
     loop {
+        if parser.is_form_boundary() {
+            break;
+        }
         if parser.cursor.at_symbol(Symbol::ColonColon) {
             parser.cursor.bump_non_trivia();
             if let Some(selector) = parse_selector(parser) {
@@ -182,6 +188,8 @@ fn parse_group(parser: &mut Parser<'_>) -> Option<AtomAst> {
         .consume_symbol(Symbol::LParen)
         .expect("parse_group called at `(`");
 
+    parser.enter_nesting();
+
     let expr = parse_pipe_expr(parser, |p| {
         p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RParen)
     });
@@ -210,6 +218,7 @@ fn parse_group(parser: &mut Parser<'_>) -> Option<AtomAst> {
     };
 
     let span = lparen.span.join(end);
+    parser.leave_nesting();
     Some(AtomAst {
         kind: AtomKind::Group(Box::new(expr)),
         span,

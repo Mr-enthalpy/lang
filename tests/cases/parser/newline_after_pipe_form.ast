@@ -1,0 +1,19 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name a
+        Segment has_incoming=true
+          OperatorExpr
+            Atom
+              Name f
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name g

@@ -139,3 +139,23 @@ fn expected_argpack_after_doubledot_numeric_next() {
 fn expected_argpack_after_doubledot_numeric_field() {
     assert_diagnostics_case("expected_argpack_after_doubledot_numeric_field");
 }
+
+#[test]
+fn empty_pipe_segment_newline() {
+    assert_diagnostics_case("empty_pipe_segment_newline");
+}
+
+#[test]
+fn top_level_comma_newline() {
+    assert_diagnostics_case("top_level_comma_newline");
+}
+
+#[test]
+fn missing_equal_before_newline() {
+    assert_diagnostics_case("missing_equal_before_newline");
+}
+
+#[test]
+fn unexpected_token_before_newline() {
+    assert_diagnostics_case("unexpected_token_before_newline");
+}

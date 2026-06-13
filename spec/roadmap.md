@@ -73,7 +73,7 @@ The current implementation is parser phase 1. It includes:
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (32 cases), and diagnostics (23
+- Golden test infra for tokens (9 cases), AST (38 cases), and diagnostics (27
   cases).
 
 It does **not** yet include:
@@ -85,7 +85,11 @@ It does **not** yet include:
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are
   not yet implemented).
-- Top-level newline form boundaries (only `;`, `}`, EOF are current).
+
+The provisional v0.1 top-level newline boundary rule is now implemented.
+The broader language-design question of whether form boundaries should remain
+line-based or become fully explicit remains open (see
+`spec/open-questions.md` §2).
 
 The next implementation phases must fill the gap between this skeleton and
 `spec/ast-construction-v0.1.md`.

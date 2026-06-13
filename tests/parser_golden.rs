@@ -196,3 +196,33 @@ fn doubledot_next_element() {
 fn invalid_doubledot_missing_argpack_field() {
     assert_parser_case("invalid_doubledot_missing_argpack_field", true);
 }
+
+#[test]
+fn newline_two_expr_forms() {
+    assert_parser_case("newline_two_expr_forms", false);
+}
+
+#[test]
+fn newline_two_let_forms() {
+    assert_parser_case("newline_two_let_forms", false);
+}
+
+#[test]
+fn newline_after_pipe_form() {
+    assert_parser_case("newline_after_pipe_form", false);
+}
+
+#[test]
+fn newline_inside_group_not_boundary() {
+    assert_parser_case("newline_inside_group_not_boundary", false);
+}
+
+#[test]
+fn newline_inside_argpack_not_boundary() {
+    assert_parser_case("newline_inside_argpack_not_boundary", false);
+}
+
+#[test]
+fn semicolon_still_boundary() {
+    assert_parser_case("semicolon_still_boundary", false);
+}

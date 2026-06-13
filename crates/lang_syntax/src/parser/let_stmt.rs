@@ -20,7 +20,7 @@ pub fn parse_let(parser: &mut Parser<'_>) -> LetAst {
     let with_deps = parse_with_clause(parser);
 
     let value = if parser.cursor.consume_symbol(Symbol::Equal).is_some() {
-        parse_expr_until(parser, |parser| parser.cursor.is_form_boundary())
+        parse_expr_until(parser, |parser| parser.is_form_boundary())
     } else {
         let span = parser.cursor.current_span();
         parser.error(DiagnosticCode::ExpectedEqual, "expected `=` in let", span);
@@ -169,7 +169,7 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Vec<NameAst> {
 }
 
 fn recover_to_equal(parser: &mut Parser<'_>) {
-    while !parser.cursor.is_form_boundary() && !parser.cursor.at_symbol(Symbol::Equal) {
+    while !parser.is_form_boundary() && !parser.cursor.at_symbol(Symbol::Equal) {
         parser.cursor.bump_non_trivia();
     }
 }

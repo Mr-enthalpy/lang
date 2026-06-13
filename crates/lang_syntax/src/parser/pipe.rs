@@ -27,14 +27,16 @@ pub fn parse_pipe_expr(
     }
 
     loop {
-        let seg = parse_segment(parser, |p| p.cursor.is_at_pipe_element() || stop(p));
+        let seg = parse_segment(parser, |p| {
+            p.is_form_boundary() || p.cursor.is_at_pipe_element() || stop(p)
+        });
         segments.push(seg);
 
         if !parser.cursor.consume_symbol(Symbol::PipeGreater).is_some() {
             break;
         }
 
-        if stop(parser) {
+        if stop(parser) || parser.is_form_boundary() {
             let span = parser.cursor.current_span();
             parser.error(
                 DiagnosticCode::EmptyPipeSegment,

@@ -216,10 +216,8 @@ impl<'tokens> Cursor<'tokens> {
         )
     }
 
-    // TODO(parser-refinement): full v0.1 form boundaries include top-level
-    // newline. Current parser phase supports only `;`, `}`, and EOF.
-    // Implement newline boundary after parser tracks nesting depth
-    // across (), [], {}.
+    // Top-level newline form boundaries are now implemented.
+    // The cursor can detect newline-containing trivia ahead without advancing.
     pub fn is_form_boundary(&mut self) -> bool {
         matches!(
             self.peek_non_trivia().kind,
@@ -237,6 +235,26 @@ impl<'tokens> Cursor<'tokens> {
         ) {
             self.bump();
         }
+    }
+
+    pub fn has_newline_trivia_ahead(&self) -> bool {
+        let mut i = self.index;
+        while i < self.tokens.len() {
+            let token = &self.tokens[i];
+            if matches!(token.kind, TokenKind::Trivia(TriviaKind::LineComment)) {
+                return true;
+            }
+            if let TokenKind::Trivia(TriviaKind::Whitespace) = &token.kind {
+                if token.text.contains('\n') {
+                    return true;
+                }
+            }
+            if !matches!(token.kind, TokenKind::Trivia(_)) {
+                return false;
+            }
+            i += 1;
+        }
+        false
     }
 
     #[allow(dead_code)]
