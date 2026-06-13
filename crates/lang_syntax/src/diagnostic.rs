@@ -10,8 +10,18 @@ pub enum DiagnosticCode {
     ExpectedColon,
     ExpectedDeclAnnotation,
     ExpectedEqual,
-    UnclosedParen,
     EmptyPipeSegment,
+    ExpectedNameAfterDot,
+    ExpectedNameAfterDoubleDot,
+    ExpectedArgPackAfterDoubleDotName,
+    UnclosedParen,
+    UnclosedBracket,
+    UnclosedBrace,
+    InvalidDeduceList,
+    InvalidCanonicalSkeleton,
+    InvalidClosureHead,
+    TopLevelComma,
+    UnusedClosureAst,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

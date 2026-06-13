@@ -11,3 +11,7 @@ path = "../../tests/lexer_golden.rs"
 [[test]]
 name = "parser_golden"
 path = "../../tests/parser_golden.rs"
+
+[[test]]
+name = "diagnostics_golden"
+path = "../../tests/diagnostics_golden.rs"
