@@ -313,6 +313,26 @@ fn invalid_deduce_missing_annotation_comma() {
 }
 
 #[test]
+fn invalid_canonical_comma_before_equal() {
+    assert_parser_case("invalid_canonical_comma_before_equal", true);
+}
+
+#[test]
+fn invalid_canonical_bracket_before_equal() {
+    assert_parser_case("invalid_canonical_bracket_before_equal", true);
+}
+
+#[test]
+fn invalid_deduce_missing_greater_before_equal() {
+    assert_parser_case("invalid_deduce_missing_greater_before_equal", true);
+}
+
+#[test]
+fn invalid_deduce_hole_before_equal() {
+    assert_parser_case("invalid_deduce_hole_before_equal", true);
+}
+
+#[test]
 fn invalid_canonical_missing_skeleton() {
     assert_parser_case("invalid_canonical_missing_skeleton", true);
 }

@@ -128,7 +128,9 @@ fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationA
     }
 
     let expr = super::expr::parse_expr_until(parser, |p| {
-        p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::Greater)
+        p.cursor.at_symbol(Symbol::Comma)
+            || p.cursor.at_symbol(Symbol::Greater)
+            || p.cursor.at_symbol(Symbol::Equal)
     });
     TypeObjectAnnotationAst::Expr(expr)
 }

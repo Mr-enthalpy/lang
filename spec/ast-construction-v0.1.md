@@ -726,7 +726,7 @@ Let.Extract
         Wildcard
         Name(x, Hole)
         Wildcard
-      Path(Triple)
+      Name(Triple, NodeName)
 ```
 
 ## 7. Expressions

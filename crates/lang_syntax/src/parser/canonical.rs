@@ -37,6 +37,7 @@ pub fn parse_canonical_skeleton(
             "expected canonical skeleton element",
             span,
         );
+        recover_to_canonical_boundary(parser);
         return CanonicalSkeletonAst::Error(error);
     }
 
@@ -193,4 +194,14 @@ fn parse_canonical_name_or_path(
 
 fn is_in_deduce(deduce: &DeduceListAst, name: &str) -> bool {
     deduce.binders.iter().any(|b| b.name.text == name)
+}
+
+fn recover_to_canonical_boundary(parser: &mut Parser<'_>) {
+    while !parser.cursor.at_eof()
+        && !parser.cursor.at_symbol(Symbol::Equal)
+        && !parser.cursor.at_name("with")
+        && !parser.is_form_boundary()
+    {
+        parser.cursor.bump_non_trivia();
+    }
 }
