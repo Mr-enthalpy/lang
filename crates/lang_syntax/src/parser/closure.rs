@@ -82,8 +82,8 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
 
     // Check for closure continuation
     if parser.cursor.consume_symbol(Symbol::FatArrow).is_some() {
+        parser.ungate_keep_diagnostics();
         if parser.cursor.at_symbol(Symbol::LBrace) {
-            parser.ungate_keep_diagnostics();
             let body = parse_body_block(parser);
             let span = head.span.join(body.span);
             return Some(AtomAst {
@@ -95,6 +95,26 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span,
             });
         }
+        // => consumed but no { follows — malformed explicit closure
+        let body_start = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::InvalidClosureHead,
+            "expected `{` after `=>`",
+            body_start,
+        );
+        let body = BodyBlockAst {
+            forms: Vec::new(),
+            span: body_start,
+        };
+        let span = head.span.join(body.span);
+        return Some(AtomAst {
+            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                head: Some(head),
+                body,
+                span,
+            })),
+            span,
+        });
     } else if parser.cursor.at_symbol(Symbol::LBrace) {
         parser.ungate_keep_diagnostics();
         let body = parse_body_block(parser);

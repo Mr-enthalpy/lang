@@ -1,1 +1,1 @@
-error UnexpectedToken "unexpected token `=>`" @ 1:7 [6..8]
+error InvalidClosureHead "trailing comma in parameter list" @ 1:5 [4..5]

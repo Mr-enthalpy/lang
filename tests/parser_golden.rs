@@ -378,6 +378,16 @@ fn closure_prefixed_inline() {
 }
 
 #[test]
+fn closure_explicit_multi_param() {
+    assert_parser_case("closure_explicit_multi_param", false);
+}
+
+#[test]
+fn closure_explicit_multi_typed_param() {
+    assert_parser_case("closure_explicit_multi_typed_param", false);
+}
+
+#[test]
 fn invalid_deduce_unclosed() {
     assert_parser_case("invalid_deduce_unclosed", true);
 }
