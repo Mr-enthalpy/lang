@@ -263,6 +263,29 @@ raw AST rules.
 Do not create AST nodes such as `ImportDecl`, `UseDecl`, `IncludeDecl`,
 `ModuleDecl`, `LibraryDecl`, `PackageDecl`, or `ExportDecl`.
 
+### Build-system track
+
+The repository contains a parallel build-system documentation and architecture
+track. This track is **not implemented** in v0.1.
+
+Do not:
+
+* add source-level import/use/include/mod/package/export syntax
+* implement package resolution in the parser
+* implement namespace resolution in v0.1 parser work
+* treat directory names as equivalent to the full namespace graph
+* treat implementation filenames as namespace segments
+* create a separate build-system repository from inside this repo
+* implement build resolver, dependency solver, linker, or cache validator
+  unless explicitly assigned
+
+Do:
+
+* keep build-system work in the build/package documentation track
+* keep parser work in the frontend syntax track
+* preserve the separation between package/build layer and language namespace
+  layer in all documentation
+
 ## Repository layout
 
 ```text
