@@ -4,11 +4,24 @@ use crate::{
 
 use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Continuation {
+    None,
+    PipeRight,
+    // Future: AtomSuffix, LetValue, ClosureBody, OperatorRight
+}
+
+impl Continuation {
+    pub fn is_active(self) -> bool {
+        !matches!(self, Continuation::None)
+    }
+}
+
 pub struct Parser<'tokens> {
     pub cursor: Cursor<'tokens>,
     diagnostics: Vec<Diagnostic>,
     nesting_depth: usize,
-    pub pipe_side_right: bool,
+    pub continuation: Continuation,
 }
 
 impl<'tokens> Parser<'tokens> {
@@ -17,7 +30,7 @@ impl<'tokens> Parser<'tokens> {
             cursor: Cursor::new(tokens),
             diagnostics,
             nesting_depth: 0,
-            pipe_side_right: false,
+            continuation: Continuation::None,
         }
     }
 
@@ -60,11 +73,15 @@ impl<'tokens> Parser<'tokens> {
         self.cursor.is_form_boundary()
     }
 
+    pub fn at_top_level_newline(&self) -> bool {
+        self.nesting_depth == 0 && self.cursor.has_newline_trivia_ahead()
+    }
+
     fn can_promote_newline_to_form_sep(&self) -> bool {
         if self.nesting_depth != 0 {
             return false;
         }
-        if self.pipe_side_right {
+        if self.continuation.is_active() {
             return false;
         }
         if !self.cursor.has_newline_trivia_ahead() {

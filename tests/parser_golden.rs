@@ -241,3 +241,8 @@ fn newline_between_dot_and_field() {
 fn newline_between_coloncolon_and_leaf() {
     assert_parser_case("newline_between_coloncolon_and_leaf", false);
 }
+
+#[test]
+fn newline_after_pipe_before_segment() {
+    assert_parser_case("newline_after_pipe_before_segment", false);
+}

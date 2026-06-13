@@ -4,8 +4,10 @@ use crate::{
 };
 
 use super::{
-    argpack::parse_argpack, atom::parse_operator_expr_current_phase, cursor::ParenClassification,
-    form::Parser,
+    argpack::parse_argpack,
+    atom::parse_operator_expr_current_phase,
+    cursor::ParenClassification,
+    form::{Continuation, Parser},
 };
 
 pub fn parse_pipe_expr(
@@ -27,11 +29,12 @@ pub fn parse_pipe_expr(
     }
 
     loop {
-        parser.pipe_side_right = false;
         let seg = parse_segment(parser, |p| {
             p.is_form_boundary() || p.cursor.is_at_pipe_element() || stop(p)
         });
         segments.push(seg);
+
+        parser.continuation = Continuation::None;
 
         if stop(parser) || parser.is_form_boundary() {
             break;
@@ -41,7 +44,7 @@ pub fn parse_pipe_expr(
             break;
         }
 
-        parser.pipe_side_right = true;
+        parser.continuation = Continuation::PipeRight;
 
         if stop(parser) || parser.is_form_boundary() {
             let span = parser.cursor.current_span();
@@ -95,6 +98,7 @@ fn parse_segment(
 
         if let Some(element) = parse_segment_element(parser) {
             elements.push(element);
+            parser.continuation = Continuation::None;
         } else if stop(parser) {
             break;
         } else {

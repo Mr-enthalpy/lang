@@ -24,6 +24,9 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
     let mut atom = parse_atom_base(parser)?;
 
     loop {
+        if parser.at_top_level_newline() {
+            break;
+        }
         if parser.is_form_boundary() {
             break;
         }
