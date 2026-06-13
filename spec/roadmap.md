@@ -75,11 +75,11 @@ The current implementation is parser phase 1. It includes:
   until corresponding syntax lands.
 - Golden test infra for tokens (9 cases), AST (58 cases), and diagnostics (27
   cases).
+- Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
+  parsing, and canonical skeleton parsing.
 
 It does **not** yet include:
 
-- Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
-  parsing, and canonical skeleton parsing.
 - Closure AST (inline `{}`, explicit `() => {}`, closure heads).
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are

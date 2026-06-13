@@ -52,6 +52,14 @@ fn parse_extract_binder(parser: &mut Parser<'_>) -> LetBinderAst {
     let start = parser.cursor.current_span();
     let deduce = parse_deduce_list(parser);
 
+    if deduce.binders.is_empty() {
+        parser.error(
+            DiagnosticCode::InvalidDeduceList,
+            "empty deduce list",
+            deduce.span,
+        );
+    }
+
     let skeleton = parse_canonical_skeleton(parser, &deduce);
     let end_span = skeleton_span(&skeleton);
     let span = start.join(end_span);

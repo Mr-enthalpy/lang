@@ -274,7 +274,17 @@ fn let_extract_name_hole() {
 
 #[test]
 fn let_extract_empty_deduce() {
-    assert_parser_case("let_extract_empty_deduce", false);
+    assert_parser_case("let_extract_empty_deduce", true);
+}
+
+#[test]
+fn let_extract_with_clause() {
+    assert_parser_case("let_extract_with_clause", false);
+}
+
+#[test]
+fn let_extract_hole_annotation() {
+    assert_parser_case("let_extract_hole_annotation", false);
 }
 
 #[test]

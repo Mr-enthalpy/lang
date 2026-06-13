@@ -14,6 +14,7 @@ pub fn parse_canonical_skeleton(
 
     while !parser.cursor.at_eof()
         && !parser.cursor.at_symbol(Symbol::Equal)
+        && !parser.cursor.at_name("with")
         && !parser.is_form_boundary()
     {
         if let Some(element) = parse_canonical_element(parser, deduce) {

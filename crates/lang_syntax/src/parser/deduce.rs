@@ -96,14 +96,16 @@ pub fn parse_deduce_list(parser: &mut Parser<'_>) -> DeduceListAst {
 }
 
 fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationAst {
-    if parser.cursor.at_name("_")
-        && (parser.cursor.at_symbol(Symbol::Comma)
-            || parser.cursor.at_symbol(Symbol::Greater)
-            || parser.cursor.at_eof())
-    {
-        let span = parser.cursor.current_span();
-        parser.cursor.bump_non_trivia();
-        return TypeObjectAnnotationAst::Hole { span };
+    if parser.cursor.at_name("_") {
+        let next = parser.cursor.peek_next_non_trivia();
+        if matches!(
+            next.kind,
+            TokenKind::Symbol(Symbol::Comma | Symbol::Greater)
+        ) || matches!(next.kind, TokenKind::Eof)
+        {
+            let hole = parser.cursor.bump_non_trivia();
+            return TypeObjectAnnotationAst::Hole { span: hole.span };
+        }
     }
 
     let expr = super::expr::parse_expr_until(parser, |p| {
