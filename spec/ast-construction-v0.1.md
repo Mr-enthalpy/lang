@@ -1523,7 +1523,8 @@ x => { }
 The closure recognition algorithm first checks:
 
 - Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
-ParamClause? FnItemTraitClause? ReturnClause? WhereClause? AcquireClause?`.
+  ParamClause? FnItemTraitClause? ReturnClause?` (plus future reserved
+  WhereClause?/AcquireClause?).
   A bare `Name("x")` does not match any of these clauses.
 - Therefore the lookahead fails. The parser backtracks and parses `x` as an
   ordinary `Atom(Name("x"))`.

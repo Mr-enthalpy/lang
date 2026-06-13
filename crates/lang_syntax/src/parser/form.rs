@@ -172,6 +172,10 @@ impl<'tokens> Parser<'tokens> {
     }
 
     pub fn gate_diagnostics(&mut self) {
+        // NOTE: gating is not stack-based.  Nested lookahead would clear
+        // gated_diagnostics, losing outer gated diagnostics.  This is
+        // acceptable for Phase 3 single-level lookahead but should be
+        // hardened in v0.2 (parser robustness).
         self.diagnostics_gated = true;
         self.gated_diagnostics.clear();
     }
