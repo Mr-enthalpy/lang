@@ -305,15 +305,25 @@ fn parse_param_clause(parser: &mut Parser<'_>) -> ParamClauseAst {
 fn parse_param_item(parser: &mut Parser<'_>) -> ParamItemAst {
     let token = parser.cursor.peek_non_trivia();
 
-    // Extract param: starts with < or _
-    if parser.cursor.at_symbol(Symbol::Less) {
-        let deduce = Some(parse_deduce_list(parser));
-        let skeleton = parse_canonical_skeleton(
-            parser,
-            deduce
-                .as_ref()
-                .unwrap_or_else(|| unreachable!("deduce list just parsed")),
-        );
+    // Extract param: starts with <, (, or _
+    if parser.cursor.at_symbol(Symbol::Less) || parser.cursor.at_symbol(Symbol::LParen) {
+        let deduce = if parser.cursor.at_symbol(Symbol::Less) {
+            Some(parse_deduce_list(parser))
+        } else {
+            None
+        };
+        let empty_deduce;
+        let deduce_ref = match &deduce {
+            Some(d) => d,
+            None => {
+                empty_deduce = crate::DeduceListAst {
+                    binders: vec![],
+                    span: parser.cursor.current_span(),
+                };
+                &empty_deduce
+            }
+        };
+        let skeleton = parse_canonical_skeleton(parser, deduce_ref);
         let annotation = parse_param_annotation(parser);
         let span = deduce
             .as_ref()
@@ -339,21 +349,46 @@ fn parse_param_item(parser: &mut Parser<'_>) -> ParamItemAst {
             span: wildcard_span,
         };
         let annotation = parse_param_annotation(parser);
-        let span = wildcard_span;
         let end = annotation
             .as_ref()
             .map(|a| type_object_span(a))
-            .unwrap_or(span);
+            .unwrap_or(wildcard_span);
         return ParamItemAst::ExtractParam {
             deduce: None,
             skeleton,
             annotation,
-            span: span.join(end),
+            span: wildcard_span.join(end),
         };
     }
 
-    // Name param
+    // Name param or extract skeleton starting with Name
     if matches!(token.kind, TokenKind::Name) {
+        let next = parser.cursor.peek_next_non_trivia();
+        if !matches!(
+            next.kind,
+            TokenKind::Symbol(Symbol::Colon | Symbol::Comma | Symbol::RParen)
+        ) && !matches!(next.kind, TokenKind::Eof)
+        {
+            // Name is the start of a canonical skeleton, not a simple name param
+            let empty_deduce = crate::DeduceListAst {
+                binders: vec![],
+                span: parser.cursor.current_span(),
+            };
+            let skeleton = parse_canonical_skeleton(parser, &empty_deduce);
+            let annotation = parse_param_annotation(parser);
+            let sk_span = skeleton_span(&skeleton);
+            let end = annotation
+                .as_ref()
+                .map(|a| type_object_span(a))
+                .unwrap_or(sk_span);
+            return ParamItemAst::ExtractParam {
+                deduce: None,
+                skeleton,
+                annotation,
+                span: sk_span.join(end),
+            };
+        }
+
         let name_token = parser.cursor.bump_non_trivia();
         let name_span = name_token.span;
         let name = NameAst {

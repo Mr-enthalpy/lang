@@ -13,29 +13,30 @@ Program
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Name val
-                    OperatorExpr
-                      Atom
-                        Name _
-                    OperatorExpr
-                      Atom
-                        Group
-                          Expr
-                            Pipe
-                              Segment has_incoming=false
-                                OperatorExpr
-                                  Atom
-                                    Name val
-                                OperatorExpr
-                                  Atom
-                                    Path
-                                      base:
-                                        Name option
-                                      names:
-                                        TextName Sum
-                    OperatorExpr
-                      Atom
                         Closure Inline
+                          FnHeadPrefix
+                            deduce:
+                              DeduceList
+                                binders:
+                                  BinderDecl name=val
+                                    annotation:
+                                      Hole _
+                            params:
+                              ParamClause
+                                params:
+                                  ExtractParam
+                                    deduce:
+                                      None
+                                    skeleton:
+                                      CanonicalSegment
+                                        elements:
+                                          CanonicalName role=NodeName name=val
+                                          CanonicalPath
+                                            names:
+                                              option
+                                              Sum
+                                    annotation:
+                                      None
                           BodyBlock
                             forms:
                               ExprForm
@@ -50,23 +51,24 @@ Program
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Group
-                          Expr
-                            Pipe
-                              Segment has_incoming=false
-                                OperatorExpr
-                                  Atom
-                                    Name _
-                                OperatorExpr
-                                  Atom
-                                    Path
-                                      base:
-                                        Name option
-                                      names:
-                                        TextName None
-                    OperatorExpr
-                      Atom
                         Closure Inline
+                          FnHeadPrefix
+                            params:
+                              ParamClause
+                                params:
+                                  ExtractParam
+                                    deduce:
+                                      None
+                                    skeleton:
+                                      CanonicalSegment
+                                        elements:
+                                          CanonicalWildcard _
+                                          CanonicalPath
+                                            names:
+                                              option
+                                              None
+                                    annotation:
+                                      None
                           BodyBlock
                             forms:
                               ExprForm
