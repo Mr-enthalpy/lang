@@ -1,0 +1,1 @@
+error UnclosedBrace "unclosed body block, expected `}`" @ 1:7 [6..7]

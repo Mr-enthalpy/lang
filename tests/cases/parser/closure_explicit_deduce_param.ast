@@ -1,0 +1,35 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
+                        ExtractParam
+                          deduce:
+                            DeduceList
+                              binders:
+                                BinderDecl name=x
+                                  annotation:
+                                    None
+                          skeleton:
+                            CanonicalSegment
+                              elements:
+                                CanonicalName role=Hole name=x
+                                CanonicalName role=NodeName name=Node
+                          annotation:
+                            None
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

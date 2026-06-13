@@ -50,10 +50,10 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 plus parser phase 2 binding-context syntax):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3 closure AST):**
 
-The current implementation includes parser phase 1 plus parser phase 2
-binding-context syntax. It includes:
+The current implementation includes parser phase 1, parser phase 2
+binding-context syntax, and parser phase 3 closure surface AST. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -74,14 +74,16 @@ binding-context syntax. It includes:
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (58 cases), and diagnostics (27
+- Golden test infra for tokens (9 cases), AST (82 cases), and diagnostics (27
   cases).
 - Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
   parsing, and canonical skeleton parsing.
+- Closure AST (inline `{}`, explicit `() => {}`, closure heads with
+  deduce/capture/parameter/fn-item-trait/return clauses).  `where` and
+  `acquire` are reserved closure-head positions, not implemented.
 
 It does **not** yet include:
 
-- Closure AST (inline `{}`, explicit `() => {}`, closure heads).
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are
   not yet implemented).

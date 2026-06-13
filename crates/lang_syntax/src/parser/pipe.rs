@@ -138,10 +138,21 @@ fn parse_segment(
 }
 
 fn parse_segment_element(parser: &mut Parser<'_>) -> Option<SegmentElementAst> {
-    let (class, _after_idx) = parser.cursor.classify_paren_at_segment_position();
+    let (class, after_idx) = parser.cursor.classify_paren_at_segment_position();
 
     match class {
         ParenClassification::ArgPack => {
+            // Check if this is a closure param clause before parsing as ArgPack
+            if let Some(idx) = after_idx {
+                let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
+                if matches!(
+                    after.kind,
+                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
+                ) {
+                    let op_expr = parse_operator_expr_current_phase(parser)?;
+                    return Some(SegmentElementAst::OperatorExpr(op_expr));
+                }
+            }
             let argpack = parse_argpack(parser);
             Some(SegmentElementAst::ArgPack(argpack))
         }

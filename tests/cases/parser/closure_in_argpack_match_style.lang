@@ -1,0 +1,4 @@
+obj (
+    <val: _>(val option::Sum) { val },
+    (_ option::None) { none }
+) match

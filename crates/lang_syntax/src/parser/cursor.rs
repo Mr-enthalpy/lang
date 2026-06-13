@@ -91,6 +91,10 @@ impl<'tokens> Cursor<'tokens> {
         self.index
     }
 
+    pub fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+
     pub fn peek_at(&self, index: usize) -> &'tokens Token {
         &self.tokens[index]
     }

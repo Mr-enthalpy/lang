@@ -293,8 +293,123 @@ fn invalid_deduce_trailing_comma() {
 }
 
 #[test]
-fn invalid_deduce_missing_name() {
-    assert_parser_case("invalid_deduce_missing_name", true);
+fn invalid_closure_missing_body() {
+    assert_parser_case("invalid_closure_missing_body", true);
+}
+
+#[test]
+fn invalid_closure_unclosed_body() {
+    assert_parser_case("invalid_closure_unclosed_body", true);
+}
+
+#[test]
+fn invalid_closure_unclosed_params() {
+    assert_parser_case("invalid_closure_unclosed_params", true);
+}
+
+#[test]
+fn invalid_closure_unclosed_capture() {
+    assert_parser_case("invalid_closure_unclosed_capture", true);
+}
+
+#[test]
+fn invalid_closure_missing_param_after_comma() {
+    assert_parser_case("invalid_closure_missing_param_after_comma", true);
+}
+
+#[test]
+fn invalid_closure_bad_head_recovery() {
+    assert_parser_case("invalid_closure_bad_head_recovery", true);
+}
+
+#[test]
+fn closure_inline_empty() {
+    assert_parser_case("closure_inline_empty", false);
+}
+
+#[test]
+fn closure_inline_body_expr() {
+    assert_parser_case("closure_inline_body_expr", false);
+}
+
+#[test]
+fn closure_explicit_empty_params() {
+    assert_parser_case("closure_explicit_empty_params", false);
+}
+
+#[test]
+fn closure_explicit_name_param() {
+    assert_parser_case("closure_explicit_name_param", false);
+}
+
+#[test]
+fn closure_explicit_typed_param() {
+    assert_parser_case("closure_explicit_typed_param", false);
+}
+
+#[test]
+fn closure_explicit_deduce_param() {
+    assert_parser_case("closure_explicit_deduce_param", false);
+}
+
+#[test]
+fn closure_explicit_trait_clause() {
+    assert_parser_case("closure_explicit_trait_clause", false);
+}
+
+#[test]
+fn closure_explicit_return_type() {
+    assert_parser_case("closure_explicit_return_type", false);
+}
+
+#[test]
+fn closure_explicit_return_extract() {
+    assert_parser_case("closure_explicit_return_extract", false);
+}
+
+#[test]
+fn closure_explicit_full_head() {
+    assert_parser_case("closure_explicit_full_head", false);
+}
+
+#[test]
+fn closure_prefixed_inline() {
+    assert_parser_case("closure_prefixed_inline", false);
+}
+
+#[test]
+fn closure_explicit_multi_param() {
+    assert_parser_case("closure_explicit_multi_param", false);
+}
+
+#[test]
+fn closure_explicit_multi_typed_param() {
+    assert_parser_case("closure_explicit_multi_typed_param", false);
+}
+
+#[test]
+fn closure_in_argpack_match_style() {
+    assert_parser_case("closure_in_argpack_match_style", false);
+}
+
+#[test]
+fn invalid_closure_where_not_parsed() {
+    assert_parser_case("invalid_closure_where_not_parsed", true);
+}
+
+#[test]
+fn invalid_closure_acquire_not_parsed() {
+    assert_parser_case("invalid_closure_acquire_not_parsed", true);
+}
+
+#[test]
+fn closure_body_multi_form() {
+    assert_parser_case("closure_body_multi_form", false);
+}
+
+#[test]
+fn closure_body_newline_single_form() {
+    assert_parser_case("closure_body_newline_single_form", false);
 }
 
 #[test]

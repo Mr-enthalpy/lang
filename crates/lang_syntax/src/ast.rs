@@ -223,6 +223,97 @@ pub enum AtomKind {
         selector: SelectorAst,
         args: ArgPackAst,
     },
+    Closure(ClosureAst),
+    Error(ErrorAst),
+}
+
+// --- Closure AST ---
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClosureAst {
+    Inline(InlineClosureAst),
+    Explicit(ExplicitClosureAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InlineClosureAst {
+    pub head: Option<FnHeadPrefixAst>,
+    pub body: BodyBlockAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExplicitClosureAst {
+    pub head: Option<FnHeadPrefixAst>,
+    pub body: BodyBlockAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BodyBlockAst {
+    pub forms: Vec<FormAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FnHeadPrefixAst {
+    pub deduce: Option<DeduceListAst>,
+    pub captures: Option<CaptureClauseAst>,
+    pub params: Option<ParamClauseAst>,
+    pub fn_item_trait: Option<ExprAst>,
+    pub returns: Option<ReturnClauseAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CaptureClauseAst {
+    pub items: Vec<CaptureItemAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CaptureItemAst {
+    pub expr: ExprAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParamClauseAst {
+    pub params: Vec<ParamItemAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ParamItemAst {
+    NameParam {
+        name: NameAst,
+        annotation: Option<TypeObjectAnnotationAst>,
+        span: Span,
+    },
+    ExtractParam {
+        deduce: Option<DeduceListAst>,
+        skeleton: CanonicalSkeletonAst,
+        annotation: Option<TypeObjectAnnotationAst>,
+        span: Span,
+    },
+    Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReturnClauseAst {
+    pub binder: ReturnBinderAst,
+    pub constraint: Option<ExprAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReturnBinderAst {
+    TypeExpr(ExprAst),
+    ExtractType {
+        deduce: DeduceListAst,
+        skeleton: CanonicalSkeletonAst,
+        span: Span,
+    },
     Error(ErrorAst),
 }
 

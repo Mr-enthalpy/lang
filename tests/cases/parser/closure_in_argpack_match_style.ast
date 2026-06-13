@@ -1,0 +1,83 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name obj
+          ArgPack role=RightTargetSubsegment
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Closure Inline
+                          FnHeadPrefix
+                            deduce:
+                              DeduceList
+                                binders:
+                                  BinderDecl name=val
+                                    annotation:
+                                      Hole _
+                            params:
+                              ParamClause
+                                params:
+                                  ExtractParam
+                                    deduce:
+                                      None
+                                    skeleton:
+                                      CanonicalSegment
+                                        elements:
+                                          CanonicalName role=Hole name=val
+                                          CanonicalPath
+                                            names:
+                                              option
+                                              Sum
+                                    annotation:
+                                      None
+                          BodyBlock
+                            forms:
+                              ExprForm
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name val
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Closure Inline
+                          FnHeadPrefix
+                            params:
+                              ParamClause
+                                params:
+                                  ExtractParam
+                                    deduce:
+                                      None
+                                    skeleton:
+                                      CanonicalSegment
+                                        elements:
+                                          CanonicalWildcard _
+                                          CanonicalPath
+                                            names:
+                                              option
+                                              None
+                                    annotation:
+                                      None
+                          BodyBlock
+                            forms:
+                              ExprForm
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name none
+          OperatorExpr
+            Atom
+              Name match

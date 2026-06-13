@@ -3,7 +3,9 @@ use crate::{
     SelectorAst, Span, Symbol, TokenKind,
 };
 
-use super::{argpack::parse_argpack, form::Parser, pipe::parse_pipe_expr};
+use super::{
+    argpack::parse_argpack, closure::try_parse_closure, form::Parser, pipe::parse_pipe_expr,
+};
 
 // Current-phase operator-expr wrapper. In the future operator parser phase,
 // this function will also parse binary/postfix/prefix operator expressions.
@@ -110,6 +112,11 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
 }
 
 fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
+    // Try closure first (handles `{` and FnHeadPrefix lookahead)
+    if let Some(closure_atom) = try_parse_closure(parser) {
+        return Some(closure_atom);
+    }
+
     let token = parser.cursor.peek_non_trivia();
 
     match &token.kind {

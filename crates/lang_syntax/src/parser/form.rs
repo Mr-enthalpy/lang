@@ -28,6 +28,8 @@ pub struct Parser<'tokens> {
     diagnostics: Vec<Diagnostic>,
     nesting_depth: usize,
     pub continuation: Continuation,
+    diagnostics_gated: bool,
+    gated_diagnostics: Vec<Diagnostic>,
 }
 
 impl<'tokens> Parser<'tokens> {
@@ -37,6 +39,8 @@ impl<'tokens> Parser<'tokens> {
             diagnostics,
             nesting_depth: 0,
             continuation: Continuation::None,
+            diagnostics_gated: false,
+            gated_diagnostics: Vec::new(),
         }
     }
 
@@ -159,7 +163,31 @@ impl<'tokens> Parser<'tokens> {
     }
 
     pub fn error(&mut self, code: DiagnosticCode, message: impl Into<String>, span: Span) {
-        self.diagnostics.push(Diagnostic::new(code, message, span));
+        let diag = Diagnostic::new(code, message, span);
+        if self.diagnostics_gated {
+            self.gated_diagnostics.push(diag);
+        } else {
+            self.diagnostics.push(diag);
+        }
+    }
+
+    pub fn gate_diagnostics(&mut self) {
+        // NOTE: gating is not stack-based.  Nested lookahead would clear
+        // gated_diagnostics, losing outer gated diagnostics.  This is
+        // acceptable for Phase 3 single-level lookahead but should be
+        // hardened in v0.2 (parser robustness).
+        self.diagnostics_gated = true;
+        self.gated_diagnostics.clear();
+    }
+
+    pub fn ungate_keep_diagnostics(&mut self) {
+        self.diagnostics_gated = false;
+        self.diagnostics.append(&mut self.gated_diagnostics);
+    }
+
+    pub fn ungate_drop_diagnostics(&mut self) {
+        self.diagnostics_gated = false;
+        self.gated_diagnostics.clear();
     }
 
     pub fn error_ast(&self, message: impl Into<String>, span: Span) -> ErrorAst {

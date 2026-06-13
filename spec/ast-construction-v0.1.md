@@ -386,8 +386,9 @@ let f: _: fn with deps = expr
 
 **In `ReturnBinder` context** (after `->` in a closure head):
 
-- `TypeObjectAnnotation` stops at a top-level `:`, `where`, `acquire`,
-  `=>`, or `{`.
+- `TypeObjectAnnotation` stops at a top-level `:`, `=>`, or `{`.
+- `where` and `acquire` are future reserved stop tokens; they are not
+  active Phase 3 parser stops.
 - If stopped by `:`, the following expression is `ReturnConstraint`, not
   `RankAnnotation`.
 
@@ -1346,6 +1347,13 @@ BodyBlockAst {
 }
 ```
 
+Inside `{ ... }`, form boundaries are `;`, `}`, and EOF.  Newline promotion
+to form separator is suppressed because nesting depth is non-zero inside the
+body block.  This means `{ x \n y }` parses as a single form containing a
+segment with two atoms `x y`, not as two separate forms.  This is the
+provisional v0.1 rule; the broader language-design question of body-block
+form separation remains open.
+
 ## 11. Closure head
 
 ### 11.1 Full order
@@ -1357,8 +1365,10 @@ FnHeadPrefix ::=
     ParamClause?
     FnItemTraitClause?
     ReturnClause?
-    WhereClause?
-    AcquireClause?
+
+// Future reserved, not implemented in Phase 3:
+//   WhereClause?
+//   AcquireClause?
 ```
 
 The order is fixed.
@@ -1478,23 +1488,19 @@ ReturnBinderAst ::=
     }
 ```
 
-### 11.7 Where clause
+### 11.7 Where clause (future reserved)
 
-```text
-WhereClause ::= "where" ConstraintExpr
-ConstraintExpr ::= PipeExpr
-```
+> **Not implemented in Phase 3.** `where` is a reserved closure-head position.
+> It remains an ordinary name outside a future where-parser state.
+> Concrete `where` syntax is deferred until the operator parser and
+> logical-operator grammar exist.
 
-`where` is a contextual word only in closure-head parsing state.
+### 11.8 Acquire clause (future reserved)
 
-### 11.8 Acquire clause
-
-```text
-AcquireClause ::= "acquire" AcquireExpr
-AcquireExpr ::= PipeExpr
-```
-
-`acquire` is a contextual word only in closure-head parsing state.
+> **Not implemented in Phase 3.** `acquire` is a reserved closure-head position.
+> It remains an ordinary name outside a future acquire-parser state.
+> Concrete `acquire` syntax is deferred until the operator parser and
+> logical-operator grammar exist.
 
 ### 11.9 Closure recognition algorithm
 
@@ -1517,7 +1523,8 @@ x => { }
 The closure recognition algorithm first checks:
 
 - Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
-ParamClause? FnItemTraitClause? ReturnClause? WhereClause? AcquireClause?`.
+  ParamClause? FnItemTraitClause? ReturnClause?` (plus future reserved
+  WhereClause?/AcquireClause?).
   A bare `Name("x")` does not match any of these clauses.
 - Therefore the lookahead fails. The parser backtracks and parses `x` as an
   ordinary `Atom(Name("x"))`.
