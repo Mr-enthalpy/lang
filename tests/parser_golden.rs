@@ -303,6 +303,16 @@ fn invalid_deduce_unclosed() {
 }
 
 #[test]
+fn invalid_deduce_missing_annotation() {
+    assert_parser_case("invalid_deduce_missing_annotation", true);
+}
+
+#[test]
+fn invalid_deduce_missing_annotation_comma() {
+    assert_parser_case("invalid_deduce_missing_annotation_comma", true);
+}
+
+#[test]
 fn invalid_canonical_missing_skeleton() {
     assert_parser_case("invalid_canonical_missing_skeleton", true);
 }

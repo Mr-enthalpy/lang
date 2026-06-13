@@ -1,0 +1,23 @@
+Program
+  Let
+    attrs:
+    binder:
+      Extract
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=x
+                annotation:
+                  Expr
+                    Expr
+                      Error "missing type-object annotation"
+        skeleton:
+          CanonicalName role=Hole name=x
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name y

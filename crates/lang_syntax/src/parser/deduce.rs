@@ -108,6 +108,24 @@ fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationA
         }
     }
 
+    if parser.cursor.at_symbol(Symbol::Comma)
+        || parser.cursor.at_symbol(Symbol::Greater)
+        || parser.cursor.at_eof()
+        || parser.is_form_boundary()
+    {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::InvalidDeduceList,
+            "expected type-object annotation after `:`",
+            span,
+        );
+        return TypeObjectAnnotationAst::Expr(super::argpack::error_expr(
+            parser,
+            "missing type-object annotation",
+            span,
+        ));
+    }
+
     let expr = super::expr::parse_expr_until(parser, |p| {
         p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::Greater)
     });
