@@ -1,0 +1,41 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple name=x
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name a
+  Let
+    attrs:
+    binder:
+      Simple name=y
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name b

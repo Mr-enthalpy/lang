@@ -110,9 +110,10 @@ The current implementation includes:
 - Atom suffix folding: `:: Selector`, `. Selector` (MemberSugar),
   `.. Selector ArgPack` (DoubleDotSugar).
 - Numeric selectors (`obj.1`, `obj..1(args)`) using NumericNameAst.
+- Top-level newline form boundaries implemented.
 - Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable;
   some phase-2 diagnostics exist in the enum before their syntax lands.
-- Golden test suites: 9 lexer, 32 parser, 23 diagnostics tests.
+- Golden test suites: 9 lexer, 38 parser, 27 diagnostics tests.
 
 It does **not** yet cover:
 
@@ -121,7 +122,6 @@ It does **not** yet cover:
 - Operator parser (operator spellings are lexed but expression-level operator
   parsing, precedence, associativity, and operator-sugar AST are not
   implemented).
-- Top-level newline form boundaries.
 
 When operator syntax is enabled, the expression segment design becomes:
 

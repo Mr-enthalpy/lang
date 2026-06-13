@@ -8,12 +8,14 @@ pub fn parse_argpack(parser: &mut Parser<'_>) -> ArgPackAst {
         .consume_symbol(Symbol::LParen)
         .expect("parse_argpack called at `(`");
 
+    parser.enter_nesting();
+
     let mut args = Vec::new();
 
     loop {
         if parser.cursor.at_eof()
             || parser.cursor.at_symbol(Symbol::RParen)
-            || parser.cursor.is_form_boundary()
+            || parser.is_form_boundary()
         {
             break;
         }
@@ -44,6 +46,7 @@ pub fn parse_argpack(parser: &mut Parser<'_>) -> ArgPackAst {
     };
 
     let span = lparen.span.join(end);
+    parser.leave_nesting();
     ArgPackAst {
         args,
         role: ArgPackRole::Unknown,
