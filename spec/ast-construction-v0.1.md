@@ -386,8 +386,9 @@ let f: _: fn with deps = expr
 
 **In `ReturnBinder` context** (after `->` in a closure head):
 
-- `TypeObjectAnnotation` stops at a top-level `:`, `where`, `acquire`,
-  `=>`, or `{`.
+- `TypeObjectAnnotation` stops at a top-level `:`, `=>`, or `{`.
+- `where` and `acquire` are future reserved stop tokens; they are not
+  active Phase 3 parser stops.
 - If stopped by `:`, the following expression is `ReturnConstraint`, not
   `RankAnnotation`.
 
@@ -1364,8 +1365,10 @@ FnHeadPrefix ::=
     ParamClause?
     FnItemTraitClause?
     ReturnClause?
-    WhereClause?
-    AcquireClause?
+
+// Future reserved, not implemented in Phase 3:
+//   WhereClause?
+//   AcquireClause?
 ```
 
 The order is fixed.
@@ -1485,23 +1488,19 @@ ReturnBinderAst ::=
     }
 ```
 
-### 11.7 Where clause
+### 11.7 Where clause (future reserved)
 
-```text
-WhereClause ::= "where" ConstraintExpr
-ConstraintExpr ::= PipeExpr
-```
+> **Not implemented in Phase 3.** `where` is a reserved closure-head position.
+> It remains an ordinary name outside a future where-parser state.
+> Concrete `where` syntax is deferred until the operator parser and
+> logical-operator grammar exist.
 
-`where` is a contextual word only in closure-head parsing state.
+### 11.8 Acquire clause (future reserved)
 
-### 11.8 Acquire clause
-
-```text
-AcquireClause ::= "acquire" AcquireExpr
-AcquireExpr ::= PipeExpr
-```
-
-`acquire` is a contextual word only in closure-head parsing state.
+> **Not implemented in Phase 3.** `acquire` is a reserved closure-head position.
+> It remains an ordinary name outside a future acquire-parser state.
+> Concrete `acquire` syntax is deferred until the operator parser and
+> logical-operator grammar exist.
 
 ### 11.9 Closure recognition algorithm
 

@@ -30,7 +30,7 @@ Program
                                     skeleton:
                                       CanonicalSegment
                                         elements:
-                                          CanonicalName role=NodeName name=val
+                                          CanonicalName role=Hole name=val
                                           CanonicalPath
                                             names:
                                               option

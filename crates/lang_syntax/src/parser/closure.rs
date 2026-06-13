@@ -153,7 +153,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
     };
 
     let params = if parser.cursor.at_symbol(Symbol::LParen) {
-        Some(parse_param_clause(parser))
+        Some(parse_param_clause(parser, deduce.as_ref()))
     } else {
         None
     };
@@ -245,7 +245,10 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
 
 // -- Param clause --
 
-fn parse_param_clause(parser: &mut Parser<'_>) -> ParamClauseAst {
+fn parse_param_clause(
+    parser: &mut Parser<'_>,
+    head_deduce: Option<&crate::DeduceListAst>,
+) -> ParamClauseAst {
     let lparen = parser
         .cursor
         .consume_symbol(Symbol::LParen)
@@ -262,7 +265,7 @@ fn parse_param_clause(parser: &mut Parser<'_>) -> ParamClauseAst {
             break;
         }
 
-        let param = parse_param_item(parser);
+        let param = parse_param_item(parser, head_deduce);
         params.push(param);
 
         if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
@@ -302,7 +305,10 @@ fn parse_param_clause(parser: &mut Parser<'_>) -> ParamClauseAst {
     }
 }
 
-fn parse_param_item(parser: &mut Parser<'_>) -> ParamItemAst {
+fn parse_param_item(
+    parser: &mut Parser<'_>,
+    head_deduce: Option<&crate::DeduceListAst>,
+) -> ParamItemAst {
     let token = parser.cursor.peek_non_trivia();
 
     // Extract param: starts with <, (, or _
@@ -315,13 +321,16 @@ fn parse_param_item(parser: &mut Parser<'_>) -> ParamItemAst {
         let empty_deduce;
         let deduce_ref = match &deduce {
             Some(d) => d,
-            None => {
-                empty_deduce = crate::DeduceListAst {
-                    binders: vec![],
-                    span: parser.cursor.current_span(),
-                };
-                &empty_deduce
-            }
+            None => match head_deduce {
+                Some(hd) => hd,
+                None => {
+                    empty_deduce = crate::DeduceListAst {
+                        binders: vec![],
+                        span: parser.cursor.current_span(),
+                    };
+                    &empty_deduce
+                }
+            },
         };
         let skeleton = parse_canonical_skeleton(parser, deduce_ref);
         let annotation = parse_param_annotation(parser);
@@ -370,11 +379,18 @@ fn parse_param_item(parser: &mut Parser<'_>) -> ParamItemAst {
         ) && !matches!(next.kind, TokenKind::Eof)
         {
             // Name is the start of a canonical skeleton, not a simple name param
-            let empty_deduce = crate::DeduceListAst {
-                binders: vec![],
-                span: parser.cursor.current_span(),
+            let empty_deduce;
+            let deduce_ref = match head_deduce {
+                Some(hd) => hd,
+                None => {
+                    empty_deduce = crate::DeduceListAst {
+                        binders: vec![],
+                        span: parser.cursor.current_span(),
+                    };
+                    &empty_deduce
+                }
             };
-            let skeleton = parse_canonical_skeleton(parser, &empty_deduce);
+            let skeleton = parse_canonical_skeleton(parser, deduce_ref);
             let annotation = parse_param_annotation(parser);
             let sk_span = skeleton_span(&skeleton);
             let end = annotation
