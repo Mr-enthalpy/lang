@@ -58,12 +58,20 @@ The current implementation is parser phase 1. It includes:
 - Cursor, form parser, expression parser, and atom parser.
 - Simple `let` forms with bare declaration annotations (`: type`, `: fn`),
   explicit rank annotations (`: _: fn`), `guard` attributes, and `with` clauses.
-- Name, integer literal, string literal, and `::`-path expression atoms.
+- Name, integer literal, string literal, and `::`-path expression atoms
+  (including numeric path leaves such as `uint8::1`).
 - Group atoms (`(expr)` without top-level commas).
 - Pipe segmentation (`|>`) and ArgPack role assignment (SourcePack,
   InsertPack, RightTargetSubsegment).
+- Atom suffix folding for `:: Selector`, `. Selector`, and `.. Selector ArgPack`
+  (MemberSugar and DoubleDotSugar).
+- Numeric selectors (`obj.1`, `obj..1(args)`, `uint8::1`) using
+  `NumericNameAst` in selector position, distinct from numeric literal atoms.
 - Expression-local error recovery and permissive atom collection.
-- 10 parser diagnostic codes, 2 lexer diagnostic codes.
+- Diagnostic taxonomy covering v0.1 parser phase 2 categories
+  (ExpectedNameAfterDot, ExpectedNameAfterDoubleDot,
+  ExpectedArgPackAfterDoubleDotName, etc.).
+- Golden test infra for tokens, AST, and diagnostics.
 
 It does **not** yet include:
 

@@ -856,9 +856,9 @@ After parsing `AtomBase`, repeatedly fold atom suffixes.
 Suffixes:
 
 ```text
-:: PathLeaf
-. Name
-.. Name ArgPack
+:: Selector
+. Selector
+.. Selector ArgPack
 PostfixOperator
 ```
 
@@ -868,6 +868,30 @@ Design rule, not yet implemented in the current parser:
 postfix unary operators participate in the same left-folding suffix loop as
 `::`, `.`, and `..`. Therefore `obj!.field` has the shape `(obj!).field`; the
 postfix operator does not terminate suffix parsing.
+
+SelectorAST for this phase:
+
+```text
+SelectorAst ::=
+    Text(Nameliteral)
+  | Numeric(NumericNameAst)
+```
+
+Future operator-parser phase: `Operator(OperatorSpelling)` for operator selectors.
+
+A numeric token (`IntLiteral`) in atom-base position produces a numeric literal
+atom (`IntLiteral`). The same token class in selector/name-leaf position
+produces a `NumericNameAst`. This distinction is mandatory.
+
+Examples of valid numeric selectors:
+
+```text
+obj.1
+obj.42
+uint8::1
+obj..1(args)
+1.x
+```
 
 ### 8.4 Path folding
 
@@ -910,7 +934,7 @@ Path(base = Segment[a, b], leaves=[c])
 Design rule, not yet implemented in the current parser:
 
 ```text
-PathLeaf ::= Name | OperatorName
+PathLeaf ::= Name | NumericName | OperatorName (future)
 ```
 
 Operator names may only be path leaves. Valid future shapes include `t::+` and
@@ -960,6 +984,8 @@ Input:
 
 ```text
 object.field
+object.42
+1.x
 ```
 
 AST:
@@ -967,38 +993,35 @@ AST:
 ```text
 MemberSugar {
     object,
-    field,
+    selector: SelectorAst,
     span
 }
 ```
 
+The selector is `Text(NameAst)` for textual names and `Numeric(NumericNameAst)` for
+numeric names such as `1` and `42`.
+
 Parser constraint:
 
-The token after `.` must be `Name`.
+The token after `.` must be a valid selector token (`Name` or `IntLiteral`).
 
 Invalid:
 
 ```text
 obj.(field)
+obj."field"
+obj.+
 ```
 
 **Negative / diagnostic example:**
 
 ```text
-obj.42
-```
-
-The token after `.` is `IntLiteral`, not `Name`. Emit `ExpectedNameAfterDot`
-with primary span on `.`. Consume the `.` and stop suffix folding; the atom
-is just `Name(obj)` without member sugar. The `42` remains as a following
-atom.
-
-```text
 obj.(field)
 ```
 
-The token after `.` is `Symbol("(")`, not `Name`. Same diagnostic and
-recovery as above.
+The token after `.` is `Symbol("(")`, not `Name` or `IntLiteral`. Emit
+`ExpectedNameAfterDot` with primary span on `.`. Consume the `.` and stop
+suffix folding; the atom is just `Name(obj)` without member sugar.
 
 ### 8.6 Double-dot sugar
 
@@ -1006,6 +1029,7 @@ Input:
 
 ```text
 object..method(args)
+object..1(args)
 ```
 
 AST:
@@ -1013,21 +1037,22 @@ AST:
 ```text
 DoubleDotSugar {
     object,
-    method,
-    args,
+    selector: SelectorAst,
+    args: ArgPackAst,
     span
 }
 ```
 
 Parser constraints:
 
-- `..` must be followed by `Name`.
-- The `Name` must be followed by `ArgPack`.
+- `..` must be followed by a valid selector token (`Name` or `IntLiteral`).
+- The selector must be followed by `ArgPack`.
 
 Invalid:
 
 ```text
-obj..method
+obj..member
+obj..42
 obj..(method)
 ```
 
@@ -1037,26 +1062,26 @@ obj..(method)
 obj..42
 ```
 
-The token after `..` is `IntLiteral`, not `Name`. Emit
-`ExpectedNameAfterDoubleDot` with primary span on `..`. Consume `..` and
-continue without double-dot sugar.
-
-```text
-obj..method
-```
-
-`..` is followed by `Name("method")` which is valid, but `method` is NOT
-followed by `ArgPack`. Emit `ExpectedArgPackAfterDoubleDotName` with
-primary span on `method`. Do not construct a `DoubleDotSugar` node.
-The atom is left as the base object (before `..`) or wrapped in
-`ErrorAtom(DoubleDotMissingArgPack { object, method })`.
+`..` is followed by `IntLiteral("42")` which is a valid numeric selector,
+but `42` is NOT followed by `ArgPack`. Emit
+`ExpectedArgPackAfterDoubleDotName` with primary span on `42`. Consume
+`..` and selector. Do not construct a `DoubleDotSugar` node.
 
 ```text
 obj..(method)
 ```
 
-`..` is followed by `Symbol("(")` which is not `Name`. Same as
-`ExpectedNameAfterDoubleDot` case.
+The token after `..` is `Symbol("(")`, not `Name` or `IntLiteral`. Emit
+`ExpectedNameAfterDoubleDot` with primary span on `..`. Consume `..` and
+continue without double-dot sugar.
+
+```text
+obj..+`
+```
+
+The token after `..` is an operator, not `Name` or `IntLiteral`. Same as
+`ExpectedNameAfterDoubleDot` case above. Future operator-parser work may
+make operator selectors valid, but this phase does not implement them.
 
 ## 9. ArgPack
 
@@ -1622,11 +1647,13 @@ document.
 | §7.2 Pipe split                      | `\|> f` at form start                       | `UnexpectedToken` at `\|>`                                                               |
 | §7.2 Pipe split                      | `x \|> \|> g` (empty middle)                | Diagnostic on empty segment                                                              |
 | §8.2 Group                           | `let x: type = (a, b)` at expr top          | `TopLevelComma` or `InvalidArgPack`                                                      |
-| §8.5 Member `.`                      | `obj.42`                                    | `ExpectedNameAfterDot`                                                                   |
+| §8.5 Member `.`                      | `obj.42`                                    | No diagnostic (valid numeric selector)                                                   |
 | §8.5 Member `.`                      | `obj.(field)`                               | `ExpectedNameAfterDot`                                                                   |
-| §8.6 Double-dot `..`                 | `obj..42`                                   | `ExpectedNameAfterDoubleDot`                                                             |
-| §8.6 Double-dot `..`                 | `obj..method` (no `ArgPack`)                | `ExpectedArgPackAfterDoubleDotName`                                                      |
+| §8.5 Member `.`                      | `obj."field"`                               | `ExpectedNameAfterDot`                                                                   |
+| §8.6 Double-dot `..`                 | `obj..42`                                   | No diagnostic expected for selector; `ExpectedArgPackAfterDoubleDotName` if no ArgPack   |
+| §8.6 Double-dot `..`                 | `obj..1` (no `ArgPack`)                     | `ExpectedArgPackAfterDoubleDotName`                                                      |
 | §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
+| §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator not yet valid selector)                           |
 | §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |
 | §12 Match non-special                | `match obj` at form start                   | No diagnostic (name, not syntax)                                                         |
 | §12 Match non-special                | `obj match (a) { }`                         | No diagnostic (name + argpack + closure)                                                 |

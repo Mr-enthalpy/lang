@@ -250,3 +250,60 @@ this phase. Ungrouped chains such as `a < b < c`, `a == b == c`, and
 **Implementation TODO:**
 Add parser diagnostics for chained non-associative operators when operator
 parsing is implemented.
+
+---
+
+## 16. Numeric selectors: positional access vs. general sugar
+
+**Status:** Open
+
+**Current v0.1 decision:**
+Numeric tokens in selector/name-leaf position produce `NumericNameAst`. The
+parser treats `obj.1`, `tuple.1`, and `pack.1` identically as
+`MemberSugar { object, selector: NumericName("1") }`. No special AST nodes
+such as `TupleIndex`, `TupleField`, or `PackIndex` are created.
+
+**Why it does not block v0.1:**
+Any future tuple/pack positional access semantics must be implemented by later
+semantic lookup, namespace forwarding, or compiler-provided functions. The
+parser must not hard-code positional access semantics.
+
+**Future stage:** v0.7 (type design) or v1.0.
+
+---
+
+## 17. Float, scientific, and unit-adjacent numeric literals
+
+**Status:** Open
+
+**Current v0.1 decision:**
+The spellings `1.2`, `1.2ms`, `1e3ms`, `1.2e3`, and `1.2e3ms` are reserved
+for future numeric literal design. The current parser must not add golden tests
+that force a particular interpretation of these forms.
+
+The natural unit syntax `1ms` and `1 ms` remain equivalent as
+`IntLiteral(1)` followed by `Name(ms)` at the non-trivia token/parser
+structure level. No `UnitLiteral` AST node exists.
+
+**Why it does not block v0.1:**
+The existing lexer does not yet produce `FloatLiteral`, `ScientificLiteral`, or
+`FloatScientificLiteral` tokens. Numeric tokens in selector position go through
+the same token class but produce `NumericNameAst` rather than numeric literal
+atoms. The boundary between `Digit+ "." Digit+` (future float) and
+`object "." Name` (member sugar) will be decided with future lexer changes.
+
+**Future stage:** v0.2 (frontend robustness) or later numeric literal design.
+
+---
+
+## 18. Numeric token AST identity depends on syntactic position
+
+**Status:** Resolved
+
+**Resolution:**
+`IntLiteral` token in atom-base position → numeric literal atom (`IntLiteral`).
+`IntLiteral` token in selector position → `NumericNameAst`.
+`IntLiteral` token in path-leaf position → `NumericNameAst`.
+`IntLiteral` token in argument expression position → numeric literal atom.
+
+The distinction is mandatory and implemented in the current phase.

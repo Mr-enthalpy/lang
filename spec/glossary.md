@@ -145,19 +145,51 @@ _See also: PipeExpr, Atom, ArgPack._
 The smallest self-contained expression unit. Atoms include:
 
 - `Name("x")`
-- `Literal`
+- `IntLiteral("42")`
+- `StringLiteral("\"text\"")`
 - `Group(PipeExpr)`
 - `Closure(ClosureAst)`
-- `Path(base, leaves)`
-- `MemberSugar(object, field)`
-- `DoubleDotSugar(object, method, args)`
+- `Path(base, leaves)` (leaves are `SelectorAst`)
+- `MemberSugar(object, selector)` (selector is `SelectorAst`)
+- `DoubleDotSugar(object, selector, args)` (selector is `SelectorAst`)
 - `Error`
 
 Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
 `..`, and postfix operators once implemented). Operator sugar itself is stored
 at the `OperatorExpr` layer, not as a general `Atom` variant.
 
-_See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator._
+_See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator, SelectorAst._
+
+---
+
+## SelectorAst
+
+A name-like construct appearing in suffix position after `::`, `.`, or `..`.
+In the current parser phase:
+
+```text
+SelectorAst ::=
+    Text(NameAst)     // from TokenKind::Name
+  | Numeric(NumericNameAst)  // from TokenKind::IntLiteral
+```
+
+Future phase: `Operator(OperatorSpelling)` for operator selectors.
+
+A numeric token (`IntLiteral`) in selector position becomes `NumericNameAst`,
+while the same token class in atom-base position becomes a numeric literal atom.
+This distinction is mandatory.
+
+_See also: NumericNameAst, NameAst, PathLeaf, MemberSugar, DoubleDotSugar._
+
+---
+
+## NumericNameAst
+
+A numeric selector (`1`, `42`, etc.) appearing after `.`, `..`, or `::`.
+Carries `text: String` and `span: Span`. Distinct from `NameAst` (textual
+names) and from numeric literal atoms (`IntLiteral`).
+
+_See also: SelectorAst, NameAst._
 
 ---
 
@@ -235,16 +267,22 @@ _See also: OperatorSugar, Fixity._
 
 ## PathLeaf
 
-The final lookup component after `::`. In the operator-aware design:
+The final lookup component after `::`. In the current parser phase:
 
 ```text
-PathLeaf ::= Name | OperatorName
+PathLeaf ::= Name | NumericName
+```
+
+In the operator-aware design:
+
+```text
+PathLeaf ::= Name | NumericName | OperatorName
 ```
 
 Operator names may appear only as leaves, not as namespace-like intermediate
 path nodes.
 
-_See also: OperatorName, Atom._
+_See also: SelectorAst, OperatorName, Atom._
 
 ---
 

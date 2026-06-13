@@ -136,3 +136,58 @@ fn invalid_top_level_comma() {
 fn unclosed_paren() {
     assert_parser_case("unclosed_paren", true);
 }
+
+#[test]
+fn member_basic() {
+    assert_parser_case("member_basic", false);
+}
+
+#[test]
+fn member_numeric() {
+    assert_parser_case("member_numeric", false);
+}
+
+#[test]
+fn member_numeric2() {
+    assert_parser_case("member_numeric2", false);
+}
+
+#[test]
+fn member_numeric_base() {
+    assert_parser_case("member_numeric_base", false);
+}
+
+#[test]
+fn member_nested() {
+    assert_parser_case("member_nested", false);
+}
+
+#[test]
+fn path_numeric_leaf() {
+    assert_parser_case("path_numeric_leaf", false);
+}
+
+#[test]
+fn doubledot_basic() {
+    assert_parser_case("doubledot_basic", false);
+}
+
+#[test]
+fn doubledot_numeric() {
+    assert_parser_case("doubledot_numeric", false);
+}
+
+#[test]
+fn mixed_suffixes() {
+    assert_parser_case("mixed_suffixes", false);
+}
+
+#[test]
+fn mixed_numeric() {
+    assert_parser_case("mixed_numeric", false);
+}
+
+#[test]
+fn doubledot_next_element() {
+    assert_parser_case("doubledot_next_element", false);
+}

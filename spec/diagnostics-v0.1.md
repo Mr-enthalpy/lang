@@ -122,7 +122,8 @@ spanning the failed region.
 
 #### `ExpectedNameAfterDot`
 
-- **Trigger**: A `.` atom suffix is followed by a token that is not `Name`.
+- **Trigger**: A `.` atom suffix is followed by a token that is not a valid
+  selector token (`Name` or `IntLiteral`).
 - **Primary span**: The `.` token.
 - **Recovery**: Consume the `.` and stop suffix folding. The atom stands
   without the `.` suffix.
@@ -130,7 +131,8 @@ spanning the failed region.
 
 #### `ExpectedNameAfterDoubleDot`
 
-- **Trigger**: A `..` atom suffix is followed by a token that is not `Name`.
+- **Trigger**: A `..` atom suffix is followed by a token that is not a valid
+  selector token (`Name` or `IntLiteral`).
 - **Primary span**: The `..` token.
 - **Recovery**: Consume the `..` and stop suffix folding. The atom stands
   without the `..` suffix.
@@ -138,13 +140,12 @@ spanning the failed region.
 
 #### `ExpectedArgPackAfterDoubleDotName`
 
-- **Trigger**: A `.. Name` suffix is not followed by an `ArgPack` (parenthesized
+- **Trigger**: A `.. Selector` suffix is not followed by an `ArgPack` (parenthesized
   list).
-- **Primary span**: The `Name` after `..`.
-- **Recovery**: Consume the `..` and `Name`, then resynchronize to the next
+- **Primary span**: The selector token after `..`.
+- **Recovery**: Consume the `..` and selector, then resynchronize to the next
   segment boundary or form end. Do not construct a partial `DoubleDotSugar`.
-- **AST effect**: The atom is either left as the base object (before `..`)
-  or wrapped in an `ErrorAtom(DoubleDotMissingArgPack { object, method })`.
+- **AST effect**: The atom is left as the base object (before `..`).
   No partial `DoubleDotSugar` node is created. The syntactic sugar is
   not complete.
 
