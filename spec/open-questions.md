@@ -30,6 +30,10 @@ stage can add nesting if the language grammar requires it.
 Form boundaries are: `;`, top-level line break (nesting depth 0), `}`, EOF.
 Line breaks inside `()`, `[]`, `{}` are not form boundaries.
 
+The provisional v0.1 top-level newline boundary rule is implemented.
+The broader language-design question of whether form boundaries should remain
+line-based or become fully explicit remains open.
+
 **Why it does not block v0.1:**
 The provisional rule works for a line-oriented subset. A future explicit
 terminator or indentation-based system can replace it without changing AST

@@ -226,3 +226,8 @@ fn newline_inside_argpack_not_boundary() {
 fn semicolon_still_boundary() {
     assert_parser_case("semicolon_still_boundary", false);
 }
+
+#[test]
+fn newline_before_pipe() {
+    assert_parser_case("newline_before_pipe", true);
+}

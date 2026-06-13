@@ -32,6 +32,10 @@ pub fn parse_pipe_expr(
         });
         segments.push(seg);
 
+        if stop(parser) || parser.is_form_boundary() {
+            break;
+        }
+
         if !parser.cursor.consume_symbol(Symbol::PipeGreater).is_some() {
             break;
         }
