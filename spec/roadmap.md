@@ -98,6 +98,11 @@ The selector AST already distinguishes `TextNameAst` and `NumericNameAst` for
 future name-polymorphic lookup (see `spec/open-questions.md` §19). No lookup,
 binding, or name resolution is implemented in v0.1.
 
+Canonical skeleton AST preservation is implemented (names, wildcards,
+literals, paths, argpacks).  All canonical skeleton golden tests are parser
+coverage; no matching semantics are assigned.  The Hole/NodeName distinction
+is a parse-time role marker, not a semantic binding commitment.
+
 ---
 
 ### v0.2 — Frontend robustness

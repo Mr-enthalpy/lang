@@ -627,6 +627,22 @@ Canonical skeletons appear only in extraction contexts.
 
 v0.1 builds their AST but does not execute matching.
 
+**All canonical skeleton tests in this phase are parser preservation tests
+only.**  No semantic commitment is implied by any of the following:
+
+- a hole name in an argpack or as a standalone element;
+- a path (`Name::Name`) as a skeleton element or inside an argpack;
+- a literal (integer, string) in skeleton position;
+- the nesting depth of argpacks;
+- the presence or absence of wildcards;
+- the relative positioning of holes, node-names, paths, and literals.
+
+Any golden test that includes these shapes documents the AST shape the parser
+produces, not a language decision about matching, destructibility, equality,
+constructor interpretation, or admissibility.  Whether a particular skeleton
+form is admissible or rejected by a future semantic match is a deferred design
+decision.
+
 ### 6.2 Syntax
 
 ```text
@@ -691,7 +707,10 @@ The parser may mark a name as `Hole` if it appears in the active deduce list.
 
 Otherwise it should mark it as `NodeName`.
 
-### 6.3 Examples
+### 6.3 Examples (parser preservation cases)
+
+The following examples document the AST shapes the parser produces. They do
+not express semantic admissibility decisions.
 
 ```text
 let <head, tail> (head, tail) List::Cons = xs

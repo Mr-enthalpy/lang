@@ -349,3 +349,25 @@ design. A future decision document (e.g.
 `docs/decisions/0005-name-polymorphic-lookup-boundary.md`) may formalize the
 exact rules. The parser must not be changed to accommodate lookup before that
 specification exists.
+
+---
+
+## 20. Canonical skeleton admissibility
+
+**Status:** Open
+
+**Current v0.1 decision:**
+The parser preserves all canonical skeleton shapes (names, wildcards, literals,
+paths, argpacks) as raw AST. The Hole/NodeName distinction is a parse-time role
+marker.  No semantic matching, destructuring, equality, constructor, or
+admissibility semantics are assigned to any skeleton shape.
+
+**Why it does not block v0.1:**
+v0.1 is a syntax frontend only.  The canonical skeleton grammar is broad enough
+to capture extraction syntax for later semantic interpretation.  Whether a
+particular shape (literal in skeleton, bare node-name, nested argpack) is
+admissible, produces a constraint, or is rejected by a future semantic match
+is a deferred design decision that does not require changing the AST.
+
+**Future stage:** v0.4 (canonical form specification) or v0.7 (type/kind/checking
+design).
