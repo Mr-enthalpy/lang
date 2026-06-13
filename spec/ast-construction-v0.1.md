@@ -869,11 +869,11 @@ postfix unary operators participate in the same left-folding suffix loop as
 `::`, `.`, and `..`. Therefore `obj!.field` has the shape `(obj!).field`; the
 postfix operator does not terminate suffix parsing.
 
-SelectorAST for this phase:
+SelectorAst for this phase:
 
 ```text
 SelectorAst ::=
-    Text(Nameliteral)
+    Text(NameAst)
   | Numeric(NumericNameAst)
 ```
 
@@ -1048,7 +1048,7 @@ Parser constraints:
 - `..` must be followed by a valid selector token (`Name` or `IntLiteral`).
 - The selector must be followed by `ArgPack`.
 
-Invalid:
+Missing ArgPack examples:
 
 ```text
 obj..member
@@ -1065,7 +1065,7 @@ obj..42
 `..` is followed by `IntLiteral("42")` which is a valid numeric selector,
 but `42` is NOT followed by `ArgPack`. Emit
 `ExpectedArgPackAfterDoubleDotName` with primary span on `42`. Consume
-`..` and selector. Do not construct a `DoubleDotSugar` node.
+`..` and selector, stop suffix folding. Do not construct a `DoubleDotSugar` node.
 
 ```text
 obj..(method)
@@ -1076,7 +1076,7 @@ The token after `..` is `Symbol("(")`, not `Name` or `IntLiteral`. Emit
 continue without double-dot sugar.
 
 ```text
-obj..+`
+obj..+
 ```
 
 The token after `..` is an operator, not `Name` or `IntLiteral`. Same as

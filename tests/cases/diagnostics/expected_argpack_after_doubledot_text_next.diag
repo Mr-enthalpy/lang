@@ -1,1 +1,1 @@
-error ExpectedArgPackAfterDoubleDotName "expected argument pack after `.. Name`" @ 1:6 [5..11]
+error ExpectedArgPackAfterDoubleDotName "expected argument pack after `.. Selector`" @ 1:6 [5..11]

@@ -70,9 +70,10 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 } else {
                     parser.error(
                         DiagnosticCode::ExpectedArgPackAfterDoubleDotName,
-                        "expected argument pack after `.. Name`",
+                        "expected argument pack after `.. Selector`",
                         selector_span(&selector),
                     );
+                    break;
                 }
             } else {
                 parser.error(

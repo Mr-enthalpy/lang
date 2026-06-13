@@ -191,3 +191,8 @@ fn mixed_numeric() {
 fn doubledot_next_element() {
     assert_parser_case("doubledot_next_element", false);
 }
+
+#[test]
+fn invalid_doubledot_missing_argpack_field() {
+    assert_parser_case("invalid_doubledot_missing_argpack_field", true);
+}
