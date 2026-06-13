@@ -68,6 +68,15 @@ Parse left to right. Do not go back to reinterpret meaning.
 
 Do **not** use Rust `Debug` format for any dump output.
 
+## 3a. Operator design awareness
+
+Before changing expression parsing, read both `spec/ast-construction-v0.1.md`
+and `spec/operator-design.md`.
+
+If the task is not explicitly the operator parser implementation, do not add
+operator precedence parsing. It is acceptable to preserve token/AST structure
+that prepares for operators.
+
 ## 4. AST construction order
 
 Expression AST must be built according to:

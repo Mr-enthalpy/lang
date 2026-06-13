@@ -1,5 +1,6 @@
 use crate::{
-    normalize_source_text, Diagnostic, DiagnosticCode, Span, Symbol, Token, TokenKind, TriviaKind,
+    normalize_source_text, Diagnostic, DiagnosticCode, OperatorSpelling, Span, Symbol, Token,
+    TokenKind, TriviaKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -61,8 +62,8 @@ impl<'src> Lexer<'src> {
             self.lex_line_comment();
         } else if self.starts_with("/*") {
             self.lex_block_comment();
-        } else if self.lex_symbol() {
-            // Symbol consumed.
+        } else if self.lex_operator_or_symbol() {
+            // Operator or symbol consumed.
         } else {
             self.lex_invalid_token();
         }
@@ -182,34 +183,210 @@ impl<'src> Lexer<'src> {
         self.push_token_with_span(TokenKind::Trivia(TriviaKind::BlockComment), span);
     }
 
-    fn lex_symbol(&mut self) -> bool {
-        let symbols = [
-            ("..", Symbol::DotDot),
-            ("::", Symbol::ColonColon),
-            ("|>", Symbol::PipeGreater),
-            ("=>", Symbol::FatArrow),
-            ("->", Symbol::ThinArrow),
-            ("(", Symbol::LParen),
-            (")", Symbol::RParen),
-            ("[", Symbol::LBracket),
-            ("]", Symbol::RBracket),
-            ("{", Symbol::LBrace),
-            ("}", Symbol::RBrace),
-            (",", Symbol::Comma),
-            (":", Symbol::Colon),
-            ("=", Symbol::Equal),
-            (".", Symbol::Dot),
-            ("<", Symbol::Less),
-            (">", Symbol::Greater),
-            (";", Symbol::Semicolon),
-        ];
+    fn lex_operator_or_symbol(&mut self) -> bool {
+        // Longest-match priority order across operators and structural symbols:
+        //   1. 3-char operators:   <<=  >>=
+        //   2. 2-char structural:  =>   ->   |>   ..   ::
+        //   3. 2-char operators:   ++   --
+        //   4. 2-char operators:   +=   -=   *=   /=
+        //   5. 2-char operators:   <=   >=   ==   !=
+        //   6. 2-char operators:   <<   >>
+        //   7. 1-char operators:   +  -  *  /  !  &  @  ~  ^  $  ?
+        //   8. 1-char structural:  <  >  =  .  :  ,  ;  (  )  [  ]  {  }
 
-        for (text, symbol) in symbols {
-            if self.starts_with(text) {
+        // Step 1: 3-char operators
+        if self.starts_with("<<=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::LessLessEqual), start);
+            return true;
+        }
+        if self.starts_with(">>=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(
+                TokenKind::Operator(OperatorSpelling::GreaterGreaterEqual),
+                start,
+            );
+            return true;
+        }
+
+        // Step 2: 2-char structural symbols
+        if self.starts_with("=>") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::FatArrow), start);
+            return true;
+        }
+        if self.starts_with("->") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::ThinArrow), start);
+            return true;
+        }
+        if self.starts_with("|>") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::PipeGreater), start);
+            return true;
+        }
+        if self.starts_with("..") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::DotDot), start);
+            return true;
+        }
+        if self.starts_with("::") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::ColonColon), start);
+            return true;
+        }
+
+        // Step 3: ++  --
+        if self.starts_with("++") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::PlusPlus), start);
+            return true;
+        }
+        if self.starts_with("--") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::MinusMinus), start);
+            return true;
+        }
+
+        // Step 4: +=  -=  *=  /=
+        if self.starts_with("+=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::PlusEqual), start);
+            return true;
+        }
+        if self.starts_with("-=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::MinusEqual), start);
+            return true;
+        }
+        if self.starts_with("*=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::StarEqual), start);
+            return true;
+        }
+        if self.starts_with("/=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::SlashEqual), start);
+            return true;
+        }
+
+        // Step 5: <=  >=  ==  !=
+        if self.starts_with("<=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::LessEqual), start);
+            return true;
+        }
+        if self.starts_with(">=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::GreaterEqual), start);
+            return true;
+        }
+        if self.starts_with("==") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::EqualEqual), start);
+            return true;
+        }
+        if self.starts_with("!=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::BangEqual), start);
+            return true;
+        }
+
+        // Step 6: <<  >>
+        if self.starts_with("<<") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::LessLess), start);
+            return true;
+        }
+        if self.starts_with(">>") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::GreaterGreater), start);
+            return true;
+        }
+
+        // Step 7: 1-char operators
+        let single_ops: &[(char, OperatorSpelling)] = &[
+            ('+', OperatorSpelling::Plus),
+            ('-', OperatorSpelling::Minus),
+            ('*', OperatorSpelling::Star),
+            ('/', OperatorSpelling::Slash),
+            ('!', OperatorSpelling::Bang),
+            ('&', OperatorSpelling::Amp),
+            ('@', OperatorSpelling::At),
+            ('~', OperatorSpelling::Tilde),
+            ('^', OperatorSpelling::Caret),
+            ('$', OperatorSpelling::Dollar),
+            ('?', OperatorSpelling::Question),
+        ];
+        for &(ch, spelling) in single_ops {
+            if self.peek_char() == Some(ch) {
                 let start = self.mark();
-                for _ in text.chars() {
-                    self.advance_char();
-                }
+                self.advance_char();
+                self.push_token(TokenKind::Operator(spelling), start);
+                return true;
+            }
+        }
+
+        // Step 8: 1-char structural symbols
+        let single_symbols: &[(char, Symbol)] = &[
+            ('(', Symbol::LParen),
+            (')', Symbol::RParen),
+            ('[', Symbol::LBracket),
+            (']', Symbol::RBracket),
+            ('{', Symbol::LBrace),
+            ('}', Symbol::RBrace),
+            (',', Symbol::Comma),
+            (':', Symbol::Colon),
+            ('=', Symbol::Equal),
+            ('.', Symbol::Dot),
+            ('<', Symbol::Less),
+            ('>', Symbol::Greater),
+            (';', Symbol::Semicolon),
+        ];
+        for &(ch, symbol) in single_symbols {
+            if self.peek_char() == Some(ch) {
+                let start = self.mark();
+                self.advance_char();
                 self.push_token(TokenKind::Symbol(symbol), start);
                 return true;
             }

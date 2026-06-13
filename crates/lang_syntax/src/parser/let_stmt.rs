@@ -38,6 +38,9 @@ pub fn parse_let(parser: &mut Parser<'_>) -> LetAst {
     }
 }
 
+// Future operator parser phase: this function must also accept operator binder
+// names, so `let +: _: operator = expr` becomes a valid let form. Currently
+// only Name tokens are accepted as binder names.
 fn parse_simple_binder(parser: &mut Parser<'_>) -> LetBinderAst {
     let name_token = parser.cursor.peek_non_trivia();
     if !matches!(name_token.kind, TokenKind::Name) {

@@ -3,10 +3,11 @@ Program
     Expr
       Pipe
         Segment has_incoming=false
-          Atom
-            Path
-              base:
-                Name a
-              names:
-                b
-                c
+          OperatorExpr
+            Atom
+              Path
+                base:
+                  Name a
+                names:
+                  b
+                  c

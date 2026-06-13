@@ -10,5 +10,6 @@ Program
       Expr
         Pipe
           Segment has_incoming=false
-            Atom
-              Name y
+            OperatorExpr
+              Atom
+                Name y

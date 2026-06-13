@@ -8,16 +8,18 @@ Program
             Expr
               Pipe
                 Segment has_incoming=false
-                  Atom
-                    Name type
+                  OperatorExpr
+                    Atom
+                      Name type
     with:
     value:
       Expr
         Pipe
           Segment has_incoming=false
-            Atom
-              Path
-                base:
-                  Name a
-                names:
-                  b
+            OperatorExpr
+              Atom
+                Path
+                  base:
+                    Name a
+                  names:
+                    b

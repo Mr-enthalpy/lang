@@ -3,11 +3,13 @@ Program
     Expr
       Pipe
         Segment has_incoming=false
-          Atom
-            Name x
+          OperatorExpr
+            Atom
+              Name x
         Segment has_incoming=true
-          Atom
+          OperatorExpr
             Error "empty pipe segment"
         Segment has_incoming=true
-          Atom
-            Name g
+          OperatorExpr
+            Atom
+              Name g
