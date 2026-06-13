@@ -53,8 +53,8 @@ fn let_simple_type() {
 }
 
 #[test]
-fn let_bare_annotation_fn() {
-    assert_parser_case("let_bare_annotation_fn", false);
+fn let_rank_annotation_fn() {
+    assert_parser_case("let_rank_annotation_fn", false);
 }
 
 #[test]
@@ -235,6 +235,116 @@ fn newline_before_pipe() {
 #[test]
 fn newline_between_dot_and_field() {
     assert_parser_case("newline_between_dot_and_field", false);
+}
+
+#[test]
+fn let_extract_pair() {
+    assert_parser_case("let_extract_pair", false);
+}
+
+#[test]
+fn let_extract_wildcard() {
+    assert_parser_case("let_extract_wildcard", false);
+}
+
+#[test]
+fn let_extract_path() {
+    assert_parser_case("let_extract_path", false);
+}
+
+#[test]
+fn let_extract_literal() {
+    assert_parser_case("let_extract_literal", false);
+}
+
+#[test]
+fn let_extract_nested_argpack() {
+    assert_parser_case("let_extract_nested_argpack", false);
+}
+
+#[test]
+fn let_extract_annotated_deduce() {
+    assert_parser_case("let_extract_annotated_deduce", false);
+}
+
+#[test]
+fn let_extract_name_hole() {
+    assert_parser_case("let_extract_name_hole", false);
+}
+
+#[test]
+fn let_extract_empty_deduce() {
+    assert_parser_case("let_extract_empty_deduce", true);
+}
+
+#[test]
+fn let_extract_with_clause() {
+    assert_parser_case("let_extract_with_clause", false);
+}
+
+#[test]
+fn let_extract_hole_annotation() {
+    assert_parser_case("let_extract_hole_annotation", false);
+}
+
+#[test]
+fn invalid_deduce_trailing_comma() {
+    assert_parser_case("invalid_deduce_trailing_comma", true);
+}
+
+#[test]
+fn invalid_deduce_missing_name() {
+    assert_parser_case("invalid_deduce_missing_name", true);
+}
+
+#[test]
+fn invalid_deduce_unclosed() {
+    assert_parser_case("invalid_deduce_unclosed", true);
+}
+
+#[test]
+fn invalid_deduce_missing_annotation() {
+    assert_parser_case("invalid_deduce_missing_annotation", true);
+}
+
+#[test]
+fn invalid_deduce_missing_annotation_comma() {
+    assert_parser_case("invalid_deduce_missing_annotation_comma", true);
+}
+
+#[test]
+fn invalid_canonical_comma_before_equal() {
+    assert_parser_case("invalid_canonical_comma_before_equal", true);
+}
+
+#[test]
+fn invalid_canonical_bracket_before_equal() {
+    assert_parser_case("invalid_canonical_bracket_before_equal", true);
+}
+
+#[test]
+fn invalid_deduce_missing_greater_before_equal() {
+    assert_parser_case("invalid_deduce_missing_greater_before_equal", true);
+}
+
+#[test]
+fn invalid_deduce_hole_before_equal() {
+    assert_parser_case("invalid_deduce_hole_before_equal", true);
+}
+
+#[test]
+fn invalid_canonical_missing_skeleton() {
+    assert_parser_case("invalid_canonical_missing_skeleton", true);
+}
+
+#[test]
+fn invalid_canonical_unclosed_argpack() {
+    assert_parser_case("invalid_canonical_unclosed_argpack", true);
+}
+
+#[test]
+fn invalid_canonical_trailing_comma() {
+    assert_parser_case("invalid_canonical_trailing_comma", true);
 }
 
 #[test]

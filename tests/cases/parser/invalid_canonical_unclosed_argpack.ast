@@ -1,0 +1,24 @@
+Program
+  Let
+    attrs:
+    binder:
+      Extract
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=x
+                annotation:
+                  None
+        skeleton:
+          CanonicalArgPack
+            elements:
+              CanonicalName role=Hole name=x
+              Error "expected canonical skeleton element"
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name z

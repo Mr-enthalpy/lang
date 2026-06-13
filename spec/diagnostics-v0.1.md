@@ -182,13 +182,19 @@ spanning the failed region.
 
 #### `InvalidDeduceList`
 
-- **Trigger**: A `<` that starts what appears to be a `DeduceList` in a strong
-  binding context, but the contents do not form a valid binder declaration list
-  (e.g., empty `<>` is valid, but `<,>` or `<a b>` without separator is not).
+- **Trigger**: A `<` in a strong binding context starts a `DeduceList`, but the
+  contents do not form a valid binder declaration list. Triggers include:
+  - empty deduce list in extract-let context (`<>`);
+  - missing binder name (e.g., `<,x>` or `<<`);
+  - trailing comma before `>` (e.g., `<x,>`);
+  - missing annotation after `:` (e.g., `<x:>`);
+  - unclosed deduce list (missing `>`, e.g., `<x y = z`).
 - **Primary span**: From `<` to the point of failure.
-- **Recovery**: Skip to the matching `>` if identifiable, or to the next
-  synchronization point. Insert `ErrorAst`.
-- **AST effect**: An `ErrorAst` replaces the expected `DeduceListAst`.
+- **Recovery**: Recover to the matching `>` if identifiable. For unclosed lists,
+  recover to `=`, form boundary, or EOF. Do not let residual tokens after the
+  malformed list leak into canonical skeleton parsing.
+- **AST effect**: The `DeduceListAst` preserves whatever binders were already
+  parsed before the failure. An `ErrorAst` may be inserted.
 
 #### `InvalidCanonicalSkeleton`
 

@@ -1,0 +1,2 @@
+error InvalidDeduceList "unclosed deduce list, expected `>`" @ 1:5 [4..5]
+error InvalidCanonicalSkeleton "expected canonical skeleton element" @ 1:10 [9..10]

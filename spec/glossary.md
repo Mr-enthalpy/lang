@@ -78,8 +78,14 @@ _See also: DeduceList, CanonicalSkeleton._
 
 A syntactic pattern used in extraction contexts (extract-let binder, extract
 parameter, extract return). The skeleton is a sequence of `CanonicalElement`
-items representing the shape of a value to be matched against. In v0.1, the
-parser builds canonical skeleton AST but does not execute matching.
+items. In v0.1, the parser builds canonical skeleton AST but does not execute
+matching.
+
+All canonical skeleton golden tests in v0.1 are parser preservation tests.
+No semantic meaning (matching, destructuring, equality, constructor
+interpretation, or admissibility) is assigned to any skeleton shape.
+The `Hole`/`NodeName` distinction is a parse-time role marker, not a
+semantic binding commitment.
 
 _See also: DeduceList, Hole, ArgPack, CanonicalNameRole._
 

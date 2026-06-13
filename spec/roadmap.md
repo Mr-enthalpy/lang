@@ -50,9 +50,10 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1):**
+**Current implementation status (parser phase 1 plus parser phase 2 binding-context syntax):**
 
-The current implementation is parser phase 1. It includes:
+The current implementation includes parser phase 1 plus parser phase 2
+binding-context syntax. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -73,15 +74,14 @@ The current implementation is parser phase 1. It includes:
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (38 cases), and diagnostics (27
+- Golden test infra for tokens (9 cases), AST (58 cases), and diagnostics (27
   cases).
+- Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
+  parsing, and canonical skeleton parsing.
 
 It does **not** yet include:
 
-- Extract-let binders (`let <head, tail> (...) = ...`).
-- Canonical skeleton parsing.
 - Closure AST (inline `{}`, explicit `() => {}`, closure heads).
-- Deduce-list (`<...>`) recognition in binding contexts.
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are
   not yet implemented).
@@ -97,6 +97,11 @@ The next implementation phases must fill the gap between this skeleton and
 The selector AST already distinguishes `TextNameAst` and `NumericNameAst` for
 future name-polymorphic lookup (see `spec/open-questions.md` §19). No lookup,
 binding, or name resolution is implemented in v0.1.
+
+Canonical skeleton AST preservation is implemented (names, wildcards,
+literals, paths, argpacks).  All canonical skeleton golden tests are parser
+coverage; no matching semantics are assigned.  The Hole/NodeName distinction
+is a parse-time role marker, not a semantic binding commitment.
 
 ---
 

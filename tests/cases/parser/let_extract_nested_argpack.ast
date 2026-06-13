@@ -1,0 +1,34 @@
+Program
+  Let
+    attrs:
+    binder:
+      Extract
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=a
+                annotation:
+                  None
+              BinderDecl name=b
+                annotation:
+                  None
+        skeleton:
+          CanonicalSegment
+            elements:
+              CanonicalArgPack
+                elements:
+                  CanonicalArgPack
+                    elements:
+                      CanonicalName role=Hole name=a
+                  CanonicalArgPack
+                    elements:
+                      CanonicalName role=Hole name=b
+              CanonicalName role=NodeName name=Pair
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name xs

@@ -3,7 +3,10 @@ use crate::{
     NameAst, Span, Symbol, TokenKind, TypeObjectAnnotationAst,
 };
 
-use super::{expr::parse_expr_until, form::Parser};
+use super::{
+    canonical::parse_canonical_skeleton, deduce::parse_deduce_list, expr::parse_expr_until,
+    form::Parser,
+};
 
 pub fn parse_let(parser: &mut Parser<'_>) -> LetAst {
     let let_token = parser
@@ -16,7 +19,7 @@ pub fn parse_let(parser: &mut Parser<'_>) -> LetAst {
         attrs.push(LetAttrAst::Guard);
     }
 
-    let binder = parse_simple_binder(parser);
+    let binder = parse_let_binder(parser);
     let with_deps = parse_with_clause(parser);
 
     let value = if parser.cursor.consume_symbol(Symbol::Equal).is_some() {
@@ -35,6 +38,48 @@ pub fn parse_let(parser: &mut Parser<'_>) -> LetAst {
         with_deps,
         value,
         span,
+    }
+}
+
+fn parse_let_binder(parser: &mut Parser<'_>) -> LetBinderAst {
+    if parser.cursor.at_symbol(Symbol::Less) {
+        return parse_extract_binder(parser);
+    }
+    parse_simple_binder(parser)
+}
+
+fn parse_extract_binder(parser: &mut Parser<'_>) -> LetBinderAst {
+    let start = parser.cursor.current_span();
+    let deduce = parse_deduce_list(parser);
+
+    if deduce.binders.is_empty() {
+        parser.error(
+            DiagnosticCode::InvalidDeduceList,
+            "empty deduce list",
+            deduce.span,
+        );
+    }
+
+    let skeleton = parse_canonical_skeleton(parser, &deduce);
+    let end_span = skeleton_span(&skeleton);
+    let span = start.join(end_span);
+
+    LetBinderAst::Extract {
+        deduce,
+        skeleton,
+        span,
+    }
+}
+
+fn skeleton_span(skeleton: &crate::CanonicalSkeletonAst) -> Span {
+    match skeleton {
+        crate::CanonicalSkeletonAst::Segment { span, .. } => *span,
+        crate::CanonicalSkeletonAst::ArgPack { span, .. } => *span,
+        crate::CanonicalSkeletonAst::Wildcard { span } => *span,
+        crate::CanonicalSkeletonAst::Name { span, .. } => *span,
+        crate::CanonicalSkeletonAst::Path { span, .. } => *span,
+        crate::CanonicalSkeletonAst::Literal { span, .. } => *span,
+        crate::CanonicalSkeletonAst::Error(error) => error.span,
     }
 }
 

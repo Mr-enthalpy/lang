@@ -447,19 +447,26 @@ SimpleLetBinder {
 and not a separate declaration form.
 
 ```text
-let f: fn = expr
+let f: _: fn = expr
 ```
 
-This is a bare annotation containing the expression `fn`. The parser produces
+This is an explicit rank-annotation form. The parser produces:
 
 ```text
 SimpleLetBinder {
     name: f,
-    annotation: Bare(Expr(Name("fn")))
+    annotation: TypeObjectWithRank {
+        type_object_annotation: TypeHole("_"),
+        rank_annotation: Expr(Name("fn"))
+    }
 }
 ```
 
-and preserves the raw written form.
+A bare annotation such as `let f: fn = expr` is preserved as raw syntax
+(`Bare(Expr(Name("fn")))`) but is **not** function declaration sugar.
+The language does not define `let f: fn = ...` as a normative function
+declaration spelling.  A function-like declaration must use the explicit
+rank-annotation form `let f: _: fn = ...`.
 
 **Alignment:**
 
@@ -468,11 +475,6 @@ let f: _: fn = ...
     |  |  |
     |  |  +-- rank annotation
     |  +----- type-object annotation
-    +-------- declared object
-
-let f: fn = ...
-    |  |
-    |  +----- bare annotation expression
     +-------- declared object
 ```
 
@@ -567,6 +569,11 @@ BinderDeclList ::= BinderDecl ("," BinderDecl)*
 BinderDecl ::= Name [ ":" TypeObjectAnnotation ]
 ```
 
+An empty deduce list (`<>`) is syntactically valid (the `BinderDeclList?` is
+optional). However, an extract-let binder requires at least one hole declaration;
+an empty deduce list in extract-let context produces an `InvalidDeduceList`
+diagnostic.
+
 AST:
 
 ```text
@@ -619,6 +626,22 @@ Once operator syntax is implemented, the same source is parsed using `<` and
 Canonical skeletons appear only in extraction contexts.
 
 v0.1 builds their AST but does not execute matching.
+
+**All canonical skeleton tests in this phase are parser preservation tests
+only.**  No semantic commitment is implied by any of the following:
+
+- a hole name in an argpack or as a standalone element;
+- a path (`Name::Name`) as a skeleton element or inside an argpack;
+- a literal (integer, string) in skeleton position;
+- the nesting depth of argpacks;
+- the presence or absence of wildcards;
+- the relative positioning of holes, node-names, paths, and literals.
+
+Any golden test that includes these shapes documents the AST shape the parser
+produces, not a language decision about matching, destructibility, equality,
+constructor interpretation, or admissibility.  Whether a particular skeleton
+form is admissible or rejected by a future semantic match is a deferred design
+decision.
 
 ### 6.2 Syntax
 
@@ -684,7 +707,10 @@ The parser may mark a name as `Hole` if it appears in the active deduce list.
 
 Otherwise it should mark it as `NodeName`.
 
-### 6.3 Examples
+### 6.3 Examples (parser preservation cases)
+
+The following examples document the AST shapes the parser produces. They do
+not express semantic admissibility decisions.
 
 ```text
 let <head, tail> (head, tail) List::Cons = xs
@@ -719,7 +745,7 @@ Let.Extract
         Wildcard
         Name(x, Hole)
         Wildcard
-      Path(Triple)
+      Name(Triple, NodeName)
 ```
 
 ## 7. Expressions
