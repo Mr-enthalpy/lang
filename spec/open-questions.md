@@ -307,3 +307,43 @@ atoms. The boundary between `Digit+ "." Digit+` (future float) and
 `IntLiteral` token in argument expression position → numeric literal atom.
 
 The distinction is mandatory and implemented in the current phase.
+
+---
+
+## 19. Name-polymorphic lookup boundary
+
+**Status:** Open (design note, not implemented)
+
+**Current v0.1 decision:**
+`MemberSugar` and `DoubleDotSugar` preserve selector syntax (`TextNameAst` /
+`NumericNameAst`) for later lookup. Selectors may participate in future
+name-polymorphic lookup.
+
+Name-polymorphic lookup is a compile-time-only extension of name binding:
+function-name positions may contain explicitly declared name holes such as
+`<f: TextNameAst>` or `<i: NumericNameAst>`.
+
+This does **not** make lookup dynamic. Concrete names shadow abstract name
+holes. If concrete candidates are found but fail to apply, the compiler reports
+that failure and does **not** fall back to abstract name-polymorphic
+candidates.
+
+Only declarations that explicitly bind the function-name position as a name AST
+hole participate in name-polymorphic lookup. Ordinary functions do not accept
+arbitrary names.
+
+Name constraints must be locally decidable at compile time, and candidate
+ordering must be stable. If multiple applicable name-polymorphic candidates
+remain unordered, lookup is ambiguous.
+
+**Why it does not block v0.1:**
+The selector AST already distinguishes `TextNameAst` and `NumericNameAst`
+as distinct selector classes. This distinction is sufficient to support future
+name-polymorphic lookup without requiring AST changes. v0.1 does not implement
+lookup, binding, or name resolution. The parser only preserves selector shape.
+
+**Future stage:** v0.7 (type/kind/checking design) or later name-resolution
+design. A future decision document (e.g.
+`docs/decisions/0005-name-polymorphic-lookup-boundary.md`) may formalize the
+exact rules. The parser must not be changed to accommodate lookup before that
+specification exists.

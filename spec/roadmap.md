@@ -89,6 +89,10 @@ It does **not** yet include:
 The next implementation phases must fill the gap between this skeleton and
 `spec/ast-construction-v0.1.md`.
 
+The selector AST already distinguishes `TextNameAst` and `NumericNameAst` for
+future name-polymorphic lookup (see `spec/open-questions.md` §19). No lookup,
+binding, or name resolution is implemented in v0.1.
+
 ---
 
 ### v0.2 — Frontend robustness
