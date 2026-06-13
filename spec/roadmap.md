@@ -241,3 +241,33 @@ frontend.
 `xtask` is optional tooling, not part of v0.1 semantics. It exists as a
 placeholder for build automation tasks. The workspace compiles without it
 if removed.
+
+## Build-system track (parallel)
+
+The build-system track is a parallel documentation and architecture track
+inside this repository. It is not part of v0.1 frontend implementation.
+
+The build system assembles a namespace graph from package manifests, directory
+structure, and source fragments. The source language has no
+import/use/include/module syntax; source code refers directly to mounted
+namespace paths.
+
+### Phase gates
+
+- **After parser phase 2**: build-system documentation and architecture track
+  may start (manifest design, namespace mount model, assembly pipeline docs).
+- **In parallel with parser phase 3**: build manifest and physical namespace
+  skeleton design may proceed.
+- **After parser phase 3**: parser-backed declaration indexing may begin.
+- **Post-v0.1**: semantic namespace resolver, visibility checking, version
+  solving, cache validation, and virtual namespace expansion may begin.
+
+### Non-goals for this track in v0.1
+
+- No build manifest parser implementation.
+- No dependency solver.
+- No namespace resolver.
+- No lockfile generator.
+- No cache validator.
+- No declaration indexer.
+- No source-level import/use/include/mod/package/export syntax.

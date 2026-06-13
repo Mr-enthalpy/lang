@@ -2,6 +2,9 @@
 
 **Status: Non-normative future design note. This is not a v0.1 parser rule.**
 
+See also `spec/build-system-design.md` for the current build-system
+architecture document.
+
 ## 1. No source-level import/include/module syntax
 
 The core source language has no source-level import, module, or include syntax.

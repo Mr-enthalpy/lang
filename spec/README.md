@@ -15,6 +15,9 @@ frontend. Each document has a defined authority level.
 | `library-namespace-design-note.md` | Non-normative future design note                      | Describes the intended library/namespace/import model. Not a v0.1 parser rule.                                                              |
 | `glossary.md`                      | Normative for terminology                             | Resolves naming ambiguity across all documents.                                                                                             |
 | `open-questions.md`                | Non-normative                                         | Tracks unresolved design questions. Not implementation authority.                                                                           |
+| `build-system-design.md`           | Non-normative, future design                          | Formal design note for the build/package/namespace assembly architecture. Not a v0.1 parser rule.                                            |
+| `package-manifest-v0.md`           | Non-normative, future design                          | Provisional build-manifest design surface. Not a v0.1 parser rule.                                                                          |
+| `namespace-assembly-v0.md`         | Non-normative, future design                          | High-level namespace assembly pipeline and phase split. Not a v0.1 parser rule.                                                             |
 
 ## Reading order
 

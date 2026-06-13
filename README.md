@@ -13,6 +13,22 @@ source text -> tokens -> AST -> diagnostics
 v0.1 is a syntax frontend only. It lexes, parses, builds AST, and produces
 diagnostics. It does not type-check, interpret, lower, or execute programs.
 
+## Two repository tracks
+
+This repository contains two coordinated tracks:
+
+1. **Frontend syntax track** (active): lexer, parser, AST, diagnostics.
+   Implements `source text -> tokens -> AST -> diagnostics` for v0.1.
+
+2. **Build/package/namespace assembly track** (documentation only for now):
+   future build system, package manifest, and namespace assembly design.
+   No implementation yet.
+
+The build-system track stays in this repository while core language design
+constraints stabilize. A future split into a separate repository is possible
+only after the manifest format, namespace graph model, declaration-index API,
+and crate public API become stable.
+
 ## Documentation map
 
 | Document                        | Purpose                                                          |
@@ -25,6 +41,9 @@ diagnostics. It does not type-check, interpret, lower, or execute programs.
 | `spec/glossary.md`              | Terminology definitions and critical distinctions                |
 | `spec/open-questions.md`        | Unresolved design questions                                      |
 | `spec/README.md`                | Spec index with authority levels                                 |
+| `spec/build-system-design.md`    | Build/package/namespace assembly architecture (future, non-normative) |
+| `spec/package-manifest-v0.md`    | Provisional build-manifest design surface (future, non-normative) |
+| `spec/namespace-assembly-v0.md`  | Namespace assembly pipeline and phase split (future, non-normative) |
 | `AGENTS.md`                     | Agent instructions — read before making code changes             |
 | `SKILL.md`                      | Operational workflow for frontend work                           |
 
@@ -253,6 +272,8 @@ Do not implement:
 - IR / HIR / MIR lowering
 - parser generators (hand-written parser only)
 - library / import / export / module / package syntax
+- build manifest parser, dependency solver, namespace resolver, lockfile
+  generator, cache validator, declaration indexer
 
 The parser should preserve syntax sufficient for these future passes, but
 must not perform them.
@@ -282,6 +303,8 @@ crates/
   lang_typeck/       (v0.7+)
   lang_nll/          (v0.8+)
   lang_codegen/      (v1.0+)
+  lang_build/        (future: build/package track)
+  lang_manifest/     (future: manifest parser)
 ```
 
 No semantic crate should be added before its corresponding design stage.
