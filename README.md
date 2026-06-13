@@ -223,12 +223,15 @@ skeleton.
 
 Current coverage:
 
-- `tokens`: backed by the current lexer implementation and lexer golden tests.
-- `ast`: backed by parser phase 1; it does not yet cover the full v0.1 AST
-  construction spec (see `spec/roadmap.md` for phase boundaries).
-- `diag`: emits lexer/parser diagnostics available in the current
-  implementation; the full v0.1 diagnostic catalog and diagnostics golden
-  suite are still incomplete.
+- `tokens`: backed by the current lexer implementation (operator-aware) and 9
+  lexer golden tests.
+- `ast`: backed by the current parser; covers simple let forms, path atoms,
+  groups, pipe segmentation, ArgPack roles, member/double-dot sugar, and
+  numeric selectors. Does not yet cover extract-let binders, deduce lists,
+  canonical skeletons, closure AST, or operator parser (see
+  `spec/roadmap.md` for phase boundaries).
+- `diag`: backed by the full v0.1 diagnostic taxonomy; 23 diagnostic golden
+  tests. Some diagnostics await parser phase 2 syntax implementation.
 
 The output format is stable and suitable for golden tests. All dump output
 uses hand-written formatting, not Rust `Debug`.

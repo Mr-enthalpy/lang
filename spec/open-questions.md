@@ -170,10 +170,8 @@ annotations) for a future CFG construction pass.
 The workspace is ready. `crates/lang_syntax`, `crates/lang_cli`, and `xtask`
 exist as valid workspace members. `cargo check --workspace` passes.
 
-Lexer golden tests (7 cases) and parser golden tests (20 cases under parser
-phase 1) exist and pass. Diagnostic golden tests in
-`tests/diagnostics_golden.rs` are not yet fully populated; that file is
-currently a stub.
+Lexer golden tests (9 cases), parser golden tests (32 cases), and diagnostic
+golden tests (23 cases) exist and pass.
 
 Remaining test coverage gaps are tracked as v0.1 implementation work, not as
 workspace-readiness uncertainty. This entry is closed.

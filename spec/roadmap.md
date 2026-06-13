@@ -55,6 +55,8 @@ A syntax frontend that:
 The current implementation is parser phase 1. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
+- Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
+  `+`, `-`, `*`, `/`, `++`, `--`, `<<=`, `>>=`, etc.).
 - Cursor, form parser, expression parser, and atom parser.
 - Simple `let` forms with bare declaration annotations (`: type`, `: fn`),
   explicit rank annotations (`: _: fn`), `guard` attributes, and `with` clauses.
@@ -68,23 +70,22 @@ The current implementation is parser phase 1. It includes:
 - Numeric selectors (`obj.1`, `obj..1(args)`, `uint8::1`) using
   `NumericNameAst` in selector position, distinct from numeric literal atoms.
 - Expression-local error recovery and permissive atom collection.
-- Diagnostic taxonomy covering v0.1 parser phase 2 categories
-  (ExpectedNameAfterDot, ExpectedNameAfterDoubleDot,
-  ExpectedArgPackAfterDoubleDotName, etc.).
-- Golden test infra for tokens, AST, and diagnostics.
+- Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
+  most diagnostics are reachable; unreachable diagnostics exist in the enum
+  until corresponding syntax lands.
+- Golden test infra for tokens (9 cases), AST (32 cases), and diagnostics (23
+  cases).
 
 It does **not** yet include:
 
 - Extract-let binders (`let <head, tail> (...) = ...`).
 - Canonical skeleton parsing.
 - Closure AST (inline `{}`, explicit `() => {}`, closure heads).
-- Member sugar (`.`), double-dot sugar (`..`).
 - Deduce-list (`<...>`) recognition in binding contexts.
-- Operator syntax (`spec/operator-design.md`), including operator binders,
-  operator path leaves, precedence, associativity, and operator-sugar AST.
+- Operator parser (operator spellings are tokenized but expression-level
+  operator parsing, precedence, associativity, and operator-sugar AST are
+  not yet implemented).
 - Top-level newline form boundaries (only `;`, `}`, EOF are current).
-- The full v0.1 diagnostic catalog (some categories reuse `UnexpectedToken`
-  with specific messages).
 
 The next implementation phases must fill the gap between this skeleton and
 `spec/ast-construction-v0.1.md`.

@@ -96,11 +96,32 @@ Diagnostics in v0.1 cover lexer and parser errors only:
 
 ## Current implementation status
 
-The current implementation is parser phase 1. It covers the lexer loop,
-stable token/AST/diagnostic dumps, simple let forms, name/literal/path atoms,
-groups, pipe segmentation, and ArgPack role assignment. It does not yet cover
-extract-let binders, canonical skeletons, closure AST, member/double-dot
-sugar, deduce lists, operator syntax, or the full diagnostic catalog.
+The current implementation includes:
+
+- Lexer with operator-aware tokenization (operator spellings recognized as
+  tokens; structural symbols distinguished from operators).
+- Stable token/AST/diagnostic dumps.
+- Simple let forms (bare annotations, explicit rank annotations, guard
+  attributes, with clauses).
+- Name, integer literal, string literal, and path expression atoms (including
+  numeric path leaves such as `uint8::1`).
+- Group atoms `(expr)`.
+- Pipe segmentation (`|>`) and ArgPack role assignment.
+- Atom suffix folding: `:: Selector`, `. Selector` (MemberSugar),
+  `.. Selector ArgPack` (DoubleDotSugar).
+- Numeric selectors (`obj.1`, `obj..1(args)`) using NumericNameAst.
+- Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable;
+  some phase-2 diagnostics exist in the enum before their syntax lands.
+- Golden test suites: 9 lexer, 32 parser, 23 diagnostics tests.
+
+It does **not** yet cover:
+
+- Extract-let binders, deduce lists, canonical skeletons.
+- Closure AST (inline `{}`, explicit `() => {}`, closure heads).
+- Operator parser (operator spellings are lexed but expression-level operator
+  parsing, precedence, associativity, and operator-sugar AST are not
+  implemented).
+- Top-level newline form boundaries.
 
 When operator syntax is enabled, the expression segment design becomes:
 
