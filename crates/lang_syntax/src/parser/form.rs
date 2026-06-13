@@ -9,6 +9,12 @@ pub enum Continuation {
     None,
     PipeRight,
     // Future: AtomSuffix, LetValue, ClosureBody, OperatorRight
+    //
+    // NOTE: Continuation is a phase-2 temporary parser-state enum.
+    // It is not the final continuation-frame design.  When closure,
+    // operator, deduce-list, and canonical-skeleton parsers land,
+    // continuation state should be stack/frame-based rather than a
+    // single flat enum on Parser.
 }
 
 impl Continuation {
@@ -139,6 +145,7 @@ impl<'tokens> Parser<'tokens> {
                     | Symbol::Equal
                     | Symbol::Colon
                     | Symbol::Less
+                    | Symbol::Greater
             ) | TokenKind::Operator(_)
         )
     }

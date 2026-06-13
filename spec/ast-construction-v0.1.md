@@ -131,16 +131,67 @@ FormAst ::=
 
 ### 3.3 Form boundary
 
-For v0.1, a form ends at:
+A form ends at any of:
 
 - `;`
-- top-level line break
 - `}`
 - EOF
 
-A line break is top-level only if the current nesting depth of `()`, `[]`, `{}` is zero.
+A line break (`\n`) is lexical trivia; it is **not** itself a form boundary.
 
-This is a provisional v0.1 rule.
+At form-level decision points, a top-level line break **may be promoted** to a
+soft form separator (FormSep) only if all of the following hold:
+
+1. Current nesting depth of `()`, `[]`, `{}` is zero.
+2. The previous significant token can end a form
+   (`Name`, `IntLiteral`, `StringLiteral`, `)`, `]`, `}`).
+3. The next significant token can start a form
+   (`Name`, `IntLiteral`, `StringLiteral`, `(`, `{`).
+4. Neither side is a continuation token.
+5. The parser is not inside a syntactic frame that requires more tokens
+   (e.g., the right side of a `|>` pipe expression).
+
+Continuation tokens include at least:
+`|>`, `=>`, `->`, `.`, `..`, `::`, `,`, `=`, `:`, `<`, `>`, and
+`Operator` tokens (the lexer's operator spellings).
+
+Examples:
+
+```text
+a
+b
+```
+→ two forms (Name can end form; Name can start form).
+
+```text
+a |>
+b
+```
+→ one `PipeExpr` (`|>` is a continuation token; newline is not promoted).
+
+```text
+a +
+b
+```
+→ future: one `OperatorExpr`, not two forms (`+` is a continuation token;
+newline is not promoted).
+
+```text
+obj.
+field
+```
+→ one `MemberSugar` (`.` is a continuation token in the suffix loop;
+newline before a suffix-start token is not promoted).
+
+```text
+obj::
+field
+```
+→ one `Path` (same reasoning as above).
+
+This is a provisional v0.1 rule. The broader language-design question of
+whether form boundaries should remain line-based or become fully explicit
+remains open (see `spec/open-questions.md` §2).
 
 **Negative / diagnostic example:**
 
