@@ -189,6 +189,21 @@ impl<'tokens> Cursor<'tokens> {
         }
     }
 
+    // Future operator parser phase: this determines whether a token can start
+    // SegmentElement. Currently only names, literals, and `(` start elements.
+    // When operator expressions are implemented, certain operator spellings
+    // (e.g. `-`, `!`, `&`, `@`, `~`, `^`, `$`, `?`) may also start elements.
+    pub fn at_angle_left_for_deduce(&mut self) -> bool {
+        matches!(self.peek_non_trivia().kind, TokenKind::Symbol(Symbol::Less))
+    }
+
+    pub fn at_angle_right_for_deduce(&mut self) -> bool {
+        matches!(
+            self.peek_non_trivia().kind,
+            TokenKind::Symbol(Symbol::Greater)
+        )
+    }
+
     pub fn is_at_segment_element_start(&self) -> bool {
         let (_, token) = self.peek_at_skip_trivia(self.index);
         Self::can_start_segment_element(token)

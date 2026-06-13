@@ -8,12 +8,14 @@ Program
             Expr
               Pipe
                 Segment has_incoming=false
-                  Atom
-                    Name fn
+                  OperatorExpr
+                    Atom
+                      Name fn
     with:
     value:
       Expr
         Pipe
           Segment has_incoming=false
-            Atom
-              Name body
+            OperatorExpr
+              Atom
+                Name body

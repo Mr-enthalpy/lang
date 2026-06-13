@@ -3,8 +3,10 @@ Program
     Expr
       Pipe
         Segment has_incoming=false
-          Atom
-            Name x
+          OperatorExpr
+            Atom
+              Name x
         Segment has_incoming=true
-          Atom
-            Name f
+          OperatorExpr
+            Atom
+              Name f

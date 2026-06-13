@@ -71,3 +71,13 @@ fn unclosed_string() {
 fn unclosed_comment() {
     assert_lexer_case("unclosed_comment", true);
 }
+
+#[test]
+fn operators() {
+    assert_lexer_case("operators", false);
+}
+
+#[test]
+fn structural_with_operators() {
+    assert_lexer_case("structural_with_operators", false);
+}

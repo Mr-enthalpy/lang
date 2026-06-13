@@ -92,6 +92,17 @@ top-level |> segmentation
   -> argpack role assignment
 ```
 
+The current parser phase is still atom/argpack based.
+
+The planned operator-aware design inserts a segment-local `OperatorExpr` layer:
+
+```text
+SegmentElement := OperatorExpr | ArgPack
+```
+
+Ordinary operators bind tighter than whitespace auto-pipe and `|>`, but they
+remain AST sugar.
+
 Operator syntax is documented as a planned segment-local expression layer. It
 is AST sugar only: no lookup, type checking, evaluation, mutation semantics, or
 lowering is performed by the parser. The ordering above describes binding

@@ -10,6 +10,7 @@ README.md              (repository overview)
 SKILL.md               (operational workflow)
 spec/frontend-v0.1.md  (pipeline overview)
 spec/ast-construction-v0.1.md  (normative parser rules)
+spec/operator-design.md (future operator syntax design; not currently implemented)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/roadmap.md        (scope boundaries)
 spec/glossary.md       (terminology)
@@ -28,6 +29,7 @@ source text -> tokens -> AST -> diagnostics
 
 Do not implement:
 
+* operator syntax unless the task explicitly asks for the operator parser PR
 * type checking
 * kind checking
 * overload resolution
@@ -116,6 +118,10 @@ form.
 
 Any other unrecognized word is still lexed as `Name`. This does not make
 that word a language construct.
+
+Operator spellings are planned syntax-level operator names. They are not
+keywords and do not imply built-in arithmetic, comparison, mutation,
+assignment, lookup, or ADL.
 
 ### Contextual structure words
 
@@ -271,6 +277,7 @@ Do not create AST nodes such as `ImportDecl`, `UseDecl`, `IncludeDecl`,
 │   ├── README.md
 │   ├── frontend-v0.1.md
 │   ├── ast-construction-v0.1.md
+│   ├── operator-design.md
 │   ├── diagnostics-v0.1.md
 │   ├── roadmap.md
 │   ├── library-namespace-design-note.md

@@ -1,7 +1,8 @@
 use crate::{
     ArgPackAst, ArgPackRole, AtomAst, AtomKind, DeclAnnotationAst, Diagnostic, DiagnosticCode,
-    ExprAst, ExprKind, FormAst, LetAst, LetAttrAst, LetBinderAst, PipeExprAst, ProgramAst,
-    SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind, TypeObjectAnnotationAst,
+    ExprAst, ExprKind, FormAst, LetAst, LetAttrAst, LetBinderAst, OperatorExprKind, PipeExprAst,
+    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
+    TypeObjectAnnotationAst,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -180,11 +181,27 @@ fn dump_segment(output: &mut String, segment: &SegmentAst, indent: usize) {
 
 fn dump_segment_element(output: &mut String, element: &SegmentElementAst, indent: usize) {
     match element {
-        SegmentElementAst::Atom(atom) => {
+        SegmentElementAst::OperatorExpr(op_expr) => {
+            line(output, indent, "OperatorExpr");
+            dump_operator_expr(output, op_expr, indent + 1);
+        }
+        SegmentElementAst::ArgPack(argpack) => dump_argpack(output, argpack, indent),
+    }
+}
+
+fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, indent: usize) {
+    match &op_expr.kind {
+        OperatorExprKind::Atom(atom) => {
             line(output, indent, "Atom");
             dump_atom(output, atom, indent + 1);
         }
-        SegmentElementAst::ArgPack(argpack) => dump_argpack(output, argpack, indent),
+        OperatorExprKind::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
     }
 }
 
@@ -248,6 +265,9 @@ fn token_kind_label(kind: &TokenKind) -> String {
         TokenKind::IntLiteral => "IntLiteral".to_string(),
         TokenKind::StringLiteral => "StringLiteral".to_string(),
         TokenKind::Symbol(symbol) => format!("Symbol.{}", symbol_label(*symbol)),
+        TokenKind::Operator(spelling) => {
+            format!("Operator.{}", spelling.label())
+        }
         TokenKind::Trivia(trivia) => format!("Trivia.{}", trivia_label(*trivia)),
         TokenKind::Invalid => "Invalid".to_string(),
         TokenKind::Eof => "Eof".to_string(),

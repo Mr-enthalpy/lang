@@ -31,6 +31,7 @@ pub enum LetAttrAst {
     Guard,
 }
 
+// Future operator parser phase: binder leaves will allow operator names.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LetBinderAst {
     Simple {
@@ -87,8 +88,24 @@ pub struct SegmentAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SegmentElementAst {
-    Atom(AtomAst),
+    OperatorExpr(OperatorExprAst),
     ArgPack(ArgPackAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OperatorExprAst {
+    pub kind: OperatorExprKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OperatorExprKind {
+    Atom(AtomAst),
+    Error(ErrorAst),
+    // Future operator parser phase:
+    // Binary { ... }
+    // Postfix { ... }
+    // Prefix { ... }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -120,6 +137,7 @@ pub enum AtomKind {
     IntLiteral(String),
     StringLiteral(String),
     Group(Box<ExprAst>),
+    // Future operator parser phase: path leaves will allow operator names.
     Path {
         base: Box<AtomAst>,
         names: Vec<NameAst>,

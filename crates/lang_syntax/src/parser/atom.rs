@@ -1,6 +1,21 @@
-use crate::{AtomAst, AtomKind, DiagnosticCode, NameAst, Symbol, TokenKind};
+use crate::{
+    AtomAst, AtomKind, DiagnosticCode, NameAst, OperatorExprAst, OperatorExprKind, Symbol,
+    TokenKind,
+};
 
 use super::{form::Parser, pipe::parse_pipe_expr};
+
+// Current-phase operator-expr wrapper. In the future operator parser phase,
+// this function will also parse binary/postfix/prefix operator expressions.
+// For now it wraps every atom in OperatorExprAst.
+pub fn parse_operator_expr_current_phase(parser: &mut Parser<'_>) -> Option<OperatorExprAst> {
+    let atom = parse_atom(parser)?;
+    let span = atom.span;
+    Some(OperatorExprAst {
+        kind: OperatorExprKind::Atom(atom),
+        span,
+    })
+}
 
 pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
     let token = parser.cursor.peek_non_trivia();

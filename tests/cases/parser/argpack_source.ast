@@ -8,9 +8,12 @@ Program
               Expr
                 Pipe
                   Segment has_incoming=false
-                    Atom
-                      Name args
-          Atom
-            Name f
-          Atom
-            Name g
+                    OperatorExpr
+                      Atom
+                        Name args
+          OperatorExpr
+            Atom
+              Name f
+          OperatorExpr
+            Atom
+              Name g

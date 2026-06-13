@@ -1,9 +1,12 @@
 use crate::{
-    AtomAst, AtomKind, DiagnosticCode, ExprAst, ExprKind, PipeExprAst, SegmentAst,
+    DiagnosticCode, ExprAst, ExprKind, OperatorExprAst, OperatorExprKind, PipeExprAst, SegmentAst,
     SegmentElementAst, Span, Symbol, TokenKind,
 };
 
-use super::{argpack::parse_argpack, atom::parse_atom, cursor::ParenClassification, form::Parser};
+use super::{
+    argpack::parse_argpack, atom::parse_operator_expr_current_phase, cursor::ParenClassification,
+    form::Parser,
+};
 
 pub fn parse_pipe_expr(
     parser: &mut Parser<'_>,
@@ -120,14 +123,16 @@ fn parse_segment_element(parser: &mut Parser<'_>) -> Option<SegmentElementAst> {
             Some(SegmentElementAst::ArgPack(argpack))
         }
         ParenClassification::Group => {
-            let atom = parse_atom(parser)?;
-            Some(SegmentElementAst::Atom(atom))
+            let op_expr = parse_operator_expr_current_phase(parser)?;
+            Some(SegmentElementAst::OperatorExpr(op_expr))
         }
         ParenClassification::Unclosed => {
             let argpack = parse_argpack(parser);
             Some(SegmentElementAst::ArgPack(argpack))
         }
-        ParenClassification::NotParen => parse_atom(parser).map(SegmentElementAst::Atom),
+        ParenClassification::NotParen => {
+            parse_operator_expr_current_phase(parser).map(SegmentElementAst::OperatorExpr)
+        }
     }
 }
 
@@ -154,8 +159,8 @@ fn assign_segment_roles(segments: &mut [SegmentAst]) {
 
 fn empty_error_segment(parser: &Parser<'_>, message: &str, span: Span) -> SegmentAst {
     SegmentAst {
-        elements: vec![SegmentElementAst::Atom(AtomAst {
-            kind: AtomKind::Error(parser.error_ast(message, span)),
+        elements: vec![SegmentElementAst::OperatorExpr(OperatorExprAst {
+            kind: OperatorExprKind::Error(parser.error_ast(message, span)),
             span,
         })],
         has_incoming: false,
@@ -165,7 +170,7 @@ fn empty_error_segment(parser: &Parser<'_>, message: &str, span: Span) -> Segmen
 
 fn element_span(element: &SegmentElementAst) -> Span {
     match element {
-        SegmentElementAst::Atom(atom) => atom.span,
+        SegmentElementAst::OperatorExpr(op_expr) => op_expr.span,
         SegmentElementAst::ArgPack(argpack) => argpack.span,
     }
 }
