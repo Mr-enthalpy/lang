@@ -838,11 +838,35 @@ OperatorExprAst ::=
         args: Vec<OperatorExprAst>,
         span: Span
     }
+  | Path {
+        base: OperatorExprAst,
+        leaves: Vec<SelectorAst>,
+        span: Span
+    }
+  | MemberSugar {
+        object: OperatorExprAst,
+        selector: SelectorAst,
+        span: Span
+    }
+  | DoubleDotSugar {
+        object: OperatorExprAst,
+        selector: SelectorAst,
+        args: ArgPackAst,
+        span: Span
+    }
 ```
 
 Binary and prefix operator sugar belong to `OperatorExprAst`, not to
 `AtomAst`. Postfix operator suffixes compose with atom suffix parsing, but the
 resulting sugar is still represented at the operator-expression layer.
+Therefore, after a postfix operator, continuing suffixes such as `::`, `.`, and
+`..` are preserved by operator-level `Path`, `MemberSugar`, and
+`DoubleDotSugar` nodes.
+
+These operator-level suffix nodes are raw AST preservation only. They do not
+perform lookup, lower to calls, assign member semantics, or implement operator
+path leaves. In particular, `t::+` and `std::int::+` remain future
+operator-path-leaf syntax and are not accepted by this phase.
 
 ```text
 a + b |> f
@@ -1019,10 +1043,21 @@ OperatorExprAst ::=
         args: Vec<OperatorExprAst>,
         span: Span
     }
+  | Path { base: OperatorExprAst, leaves: Vec<SelectorAst>, span: Span }
+  | MemberSugar { object: OperatorExprAst, selector: SelectorAst, span: Span }
+  | DoubleDotSugar {
+        object: OperatorExprAst,
+        selector: SelectorAst,
+        args: ArgPackAst,
+        span: Span
+    }
 ```
 
 Operator syntax is preserved as AST sugar at the `OperatorExprAst` layer. The
-parser must not lower it into ordinary calls in v0.1.
+parser must not lower it into ordinary calls in v0.1. The operator-level
+`Path`, `MemberSugar`, and `DoubleDotSugar` variants exist only so postfix
+operator results can continue through suffix folding, for example
+`obj!.field`, `obj.field?`, and `obj..map(a)!`.
 
 Examples:
 
