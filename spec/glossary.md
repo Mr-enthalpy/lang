@@ -294,6 +294,77 @@ _See also: SelectorAst, OperatorName, Atom._
 
 ---
 
+## EntityRef
+
+A future syntax-level compile-time entity reference. `EntityRef` is not a
+runtime expression, not a `PipeExpr`, not an `ArgPack`, not a closure, and not
+resolved by the parser.
+
+Provisional grammar:
+
+```text
+EntityRef ::= EntityPath
+```
+
+`EntityRef` may appear only in future explicit strong contexts, such as the
+right-hand side of `let binder === EntityRef`. Current v0.1 parser behavior is
+unchanged.
+
+_See also: EntityPath, EntityPathSegment, EntityPathLeaf._
+
+---
+
+## Compile-time entity reference
+
+The conceptual role of `EntityRef`: a source-level reference to a compile-time
+entity that may later be resolved by semantic/name-resolution phases. It does
+not denote a runtime value and is not checked for existence by the parser.
+
+_See also: EntityRef, EntityPath._
+
+---
+
+## EntityPath
+
+The path syntax inside a future `EntityRef`:
+
+```text
+EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
+             | EntityPathLeaf
+```
+
+Intermediate segments are text names. The final leaf may be a text name or an
+operator name.
+
+_See also: EntityPathSegment, EntityPathLeaf, EntityRef._
+
+---
+
+## EntityPathSegment
+
+An intermediate text-name segment in a future `EntityPath`. It must be a
+`Name`; operator names are not namespace-like intermediate path segments.
+
+_See also: EntityPath, EntityPathLeaf._
+
+---
+
+## EntityPathLeaf
+
+The final referred entity in a future `EntityPath`:
+
+```text
+EntityPathLeaf ::= Name | OperatorName
+```
+
+An operator name is allowed only in this final position. The parser does not
+perform operator lookup, name lookup, namespace resolution, or existence
+checking.
+
+_See also: EntityPath, OperatorName, EntityRef._
+
+---
+
 ## Non-associative operator
 
 An operator class that cannot be chained without explicit grouping in the

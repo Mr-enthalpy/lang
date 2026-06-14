@@ -6,6 +6,10 @@ compile-time entities.
 It is not implemented in the current parser. It is not part of v0.1 accepted
 syntax.
 
+The right-hand side `EntityRef` syntax is defined separately in
+`spec/entity-ref-design.md`. This document only describes how future alias
+binding will use that syntax.
+
 ## Purpose
 
 The language will eventually support a declaration form:
@@ -43,11 +47,17 @@ AliasBinding ::= "let" AliasBinder "===" EntityRef
 AliasBinder ::= Name | OperatorName
 
 EntityRef ::= EntityPath
-EntityPath ::= EntityPathSegment ("::" EntityPathLeaf)*
+EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
+             | EntityPathLeaf
+
+EntityPathSegment ::= Name
+EntityPathLeaf ::= Name | OperatorName
 ```
 
 For this provisional design, intermediate `EntityPathSegment` entries are text
 names. Operators are valid only in binder position or final path-leaf position.
+See `spec/entity-ref-design.md` for the complete `EntityRef` parser/semantic
+boundary.
 
 `===` is a structural delimiter for alias binding. It is not an equality
 operator and not a general expression operator unless a later design explicitly
@@ -140,9 +150,10 @@ This validation is future semantic or syntax-only validation work. It is not
 implemented by the current parser.
 
 Parser phase 4.1 supplies the operator-name syntax needed in binder and final
-path-leaf positions. Alias binding itself is still not parsed: `===`,
-`EntityRef`, `LetAliasAst`, alias validation, and entity lookup remain future
-work.
+path-leaf positions. Parser phase 4.2 documents the `EntityRef` syntax needed
+on the right-hand side. Alias binding itself is still not parsed: `===`,
+`EntityRef` parser preservation, `LetAliasAst`, alias validation, and entity
+lookup remain future work.
 
 ## Lexer Note
 
@@ -180,6 +191,7 @@ EntityPathSegmentAst =
 EntityPathLeafAst =
     Name(NameAst)
   | Operator(OperatorNameAst)
+  | Error(ErrorAst)
 ```
 
 These nodes are not implemented in this documentation-only task.

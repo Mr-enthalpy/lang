@@ -36,6 +36,8 @@ executed, type-checked, or lowered.
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
 | `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                          |
+| `entity-ref-design.md`     | Future compile-time entity reference syntax and parser/semantic boundary. Not a v0.1 parser rule.                                                                       |
+| `entity-alias-design.md`   | Future lexical alias binding syntax using `let binder === EntityRef`. Not a v0.1 parser rule.                                                                           |
 | `diagnostics-v0.1.md`      | Diagnostic categories, trigger conditions, span policy, recovery behavior.                                                                                              |
 | `glossary.md`              | Terminology definitions and distinctions.                                                                                                                               |
 | `roadmap.md`               | Stage model from v0.1 to v1.0, scope boundaries.                                                                                                                        |
@@ -46,6 +48,9 @@ executed, type-checked, or lowered.
 `ast-construction-v0.1.md` is the normative authority for parser behavior.
 If a conflict arises between documents, `ast-construction-v0.1.md` takes
 precedence.
+
+`entity-ref-design.md` and `entity-alias-design.md` document future strong
+syntax contexts only. They do not change current parser acceptance.
 
 ## Boundaries
 

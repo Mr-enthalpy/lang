@@ -50,13 +50,14 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design):**
 
 The current implementation includes parser phase 1, parser phase 2
 binding-context syntax, parser phase 3 closure surface AST, and parser phase
 3.1 closure/parser stabilization, parser phase 4 operator syntax as raw AST
 sugar, and parser phase 4.1 operator names in binder/path-leaf positions. It
-includes:
+also includes parser phase 4.2 compile-time entity reference syntax design as
+documentation only. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -97,6 +98,9 @@ includes:
   malformed or chained non-associative operator expressions.
 - Parser phase 4.1 operator binder names and final operator path leaves as raw
   AST preservation.
+- Parser phase 4.2 compile-time `EntityRef` syntax design documentation in
+  `spec/entity-ref-design.md`. This defines the future strong-context syntax
+  and parser/semantic boundary, but does not implement an `EntityRef` parser.
 
 It does **not** yet include:
 
@@ -104,6 +108,9 @@ It does **not** yet include:
   dispatch, ADL, or type-directed lookup.
 - Lexical alias binding / entity alias binding (`let binder === EntityRef`).
 - Compile-time `EntityRef` parser.
+- Lexer support for `===` as a single structural delimiter token.
+- Alias validation, compile-time entity lookup, operator lookup, namespace
+  resolution, and dependency resolution.
 - `where`/`acquire` clause parsing.
 - Closure object materialization, capture analysis, type checking, kind
   checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
@@ -126,14 +133,14 @@ literals, paths, argpacks).  All canonical skeleton golden tests are parser
 coverage; no matching semantics are assigned.  The Hole/NodeName distinction
 is a parse-time role marker, not a semantic binding commitment.
 
-#### Future parser/documentation phase track
+#### Parser/documentation phase track
 
-The next syntax-facing work after Phase 4.1 is ordered as:
+The syntax-facing work after Phase 4.1 is ordered as:
 
 ```text
 Phase 4: operator syntax as raw AST sugar (implemented)
 Phase 4.1: operator binder names and operator path leaves (implemented)
-Phase 4.2: compile-time entity reference syntax design
+Phase 4.2: compile-time entity reference syntax design (documentation)
 Phase 4.3: lexical alias binding design (`let binder === EntityRef`)
 Phase 4.4: optional raw AST parser preservation for alias binding
 ```
@@ -152,7 +159,9 @@ semantics, operator alias validation, or runtime value binding semantics. They
 only document and, if explicitly assigned later, preserve surface syntax and raw
 AST boundaries. Parser phase 4.1 does not reserve `===` as one lexer token; the
 alias parser phase must update lexer maximal-munch behavior before accepting
-`let binder === EntityRef`. See `spec/entity-alias-design.md`.
+`let binder === EntityRef`. Phase 4.2 only documents `EntityRef`; it does not
+parse `EntityRef` or alias bindings. See `spec/entity-ref-design.md` and
+`spec/entity-alias-design.md`.
 
 ---
 

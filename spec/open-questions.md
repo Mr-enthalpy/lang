@@ -390,9 +390,11 @@ design).
 **Status:** Open (future design note, not implemented)
 
 **Current v0.1 decision:**
-`let binder === EntityRef` is reserved as future lexical alias binding syntax.
-It is documented in `spec/entity-alias-design.md`, but the current parser does
-not accept `===`, does not parse `EntityRef`, and does not build `LetAliasAst`.
+`EntityRef` is documented as future compile-time entity reference syntax in
+`spec/entity-ref-design.md`. `let binder === EntityRef` is reserved as future
+lexical alias binding syntax and is documented in
+`spec/entity-alias-design.md`, but the current parser does not accept `===`,
+does not parse `EntityRef`, and does not build `LetAliasAst`.
 Parser phase 4 also does not preserve `===` as a single token: the current
 lexer may still tokenize it as `==` followed by `=`. A later alias-parser phase
 must update lexer maximal-munch rules to reserve `===` before adding alias
@@ -401,6 +403,12 @@ syntax preservation.
 The intended boundary is syntax preservation only:
 
 ```text
+EntityRef ::= EntityPath
+EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
+             | EntityPathLeaf
+EntityPathSegment ::= Name
+EntityPathLeaf ::= Name | OperatorName
+
 AliasBinding ::= "let" AliasBinder "===" EntityRef
 AliasBinder ::= Name | OperatorName
 ```
@@ -417,3 +425,10 @@ is specified.
 
 **Future stage:** Phase 4.2/4.3 design after operator binder/path-leaf syntax.
 Phase 4.4 may optionally preserve raw alias-binding AST if explicitly assigned.
+
+**Open follow-up:**
+The provisional grammar allows a single unqualified `EntityPathLeaf`, such as
+`some_entity`, as an `EntityRef`. Future semantic/name-resolution design must
+decide whether unqualified entity references are allowed in all `EntityRef`
+contexts or only in selected contexts. Parser phase 4.2 does not resolve that
+semantic policy.
