@@ -39,7 +39,7 @@ The provisional rule works for a line-oriented subset. A future explicit
 terminator or indentation-based system can replace it without changing AST
 construction.
 
-**Future stage:** v0.2 (robustness) or later language design.
+**Future stage:** v0.5 (Normalized AST Stabilization) or later language design.
 
 ---
 
@@ -75,7 +75,7 @@ but v0.1 prefers a flat representation.
 A flat representation is sufficient for golden tests. A later lowering pass
 may restructure the AST to make right-target subsegments explicit sub-trees.
 
-**Future stage:** v0.3 (syntax normalization) or v1.0.
+**Future stage:** v0.3 (Normalized AST Specification) or v0.4 (Raw AST → Normalized AST Prototype).
 
 ---
 
@@ -115,7 +115,7 @@ diagnostic gates. Phase 3.1 adds regression tests for failed lookahead,
 group/ArgPack ambiguity, and `where`/`acquire` non-recognition. A formal upper
 bound should still be specified before future closure-head clauses are added.
 
-**Future stage:** v0.2 (robustness) — document the exact maximum lookahead
+**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) — document the exact maximum lookahead
 and add tests for edge cases.
 
 ---
@@ -303,7 +303,7 @@ the same token class but produce `NumericNameAst` rather than numeric literal
 atoms. The boundary between `Digit+ "." Digit+` (future float) and
 `object "." Name` (member sugar) will be decided with future lexer changes.
 
-**Future stage:** v0.2 (frontend robustness) or later numeric literal design.
+**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) or later numeric literal design.
 
 ---
 
@@ -421,8 +421,7 @@ to name resolution?
 **Why it does not block v0.1:**
 Raw alias parsing exists; the answer affects future implementation ordering only.
 
-**Future stage:** Phase 4.4 (alias parser preservation) or later
-name-resolution design.
+**Future stage:** Later name-resolution design or alias-validation stage.
 
 ---
 
@@ -442,7 +441,7 @@ state management and scope nesting.
 Raw alias parsing exists; this decision affects future scope/semantic design
 only.
 
-**Future stage:** Phase 4.4 (alias parser) or later scope/semantic design.
+**Future stage:** Later scope/semantic design or alias-validation stage.
 
 ---
 
@@ -461,7 +460,7 @@ lifetime dependency.
 Raw alias parsing exists; the current recommendation is documented but not
 binding on future design.
 
-**Future stage:** Phase 4.4 or later scope/semantic design.
+**Future stage:** Later scope/semantic design or alias-validation stage.
 
 ---
 
@@ -513,7 +512,7 @@ The existing newline-promotion rules already define this behavior; expanding
 them to let operator tokens participate in form-boundary separation is a
 general parser question, not alias-specific.
 
-**Future stage:** v0.2 (form boundary robustness) or later expression design.
+**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) or later expression design.
 
 ---
 
