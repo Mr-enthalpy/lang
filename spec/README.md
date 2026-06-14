@@ -35,6 +35,7 @@ frontend. Each document has a defined authority level.
 
 If two spec documents conflict, `ast-construction-v0.1.md` takes priority for
 current parser behavior. `operator-design.md` defines operator syntax behavior
-and future lookup/binder boundaries. Operator expression parsing is implemented
-as raw AST sugar; operator lookup, lowering, binder names, and path leaves
+and future lookup boundaries. Operator expression parsing is implemented as raw
+AST sugar, and operator names are preserved in binder/final-path-leaf
+positions. Operator lookup, lowering, overload resolution, and alias binding
 remain future work. This `README.md` is not itself a spec document.

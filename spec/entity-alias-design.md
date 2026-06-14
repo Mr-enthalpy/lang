@@ -139,9 +139,10 @@ spelling into another.
 This validation is future semantic or syntax-only validation work. It is not
 implemented by the current parser.
 
-Operator alias syntax depends on the operator parser phase because operator
-names must be accepted in binder and path-leaf positions before this alias form
-can be parsed.
+Parser phase 4.1 supplies the operator-name syntax needed in binder and final
+path-leaf positions. Alias binding itself is still not parsed: `===`,
+`EntityRef`, `LetAliasAst`, alias validation, and entity lookup remain future
+work.
 
 ## Lexer Note
 

@@ -31,11 +31,10 @@ pub enum LetAttrAst {
     Guard,
 }
 
-// Future operator parser phase: binder leaves will allow operator names.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LetBinderAst {
     Simple {
-        name: NameAst,
+        name: BinderNameAst,
         annotation: DeclAnnotationAst,
         span: Span,
     },
@@ -45,6 +44,12 @@ pub enum LetBinderAst {
         span: Span,
     },
     Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BinderNameAst {
+    Text(NameAst),
+    Operator(OperatorNameAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -218,7 +223,7 @@ pub enum ArgPackRole {
 pub enum SelectorAst {
     Text(NameAst),
     Numeric(NumericNameAst),
-    // Future operator parser phase: Operator(OperatorSpelling) for operator selectors.
+    Operator(OperatorNameAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

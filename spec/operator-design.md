@@ -1,7 +1,8 @@
 # Operator Design
 
 This document defines the language-level operator design. Parser phase 4
-implements expression-level operator syntax as raw AST sugar only.
+implements expression-level operator syntax as raw AST sugar. Parser phase 4.1
+implements operator names in binder position and final path-leaf position.
 
 Operators are surface syntax for specially shaped function invocation. They are
 not built-in arithmetic, comparison, mutation, assignment syntax, parser-level
@@ -277,7 +278,11 @@ strong binding contexts.
 
 ## Binder And Path Names
 
-Operator names may appear as binder names and as path leaves:
+Operator names may appear in:
+
+- expression operator sugar, implemented in Phase 4;
+- binder-name position, implemented in Phase 4.1;
+- final path-leaf position after `::`, implemented in Phase 4.1.
 
 ```text
 BinderName := Name | OperatorName
@@ -288,9 +293,23 @@ Valid design cases:
 
 ```text
 let +: _: operator = expr
+let >: _: operator = expr
 t::+
 std::int::+
 ```
+
+Phase 4.1 does not accept `<` as a simple operator binder spelling:
+
+```text
+let <: _: operator = expr
+```
+
+In `let` binder position, `<` is already the strong-context entry for an
+extract-let deduce list (`let <x> ... = ...`). The parser therefore commits to
+extract-let parsing when it sees `<` after `let`, rather than treating `<` as a
+simple operator binder. This is a syntax disambiguation limitation, not an
+operator semantic rule. A future phase may add escaping or another explicit
+disambiguation rule if `<` needs to be declared as an operator binder.
 
 Operator names may only be path leaves. They are not namespace-like
 intermediate path nodes.
@@ -303,12 +322,13 @@ t::+::x
 t::+::-
 ```
 
-Operator binder names and operator path leaves are future parser work.
+Operator names are syntax only here. They are not looked up, resolved,
+overloaded, or lowered by the parser.
 
 ## Declaration Annotations
 
-Operator declarations, when supported, use the same explicit rank annotation
-form as other declarations:
+Operator declarations use the same explicit rank annotation form as other
+declarations:
 
 ```text
 let +: _: operator = expr
@@ -371,9 +391,8 @@ let +: _: operator = <t: type, u: type>(a: t, b: u) => {
 ```
 
 This example documents future lookup design only. It is not a parser golden
-case until operator binder names and operator path leaves are implemented. The
-`<t: type, u: type>` head is included to show where the example's type names
-come from.
+case for lookup behavior. The `<t: type, u: type>` head is included to show
+where the example's type names come from.
 
 ## Relationship To Entity Alias Binding
 
@@ -383,8 +402,8 @@ come from.
 let binder === EntityRef
 ```
 
-Operator aliases depend on this operator design because alias binders and
-entity path leaves may need to contain `OperatorName` values:
+Parser phase 4.1 supplies the operator-name syntax that future aliases need in
+binder and entity path-leaf positions:
 
 ```text
 let << === xxx_bit::<<
@@ -395,16 +414,16 @@ Operator aliasing may select a concrete visible operator implementation from
 another namespace, but it cannot rename one operator spelling into another. The
 operator identity remains `spelling + fixity + arity`.
 
-This is future design only. It does not implement operator lookup, entity
-lookup, namespace resolution, import/package semantics, or alias validation.
+Alias binding remains future design only. Phase 4.1 does not implement
+operator lookup, entity lookup, namespace resolution, import/package semantics,
+alias parsing, or alias validation.
 
 ## v0.1 Boundary
 
-The current parser implements expression-level operator syntax preservation
-only. Do not implement in this phase:
+The current parser implements expression-level operator syntax preservation and
+operator-name preservation in binder/final-path-leaf positions. Do not
+implement in this phase:
 
-- operator binder names;
-- `t::+` parsing;
 - operator lookup;
 - entity alias binding (`let binder === EntityRef`);
 - operator lowering;

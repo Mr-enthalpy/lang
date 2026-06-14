@@ -1,6 +1,7 @@
 use crate::{
-    DeclAnnotationAst, DiagnosticCode, ExprAst, ExprKind, LetAst, LetAttrAst, LetBinderAst,
-    NameAst, Span, Symbol, TokenKind, TypeObjectAnnotationAst,
+    token::operator_spelling_in_expr_context, BinderNameAst, DeclAnnotationAst, DiagnosticCode,
+    ExprAst, ExprKind, LetAst, LetAttrAst, LetBinderAst, NameAst, OperatorNameAst, Span, Symbol,
+    TokenKind, TypeObjectAnnotationAst,
 };
 
 use super::{
@@ -83,12 +84,21 @@ fn skeleton_span(skeleton: &crate::CanonicalSkeletonAst) -> Span {
     }
 }
 
-// Future operator parser phase: this function must also accept operator binder
-// names, so `let +: _: operator = expr` becomes a valid let form. Currently
-// only Name tokens are accepted as binder names.
 fn parse_simple_binder(parser: &mut Parser<'_>) -> LetBinderAst {
     let name_token = parser.cursor.peek_non_trivia();
-    if !matches!(name_token.kind, TokenKind::Name) {
+    let name = if matches!(name_token.kind, TokenKind::Name) {
+        let name_token = parser.cursor.bump_non_trivia();
+        BinderNameAst::Text(NameAst {
+            text: name_token.text.clone(),
+            span: name_token.span,
+        })
+    } else if let Some(spelling) = operator_spelling_in_expr_context(&name_token.kind) {
+        let name_token = parser.cursor.bump_non_trivia();
+        BinderNameAst::Operator(OperatorNameAst {
+            spelling: spelling.as_source_text().to_string(),
+            span: name_token.span,
+        })
+    } else {
         let span = name_token.span;
         parser.error(
             DiagnosticCode::ExpectedName,
@@ -96,13 +106,8 @@ fn parse_simple_binder(parser: &mut Parser<'_>) -> LetBinderAst {
             span,
         );
         return LetBinderAst::Error(parser.error_ast("expected name after `let`", span));
-    }
-
-    let name_token = parser.cursor.bump_non_trivia();
-    let name = NameAst {
-        text: name_token.text.clone(),
-        span: name_token.span,
     };
+    let name_span = binder_name_span(&name);
 
     if parser.cursor.consume_symbol(Symbol::Colon).is_none() {
         let span = parser.cursor.current_span();
@@ -116,7 +121,7 @@ fn parse_simple_binder(parser: &mut Parser<'_>) -> LetBinderAst {
         return LetBinderAst::Simple {
             name,
             annotation: DeclAnnotationAst::Error(error),
-            span: name_token.span.join(span),
+            span: name_span.join(span),
         };
     }
 
@@ -126,7 +131,14 @@ fn parse_simple_binder(parser: &mut Parser<'_>) -> LetBinderAst {
     LetBinderAst::Simple {
         name,
         annotation,
-        span: name_token.span.join(end_span),
+        span: name_span.join(end_span),
+    }
+}
+
+fn binder_name_span(name: &BinderNameAst) -> Span {
+    match name {
+        BinderNameAst::Text(name) => name.span,
+        BinderNameAst::Operator(name) => name.span,
     }
 }
 

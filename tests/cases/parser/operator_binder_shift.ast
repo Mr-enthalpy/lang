@@ -1,0 +1,26 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple
+        name:
+          OperatorName <<
+        annotation:
+          TypeObjectWithRank
+            type_object:
+              Hole _
+            rank:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name operator
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name shift_impl

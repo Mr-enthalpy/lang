@@ -1,7 +1,7 @@
 use crate::{
-    ArgPackAst, ArgPackRole, AtomAst, AtomKind, DeclAnnotationAst, Diagnostic, DiagnosticCode,
-    ExprAst, ExprKind, FormAst, LetAst, LetAttrAst, LetBinderAst, OperatorExprKind, PipeExprAst,
-    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
+    ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst, DeclAnnotationAst, Diagnostic,
+    DiagnosticCode, ExprAst, ExprKind, FormAst, LetAst, LetAttrAst, LetBinderAst, OperatorExprKind,
+    PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
     TypeObjectAnnotationAst,
 };
 
@@ -92,7 +92,9 @@ fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
         LetBinderAst::Simple {
             name, annotation, ..
         } => {
-            line(output, indent, &format!("Simple name={}", name.text));
+            line(output, indent, "Simple");
+            line(output, indent + 1, "name:");
+            dump_binder_name(output, name, indent + 2);
             line(output, indent + 1, "annotation:");
             dump_decl_annotation(output, annotation, indent + 2);
         }
@@ -111,6 +113,15 @@ fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
                 indent,
                 &format!("Error \"{}\"", escape_text(&error.message)),
             );
+        }
+    }
+}
+
+fn dump_binder_name(output: &mut String, name: &BinderNameAst, indent: usize) {
+    match name {
+        BinderNameAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
+        BinderNameAst::Operator(name) => {
+            line(output, indent, &format!("OperatorName {}", name.spelling))
         }
     }
 }
@@ -448,6 +459,11 @@ fn dump_selector(output: &mut String, selector: &crate::SelectorAst, indent: usi
         crate::SelectorAst::Numeric(num) => {
             line(output, indent, &format!("NumericName {}", num.text))
         }
+        crate::SelectorAst::Operator(operator) => line(
+            output,
+            indent,
+            &format!("OperatorName {}", operator.spelling),
+        ),
     }
 }
 
@@ -671,6 +687,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidClosureHead => "InvalidClosureHead",
         DiagnosticCode::InvalidOperatorExpression => "InvalidOperatorExpression",
         DiagnosticCode::ChainedNonAssociativeOperator => "ChainedNonAssociativeOperator",
+        DiagnosticCode::OperatorPathLeafNotFinal => "OperatorPathLeafNotFinal",
         DiagnosticCode::TopLevelComma => "TopLevelComma",
         DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
     }

@@ -1,0 +1,17 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple
+        name:
+          OperatorName +
+        annotation:
+          Error "expected declaration annotation"
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name plus_impl

@@ -2,7 +2,9 @@ Program
   Let
     attrs:
     binder:
-      Simple name=x
+      Simple
+        name:
+          TextName x
         annotation:
           Error "expected declaration annotation"
     with:

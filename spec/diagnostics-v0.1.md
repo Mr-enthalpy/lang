@@ -279,6 +279,17 @@ resolution, assignment, mutation, or type checking.
   and continue to the segment or form boundary.
 - **AST effect**: Operator sugar that was already parsed remains preserved.
 
+#### `OperatorPathLeafNotFinal`
+
+- **Trigger**: An operator name appears as a path segment that is not the final
+  leaf, such as `std::+::int`, `a::+::b`, or `+::int`.
+- **Primary span**: The `::` following an operator leaf, or the leading
+  operator token when the path starts with an operator.
+- **Recovery**: Preserve the path through the operator leaf when possible,
+  consume the local malformed continuation, and continue parsing the form.
+- **AST effect**: No lookup or resolution is performed. Any preserved path
+  remains raw syntax.
+
 ## 4. Diagnostic format
 
 The dump format for diagnostics in v0.1 should be stable and suitable for

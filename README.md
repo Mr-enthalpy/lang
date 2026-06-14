@@ -35,7 +35,7 @@ and crate public API become stable.
 | ------------------------------- | ---------------------------------------------------------------- |
 | `spec/frontend-v0.1.md`         | Reader entry point — explains the pipeline and spec organization |
 | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this    |
-| `spec/operator-design.md`       | Normative operator design for future parser work                 |
+| `spec/operator-design.md`       | Normative operator syntax design and implementation boundaries   |
 | `spec/entity-alias-design.md`   | Future lexical alias binding design — not implemented            |
 | `spec/diagnostics-v0.1.md`      | Normative diagnostic categories, span policy, recovery           |
 | `spec/roadmap.md`               | Stage model v0.1–v1.0 and scope boundaries                       |
@@ -244,9 +244,10 @@ Current coverage:
 - `ast`: backed by the current parser; covers simple let forms, path atoms,
   groups, pipe segmentation, ArgPack roles, member/double-dot sugar, numeric
   selectors, extract-let binders, deduce lists, canonical skeletons,
-  Phase 3.1-stabilized closure AST, and Phase 4 operator AST sugar. It does
-  not implement operator lookup/lowering, `where`/`acquire` clauses, or
-  semantic phases (see `spec/roadmap.md` for phase boundaries).
+  Phase 3.1-stabilized closure AST, Phase 4 operator AST sugar, and Phase 4.1
+  operator binder/path-leaf syntax. It does not implement operator
+  lookup/lowering, alias binding, `where`/`acquire` clauses, or semantic phases
+  (see `spec/roadmap.md` for phase boundaries).
 - `diag`: backed by the full v0.1 diagnostic taxonomy; 27 diagnostic golden
   tests plus parser golden cases that include recovery diagnostics.
 

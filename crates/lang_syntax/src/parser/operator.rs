@@ -5,7 +5,9 @@ use crate::{
 
 use super::{
     argpack::parse_argpack,
-    atom::{parse_atom, parse_selector, selector_span},
+    atom::{
+        parse_atom, parse_member_selector, parse_path_selector, selector_is_operator, selector_span,
+    },
     form::Parser,
 };
 
@@ -129,6 +131,25 @@ fn parse_prefix_expr(
         }
 
         if is_operator_token_at_expr_start(current.spelling) {
+            if matches!(
+                parser.cursor.peek_next_non_trivia().kind,
+                TokenKind::Symbol(Symbol::ColonColon)
+            ) {
+                let operator = bump_operator(parser, current);
+                parser.error(
+                    DiagnosticCode::OperatorPathLeafNotFinal,
+                    "operator path leaf must follow a path head and be final",
+                    operator.span,
+                );
+                parser.cursor.consume_symbol(Symbol::ColonColon);
+                let _ = parse_path_selector(parser);
+                return Some(error_operator_expr(
+                    parser,
+                    "operator path leaf cannot start a path",
+                    operator.span,
+                ));
+            }
+
             let operator = bump_operator(parser, current);
             parser.error(
                 DiagnosticCode::InvalidOperatorExpression,
@@ -187,8 +208,17 @@ fn parse_postfix_expr(
         }
 
         if parser.cursor.at_symbol(Symbol::ColonColon) {
-            parser.cursor.bump_non_trivia();
-            if let Some(selector) = parse_selector(parser) {
+            let coloncolon = parser.cursor.bump_non_trivia();
+            if operator_path_ends_with_operator_leaf(&expr) {
+                parser.error(
+                    DiagnosticCode::OperatorPathLeafNotFinal,
+                    "operator path leaf cannot be followed by `::`",
+                    coloncolon.span,
+                );
+                let _ = parse_path_selector(parser);
+                break;
+            }
+            if let Some(selector) = parse_path_selector(parser) {
                 expr = extend_or_create_operator_path(expr, selector);
             } else {
                 let span = parser.cursor.current_span();
@@ -201,7 +231,7 @@ fn parse_postfix_expr(
             }
         } else if parser.cursor.at_symbol(Symbol::Dot) {
             let dot_token = parser.cursor.bump_non_trivia();
-            if let Some(selector) = parse_selector(parser) {
+            if let Some(selector) = parse_member_selector(parser) {
                 let span = expr.span.join(selector_span(&selector));
                 expr = OperatorExprAst {
                     kind: OperatorExprKind::MemberSugar {
@@ -212,6 +242,7 @@ fn parse_postfix_expr(
                     span,
                 };
             } else {
+                consume_invalid_operator_selector(parser);
                 parser.error(
                     DiagnosticCode::ExpectedNameAfterDot,
                     "expected name after `.`",
@@ -221,7 +252,7 @@ fn parse_postfix_expr(
             }
         } else if parser.cursor.at_symbol(Symbol::DotDot) {
             let dotdot_token = parser.cursor.bump_non_trivia();
-            if let Some(selector) = parse_selector(parser) {
+            if let Some(selector) = parse_member_selector(parser) {
                 if parser.cursor.at_symbol(Symbol::LParen) {
                     let args = parse_argpack(parser);
                     let span = expr.span.join(args.span);
@@ -243,6 +274,7 @@ fn parse_postfix_expr(
                     break;
                 }
             } else {
+                consume_invalid_operator_selector(parser);
                 parser.error(
                     DiagnosticCode::ExpectedNameAfterDoubleDot,
                     "expected name after `..`",
@@ -256,6 +288,12 @@ fn parse_postfix_expr(
     }
 
     Some(expr)
+}
+
+fn consume_invalid_operator_selector(parser: &mut Parser<'_>) {
+    if parser.cursor.peek_non_trivia().kind.is_operator_spelling() {
+        parser.cursor.bump_non_trivia();
+    }
 }
 
 fn extend_or_create_operator_path(expr: OperatorExprAst, selector: SelectorAst) -> OperatorExprAst {
@@ -284,6 +322,13 @@ fn extend_or_create_operator_path(expr: OperatorExprAst, selector: SelectorAst) 
                 span,
             }
         }
+    }
+}
+
+fn operator_path_ends_with_operator_leaf(expr: &OperatorExprAst) -> bool {
+    match &expr.kind {
+        OperatorExprKind::Path { names, .. } => names.last().is_some_and(selector_is_operator),
+        _ => false,
     }
 }
 

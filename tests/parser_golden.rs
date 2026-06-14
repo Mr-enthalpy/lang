@@ -731,3 +731,78 @@ fn invalid_operator_unsupported_prefix_star() {
 fn invalid_operator_unsupported_prefix_increment() {
     assert_parser_case("invalid_operator_unsupported_prefix_increment", true);
 }
+
+#[test]
+fn operator_binder_plus() {
+    assert_parser_case("operator_binder_plus", false);
+}
+
+#[test]
+fn operator_binder_shift() {
+    assert_parser_case("operator_binder_shift", false);
+}
+
+#[test]
+fn operator_binder_postfix_bang() {
+    assert_parser_case("operator_binder_postfix_bang", false);
+}
+
+#[test]
+fn operator_path_leaf_plus() {
+    assert_parser_case("operator_path_leaf_plus", false);
+}
+
+#[test]
+fn operator_path_leaf_shift() {
+    assert_parser_case("operator_path_leaf_shift", false);
+}
+
+#[test]
+fn operator_path_leaf_after_numeric() {
+    assert_parser_case("operator_path_leaf_after_numeric", false);
+}
+
+#[test]
+fn operator_path_leaf_in_expression() {
+    assert_parser_case("operator_path_leaf_in_expression", false);
+}
+
+#[test]
+fn operator_path_leaf_then_binary_operator() {
+    assert_parser_case("operator_path_leaf_then_binary_operator", false);
+}
+
+#[test]
+fn invalid_operator_binder_missing_colon() {
+    assert_parser_case("invalid_operator_binder_missing_colon", true);
+}
+
+#[test]
+fn invalid_operator_path_leaf_not_final() {
+    assert_parser_case("invalid_operator_path_leaf_not_final", true);
+}
+
+#[test]
+fn invalid_operator_path_leaf_not_final_suffix() {
+    assert_parser_case("invalid_operator_path_leaf_not_final_suffix", true);
+}
+
+#[test]
+fn invalid_operator_path_starts_with_operator() {
+    assert_parser_case("invalid_operator_path_starts_with_operator", true);
+}
+
+#[test]
+fn invalid_operator_member_selector() {
+    assert_parser_case("invalid_operator_member_selector", true);
+}
+
+#[test]
+fn invalid_operator_doubledot_selector() {
+    assert_parser_case("invalid_operator_doubledot_selector", true);
+}
+
+#[test]
+fn invalid_operator_alias_not_parsed() {
+    assert_parser_case("invalid_operator_alias_not_parsed", true);
+}

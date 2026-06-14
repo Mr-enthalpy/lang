@@ -2,7 +2,9 @@ Program
   Let
     attrs:
     binder:
-      Simple name=f
+      Simple
+        name:
+          TextName f
         annotation:
           TypeObjectWithRank
             type_object:
