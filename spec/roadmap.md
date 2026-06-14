@@ -143,7 +143,9 @@ These phases are before semantic name resolution. They do not implement lookup,
 namespace resolution, dependency resolution, import/package/build-system
 semantics, operator alias validation, or runtime value binding semantics. They
 only document and, if explicitly assigned later, preserve surface syntax and raw
-AST boundaries. See `spec/entity-alias-design.md`.
+AST boundaries. Parser phase 4 does not reserve `===` as one lexer token; the
+alias parser phase must update lexer maximal-munch behavior before accepting
+`let binder === EntityRef`. See `spec/entity-alias-design.md`.
 
 ---
 

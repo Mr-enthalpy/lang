@@ -943,9 +943,11 @@ no incoming segment or preceding atom triggers `InvalidArgPack` or
 `TopLevelComma` diagnostics. The parser should produce a diagnostic and
 still parse the `ArgPack` node.
 
-### 8.3 Atom suffix folding
+### 8.3 Suffix folding
 
-After parsing `AtomBase`, repeatedly fold atom suffixes.
+After parsing `AtomBase`, repeatedly fold suffixes. Parser phase 4 extends this
+folding over `OperatorExprAst` so postfix operator results can continue through
+the same suffix loop.
 
 Suffixes:
 
@@ -961,6 +963,13 @@ Folding order is left-to-right.
 Postfix unary operators participate in the same left-folding suffix loop as
 `::`, `.`, and `..`. Therefore `obj!.field` has the shape `(obj!).field`; the
 postfix operator does not terminate suffix parsing.
+
+Before the first postfix operator, suffix folding may produce atom-level
+`Path`, `MemberSugar`, or `DoubleDotSugar` nodes. After an operator-level value
+exists, such as `obj!`, continued suffix folding is preserved with
+operator-level `Path`, `MemberSugar`, or `DoubleDotSugar` nodes inside
+`OperatorExprAst`. This is an AST-shape preservation rule only; it does not
+perform lookup, lower suffixes to calls, or implement operator path leaves.
 
 SelectorAst for this phase:
 
