@@ -658,9 +658,129 @@ _See also: Name, Declaration, Kind/rank object, Type-object._
 
 The AST produced directly by the parser, before any lowering or normalization.
 Raw AST preserves surface syntax faithfully; it does not desugar or canonicalize
-forms. In v0.1, only raw AST exists.
+forms. The v0.1 Raw AST frontend is completed and is the input to future
+normalization passes.
 
-_See also: AST (as defined in ast-construction-v0.1.md)._
+_See also: Normalized AST, Normalization, Raw AST contract._
+
+---
+
+## Normalized AST
+
+A future desugared AST that unifies calls (ArgPack, pipe, operator sugar),
+extraction forms (canonical skeletons, deduce lists), and declaration forms
+(simple let, extract let, alias let) into simple pattern / call / declaration
+structures. Normalized AST is desugared but still non-semantic; it is not HIR,
+not type-checked, and not name-resolved.
+
+> **Distinction**: Normalized AST is a structural simplification of Raw AST.
+> It does not resolve names, infer types, evaluate canonical forms, materialize
+> closures, or insert drops. HIR is a later representation that assumes name
+> resolution and type checking.
+
+_See also: Raw AST, Desugaring, Normalization, HIR, Raw AST contract._
+
+---
+
+## Desugaring
+
+Removing surface syntax sugar into simpler normalized forms. Examples:
+operator sugar (prefix `-`, postfix `!`, binary `+`) lowered to named operator
+calls; member/double-dot sugar lowered to lookup forms; ArgPack roles unified
+into a single call structure; extraction skeletons desugared into pattern forms.
+
+Desugaring does **not** perform name resolution, operator lookup, type checking,
+overload resolution, canonical matching, or closure materialization.
+
+_See also: Normalization, Normalized AST._
+
+---
+
+## Normalization
+
+The non-semantic lowering pass from Raw AST to Normalized AST. Normalization
+produces structurally simpler AST without resolving names, inferring types, or
+evaluating semantics. It is the first desugaring pass after parsing.
+
+_See also: Desugaring, Normalized AST, Raw AST, Non-semantic lowering._
+
+---
+
+## Surface-preserving
+
+A property of Raw AST: syntactic sugar and surface forms (operator expressions,
+member sugar, double-dot sugar, pipes, argpacks, extraction skeletons) are
+preserved as-is in the AST tree. No desugaring or canonicalization is performed
+by the parser.
+
+_See also: Raw AST, Desugaring._
+
+---
+
+## Non-semantic lowering
+
+An AST-to-AST transformation that changes the tree shape (e.g., desugaring)
+but does not resolve names, infer types, evaluate expressions, or perform
+semantic analysis. Normalization is a non-semantic lowering pass.
+
+_See also: Normalization, Desugaring, Raw AST, Normalized AST._
+
+---
+
+## HIR
+
+High-level IR (or High IR) — a future intermediate representation that assumes
+name resolution, type checking, and potentially other semantic analysis has been
+completed. HIR is later than Normalized AST in the compilation pipeline.
+
+> **Distinction**: Normalized AST is a desugared but still non-semantic
+> representation. HIR assumes semantic analysis has already run. Do not call
+> Normalized AST "HIR".
+
+_See also: Normalized AST, Non-semantic lowering._
+
+---
+
+## Raw AST contract
+
+The documented invariants of v0.1 Raw AST (`spec/raw-ast-contract-v0.1.md`)
+that future normalization passes may rely on. Defines what each AST node
+preserves and what normalization must not assume.
+
+_See also: Raw AST, Normalization, Normalized AST._
+
+---
+
+## Pattern normalization
+
+Desugaring extraction skeletons (canonical skeletons, deduce lists) into
+normalized pattern forms. Pattern normalization is structural simplification
+only; it does not execute universal extraction matching, resolve deduce holes,
+or validate skeleton admissibility.
+
+_See also: Normalization, CanonicalSkeleton, DeduceList._
+
+---
+
+## Call normalization
+
+Desugaring ArgPack/pipe/operator-sugar structures into a unified normalized
+call form. Call normalization flattens pipe segments, resolves ArgPack roles,
+and lowers operator sugar to named operator calls. It does not perform
+overload resolution or determine which declaration is being called.
+
+_See also: Normalization, ArgPack, ArgPackRole, OperatorSugar, PipeExpr._
+
+---
+
+## Declaration normalization
+
+Desugaring let/alias-let forms into normalized declaration forms. Declaration
+normalization may separate guard/with clauses from binders and unify
+simple and extract let forms into a common structure. It does not resolve
+aliases, check types, or decide declaration semantics.
+
+_See also: Normalization, Let binding, Alias binding._
 
 ---
 

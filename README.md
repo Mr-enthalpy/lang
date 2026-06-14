@@ -2,9 +2,16 @@
 
 `lang` is an experimental programming language frontend.
 
-This repository is currently a **v0.1 raw frontend prototype**. It lexes,
+**Current status:** The v0.1 Raw AST Frontend is completed as the current Raw AST baseline. It lexes,
 parses, builds raw AST, emits diagnostics, and has golden tests. It does not
 perform semantic analysis.
+
+The next work is Raw AST contract freeze and Normalized AST design:
+
+- **Raw AST**: surface-preserving, non-desugared, parser output.
+- **Normalized AST**: future desugared AST that unifies calls, extraction,
+  and declarations into simple pattern/call/declaration structures.
+  Not HIR, not type-checked, not name-resolved.
 
 ## Documentation map
 
@@ -13,6 +20,7 @@ perform semantic analysis.
 | Document | Purpose |
 |---|---|
 | `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
+| `spec/raw-ast-contract-v0.1.md` | Normative contract: Raw AST invariants for future normalization |
 | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
 | `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
 | `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery |
@@ -264,14 +272,15 @@ none of them.
 
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
 2. `spec/implementation-status-v0.1.md` — Know what is currently implemented.
-3. `spec/ast-construction-v0.1.md` — Implement the parser.
-4. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-5. `spec/entity-ref-design.md` — Future general EntityRef design.
-6. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-7. `spec/diagnostics-v0.1.md` — Understand error reporting.
-8. `spec/glossary.md` — Resolve terminology.
-9. `spec/roadmap.md` — Understand scope boundaries.
-10. `spec/open-questions.md` — Recognize known gaps.
+3. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
+4. `spec/ast-construction-v0.1.md` — Implement the parser.
+5. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
+6. `spec/entity-ref-design.md` — Future general EntityRef design.
+7. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+8. `spec/diagnostics-v0.1.md` — Understand error reporting.
+9. `spec/glossary.md` — Resolve terminology.
+10. `spec/roadmap.md` — Understand scope boundaries.
+11. `spec/open-questions.md` — Recognize known gaps.
 
 ## Expected future workspace shape
 

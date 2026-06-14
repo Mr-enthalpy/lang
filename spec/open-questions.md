@@ -18,7 +18,7 @@ Nested `/*` inside a block comment is an error or ignored.
 The lexer only needs a simple nesting-unaware comment rule for v0.1. A future
 stage can add nesting if the language grammar requires it.
 
-**Future stage:** v0.2 (frontend robustness) or v0.7 (full language design).
+**Future stage:** v0.5 (Normalized AST Stabilization) or v0.9 (type/kind checking design).
 
 ---
 
@@ -39,7 +39,7 @@ The provisional rule works for a line-oriented subset. A future explicit
 terminator or indentation-based system can replace it without changing AST
 construction.
 
-**Future stage:** v0.2 (robustness) or later language design.
+**Future stage:** v0.5 (Normalized AST Stabilization) or later language design.
 
 ---
 
@@ -57,7 +57,7 @@ The distinction between ArgPack and group is clear in v0.1. A future pass
 may interpret certain ArgPacks as tuples, heterogeneous lists, or other
 constructs, but that does not affect parsing.
 
-**Future stage:** v0.7 (type design) — tuple types or value types may
+**Future stage:** v0.9 (type/kind checking design) — tuple types or value types may
 reinterpret ArgPacks.
 
 ---
@@ -75,7 +75,7 @@ but v0.1 prefers a flat representation.
 A flat representation is sufficient for golden tests. A later lowering pass
 may restructure the AST to make right-target subsegments explicit sub-trees.
 
-**Future stage:** v0.3 (syntax normalization) or v1.0.
+**Future stage:** v0.3 (Normalized AST Specification) or v0.4 (Raw AST → Normalized AST Prototype).
 
 ---
 
@@ -94,7 +94,7 @@ The parser can recognize and preserve `[ item, item ]` syntax. Deeper
 capture semantics can be added later without changing the v0.1 preservation
 policy.
 
-**Future stage:** v0.3 (normalization) or v0.6 (closure materialization).
+**Future stage:** v0.3 (Normalized AST Specification) or v0.8 (closure materialization).
 
 ---
 
@@ -115,7 +115,7 @@ diagnostic gates. Phase 3.1 adds regression tests for failed lookahead,
 group/ArgPack ambiguity, and `where`/`acquire` non-recognition. A formal upper
 bound should still be specified before future closure-head clauses are added.
 
-**Future stage:** v0.2 (robustness) — document the exact maximum lookahead
+**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) — document the exact maximum lookahead
 and add tests for edge cases.
 
 ---
@@ -134,7 +134,7 @@ The current canonical skeleton grammar builds AST only. No matching is
 performed. Any future revision will produce a different AST shape, but
 v0.1 AST will still be parseable.
 
-**Future stage:** v0.4 (canonical form specification).
+**Future stage:** v0.6 (canonical form specification).
 
 ---
 
@@ -151,7 +151,7 @@ The v0.1 frontend faithfully preserves these names in expression AST. A
 future semantic pass can interpret them by analyzing the AST structure
 without requiring parser changes.
 
-**Future stage:** v1.0 (or earlier semantic design stages v0.5–v0.7).
+**Future stage:** v0.11 (or earlier semantic design stages v0.7–v0.9).
 
 ---
 
@@ -167,7 +167,7 @@ Ownership and lifetime analysis is out of scope for v0.1. The raw AST
 contains sufficient structure (form order, closure bodies, guard/with
 annotations) for a future CFG construction pass.
 
-**Future stage:** v0.8 (ownership/NLL/drop design).
+**Future stage:** v0.10 (ownership/NLL/drop design).
 
 ---
 
@@ -179,9 +179,7 @@ annotations) for a future CFG construction pass.
 The workspace is ready. `crates/lang_syntax`, `crates/lang_cli`, and `xtask`
 exist as valid workspace members. `cargo check --workspace` passes.
 
-Lexer golden tests (9 cases), parser golden tests (154 cases), and diagnostic
-golden tests (27 cases) exist.
-
+Golden test counts are tracked in `spec/implementation-status-v0.1.md`.
 Remaining test coverage gaps are tracked as v0.1 implementation work, not as
 workspace-readiness uncertainty. This entry is closed.
 
@@ -281,7 +279,7 @@ Any future tuple/pack positional access semantics must be implemented by later
 semantic lookup, namespace forwarding, or compiler-provided functions. The
 parser must not hard-code positional access semantics.
 
-**Future stage:** v0.7 (type design) or v1.0.
+**Future stage:** v0.9 (type/kind checking design) or v0.11.
 
 ---
 
@@ -305,7 +303,7 @@ the same token class but produce `NumericNameAst` rather than numeric literal
 atoms. The boundary between `Digit+ "." Digit+` (future float) and
 `object "." Name` (member sugar) will be decided with future lexer changes.
 
-**Future stage:** v0.2 (frontend robustness) or later numeric literal design.
+**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) or later numeric literal design.
 
 ---
 
@@ -355,7 +353,7 @@ as distinct selector classes. This distinction is sufficient to support future
 name-polymorphic lookup without requiring AST changes. v0.1 does not implement
 lookup, binding, or name resolution. The parser only preserves selector shape.
 
-**Future stage:** v0.7 (type/kind/checking design) or later name-resolution
+**Future stage:** v0.9 (type/kind checking design) or later name-resolution
 design. A future decision document (e.g.
 `docs/decisions/0005-name-polymorphic-lookup-boundary.md`) may formalize the
 exact rules. The parser must not be changed to accommodate lookup before that
@@ -380,56 +378,28 @@ particular shape (literal in skeleton, bare node-name, nested argpack) is
 admissible, produces a constraint, or is rejected by a future semantic match
 is a deferred design decision that does not require changing the AST.
 
-**Future stage:** v0.4 (canonical form specification) or v0.7 (type/kind/checking
+**Future stage:** v0.6 (canonical form specification) or v0.9 (type/kind checking
 design).
 
 ---
 
 ## 21. Lexical alias binding and entity references
 
-**Status:** Documentation phase complete (Phase 4.2 / 4.3 design); implementation unresolved
+**Status:** Resolved for raw parser preservation; semantic alias resolution remains open
 
-**Current v0.1 decision:**
-`EntityRef` is documented as future compile-time entity reference syntax in
-`spec/entity-ref-design.md`. `let binder === EntityRef` is documented as future
-lexical alias binding syntax in `spec/entity-alias-design.md`. Phase 4.3
-completes the design documentation for alias binding: surface grammar, lexical
-scope rule, distinction from ordinary `let`, ordinary name and operator alias
-rules, `===` delimiter semantics, future diagnostics sketch, and full
-parser/semantic boundary.
+**Current v0.1 implementation:**
+Raw parser preservation for `let binder === EntityRef` is implemented in
+Phase 4.4. The lexer recognizes `===` as `Symbol::TripleEqual`. The parser
+produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
+EntityRef parsing is available inside alias-let RHS only. Alias-let dispatch
+correctly rejects guard, extract-let, annotation, and `with` paths. See
+`spec/implementation-status-v0.1.md` and `spec/entity-alias-design.md`.
 
-The current parser does not accept `===`, does not parse `EntityRef`, and does
-not build `LetAliasAst`. The current lexer may tokenize `===` as `==` followed
-by `=`; a later alias-parser phase must update lexer maximal-munch rules.
-
-The intended boundary is syntax preservation only:
-
-```text
-EntityRef ::= EntityPath
-EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-              | EntityPathLeaf
-EntityPathSegment ::= Name
-EntityPathLeaf ::= Name | OperatorName
-
-AliasBinding ::= "let" AliasBinder "===" EntityRef
-AliasBinder ::= Name | OperatorName
-```
-
-The right-hand side is a compile-time entity reference, not `PipeExpr`,
-`ArgPack`, `ClosureAst`, an operator expression, or any runtime expression.
-
-Operator aliases are restricted: the binder operator identity must match the
-target leaf operator identity (`spelling + fixity + arity`). This validation is
-deferred to a future static validation or name-resolution-adjacent phase.
-
-**Why it does not block v0.1:**
-v0.1 does not implement entity references, name lookup, namespace resolution,
-dependency resolution, or import semantics. Phase 4.1 supplies the
-operator-name syntax that alias binding depends on. Phase 4.2 and 4.3 document
-the design boundaries.
-
-**Future stages:** Phase 4.4 may optionally preserve raw alias-binding AST if
-explicitly assigned. See also open questions 22–25 below.
+**What is not implemented:**
+- Target entity resolution (semantic lookup).
+- Operator alias identity validation (spelling + fixity + arity).
+- Name lookup, operator lookup, namespace resolution, dependency resolution.
+- Alias scope semantics, shadowing, or semantic validation.
 
 ---
 
@@ -449,11 +419,9 @@ validation.
 to name resolution?
 
 **Why it does not block v0.1:**
-No alias parsing exists in v0.1. The answer affects future implementation
-ordering only.
+Raw alias parsing exists; the answer affects future implementation ordering only.
 
-**Future stage:** Phase 4.4 (alias parser preservation) or later
-name-resolution design.
+**Future stage:** Later name-resolution design or alias-validation stage.
 
 ---
 
@@ -470,9 +438,10 @@ where alias bindings may appear syntactically. This decision affects parser
 state management and scope nesting.
 
 **Why it does not block v0.1:**
-No alias parsing exists.
+Raw alias parsing exists; this decision affects future scope/semantic design
+only.
 
-**Future stage:** Phase 4.4 (alias parser) or later scope/semantic design.
+**Future stage:** Later scope/semantic design or alias-validation stage.
 
 ---
 
@@ -488,10 +457,10 @@ lifetime dependency.
 `with` clause (e.g., compile-time alias ordering or dependency)?
 
 **Why it does not block v0.1:**
-No alias parsing exists. The current recommendation is documented but not
+Raw alias parsing exists; the current recommendation is documented but not
 binding on future design.
 
-**Future stage:** Phase 4.4 or later scope/semantic design.
+**Future stage:** Later scope/semantic design or alias-validation stage.
 
 ---
 
@@ -509,7 +478,7 @@ bindings need source-level visibility annotations is an open namespace design
 question.
 
 **Why it does not block v0.1:**
-No alias parsing or namespace resolution exists.
+Raw alias parsing exists; namespace resolution does not.
 
 **Future stage:** Namespace assembly phase or later language design.
 
@@ -543,7 +512,7 @@ The existing newline-promotion rules already define this behavior; expanding
 them to let operator tokens participate in form-boundary separation is a
 general parser question, not alias-specific.
 
-**Future stage:** v0.2 (form boundary robustness) or later expression design.
+**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) or later expression design.
 
 ---
 
@@ -561,3 +530,126 @@ Items resolved during the documentation reset pass. Recorded here for audit.
 | `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |
 | Right-target subsegment AST shape | Flat representation; future may nest | Already open question §4 | No change needed | No |
 | Form boundary promotion rules | Provisional rules implemented | Already open question §2 | No change needed | No |
+
+---
+
+## Normalized AST design questions
+
+These questions are deferred to v0.3–v0.5. They do not block the current
+N0–N1 documentation pass (Raw AST contract freeze).
+
+### N-AST-1. Exact Normalized AST node set
+
+**Status:** Open
+
+**Question:** What are the exact Normalized AST node types? Candidates:
+normalized call, normalized pattern, normalized declaration. Should there
+be a single unified expression node or distinct per-form nodes?
+
+**Why it does not block N0–N1:** The Raw AST contract only documents invariants;
+Normalized AST node types are a v0.3 specification detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-2. Whether Normalized AST lives in `lang_syntax` or a new crate
+
+**Status:** Open
+
+**Question:** Should Normalized AST types and the normalization pass live in
+`lang_syntax` (alongside Raw AST), or in a new crate (e.g., `lang_norm`)?
+
+**Why it does not block N0–N1:** This is an implementation organization
+question for v0.4.
+
+**Future stage:** v0.4 (Raw AST → Normalized AST Prototype).
+
+---
+
+### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
+
+**Status:** Open
+
+**Question:** Should the normalization pass produce stable dump output that
+can be golden-tested alongside Raw AST dumps?
+
+**Why it does not block N0–N1:** Golden testing strategy is a v0.4
+implementation question.
+
+**Future stage:** v0.4 (Raw AST → Normalized AST Prototype).
+
+---
+
+### N-AST-4. How to represent symbolic builtins introduced by desugaring
+
+**Status:** Open
+
+**Question:** Desugaring may introduce symbolic names (e.g., `operator::call`,
+`member::lookup`, `pattern::bind`). How should these be represented in
+Normalized AST — as reserved names, as a separate node type, or as
+compiler-generated identifiers?
+
+**Why it does not block N0–N1:** This is a v0.3 specification detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-5. How to preserve source origins through desugaring
+
+**Status:** Open
+
+**Question:** Desugaring creates new AST nodes that did not appear in source
+text. How should source spans and diagnostic attribution be preserved through
+normalization?
+
+**Why it does not block N0–N1:** Source origin preservation is a v0.3–v0.4
+design question.
+
+**Future stage:** v0.3 (Normalized AST Specification), v0.4 (prototype).
+
+---
+
+### N-AST-6. Whether right-target subsegments become nested call nodes
+
+**Status:** Open
+
+**Question:** Right-target subsegments (`f (a) g`) are currently flat in Raw
+AST. Should normalization recursively nest them into explicit (sub-)call
+nodes?
+
+**Why it does not block N0–N1:** This is a v0.3 desugaring rule.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-7. How to represent pattern normalization for let, params, returns, and canonical skeletons
+
+**Status:** Open
+
+**Question:** Extraction contexts (let, params, returns) use canonical
+skeletons. How should normalization unify these into a single normalized
+pattern form? Should deduce lists be merged into the pattern structure
+or kept separate?
+
+**Why it does not block N0–N1:** Pattern normalization is a v0.3 specification
+detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-8. How to represent alias declarations before name resolution
+
+**Status:** Open
+
+**Question:** Alias bindings (`let binder === EntityRef`) reference compile-time
+entities that are not yet resolved. Should normalization preserve `EntityRefAst`
+as-is in normalized alias declarations, or desugar it into a different form?
+
+**Why it does not block N0–N1:** Alias normalization is a v0.3 specification
+detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).

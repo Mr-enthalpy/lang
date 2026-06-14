@@ -11,9 +11,10 @@ frontend. Each document has a defined authority level.
 | `ast-construction-v0.1.md`         | Normative for parser behavior                         | Defines every syntax rule, AST shape, and parser constraint in v0.1.                                                                        |
 | `operator-design.md`               | Normative for operator syntax design                   | Defines operator identity, spellings, fixity, precedence, associativity, AST sugar shape, lookup boundaries, and implementation boundary.   |
 | `implementation-status-v0.1.md`    | Authoritative factual inventory                      | Records the current implementation status of every feature. Does not define parser rules — `ast-construction-v0.1.md` is normative.          |
+| `raw-ast-contract-v0.1.md`         | Normative contract for future normalization          | Defines Raw AST invariants that future normalization passes may rely on.                                                                     |
 | `diagnostics-v0.1.md`              | Normative for error reporting                         | Defines diagnostic categories, span policy, and recovery behavior.                                                                          |
 | `glossary.md`                      | Normative for terminology                             | Resolves naming ambiguity across all documents.                                                                                             |
-| `roadmap.md`                       | Authoritative for scope; non-normative for scheduling | Defines stage boundaries (v0.1–v1.0) and what must not leak between stages.                                                                 |
+| `roadmap.md`                       | Authoritative for scope and planning; non-normative for parser behavior | Defines stage boundaries (v0.1–v0.11) and what must not leak between stages.                                                                 |
 | `entity-ref-design.md`             | Non-normative future design note                      | General `EntityRef` design (future). Alias-RHS `EntityRef` subset is implemented in Phase 4.4.                                               |
 | `entity-alias-design.md`           | Implemented-design explanation                        | Documents lexical alias binding syntax (`let binder === EntityRef`). Phase 4.3 design; Phase 4.4 raw parser preservation implemented. Future semantic meaning remains future work. |
 | `library-namespace-design-note.md` | Non-normative future design note                      | Describes the intended library/namespace/import model. Not a v0.1 parser rule.                                                              |
@@ -26,14 +27,15 @@ frontend. Each document has a defined authority level.
 
 1. `frontend-v0.1.md` - Understand the pipeline.
 2. `implementation-status-v0.1.md` - Know current implementation facts.
-3. `ast-construction-v0.1.md` - Implement the parser.
-4. `operator-design.md` - Understand operator syntax rules.
-5. `entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
-6. `entity-ref-design.md` - Understand future general EntityRef design.
-7. `diagnostics-v0.1.md` - Understand error reporting.
-8. `glossary.md` - Resolve terminology ambiguity.
-9. `roadmap.md` - Understand scope boundaries.
-10. `open-questions.md` - Recognize known gaps.
+3. `raw-ast-contract-v0.1.md` - Know Raw AST invariants for normalization.
+4. `ast-construction-v0.1.md` - Implement the parser.
+5. `operator-design.md` - Understand operator syntax rules.
+6. `entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
+7. `entity-ref-design.md` - Understand future general EntityRef design.
+8. `diagnostics-v0.1.md` - Understand error reporting.
+9. `glossary.md` - Resolve terminology ambiguity.
+10. `roadmap.md` - Understand scope boundaries.
+11. `open-questions.md` - Recognize known gaps.
 
 ## Spec priority
 

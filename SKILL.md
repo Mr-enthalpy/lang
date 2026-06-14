@@ -2,8 +2,12 @@
 
 ## Purpose
 
-This skill defines how to work on the `lang` repository during the `v0.1`
-frontend stage. The only accepted outputs are tokens, AST, and diagnostics.
+This skill defines how to work on the `lang` repository. The v0.1 Raw AST
+frontend is completed. Current work is Raw AST contract freeze and
+Normalized AST design.
+
+The only accepted outputs for implementation work are tokens, AST, and
+diagnostics.
 
 ## Workflow
 
@@ -26,14 +30,15 @@ Follow this workflow for every change:
 | 2 | `README.md` | Repository orientation |
 | 3 | `spec/frontend-v0.1.md` | Pipeline understanding |
 | 4 | `spec/implementation-status-v0.1.md` | Current implementation inventory |
-| 5 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 6 | `spec/operator-design.md` | Before any operator syntax change |
-| 7 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
-| 8 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
-| 9 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
-| 10 | `spec/glossary.md` | Terminology reference |
-| 11 | `spec/roadmap.md` | Scope boundary check |
-| 12 | `spec/open-questions.md` | Before touching uncertain areas |
+| 5 | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for normalization |
+| 6 | `spec/ast-construction-v0.1.md` | Before any parser change |
+| 7 | `spec/operator-design.md` | Before any operator syntax change |
+| 8 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
+| 9 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
+| 10 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
+| 11 | `spec/glossary.md` | Terminology reference |
+| 12 | `spec/roadmap.md` | Scope boundary check |
+| 13 | `spec/open-questions.md` | Before touching uncertain areas |
 
 ## 2. Core invariant
 
@@ -133,6 +138,22 @@ If a requested task requires any of the following, stop at AST preservation:
 | Entity alias binding (`let binder === EntityRef`) | Implemented as raw AST parser preservation; do not add target resolution, operator identity validation, or alias semantics |
 | Meta-function AST consumption | Built-in privilege; do not generalize to user macros |
 | `struct` / field syntax | Not parser syntax; future built-in meta-function may consume raw AST |
+
+## 7a. Phase boundaries
+
+For Raw AST work:
+- Edit parser, lexer, tests, and specs as usual.
+- Run `cargo fmt --all` and `cargo test` after changes.
+
+For Raw AST contract work:
+- Do not change parser behavior; document invariants in `spec/raw-ast-contract-v0.1.md`.
+- Update the contract when parser changes affect AST shape.
+
+For Normalized AST work:
+- First update or create Normalized AST specs before implementing code.
+- Normalized AST may desugar syntax but must not resolve names, infer types,
+  evaluate canonical forms, materialize closures, or insert drops.
+- Do not call Normalized AST "HIR".
 
 ## 8. What tests to add
 
