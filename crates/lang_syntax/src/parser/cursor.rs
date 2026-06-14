@@ -87,6 +87,10 @@ impl<'tokens> Cursor<'tokens> {
         self.peek_non_trivia().span
     }
 
+    pub fn current_raw_span(&self) -> Span {
+        self.peek().span
+    }
+
     pub fn current_index(&self) -> usize {
         self.index
     }

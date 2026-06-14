@@ -133,17 +133,26 @@ impl<'tokens> Parser<'tokens> {
     }
 
     pub fn is_alias_rhs_boundary(&mut self) -> bool {
-        if self.nesting_depth == 0 && self.cursor.has_newline_trivia_ahead() {
-            let cursor_index = self.cursor.current_index();
-            let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
-            if Self::can_start_form_token(next) && !Self::is_continuation_token(next) {
-                return true;
-            }
-        }
+        self.is_alias_rhs_newline_boundary() || self.is_alias_rhs_hard_boundary()
+    }
+
+    pub fn is_alias_rhs_hard_boundary(&mut self) -> bool {
         matches!(
             self.cursor.peek_non_trivia().kind,
             TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon | Symbol::RBrace)
         )
+    }
+
+    pub fn is_alias_rhs_newline_boundary(&self) -> bool {
+        if self.nesting_depth != 0 {
+            return false;
+        }
+        if !self.cursor.has_newline_trivia_ahead() {
+            return false;
+        }
+        let cursor_index = self.cursor.current_index();
+        let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
+        Self::can_start_form_token(next) && !Self::is_continuation_token(next)
     }
 
     fn can_end_form_token(token: &Token) -> bool {

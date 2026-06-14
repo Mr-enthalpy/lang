@@ -127,8 +127,22 @@ fn is_valid_alias_binder(kind: &TokenKind) -> bool {
 }
 
 fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
-    let start = parser.cursor.current_span();
+    let start = parser.cursor.current_raw_span();
     let mut path: Vec<EntityPathSegmentAst> = Vec::new();
+
+    if is_entity_ref_boundary(parser) {
+        parser.error(
+            DiagnosticCode::ExpectedAliasTarget,
+            "expected entity reference after `===`",
+            start,
+        );
+        let leaf = EntityPathLeafAst::Error(parser.error_ast("expected entity reference", start));
+        return EntityRefAst {
+            path,
+            leaf,
+            span: start,
+        };
+    }
 
     loop {
         let token = parser.cursor.peek_non_trivia();
@@ -223,6 +237,20 @@ fn finish_entity_ref(
     );
     parser.recover_to_form_boundary();
     EntityRefAst { path, leaf, span }
+}
+
+fn is_entity_ref_boundary(parser: &mut Parser<'_>) -> bool {
+    let raw = parser.cursor.peek();
+    if matches!(
+        raw.kind,
+        TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon | Symbol::RBrace)
+    ) {
+        return true;
+    }
+    if parser.is_alias_rhs_newline_boundary() {
+        return true;
+    }
+    false
 }
 
 fn coloncolon_follows(parser: &Parser<'_>) -> bool {

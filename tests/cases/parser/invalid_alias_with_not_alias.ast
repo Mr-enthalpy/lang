@@ -1,0 +1,13 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple
+        name:
+          TextName x
+        annotation:
+          Error "expected declaration annotation"
+    with:
+    value:
+      Expr
+        Error "expected `=` in let"

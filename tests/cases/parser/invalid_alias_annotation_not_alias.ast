@@ -1,0 +1,22 @@
+Program
+  Let
+    attrs:
+    binder:
+      Simple
+        name:
+          TextName x
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name T
+                  OperatorExpr
+                    Atom
+                      Name y
+    with:
+    value:
+      Expr
+        Error "expected `=` in let"

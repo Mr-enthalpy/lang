@@ -50,7 +50,7 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design + phase 4.4 alias binding parser preservation):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design + phase 4.4 alias binding parser preservation + phase 4.4.1 alias-parser stabilization):**
 
 The current implementation includes parser phase 1, parser phase 2
 binding-context syntax, parser phase 3 closure surface AST, and parser phase
@@ -114,6 +114,12 @@ preservation for alias binding (`let binder === EntityRef`). It includes:
   only inside alias-let RHS; it is not a general expression parser mode. New
   diagnostic codes: `ExpectedAliasTarget`, `InvalidEntityRef`, and
   `UnexpectedAliasRhsExpression`.
+- Parser phase 4.4.1 alias-parser stabilization. Adds boundary-aware entity-ref
+  start checking to prevent missing-target recovery from swallowing following
+  forms across newline or semicolon boundaries. Refactors `is_alias_rhs_boundary`
+  into layered helpers (`is_alias_rhs_newline_boundary`, `is_alias_rhs_hard_boundary`).
+  Adds 11 golden tests covering expression-shaped RHS forms, guard/extract/
+  annotation/with non-alias invariants, and `===` token non-regression.
 
 It does **not** yet include:
 
@@ -154,6 +160,7 @@ Phase 4.1: operator binder names and operator path leaves (implemented)
 Phase 4.2: compile-time entity reference syntax design (documentation — complete)
 Phase 4.3: lexical alias binding design (`let binder === EntityRef`) (documentation — complete)
 Phase 4.4: raw AST parser preservation for alias binding (implemented)
+Phase 4.4.1: alias-parser stabilization (implemented)
 ```
 
 Alias binding is after Phase 4.1 because operator aliases require operator

@@ -1,0 +1,2 @@
+error ExpectedColon "expected `:` after let binder name" @ 1:7 [6..10]
+error ExpectedEqual "expected `=` in let" @ 2:1 [19..19]
