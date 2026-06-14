@@ -197,10 +197,17 @@ a shape.
 ├── spec/
 │   ├── README.md
 │   ├── frontend-v0.1.md
+│   ├── implementation-status-v0.1.md
 │   ├── ast-construction-v0.1.md
+│   ├── operator-design.md
+│   ├── entity-ref-design.md
+│   ├── entity-alias-design.md
 │   ├── diagnostics-v0.1.md
 │   ├── roadmap.md
 │   ├── library-namespace-design-note.md
+│   ├── build-system-design.md
+│   ├── package-manifest-v0.md
+│   ├── namespace-assembly-v0.md
 │   ├── glossary.md
 │   └── open-questions.md
 ├── crates/

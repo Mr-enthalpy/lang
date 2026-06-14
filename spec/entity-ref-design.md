@@ -18,7 +18,8 @@ expression parser mode.
 `EntityRef` names a compile-time entity in a strong syntax context. It is not a
 runtime expression and is not evaluated by the parser.
 
-Future alias binding (Phase 4.3 design complete, `spec/entity-alias-design.md`) will use it on the
+Alias binding (Phase 4.3 design; Phase 4.4 alias-RHS EntityRef implemented,
+`spec/entity-alias-design.md`) uses it on the
 right-hand side:
 
 ```text
@@ -110,9 +111,12 @@ The current `<` operator-binder ambiguity documented in
 `spec/operator-design.md` concerns `let` binder syntax. It does not by itself
 add an `EntityRef` escape form.
 
-## Future Raw AST Sketch
+## Raw AST shape
 
-A future parser-preservation phase may use a raw AST shape like:
+### Current alias-RHS EntityRef AST (Phase 4.4 implemented)
+
+The alias-let RHS parser produces the following raw AST (implemented in
+`crates/lang_syntax/src/ast.rs`):
 
 ```text
 EntityRefAst {
@@ -132,8 +136,11 @@ EntityPathLeafAst =
   | Error(ErrorAst)
 ```
 
-This is a design sketch only. These Rust AST nodes are not implemented in Phase
-4.2 or Phase 4.3.
+### Future general EntityRef contexts
+
+For future strong contexts outside alias-let RHS, the same `EntityRefAst` shape
+is expected. The parser does not yet accept `EntityRef` as a standalone
+expression mode.
 
 ## Parser Boundary
 

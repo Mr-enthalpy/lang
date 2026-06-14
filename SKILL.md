@@ -21,7 +21,7 @@ Follow this workflow for every change:
 ## 1. Which spec files to read first
 
 | Priority | File | When to read |
-|---|---|---|---|
+|---|---|---|
 | 1 | `AGENTS.md` | Always, before any code change |
 | 2 | `README.md` | Repository orientation |
 | 3 | `spec/frontend-v0.1.md` | Pipeline understanding |

@@ -236,7 +236,7 @@ an inner alias shadows an outer alias with the same binder identity.
 
 ## Relation to `===`
 
-`===` is a future structural delimiter for alias binding.
+`===` is a structural delimiter token (`Symbol::TripleEqual`) for alias binding.
 
 It is **not**:
 
@@ -246,26 +246,11 @@ It is **not**:
 - a general expression operator;
 - an operator name.
 
-When parser preservation is eventually implemented, the lexer must
-longest-match:
-
-```text
-===
-```
-
-before:
-
-```text
-==
-=
-```
+The lexer longest-matches `===` before `==` and `=`. This is already implemented
+in Phase 4.4.
 
 `===` should not become a general expression operator unless a future design
-explicitly changes this. Phase 4.3 does not implement this lexer change.
-
-The current lexer may tokenize `===` as `==` followed by `=`. A later
-alias-parser phase must update lexer maximal-munch rules before adding alias
-syntax preservation.
+explicitly changes this.
 
 ## Relation to EntityRef
 
@@ -298,10 +283,8 @@ alias RHS must not parse as an expression/ArgPack structure.
 
 ## Parser Boundary
 
-If a future parser phase accepts this syntax, the parser may preserve a raw
-`LetAliasAst` and `EntityRefAst`.
-
-Even when alias binding is eventually parsed, the parser must **not**:
+The parser already preserves raw `LetAliasAst` and `EntityRefAst` (Phase 4.4
+implementation). It does **not**:
 
 - resolve the target entity;
 - check whether the target exists;
@@ -317,32 +300,29 @@ Even when alias binding is eventually parsed, the parser must **not**:
 - perform overload resolution;
 - lower aliases into runtime values.
 
-The parser may only preserve raw syntax and emit narrow syntax diagnostics.
+The parser preserves raw syntax and emits narrow syntax diagnostics only.
 
-Phase 4.3 must not implement even that parser preservation.
+## Diagnostics
 
-## Future Diagnostics Design Note
+The following diagnostic codes are implemented in `DiagnosticCode` (Phase 4.4):
 
-These diagnostics are future design only. They are not added to
-`DiagnosticCode` in Rust and are not implemented in this phase.
+| Diagnostic                          | Status         | Trigger                                                                 |
+| ----------------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `ExpectedAliasTarget`               | Implemented    | `let binder ===` is not followed by a valid `EntityRef`.                |
+| `InvalidAliasBinder`                | Reserved       | The binder position after `let` is not a valid `Name` or `OperatorName`. Currently not emitted; falls through to ordinary-let `ExpectedName`. |
+| `InvalidEntityRef`                  | Implemented    | The `EntityRef` on the RHS is malformed (e.g., operator in segment position). |
+| `UnexpectedAliasRhsExpression`      | Implemented    | The RHS of `===` is an expression form (PipeExpr, ArgPack, closure, etc.) instead of `EntityRef`. |
 
-Possible future diagnostics:
+Future diagnostics, not implemented:
 
-| Diagnostic                          | Trigger                                                                 |
-| ----------------------------------- | ----------------------------------------------------------------------- |
-| `ExpectedAliasTarget`               | `let binder ===` is not followed by a valid `EntityRef`.                |
-| `InvalidAliasBinder`                | The binder position after `let` is not a valid `Name` or `OperatorName`. |
-| `InvalidEntityRef`                  | The `EntityRef` on the RHS is malformed (e.g., operator in segment position). |
-| `OperatorAliasIdentityMismatch`     | The operator binder spelling differs from the target leaf spelling.     |
-| `UnexpectedAliasRhsExpression`      | The RHS of `===` is an expression form (PipeExpr, ArgPack, closure) instead of `EntityRef`. |
+| Diagnostic                          | Note                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| `OperatorAliasIdentityMismatch`     | Spelling + fixity + arity check. Deferred to future semantic validation. |
 
 `OperatorAliasIdentityMismatch` may be a parser diagnostic (spelling-only) or
-a later static-semantic diagnostic (including fixity/arity). This decision is
-deferred to the alias-parser implementation phase.
+a later static-semantic diagnostic (including fixity/arity).
 
-## Future AST Sketch
-
-Possible future raw AST shape:
+## Alias binding AST (current Phase 4.4 shape)
 
 ```text
 LetAliasAst {
@@ -373,22 +353,24 @@ EntityPathLeafAst =
 
 The exact `EntityRefAst` shape is defined in `spec/entity-ref-design.md`.
 
-These nodes are not implemented in this documentation-only task. They are not
-added to the Rust `ast` module in Phase 4.3.
+These nodes are implemented in the current Rust `ast` module (Phase 4.4).
 
 ## Non-Goals
 
-Do not implement in Phase 4.3:
+The following are implemented in the current parser (Phase 4.4 / 4.4.1):
 
 ```text
-lexer token for ===
-EntityRef parser
-alias parser
-LetAliasAst
-AliasBinderAst in Rust code
-EntityRefAst in Rust code
-DiagnosticCode additions
-operator alias validation
+=== lexer token (Symbol::TripleEqual)
+EntityRef parser (alias-let RHS only)
+alias parser (let_stmt.rs parse_let_form dispatch)
+LetAliasAst, AliasBinderAst, EntityRefAst in Rust code
+ExpectedAliasTarget, InvalidEntityRef, UnexpectedAliasRhsExpression diagnostics
+```
+
+Do not implement in the parser:
+
+```text
+operator alias identity validation
 operator identity checking
 name lookup
 operator lookup
@@ -397,6 +379,8 @@ dependency resolver
 build manifest parser
 package/import/use/include/module syntax
 runtime value binding semantics
+alias target resolution
+alias scope validation
 ```
 
 Do not reinterpret existing syntax:
