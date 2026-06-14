@@ -40,7 +40,7 @@ Raw AST → Normalized AST lowering is allowed in a later explicit task.
 
 Do not implement:
 
-* operator lookup, lowering, ADL, type-directed lookup, mutation semantics, or semantic operator validation (operator syntax is already implemented as raw AST sugar)
+* operator lookup, ADL, type-directed lookup, mutation semantics, semantic operator validation, or semantic operator lowering (operator syntax is already implemented as raw AST sugar; operator sugar may be desugared into Normalized AST only in an explicit normalization-stage task — this is not operator lookup or semantic lowering)
 * alias semantics, target resolution, operator identity validation, or namespace resolution (alias binding parser preservation is already implemented)
 * type checking
 * kind checking
