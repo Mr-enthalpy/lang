@@ -36,9 +36,10 @@ executed, type-checked, or lowered.
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
 | `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                          |
-| `entity-ref-design.md`     | Future compile-time entity reference syntax and parser/semantic boundary. Not a v0.1 parser rule.                                                                       |
-| `entity-alias-design.md`   | Future lexical alias binding syntax using `let binder === EntityRef`. Phase 4.3 design complete. Not a v0.1 parser rule.                                                                           |
+| `entity-ref-design.md`     | Future general compile-time entity reference syntax design. Alias-RHS EntityRef subset implemented in Phase 4.4.                                                        |
+| `entity-alias-design.md`   | Lexical alias binding syntax using `let binder === EntityRef`. Phase 4.3 design; Phase 4.4 raw parser preservation implemented; future semantic meaning remains future work. |
 | `diagnostics-v0.1.md`      | Diagnostic categories, trigger conditions, span policy, recovery behavior.                                                                                              |
+| `implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status.                                                                                                  |
 | `glossary.md`              | Terminology definitions and distinctions.                                                                                                                               |
 | `roadmap.md`               | Stage model from v0.1 to v1.0, scope boundaries.                                                                                                                        |
 | `open-questions.md`        | Unresolved design questions.                                                                                                                                            |
@@ -50,7 +51,8 @@ If a conflict arises between documents, `ast-construction-v0.1.md` takes
 precedence.
 
 `entity-ref-design.md` and `entity-alias-design.md` document future strong
-syntax contexts only (Phase 4.2 and 4.3 design complete). They do not change current parser acceptance.
+syntax contexts and alias binding design. Phase 4.4 implements raw parser
+preservation for alias binding and alias-RHS EntityRef.
 
 ## Boundaries
 
@@ -93,46 +95,30 @@ Diagnostics in v0.1 cover lexer and parser errors only:
 
 1. Start here.
 2. Read `ast-construction-v0.1.md` to understand syntax rules and AST shapes.
-3. Refer to `glossary.md` when a term is unclear.
-4. Read `entity-ref-design.md` and `entity-alias-design.md` for future `EntityRef` and alias binding design (documentation only, not implemented).
-5. Consult `diagnostics-v0.1.md` for error behavior.
-6. Check `roadmap.md` to understand what is deferred.
-7. Check `open-questions.md` for unresolved design items before making
+3. Read `implementation-status-v0.1.md` to know the current implementation facts.
+4. Refer to `glossary.md` when a term is unclear.
+5. Read `entity-alias-design.md` for alias binding design (implemented as raw parser preservation).
+6. Read `entity-ref-design.md` for future general EntityRef design.
+7. Consult `diagnostics-v0.1.md` for error behavior.
+8. Check `roadmap.md` to understand what is deferred.
+9. Check `open-questions.md` for unresolved design items before making
    decisions.
 
 ## Current implementation status
 
-The current implementation includes:
+The v0.1 frontend covers:
 
-- Lexer with operator-aware tokenization (operator spellings recognized as
-  tokens; structural symbols distinguished from operators).
-- Stable token/AST/diagnostic dumps.
-- Simple let forms (text/operator binder names, bare annotations, explicit
-  rank annotations, guard attributes, with clauses).
-- Name, integer literal, string literal, and path expression atoms (including
-  numeric path leaves such as `uint8::1` and final operator path leaves such as
-  `std::int::+`).
-- Group atoms `(expr)`.
-- Pipe segmentation (`|>`) and ArgPack role assignment.
-- Atom suffix folding: `:: Selector`, `. Selector` (MemberSugar),
-  `.. Selector ArgPack` (DoubleDotSugar).
-- Numeric selectors (`obj.1`, `obj..1(args)`) using NumericNameAst.
-- Top-level newline form boundaries implemented.
-- Extract-let binders, deduce lists, and canonical skeleton preservation.
-- Closure AST (inline `{}`, explicit `() => {}`, closure heads with
-  deduce/capture/parameter/fn-item-trait/return clauses) with Phase 3.1
-  stabilization coverage.
-- Operator expression AST sugar and operator names in binder/final-path-leaf
-  positions.
-- Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable.
-- Golden test suites: 10 lexer, 167 parser, 27 diagnostics tests.
-- Phase 4.2 compile-time `EntityRef` syntax design (documentation only).
-- Phase 4.3 lexical alias binding design (`let binder === EntityRef`)
-  (documentation only).
-- Phase 4.4 raw AST parser preservation for alias binding. Lexer recognizes
-  `===` as single structural delimiter token. Parser produces `LetAliasAst`
-  with `AliasBinderAst` and `EntityRefAst`. EntityRef parsing implemented
-  only inside alias-let RHS.
+- Operator-aware lexer with CRLF/LF normalization, operator spellings, and `===` token
+- Full parser: simple let, extract let, let alias, pipe/segment/argpack,
+  operator expressions, path/member/double-dot sugar, closures with heads,
+  canonical skeletons, deduce lists
+- Stable token, AST, and diagnostic dumps
+- Diagnostic taxonomy covering lexer, parser, operator, and alias parsing
+- Golden test coverage for lexer, parser/AST, and diagnostics
+
+For the detailed, factual inventory see `spec/implementation-status-v0.1.md`.
+
+For the current phase breakdown see `spec/roadmap.md`.
 
 It does **not** yet cover:
 

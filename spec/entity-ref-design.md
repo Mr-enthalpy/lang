@@ -1,19 +1,25 @@
 ﻿# EntityRef Design
 
+**Status:**
+- **AliasRhsEntityRef**: implemented in Phase 4.4 as raw AST preservation
+  inside `let binder === EntityRef`. The parser produces `EntityRefAst`
+  with path segments and a leaf. EntityRef parsing is available only in
+  alias-let RHS position; it is not a general expression parser mode.
+- **GeneralEntityRef**: future design. Standalone `EntityRef` parsing in
+  arbitrary strong contexts is not yet implemented.
+
 This document records the future compile-time entity reference syntax used by
 later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
 EntityRef parser inside alias-let RHS only; EntityRef is not a general
 expression parser mode.
-
-It is a documentation/design note only. It is not implemented in the current
-parser and is not part of v0.1 accepted syntax.
 
 ## Purpose
 
 `EntityRef` names a compile-time entity in a strong syntax context. It is not a
 runtime expression and is not evaluated by the parser.
 
-Future alias binding (Phase 4.3 design complete, `spec/entity-alias-design.md`) will use it on the
+Alias binding (Phase 4.3 design; Phase 4.4 alias-RHS EntityRef implemented,
+`spec/entity-alias-design.md`) uses it on the
 right-hand side:
 
 ```text
@@ -105,9 +111,12 @@ The current `<` operator-binder ambiguity documented in
 `spec/operator-design.md` concerns `let` binder syntax. It does not by itself
 add an `EntityRef` escape form.
 
-## Future Raw AST Sketch
+## Raw AST shape
 
-A future parser-preservation phase may use a raw AST shape like:
+### Current alias-RHS EntityRef AST (Phase 4.4 implemented)
+
+The alias-let RHS parser produces the following raw AST (implemented in
+`crates/lang_syntax/src/ast.rs`):
 
 ```text
 EntityRefAst {
@@ -127,8 +136,11 @@ EntityPathLeafAst =
   | Error(ErrorAst)
 ```
 
-This is a design sketch only. These Rust AST nodes are not implemented in Phase
-4.2 or Phase 4.3.
+### Future general EntityRef contexts
+
+For future strong contexts outside alias-let RHS, the same `EntityRefAst` shape
+is expected. The parser does not yet accept `EntityRef` as a standalone
+expression mode.
 
 ## Parser Boundary
 

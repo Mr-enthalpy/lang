@@ -50,6 +50,12 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
+#### Current implementation snapshot
+
+For the authoritative factual inventory of current implementation status,
+see `spec/implementation-status-v0.1.md`. The summary below tracks
+phase-level completion, not per-feature status.
+
 **Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design + phase 4.4 alias binding parser preservation + phase 4.4.1 alias-parser stabilization):**
 
 The current implementation includes parser phase 1, parser phase 2

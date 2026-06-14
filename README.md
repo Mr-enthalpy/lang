@@ -2,52 +2,56 @@
 
 `lang` is an experimental programming language frontend.
 
-The current repository target is **v0.1**.
+This repository is currently a **v0.1 raw frontend prototype**. It lexes,
+parses, builds raw AST, emits diagnostics, and has golden tests. It does not
+perform semantic analysis.
 
-## Current stage
+## Documentation map
 
-```text
-source text -> tokens -> AST -> diagnostics
-```
+### Current implemented specs
 
-v0.1 is a syntax frontend only. It lexes, parses, builds AST, and produces
-diagnostics. It does not type-check, interpret, lower, or execute programs.
+| Document | Purpose |
+|---|---|
+| `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
+| `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
+| `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
+| `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery |
+| `spec/glossary.md` | Terminology definitions and critical distinctions |
+| `spec/frontend-v0.1.md` | Reader entry point — explains the pipeline and spec organization |
+
+### Future design notes
+
+| Document | Purpose |
+|---|---|
+| `spec/entity-ref-design.md` | General `EntityRef` design (future); alias-RHS subset implemented in Phase 4.4 |
+| `spec/entity-alias-design.md` | Lexical alias binding design (Phase 4.3); raw parser preservation implemented in Phase 4.4; future semantic meaning remains future work |
+| `spec/roadmap.md` | Stage model v0.1–v1.0 and scope boundaries |
+| `spec/open-questions.md` | Unresolved design questions and documentation debt |
+
+### Build / package / namespace (future notes)
+
+| Document | Purpose |
+|---|---|
+| `spec/library-namespace-design-note.md` | Non-normative future design note |
+| `spec/build-system-design.md` | Build/package/namespace assembly architecture (future) |
+| `spec/package-manifest-v0.md` | Provisional build-manifest design surface (future) |
+| `spec/namespace-assembly-v0.md` | Namespace assembly pipeline and phase split (future) |
+
+### Operational
+
+| Document | Purpose |
+|---|---|
+| `AGENTS.md` | Agent instructions — read before making code changes |
+| `SKILL.md` | Operational workflow for frontend work |
+| `spec/README.md` | Spec index with authority levels |
 
 ## Two repository tracks
-
-This repository contains two coordinated tracks:
 
 1. **Frontend syntax track** (active): lexer, parser, AST, diagnostics.
    Implements `source text -> tokens -> AST -> diagnostics` for v0.1.
 
 2. **Build/package/namespace assembly track** (documentation only for now):
    future build system, package manifest, and namespace assembly design.
-   No implementation yet.
-
-The build-system track stays in this repository while core language design
-constraints stabilize. A future split into a separate repository is possible
-only after the manifest format, namespace graph model, declaration-index API,
-and crate public API become stable.
-
-## Documentation map
-
-| Document                        | Purpose                                                          |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `spec/frontend-v0.1.md`         | Reader entry point — explains the pipeline and spec organization |
-| `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this    |
-| `spec/operator-design.md`       | Normative operator syntax design and implementation boundaries   |
-| `spec/entity-ref-design.md`     | Future compile-time entity reference design - not implemented    |
-| `spec/entity-alias-design.md`   | Future lexical alias binding design — Phase 4.3 design complete, not implemented            |
-| `spec/diagnostics-v0.1.md`      | Normative diagnostic categories, span policy, recovery           |
-| `spec/roadmap.md`               | Stage model v0.1–v1.0 and scope boundaries                       |
-| `spec/glossary.md`              | Terminology definitions and critical distinctions                |
-| `spec/open-questions.md`        | Unresolved design questions                                      |
-| `spec/README.md`                | Spec index with authority levels                                 |
-| `spec/build-system-design.md`    | Build/package/namespace assembly architecture (future, non-normative) |
-| `spec/package-manifest-v0.md`    | Provisional build-manifest design surface (future, non-normative) |
-| `spec/namespace-assembly-v0.md`  | Namespace assembly pipeline and phase split (future, non-normative) |
-| `AGENTS.md`                     | Agent instructions — read before making code changes             |
-| `SKILL.md`                      | Operational workflow for frontend work                           |
 
 Start with `spec/frontend-v0.1.md` to understand the pipeline, then
 `spec/ast-construction-v0.1.md` for parser behavior. Read
@@ -193,10 +197,17 @@ a shape.
 ├── spec/
 │   ├── README.md
 │   ├── frontend-v0.1.md
+│   ├── implementation-status-v0.1.md
 │   ├── ast-construction-v0.1.md
+│   ├── operator-design.md
+│   ├── entity-ref-design.md
+│   ├── entity-alias-design.md
 │   ├── diagnostics-v0.1.md
 │   ├── roadmap.md
 │   ├── library-namespace-design-note.md
+│   ├── build-system-design.md
+│   ├── package-manifest-v0.md
+│   ├── namespace-assembly-v0.md
 │   ├── glossary.md
 │   └── open-questions.md
 ├── crates/
@@ -229,7 +240,7 @@ make fmt
 
 ## CLI target
 
-The `lang_cli` crate currently exposes:
+The `lang_cli` crate exposes:
 
 ```bash
 lang tokens path/to/file.lang
@@ -237,64 +248,30 @@ lang ast path/to/file.lang
 lang diag path/to/file.lang
 ```
 
-These commands are implemented as entry points for the current frontend
-skeleton.
-
-Current coverage:
-
-- `tokens`: backed by the current lexer implementation (operator-aware) and 9
-  lexer golden tests.
-- `ast`: backed by the current parser; covers simple let forms, path atoms,
-  groups, pipe segmentation, ArgPack roles, member/double-dot sugar, numeric
-  selectors, extract-let binders, deduce lists, canonical skeletons,
-  Phase 3.1-stabilized closure AST, Phase 4 operator AST sugar, and Phase 4.1
-  operator binder/path-leaf syntax. It does not implement operator
-  lookup/lowering, alias binding, `where`/`acquire` clauses, or semantic phases
-  (see `spec/roadmap.md` for phase boundaries).
-- `diag`: backed by the full v0.1 diagnostic taxonomy; 27 diagnostic golden
-  tests plus parser golden cases that include recovery diagnostics.
-
-The output format is stable and suitable for golden tests. All dump output
-uses hand-written formatting, not Rust `Debug`.
+The repository has golden coverage for lexer, parser/AST, and diagnostics.
+See `spec/implementation-status-v0.1.md` for the current test count.
 
 ## Non-goals for v0.1
 
-Do not implement:
+v0.1 does not implement type checking, kind checking, name resolution,
+operator lookup, alias resolution, closure materialization, NLL/drop
+insertion, interpretation, code generation, or IR/HIR/MIR lowering.
 
-- type checking
-- kind checking
-- overload resolution
-- canonical-form evaluation
-- universal extraction matching
-- closure AST materialization into callable objects
-- match / effect / sync semantics
-- ownership, lifetime, NLL, drop insertion
-- interpretation
-- code generation
-- IR / HIR / MIR lowering
-- parser generators (hand-written parser only)
-- library / import / export / module / package syntax
-- build manifest parser, dependency solver, namespace resolver, lockfile
-  generator, cache validator, declaration indexer
-
-The parser should preserve syntax sufficient for these future passes, but
-must not perform them.
-
-v0.1 only preserves raw namespace path shapes such as `std::Vec`,
-`mylib::math::vector::Vec3`.
+The parser preserves raw AST shape for these future passes but performs
+none of them.
 
 ## How to read the spec
 
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
-2. `spec/ast-construction-v0.1.md` — Implement the parser.
-3. `spec/operator-design.md` - Understand operator syntax and future lookup boundaries.
-4. `spec/entity-ref-design.md` - Understand future compile-time entity references (Phase 4.2).
-5. `spec/entity-alias-design.md` - Understand future lexical alias binding (Phase 4.3).
-6. `spec/diagnostics-v0.1.md` - Understand error reporting.
-7. `spec/glossary.md` - Resolve terminology.
-8. `spec/roadmap.md` - Understand scope boundaries.
-9. `spec/library-namespace-design-note.md` - Non-normative future design note.
-10. `spec/open-questions.md` - Recognize known gaps.
+2. `spec/implementation-status-v0.1.md` — Know what is currently implemented.
+3. `spec/ast-construction-v0.1.md` — Implement the parser.
+4. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
+5. `spec/entity-ref-design.md` — Future general EntityRef design.
+6. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+7. `spec/diagnostics-v0.1.md` — Understand error reporting.
+8. `spec/glossary.md` — Resolve terminology.
+9. `spec/roadmap.md` — Understand scope boundaries.
+10. `spec/open-questions.md` — Recognize known gaps.
 
 ## Expected future workspace shape
 
