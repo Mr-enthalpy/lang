@@ -1,0 +1,1 @@
+error InvalidEntityRef "operator cannot appear as intermediate entity path segment" @ 1:15 [14..16]

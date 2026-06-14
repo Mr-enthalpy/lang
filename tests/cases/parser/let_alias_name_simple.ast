@@ -1,9 +1,9 @@
 Program
   LetAlias
     binder:
-      Operator +
+      Name Vec
     target:
       EntityRef
         segment std
-        segment int
-        leaf Operator +
+        segment collections
+        leaf Name Vector

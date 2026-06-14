@@ -81,3 +81,8 @@ fn operators() {
 fn structural_with_operators() {
     assert_lexer_case("structural_with_operators", false);
 }
+
+#[test]
+fn triple_equal_token() {
+    assert_lexer_case("triple_equal_token", false);
+}

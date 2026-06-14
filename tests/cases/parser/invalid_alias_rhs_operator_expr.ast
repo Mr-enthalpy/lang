@@ -1,0 +1,7 @@
+Program
+  LetAlias
+    binder:
+      Name x
+    target:
+      EntityRef
+        leaf Name a

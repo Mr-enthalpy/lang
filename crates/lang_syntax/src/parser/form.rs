@@ -2,7 +2,7 @@ use crate::{
     Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token, TokenKind,
 };
 
-use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let};
+use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Continuation {
@@ -68,7 +68,7 @@ impl<'tokens> Parser<'tokens> {
 
     pub fn parse_form(&mut self) -> FormAst {
         if self.cursor.at_name("let") {
-            FormAst::Let(parse_let(self))
+            parse_let_form(self)
         } else {
             FormAst::Expr(parse_expr_until(self, |parser| parser.is_form_boundary()))
         }

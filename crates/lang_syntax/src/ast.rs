@@ -13,6 +13,7 @@ pub struct ProgramAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FormAst {
     Let(LetAst),
+    AliasLet(LetAliasAst),
     Expr(ExprAst),
     Error(ErrorAst),
 }
@@ -363,4 +364,40 @@ pub struct NameAst {
 pub struct ErrorAst {
     pub message: String,
     pub span: Span,
+}
+
+// --- Alias binding ---
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LetAliasAst {
+    pub binder: AliasBinderAst,
+    pub target: EntityRefAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AliasBinderAst {
+    Name(NameAst),
+    Operator(OperatorNameAst),
+    Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EntityRefAst {
+    pub path: Vec<EntityPathSegmentAst>,
+    pub leaf: EntityPathLeafAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EntityPathSegmentAst {
+    pub name: NameAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EntityPathLeafAst {
+    Name(NameAst),
+    Operator(OperatorNameAst),
+    Error(ErrorAst),
 }

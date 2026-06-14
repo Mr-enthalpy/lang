@@ -362,6 +362,7 @@ fn is_operator_expr_boundary(
                     | Symbol::ThinArrow
                     | Symbol::Equal
                     | Symbol::Colon
+                    | Symbol::TripleEqual
             )
     )
 }

@@ -1,9 +1,9 @@
 Program
   LetAlias
     binder:
-      Operator +
+      Name map
     target:
       EntityRef
         segment std
-        segment int
-        leaf Operator +
+        segment iter
+        leaf Name map

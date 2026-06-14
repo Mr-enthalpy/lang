@@ -125,17 +125,21 @@ The current implementation includes:
 - Operator expression AST sugar and operator names in binder/final-path-leaf
   positions.
 - Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable.
-- Golden test suites: 9 lexer, 154 parser, 27 diagnostics tests.
+- Golden test suites: 10 lexer, 167 parser, 27 diagnostics tests.
 - Phase 4.2 compile-time `EntityRef` syntax design (documentation only).
 - Phase 4.3 lexical alias binding design (`let binder === EntityRef`)
   (documentation only).
+- Phase 4.4 raw AST parser preservation for alias binding. Lexer recognizes
+  `===` as single structural delimiter token. Parser produces `LetAliasAst`
+  with `AliasBinderAst` and `EntityRefAst`. EntityRef parsing implemented
+  only inside alias-let RHS.
 
 It does **not** yet cover:
 
 - Operator lookup, lowering, overload resolution, dispatch, ADL, or
   type-directed lookup.
-- Alias binding (`let binder === EntityRef`) or compile-time `EntityRef`
-  parsing.
+- Compile-time `EntityRef` resolution.
+- Operator alias identity validation.
 - `where`/`acquire` closure clauses, closure object materialization, type/kind
   checking, name resolution, semantic analysis, lowering, interpretation, or
   code generation.

@@ -25,6 +25,10 @@ pub enum DiagnosticCode {
     OperatorPathLeafNotFinal,
     TopLevelComma,
     UnusedClosureAst,
+    ExpectedAliasTarget,
+    InvalidAliasBinder,
+    InvalidEntityRef,
+    UnexpectedAliasRhsExpression,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

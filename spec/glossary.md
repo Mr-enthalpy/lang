@@ -296,9 +296,11 @@ _See also: SelectorAst, OperatorName, Atom._
 
 ## EntityRef
 
-A future syntax-level compile-time entity reference. `EntityRef` is not a
-runtime expression, not a `PipeExpr`, not an `ArgPack`, not a closure, and not
-resolved by the parser.
+A compile-time entity reference syntax. Phase 4.2 defines the design; Phase
+4.4 implements a raw `EntityRef` parser inside alias-let RHS only. `EntityRef`
+is not a runtime expression, not a `PipeExpr`, not an `ArgPack`, not a
+closure, and not resolved by the parser. EntityRef parsing is not a general
+expression parser mode.
 
 Provisional grammar:
 
@@ -367,15 +369,17 @@ _See also: EntityPath, OperatorName, EntityRef._
 
 ## Alias binding
 
-A future declaration form `let binder === EntityRef` that creates a
-compile-time lookup alias in the current lexical scope. Alias binding is
-not runtime value binding, not an expression, not equality, not operator
-syntax, and not package import syntax. It is not implemented in v0.1.
+A declaration form `let binder === EntityRef` that creates a compile-time
+lookup alias in the current lexical scope. Phase 4.4 implements raw parser
+preservation: the parser produces `LetAliasAst` with `AliasBinderAst` and
+`EntityRefAst`. Alias binding is not runtime value binding, not an expression,
+not equality, not operator syntax, and not package import syntax. No target
+resolution, operator identity validation, or entity lookup is performed.
 
-> **Distinction**: Alias binding is a future lexical-scope construct.
-> It is not an ordinary `let name: annotation = expr`. It has no `=`
+> **Distinction**: Alias binding is implemented as raw parser preservation
+> only. It is not an ordinary `let name: annotation = expr`. It has no `=`
 > value expression, no declaration annotation, no `guard`, and no `with`.
-> No target entity resolution occurs in the parser.
+> EntityRef parsing is implemented only inside alias-let RHS.
 
 _See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef._
 

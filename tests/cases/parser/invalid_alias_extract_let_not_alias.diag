@@ -1,0 +1,1 @@
+error ExpectedEqual "expected `=` in let" @ 1:11 [10..13]

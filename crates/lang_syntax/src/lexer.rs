@@ -194,6 +194,16 @@ impl<'src> Lexer<'src> {
         //   7. 1-char operators:   +  -  *  /  !  &  @  ~  ^  $  ?
         //   8. 1-char structural:  <  >  =  .  :  ,  ;  (  )  [  ]  {  }
 
+        // Step 0: 3-char structural symbol
+        if self.starts_with("===") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::TripleEqual), start);
+            return true;
+        }
+
         // Step 1: 3-char operators
         if self.starts_with("<<=") {
             let start = self.mark();

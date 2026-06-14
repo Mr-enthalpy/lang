@@ -804,5 +804,70 @@ fn invalid_operator_doubledot_selector() {
 
 #[test]
 fn invalid_operator_alias_not_parsed() {
-    assert_parser_case("invalid_operator_alias_not_parsed", true);
+    assert_parser_case("invalid_operator_alias_not_parsed", false);
+}
+
+#[test]
+fn let_alias_name_simple() {
+    assert_parser_case("let_alias_name_simple", false);
+}
+
+#[test]
+fn let_alias_name_path() {
+    assert_parser_case("let_alias_name_path", false);
+}
+
+#[test]
+fn let_alias_operator_shift() {
+    assert_parser_case("let_alias_operator_shift", false);
+}
+
+#[test]
+fn let_alias_single_leaf() {
+    assert_parser_case("let_alias_single_leaf", false);
+}
+
+#[test]
+fn let_alias_operator_unqualified() {
+    assert_parser_case("let_alias_operator_unqualified", false);
+}
+
+#[test]
+fn invalid_alias_missing_target() {
+    assert_parser_case("invalid_alias_missing_target", true);
+}
+
+#[test]
+fn invalid_alias_rhs_pipe() {
+    assert_parser_case("invalid_alias_rhs_pipe", true);
+}
+
+#[test]
+fn invalid_alias_rhs_closure() {
+    assert_parser_case("invalid_alias_rhs_closure", true);
+}
+
+#[test]
+fn invalid_alias_rhs_argpack() {
+    assert_parser_case("invalid_alias_rhs_argpack", true);
+}
+
+#[test]
+fn invalid_alias_rhs_operator_expr() {
+    assert_parser_case("invalid_alias_rhs_operator_expr", true);
+}
+
+#[test]
+fn invalid_alias_operator_intermediate_segment() {
+    assert_parser_case("invalid_alias_operator_intermediate_segment", true);
+}
+
+#[test]
+fn invalid_alias_bad_binder() {
+    assert_parser_case("invalid_alias_bad_binder", true);
+}
+
+#[test]
+fn invalid_alias_extract_let_not_alias() {
+    assert_parser_case("invalid_alias_extract_let_not_alias", true);
 }

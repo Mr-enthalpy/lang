@@ -32,6 +32,7 @@ pub enum Symbol {
     Less,
     Greater,
     Semicolon,
+    TripleEqual,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
