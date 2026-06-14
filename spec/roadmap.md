@@ -10,8 +10,8 @@ not strict chronological gates.
 
 ```
 v0.1 — Raw AST Frontend — completed
-v0.2 — Raw AST Contract Freeze — current
-v0.3 — Normalized AST Specification
+v0.2 — Raw AST Contract Freeze — completed
+v0.3 — Normalized AST Specification — current
 v0.4 — Raw AST → Normalized AST Prototype
 v0.5 — Normalized AST Stabilization
 v0.6+ — Later semantic design stages
@@ -65,7 +65,7 @@ that future normalization passes may rely on, see
 
 ---
 
-### v0.2 — Raw AST Contract Freeze — current
+### v0.2 — Raw AST Contract Freeze — completed
 
 **Goal**: Document the invariants of the completed v0.1 Raw AST so that
 future normalization passes can safely desugar it.
@@ -82,7 +82,7 @@ documentation-only deliverable.
 
 ---
 
-### v0.3 — Normalized AST Specification
+### v0.3 — Normalized AST Specification — current
 
 **Goal**: Define the Normalized AST node set and document how Raw AST
 constructs desugar into Normalized AST.

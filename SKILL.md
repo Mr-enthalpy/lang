@@ -3,7 +3,7 @@
 ## Purpose
 
 This skill defines how to work on the `lang` repository. The v0.1 Raw AST
-frontend is completed. Current work is Raw AST contract freeze and
+frontend is completed. Current work is Normalized AST specification (v0.3); v0.2 Raw AST Contract Freeze is completed and
 Normalized AST design.
 
 The only accepted outputs for implementation work are tokens, AST, and

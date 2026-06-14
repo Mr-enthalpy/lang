@@ -6,7 +6,7 @@
 parses, builds raw AST, emits diagnostics, and has golden tests. It does not
 perform semantic analysis.
 
-The next work is Raw AST contract freeze and Normalized AST design:
+The v0.2 Raw AST Contract Freeze is completed. The next work is Normalized AST specification (v0.3).
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
 - **Normalized AST**: future desugared AST that unifies calls, extraction,
