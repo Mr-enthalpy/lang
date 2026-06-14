@@ -512,3 +512,35 @@ question.
 No alias parsing or namespace resolution exists.
 
 **Future stage:** Namespace assembly phase or later language design.
+
+---
+
+## 26. Alias RHS continuation-token after newline
+
+**Status:** Open (Phase 4.4.1 observation)
+
+**Context:** When an alias RHS is followed by a newline and the next line begins
+with an operator token, the current form-boundary rules may treat the operator
+line as a continuation rather than a new form:
+
+```text
+let x === a
++ b
+```
+
+Because `+` is an operator token and operator tokens are general continuation
+tokens in the form-boundary system, the newline before `+ b` may not be
+promoted to a form separator. The `is_alias_rhs_boundary` check in Phase 4.4.1
+uses `!is_continuation_token(next)` to guard against this, so `+ b` on the next
+line would NOT be treated as a new form starting at `+`.
+
+If a future design wants `+ b` on a new line to be a separate expression form
+rather than part of the alias RHS, the form-boundary continuation-token rules
+would need a broader change. This remains documented as an open edge case.
+
+**Why it does not block v0.1:**
+The existing newline-promotion rules already define this behavior; expanding
+them to let operator tokens participate in form-boundary separation is a
+general parser question, not alias-specific.
+
+**Future stage:** v0.2 (form boundary robustness) or later expression design.

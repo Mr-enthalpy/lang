@@ -1,0 +1,29 @@
+Program
+  LetAlias
+    binder:
+      Name x
+    target:
+      EntityRef
+        leaf Error "expected entity reference"
+  Let
+    attrs:
+    binder:
+      Simple
+        name:
+          TextName y
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name z

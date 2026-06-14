@@ -86,3 +86,8 @@ fn structural_with_operators() {
 fn triple_equal_token() {
     assert_lexer_case("triple_equal_token", false);
 }
+
+#[test]
+fn triple_equal_plus_equal_tail() {
+    assert_lexer_case("triple_equal_plus_equal_tail", false);
+}

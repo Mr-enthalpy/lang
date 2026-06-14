@@ -881,3 +881,58 @@ fn invalid_alias_bad_binder() {
 fn invalid_alias_extract_let_not_alias() {
     assert_parser_case("invalid_alias_extract_let_not_alias", true);
 }
+
+#[test]
+fn let_alias_following_form() {
+    assert_parser_case("let_alias_following_form", false);
+}
+
+#[test]
+fn let_alias_semicolon_next_form() {
+    assert_parser_case("let_alias_semicolon_next_form", false);
+}
+
+#[test]
+fn invalid_alias_missing_target_recovery() {
+    assert_parser_case("invalid_alias_missing_target_recovery", true);
+}
+
+#[test]
+fn invalid_alias_rhs_member() {
+    assert_parser_case("invalid_alias_rhs_member", true);
+}
+
+#[test]
+fn invalid_alias_rhs_doubledot() {
+    assert_parser_case("invalid_alias_rhs_doubledot", true);
+}
+
+#[test]
+fn invalid_alias_target_trailing_coloncolon() {
+    assert_parser_case("invalid_alias_target_trailing_coloncolon", true);
+}
+
+#[test]
+fn invalid_alias_target_leading_coloncolon() {
+    assert_parser_case("invalid_alias_target_leading_coloncolon", true);
+}
+
+#[test]
+fn invalid_alias_guard_not_alias() {
+    assert_parser_case("invalid_alias_guard_not_alias", true);
+}
+
+#[test]
+fn invalid_alias_annotation_not_alias() {
+    assert_parser_case("invalid_alias_annotation_not_alias", true);
+}
+
+#[test]
+fn invalid_alias_with_not_alias() {
+    assert_parser_case("invalid_alias_with_not_alias", true);
+}
+
+#[test]
+fn invalid_alias_expression_position() {
+    assert_parser_case("invalid_alias_expression_position", true);
+}
