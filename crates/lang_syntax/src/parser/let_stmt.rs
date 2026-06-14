@@ -141,7 +141,7 @@ fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
                     span: name_token.span,
                 };
 
-                if parser.cursor.at_symbol(Symbol::ColonColon) {
+                if coloncolon_follows(parser) {
                     parser.cursor.bump_non_trivia();
                     path.push(EntityPathSegmentAst {
                         name,
@@ -163,7 +163,7 @@ fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
                         span: op_token.span,
                     };
 
-                    if parser.cursor.at_symbol(Symbol::ColonColon) {
+                    if coloncolon_follows(parser) {
                         let cc_span = parser.cursor.bump_non_trivia().span;
                         parser.error(
                             DiagnosticCode::InvalidEntityRef,
@@ -211,7 +211,7 @@ fn finish_entity_ref(
     leaf: EntityPathLeafAst,
     span: Span,
 ) -> EntityRefAst {
-    if parser.is_form_boundary() {
+    if parser.is_alias_rhs_boundary() {
         return EntityRefAst { path, leaf, span };
     }
 
@@ -223,6 +223,12 @@ fn finish_entity_ref(
     );
     parser.recover_to_form_boundary();
     EntityRefAst { path, leaf, span }
+}
+
+fn coloncolon_follows(parser: &Parser<'_>) -> bool {
+    let idx = parser.cursor.current_index();
+    let (_, token) = parser.cursor.peek_at_skip_trivia(idx);
+    matches!(token.kind, TokenKind::Symbol(Symbol::ColonColon))
 }
 
 fn parse_let_binder(parser: &mut Parser<'_>) -> LetBinderAst {

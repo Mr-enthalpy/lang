@@ -803,8 +803,8 @@ fn invalid_operator_doubledot_selector() {
 }
 
 #[test]
-fn invalid_operator_alias_not_parsed() {
-    assert_parser_case("invalid_operator_alias_not_parsed", false);
+fn let_alias_operator_plus() {
+    assert_parser_case("let_alias_operator_plus", false);
 }
 
 #[test]
@@ -820,6 +820,16 @@ fn let_alias_name_path() {
 #[test]
 fn let_alias_operator_shift() {
     assert_parser_case("let_alias_operator_shift", false);
+}
+
+#[test]
+fn let_alias_operator_plus_multiline() {
+    assert_parser_case("let_alias_operator_plus_multiline", false);
+}
+
+#[test]
+fn let_alias_operator_shift_multiline() {
+    assert_parser_case("let_alias_operator_shift_multiline", false);
 }
 
 #[test]
