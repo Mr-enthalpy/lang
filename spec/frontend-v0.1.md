@@ -111,17 +111,21 @@ The current implementation includes:
   `.. Selector ArgPack` (DoubleDotSugar).
 - Numeric selectors (`obj.1`, `obj..1(args)`) using NumericNameAst.
 - Top-level newline form boundaries implemented.
-- Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable;
-  some phase-2 diagnostics exist in the enum before their syntax lands.
-- Golden test suites: 9 lexer, 38 parser, 27 diagnostics tests.
+- Extract-let binders, deduce lists, and canonical skeleton preservation.
+- Closure AST (inline `{}`, explicit `() => {}`, closure heads with
+  deduce/capture/parameter/fn-item-trait/return clauses) with Phase 3.1
+  stabilization coverage.
+- Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable.
+- Golden test suites: 9 lexer, 107 parser, 27 diagnostics tests.
 
 It does **not** yet cover:
 
-- Extract-let binders, deduce lists, canonical skeletons.
-- Closure AST (inline `{}`, explicit `() => {}`, closure heads).
 - Operator parser (operator spellings are lexed but expression-level operator
   parsing, precedence, associativity, and operator-sugar AST are not
   implemented).
+- `where`/`acquire` closure clauses, closure object materialization, type/kind
+  checking, name resolution, semantic analysis, lowering, interpretation, or
+  code generation.
 
 When operator syntax is enabled, the expression segment design becomes:
 

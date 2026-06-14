@@ -50,10 +50,11 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3 closure AST):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization):**
 
 The current implementation includes parser phase 1, parser phase 2
-binding-context syntax, and parser phase 3 closure surface AST. It includes:
+binding-context syntax, parser phase 3 closure surface AST, and parser phase
+3.1 closure/parser stabilization. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -74,19 +75,27 @@ binding-context syntax, and parser phase 3 closure surface AST. It includes:
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (82 cases), and diagnostics (27
+- Golden test infra for tokens (9 cases), AST (107 cases), and diagnostics (27
   cases).
 - Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
   parsing, and canonical skeleton parsing.
 - Closure AST (inline `{}`, explicit `() => {}`, closure heads with
   deduce/capture/parameter/fn-item-trait/return clauses).  `where` and
   `acquire` are reserved closure-head positions, not implemented.
+- Parser phase 3.1 closure/parser stabilization: stack-based diagnostic gates
+  for finite lookahead, regression coverage for failed closure-head lookahead,
+  `where`/`acquire` non-recognition, group/ArgPack ambiguity, body-block form
+  boundaries, malformed closure recovery, match-style closure arms, capture
+  syntax preservation, and return syntax preservation.
 
 It does **not** yet include:
 
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are
   not yet implemented).
+- Closure object materialization, capture analysis, type checking, kind
+  checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
+  interpretation, and code generation.
 
 The provisional v0.1 top-level newline boundary rule is now implemented.
 The broader language-design question of whether form boundaries should remain

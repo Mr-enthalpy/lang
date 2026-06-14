@@ -28,8 +28,7 @@ pub struct Parser<'tokens> {
     diagnostics: Vec<Diagnostic>,
     nesting_depth: usize,
     pub continuation: Continuation,
-    diagnostics_gated: bool,
-    gated_diagnostics: Vec<Diagnostic>,
+    diagnostic_gates: Vec<Vec<Diagnostic>>,
 }
 
 impl<'tokens> Parser<'tokens> {
@@ -39,8 +38,7 @@ impl<'tokens> Parser<'tokens> {
             diagnostics,
             nesting_depth: 0,
             continuation: Continuation::None,
-            diagnostics_gated: false,
-            gated_diagnostics: Vec::new(),
+            diagnostic_gates: Vec::new(),
         }
     }
 
@@ -164,30 +162,29 @@ impl<'tokens> Parser<'tokens> {
 
     pub fn error(&mut self, code: DiagnosticCode, message: impl Into<String>, span: Span) {
         let diag = Diagnostic::new(code, message, span);
-        if self.diagnostics_gated {
-            self.gated_diagnostics.push(diag);
+        if let Some(gate) = self.diagnostic_gates.last_mut() {
+            gate.push(diag);
         } else {
             self.diagnostics.push(diag);
         }
     }
 
     pub fn gate_diagnostics(&mut self) {
-        // NOTE: gating is not stack-based.  Nested lookahead would clear
-        // gated_diagnostics, losing outer gated diagnostics.  This is
-        // acceptable for Phase 3 single-level lookahead but should be
-        // hardened in v0.2 (parser robustness).
-        self.diagnostics_gated = true;
-        self.gated_diagnostics.clear();
+        self.diagnostic_gates.push(Vec::new());
     }
 
     pub fn ungate_keep_diagnostics(&mut self) {
-        self.diagnostics_gated = false;
-        self.diagnostics.append(&mut self.gated_diagnostics);
+        if let Some(mut diagnostics) = self.diagnostic_gates.pop() {
+            if let Some(parent) = self.diagnostic_gates.last_mut() {
+                parent.append(&mut diagnostics);
+            } else {
+                self.diagnostics.append(&mut diagnostics);
+            }
+        }
     }
 
     pub fn ungate_drop_diagnostics(&mut self) {
-        self.diagnostics_gated = false;
-        self.gated_diagnostics.clear();
+        self.diagnostic_gates.pop();
     }
 
     pub fn error_ast(&self, message: impl Into<String>, span: Span) -> ErrorAst {
@@ -222,5 +219,51 @@ impl<'tokens> Parser<'tokens> {
         if self.cursor.at_symbol(Symbol::RParen) {
             self.cursor.bump_non_trivia();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parser_with_eof() -> Parser<'static> {
+        let tokens = Box::leak(Box::new([Token::new(
+            TokenKind::Eof,
+            Span::at(0, 1, 1),
+            "",
+        )]));
+        Parser::new(tokens, Vec::new())
+    }
+
+    #[test]
+    fn nested_diagnostic_gates_keep_into_parent_and_drop_parent() {
+        let mut parser = parser_with_eof();
+        let span = Span::at(0, 1, 1);
+
+        parser.gate_diagnostics();
+        parser.error(DiagnosticCode::UnexpectedToken, "outer", span);
+        parser.gate_diagnostics();
+        parser.error(DiagnosticCode::UnexpectedToken, "inner", span);
+        parser.ungate_keep_diagnostics();
+        parser.ungate_drop_diagnostics();
+
+        assert!(parser.finish().is_empty());
+    }
+
+    #[test]
+    fn nested_diagnostic_gates_drop_inner_and_keep_outer() {
+        let mut parser = parser_with_eof();
+        let span = Span::at(0, 1, 1);
+
+        parser.gate_diagnostics();
+        parser.error(DiagnosticCode::UnexpectedToken, "outer", span);
+        parser.gate_diagnostics();
+        parser.error(DiagnosticCode::UnexpectedToken, "inner", span);
+        parser.ungate_drop_diagnostics();
+        parser.ungate_keep_diagnostics();
+
+        let diagnostics = parser.finish();
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].message, "outer");
     }
 }

@@ -1,0 +1,62 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          ArgPack role=SourcePack
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name x
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          ArgPack role=SourcePack
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name x
+          OperatorExpr
+            Atom
+              Name y
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Group
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name x
+        Segment has_incoming=true
+          OperatorExpr
+            Atom
+              Name f
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              MemberSugar
+                object:
+                  Group
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name x
+                selector:
+                  TextName field

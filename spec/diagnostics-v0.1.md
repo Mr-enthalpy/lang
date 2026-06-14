@@ -210,12 +210,18 @@ spanning the failed region.
 
 - **Trigger**: A sequence that starts like a `FnHeadPrefix` but contains a
   malformed clause (e.g., duplicate deduce list, misplaced `=>`, unrecognizable
-  param list contents).
+  param list contents, missing function item trait after `:`, missing return
+  binder after `->`, or missing return constraint after `:`).
 - **Primary span**: The failing clause or token.
 - **Recovery**: Depending on severity, either skip the malformed clause or
   fall back to parsing as a non-closure atom.
 - **AST effect**: An `ErrorAst` inside the closure head, or the entire closure
   head is replaced with `ErrorAst`.
+
+Closure-head finite lookahead may use diagnostic gates. Failed lookahead must
+drop diagnostics collected inside the gate. Committed malformed closure parsing
+must keep diagnostics. Nested gates must append kept inner diagnostics to the
+parent gate rather than directly to final diagnostics.
 
 #### `TopLevelComma`
 
