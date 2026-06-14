@@ -2,7 +2,7 @@
 
 `lang` is an experimental programming language frontend.
 
-**Current status:** The v0.1 Raw AST Frontend is completed. It lexes,
+**Current status:** The v0.1 Raw AST Frontend is completed as the current Raw AST baseline. It lexes,
 parses, builds raw AST, emits diagnostics, and has golden tests. It does not
 perform semantic analysis.
 

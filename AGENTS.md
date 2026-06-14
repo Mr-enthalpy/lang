@@ -23,7 +23,7 @@ spec/open-questions.md (known gaps)
 
 ## Scope
 
-This repository completed its `v0.1` Raw AST frontend stage. The current
+This repository completed its `v0.1` Raw AST frontend stage as the current Raw AST baseline. The current
 work is Raw AST contract freeze and Normalized AST design.
 
 The v0.1 output is:
