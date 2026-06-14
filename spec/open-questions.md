@@ -561,3 +561,126 @@ Items resolved during the documentation reset pass. Recorded here for audit.
 | `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |
 | Right-target subsegment AST shape | Flat representation; future may nest | Already open question §4 | No change needed | No |
 | Form boundary promotion rules | Provisional rules implemented | Already open question §2 | No change needed | No |
+
+---
+
+## Normalized AST design questions
+
+These questions are deferred to v0.3–v0.5. They do not block the current
+N0–N1 documentation pass (Raw AST contract freeze).
+
+### N-AST-1. Exact Normalized AST node set
+
+**Status:** Open
+
+**Question:** What are the exact Normalized AST node types? Candidates:
+normalized call, normalized pattern, normalized declaration. Should there
+be a single unified expression node or distinct per-form nodes?
+
+**Why it does not block N0–N1:** The Raw AST contract only documents invariants;
+Normalized AST node types are a v0.3 specification detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-2. Whether Normalized AST lives in `lang_syntax` or a new crate
+
+**Status:** Open
+
+**Question:** Should Normalized AST types and the normalization pass live in
+`lang_syntax` (alongside Raw AST), or in a new crate (e.g., `lang_norm`)?
+
+**Why it does not block N0–N1:** This is an implementation organization
+question for v0.4.
+
+**Future stage:** v0.4 (Raw AST → Normalized AST Prototype).
+
+---
+
+### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
+
+**Status:** Open
+
+**Question:** Should the normalization pass produce stable dump output that
+can be golden-tested alongside Raw AST dumps?
+
+**Why it does not block N0–N1:** Golden testing strategy is a v0.4
+implementation question.
+
+**Future stage:** v0.4 (Raw AST → Normalized AST Prototype).
+
+---
+
+### N-AST-4. How to represent symbolic builtins introduced by desugaring
+
+**Status:** Open
+
+**Question:** Desugaring may introduce symbolic names (e.g., `operator::call`,
+`member::lookup`, `pattern::bind`). How should these be represented in
+Normalized AST — as reserved names, as a separate node type, or as
+compiler-generated identifiers?
+
+**Why it does not block N0–N1:** This is a v0.3 specification detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-5. How to preserve source origins through desugaring
+
+**Status:** Open
+
+**Question:** Desugaring creates new AST nodes that did not appear in source
+text. How should source spans and diagnostic attribution be preserved through
+normalization?
+
+**Why it does not block N0–N1:** Source origin preservation is a v0.3–v0.4
+design question.
+
+**Future stage:** v0.3 (Normalized AST Specification), v0.4 (prototype).
+
+---
+
+### N-AST-6. Whether right-target subsegments become nested call nodes
+
+**Status:** Open
+
+**Question:** Right-target subsegments (`f (a) g`) are currently flat in Raw
+AST. Should normalization recursively nest them into explicit (sub-)call
+nodes?
+
+**Why it does not block N0–N1:** This is a v0.3 desugaring rule.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-7. How to represent pattern normalization for let, params, returns, and canonical skeletons
+
+**Status:** Open
+
+**Question:** Extraction contexts (let, params, returns) use canonical
+skeletons. How should normalization unify these into a single normalized
+pattern form? Should deduce lists be merged into the pattern structure
+or kept separate?
+
+**Why it does not block N0–N1:** Pattern normalization is a v0.3 specification
+detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).
+
+---
+
+### N-AST-8. How to represent alias declarations before name resolution
+
+**Status:** Open
+
+**Question:** Alias bindings (`let binder === EntityRef`) reference compile-time
+entities that are not yet resolved. Should normalization preserve `EntityRefAst`
+as-is in normalized alias declarations, or desugar it into a different form?
+
+**Why it does not block N0–N1:** Alias normalization is a v0.3 specification
+detail.
+
+**Future stage:** v0.3 (Normalized AST Specification).

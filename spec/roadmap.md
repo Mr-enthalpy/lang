@@ -1,6 +1,6 @@
 # Roadmap
 
-This document defines the long-term stage model for the `lang` compiler. It
+This document defines the stage model for the `lang` compiler. It
 distinguishes implementation stages from semantic research stages.
 
 Stages before v1.0 may overlap in time. The boundaries are scope boundaries,
@@ -8,21 +8,34 @@ not strict chronological gates.
 
 ## Stage model
 
-### v0.1 — Raw frontend
+```
+v0.1 — Raw AST Frontend — completed
+v0.2 — Raw AST Contract Freeze — current
+v0.3 — Normalized AST Specification
+v0.4 — Raw AST → Normalized AST Prototype
+v0.5 — Normalized AST Stabilization
+v0.6+ — Later semantic design stages
+```
 
-**Goal**: `source text → tokens → AST → diagnostics`
+Raw AST is surface-preserving and non-desugared.
+Normalized AST is desugared but still non-semantic.
+HIR is later than Normalized AST.
+Type checking is later than Normalized AST.
+Name resolution is later than Normalized AST.
+Canonical matching is later than Normalized AST.
+Closure materialization is later than Normalized AST.
+NLL/drop insertion is later than Normalized AST.
 
-v0.1 produces stable token dumps, AST dumps, and diagnostic dumps. It is
-backed by golden tests.
+---
 
-**What v0.1 is NOT:**
+### v0.1 — Raw AST Frontend — completed
 
-- Not a toy interpreter. It does not execute anything.
-- Not a partial compiler. It does not lower, optimize, or emit code.
-- Not a semantic analysis prototype. It does not type-check, kind-check,
-  resolve names, or analyze lifetimes.
+**Goal**: `source text → tokens → Raw AST → diagnostics`
 
-**What v0.1 IS:**
+v0.1 delivered a complete Raw AST frontend with lexer, parser, AST,
+dumper, diagnostics, and golden tests.
+
+**What v0.1 delivered:**
 
 A syntax frontend that:
 
@@ -33,289 +46,134 @@ A syntax frontend that:
 - Dumps all three outputs (tokens, AST, diagnostics) in stable, hand-written
   formats suitable for golden testing.
 
-**Deliverables:**
+**v0.1 completed deliverables:**
 
 - Crate `lang_syntax` with lexer, parser, AST, dumper, diagnostics.
 - Crate `lang_cli` with CLI subcommands: `tokens`, `ast`, `diag`.
 - Golden test suite covering all syntax rules.
 - Specification documents for AST construction and diagnostics.
+- Operator expression parsing as raw AST sugar.
+- Operator names in binder and final path-leaf positions.
+- Alias binding (`let binder === EntityRef`) as raw AST preservation.
+- EntityRef parser for alias RHS.
+- 31 DiagnosticCode variants across lexer, parser, operator, and alias categories.
 
-**Non-goals (deferred to later stages):**
-
-- Type checking / kind checking / overload resolution.
-- Canonical-form evaluation / universal extraction matching.
-- Closure AST materialization into callable objects.
-- Match, effect, or sync semantics.
-- Ownership, lifetime, NLL, drop insertion.
-- Interpretation or code generation.
-- IR / HIR / MIR lowering.
-
-#### Current implementation snapshot
-
-For the authoritative factual inventory of current implementation status,
-see `spec/implementation-status-v0.1.md`. The summary below tracks
-phase-level completion, not per-feature status.
-
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design + phase 4.4 alias binding parser preservation + phase 4.4.1 alias-parser stabilization):**
-
-The current implementation includes parser phase 1, parser phase 2
-binding-context syntax, parser phase 3 closure surface AST, and parser phase
-3.1 closure/parser stabilization, parser phase 4 operator syntax as raw AST
-sugar, and parser phase 4.1 operator names in binder/path-leaf positions. It
-also includes parser phase 4.2 compile-time entity reference syntax design,
-phase 4.3 lexical alias binding design, and phase 4.4 raw AST parser
-preservation for alias binding (`let binder === EntityRef`). It includes:
-
-- Lexer loop with CRLF/LF normalization and stable token dumps.
-- Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
-  `+`, `-`, `*`, `/`, `++`, `--`, `<<=`, `>>=`, etc.).
-- Cursor, form parser, expression parser, and atom parser.
-- Simple `let` forms with text or operator binder names, bare declaration
-  annotations (`: type`, `: fn`), explicit rank annotations (`: _: fn`),
-  `guard` attributes, and `with` clauses.
-- Name, integer literal, string literal, and `::`-path expression atoms
-  (including numeric path leaves such as `uint8::1` and final operator path
-  leaves such as `std::int::+`).
-- Group atoms (`(expr)` without top-level commas).
-- Pipe segmentation (`|>`) and ArgPack role assignment (SourcePack,
-  InsertPack, RightTargetSubsegment).
-- Atom suffix folding for `:: Selector`, `. Selector`, and `.. Selector ArgPack`
-  (MemberSugar and DoubleDotSugar).
-- Numeric selectors (`obj.1`, `obj..1(args)`, `uint8::1`) using
-  `NumericNameAst` in selector position, distinct from numeric literal atoms.
-- Expression-local error recovery and permissive atom collection.
-- Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
-  most diagnostics are reachable; unreachable diagnostics exist in the enum
-  until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (154 cases), and diagnostics (27
-  cases).
-- Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
-  parsing, and canonical skeleton parsing.
-- Closure AST (inline `{}`, explicit `() => {}`, closure heads with
-  deduce/capture/parameter/fn-item-trait/return clauses).  `where` and
-  `acquire` are reserved closure-head positions, not implemented.
-- Parser phase 3.1 closure/parser stabilization: stack-based diagnostic gates
-  for finite lookahead, regression coverage for failed closure-head lookahead,
-  `where`/`acquire` non-recognition, group/ArgPack ambiguity, body-block form
-  boundaries, malformed closure recovery, match-style closure arms, capture
-  syntax preservation, and return syntax preservation.
-- Parser phase 4 operator expression parsing as raw AST sugar: segment-local
-  precedence/associativity, prefix `-`, postfix operators, binary operators,
-  angle comparison operators in expression context, and diagnostics for
-  malformed or chained non-associative operator expressions.
-- Parser phase 4.1 operator binder names and final operator path leaves as raw
-  AST preservation.
-- Parser phase 4.2 compile-time `EntityRef` syntax design documentation in
-  `spec/entity-ref-design.md`. This defines the future strong-context syntax
-  and parser/semantic boundary, but does not implement an `EntityRef` parser.
-- Parser phase 4.3 lexical alias binding design documentation in
-  `spec/entity-alias-design.md`. This defines the future `let binder ===
-  EntityRef` declaration form, lexical scope rule, operator-alias restriction,
-  and parser/semantic boundary, but does not implement alias parsing or
-  entity resolution.
-- Parser phase 4.4 raw AST parser preservation for alias binding. Lexer
-  recognizes `===` as a single structural delimiter token (`Symbol::TripleEqual`).
-  Parser produces `LetAliasAst` containing `AliasBinderAst` (Name or Operator)
-  and `EntityRefAst` (path segments + leaf). EntityRef parsing is implemented
-  only inside alias-let RHS; it is not a general expression parser mode. New
-  diagnostic codes: `ExpectedAliasTarget`, `InvalidEntityRef`, and
-  `UnexpectedAliasRhsExpression`.
-- Parser phase 4.4.1 alias-parser stabilization. Adds boundary-aware entity-ref
-  start checking to prevent missing-target recovery from swallowing following
-  forms across newline or semicolon boundaries. Refactors `is_alias_rhs_boundary`
-  into layered helpers (`is_alias_rhs_newline_boundary`, `is_alias_rhs_hard_boundary`).
-  Adds 11 golden tests covering expression-shaped RHS forms, guard/extract/
-  annotation/with non-alias invariants, and `===` token non-regression.
-
-It does **not** yet include:
-
-- Operator lookup, operator lowering, operator overload resolution, operator
-  dispatch, ADL, or type-directed lookup.
-- Operator alias identity validation (spelling + fixity + arity check).
-- Compile-time entity lookup, operator lookup, namespace resolution, and
-  dependency resolution.
-- `where`/`acquire` clause parsing.
-- Closure object materialization, capture analysis, type checking, kind
-  checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
-  interpretation, and code generation.
-
-The provisional v0.1 top-level newline boundary rule is now implemented.
-The broader language-design question of whether form boundaries should remain
-line-based or become fully explicit remains open (see
-`spec/open-questions.md` §2).
-
-The next implementation phases must fill the gap between this skeleton and
-`spec/ast-construction-v0.1.md`.
-
-The selector AST already distinguishes `TextNameAst` and `NumericNameAst` for
-future name-polymorphic lookup (see `spec/open-questions.md` §19). No lookup,
-binding, or name resolution is implemented in v0.1.
-
-Canonical skeleton AST preservation is implemented (names, wildcards,
-literals, paths, argpacks).  All canonical skeleton golden tests are parser
-coverage; no matching semantics are assigned.  The Hole/NodeName distinction
-is a parse-time role marker, not a semantic binding commitment.
-
-#### Parser/documentation phase track
-
-The syntax-facing work after Phase 4.1 is ordered as:
-
-```text
-Phase 4: operator syntax as raw AST sugar (implemented)
-Phase 4.1: operator binder names and operator path leaves (implemented)
-Phase 4.2: compile-time entity reference syntax design (documentation — complete)
-Phase 4.3: lexical alias binding design (`let binder === EntityRef`) (documentation — complete)
-Phase 4.4: raw AST parser preservation for alias binding (implemented)
-Phase 4.4.1: alias-parser stabilization (implemented)
-```
-
-Alias binding is after Phase 4.1 because operator aliases require operator
-names in binder and path-leaf positions:
-
-```text
-let << === xxx_bit::<<
-let >> === xxx_bit::>>
-```
-
-These phases are before semantic name resolution. They do not implement lookup,
-namespace resolution, dependency resolution, import/package/build-system
-semantics, or operator alias validation. Phase 4.4 implements only raw AST
-preservation: the parser preserves alias-binding syntax but does not resolve
-targets, validate operator identity, or perform entity lookup. The `===`
-lexer token is a structural symbol, not an expression operator. EntityRef
-parsing is implemented only inside alias-let RHS. See
-`spec/entity-ref-design.md` and `spec/entity-alias-design.md`.
+For the authoritative factual inventory of v0.1 delivered features,
+see `spec/implementation-status-v0.1.md`. For the Raw AST contract
+that future normalization passes may rely on, see
+`spec/raw-ast-contract-v0.1.md`.
 
 ---
 
-### v0.2 — Frontend robustness
+### v0.2 — Raw AST Contract Freeze — current
 
-**Goal**: Hardening the v0.1 frontend.
+**Goal**: Document the invariants of the completed v0.1 Raw AST so that
+future normalization passes can safely desugar it.
 
-- Error recovery improvements: fewer panics, better resynchronization.
-- Diagnostic quality: clearer messages, secondary spans where helpful.
-- Syntax corpus: test against a larger corpus of source files.
-- Parser invariants: property-based testing for parser crashes.
-- AST dump stability: ensure dump format does not change between minor edits.
-- Documentation/test synchronization: every spec change must update golden
-  cases and vice versa.
+**Deliverable**: `spec/raw-ast-contract-v0.1.md`
 
-**No new syntax or semantic features.**
+This document defines what future normalization passes may rely on from
+Raw AST. It lists invariants for every AST node category and explicitly
+states what normalization must not assume (name resolution, type checking,
+operator lookup, alias resolution, etc.).
+
+**No new syntax or parser behavior.** The Raw AST contract is a
+documentation-only deliverable.
 
 ---
 
-### v0.3 — Syntax normalization documents
+### v0.3 — Normalized AST Specification
 
-**Goal**: Specify how raw AST may later lower into normalized syntax forms.
+**Goal**: Define the Normalized AST node set and document how Raw AST
+constructs desugar into Normalized AST.
 
-This is a documentation stage. Do not implement HIR yet.
+Normalized AST unifies:
+
+- call forms (ArgPack, pipe, operator sugar) into simple call nodes
+- extraction forms (canonical skeletons, deduce lists) into pattern nodes
+- declaration forms (simple let, extract let, alias let) into declaration nodes
 
 Define:
 
-- Normalized form for let bindings (desugared guard/with).
-- Normalized form for pipe expressions (flattened segments).
+- Normalized form for let bindings (desugared guard/with, unified simple/extract).
+- Normalized form for pipe expressions (flattened segments, desugared ArgPack roles).
+- Normalized form for operator sugar (lowered to named operator calls).
 - Normalized form for closure heads (canonicalized clause order).
-- Normalized form for canonical skeletons (resolved holes).
+- Normalized form for canonical skeletons (pattern representation, not matching).
+- Normalized form for member/double-dot/numeric selector sugar.
+- Normalized form for alias bindings (preserved as unresolved entity references).
 
-The output of this stage is a document specifying normalization rules. Actual
-lowering to HIR is deferred.
+This is a design/specification stage. Do not implement Normalized AST yet.
 
----
-
-### v0.4 — Canonical form specification
-
-**Goal**: Document value/type canonical forms and universal extraction matching.
-
-Define:
-
-- Value canonical form and type canonical form.
-- How universal extraction matching relates to canonical skeletons.
-- The relationship between deduce lists and canonical forms.
-
-Do not implement type checking or matching yet. This is a specification stage.
+Normalized AST is **not** HIR. It is desugared but still non-semantic.
 
 ---
 
-### v0.5 — Meta-function boundary specification
+### v0.4 — Raw AST → Normalized AST Prototype
 
-**Goal**: Document compiler-provided meta-functions.
+**Goal**: Implement a Raw AST → Normalized AST lowering pass.
 
-Define the interface for compiler-provided meta-functions such as `match`,
-`effect`, and `sync`. These are privileged consumers of AST or normalized
-syntax. They are not ordinary library functions and not special syntax.
+- Implement `normalize.rs` in `lang_syntax` or a new crate.
+- Produce golden-tested Normalized AST dumps.
+- Each desugaring rule from v0.3 should have at least one golden test.
 
-Specify:
+The output is a Normalized AST, not a type-checked or name-resolved tree.
 
-- How meta-functions receive AST/normalized-syntax arguments.
-- How meta-functions produce results.
-- The relationship between meta-functions and closure AST.
-
-Do not implement any meta-function.
+**Do not implement** name resolution, type checking, operator lookup,
+alias resolution, canonical matching, or closure materialization in this
+lowering pass.
 
 ---
 
-### v0.6 — Closure materialization model
+### v0.5 — Normalized AST Stabilization
 
-**Goal**: Document ClosureAST → ClosureObject model.
+**Goal**: Harden the Normalized AST representation and the normalization pass.
 
-Define:
+- Error recovery through normalization (do not crash on malformed input).
+- Diagnostic rewiring (map Raw AST error spans into Normalized AST context).
+- Property-based testing for normalization invariants.
+- AST dump stability for Normalized AST.
 
-- Contexts in which closure AST is materialized into callable objects.
-- Capture rules (what is captured, how).
-- Inline closure vs explicit closure materialization defaults.
-- Object transferability (move, copy, borrow semantics for closures).
-
-This stage produces a specification. Implementation may begin if the frontend
-is stable.
+**No new semantic features.**
 
 ---
 
-### v0.7 — Type/kind/checking design
+### v0.6+ — Later semantic design stages
 
-**Goal**: Design and document kind/type checking.
+The following stages are deferred beyond Normalized AST. They are listed
+here for scope boundary reference only. None are implemented.
 
-Define:
+#### v0.6 — Canonical form specification
 
-- Kind system (types of types).
-- Type checking rules for each AST node.
-- Bidirectional or deductive checking algorithm.
-- Error messages for type mismatches.
+Define value/type canonical forms and universal extraction matching.
+Document the relationship between deduce lists and canonical forms.
+Do not implement matching yet.
 
-Implementation may be partial. The primary output is a design document.
+#### v0.7 — Meta-function boundary specification
 
----
+Document compiler-provided meta-functions (`match`, `effect`, `sync`) that
+consume AST or normalized syntax. Do not implement any meta-function.
 
-### v0.8 — Ownership/NLL/drop design
+#### v0.8 — Closure materialization model
 
-**Goal**: Design and document ownership, always-NLL, and drop semantics.
+Document ClosureAST → ClosureObject conversion. Define capture rules,
+materialization defaults, and object transferability.
 
-Define:
+#### v0.9 — Type/kind checking design
 
-- Always-NLL borrow-checking model.
-- `guard` and `with` semantics in let bindings.
-- User-defined drop and move points.
-- Future CFG requirements for NLL.
+Design and document kind/type checking. Define kind system, checking rules,
+and bidirectional/deductive checking algorithm.
 
-Do not implement drop insertion in any v0.x frontend stage.
+#### v0.10 — Ownership/NLL/drop design
 
----
+Design ownership, always-NLL, and drop semantics. Define guard/with semantics
+in let bindings and user-defined drop/move points.
 
-### v1.0 — First semantic compiler prototype
+#### v0.11 — First semantic compiler prototype
 
-**Goal**: Begin integrating selected semantic passes.
-
-Prerequisite: Frontend AST and specification documents are stable.
-
-v1.0 may include:
-
-- Type checking.
-- Kind checking (if designed in v0.7).
-- Canonical-form evaluation and extraction matching (if specified in v0.4).
-- Closure materialization (if specified in v0.6).
-- Meta-function invocation for `match`, `effect`, `sync` (if specified in v0.5).
-
-But each semantic pass must be individually gated and must not destabilize the
-frontend.
+Begin integrating selected semantic passes: type checking, kind checking,
+canonical-form evaluation, closure materialization, meta-function invocation.
+Each pass must be individually gated.
 
 ---
 

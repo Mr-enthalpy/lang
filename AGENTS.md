@@ -13,6 +13,7 @@ spec/ast-construction-v0.1.md  (normative parser rules)
 spec/operator-design.md (operator syntax design and implementation boundaries)
 spec/entity-ref-design.md (future general EntityRef design; alias-RHS subset implemented)
 spec/entity-alias-design.md (alias binding design; raw parser preservation implemented; semantics/validation future)
+spec/raw-ast-contract-v0.1.md (Raw AST invariants for future normalization)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/implementation-status-v0.1.md (authoritative factual inventory of current implementation)
 spec/roadmap.md        (scope boundaries)
@@ -22,13 +23,20 @@ spec/open-questions.md (known gaps)
 
 ## Scope
 
-This repository is currently in the `v0.1` frontend stage.
+This repository completed its `v0.1` Raw AST frontend stage. The current
+work is Raw AST contract freeze and Normalized AST design.
 
-The only goal of `v0.1` is:
+The v0.1 output is:
 
 ```text
-source text -> tokens -> AST -> diagnostics
+source text -> tokens -> Raw AST -> diagnostics
 ```
+
+Raw AST is surface-preserving and non-desugared. Normalized AST will be
+a future desugared, non-semantic AST that unifies calls, extraction, and
+declarations into simple pattern/call/declaration structures.
+
+Raw AST → Normalized AST lowering is allowed in a later explicit task.
 
 Do not implement:
 
@@ -48,6 +56,10 @@ Do not implement:
 
 If a change requires any of the above, stop at syntax/AST representation and
 leave the semantic behavior as a documented future pass.
+
+Do not call Normalized AST "HIR".
+Do not implement semantic lowering under the name normalization.
+Do not change parser behavior while only updating the Raw AST contract.
 
 ## Required commands
 
