@@ -377,6 +377,29 @@ case until operator binder names and operator path leaves are implemented. The
 `<t: type, u: type>` head is included to show where the example's type names
 come from.
 
+## Relationship To Entity Alias Binding
+
+`spec/entity-alias-design.md` documents future lexical alias binding:
+
+```text
+let binder === EntityRef
+```
+
+Operator aliases depend on this operator design because alias binders and
+entity path leaves may need to contain `OperatorName` values:
+
+```text
+let << === xxx_bit::<<
+let + === checked_int::+
+```
+
+Operator aliasing may select a concrete visible operator implementation from
+another namespace, but it cannot rename one operator spelling into another. The
+operator identity remains `spelling + fixity + arity`.
+
+This is future design only. It does not implement operator lookup, entity
+lookup, namespace resolution, import/package semantics, or alias validation.
+
 ## v0.1 Boundary
 
 This design does not require the current parser to implement operator syntax.
@@ -387,6 +410,7 @@ Do not implement in this documentation task:
 - operator binder names;
 - `t::+` parsing;
 - operator lookup;
+- entity alias binding (`let binder === EntityRef`);
 - operator lowering;
 - operator overload resolution;
 - ADL;

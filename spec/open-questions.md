@@ -376,3 +376,33 @@ is a deferred design decision that does not require changing the AST.
 
 **Future stage:** v0.4 (canonical form specification) or v0.7 (type/kind/checking
 design).
+
+---
+
+## 21. Lexical alias binding and entity references
+
+**Status:** Open (future design note, not implemented)
+
+**Current v0.1 decision:**
+`let binder === EntityRef` is reserved as future lexical alias binding syntax.
+It is documented in `spec/entity-alias-design.md`, but the current parser does
+not accept `===`, does not parse `EntityRef`, and does not build `LetAliasAst`.
+
+The intended boundary is syntax preservation only:
+
+```text
+AliasBinding ::= "let" AliasBinder "===" EntityRef
+AliasBinder ::= Name | OperatorName
+```
+
+The right-hand side is a compile-time entity reference, not `PipeExpr`,
+`ArgPack`, `ClosureAst`, an operator expression, or any runtime expression.
+
+**Why it does not block v0.1:**
+v0.1 does not implement operator binder names, operator path leaves, entity
+references, name lookup, namespace resolution, dependency resolution, or import
+semantics. Alias binding requires operator names in binder/path-leaf positions,
+so it belongs after the operator parser and before semantic name resolution.
+
+**Future stage:** Phase 4.1/4.2 design after operator syntax as raw AST sugar.
+Phase 4.3 may optionally preserve raw alias-binding AST if explicitly assigned.

@@ -36,6 +36,7 @@ and crate public API become stable.
 | `spec/frontend-v0.1.md`         | Reader entry point — explains the pipeline and spec organization |
 | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this    |
 | `spec/operator-design.md`       | Normative operator design for future parser work                 |
+| `spec/entity-alias-design.md`   | Future lexical alias binding design — not implemented            |
 | `spec/diagnostics-v0.1.md`      | Normative diagnostic categories, span policy, recovery           |
 | `spec/roadmap.md`               | Stage model v0.1–v1.0 and scope boundaries                       |
 | `spec/glossary.md`              | Terminology definitions and critical distinctions                |

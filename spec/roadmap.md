@@ -93,6 +93,7 @@ It does **not** yet include:
 - Operator parser (operator spellings are tokenized but expression-level
   operator parsing, precedence, associativity, and operator-sugar AST are
   not yet implemented).
+- Lexical alias binding / entity alias binding (`let binder === EntityRef`).
 - Closure object materialization, capture analysis, type checking, kind
   checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
   interpretation, and code generation.
@@ -113,6 +114,31 @@ Canonical skeleton AST preservation is implemented (names, wildcards,
 literals, paths, argpacks).  All canonical skeleton golden tests are parser
 coverage; no matching semantics are assigned.  The Hole/NodeName distinction
 is a parse-time role marker, not a semantic binding commitment.
+
+#### Future parser/documentation phase track
+
+The next syntax-facing work after Phase 3.1 is ordered as:
+
+```text
+Phase 4: operator syntax as raw AST sugar
+Phase 4.1: compile-time entity reference syntax design
+Phase 4.2: lexical alias binding design (`let binder === EntityRef`)
+Phase 4.3: optional raw AST parser preservation for alias binding
+```
+
+Phase 4.2 is after the operator parser because operator aliases require
+operator names in binder and path-leaf positions:
+
+```text
+let << === xxx_bit::<<
+let >> === xxx_bit::>>
+```
+
+These phases are before semantic name resolution. They do not implement lookup,
+namespace resolution, dependency resolution, import/package/build-system
+semantics, operator alias validation, or runtime value binding semantics. They
+only document and, if explicitly assigned later, preserve surface syntax and raw
+AST boundaries. See `spec/entity-alias-design.md`.
 
 ---
 
