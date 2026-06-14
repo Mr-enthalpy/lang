@@ -160,6 +160,14 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
 
     let fn_item_trait = if params.is_some() && parser.cursor.consume_symbol(Symbol::Colon).is_some()
     {
+        if at_fn_item_trait_boundary(parser) {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected function item trait after `:`",
+                span,
+            );
+        }
         let expr = parse_expr_until(parser, |p| {
             p.cursor.at_symbol(Symbol::ThinArrow)
                 || p.cursor.at_symbol(Symbol::FatArrow)
@@ -463,7 +471,15 @@ fn is_at_param_stop(parser: &mut Parser<'_>, check_next: bool) -> bool {
 fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
     let start = parser.cursor.current_span();
 
-    let binder = if parser.cursor.at_symbol(Symbol::Less) {
+    let binder = if at_return_binder_boundary(parser) {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::InvalidClosureHead,
+            "expected return type after `->`",
+            span,
+        );
+        ReturnBinderAst::Error(parser.error_ast("expected return type", span))
+    } else if parser.cursor.at_symbol(Symbol::Less) {
         let deduce = parse_deduce_list(parser);
         let skeleton = parse_canonical_skeleton(parser, &deduce);
         let span = deduce.span.join(skeleton_span(&skeleton));
@@ -483,6 +499,14 @@ fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
     };
 
     let constraint = if parser.cursor.consume_symbol(Symbol::Colon).is_some() {
+        if at_return_constraint_boundary(parser) {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected return constraint after `:`",
+                span,
+            );
+        }
         let expr = parse_expr_until(parser, |p| {
             p.cursor.at_symbol(Symbol::FatArrow)
                 || p.cursor.at_symbol(Symbol::LBrace)
@@ -502,6 +526,26 @@ fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
         constraint,
         span: start.join(end),
     }
+}
+
+fn at_fn_item_trait_boundary(parser: &mut Parser<'_>) -> bool {
+    parser.cursor.at_symbol(Symbol::ThinArrow)
+        || parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || parser.is_form_boundary()
+}
+
+fn at_return_binder_boundary(parser: &mut Parser<'_>) -> bool {
+    parser.cursor.at_symbol(Symbol::Colon)
+        || parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || parser.is_form_boundary()
+}
+
+fn at_return_constraint_boundary(parser: &mut Parser<'_>) -> bool {
+    parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || parser.is_form_boundary()
 }
 
 fn return_binder_span(binder: &ReturnBinderAst) -> Span {

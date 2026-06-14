@@ -76,8 +76,8 @@ Some names can act as structure delimiters only in strong parser contexts.
 Examples:
 
 - `let` at form start
-- `where` in closure heads
-- `acquire` in closure heads
+- `where`/`acquire` as reserved future closure-head positions, not active
+  Phase 3.1 parser clauses
 - `guard` inside let bindings
 - `with` inside let bindings
 
@@ -246,11 +246,12 @@ Current coverage:
   lexer golden tests.
 - `ast`: backed by the current parser; covers simple let forms, path atoms,
   groups, pipe segmentation, ArgPack roles, member/double-dot sugar, and
-  numeric selectors. Does not yet cover extract-let binders, deduce lists,
-  canonical skeletons, closure AST, or operator parser (see
+  numeric selectors, extract-let binders, deduce lists, canonical skeletons,
+  and Phase 3.1-stabilized closure AST. It does not implement the operator
+  parser, `where`/`acquire` clauses, or semantic phases (see
   `spec/roadmap.md` for phase boundaries).
-- `diag`: backed by the full v0.1 diagnostic taxonomy; 23 diagnostic golden
-  tests. Some diagnostics await parser phase 2 syntax implementation.
+- `diag`: backed by the full v0.1 diagnostic taxonomy; 27 diagnostic golden
+  tests plus parser golden cases that include recovery diagnostics.
 
 The output format is stable and suitable for golden tests. All dump output
 uses hand-written formatting, not Rust `Debug`.

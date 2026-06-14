@@ -1352,7 +1352,8 @@ to form separator is suppressed because nesting depth is non-zero inside the
 body block.  This means `{ x \n y }` parses as a single form containing a
 segment with two atoms `x y`, not as two separate forms.  This is the
 provisional v0.1 rule; the broader language-design question of body-block
-form separation remains open.
+form separation remains open. Semicolon-separated forms still split normally:
+`{ x; y; }` contains two body forms.
 
 ## 11. Closure head
 
@@ -1366,7 +1367,7 @@ FnHeadPrefix ::=
     FnItemTraitClause?
     ReturnClause?
 
-// Future reserved, not implemented in Phase 3:
+// Future reserved, not implemented in Phase 3.1:
 //   WhereClause?
 //   AcquireClause?
 ```
@@ -1383,10 +1384,9 @@ CaptureItemList ::= CaptureItem ("," CaptureItem)*
 ```
 
 v0.1 parses `CaptureClause` as a bracket-delimited clause. Capture items are
-stored as token-tree-like `CaptureItemAst` placeholders. The exact internal
-structure of capture items is not specified in v0.1; parsing depth is
-determined by the concrete `CaptureItemAst` definition chosen at
-implementation time.
+stored as syntactic `CaptureItemAst` entries containing preserved expression
+structure. No capture validation, move/ref/copy interpretation, or capture
+analysis is performed.
 
 Suggested AST:
 
@@ -1481,23 +1481,29 @@ ReturnClauseAst {
 
 ```text
 ReturnBinderAst ::=
-    TypeObjectAnnotation(TypeObjectAnnotationAst)
+    TypeExpr(ExprAst)
   | ExtractType {
         deduce: DeduceListAst,
         skeleton: CanonicalSkeletonAst
     }
+  | Error(ErrorAst)
 ```
+
+Return clauses preserve syntax only. `TypeExpr`, `ExtractType`, and optional
+return constraints are not type-checked or constraint-solved in v0.1.
 
 ### 11.7 Where clause (future reserved)
 
-> **Not implemented in Phase 3.** `where` is a reserved closure-head position.
+> **Not implemented in Phase 3.1.** `where` is a reserved closure-head
+> position.
 > It remains an ordinary name outside a future where-parser state.
 > Concrete `where` syntax is deferred until the operator parser and
 > logical-operator grammar exist.
 
 ### 11.8 Acquire clause (future reserved)
 
-> **Not implemented in Phase 3.** `acquire` is a reserved closure-head position.
+> **Not implemented in Phase 3.1.** `acquire` is a reserved closure-head
+> position.
 > It remains an ordinary name outside a future acquire-parser state.
 > Concrete `acquire` syntax is deferred until the operator parser and
 > logical-operator grammar exist.
@@ -1513,6 +1519,23 @@ When the expression parser expects an atom:
 5. If these attempts fail, restore cursor and parse ordinary atom.
 
 This is finite lookahead, not semantic backtracking.
+Failed closure-head lookahead must not leak diagnostics or consume tokens.
+Committed malformed closure parsing keeps diagnostics. Nested diagnostic gates
+must preserve outer gated diagnostics until the outer gate is explicitly kept
+or dropped.
+
+The following are not recognized as successful closure heads in Phase 3.1:
+
+```text
+x => { x }
+x { x }
+where C => { x }
+acquire A => { x }
+(x) where C => { x }
+(x) acquire A => { x }
+<T>(x: T) where C => { x }
+<T>(x: T) acquire A => { x }
+```
 
 **Negative / diagnostic example:**
 

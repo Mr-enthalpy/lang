@@ -1,0 +1,1 @@
+error InvalidClosureHead "expected function item trait after `:`" @ 1:6 [5..7]

@@ -130,7 +130,8 @@ Some names may be interpreted by the parser in strong contexts.
 Examples:
 
 * `let` at form start introduces a let binding.
-* `where` and `acquire` may delimit closure-head clauses.
+* `where` and `acquire` are reserved future closure-head clause names, but are
+  not active parser clauses in Phase 3.1.
 * `guard` and `with` may be interpreted inside a let-binding context.
 
 Outside the relevant parser state, these names remain ordinary names.

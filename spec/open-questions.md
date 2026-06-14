@@ -81,17 +81,18 @@ may restructure the AST to make right-target subsegments explicit sub-trees.
 
 ## 5. Whether capture clause stores token trees or expression AST
 
-**Status:** Open
+**Status:** Partially resolved for v0.1 parser preservation
 
 **Current v0.1 decision:**
 `CaptureClause` is parsed as a bracket-delimited clause, but capture items
-are stored as token-tree-like `CaptureItemAst` placeholders. The exact
-internal structure of capture items is not specified in v0.1.
+are stored as syntactic `CaptureItemAst` entries containing expression AST.
+No capture validation, move/ref/copy interpretation, or capture analysis is
+performed in v0.1.
 
 **Why it does not block v0.1:**
-The parser can recognize `[ item, item ]` at the token level. Deeper
-parsing (e.g., recognizing `a = b` patterns inside capture) can be added
-later without breaking AST shape.
+The parser can recognize and preserve `[ item, item ]` syntax. Deeper
+capture semantics can be added later without changing the v0.1 preservation
+policy.
 
 **Future stage:** v0.3 (normalization) or v0.6 (closure materialization).
 
@@ -104,11 +105,15 @@ later without breaking AST shape.
 **Current v0.1 decision:**
 The closure recognition algorithm (section 11.9 of ast-construction-v0.1.md)
 uses finite lookahead. The exact lookahead depth is bounded by the maximum
-clause prefix length: `<T>(x: T): runtime -> T where ... acquire ...`.
+implemented clause prefix length: `<T>[cap](x: T): runtime -> T`. `where`
+and `acquire` remain reserved but are not active closure-head clauses in
+Phase 3.1.
 
 **Why it does not block v0.1:**
-The bounded lookahead can be implemented with a fixed token buffer. A formal
-upper bound should be specified to avoid parser ambiguity.
+The bounded lookahead is implemented with cursor save/restore and stack-based
+diagnostic gates. Phase 3.1 adds regression tests for failed lookahead,
+group/ArgPack ambiguity, and `where`/`acquire` non-recognition. A formal upper
+bound should still be specified before future closure-head clauses are added.
 
 **Future stage:** v0.2 (robustness) — document the exact maximum lookahead
 and add tests for edge cases.
@@ -174,8 +179,8 @@ annotations) for a future CFG construction pass.
 The workspace is ready. `crates/lang_syntax`, `crates/lang_cli`, and `xtask`
 exist as valid workspace members. `cargo check --workspace` passes.
 
-Lexer golden tests (9 cases), parser golden tests (32 cases), and diagnostic
-golden tests (23 cases) exist and pass.
+Lexer golden tests (9 cases), parser golden tests (107 cases), and diagnostic
+golden tests (27 cases) exist.
 
 Remaining test coverage gaps are tracked as v0.1 implementation work, not as
 workspace-readiness uncertainty. This entry is closed.

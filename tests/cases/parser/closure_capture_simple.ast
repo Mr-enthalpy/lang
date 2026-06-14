@@ -1,0 +1,23 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  captures:
+                    CaptureClause
+                      items:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name cap
+                  params:
+                    ParamClause
+                      params:
+                BodyBlock
+                  forms:

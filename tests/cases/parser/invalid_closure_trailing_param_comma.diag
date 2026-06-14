@@ -1,0 +1,1 @@
+error InvalidClosureHead "trailing comma in parameter list" @ 1:5 [4..5]

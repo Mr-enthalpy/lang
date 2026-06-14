@@ -323,6 +323,26 @@ fn invalid_closure_bad_head_recovery() {
 }
 
 #[test]
+fn invalid_closure_trailing_param_comma() {
+    assert_parser_case("invalid_closure_trailing_param_comma", true);
+}
+
+#[test]
+fn invalid_closure_missing_trait_after_colon() {
+    assert_parser_case("invalid_closure_missing_trait_after_colon", true);
+}
+
+#[test]
+fn invalid_closure_missing_return_after_arrow() {
+    assert_parser_case("invalid_closure_missing_return_after_arrow", true);
+}
+
+#[test]
+fn invalid_closure_capture_bad_head_recovery() {
+    assert_parser_case("invalid_closure_capture_bad_head_recovery", true);
+}
+
+#[test]
 fn closure_inline_empty() {
     assert_parser_case("closure_inline_empty", false);
 }
@@ -378,6 +398,16 @@ fn closure_prefixed_inline() {
 }
 
 #[test]
+fn closure_prefixed_inline_params() {
+    assert_parser_case("closure_prefixed_inline_params", false);
+}
+
+#[test]
+fn closure_explicit_deduce_head() {
+    assert_parser_case("closure_explicit_deduce_head", false);
+}
+
+#[test]
 fn closure_explicit_multi_param() {
     assert_parser_case("closure_explicit_multi_param", false);
 }
@@ -393,6 +423,21 @@ fn closure_in_argpack_match_style() {
 }
 
 #[test]
+fn closure_group_not_head() {
+    assert_parser_case("closure_group_not_head", false);
+}
+
+#[test]
+fn closure_argpack_not_head() {
+    assert_parser_case("closure_argpack_not_head", false);
+}
+
+#[test]
+fn closure_bare_name_not_head() {
+    assert_parser_case("closure_bare_name_not_head", true);
+}
+
+#[test]
 fn invalid_closure_where_not_parsed() {
     assert_parser_case("invalid_closure_where_not_parsed", true);
 }
@@ -403,6 +448,16 @@ fn invalid_closure_acquire_not_parsed() {
 }
 
 #[test]
+fn closure_deduce_where_not_clause() {
+    assert_parser_case("closure_deduce_where_not_clause", true);
+}
+
+#[test]
+fn closure_deduce_acquire_not_clause() {
+    assert_parser_case("closure_deduce_acquire_not_clause", true);
+}
+
+#[test]
 fn closure_body_multi_form() {
     assert_parser_case("closure_body_multi_form", false);
 }
@@ -410,6 +465,41 @@ fn closure_body_multi_form() {
 #[test]
 fn closure_body_newline_single_form() {
     assert_parser_case("closure_body_newline_single_form", false);
+}
+
+#[test]
+fn closure_body_semicolon_two_forms() {
+    assert_parser_case("closure_body_semicolon_two_forms", false);
+}
+
+#[test]
+fn closure_capture_simple() {
+    assert_parser_case("closure_capture_simple", false);
+}
+
+#[test]
+fn closure_capture_multiple() {
+    assert_parser_case("closure_capture_multiple", false);
+}
+
+#[test]
+fn closure_return_type() {
+    assert_parser_case("closure_return_type", false);
+}
+
+#[test]
+fn closure_return_constraint() {
+    assert_parser_case("closure_return_constraint", false);
+}
+
+#[test]
+fn closure_return_extract() {
+    assert_parser_case("closure_return_extract", false);
+}
+
+#[test]
+fn closure_return_extract_constraint() {
+    assert_parser_case("closure_return_extract_constraint", false);
 }
 
 #[test]

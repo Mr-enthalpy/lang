@@ -44,8 +44,9 @@ namespace  struct
 ```
 
 Parser contexts may interpret selected names structurally, but only when
-explicitly defined by the spec (e.g., `let` at form start, `where`/`acquire`
-in closure heads, `guard`/`with` in let bindings).
+explicitly defined by the spec (e.g., `let` at form start and `guard`/`with`
+in let bindings). `where` and `acquire` are reserved future closure-head
+positions, not active parser clauses in Phase 3.1.
 
 The weak lexer treats unrecognized words as `Name` tokens. This does not
 make those words language constructs.
@@ -137,8 +138,9 @@ Every syntax rule requires a golden test with:
 
 Minimum golden case groups (from `AGENTS.md`). Golden tests are added
 incrementally as parser phases are implemented; the case groups below are the
-full v0.1 target. The current test suite covers parser phase 1 only (see
-`spec/roadmap.md` for current coverage):
+full v0.1 target. The current test suite covers parser phase 1, phase 2
+binding-context syntax, phase 3 closure AST, and phase 3.1 closure/parser
+stabilization (see `spec/roadmap.md` for current coverage):
 
 ```text
 lexer/        names, symbols, comments, invalid
