@@ -18,7 +18,7 @@ Nested `/*` inside a block comment is an error or ignored.
 The lexer only needs a simple nesting-unaware comment rule for v0.1. A future
 stage can add nesting if the language grammar requires it.
 
-**Future stage:** v0.2 (frontend robustness) or v0.7 (full language design).
+**Future stage:** v0.5 (Normalized AST Stabilization) or v0.9 (type/kind checking design).
 
 ---
 
@@ -57,7 +57,7 @@ The distinction between ArgPack and group is clear in v0.1. A future pass
 may interpret certain ArgPacks as tuples, heterogeneous lists, or other
 constructs, but that does not affect parsing.
 
-**Future stage:** v0.7 (type design) — tuple types or value types may
+**Future stage:** v0.9 (type/kind checking design) — tuple types or value types may
 reinterpret ArgPacks.
 
 ---
@@ -94,7 +94,7 @@ The parser can recognize and preserve `[ item, item ]` syntax. Deeper
 capture semantics can be added later without changing the v0.1 preservation
 policy.
 
-**Future stage:** v0.3 (normalization) or v0.6 (closure materialization).
+**Future stage:** v0.3 (Normalized AST Specification) or v0.8 (closure materialization).
 
 ---
 
@@ -134,7 +134,7 @@ The current canonical skeleton grammar builds AST only. No matching is
 performed. Any future revision will produce a different AST shape, but
 v0.1 AST will still be parseable.
 
-**Future stage:** v0.4 (canonical form specification).
+**Future stage:** v0.6 (canonical form specification).
 
 ---
 
@@ -151,7 +151,7 @@ The v0.1 frontend faithfully preserves these names in expression AST. A
 future semantic pass can interpret them by analyzing the AST structure
 without requiring parser changes.
 
-**Future stage:** v1.0 (or earlier semantic design stages v0.5–v0.7).
+**Future stage:** v0.11 (or earlier semantic design stages v0.7–v0.9).
 
 ---
 
@@ -167,7 +167,7 @@ Ownership and lifetime analysis is out of scope for v0.1. The raw AST
 contains sufficient structure (form order, closure bodies, guard/with
 annotations) for a future CFG construction pass.
 
-**Future stage:** v0.8 (ownership/NLL/drop design).
+**Future stage:** v0.10 (ownership/NLL/drop design).
 
 ---
 
@@ -281,7 +281,7 @@ Any future tuple/pack positional access semantics must be implemented by later
 semantic lookup, namespace forwarding, or compiler-provided functions. The
 parser must not hard-code positional access semantics.
 
-**Future stage:** v0.7 (type design) or v1.0.
+**Future stage:** v0.9 (type/kind checking design) or v0.11.
 
 ---
 
@@ -355,7 +355,7 @@ as distinct selector classes. This distinction is sufficient to support future
 name-polymorphic lookup without requiring AST changes. v0.1 does not implement
 lookup, binding, or name resolution. The parser only preserves selector shape.
 
-**Future stage:** v0.7 (type/kind/checking design) or later name-resolution
+**Future stage:** v0.9 (type/kind checking design) or later name-resolution
 design. A future decision document (e.g.
 `docs/decisions/0005-name-polymorphic-lookup-boundary.md`) may formalize the
 exact rules. The parser must not be changed to accommodate lookup before that
@@ -380,7 +380,7 @@ particular shape (literal in skeleton, bare node-name, nested argpack) is
 admissible, produces a constraint, or is rejected by a future semantic match
 is a deferred design decision that does not require changing the AST.
 
-**Future stage:** v0.4 (canonical form specification) or v0.7 (type/kind/checking
+**Future stage:** v0.6 (canonical form specification) or v0.9 (type/kind checking
 design).
 
 ---

@@ -95,7 +95,8 @@ Normalized AST unifies:
 
 Define:
 
-- Normalized form for let bindings (desugared guard/with, unified simple/extract).
+- Normalized form for let bindings, preserving guard/with as declaration
+  attributes/dependencies without lifetime semantics, and unifying simple/extract.
 - Normalized form for pipe expressions (flattened segments, desugared ArgPack roles).
 - Normalized form for operator sugar (lowered to named operator calls).
 - Normalized form for closure heads (canonicalized clause order).
