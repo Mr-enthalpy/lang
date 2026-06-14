@@ -780,7 +780,7 @@ normalization may separate guard/with clauses from binders and unify
 simple and extract let forms into a common structure. It does not resolve
 aliases, check types, or decide declaration semantics.
 
-_See also: Normalization, Let binding, Alias binding.
+_See also: Normalization, Let binding, Alias binding._
 
 ---
 
