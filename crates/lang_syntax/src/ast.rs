@@ -159,11 +159,42 @@ pub struct OperatorExprAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OperatorExprKind {
     Atom(AtomAst),
+    OperatorSugar {
+        operator: OperatorNameAst,
+        fixity: OperatorFixity,
+        args: Vec<OperatorExprAst>,
+        span: Span,
+    },
+    Path {
+        base: Box<OperatorExprAst>,
+        names: Vec<SelectorAst>,
+        span: Span,
+    },
+    MemberSugar {
+        object: Box<OperatorExprAst>,
+        selector: SelectorAst,
+        span: Span,
+    },
+    DoubleDotSugar {
+        object: Box<OperatorExprAst>,
+        selector: SelectorAst,
+        args: ArgPackAst,
+        span: Span,
+    },
     Error(ErrorAst),
-    // Future operator parser phase:
-    // Binary { ... }
-    // Postfix { ... }
-    // Prefix { ... }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OperatorNameAst {
+    pub spelling: String,
+    pub span: Span,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OperatorFixity {
+    Prefix,
+    Postfix,
+    Binary,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

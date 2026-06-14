@@ -253,11 +253,11 @@ top-level comma"`, `"invalid argument pack position"`) until the diagnostic
 This diagnostic is de-emphasized in v0.1. The parser should always produce
 the closure AST node regardless of context.
 
-### 3.4 Planned operator-parser diagnostics
+### 3.4 Operator-parser diagnostics
 
-These diagnostics are design placeholders for the future operator parser. The
-current parser is not required to emit them until operator syntax is
-implemented.
+These diagnostics are emitted by parser phase 4 while preserving operator
+syntax as raw AST sugar. They do not imply operator lookup, lowering, overload
+resolution, assignment, mutation, or type checking.
 
 #### `ChainedNonAssociativeOperator`
 
@@ -269,6 +269,15 @@ implemented.
   continue to the segment boundary.
 - **AST effect**: Grouped forms such as `(a < b) < c` and `a < (b < c)` remain
   syntactically valid at AST level. Semantic validity is outside parser scope.
+
+#### `InvalidOperatorExpression`
+
+- **Trigger**: Operator syntax is malformed or unsupported in the current
+  parser phase, such as `a +`, `+ a`, `a *`, `!x`, `*x`, or `++x`.
+- **Primary span**: The operator token that caused the malformed expression.
+- **Recovery**: Produce an `ErrorAst` or best-effort operator-expression node
+  and continue to the segment or form boundary.
+- **AST effect**: Operator sugar that was already parsed remains preserved.
 
 ## 4. Diagnostic format
 

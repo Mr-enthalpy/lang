@@ -1,0 +1,23 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            OperatorSugar fixity=Postfix operator="!"
+              arg:
+                Atom
+                  DoubleDotSugar
+                    object:
+                      Name obj
+                    selector:
+                      TextName map
+                    args:
+                      ArgPack role=Unknown
+                        args:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name a

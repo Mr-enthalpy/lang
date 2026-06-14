@@ -1,0 +1,1 @@
+error ChainedNonAssociativeOperator "chained non-associative operator requires explicit grouping" @ 1:8 [7..9]

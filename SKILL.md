@@ -74,9 +74,9 @@ Do **not** use Rust `Debug` format for any dump output.
 Before changing expression parsing, read both `spec/ast-construction-v0.1.md`
 and `spec/operator-design.md`.
 
-If the task is not explicitly the operator parser implementation, do not add
-operator precedence parsing. It is acceptable to preserve token/AST structure
-that prepares for operators.
+Operator expression parsing is implemented as raw AST sugar. If the task is not
+explicitly about a later operator phase, do not add operator lookup, lowering,
+binder names, path leaves, or semantic validation.
 
 ## 4. AST construction order
 

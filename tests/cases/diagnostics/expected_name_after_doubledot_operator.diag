@@ -1,2 +1,2 @@
 error ExpectedNameAfterDoubleDot "expected name after `..`" @ 1:4 [3..5]
-error UnexpectedToken "unexpected token `+`" @ 1:6 [5..6]
+error InvalidOperatorExpression "expected right-hand side after operator `+`" @ 1:6 [5..6]

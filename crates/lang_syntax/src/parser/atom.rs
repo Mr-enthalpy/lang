@@ -1,23 +1,11 @@
 use crate::{
-    AtomAst, AtomKind, DiagnosticCode, NameAst, NumericNameAst, OperatorExprAst, OperatorExprKind,
-    SelectorAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, DiagnosticCode, NameAst, NumericNameAst, SelectorAst, Span, Symbol,
+    TokenKind,
 };
 
 use super::{
     argpack::parse_argpack, closure::try_parse_closure, form::Parser, pipe::parse_pipe_expr,
 };
-
-// Current-phase operator-expr wrapper. In the future operator parser phase,
-// this function will also parse binary/postfix/prefix operator expressions.
-// For now it wraps every atom in OperatorExprAst.
-pub fn parse_operator_expr_current_phase(parser: &mut Parser<'_>) -> Option<OperatorExprAst> {
-    let atom = parse_atom(parser)?;
-    let span = atom.span;
-    Some(OperatorExprAst {
-        kind: OperatorExprKind::Atom(atom),
-        span,
-    })
-}
 
 pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.is_form_boundary() {
@@ -149,7 +137,7 @@ fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
     }
 }
 
-fn parse_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
+pub fn parse_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
     let token = parser.cursor.peek_non_trivia();
     match token.kind {
         TokenKind::Name => {
@@ -170,7 +158,7 @@ fn parse_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
     }
 }
 
-fn selector_span(selector: &SelectorAst) -> Span {
+pub fn selector_span(selector: &SelectorAst) -> Span {
     match selector {
         SelectorAst::Text(name) => name.span,
         SelectorAst::Numeric(num) => num.span,

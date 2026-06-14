@@ -17,8 +17,9 @@ pub use ast::{
     CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DeclAnnotationAst,
     DeduceListAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
     InlineClosureAst, LetAst, LetAttrAst, LetBinderAst, NameAst, NumericNameAst, OperatorExprAst,
-    OperatorExprKind, ParamClauseAst, ParamItemAst, PipeExprAst, ProgramAst, ReturnBinderAst,
-    ReturnClauseAst, SegmentAst, SegmentElementAst, SelectorAst, TypeObjectAnnotationAst,
+    OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst, ParamItemAst, PipeExprAst,
+    ProgramAst, ReturnBinderAst, ReturnClauseAst, SegmentAst, SegmentElementAst, SelectorAst,
+    TypeObjectAnnotationAst,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};

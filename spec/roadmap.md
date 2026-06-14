@@ -50,11 +50,12 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4 operator syntax):**
 
 The current implementation includes parser phase 1, parser phase 2
 binding-context syntax, parser phase 3 closure surface AST, and parser phase
-3.1 closure/parser stabilization. It includes:
+3.1 closure/parser stabilization, and parser phase 4 operator syntax as raw
+AST sugar. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -75,7 +76,7 @@ binding-context syntax, parser phase 3 closure surface AST, and parser phase
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (107 cases), and diagnostics (27
+- Golden test infra for tokens (9 cases), AST (139 cases), and diagnostics (27
   cases).
 - Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
   parsing, and canonical skeleton parsing.
@@ -87,13 +88,17 @@ binding-context syntax, parser phase 3 closure surface AST, and parser phase
   `where`/`acquire` non-recognition, group/ArgPack ambiguity, body-block form
   boundaries, malformed closure recovery, match-style closure arms, capture
   syntax preservation, and return syntax preservation.
+- Parser phase 4 operator expression parsing as raw AST sugar: segment-local
+  precedence/associativity, prefix `-`, postfix operators, binary operators,
+  angle comparison operators in expression context, and diagnostics for
+  malformed or chained non-associative operator expressions.
 
 It does **not** yet include:
 
-- Operator parser (operator spellings are tokenized but expression-level
-  operator parsing, precedence, associativity, and operator-sugar AST are
-  not yet implemented).
+- Operator lookup, operator lowering, operator overload resolution, operator
+  binder names, or operator path leaves such as `t::+`.
 - Lexical alias binding / entity alias binding (`let binder === EntityRef`).
+- `where`/`acquire` clause parsing.
 - Closure object materialization, capture analysis, type checking, kind
   checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
   interpretation, and code generation.
@@ -117,10 +122,10 @@ is a parse-time role marker, not a semantic binding commitment.
 
 #### Future parser/documentation phase track
 
-The next syntax-facing work after Phase 3.1 is ordered as:
+The next syntax-facing work after Phase 4 is ordered as:
 
 ```text
-Phase 4: operator syntax as raw AST sugar
+Phase 4: operator syntax as raw AST sugar (implemented)
 Phase 4.1: compile-time entity reference syntax design
 Phase 4.2: lexical alias binding design (`let binder === EntityRef`)
 Phase 4.3: optional raw AST parser preservation for alias binding

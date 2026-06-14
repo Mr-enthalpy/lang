@@ -571,3 +571,163 @@ fn newline_before_dot() {
 fn newline_before_coloncolon() {
     assert_parser_case("newline_before_coloncolon", false);
 }
+
+#[test]
+fn operator_binary_add() {
+    assert_parser_case("operator_binary_add", false);
+}
+
+#[test]
+fn operator_binary_multiply() {
+    assert_parser_case("operator_binary_multiply", false);
+}
+
+#[test]
+fn operator_precedence_multiply_before_add() {
+    assert_parser_case("operator_precedence_multiply_before_add", false);
+}
+
+#[test]
+fn operator_left_assoc_add() {
+    assert_parser_case("operator_left_assoc_add", false);
+}
+
+#[test]
+fn operator_left_assoc_shift() {
+    assert_parser_case("operator_left_assoc_shift", false);
+}
+
+#[test]
+fn operator_comparison() {
+    assert_parser_case("operator_comparison", false);
+}
+
+#[test]
+fn operator_equality() {
+    assert_parser_case("operator_equality", false);
+}
+
+#[test]
+fn operator_compound_looking() {
+    assert_parser_case("operator_compound_looking", false);
+}
+
+#[test]
+fn operator_prefix_minus_name() {
+    assert_parser_case("operator_prefix_minus_name", false);
+}
+
+#[test]
+fn operator_prefix_minus_literal() {
+    assert_parser_case("operator_prefix_minus_literal", false);
+}
+
+#[test]
+fn operator_postfix_bang() {
+    assert_parser_case("operator_postfix_bang", false);
+}
+
+#[test]
+fn operator_postfix_question() {
+    assert_parser_case("operator_postfix_question", false);
+}
+
+#[test]
+fn operator_postfix_chain() {
+    assert_parser_case("operator_postfix_chain", false);
+}
+
+#[test]
+fn operator_suffix_then_postfix() {
+    assert_parser_case("operator_suffix_then_postfix", false);
+}
+
+#[test]
+fn operator_postfix_then_member() {
+    assert_parser_case("operator_postfix_then_member", false);
+}
+
+#[test]
+fn operator_doubledot_then_postfix() {
+    assert_parser_case("operator_doubledot_then_postfix", false);
+}
+
+#[test]
+fn operator_pipe_precedence() {
+    assert_parser_case("operator_pipe_precedence", false);
+}
+
+#[test]
+fn operator_segment_local() {
+    assert_parser_case("operator_segment_local", false);
+}
+
+#[test]
+fn operator_angle_less_greater() {
+    assert_parser_case("operator_angle_less_greater", false);
+}
+
+#[test]
+fn operator_grouped_nonassoc_left() {
+    assert_parser_case("operator_grouped_nonassoc_left", false);
+}
+
+#[test]
+fn operator_grouped_nonassoc_right() {
+    assert_parser_case("operator_grouped_nonassoc_right", false);
+}
+
+#[test]
+fn operator_inside_argpack() {
+    assert_parser_case("operator_inside_argpack", false);
+}
+
+#[test]
+fn operator_inside_closure_body() {
+    assert_parser_case("operator_inside_closure_body", false);
+}
+
+#[test]
+fn invalid_operator_missing_rhs_add() {
+    assert_parser_case("invalid_operator_missing_rhs_add", true);
+}
+
+#[test]
+fn invalid_operator_missing_lhs_add() {
+    assert_parser_case("invalid_operator_missing_lhs_add", true);
+}
+
+#[test]
+fn invalid_operator_missing_rhs_multiply() {
+    assert_parser_case("invalid_operator_missing_rhs_multiply", true);
+}
+
+#[test]
+fn invalid_operator_chained_comparison() {
+    assert_parser_case("invalid_operator_chained_comparison", true);
+}
+
+#[test]
+fn invalid_operator_chained_equality() {
+    assert_parser_case("invalid_operator_chained_equality", true);
+}
+
+#[test]
+fn invalid_operator_chained_compound() {
+    assert_parser_case("invalid_operator_chained_compound", true);
+}
+
+#[test]
+fn invalid_operator_unsupported_prefix_bang() {
+    assert_parser_case("invalid_operator_unsupported_prefix_bang", true);
+}
+
+#[test]
+fn invalid_operator_unsupported_prefix_star() {
+    assert_parser_case("invalid_operator_unsupported_prefix_star", true);
+}
+
+#[test]
+fn invalid_operator_unsupported_prefix_increment() {
+    assert_parser_case("invalid_operator_unsupported_prefix_increment", true);
+}

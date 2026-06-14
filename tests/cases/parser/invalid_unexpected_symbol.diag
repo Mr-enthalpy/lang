@@ -1,1 +1,1 @@
-error UnexpectedToken "unexpected token `<`" @ 1:3 [2..3]
+error UnexpectedToken "unexpected token `=`" @ 1:3 [2..3]

@@ -50,7 +50,7 @@ and crate public API become stable.
 
 Start with `spec/frontend-v0.1.md` to understand the pipeline, then
 `spec/ast-construction-v0.1.md` for parser behavior. Read
-`spec/operator-design.md` before changing planned operator syntax.
+`spec/operator-design.md` before changing operator syntax.
 
 ## Design summary
 
@@ -107,14 +107,12 @@ The expression frontend is organized around `|>` as the outer skeleton:
 ```text
 top-level |> segmentation
   -> per-segment atom folding
-  -> per-segment operator sugar (planned)
+  -> per-segment operator sugar
   -> per-segment automatic pipe
   -> argpack role assignment
 ```
 
-The current parser phase is still atom/argpack based.
-
-The planned operator-aware design inserts a segment-local `OperatorExpr` layer:
+The current parser preserves a segment-local `OperatorExpr` layer:
 
 ```text
 SegmentElement := OperatorExpr | ArgPack
@@ -123,11 +121,9 @@ SegmentElement := OperatorExpr | ArgPack
 Ordinary operators bind tighter than whitespace auto-pipe and `|>`, but they
 remain AST sugar.
 
-Operator syntax is documented as a planned segment-local expression layer. It
-is AST sugar only: no lookup, type checking, evaluation, mutation semantics, or
-lowering is performed by the parser. The ordering above describes binding
-structure, not a required parser implementation order. Operator parsing is local
-to one pipe segment and does not cross `|>` boundaries.
+Operator syntax is AST sugar only: no lookup, type checking, evaluation,
+mutation semantics, or lowering is performed by the parser. Operator parsing is
+local to one pipe segment and does not cross `|>` boundaries.
 
 ### 5. Closure literals produce AST first
 
@@ -246,11 +242,11 @@ Current coverage:
 - `tokens`: backed by the current lexer implementation (operator-aware) and 9
   lexer golden tests.
 - `ast`: backed by the current parser; covers simple let forms, path atoms,
-  groups, pipe segmentation, ArgPack roles, member/double-dot sugar, and
-  numeric selectors, extract-let binders, deduce lists, canonical skeletons,
-  and Phase 3.1-stabilized closure AST. It does not implement the operator
-  parser, `where`/`acquire` clauses, or semantic phases (see
-  `spec/roadmap.md` for phase boundaries).
+  groups, pipe segmentation, ArgPack roles, member/double-dot sugar, numeric
+  selectors, extract-let binders, deduce lists, canonical skeletons,
+  Phase 3.1-stabilized closure AST, and Phase 4 operator AST sugar. It does
+  not implement operator lookup/lowering, `where`/`acquire` clauses, or
+  semantic phases (see `spec/roadmap.md` for phase boundaries).
 - `diag`: backed by the full v0.1 diagnostic taxonomy; 27 diagnostic golden
   tests plus parser golden cases that include recovery diagnostics.
 
@@ -287,7 +283,7 @@ v0.1 only preserves raw namespace path shapes such as `std::Vec`,
 
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
 2. `spec/ast-construction-v0.1.md` — Implement the parser.
-3. `spec/operator-design.md` - Understand planned operator syntax.
+3. `spec/operator-design.md` - Understand operator syntax and future lookup boundaries.
 4. `spec/diagnostics-v0.1.md` - Understand error reporting.
 5. `spec/glossary.md` - Resolve terminology.
 6. `spec/roadmap.md` - Understand scope boundaries.

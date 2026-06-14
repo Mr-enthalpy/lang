@@ -7,6 +7,7 @@ pub mod deduce;
 pub mod expr;
 pub mod form;
 pub mod let_stmt;
+pub mod operator;
 pub mod pipe;
 
 use crate::{lex, Diagnostic, ProgramAst, Token};
