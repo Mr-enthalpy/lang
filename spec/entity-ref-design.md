@@ -1,12 +1,17 @@
 ﻿# EntityRef Design
 
+**Status:**
+- **AliasRhsEntityRef**: implemented in Phase 4.4 as raw AST preservation
+  inside `let binder === EntityRef`. The parser produces `EntityRefAst`
+  with path segments and a leaf. EntityRef parsing is available only in
+  alias-let RHS position; it is not a general expression parser mode.
+- **GeneralEntityRef**: future design. Standalone `EntityRef` parsing in
+  arbitrary strong contexts is not yet implemented.
+
 This document records the future compile-time entity reference syntax used by
 later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
 EntityRef parser inside alias-let RHS only; EntityRef is not a general
 expression parser mode.
-
-It is a documentation/design note only. It is not implemented in the current
-parser and is not part of v0.1 accepted syntax.
 
 ## Purpose
 

@@ -21,18 +21,19 @@ Follow this workflow for every change:
 ## 1. Which spec files to read first
 
 | Priority | File | When to read |
-|---|---|---|
+|---|---|---|---|
 | 1 | `AGENTS.md` | Always, before any code change |
 | 2 | `README.md` | Repository orientation |
 | 3 | `spec/frontend-v0.1.md` | Pipeline understanding |
-| 4 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 5 | `spec/operator-design.md` | Before any operator syntax change |
-| 6 | `spec/entity-ref-design.md` | Before any future EntityRef or alias RHS design |
-| 7 | `spec/entity-alias-design.md` | Before any future alias-binding design (Phase 4.3 design complete) |
-| 8 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
-| 9 | `spec/glossary.md` | Terminology reference |
-| 10 | `spec/roadmap.md` | Scope boundary check |
-| 11 | `spec/open-questions.md` | Before touching uncertain areas |
+| 4 | `spec/implementation-status-v0.1.md` | Current implementation inventory |
+| 5 | `spec/ast-construction-v0.1.md` | Before any parser change |
+| 6 | `spec/operator-design.md` | Before any operator syntax change |
+| 7 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
+| 8 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
+| 9 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
+| 10 | `spec/glossary.md` | Terminology reference |
+| 11 | `spec/roadmap.md` | Scope boundary check |
+| 12 | `spec/open-questions.md` | Before touching uncertain areas |
 
 ## 2. Core invariant
 
@@ -129,7 +130,7 @@ If a requested task requires any of the following, stop at AST preservation:
 | Closure materialization | Build closure AST; do not create callable objects |
 | Effect / sync | Parse as names; do not interpret effect system |
 | Library / import / export | v0.1 has no such syntax; preserve raw :: paths only |
-| Entity alias binding (`let binder === EntityRef`) | Future design only; not a v0.1 parser rule |
+| Entity alias binding (`let binder === EntityRef`) | Implemented as raw AST parser preservation; do not add target resolution, operator identity validation, or alias semantics |
 | Meta-function AST consumption | Built-in privilege; do not generalize to user macros |
 | `struct` / field syntax | Not parser syntax; future built-in meta-function may consume raw AST |
 
@@ -148,12 +149,14 @@ binding-context syntax, phase 3 closure AST, and phase 3.1 closure/parser
 stabilization (see `spec/roadmap.md` for current coverage):
 
 ```text
-lexer/        names, symbols, comments, invalid
+lexer/        names, symbols, comments, invalid, operators
 parser/       let_simple, let_extract, pipe_basic, argpack_roles,
               dot_sugar, doubledot_sugar, closure_inline,
-              closure_explicit, closure_head, match_style_expression
-diagnostics/ invalid_dot, invalid_doubledot, unclosed_group,
-             unclosed_closure, invalid_argpack
+              closure_explicit, closure_head, match_style_expression,
+              operator_expr, operator_binder, alias_let
+diagnostics/  invalid_dot, invalid_doubledot, unclosed_group,
+              unclosed_closure, invalid_argpack, invalid_operator,
+              invalid_alias
 ```
 
 ## 9. Commands to run

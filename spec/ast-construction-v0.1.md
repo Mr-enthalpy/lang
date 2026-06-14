@@ -1726,9 +1726,10 @@ struct
 
 They remain names inside expression AST unless appearing in explicitly defined strong contexts.
 
-## 15. Minimum golden cases
+## 15. Representative golden coverage
 
-Implement tests for at least:
+The golden test suite covers at least the following syntax areas.
+For the current full test count, see `spec/implementation-status-v0.1.md`.
 
 ```text
 let t: type = int Option Vec

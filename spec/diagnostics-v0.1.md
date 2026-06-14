@@ -3,7 +3,8 @@
 ## 1. Scope
 
 This document defines error and warning diagnostics produced by the v0.1 lexer
-and parser. It covers only syntax-level diagnostics.
+and parser. It covers every current `DiagnosticCode` variant in
+`crates/lang_syntax/src/diagnostic.rs`.
 
 It does **not** define:
 
@@ -240,18 +241,15 @@ top-level comma"`, `"invalid argument pack position"`) until the diagnostic
 
 #### `UnusedClosureAst`
 
-- **Trigger** (optional / stretch goal): A closure literal appears in a
-  position where it cannot be consumed by an operator, pipe, or binding
-  (e.g., a lone `{}` form with no let binding, no `|>` in scope, and no
-  enclosing construct that accepts closure AST).
+- **Trigger** (optional / currently not guaranteed emitted): A closure literal appears in a
+  position where it cannot be consumed by an operator, pipe, or binding.
 - **Primary span**: The closure body or `{}` token.
-- **Recovery**: The closure AST is still produced. The diagnostic warns that
-  the closure is unused.
-- **AST effect**: The closure AST node is preserved. The diagnostic is
-  emitted as a warning or note.
+- **Recovery**: The closure AST is still produced.
+- **AST effect**: The closure AST node is preserved.
 
-This diagnostic is de-emphasized in v0.1. The parser should always produce
-the closure AST node regardless of context.
+This diagnostic is in `DiagnosticCode` but currently not guaranteed to be
+emitted by the parser. The parser should always produce the closure AST node
+regardless of context.
 
 ### 3.4 Operator-parser diagnostics
 
@@ -327,7 +325,7 @@ operator identity validation, name lookup, or namespace resolution.
 - **AST effect**: The `EntityRefAst` preserves the parsed path and leaf.
   Residual tokens are consumed in recovery.
 
-#### `InvalidAliasBinder` (reserved)
+#### `InvalidAliasBinder` (reserved; not currently emitted)
 
 - **Trigger**: Not currently emitted by the alias parser. Reserved for future
   use when the binder token is neither `Name` nor operator-eligible.

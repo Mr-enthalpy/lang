@@ -544,3 +544,20 @@ them to let operator tokens participate in form-boundary separation is a
 general parser question, not alias-specific.
 
 **Future stage:** v0.2 (form boundary robustness) or later expression design.
+
+---
+
+## Documentation reset debt
+
+Items resolved during the documentation reset pass. Recorded here for audit.
+
+| Item | Implementation status | Spec state (before reset) | Action taken | Blocking |
+|---|---|---|---|---|
+| Operator syntax added after initial v0.1 boundary | Implemented as raw AST sugar | AGENTS.md said "do not implement operator syntax" | Updated AGENTS.md, SKILL.md | No |
+| Alias parser preservation after entity-alias documented as future | Implemented as raw AST preservation | AGENTS.md, SKILL.md, README.md said "future only" | Updated all entry docs + entity-alias-design.md | No |
+| `where`/`acquire` reserved but not active | Reserved, not parsed in closure head | Already documented correctly | Confirmed; marked `reserved-not-active` in implementation-status | No |
+| EntityRef general design vs alias-RHS subset | AliasRhsEntityRef implemented; GeneralEntityRef future | entity-ref-design.md said "not implemented" | Split into status banner distinguishing AliasRhsEntityRef vs GeneralEntityRef | No |
+| `InvalidAliasBinder` diagnostic reserved but not emitted | In DiagnosticCode, never triggered | Undocumented as reserved | Marked "reserved; not currently emitted" in diagnostics spec | No |
+| `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |
+| Right-target subsegment AST shape | Flat representation; future may nest | Already open question §4 | No change needed | No |
+| Form boundary promotion rules | Provisional rules implemented | Already open question §2 | No change needed | No |

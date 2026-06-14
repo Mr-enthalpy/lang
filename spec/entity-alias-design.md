@@ -1,9 +1,13 @@
 # Entity Alias Binding Design
 
-This document records the future design for lexical alias binding of
-compile-time entities (Phase 4.3 design complete). Phase 4.4 implements raw
-parser preservation for `let binder === EntityRef`; the parser preserves
-alias-binding AST without resolving targets or validating operator identity.
+**Status:**
+- **Parser preservation** for `let binder === EntityRef` is implemented in v0.1 as raw AST preservation. The lexer recognizes `===` as a single structural delimiter token (`Symbol::TripleEqual`). The parser produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
+- **Alias semantics, lookup, scope validation, operator identity validation, and namespace resolution are future work.** The parser does not resolve targets, validate operator identity, perform entity lookup, or execute alias semantics.
+
+This document records the design for lexical alias binding of
+compile-time entities (Phase 4.3 design complete). Phase 4.4 implemented raw
+parser preservation. The remaining sections describe both the implemented
+syntax and the future semantic behavior.
 
 The right-hand side `EntityRef` syntax is defined separately in
 `spec/entity-ref-design.md`. This document describes how future alias binding
@@ -32,9 +36,32 @@ An alias binding:
 - may shadow ordinary names;
 - may shadow operator bindings.
 
+## Implemented in v0.1 as raw AST preservation
+
+Phase 4.4 implemented raw parser preservation for `let binder === EntityRef`.
+
+**What is implemented:**
+
+- `===` is lexed as `Symbol::TripleEqual`, one structural token (before `==` and `=`).
+- The parser accepts `let Name === EntityPath` and `let OperatorName === EntityPath` in let-form position.
+- `AliasBinderAst` preserves the binder as `Name(NameAst)` or `Operator(OperatorNameAst)`.
+- `EntityRefAst` preserves the right-hand side as a sequence of `EntityPathSegmentAst` (text names) terminated by `EntityPathLeafAst` (Name or OperatorName).
+- Operator names are valid only as the final entity path leaf; `+::x` and `a::+::b` emit `InvalidEntityRef`.
+- Residual expression tokens after the entity reference emit `UnexpectedAliasRhsExpression`.
+- Missing targets emit `ExpectedAliasTarget`.
+- The alias-let dispatch guards against `guard`, extract-let, annotation, and `with` paths: none of these parse as alias declarations.
+
+**What is not implemented:**
+
+- Target entity resolution.
+- Operator alias identity validation (`spelling + fixity + arity`).
+- Name lookup, operator lookup, namespace resolution, dependency resolution.
+- Import/package/build-system semantics.
+- Alias scope semantics, shadowing, or semantic validation.
+
 ## Surface Grammar
 
-Future syntax:
+Grammar:
 
 ```text
 AliasBinding ::= "let" AliasBinder "===" EntityRef

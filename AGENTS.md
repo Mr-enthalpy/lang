@@ -11,9 +11,10 @@ SKILL.md               (operational workflow)
 spec/frontend-v0.1.md  (pipeline overview)
 spec/ast-construction-v0.1.md  (normative parser rules)
 spec/operator-design.md (operator syntax design and implementation boundaries)
-spec/entity-ref-design.md (future EntityRef syntax design; not currently implemented)
-spec/entity-alias-design.md (future alias binding design; Phase 4.3 design complete; not currently implemented)
+spec/entity-ref-design.md (future general EntityRef design; alias-RHS subset implemented)
+spec/entity-alias-design.md (alias binding design; raw parser preservation implemented; semantics/validation future)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
+spec/implementation-status-v0.1.md (authoritative factual inventory of current implementation)
 spec/roadmap.md        (scope boundaries)
 spec/glossary.md       (terminology)
 spec/open-questions.md (known gaps)
@@ -31,7 +32,8 @@ source text -> tokens -> AST -> diagnostics
 
 Do not implement:
 
-* operator syntax unless the task explicitly asks for the operator parser PR
+* operator lookup, lowering, ADL, type-directed lookup, mutation semantics, or semantic operator validation (operator syntax is already implemented as raw AST sugar)
+* alias semantics, target resolution, operator identity validation, or namespace resolution (alias binding parser preservation is already implemented)
 * type checking
 * kind checking
 * overload resolution
@@ -125,8 +127,14 @@ Operator spellings are syntax-level operator names. They are not keywords and
 do not imply built-in arithmetic, comparison, mutation, assignment, lookup, or
 ADL. The parser preserves expression-level operator syntax as raw AST sugar
 and preserves operator names in binder/final-path-leaf positions. Operator
-lookup, lowering, alias binding, and semantic validation remain future work
-unless explicitly assigned.
+lookup, lowering, and semantic validation remain future work unless explicitly
+assigned.
+
+Alias binding (`let binder === EntityRef`) is implemented as raw AST
+preservation. The parser preserves `LetAliasAst` and `EntityRefAst` but does
+not resolve targets, validate operator identity, perform entity lookup, or
+execute alias semantics. Do not add alias semantic features unless explicitly
+assigned.
 
 ### Contextual structure words
 
@@ -399,6 +407,7 @@ lexer/
   symbols
   comments
   invalid
+  operators
 
 parser/
   let_simple
@@ -411,6 +420,10 @@ parser/
   closure_explicit
   closure_head
   match_style_expression
+  operator_expr
+  operator_binder
+  alias_let
+  alias_let_invalid
 
 diagnostics/
   invalid_dot
@@ -418,6 +431,8 @@ diagnostics/
   unclosed_group
   unclosed_closure
   invalid_argpack
+  invalid_operator
+  invalid_alias
 ```
 
 ## Commit discipline
@@ -439,8 +454,12 @@ When changing diagnostic behavior:
 Do not change parser or diagnostic behavior without updating the corresponding
 spec or tests.
 
+Documentation-only status realignment may update docs without source changes.
+
 ## Spec awareness
 
+* `spec/implementation-status-v0.1.md` records current implementation facts.
+  Consult it before changing parser behavior.
 * `spec/roadmap.md` defines scope boundaries. If a change would cross a stage
   boundary (e.g., implementing semantic analysis), stop and document the
   limitation instead.
