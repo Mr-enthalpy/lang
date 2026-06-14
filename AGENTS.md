@@ -119,9 +119,11 @@ form.
 Any other unrecognized word is still lexed as `Name`. This does not make
 that word a language construct.
 
-Operator spellings are planned syntax-level operator names. They are not
-keywords and do not imply built-in arithmetic, comparison, mutation,
-assignment, lookup, or ADL.
+Operator spellings are syntax-level operator names. They are not keywords and
+do not imply built-in arithmetic, comparison, mutation, assignment, lookup, or
+ADL. The parser preserves expression-level operator syntax as raw AST sugar
+only; operator lookup, lowering, binder names, and path leaves remain future
+work unless explicitly assigned.
 
 ### Contextual structure words
 

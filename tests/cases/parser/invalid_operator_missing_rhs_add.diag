@@ -1,0 +1,1 @@
+error InvalidOperatorExpression "expected right-hand side after operator `+`" @ 1:3 [2..3]

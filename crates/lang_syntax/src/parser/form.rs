@@ -110,6 +110,28 @@ impl<'tokens> Parser<'tokens> {
         true
     }
 
+    pub fn can_promote_newline_after_segment_element(&self) -> bool {
+        if self.nesting_depth != 0 {
+            return false;
+        }
+        if !self.cursor.has_newline_trivia_ahead() {
+            return false;
+        }
+        let cursor_index = self.cursor.current_index();
+        let prev = self.cursor.peek_prev_significant(cursor_index);
+        if !Self::can_end_form_token(prev) {
+            return false;
+        }
+        let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
+        if !Self::can_start_form_token(next) {
+            return false;
+        }
+        if Self::is_continuation_token(prev) || Self::is_continuation_token(next) {
+            return false;
+        }
+        true
+    }
+
     fn can_end_form_token(token: &Token) -> bool {
         matches!(
             token.kind,

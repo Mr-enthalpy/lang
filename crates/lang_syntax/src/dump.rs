@@ -291,6 +291,72 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
             line(output, indent, "Atom");
             dump_atom(output, atom, indent + 1);
         }
+        OperatorExprKind::OperatorSugar {
+            operator,
+            fixity,
+            args,
+            ..
+        } => {
+            line(
+                output,
+                indent,
+                &format!(
+                    "OperatorSugar fixity={} operator=\"{}\"",
+                    operator_fixity_label(*fixity),
+                    escape_text(&operator.spelling)
+                ),
+            );
+            match args.as_slice() {
+                [arg] => {
+                    line(output, indent + 1, "arg:");
+                    dump_operator_expr(output, arg, indent + 2);
+                }
+                [lhs, rhs] => {
+                    line(output, indent + 1, "lhs:");
+                    dump_operator_expr(output, lhs, indent + 2);
+                    line(output, indent + 1, "rhs:");
+                    dump_operator_expr(output, rhs, indent + 2);
+                }
+                _ => {
+                    line(output, indent + 1, "args:");
+                    for arg in args {
+                        dump_operator_expr(output, arg, indent + 2);
+                    }
+                }
+            }
+        }
+        OperatorExprKind::Path { base, names, .. } => {
+            line(output, indent, "Path");
+            line(output, indent + 1, "base:");
+            dump_operator_expr(output, base, indent + 2);
+            line(output, indent + 1, "names:");
+            for selector in names {
+                dump_selector(output, selector, indent + 2);
+            }
+        }
+        OperatorExprKind::MemberSugar {
+            object, selector, ..
+        } => {
+            line(output, indent, "MemberSugar");
+            line(output, indent + 1, "object:");
+            dump_operator_expr(output, object, indent + 2);
+            line(output, indent + 1, "selector:");
+            dump_selector(output, selector, indent + 2);
+        }
+        OperatorExprKind::DoubleDotSugar {
+            object,
+            selector,
+            args,
+            ..
+        } => {
+            line(output, indent, "DoubleDotSugar");
+            line(output, indent + 1, "object:");
+            dump_operator_expr(output, object, indent + 2);
+            line(output, indent + 1, "selector:");
+            dump_selector(output, selector, indent + 2);
+            line(output, indent + 1, "args:");
+            dump_argpack(output, args, indent + 2);
+        }
         OperatorExprKind::Error(error) => {
             line(
                 output,
@@ -298,6 +364,14 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
                 &format!("Error \"{}\"", escape_text(&error.message)),
             );
         }
+    }
+}
+
+fn operator_fixity_label(fixity: crate::OperatorFixity) -> &'static str {
+    match fixity {
+        crate::OperatorFixity::Prefix => "Prefix",
+        crate::OperatorFixity::Postfix => "Postfix",
+        crate::OperatorFixity::Binary => "Binary",
     }
 }
 
@@ -595,6 +669,8 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidDeduceList => "InvalidDeduceList",
         DiagnosticCode::InvalidCanonicalSkeleton => "InvalidCanonicalSkeleton",
         DiagnosticCode::InvalidClosureHead => "InvalidClosureHead",
+        DiagnosticCode::InvalidOperatorExpression => "InvalidOperatorExpression",
+        DiagnosticCode::ChainedNonAssociativeOperator => "ChainedNonAssociativeOperator",
         DiagnosticCode::TopLevelComma => "TopLevelComma",
         DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
     }

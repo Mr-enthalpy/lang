@@ -5,9 +5,9 @@ use crate::{
 
 use super::{
     argpack::parse_argpack,
-    atom::parse_operator_expr_current_phase,
     cursor::ParenClassification,
     form::{Continuation, Parser},
+    operator::parse_operator_expr,
 };
 
 pub fn parse_pipe_expr(
@@ -96,7 +96,7 @@ fn parse_segment(
             break;
         }
 
-        if let Some(element) = parse_segment_element(parser) {
+        if let Some(element) = parse_segment_element(parser, &mut stop) {
             elements.push(element);
             parser.continuation = Continuation::None;
         } else if stop(parser) {
@@ -137,7 +137,10 @@ fn parse_segment(
     }
 }
 
-fn parse_segment_element(parser: &mut Parser<'_>) -> Option<SegmentElementAst> {
+fn parse_segment_element(
+    parser: &mut Parser<'_>,
+    stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
+) -> Option<SegmentElementAst> {
     let (class, after_idx) = parser.cursor.classify_paren_at_segment_position();
 
     match class {
@@ -149,7 +152,7 @@ fn parse_segment_element(parser: &mut Parser<'_>) -> Option<SegmentElementAst> {
                     after.kind,
                     TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
                 ) {
-                    let op_expr = parse_operator_expr_current_phase(parser)?;
+                    let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }
             }
@@ -157,7 +160,7 @@ fn parse_segment_element(parser: &mut Parser<'_>) -> Option<SegmentElementAst> {
             Some(SegmentElementAst::ArgPack(argpack))
         }
         ParenClassification::Group => {
-            let op_expr = parse_operator_expr_current_phase(parser)?;
+            let op_expr = parse_operator_expr(parser, stop)?;
             Some(SegmentElementAst::OperatorExpr(op_expr))
         }
         ParenClassification::Unclosed => {
@@ -165,7 +168,7 @@ fn parse_segment_element(parser: &mut Parser<'_>) -> Option<SegmentElementAst> {
             Some(SegmentElementAst::ArgPack(argpack))
         }
         ParenClassification::NotParen => {
-            parse_operator_expr_current_phase(parser).map(SegmentElementAst::OperatorExpr)
+            parse_operator_expr(parser, stop).map(SegmentElementAst::OperatorExpr)
         }
     }
 }

@@ -1,0 +1,16 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            MemberSugar
+              object:
+                OperatorSugar fixity=Postfix operator="!"
+                  arg:
+                    OperatorSugar fixity=Postfix operator="!"
+                      arg:
+                        Atom
+                          Name obj
+              selector:
+                TextName field

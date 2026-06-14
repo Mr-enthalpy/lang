@@ -1,8 +1,7 @@
 # Operator Design
 
-This document defines the language-level operator design. It is normative for
-future operator parser work, but the current v0.1 parser may not implement these
-rules yet.
+This document defines the language-level operator design. Parser phase 4
+implements expression-level operator syntax as raw AST sugar only.
 
 Operators are surface syntax for specially shaped function invocation. They are
 not built-in arithmetic, comparison, mutation, assignment syntax, parser-level
@@ -119,7 +118,6 @@ Examples:
 obj!.field
 obj.field?
 obj..map(a)!
-t::+
 ```
 
 `obj!.field` has the same AST grouping as:
@@ -235,7 +233,7 @@ a == b == c
 a += b += c
 ```
 
-A future parser may emit a diagnostic such as:
+The parser emits a diagnostic for ungrouped chains:
 
 ```text
 chained non-associative operator requires explicit grouping
@@ -332,7 +330,7 @@ rule applies to operator declarations.
 Operator expressions are preserved as operator sugar. The parser must not lower
 operator syntax to ordinary calls in v0.1.
 
-Planned operator-expression AST shape:
+Implemented operator-expression AST shape:
 
 ```text
 OperatorExprAst ::=
@@ -402,11 +400,9 @@ lookup, namespace resolution, import/package semantics, or alias validation.
 
 ## v0.1 Boundary
 
-This design does not require the current parser to implement operator syntax.
+The current parser implements expression-level operator syntax preservation
+only. Do not implement in this phase:
 
-Do not implement in this documentation task:
-
-- operator parser;
 - operator binder names;
 - `t::+` parsing;
 - operator lookup;

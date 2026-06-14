@@ -73,8 +73,7 @@ Symbols include at least:
 ( ) [ ] { } , : = . .. :: |> => -> < > ;
 ```
 
-Design rule, not yet implemented in the current lexer/parser:
-operator-aware tokenization preserves these additional operator spellings as
+Operator-aware tokenization preserves these additional operator spellings as
 syntax-level operator names:
 
 ```text
@@ -595,30 +594,24 @@ BinderDeclAst {
 Outside strong binding contexts, `<` and `>` are ordinary symbol tokens. They
 do not introduce generic-call syntax or angle-bracket grouping.
 
-Design rule, not yet implemented in the current parser:
-in expression/operator contexts, `<`, `>`, `<=`, and `>=` are operator
+In expression/operator contexts, `<`, `>`, `<=`, and `>=` are operator
 spellings. The parser must still not globally recognize angle-bracket groups.
 
-**Current-parser diagnostic example:**
+**Expression-context example:**
 
 ```text
 let x: type = a < b > c
 ```
 
-The current parser does not yet implement operator syntax. Until operator-aware
-expression parsing lands, it may emit `UnexpectedToken` for `<` and `>` in
-ordinary expression position.
-
-The parser should produce:
+The parser produces operator sugar for `<` and `>`:
 
 ```text
-Atom(Name(a))  ErrorAst(<)  Atom(Name(b))  ErrorAst(>)  Atom(Name(c))
+OperatorSugar(">", OperatorSugar("<", a, b), c)
 ```
 
-or skip to the next synchronization point after the first `<`.
-
-Once operator syntax is implemented, the same source is parsed using `<` and
-`>` as expression operators, not as a deduce list.
+This is expression syntax, not a deduce list or generic application.
+Because `<` and `>` are non-associative at this level, the ungrouped chain also
+produces `ChainedNonAssociativeOperator`.
 
 ## 6. Canonical skeleton
 
@@ -831,11 +824,10 @@ Segment parsing does not directly execute function application.
 
 It records element sequence and ArgPack roles.
 
-Design rule, not yet implemented in the current parser:
 `OperatorExpr` is the ordinary-operator expression layer built from atoms.
 Ordinary operators bind more tightly than both whitespace auto-pipe and `|>`.
 
-Planned operator-aware AST shape:
+Operator-aware AST shape:
 
 ```text
 OperatorExprAst ::=
@@ -846,11 +838,35 @@ OperatorExprAst ::=
         args: Vec<OperatorExprAst>,
         span: Span
     }
+  | Path {
+        base: OperatorExprAst,
+        leaves: Vec<SelectorAst>,
+        span: Span
+    }
+  | MemberSugar {
+        object: OperatorExprAst,
+        selector: SelectorAst,
+        span: Span
+    }
+  | DoubleDotSugar {
+        object: OperatorExprAst,
+        selector: SelectorAst,
+        args: ArgPackAst,
+        span: Span
+    }
 ```
 
 Binary and prefix operator sugar belong to `OperatorExprAst`, not to
 `AtomAst`. Postfix operator suffixes compose with atom suffix parsing, but the
 resulting sugar is still represented at the operator-expression layer.
+Therefore, after a postfix operator, continuing suffixes such as `::`, `.`, and
+`..` are preserved by operator-level `Path`, `MemberSugar`, and
+`DoubleDotSugar` nodes.
+
+These operator-level suffix nodes are raw AST preservation only. They do not
+perform lookup, lower to calls, assign member semantics, or implement operator
+path leaves. In particular, `t::+` and `std::int::+` remain future
+operator-path-leaf syntax and are not accepted by this phase.
 
 ```text
 a + b |> f
@@ -927,9 +943,11 @@ no incoming segment or preceding atom triggers `InvalidArgPack` or
 `TopLevelComma` diagnostics. The parser should produce a diagnostic and
 still parse the `ArgPack` node.
 
-### 8.3 Atom suffix folding
+### 8.3 Suffix folding
 
-After parsing `AtomBase`, repeatedly fold atom suffixes.
+After parsing `AtomBase`, repeatedly fold suffixes. Parser phase 4 extends this
+folding over `OperatorExprAst` so postfix operator results can continue through
+the same suffix loop.
 
 Suffixes:
 
@@ -942,10 +960,16 @@ PostfixOperator
 
 Folding order is left-to-right.
 
-Design rule, not yet implemented in the current parser:
-postfix unary operators participate in the same left-folding suffix loop as
+Postfix unary operators participate in the same left-folding suffix loop as
 `::`, `.`, and `..`. Therefore `obj!.field` has the shape `(obj!).field`; the
 postfix operator does not terminate suffix parsing.
+
+Before the first postfix operator, suffix folding may produce atom-level
+`Path`, `MemberSugar`, or `DoubleDotSugar` nodes. After an operator-level value
+exists, such as `obj!`, continued suffix folding is preserved with
+operator-level `Path`, `MemberSugar`, or `DoubleDotSugar` nodes inside
+`OperatorExprAst`. This is an AST-shape preservation rule only; it does not
+perform lookup, lower suffixes to calls, or implement operator path leaves.
 
 SelectorAst for this phase:
 
@@ -955,7 +979,8 @@ SelectorAst ::=
   | Numeric(NumericNameAst)
 ```
 
-Future operator-parser phase: `Operator(OperatorSpelling)` for operator selectors.
+Operator selectors remain future work: this phase does not parse
+`Operator(OperatorSpelling)` as a selector or path leaf.
 
 A numeric token (`IntLiteral`) in atom-base position produces a numeric literal
 atom (`IntLiteral`). The same token class in selector/name-leaf position
@@ -1009,8 +1034,6 @@ not as:
 Path(base = Segment[a, b], leaves=[c])
 ```
 
-Design rule, not yet implemented in the current parser:
-
 ```text
 PathLeaf ::= Name | NumericName | OperatorName (future)
 ```
@@ -1019,8 +1042,6 @@ Operator names may only be path leaves. Valid future shapes include `t::+` and
 `std::int::+`. Invalid future shapes include `+::x`, `t::+::x`, and `t::+::-`.
 
 ### 8.4a Operator sugar
-
-Design rule, not yet implemented in the current parser:
 
 ```text
 OperatorExprAst ::=
@@ -1031,10 +1052,21 @@ OperatorExprAst ::=
         args: Vec<OperatorExprAst>,
         span: Span
     }
+  | Path { base: OperatorExprAst, leaves: Vec<SelectorAst>, span: Span }
+  | MemberSugar { object: OperatorExprAst, selector: SelectorAst, span: Span }
+  | DoubleDotSugar {
+        object: OperatorExprAst,
+        selector: SelectorAst,
+        args: ArgPackAst,
+        span: Span
+    }
 ```
 
 Operator syntax is preserved as AST sugar at the `OperatorExprAst` layer. The
-parser must not lower it into ordinary calls in v0.1.
+parser must not lower it into ordinary calls in v0.1. The operator-level
+`Path`, `MemberSugar`, and `DoubleDotSugar` variants exist only so postfix
+operator results can continue through suffix folding, for example
+`obj!.field`, `obj.field?`, and `obj..map(a)!`.
 
 Examples:
 
@@ -1048,7 +1080,7 @@ Prefix `-x` is not a negative literal; the lexer emits `-` and `x`
 separately.
 
 Comparison, equality, and compound-looking operator chains are
-non-associative in this phase. A future parser may diagnose:
+non-associative in this phase. The parser diagnoses:
 
 ```text
 chained non-associative operator requires explicit grouping
@@ -1497,16 +1529,16 @@ return constraints are not type-checked or constraint-solved in v0.1.
 > **Not implemented in Phase 3.1.** `where` is a reserved closure-head
 > position.
 > It remains an ordinary name outside a future where-parser state.
-> Concrete `where` syntax is deferred until the operator parser and
-> logical-operator grammar exist.
+> Concrete `where` syntax is deferred until a dedicated closure-clause parser
+> and logical-constraint grammar exist.
 
 ### 11.8 Acquire clause (future reserved)
 
 > **Not implemented in Phase 3.1.** `acquire` is a reserved closure-head
 > position.
 > It remains an ordinary name outside a future acquire-parser state.
-> Concrete `acquire` syntax is deferred until the operator parser and
-> logical-operator grammar exist.
+> Concrete `acquire` syntax is deferred until a dedicated closure-clause parser
+> and resource-requirement grammar exist.
 
 ### 11.9 Closure recognition algorithm
 
@@ -1750,7 +1782,7 @@ document.
 | §4.6 DeclAnnotation                  | `fn f(x) { x }` — not a FnDecl              | No diagnostic (ordinary expr; adjacencies may vary)                                      |
 | §4.6 DeclAnnotation                  | `type T = expr` — not a TypeDecl            | `=` may produce `UnexpectedToken`                                                        |
 | §4.6 DeclAnnotation                  | `namespace ns = expr` — not a NamespaceDecl | `=` may produce `UnexpectedToken`                                                        |
-| §5.3 Current parser non-context `<>` | `a < b > c` before operator parser lands    | May emit `UnexpectedToken` at `<`; operator-aware parser treats `<` and `>` as operators |
+| §5.3 Expression-context `<`/`>`      | `a < b > c`                                 | `ChainedNonAssociativeOperator` on the ungrouped non-associative chain                   |
 | §7.2 Pipe split                      | `\|> f` at form start                       | `UnexpectedToken` at `\|>`                                                               |
 | §7.2 Pipe split                      | `x \|> \|> g` (empty middle)                | Diagnostic on empty segment                                                              |
 | §8.2 Group                           | `let x: type = (a, b)` at expr top          | `TopLevelComma` or `InvalidArgPack`                                                      |

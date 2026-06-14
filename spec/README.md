@@ -9,7 +9,7 @@ frontend. Each document has a defined authority level.
 | ---------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `frontend-v0.1.md`                 | Non-normative overview                                | Reader entry point. Describes the v0.1 pipeline, document division, spec priority, and the boundaries between tokens, AST, and diagnostics. |
 | `ast-construction-v0.1.md`         | Normative for parser behavior                         | Defines every syntax rule, AST shape, and parser constraint in v0.1.                                                                        |
-| `operator-design.md`               | Normative design for future parser work               | Defines operator identity, spellings, fixity, precedence, associativity, AST sugar shape, lookup boundaries, and implementation boundary.   |
+| `operator-design.md`               | Normative for operator syntax design                   | Defines operator identity, spellings, fixity, precedence, associativity, AST sugar shape, lookup boundaries, and implementation boundary.   |
 | `entity-alias-design.md`           | Non-normative future design note                      | Documents future lexical alias binding syntax (`let binder === EntityRef`) and the parser/semantic boundary. Not a v0.1 parser rule.        |
 | `diagnostics-v0.1.md`              | Normative for error reporting                         | Defines diagnostic categories, span policy, and recovery behavior.                                                                          |
 | `roadmap.md`                       | Authoritative for scope; non-normative for scheduling | Defines stage boundaries (v0.1–v1.0) and what must not leak between stages.                                                                 |
@@ -24,7 +24,7 @@ frontend. Each document has a defined authority level.
 
 1. `frontend-v0.1.md` - Understand the pipeline.
 2. `ast-construction-v0.1.md` - Implement the parser.
-3. `operator-design.md` - Understand planned operator syntax rules.
+3. `operator-design.md` - Understand operator syntax rules.
 4. `entity-alias-design.md` - Understand future lexical alias binding.
 5. `diagnostics-v0.1.md` - Understand error reporting.
 6. `glossary.md` - Resolve terminology ambiguity.
@@ -34,7 +34,7 @@ frontend. Each document has a defined authority level.
 ## Spec priority
 
 If two spec documents conflict, `ast-construction-v0.1.md` takes priority for
-current parser behavior. `operator-design.md` defines planned operator behavior
-only where the current parser spec explicitly marks operator support as not yet
-implemented. The current parser is not required to accept operator syntax until
-the operator parser work lands. This `README.md` is not itself a spec document.
+current parser behavior. `operator-design.md` defines operator syntax behavior
+and future lookup/binder boundaries. Operator expression parsing is implemented
+as raw AST sugar; operator lookup, lowering, binder names, and path leaves
+remain future work. This `README.md` is not itself a spec document.

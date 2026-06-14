@@ -4,28 +4,33 @@ Program
       Pipe
         Segment has_incoming=false
           OperatorExpr
-            Atom
-              Name T
-          ArgPack role=RightTargetSubsegment
-            args:
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name x
-                    OperatorExpr
-                      Atom
-                        Name T
-                    OperatorExpr
-                      Atom
-                        Closure Inline
-                          BodyBlock
-                            forms:
-                              ExprForm
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name x
+            Error "unsupported prefix operator"
+          OperatorExpr
+            OperatorSugar fixity=Binary operator=">"
+              lhs:
+                Atom
+                  Name T
+              rhs:
+                Atom
+                  Group
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name x
+                          OperatorExpr
+                            Atom
+                              Name T
+                          OperatorExpr
+                            Atom
+                              Closure Inline
+                                BodyBlock
+                                  forms:
+                                    ExprForm
+                                      Expr
+                                        Pipe
+                                          Segment has_incoming=false
+                                            OperatorExpr
+                                              Atom
+                                                Name x

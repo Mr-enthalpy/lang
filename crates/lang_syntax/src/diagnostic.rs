@@ -20,6 +20,8 @@ pub enum DiagnosticCode {
     InvalidDeduceList,
     InvalidCanonicalSkeleton,
     InvalidClosureHead,
+    InvalidOperatorExpression,
+    ChainedNonAssociativeOperator,
     TopLevelComma,
     UnusedClosureAst,
 }

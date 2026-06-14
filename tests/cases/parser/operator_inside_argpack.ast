@@ -1,0 +1,24 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name f
+          ArgPack role=RightTargetSubsegment
+            args:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      OperatorSugar fixity=Binary operator="+"
+                        lhs:
+                          Atom
+                            Name a
+                        rhs:
+                          Atom
+                            Name b
+          OperatorExpr
+            Atom
+              Name g
