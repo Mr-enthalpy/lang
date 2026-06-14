@@ -2,6 +2,10 @@
 
 Authoritative factual inventory of current implementation status.
 
+This file records implementation facts. It does not override normative syntax
+rules in `ast-construction-v0.1.md`, `operator-design.md`, or
+`diagnostics-v0.1.md`.
+
 This document records what the current codebase implements. It is not
 normative for parser behavior — `spec/ast-construction-v0.1.md` and
 `spec/operator-design.md` define what the parser must do. This document
@@ -42,12 +46,12 @@ only records what it currently does.
 
 ## Current golden test snapshot
 
-The counts below reflect the test suite at the time of writing. They are not
-normative and may change as tests are added.
+Golden case counts below are generated from the test case files. The full
+`cargo test` count may differ (it includes non-golden unit tests and
+workspace smoke tests).
 
 | Category | Count |
 |---|---|
-| Lexer golden tests | 11 |
-| Parser golden tests | 180 |
-| Diagnostic golden tests | 27 |
-| **Total** | **218** |
+| Lexer golden cases | 11 |
+| Parser golden cases | 180 |
+| Diagnostic golden cases | 27 |

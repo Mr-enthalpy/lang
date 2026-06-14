@@ -251,6 +251,15 @@ lang diag path/to/file.lang
 The repository has golden coverage for lexer, parser/AST, and diagnostics.
 See `spec/implementation-status-v0.1.md` for the current test count.
 
+## Non-goals for v0.1
+
+v0.1 does not implement type checking, kind checking, name resolution,
+operator lookup, alias resolution, closure materialization, NLL/drop
+insertion, interpretation, code generation, or IR/HIR/MIR lowering.
+
+The parser preserves raw AST shape for these future passes but performs
+none of them.
+
 ## How to read the spec
 
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
