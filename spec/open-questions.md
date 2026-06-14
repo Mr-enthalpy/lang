@@ -515,12 +515,13 @@ No alias parsing or namespace resolution exists.
 
 ---
 
-## 26. Alias RHS operator leaf continuation after newline
+## 26. Alias RHS continuation-token after newline
 
 **Status:** Open (Phase 4.4.1 observation)
 
-**Context:** When an alias binding ends with an operator leaf followed by a
-newline, the current form-boundary rules treat the newline as a form separator:
+**Context:** When an alias RHS is followed by a newline and the next line begins
+with an operator token, the current form-boundary rules may treat the operator
+line as a continuation rather than a new form:
 
 ```text
 let x === a
@@ -529,10 +530,9 @@ let x === a
 
 Because `+` is an operator token and operator tokens are general continuation
 tokens in the form-boundary system, the newline before `+ b` may not be
-promoted to a form separator. This means `+ b` could be treated as a
-continuation of the alias RHS rather than a separate form. The `is_alias_rhs_boundary`
-check in Phase 4.4.1 uses `!is_continuation_token(next)` to guard against this,
-so `+ b` on the next line would NOT be treated as a new form starting at `+`.
+promoted to a form separator. The `is_alias_rhs_boundary` check in Phase 4.4.1
+uses `!is_continuation_token(next)` to guard against this, so `+ b` on the next
+line would NOT be treated as a new form starting at `+`.
 
 If a future design wants `+ b` on a new line to be a separate expression form
 rather than part of the alias RHS, the form-boundary continuation-token rules
