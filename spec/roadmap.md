@@ -196,13 +196,11 @@ namespace paths.
 
 ### Phase gates
 
-- **After parser phase 2**: build-system documentation and architecture track
-  may start (manifest design, namespace mount model, assembly pipeline docs).
-- **In parallel with parser phase 3**: build manifest and physical namespace
-  skeleton design may proceed.
-- **After parser phase 3**: parser-backed declaration indexing may begin.
-- **Post-v0.1**: semantic namespace resolver, visibility checking, version
-  solving, cache validation, and virtual namespace expansion may begin.
+Now that v0.1 Raw AST Frontend is completed, build-system documentation may
+continue as a parallel design track. Build/package implementation remains
+gated and must not introduce namespace resolution, dependency solving,
+declaration indexing, or semantic imports unless explicitly assigned in a
+later stage.
 
 ### Non-goals for this track in v0.1
 

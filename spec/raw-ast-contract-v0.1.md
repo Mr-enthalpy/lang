@@ -19,7 +19,7 @@ into simple pattern / call / declaration structures.
 Normalized AST is:
 - desugared, but not name-resolved
 - structurally simpler, but not type-checked
-- a contract between Raw AST and later semantic phases
+- a non-semantic intermediate AST between Raw AST and later semantic phases
 
 Normalized AST is **not**:
 - HIR (High-level IR assumes name resolution and type checking)
