@@ -26,10 +26,13 @@ Follow this workflow for every change:
 | 2 | `README.md` | Repository orientation |
 | 3 | `spec/frontend-v0.1.md` | Pipeline understanding |
 | 4 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 5 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
-| 6 | `spec/glossary.md` | Terminology reference |
-| 7 | `spec/roadmap.md` | Scope boundary check |
-| 8 | `spec/open-questions.md` | Before touching uncertain areas |
+| 5 | `spec/operator-design.md` | Before any operator syntax change |
+| 6 | `spec/entity-ref-design.md` | Before any future EntityRef or alias RHS design |
+| 7 | `spec/entity-alias-design.md` | Before any future alias-binding design |
+| 8 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
+| 9 | `spec/glossary.md` | Terminology reference |
+| 10 | `spec/roadmap.md` | Scope boundary check |
+| 11 | `spec/open-questions.md` | Before touching uncertain areas |
 
 ## 2. Core invariant
 
