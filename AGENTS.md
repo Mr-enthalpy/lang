@@ -10,7 +10,7 @@ README.md              (repository overview)
 SKILL.md               (operational workflow)
 spec/frontend-v0.1.md  (pipeline overview)
 spec/ast-construction-v0.1.md  (normative parser rules)
-spec/operator-design.md (future operator syntax design; not currently implemented)
+spec/operator-design.md (operator syntax design and implementation boundaries)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/roadmap.md        (scope boundaries)
 spec/glossary.md       (terminology)
@@ -122,8 +122,9 @@ that word a language construct.
 Operator spellings are syntax-level operator names. They are not keywords and
 do not imply built-in arithmetic, comparison, mutation, assignment, lookup, or
 ADL. The parser preserves expression-level operator syntax as raw AST sugar
-only; operator lookup, lowering, binder names, and path leaves remain future
-work unless explicitly assigned.
+and preserves operator names in binder/final-path-leaf positions. Operator
+lookup, lowering, alias binding, and semantic validation remain future work
+unless explicitly assigned.
 
 ### Contextual structure words
 

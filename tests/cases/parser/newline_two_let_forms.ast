@@ -2,7 +2,9 @@ Program
   Let
     attrs:
     binder:
-      Simple name=x
+      Simple
+        name:
+          TextName x
         annotation:
           Bare
             Expr
@@ -22,7 +24,9 @@ Program
   Let
     attrs:
     binder:
-      Simple name=y
+      Simple
+        name:
+          TextName y
         annotation:
           Bare
             Expr

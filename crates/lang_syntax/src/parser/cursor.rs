@@ -193,10 +193,8 @@ impl<'tokens> Cursor<'tokens> {
         }
     }
 
-    // Future operator parser phase: this determines whether a token can start
-    // SegmentElement. Currently only names, literals, and `(` start elements.
-    // When operator expressions are implemented, certain operator spellings
-    // (e.g. `-`, `!`, `&`, `@`, `~`, `^`, `$`, `?`) may also start elements.
+    // This is used only by parenthesis classification. Operator-expression
+    // starts are handled by the operator parser.
     pub fn at_angle_left_for_deduce(&mut self) -> bool {
         matches!(self.peek_non_trivia().kind, TokenKind::Symbol(Symbol::Less))
     }

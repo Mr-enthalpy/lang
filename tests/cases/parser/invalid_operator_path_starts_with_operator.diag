@@ -1,0 +1,1 @@
+error OperatorPathLeafNotFinal "operator path leaf must follow a path head and be final" @ 1:1 [0..1]

@@ -74,9 +74,10 @@ Do **not** use Rust `Debug` format for any dump output.
 Before changing expression parsing, read both `spec/ast-construction-v0.1.md`
 and `spec/operator-design.md`.
 
-Operator expression parsing is implemented as raw AST sugar. If the task is not
+Operator expression parsing is implemented as raw AST sugar, and operator names
+are preserved in binder/final-path-leaf positions. If the task is not
 explicitly about a later operator phase, do not add operator lookup, lowering,
-binder names, path leaves, or semantic validation.
+alias binding, or semantic validation.
 
 ## 4. AST construction order
 

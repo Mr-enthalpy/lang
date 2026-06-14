@@ -179,7 +179,7 @@ annotations) for a future CFG construction pass.
 The workspace is ready. `crates/lang_syntax`, `crates/lang_cli`, and `xtask`
 exist as valid workspace members. `cargo check --workspace` passes.
 
-Lexer golden tests (9 cases), parser golden tests (139 cases), and diagnostic
+Lexer golden tests (9 cases), parser golden tests (154 cases), and diagnostic
 golden tests (27 cases) exist.
 
 Remaining test coverage gaps are tracked as v0.1 implementation work, not as
@@ -240,9 +240,15 @@ Operator names may appear as binder names and as path leaves:
 Operator names may only be leaves, not namespace-like intermediate path nodes.
 
 **Implementation TODO:**
-Add operator binder-name parsing and operator path-leaf parsing in a later
-operator binder/path-leaf parser phase. Parser phase 4 implements expression
-operator sugar only.
+Implemented in parser phase 4.1 as raw AST preservation. Operator lookup,
+lowering, overload resolution, and alias binding remain future work.
+
+**Known syntax limitation:**
+The `<` spelling is not currently accepted as a simple operator binder after
+`let`. In that position, `<` starts the strong-context extract-let deduce list,
+so `let <: ...` follows extract-let recovery instead of `BinderName::Operator`.
+The `>` spelling does not have this conflict. A future phase needs an escaping
+or dedicated disambiguation rule if `<` must be declared as an operator binder.
 
 ---
 
@@ -403,10 +409,11 @@ The right-hand side is a compile-time entity reference, not `PipeExpr`,
 `ArgPack`, `ClosureAst`, an operator expression, or any runtime expression.
 
 **Why it does not block v0.1:**
-v0.1 does not implement operator binder names, operator path leaves, entity
-references, name lookup, namespace resolution, dependency resolution, or import
-semantics. Alias binding requires operator names in binder/path-leaf positions,
-so it belongs after the operator parser and before semantic name resolution.
+v0.1 does not implement entity references, name lookup, namespace resolution,
+dependency resolution, or import semantics. Parser phase 4.1 supplies the
+operator-name syntax that future alias binding depends on, but alias binding
+itself still belongs before semantic name resolution and after EntityRef syntax
+is specified.
 
-**Future stage:** Phase 4.1/4.2 design after operator syntax as raw AST sugar.
-Phase 4.3 may optionally preserve raw alias-binding AST if explicitly assigned.
+**Future stage:** Phase 4.2/4.3 design after operator binder/path-leaf syntax.
+Phase 4.4 may optionally preserve raw alias-binding AST if explicitly assigned.

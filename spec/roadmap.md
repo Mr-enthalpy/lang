@@ -50,21 +50,24 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4 operator syntax):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax):**
 
 The current implementation includes parser phase 1, parser phase 2
 binding-context syntax, parser phase 3 closure surface AST, and parser phase
-3.1 closure/parser stabilization, and parser phase 4 operator syntax as raw
-AST sugar. It includes:
+3.1 closure/parser stabilization, parser phase 4 operator syntax as raw AST
+sugar, and parser phase 4.1 operator names in binder/path-leaf positions. It
+includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
   `+`, `-`, `*`, `/`, `++`, `--`, `<<=`, `>>=`, etc.).
 - Cursor, form parser, expression parser, and atom parser.
-- Simple `let` forms with bare declaration annotations (`: type`, `: fn`),
-  explicit rank annotations (`: _: fn`), `guard` attributes, and `with` clauses.
+- Simple `let` forms with text or operator binder names, bare declaration
+  annotations (`: type`, `: fn`), explicit rank annotations (`: _: fn`),
+  `guard` attributes, and `with` clauses.
 - Name, integer literal, string literal, and `::`-path expression atoms
-  (including numeric path leaves such as `uint8::1`).
+  (including numeric path leaves such as `uint8::1` and final operator path
+  leaves such as `std::int::+`).
 - Group atoms (`(expr)` without top-level commas).
 - Pipe segmentation (`|>`) and ArgPack role assignment (SourcePack,
   InsertPack, RightTargetSubsegment).
@@ -76,7 +79,7 @@ AST sugar. It includes:
 - Full v0.1 diagnostic taxonomy (DiagnosticCode covers all phase 2 categories);
   most diagnostics are reachable; unreachable diagnostics exist in the enum
   until corresponding syntax lands.
-- Golden test infra for tokens (9 cases), AST (139 cases), and diagnostics (27
+- Golden test infra for tokens (9 cases), AST (154 cases), and diagnostics (27
   cases).
 - Extract-let binders (`let <head, tail> (...) = ...`), deduce-list
   parsing, and canonical skeleton parsing.
@@ -92,12 +95,15 @@ AST sugar. It includes:
   precedence/associativity, prefix `-`, postfix operators, binary operators,
   angle comparison operators in expression context, and diagnostics for
   malformed or chained non-associative operator expressions.
+- Parser phase 4.1 operator binder names and final operator path leaves as raw
+  AST preservation.
 
 It does **not** yet include:
 
 - Operator lookup, operator lowering, operator overload resolution, operator
-  binder names, or operator path leaves such as `t::+`.
+  dispatch, ADL, or type-directed lookup.
 - Lexical alias binding / entity alias binding (`let binder === EntityRef`).
+- Compile-time `EntityRef` parser.
 - `where`/`acquire` clause parsing.
 - Closure object materialization, capture analysis, type checking, kind
   checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
@@ -122,17 +128,18 @@ is a parse-time role marker, not a semantic binding commitment.
 
 #### Future parser/documentation phase track
 
-The next syntax-facing work after Phase 4 is ordered as:
+The next syntax-facing work after Phase 4.1 is ordered as:
 
 ```text
 Phase 4: operator syntax as raw AST sugar (implemented)
-Phase 4.1: compile-time entity reference syntax design
-Phase 4.2: lexical alias binding design (`let binder === EntityRef`)
-Phase 4.3: optional raw AST parser preservation for alias binding
+Phase 4.1: operator binder names and operator path leaves (implemented)
+Phase 4.2: compile-time entity reference syntax design
+Phase 4.3: lexical alias binding design (`let binder === EntityRef`)
+Phase 4.4: optional raw AST parser preservation for alias binding
 ```
 
-Phase 4.2 is after the operator parser because operator aliases require
-operator names in binder and path-leaf positions:
+Alias binding is after Phase 4.1 because operator aliases require operator
+names in binder and path-leaf positions:
 
 ```text
 let << === xxx_bit::<<
@@ -143,7 +150,7 @@ These phases are before semantic name resolution. They do not implement lookup,
 namespace resolution, dependency resolution, import/package/build-system
 semantics, operator alias validation, or runtime value binding semantics. They
 only document and, if explicitly assigned later, preserve surface syntax and raw
-AST boundaries. Parser phase 4 does not reserve `===` as one lexer token; the
+AST boundaries. Parser phase 4.1 does not reserve `===` as one lexer token; the
 alias parser phase must update lexer maximal-munch behavior before accepting
 `let binder === EntityRef`. See `spec/entity-alias-design.md`.
 

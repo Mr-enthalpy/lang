@@ -3,7 +3,9 @@ Program
     attrs:
       Guard
     binder:
-      Simple name=x
+      Simple
+        name:
+          TextName x
         annotation:
           Bare
             Expr

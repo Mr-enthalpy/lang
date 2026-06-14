@@ -35,7 +35,7 @@ executed, type-checked, or lowered.
 | Document                   | What it covers                                                                                                                                                          |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
-| `operator-design.md`       | Planned operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                  |
+| `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                          |
 | `diagnostics-v0.1.md`      | Diagnostic categories, trigger conditions, span policy, recovery behavior.                                                                                              |
 | `glossary.md`              | Terminology definitions and distinctions.                                                                                                                               |
 | `roadmap.md`               | Stage model from v0.1 to v1.0, scope boundaries.                                                                                                                        |
@@ -67,7 +67,7 @@ The parser handles token-level concerns only:
 
 - Consume tokens, build AST.
 - Recognize strong contexts (let, closure head, etc.).
-- Recognize syntax-level operator shape when the operator parser is implemented.
+- Recognize syntax-level operator shape where implemented.
 - Produce diagnostics for malformed input.
 - **Do not** type-check, kind-check, resolve names, or perform semantic analysis.
 - **Do not** materialize closures into callable objects.
@@ -101,10 +101,11 @@ The current implementation includes:
 - Lexer with operator-aware tokenization (operator spellings recognized as
   tokens; structural symbols distinguished from operators).
 - Stable token/AST/diagnostic dumps.
-- Simple let forms (bare annotations, explicit rank annotations, guard
-  attributes, with clauses).
+- Simple let forms (text/operator binder names, bare annotations, explicit
+  rank annotations, guard attributes, with clauses).
 - Name, integer literal, string literal, and path expression atoms (including
-  numeric path leaves such as `uint8::1`).
+  numeric path leaves such as `uint8::1` and final operator path leaves such as
+  `std::int::+`).
 - Group atoms `(expr)`.
 - Pipe segmentation (`|>`) and ArgPack role assignment.
 - Atom suffix folding: `:: Selector`, `. Selector` (MemberSugar),
@@ -115,19 +116,22 @@ The current implementation includes:
 - Closure AST (inline `{}`, explicit `() => {}`, closure heads with
   deduce/capture/parameter/fn-item-trait/return clauses) with Phase 3.1
   stabilization coverage.
+- Operator expression AST sugar and operator names in binder/final-path-leaf
+  positions.
 - Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable.
-- Golden test suites: 9 lexer, 107 parser, 27 diagnostics tests.
+- Golden test suites: 9 lexer, 154 parser, 27 diagnostics tests.
 
 It does **not** yet cover:
 
-- Operator parser (operator spellings are lexed but expression-level operator
-  parsing, precedence, associativity, and operator-sugar AST are not
-  implemented).
+- Operator lookup, lowering, overload resolution, dispatch, ADL, or
+  type-directed lookup.
+- Alias binding (`let binder === EntityRef`) or compile-time `EntityRef`
+  parsing.
 - `where`/`acquire` closure clauses, closure object materialization, type/kind
   checking, name resolution, semantic analysis, lowering, interpretation, or
   code generation.
 
-When operator syntax is enabled, the expression segment design becomes:
+The expression segment design is:
 
 ```text
 SegmentElement := OperatorExpr | ArgPack

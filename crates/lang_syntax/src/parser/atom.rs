@@ -1,6 +1,6 @@
 use crate::{
-    AtomAst, AtomKind, DiagnosticCode, NameAst, NumericNameAst, SelectorAst, Span, Symbol,
-    TokenKind,
+    token::operator_spelling_in_expr_context, AtomAst, AtomKind, DiagnosticCode, NameAst,
+    NumericNameAst, OperatorNameAst, SelectorAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -30,8 +30,17 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             break;
         }
         if parser.cursor.at_symbol(Symbol::ColonColon) {
-            parser.cursor.bump_non_trivia();
-            if let Some(selector) = parse_selector(parser) {
+            let coloncolon = parser.cursor.bump_non_trivia();
+            if path_ends_with_operator_leaf(&atom) {
+                parser.error(
+                    DiagnosticCode::OperatorPathLeafNotFinal,
+                    "operator path leaf cannot be followed by `::`",
+                    coloncolon.span,
+                );
+                let _ = parse_path_selector(parser);
+                break;
+            }
+            if let Some(selector) = parse_path_selector(parser) {
                 atom = extend_or_create_path(atom, selector);
             } else {
                 let span = parser.cursor.current_span();
@@ -44,7 +53,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             }
         } else if parser.cursor.at_symbol(Symbol::Dot) {
             let dot_token = parser.cursor.bump_non_trivia();
-            if let Some(selector) = parse_selector(parser) {
+            if let Some(selector) = parse_member_selector(parser) {
                 let span = atom.span.join(selector_span(&selector));
                 atom = AtomAst {
                     kind: AtomKind::MemberSugar {
@@ -54,6 +63,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                     span,
                 };
             } else {
+                consume_invalid_operator_selector(parser);
                 parser.error(
                     DiagnosticCode::ExpectedNameAfterDot,
                     "expected name after `.`",
@@ -63,7 +73,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             }
         } else if parser.cursor.at_symbol(Symbol::DotDot) {
             let dotdot_token = parser.cursor.bump_non_trivia();
-            if let Some(selector) = parse_selector(parser) {
+            if let Some(selector) = parse_member_selector(parser) {
                 if parser.cursor.at_symbol(Symbol::LParen) {
                     let argpack = parse_argpack(parser);
                     let span = atom.span.join(argpack.span);
@@ -84,6 +94,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                     break;
                 }
             } else {
+                consume_invalid_operator_selector(parser);
                 parser.error(
                     DiagnosticCode::ExpectedNameAfterDoubleDot,
                     "expected name after `..`",
@@ -137,7 +148,13 @@ fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
     }
 }
 
-pub fn parse_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
+fn consume_invalid_operator_selector(parser: &mut Parser<'_>) {
+    if parser.cursor.peek_non_trivia().kind.is_operator_spelling() {
+        parser.cursor.bump_non_trivia();
+    }
+}
+
+pub fn parse_member_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
     let token = parser.cursor.peek_non_trivia();
     match token.kind {
         TokenKind::Name => {
@@ -158,10 +175,36 @@ pub fn parse_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
     }
 }
 
+pub fn parse_path_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
+    if let Some(selector) = parse_member_selector(parser) {
+        return Some(selector);
+    }
+
+    let token = parser.cursor.peek_non_trivia();
+    let spelling = operator_spelling_in_expr_context(&token.kind)?;
+    let token = parser.cursor.bump_non_trivia();
+    Some(SelectorAst::Operator(OperatorNameAst {
+        spelling: spelling.as_source_text().to_string(),
+        span: token.span,
+    }))
+}
+
 pub fn selector_span(selector: &SelectorAst) -> Span {
     match selector {
         SelectorAst::Text(name) => name.span,
         SelectorAst::Numeric(num) => num.span,
+        SelectorAst::Operator(operator) => operator.span,
+    }
+}
+
+pub fn selector_is_operator(selector: &SelectorAst) -> bool {
+    matches!(selector, SelectorAst::Operator(_))
+}
+
+fn path_ends_with_operator_leaf(atom: &AtomAst) -> bool {
+    match &atom.kind {
+        AtomKind::Path { names, .. } => names.last().is_some_and(selector_is_operator),
+        _ => false,
     }
 }
 

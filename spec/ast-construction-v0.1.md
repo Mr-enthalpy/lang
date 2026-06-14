@@ -317,19 +317,30 @@ TypeObjectAnnotationAst ::=
   | Hole
 ```
 
-Design rule, not yet implemented in the current parser:
-
 ```text
 BinderName ::= Name | OperatorName
 SimpleLetBinder ::= BinderName ":" DeclAnnotation
 ```
 
 Operator binder names use the same declaration annotation rules as ordinary
-names. For example, future operator declarations use the explicit rank form:
+names. For example, operator-named binders may use the explicit rank form:
 
 ```text
 let +: _: operator = expr
+let >: _: operator = expr
 ```
+
+Phase 4.1 intentionally does not parse `<` as a simple operator binder:
+
+```text
+let <: _: operator = expr
+```
+
+After `let`, `<` is the strong-context entry for `ExtractLetBinder` and its
+deduce list. The parser therefore treats `let <...` as extract-let syntax and
+does not reinterpret the token as an operator binder. This keeps the current
+binding grammar streaming-friendly. Declaring `<` as an operator binder requires
+a future escaping or disambiguation rule.
 
 The `DeclAnnotationAst::Bare` variant covers a single written annotation
 expression, such as `let f: fn = ...` and `let t: type = ...`. A bare
@@ -864,9 +875,9 @@ Therefore, after a postfix operator, continuing suffixes such as `::`, `.`, and
 `DoubleDotSugar` nodes.
 
 These operator-level suffix nodes are raw AST preservation only. They do not
-perform lookup, lower to calls, assign member semantics, or implement operator
-path leaves. In particular, `t::+` and `std::int::+` remain future
-operator-path-leaf syntax and are not accepted by this phase.
+perform lookup, lower to calls, or assign member semantics. Operator path
+leaves such as `t::+` and `std::int::+` are accepted only as final `::` leaves
+and remain unresolved raw syntax.
 
 ```text
 a + b |> f
@@ -969,7 +980,7 @@ Before the first postfix operator, suffix folding may produce atom-level
 exists, such as `obj!`, continued suffix folding is preserved with
 operator-level `Path`, `MemberSugar`, or `DoubleDotSugar` nodes inside
 `OperatorExprAst`. This is an AST-shape preservation rule only; it does not
-perform lookup, lower suffixes to calls, or implement operator path leaves.
+perform lookup, lower suffixes to calls, or assign member semantics.
 
 SelectorAst for this phase:
 
@@ -977,10 +988,11 @@ SelectorAst for this phase:
 SelectorAst ::=
     Text(NameAst)
   | Numeric(NumericNameAst)
+  | Operator(OperatorNameAst)
 ```
 
-Operator selectors remain future work: this phase does not parse
-`Operator(OperatorSpelling)` as a selector or path leaf.
+`Operator(OperatorNameAst)` is valid only as a final path leaf after `::`.
+It is not valid after `.` or `..`.
 
 A numeric token (`IntLiteral`) in atom-base position produces a numeric literal
 atom (`IntLiteral`). The same token class in selector/name-leaf position
@@ -1035,11 +1047,15 @@ Path(base = Segment[a, b], leaves=[c])
 ```
 
 ```text
-PathLeaf ::= Name | NumericName | OperatorName (future)
+Path ::= PathHead "::" PathLeaf
+PathHead ::= PathSegment ("::" PathSegment)*
+PathSegment ::= Name | NumericName
+PathLeaf ::= Name | NumericName | OperatorName
 ```
 
-Operator names may only be path leaves. Valid future shapes include `t::+` and
-`std::int::+`. Invalid future shapes include `+::x`, `t::+::x`, and `t::+::-`.
+Operator names may only be final path leaves. Valid shapes include `t::+`,
+`std::int::+`, and `std::bit::<<`. Invalid shapes include `+::x`,
+`t::+::x`, and `t::+::-`.
 
 ### 8.4a Operator sugar
 
@@ -1190,8 +1206,8 @@ obj..+
 ```
 
 The token after `..` is an operator, not `Name` or `IntLiteral`. Same as
-`ExpectedNameAfterDoubleDot` case above. Future operator-parser work may
-make operator selectors valid, but this phase does not implement them.
+`ExpectedNameAfterDoubleDot` case above. Operator selectors are valid only
+after `::`, not after `..`.
 
 ## 9. ArgPack
 
@@ -1792,7 +1808,7 @@ document.
 | §8.6 Double-dot `..`                 | `obj..42`                                   | No diagnostic expected for selector; `ExpectedArgPackAfterDoubleDotName` if no ArgPack   |
 | §8.6 Double-dot `..`                 | `obj..1` (no `ArgPack`)                     | `ExpectedArgPackAfterDoubleDotName`                                                      |
 | §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
-| §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator not yet valid selector)                           |
+| §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator selectors are valid only after `::`)              |
 | §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |
 | §12 Match non-special                | `match obj` at form start                   | No diagnostic (name, not syntax)                                                         |
 | §12 Match non-special                | `obj match (a) { }`                         | No diagnostic (name + argpack + closure)                                                 |

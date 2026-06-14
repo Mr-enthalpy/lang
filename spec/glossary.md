@@ -177,9 +177,11 @@ In the current parser phase:
 SelectorAst ::=
     Text(NameAst)     // from TokenKind::Name
   | Numeric(NumericNameAst)  // from TokenKind::IntLiteral
+  | Operator(OperatorNameAst) // final path leaf after `::`
 ```
 
-Future phase: `Operator(OperatorSpelling)` for operator selectors.
+Operator selectors are valid only as final path leaves after `::`; they are not
+valid after `.` or `..`.
 
 A numeric token (`IntLiteral`) in selector position becomes `NumericNameAst`,
 while the same token class in atom-base position becomes a numeric literal atom.
@@ -201,10 +203,10 @@ _See also: SelectorAst, NameAst._
 
 ## OperatorName
 
-A symbol spelling that can be used as an operator identity component and, in
-future parser work, as a binder name or path leaf. Operator names are not
-keywords, and their spelling does not imply arithmetic, comparison, mutation,
-assignment, lookup, or evaluation semantics.
+A symbol spelling that can be used as an operator identity component, an
+expression operator, a binder name, or a final path leaf. Operator names are
+not keywords, and their spelling does not imply arithmetic, comparison,
+mutation, assignment, lookup, or evaluation semantics.
 
 Operator identity is `spelling + fixity + arity`.
 

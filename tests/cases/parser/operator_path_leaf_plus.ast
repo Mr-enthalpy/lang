@@ -1,0 +1,13 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Path
+                base:
+                  Name std
+                names:
+                  TextName int
+                  OperatorName +
