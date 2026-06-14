@@ -387,49 +387,21 @@ design).
 
 ## 21. Lexical alias binding and entity references
 
-**Status:** Documentation phase complete (Phase 4.2 / 4.3 design); implementation unresolved
+**Status:** Resolved for raw parser preservation; semantic alias resolution remains open
 
-**Current v0.1 decision:**
-`EntityRef` is documented as future compile-time entity reference syntax in
-`spec/entity-ref-design.md`. `let binder === EntityRef` is documented as future
-lexical alias binding syntax in `spec/entity-alias-design.md`. Phase 4.3
-completes the design documentation for alias binding: surface grammar, lexical
-scope rule, distinction from ordinary `let`, ordinary name and operator alias
-rules, `===` delimiter semantics, future diagnostics sketch, and full
-parser/semantic boundary.
+**Current v0.1 implementation:**
+Raw parser preservation for `let binder === EntityRef` is implemented in
+Phase 4.4. The lexer recognizes `===` as `Symbol::TripleEqual`. The parser
+produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
+EntityRef parsing is available inside alias-let RHS only. Alias-let dispatch
+correctly rejects guard, extract-let, annotation, and `with` paths. See
+`spec/implementation-status-v0.1.md` and `spec/entity-alias-design.md`.
 
-The current parser does not accept `===`, does not parse `EntityRef`, and does
-not build `LetAliasAst`. The current lexer may tokenize `===` as `==` followed
-by `=`; a later alias-parser phase must update lexer maximal-munch rules.
-
-The intended boundary is syntax preservation only:
-
-```text
-EntityRef ::= EntityPath
-EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-              | EntityPathLeaf
-EntityPathSegment ::= Name
-EntityPathLeaf ::= Name | OperatorName
-
-AliasBinding ::= "let" AliasBinder "===" EntityRef
-AliasBinder ::= Name | OperatorName
-```
-
-The right-hand side is a compile-time entity reference, not `PipeExpr`,
-`ArgPack`, `ClosureAst`, an operator expression, or any runtime expression.
-
-Operator aliases are restricted: the binder operator identity must match the
-target leaf operator identity (`spelling + fixity + arity`). This validation is
-deferred to a future static validation or name-resolution-adjacent phase.
-
-**Why it does not block v0.1:**
-v0.1 does not implement entity references, name lookup, namespace resolution,
-dependency resolution, or import semantics. Phase 4.1 supplies the
-operator-name syntax that alias binding depends on. Phase 4.2 and 4.3 document
-the design boundaries.
-
-**Future stages:** Phase 4.4 may optionally preserve raw alias-binding AST if
-explicitly assigned. See also open questions 22–25 below.
+**What is not implemented:**
+- Target entity resolution (semantic lookup).
+- Operator alias identity validation (spelling + fixity + arity).
+- Name lookup, operator lookup, namespace resolution, dependency resolution.
+- Alias scope semantics, shadowing, or semantic validation.
 
 ---
 
@@ -449,8 +421,7 @@ validation.
 to name resolution?
 
 **Why it does not block v0.1:**
-No alias parsing exists in v0.1. The answer affects future implementation
-ordering only.
+Raw alias parsing exists; the answer affects future implementation ordering only.
 
 **Future stage:** Phase 4.4 (alias parser preservation) or later
 name-resolution design.
@@ -470,7 +441,8 @@ where alias bindings may appear syntactically. This decision affects parser
 state management and scope nesting.
 
 **Why it does not block v0.1:**
-No alias parsing exists.
+Raw alias parsing exists; this decision affects future scope/semantic design
+only.
 
 **Future stage:** Phase 4.4 (alias parser) or later scope/semantic design.
 
@@ -488,7 +460,7 @@ lifetime dependency.
 `with` clause (e.g., compile-time alias ordering or dependency)?
 
 **Why it does not block v0.1:**
-No alias parsing exists. The current recommendation is documented but not
+Raw alias parsing exists; the current recommendation is documented but not
 binding on future design.
 
 **Future stage:** Phase 4.4 or later scope/semantic design.
@@ -509,7 +481,7 @@ bindings need source-level visibility annotations is an open namespace design
 question.
 
 **Why it does not block v0.1:**
-No alias parsing or namespace resolution exists.
+Raw alias parsing exists; namespace resolution does not.
 
 **Future stage:** Namespace assembly phase or later language design.
 

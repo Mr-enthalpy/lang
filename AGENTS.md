@@ -52,7 +52,10 @@ Do not implement:
 * ownership, lifetime, NLL, drop insertion
 * interpretation
 * code generation
-* IR/HIR/MIR/lowering beyond raw AST construction
+* IR/HIR/MIR or semantic lowering
+
+Raw AST → Normalized AST lowering is allowed only in an explicit
+normalization-stage task.
 
 If a change requires any of the above, stop at syntax/AST representation and
 leave the semantic behavior as a documented future pass.
