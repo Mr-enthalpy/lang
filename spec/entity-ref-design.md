@@ -1,7 +1,9 @@
 ﻿# EntityRef Design
 
 This document records the future compile-time entity reference syntax used by
-later parser/design phases.
+later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
+EntityRef parser inside alias-let RHS only; EntityRef is not a general
+expression parser mode.
 
 It is a documentation/design note only. It is not implemented in the current
 parser and is not part of v0.1 accepted syntax.

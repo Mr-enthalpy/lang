@@ -1,0 +1,9 @@
+Program
+  LetAlias
+    binder:
+      Name Vec
+    target:
+      EntityRef
+        segment std
+        segment collections
+        leaf Name Vector

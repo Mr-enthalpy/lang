@@ -1769,9 +1769,166 @@ obj (
     <val: _>(val option::Sum) { ... },
     (_ option::None) { ... }
 ) match
+
+let Vec === std::collections::Vector
+
+let + === checked_int::+
+
+let << === xxx_bit::<<
+
+let local === some_entity
+
+let + === +
 ```
 
-## 16. v0.1 success criterion
+## 16. Alias binding (Phase 4.4)
+
+### 16.1 Scope
+
+Phase 4.4 implements raw parser preservation for alias binding:
+
+```text
+let binder === EntityRef
+```
+
+Alias binding is distinct from ordinary `let`. It does not have declaration
+annotations, `guard` attributes, `with` clauses, deduce lists, canonical
+skeletons, or `=` value expressions.
+
+The parser preserves alias binding as raw AST. It does not resolve entities,
+validate operator identity, perform name/operator lookup, or lower aliases.
+
+### 16.2 Grammar
+
+```text
+AliasBinding ::= "let" AliasBinder "===" EntityRef
+
+AliasBinder ::= Name | OperatorName
+
+EntityRef ::= EntityPath
+
+EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
+             | EntityPathLeaf
+
+EntityPathSegment ::= Name
+
+EntityPathLeaf ::= Name | OperatorName
+```
+
+`===` is a structural delimiter token (`Symbol::TripleEqual`), not an
+expression operator. It is not available as `OperatorName`.
+
+`<` is not accepted as an alias binder; it goes to extract-let.
+
+### 16.3 Dispatch
+
+After consuming `let`:
+
+1. If next token is `guard` → ordinary let only.
+2. If next token is `<` → extract let only.
+3. If next token is a valid `AliasBinder` and the token after is `===` →
+   alias let.
+4. Otherwise → ordinary let.
+
+### 16.4 AST
+
+```text
+FormAst ::=
+    Let(LetAst)
+  | AliasLet(LetAliasAst)
+  | Expr(ExprAst)
+  | Error(ErrorAst)
+
+LetAliasAst {
+    binder: AliasBinderAst,
+    target: EntityRefAst,
+    span: Span
+}
+
+AliasBinderAst ::=
+    Name(NameAst)
+  | Operator(OperatorNameAst)
+  | Error(ErrorAst)
+
+EntityRefAst {
+    path: Vec<EntityPathSegmentAst>,
+    leaf: EntityPathLeafAst,
+    span: Span
+}
+
+EntityPathSegmentAst {
+    name: NameAst,
+    span: Span
+}
+
+EntityPathLeafAst ::=
+    Name(NameAst)
+  | Operator(OperatorNameAst)
+  | Error(ErrorAst)
+```
+
+### 16.5 EntityRef parsing
+
+EntityRef is parsed only inside alias-let RHS. It is not a general expression
+parser mode.
+
+Operator names are valid only as final `EntityPathLeaf`. If an operator is
+followed by `::`, the parser emits `InvalidEntityRef`.
+
+After completing the entity reference, the parser checks for residual
+expression tokens. If the current position is not a form boundary (EOF,
+semicolon, right brace, or promoted newline), the parser emits
+`UnexpectedAliasRhsExpression` and recovers to the form boundary.
+
+### 16.6 Diagnostics
+
+| Code                           | Trigger                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------- |
+| `ExpectedAliasTarget`          | `===` is followed by a token that cannot start an `EntityRef`.                  |
+| `InvalidEntityRef`             | Malformed entity reference (e.g., operator in segment position, dangling `::`). |
+| `UnexpectedAliasRhsExpression` | Valid `EntityRef` was parsed, but residual expression tokens follow.            |
+
+`InvalidAliasBinder` is reserved for future use but not currently emitted.
+
+### 16.7 Non-interpretation
+
+The parser does not:
+
+- resolve the target entity;
+- check whether the target exists;
+- validate operator alias identity (`spelling + fixity + arity`);
+- perform name lookup, operator lookup, namespace resolution, or dependency
+  resolution;
+- lower aliases into runtime bindings.
+
+### 16.8 Examples
+
+Valid:
+
+```text
+let Vec === std::collections::Vector
+let map === std::iter::map
+let + === checked_int::+
+let << === xxx_bit::<<
+let local === some_entity
+let + === +
+```
+
+Invalid:
+
+```text
+let x ===
+let x === a |> f
+let x === { body }
+let x === (a, b)
+let x === a + b
+let x === a::+::b
+let (x) === y
+let <x> x === y
+let guard x === y
+```
+
+## 17. v0.1 success criterion
 
 A conforming v0.1 frontend can:
 
@@ -1784,7 +1941,7 @@ A conforming v0.1 frontend can:
 
 A conforming v0.1 frontend does not need to run any program.
 
-## 17. Negative / diagnostic examples index
+## 18. Negative / diagnostic examples index
 
 Every major rule should have at least one positive and one negative example.
 This index cross-references the negative/diagnostic examples throughout this

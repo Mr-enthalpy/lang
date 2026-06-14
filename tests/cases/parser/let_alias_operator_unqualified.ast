@@ -1,0 +1,7 @@
+Program
+  LetAlias
+    binder:
+      Operator +
+    target:
+      EntityRef
+        leaf Operator +

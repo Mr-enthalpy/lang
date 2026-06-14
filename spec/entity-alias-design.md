@@ -1,10 +1,9 @@
 # Entity Alias Binding Design
 
 This document records the future design for lexical alias binding of
-compile-time entities.
-
-It is not implemented in the current parser. It is not part of v0.1 accepted
-syntax.
+compile-time entities (Phase 4.3 design complete). Phase 4.4 implements raw
+parser preservation for `let binder === EntityRef`; the parser preserves
+alias-binding AST without resolving targets or validating operator identity.
 
 The right-hand side `EntityRef` syntax is defined separately in
 `spec/entity-ref-design.md`. This document describes how future alias binding

@@ -2,7 +2,7 @@ use crate::{
     Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token, TokenKind,
 };
 
-use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let};
+use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Continuation {
@@ -68,7 +68,7 @@ impl<'tokens> Parser<'tokens> {
 
     pub fn parse_form(&mut self) -> FormAst {
         if self.cursor.at_name("let") {
-            FormAst::Let(parse_let(self))
+            parse_let_form(self)
         } else {
             FormAst::Expr(parse_expr_until(self, |parser| parser.is_form_boundary()))
         }
@@ -130,6 +130,20 @@ impl<'tokens> Parser<'tokens> {
             return false;
         }
         true
+    }
+
+    pub fn is_alias_rhs_boundary(&mut self) -> bool {
+        if self.nesting_depth == 0 && self.cursor.has_newline_trivia_ahead() {
+            let cursor_index = self.cursor.current_index();
+            let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
+            if Self::can_start_form_token(next) && !Self::is_continuation_token(next) {
+                return true;
+            }
+        }
+        matches!(
+            self.cursor.peek_non_trivia().kind,
+            TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon | Symbol::RBrace)
+        )
     }
 
     fn can_end_form_token(token: &Token) -> bool {

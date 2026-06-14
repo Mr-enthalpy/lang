@@ -50,14 +50,15 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design + phase 4.4 alias binding parser preservation):**
 
 The current implementation includes parser phase 1, parser phase 2
 binding-context syntax, parser phase 3 closure surface AST, and parser phase
 3.1 closure/parser stabilization, parser phase 4 operator syntax as raw AST
 sugar, and parser phase 4.1 operator names in binder/path-leaf positions. It
-also includes parser phase 4.2 compile-time entity reference syntax design and
-phase 4.3 lexical alias binding design as documentation only. It includes:
+also includes parser phase 4.2 compile-time entity reference syntax design,
+phase 4.3 lexical alias binding design, and phase 4.4 raw AST parser
+preservation for alias binding (`let binder === EntityRef`). It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -106,16 +107,21 @@ phase 4.3 lexical alias binding design as documentation only. It includes:
   EntityRef` declaration form, lexical scope rule, operator-alias restriction,
   and parser/semantic boundary, but does not implement alias parsing or
   entity resolution.
+- Parser phase 4.4 raw AST parser preservation for alias binding. Lexer
+  recognizes `===` as a single structural delimiter token (`Symbol::TripleEqual`).
+  Parser produces `LetAliasAst` containing `AliasBinderAst` (Name or Operator)
+  and `EntityRefAst` (path segments + leaf). EntityRef parsing is implemented
+  only inside alias-let RHS; it is not a general expression parser mode. New
+  diagnostic codes: `ExpectedAliasTarget`, `InvalidEntityRef`, and
+  `UnexpectedAliasRhsExpression`.
 
 It does **not** yet include:
 
 - Operator lookup, operator lowering, operator overload resolution, operator
   dispatch, ADL, or type-directed lookup.
-- Lexical alias binding / entity alias binding (`let binder === EntityRef`).
-- Compile-time `EntityRef` parser.
-- Lexer support for `===` as a single structural delimiter token.
-- Alias validation, compile-time entity lookup, operator lookup, namespace
-  resolution, and dependency resolution.
+- Operator alias identity validation (spelling + fixity + arity check).
+- Compile-time entity lookup, operator lookup, namespace resolution, and
+  dependency resolution.
 - `where`/`acquire` clause parsing.
 - Closure object materialization, capture analysis, type checking, kind
   checking, name resolution, match/effect/sync semantics, HIR/MIR/IR lowering,
@@ -147,7 +153,7 @@ Phase 4: operator syntax as raw AST sugar (implemented)
 Phase 4.1: operator binder names and operator path leaves (implemented)
 Phase 4.2: compile-time entity reference syntax design (documentation — complete)
 Phase 4.3: lexical alias binding design (`let binder === EntityRef`) (documentation — complete)
-Phase 4.4: optional raw AST parser preservation for alias binding
+Phase 4.4: raw AST parser preservation for alias binding (implemented)
 ```
 
 Alias binding is after Phase 4.1 because operator aliases require operator
@@ -160,12 +166,12 @@ let >> === xxx_bit::>>
 
 These phases are before semantic name resolution. They do not implement lookup,
 namespace resolution, dependency resolution, import/package/build-system
-semantics, operator alias validation, or runtime value binding semantics. Phases
-4.2 and 4.3 are documentation only: they do not parse `EntityRef` or alias
-bindings. Parser phase 4.1 does not reserve `===` as one lexer token; the
-alias parser phase must update lexer maximal-munch behavior before accepting
-`let binder === EntityRef`. See `spec/entity-ref-design.md` and
-`spec/entity-alias-design.md`.
+semantics, or operator alias validation. Phase 4.4 implements only raw AST
+preservation: the parser preserves alias-binding syntax but does not resolve
+targets, validate operator identity, or perform entity lookup. The `===`
+lexer token is a structural symbol, not an expression operator. EntityRef
+parsing is implemented only inside alias-let RHS. See
+`spec/entity-ref-design.md` and `spec/entity-alias-design.md`.
 
 ---
 

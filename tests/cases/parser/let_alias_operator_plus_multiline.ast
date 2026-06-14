@@ -1,0 +1,30 @@
+Program
+  LetAlias
+    binder:
+      Operator +
+    target:
+      EntityRef
+        segment checked_int
+        leaf Operator +
+  Let
+    attrs:
+    binder:
+      Simple
+        name:
+          TextName x
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+    with:
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name y

@@ -290,6 +290,51 @@ resolution, assignment, mutation, or type checking.
 - **AST effect**: No lookup or resolution is performed. Any preserved path
   remains raw syntax.
 
+### 3.5 Alias-parser diagnostics (Phase 4.4)
+
+These diagnostics are emitted by the alias-binding parser while preserving
+`let binder === EntityRef` as raw AST. They do not imply target resolution,
+operator identity validation, name lookup, or namespace resolution.
+
+#### `ExpectedAliasTarget`
+
+- **Trigger**: After `===` in an alias binding, the current token cannot start
+  an `EntityRef` (not a `Name` or operator-eligible token), and no path
+  segments have been parsed.
+- **Primary span**: The current token.
+- **Recovery**: Consume the offending token and recover to the form boundary.
+- **AST effect**: An `Error` leaf is inserted in the `EntityRefAst`.
+
+#### `InvalidEntityRef`
+
+- **Trigger**: The `EntityRef` structure is malformed. Examples: an operator
+  name appears in an intermediate segment position (followed by `::`), or
+  a dangling `::` follows a segment with no further entity reference token.
+- **Primary span**: The `::` following the operator, or the dangling token.
+- **Recovery**: Preserve parsed segments when possible, consume the malformed
+  continuation, and recover to the form boundary.
+- **AST effect**: An `Error` leaf replaces the expected final leaf. Parsed
+  segments are preserved.
+
+#### `UnexpectedAliasRhsExpression`
+
+- **Trigger**: A valid `EntityRef` was parsed, but the next token is not a form
+  boundary (EOF, semicolon, right brace, or promoted newline). The residual
+  tokens form an expression shape such as `PipeExpr`, `ArgPack`, closure, or
+  operator expression.
+- **Primary span**: The first residual non-trivia token.
+- **Recovery**: Consume tokens until the form boundary.
+- **AST effect**: The `EntityRefAst` preserves the parsed path and leaf.
+  Residual tokens are consumed in recovery.
+
+#### `InvalidAliasBinder` (reserved)
+
+- **Trigger**: Not currently emitted by the alias parser. Reserved for future
+  use when the binder token is neither `Name` nor operator-eligible.
+- **Primary span**: The binder token.
+- **Recovery**: Future. In the current parser, an invalid binder falls through
+  to the ordinary-let error path which emits `ExpectedName`.
+
 ## 4. Diagnostic format
 
 The dump format for diagnostics in v0.1 should be stable and suitable for

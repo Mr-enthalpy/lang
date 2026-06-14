@@ -1,0 +1,17 @@
+Program
+  Let
+    attrs:
+    binder:
+      Extract
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=x
+                annotation:
+                  None
+        skeleton:
+          CanonicalName role=Hole name=x
+    with:
+    value:
+      Expr
+        Error "expected `=` in let"

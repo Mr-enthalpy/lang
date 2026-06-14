@@ -1,0 +1,9 @@
+Program
+  LetAlias
+    binder:
+      Name map
+    target:
+      EntityRef
+        segment std
+        segment iter
+        leaf Name map

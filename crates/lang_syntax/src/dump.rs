@@ -1,6 +1,7 @@
 use crate::{
-    ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst, DeclAnnotationAst, Diagnostic,
-    DiagnosticCode, ExprAst, ExprKind, FormAst, LetAst, LetAttrAst, LetBinderAst, OperatorExprKind,
+    AliasBinderAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst, DeclAnnotationAst,
+    Diagnostic, DiagnosticCode, EntityPathLeafAst, EntityPathSegmentAst, EntityRefAst, ExprAst,
+    ExprKind, FormAst, LetAliasAst, LetAst, LetAttrAst, LetBinderAst, OperatorExprKind,
     PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
     TypeObjectAnnotationAst,
 };
@@ -55,6 +56,7 @@ pub fn dump_ast(program: &ProgramAst) -> String {
 fn dump_form(output: &mut String, form: &FormAst, indent: usize) {
     match form {
         FormAst::Let(let_ast) => dump_let(output, let_ast, indent),
+        FormAst::AliasLet(alias) => dump_alias_let(output, alias, indent),
         FormAst::Expr(expr) => {
             line(output, indent, "ExprForm");
             dump_expr(output, expr, indent + 1);
@@ -85,6 +87,60 @@ fn dump_let(output: &mut String, let_ast: &LetAst, indent: usize) {
     }
     line(output, indent + 1, "value:");
     dump_expr(output, &let_ast.value, indent + 2);
+}
+
+fn dump_alias_let(output: &mut String, alias: &LetAliasAst, indent: usize) {
+    line(output, indent, "LetAlias");
+    line(output, indent + 1, "binder:");
+    dump_alias_binder(output, &alias.binder, indent + 2);
+    line(output, indent + 1, "target:");
+    dump_entity_ref(output, &alias.target, indent + 2);
+}
+
+fn dump_alias_binder(output: &mut String, binder: &AliasBinderAst, indent: usize) {
+    match binder {
+        AliasBinderAst::Name(name) => line(output, indent, &format!("Name {}", name.text)),
+        AliasBinderAst::Operator(operator) => {
+            line(output, indent, &format!("Operator {}", operator.spelling))
+        }
+        AliasBinderAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_entity_ref(output: &mut String, entity_ref: &EntityRefAst, indent: usize) {
+    line(output, indent, "EntityRef");
+    for segment in &entity_ref.path {
+        dump_entity_path_segment(output, segment, indent + 1);
+    }
+    dump_entity_path_leaf(output, &entity_ref.leaf, indent + 1);
+}
+
+fn dump_entity_path_segment(output: &mut String, segment: &EntityPathSegmentAst, indent: usize) {
+    line(output, indent, &format!("segment {}", segment.name.text));
+}
+
+fn dump_entity_path_leaf(output: &mut String, leaf: &EntityPathLeafAst, indent: usize) {
+    match leaf {
+        EntityPathLeafAst::Name(name) => line(output, indent, &format!("leaf Name {}", name.text)),
+        EntityPathLeafAst::Operator(operator) => line(
+            output,
+            indent,
+            &format!("leaf Operator {}", operator.spelling),
+        ),
+        EntityPathLeafAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("leaf Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
 }
 
 fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
@@ -654,6 +710,7 @@ fn symbol_label(symbol: Symbol) -> &'static str {
         Symbol::Less => "Less",
         Symbol::Greater => "Greater",
         Symbol::Semicolon => "Semicolon",
+        Symbol::TripleEqual => "TripleEqual",
     }
 }
 
@@ -690,6 +747,10 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::OperatorPathLeafNotFinal => "OperatorPathLeafNotFinal",
         DiagnosticCode::TopLevelComma => "TopLevelComma",
         DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
+        DiagnosticCode::ExpectedAliasTarget => "ExpectedAliasTarget",
+        DiagnosticCode::InvalidAliasBinder => "InvalidAliasBinder",
+        DiagnosticCode::InvalidEntityRef => "InvalidEntityRef",
+        DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
     }
 }
 
