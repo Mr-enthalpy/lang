@@ -32,13 +32,13 @@ Follow this workflow for every change:
 | 4 | `spec/implementation-status-v0.1.md` | Current implementation inventory |
 | 5 | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for normalization |
 | 6 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 6 | `spec/operator-design.md` | Before any operator syntax change |
-| 7 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
-| 8 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
-| 9 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
-| 10 | `spec/glossary.md` | Terminology reference |
-| 11 | `spec/roadmap.md` | Scope boundary check |
-| 12 | `spec/open-questions.md` | Before touching uncertain areas |
+| 7 | `spec/operator-design.md` | Before any operator syntax change |
+| 8 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
+| 9 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
+| 10 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
+| 11 | `spec/glossary.md` | Terminology reference |
+| 12 | `spec/roadmap.md` | Scope boundary check |
+| 13 | `spec/open-questions.md` | Before touching uncertain areas |
 
 ## 2. Core invariant
 

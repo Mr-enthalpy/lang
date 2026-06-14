@@ -96,7 +96,7 @@ Normalization must **not** assume:
 - `Path` atoms preserve a base and ordered selector leaves.
 - `MemberSugar` preserves an object and a selector.
 - `DoubleDotSugar` preserves an object, a selector, and an `ArgPackAst`.
-- Atom suffixes are folded left-to-right as encountered. The suffix alternatives include `:: Selector`, `. Selector`, `.. Selector ArgPack`, and postfix operators. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
+- The parser's suffix pipeline includes `:: Selector`, `. Selector`, `.. Selector ArgPack`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves path/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
 
 ## Closure AST invariants
 

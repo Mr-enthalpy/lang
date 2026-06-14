@@ -274,13 +274,13 @@ none of them.
 2. `spec/implementation-status-v0.1.md` — Know what is currently implemented.
 3. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
 4. `spec/ast-construction-v0.1.md` — Implement the parser.
-4. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-5. `spec/entity-ref-design.md` — Future general EntityRef design.
-6. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-7. `spec/diagnostics-v0.1.md` — Understand error reporting.
-8. `spec/glossary.md` — Resolve terminology.
-9. `spec/roadmap.md` — Understand scope boundaries.
-10. `spec/open-questions.md` — Recognize known gaps.
+5. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
+6. `spec/entity-ref-design.md` — Future general EntityRef design.
+7. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+8. `spec/diagnostics-v0.1.md` — Understand error reporting.
+9. `spec/glossary.md` — Resolve terminology.
+10. `spec/roadmap.md` — Understand scope boundaries.
+11. `spec/open-questions.md` — Recognize known gaps.
 
 ## Expected future workspace shape
 
