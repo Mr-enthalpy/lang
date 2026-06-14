@@ -55,8 +55,8 @@ The v0.2 Raw AST Contract Freeze is completed. The next work is Normalized AST s
 
 ## Two repository tracks
 
-1. **Frontend syntax track** (active): lexer, parser, AST, diagnostics.
-   Implements `source text -> tokens -> AST -> diagnostics` for v0.1.
+1. **Frontend track** (active): Raw AST frontend (v0.1) completed; Normalized AST specification (v0.3) current.
+   Delivers `source text -> tokens -> Raw AST -> diagnostics`.
 
 2. **Build/package/namespace assembly track** (documentation only for now):
    future build system, package manifest, and namespace assembly design.

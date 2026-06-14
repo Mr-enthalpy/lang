@@ -1,4 +1,4 @@
-# Skill: lang v0.1 Frontend Work
+# Skill: lang Frontend Work
 
 ## Purpose
 

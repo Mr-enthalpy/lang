@@ -237,7 +237,7 @@ Operator names may appear as binder names and as path leaves:
 `BinderName := Name | OperatorName` and `PathLeaf := Name | OperatorName`.
 Operator names may only be leaves, not namespace-like intermediate path nodes.
 
-**Implementation TODO:**
+**Implementation status:**
 Implemented in parser phase 4.1 as raw AST preservation. Operator lookup,
 lowering, overload resolution, and alias binding remain future work.
 
