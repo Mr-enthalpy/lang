@@ -1,14 +1,14 @@
 # Entity Alias Binding Design
 
-This document records a future language design topic: lexical alias binding for
+This document records the future design for lexical alias binding of
 compile-time entities.
 
 It is not implemented in the current parser. It is not part of v0.1 accepted
 syntax.
 
 The right-hand side `EntityRef` syntax is defined separately in
-`spec/entity-ref-design.md`. This document only describes how future alias
-binding will use that syntax.
+`spec/entity-ref-design.md`. This document describes how future alias binding
+will use that syntax.
 
 ## Purpose
 
@@ -25,19 +25,15 @@ An alias binding:
 
 - does not bind a runtime value;
 - does not evaluate an expression;
+- does not call anything;
+- does not construct a runtime value;
+- does not import a package by itself;
+- does not resolve the target in the parser;
 - binds a compile-time lookup name in the current lexical scope;
 - may shadow ordinary names;
 - may shadow operator bindings.
 
-Examples:
-
-```text
-let name === some_library::some_entity
-let << === xxx_bit::<<
-let >> === xxx_bit::>>
-```
-
-## Provisional Surface Grammar
+## Surface Grammar
 
 Future syntax:
 
@@ -47,86 +43,114 @@ AliasBinding ::= "let" AliasBinder "===" EntityRef
 AliasBinder ::= Name | OperatorName
 
 EntityRef ::= EntityPath
-EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-             | EntityPathLeaf
-
-EntityPathSegment ::= Name
-EntityPathLeaf ::= Name | OperatorName
 ```
 
-For this provisional design, intermediate `EntityPathSegment` entries are text
-names. Operators are valid only in binder position or final path-leaf position.
-See `spec/entity-ref-design.md` for the complete `EntityRef` parser/semantic
-boundary.
+`EntityRef` is defined by `spec/entity-ref-design.md`. The full `EntityPath`
+grammar is not duplicated here; see that document for the complete definition,
+parser boundary, and raw-AST sketch.
 
-`===` is a structural delimiter for alias binding. It is not an equality
-operator and not a general expression operator unless a later design explicitly
-changes that.
+For this design, the relevant parts are:
 
-The grammar is provisional. It exists to document the intended parser/semantic
-boundary before implementation.
+- `EntityRef` is a compile-time entity reference, not a runtime expression.
+- The path may contain intermediate text-name segments and a final leaf that
+  may be a text name or an operator name.
+- Operator names are valid only in binder position or final path-leaf position.
 
-## Parser Boundary
+## Meaning
 
-If a future parser phase accepts this syntax, the parser may preserve a raw
-`EntityRefAst`.
+`let binder === EntityRef` creates a lexical alias binding.
 
-The parser must not:
+It binds `binder` to a compile-time entity reference for lookup in the current
+lexical scope.
 
-- resolve the entity reference;
-- check whether the referenced entity exists;
-- perform name lookup;
-- perform operator lookup;
-- perform namespace resolution;
-- perform dependency resolution;
-- interpret package/import/build-system semantics.
+It does **not**:
 
-The parser only preserves shape.
+- evaluate the right-hand side;
+- construct a runtime value;
+- call anything;
+- import a package by itself;
+- resolve the target in the parser;
+- perform name lookup, operator lookup, namespace resolution, or dependency
+  resolution.
 
-## Right-Hand Side Restriction
+Name resolution and namespace assembly are future phases. The parser, if this
+is later implemented, only preserves syntax.
 
-The right-hand side of `===` accepts only a lookupable compile-time entity
-reference.
+## Distinction from Ordinary `let`
 
-It must not accept:
+Alias binding is distinct from ordinary v0.1 let binding.
+
+Ordinary let:
 
 ```text
-runtime expression
-PipeExpr
-ArgPack
-ClosureAst
-ordinary call-like syntax
-operator expression
-block/body form
+let name: annotation = expr
+let <holes> skeleton = expr
 ```
 
-This is stronger than a normal `let` value expression. The target is an entity
-reference, not a runtime value.
+binds syntax around a runtime or compile-time expression position, depending on
+later semantics.
+
+Alias let:
+
+```text
+let binder === EntityRef
+```
+
+binds a compile-time lookup alias only.
+
+An alias binding has **no**:
+
+- declaration annotation (`: type`, `: _ : fn`);
+- `=` value expression;
+- `guard` attribute;
+- `with` clause;
+- deduce list;
+- canonical skeleton;
+- pipe expression on the right-hand side.
+
+Current ordinary `let` behavior is not changed. Existing `let name: annotation
+= expr` is not reinterpreted as alias binding.
+
+The `===` delimiter structurally separates the two forms. The parser selects
+the alias-binding path when it sees `===` in `let` form position instead of `=`
+or `:`.
 
 ## Ordinary Name Alias
 
-For text names, the alias may rename the imported entity:
+For text-name binders, aliasing may rename the target:
 
 ```text
 let local_name === package::module::exported_name
+let Vec === std::collections::Vector
+let map === std::iter::map
 ```
 
-This means `local_name` shadows previous visible bindings in the current
-lexical scope. The right-hand side remains a compile-time entity reference.
+These examples are future syntax only.
 
-No resolution or existence check is performed by the parser.
+The alias shadows previous visible bindings named `local_name`, `Vec`, or
+`map` in the current lexical scope.
+
+No target existence check occurs in the parser.
+
+No namespace or package loading occurs in the parser.
 
 ## Operator Alias
 
-Operator aliases are stricter than ordinary name aliases.
+For operator binders, aliasing is stricter than for ordinary names.
 
-An operator can only be rebound to the same operator identity:
+An operator alias may select a concrete visible operator implementation from
+another namespace, but it may **not** rename one operator into another.
+
+The operator binder and the final operator leaf of the target `EntityRef` must
+have the same operator identity.
+
+Operator identity is:
 
 ```text
 spelling + fixity + arity
 ```
 
-Valid design cases:
+Valid future design examples:
 
 ```text
 let << === xxx_bit::<<
@@ -134,7 +158,7 @@ let >> === xxx_bit::>>
 let + === checked_int::+
 ```
 
-Invalid design cases:
+Invalid future design examples:
 
 ```text
 let << === xxx_bit::>>
@@ -142,27 +166,153 @@ let + === xxx_bit::<<
 let - === some_lib::+
 ```
 
-The intent is that operator aliasing can select a concrete visible operator
-implementation from another namespace, but it cannot rename one operator
-spelling into another.
+These are rejected because the operator spelling differs between binder and
+target leaf.
 
-This validation is future semantic or syntax-only validation work. It is not
-implemented by the current parser.
+### Where identity checking belongs
 
-Parser phase 4.1 supplies the operator-name syntax needed in binder and final
-path-leaf positions. Parser phase 4.2 documents the `EntityRef` syntax needed
-on the right-hand side. Alias binding itself is still not parsed: `===`,
-`EntityRef` parser preservation, `LetAliasAst`, alias validation, and entity
-lookup remain future work.
+The parser may later preserve both sides as raw AST. The identity check belongs
+to a later static validation or name-resolution-adjacent phase, because fixity,
+arity, and operator declaration lookup may be needed to disambiguate the
+target.
 
-## Lexer Note
+A purely syntactic first-pass rule (comparing the operator spelling token text)
+is possible as optional future parser validation, but it is not a Phase 4.3
+implementation item. Operator identity is `spelling + fixity + arity`, and
+fixity/arity may depend on the target's resolved declaration, which is not
+available in the parser.
 
-The spelling `===` is reserved as a future structural delimiter.
+Phase 4.3 does not implement this validation.
 
-If implemented, the lexer must longest-match it before `==` and `=`.
+## Lexical Scope Rule
 
-`===` should not be treated as ordinary equality syntax. It should not become a
-general expression operator unless a future design explicitly changes this.
+Alias bindings are lexical. They affect lookup only after the declaration point
+and only inside the current lexical scope and its nested scopes, unless
+shadowed by a later inner binding.
+
+`let binder === EntityRef` may shadow:
+
+- ordinary value/type/entity names;
+- operator bindings;
+- prelude bindings;
+- imported namespace members;
+- outer lexical aliases.
+
+It must **not**:
+
+- mutate the original entity;
+- change a namespace globally;
+- rewrite other files;
+- affect lookup before the declaration point.
+
+Alias bindings follow the same shadowing discipline as ordinary `let` bindings:
+an inner alias shadows an outer alias with the same binder identity.
+
+## Relation to `===`
+
+`===` is a future structural delimiter for alias binding.
+
+It is **not**:
+
+- an equality operator;
+- a comparison operator;
+- an assignment operator;
+- a general expression operator;
+- an operator name.
+
+When parser preservation is eventually implemented, the lexer must
+longest-match:
+
+```text
+===
+```
+
+before:
+
+```text
+==
+=
+```
+
+`===` should not become a general expression operator unless a future design
+explicitly changes this. Phase 4.3 does not implement this lexer change.
+
+The current lexer may tokenize `===` as `==` followed by `=`. A later
+alias-parser phase must update lexer maximal-munch rules before adding alias
+syntax preservation.
+
+## Relation to EntityRef
+
+The right-hand side of `===` accepts only `EntityRef`.
+
+It must **not** accept:
+
+```text
+PipeExpr
+ArgPack
+ClosureAst
+operator expression
+runtime expression
+ordinary call-like syntax
+block/body form
+```
+
+Examples that must remain invalid future alias syntax:
+
+```text
+let x === a |> f
+let x === f(a)
+let x === { body }
+let x === (a, b)
+let x === a + b
+```
+
+Note: `f(a)` is not traditional call syntax in this language anyway; still,
+alias RHS must not parse as an expression/ArgPack structure.
+
+## Parser Boundary
+
+If a future parser phase accepts this syntax, the parser may preserve a raw
+`LetAliasAst` and `EntityRefAst`.
+
+Even when alias binding is eventually parsed, the parser must **not**:
+
+- resolve the target entity;
+- check whether the target exists;
+- perform name lookup;
+- perform operator lookup;
+- perform namespace resolution;
+- perform dependency resolution;
+- load packages;
+- interpret import/use/include/module syntax;
+- validate operator alias identity (beyond optional spelling comparison);
+- perform type checking;
+- perform kind checking;
+- perform overload resolution;
+- lower aliases into runtime values.
+
+The parser may only preserve raw syntax and emit narrow syntax diagnostics.
+
+Phase 4.3 must not implement even that parser preservation.
+
+## Future Diagnostics Design Note
+
+These diagnostics are future design only. They are not added to
+`DiagnosticCode` in Rust and are not implemented in this phase.
+
+Possible future diagnostics:
+
+| Diagnostic                          | Trigger                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `ExpectedAliasTarget`               | `let binder ===` is not followed by a valid `EntityRef`.                |
+| `InvalidAliasBinder`                | The binder position after `let` is not a valid `Name` or `OperatorName`. |
+| `InvalidEntityRef`                  | The `EntityRef` on the RHS is malformed (e.g., operator in segment position). |
+| `OperatorAliasIdentityMismatch`     | The operator binder spelling differs from the target leaf spelling.     |
+| `UnexpectedAliasRhsExpression`      | The RHS of `===` is an expression form (PipeExpr, ArgPack, closure) instead of `EntityRef`. |
+
+`OperatorAliasIdentityMismatch` may be a parser diagnostic (spelling-only) or
+a later static-semantic diagnostic (including fixity/arity). This decision is
+deferred to the alias-parser implementation phase.
 
 ## Future AST Sketch
 
@@ -178,6 +328,7 @@ LetAliasAst {
 AliasBinderAst =
     Name(NameAst)
   | Operator(OperatorNameAst)
+  | Error(ErrorAst)
 
 EntityRefAst {
     path: Vec<EntityPathSegmentAst>,
@@ -194,23 +345,31 @@ EntityPathLeafAst =
   | Error(ErrorAst)
 ```
 
-These nodes are not implemented in this documentation-only task.
+The exact `EntityRefAst` shape is defined in `spec/entity-ref-design.md`.
+
+These nodes are not implemented in this documentation-only task. They are not
+added to the Rust `ast` module in Phase 4.3.
 
 ## Non-Goals
 
-Do not implement:
+Do not implement in Phase 4.3:
 
 ```text
-=== parser
+lexer token for ===
 EntityRef parser
+alias parser
 LetAliasAst
+AliasBinderAst in Rust code
+EntityRefAst in Rust code
+DiagnosticCode additions
 operator alias validation
+operator identity checking
 name lookup
 operator lookup
 namespace resolver
 dependency resolver
 build manifest parser
-import/use/include/module syntax
+package/import/use/include/module syntax
 runtime value binding semantics
 ```
 
@@ -221,3 +380,13 @@ let name: annotation = expr
 ```
 
 That remains ordinary v0.1 let-binding syntax.
+
+Do not add accepted syntax tests for:
+
+```text
+let binder === EntityRef
+```
+
+Do not add lexer golden tests for `===`.
+
+Do not change `let name: annotation = expr`.

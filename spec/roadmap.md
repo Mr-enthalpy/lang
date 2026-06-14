@@ -50,14 +50,14 @@ A syntax frontend that:
 - Interpretation or code generation.
 - IR / HIR / MIR lowering.
 
-**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design):**
+**Current implementation status (parser phase 1 + phase 2 binding-context syntax + phase 3.1 closure/parser stabilization + phase 4/4.1 operator syntax + phase 4.2 EntityRef design + phase 4.3 alias binding design):**
 
 The current implementation includes parser phase 1, parser phase 2
 binding-context syntax, parser phase 3 closure surface AST, and parser phase
 3.1 closure/parser stabilization, parser phase 4 operator syntax as raw AST
 sugar, and parser phase 4.1 operator names in binder/path-leaf positions. It
-also includes parser phase 4.2 compile-time entity reference syntax design as
-documentation only. It includes:
+also includes parser phase 4.2 compile-time entity reference syntax design and
+phase 4.3 lexical alias binding design as documentation only. It includes:
 
 - Lexer loop with CRLF/LF normalization and stable token dumps.
 - Operator-aware lexer (operator spellings tokenized as `Operator` tokens;
@@ -101,6 +101,11 @@ documentation only. It includes:
 - Parser phase 4.2 compile-time `EntityRef` syntax design documentation in
   `spec/entity-ref-design.md`. This defines the future strong-context syntax
   and parser/semantic boundary, but does not implement an `EntityRef` parser.
+- Parser phase 4.3 lexical alias binding design documentation in
+  `spec/entity-alias-design.md`. This defines the future `let binder ===
+  EntityRef` declaration form, lexical scope rule, operator-alias restriction,
+  and parser/semantic boundary, but does not implement alias parsing or
+  entity resolution.
 
 It does **not** yet include:
 
@@ -140,8 +145,8 @@ The syntax-facing work after Phase 4.1 is ordered as:
 ```text
 Phase 4: operator syntax as raw AST sugar (implemented)
 Phase 4.1: operator binder names and operator path leaves (implemented)
-Phase 4.2: compile-time entity reference syntax design (documentation)
-Phase 4.3: lexical alias binding design (`let binder === EntityRef`)
+Phase 4.2: compile-time entity reference syntax design (documentation — complete)
+Phase 4.3: lexical alias binding design (`let binder === EntityRef`) (documentation — complete)
 Phase 4.4: optional raw AST parser preservation for alias binding
 ```
 
@@ -155,12 +160,11 @@ let >> === xxx_bit::>>
 
 These phases are before semantic name resolution. They do not implement lookup,
 namespace resolution, dependency resolution, import/package/build-system
-semantics, operator alias validation, or runtime value binding semantics. They
-only document and, if explicitly assigned later, preserve surface syntax and raw
-AST boundaries. Parser phase 4.1 does not reserve `===` as one lexer token; the
+semantics, operator alias validation, or runtime value binding semantics. Phases
+4.2 and 4.3 are documentation only: they do not parse `EntityRef` or alias
+bindings. Parser phase 4.1 does not reserve `===` as one lexer token; the
 alias parser phase must update lexer maximal-munch behavior before accepting
-`let binder === EntityRef`. Phase 4.2 only documents `EntityRef`; it does not
-parse `EntityRef` or alias bindings. See `spec/entity-ref-design.md` and
+`let binder === EntityRef`. See `spec/entity-ref-design.md` and
 `spec/entity-alias-design.md`.
 
 ---

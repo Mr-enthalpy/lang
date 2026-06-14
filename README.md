@@ -37,7 +37,7 @@ and crate public API become stable.
 | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this    |
 | `spec/operator-design.md`       | Normative operator syntax design and implementation boundaries   |
 | `spec/entity-ref-design.md`     | Future compile-time entity reference design - not implemented    |
-| `spec/entity-alias-design.md`   | Future lexical alias binding design — not implemented            |
+| `spec/entity-alias-design.md`   | Future lexical alias binding design — Phase 4.3 design complete, not implemented            |
 | `spec/diagnostics-v0.1.md`      | Normative diagnostic categories, span policy, recovery           |
 | `spec/roadmap.md`               | Stage model v0.1–v1.0 and scope boundaries                       |
 | `spec/glossary.md`              | Terminology definitions and critical distinctions                |
@@ -288,8 +288,8 @@ v0.1 only preserves raw namespace path shapes such as `std::Vec`,
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
 2. `spec/ast-construction-v0.1.md` — Implement the parser.
 3. `spec/operator-design.md` - Understand operator syntax and future lookup boundaries.
-4. `spec/entity-ref-design.md` - Understand future compile-time entity references.
-5. `spec/entity-alias-design.md` - Understand future lexical alias binding.
+4. `spec/entity-ref-design.md` - Understand future compile-time entity references (Phase 4.2).
+5. `spec/entity-alias-design.md` - Understand future lexical alias binding (Phase 4.3).
 6. `spec/diagnostics-v0.1.md` - Understand error reporting.
 7. `spec/glossary.md` - Resolve terminology.
 8. `spec/roadmap.md` - Understand scope boundaries.

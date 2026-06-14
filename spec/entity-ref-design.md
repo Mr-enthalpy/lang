@@ -11,14 +11,16 @@ parser and is not part of v0.1 accepted syntax.
 `EntityRef` names a compile-time entity in a strong syntax context. It is not a
 runtime expression and is not evaluated by the parser.
 
-Future alias binding will use it on the right-hand side:
+Future alias binding (Phase 4.3 design complete, `spec/entity-alias-design.md`) will use it on the
+right-hand side:
 
 ```text
 let binder === EntityRef
 ```
 
 Phase 4.2 defines only the surface syntax and raw AST preservation boundary for
-that future context. It does not add parser behavior.
+that future context. It does not add parser behavior. Phase 4.3 completes the
+alias binding design documentation that uses `EntityRef` on the RHS.
 
 ## Provisional Grammar
 
@@ -71,7 +73,8 @@ expression AST. They remain subject to the current `PipeExpr`, segment,
 operator-expression, atom, and suffix rules.
 
 `EntityRef` appears only inside future strong contexts that explicitly require a
-compile-time entity reference. The known intended context is:
+compile-time entity reference. The known intended context (Phase 4.3 design
+complete) is:
 
 ```text
 let binder === EntityRef
@@ -94,7 +97,7 @@ EntityPathLeaf ::= Name | OperatorName
 This does not implement operator lookup. It does not check that the operator
 exists. It does not validate operator identity. Operator alias identity
 validation belongs to a later alias-binding phase or semantic/static validation
-phase.
+phase (see `spec/entity-alias-design.md` Phase 4.3 design).
 
 The current `<` operator-binder ambiguity documented in
 `spec/operator-design.md` concerns `let` binder syntax. It does not by itself
@@ -123,14 +126,14 @@ EntityPathLeafAst =
 ```
 
 This is a design sketch only. These Rust AST nodes are not implemented in Phase
-4.2.
+4.2 or Phase 4.3.
 
 ## Parser Boundary
 
 Future parser preservation may parse `EntityRef` only inside explicit strong
 contexts.
 
-Known intended future context:
+Known intended future context (Phase 4.3 design complete):
 
 ```text
 let binder === EntityRef
@@ -156,7 +159,8 @@ The parser boundary is syntax preservation only.
 
 ## Alias-Binding RHS Restriction
 
-For future alias binding:
+For future alias binding (Phase 4.3 design complete, see
+`spec/entity-alias-design.md`):
 
 ```text
 let binder === EntityRef

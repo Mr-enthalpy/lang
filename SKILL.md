@@ -28,7 +28,7 @@ Follow this workflow for every change:
 | 4 | `spec/ast-construction-v0.1.md` | Before any parser change |
 | 5 | `spec/operator-design.md` | Before any operator syntax change |
 | 6 | `spec/entity-ref-design.md` | Before any future EntityRef or alias RHS design |
-| 7 | `spec/entity-alias-design.md` | Before any future alias-binding design |
+| 7 | `spec/entity-alias-design.md` | Before any future alias-binding design (Phase 4.3 design complete) |
 | 8 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
 | 9 | `spec/glossary.md` | Terminology reference |
 | 10 | `spec/roadmap.md` | Scope boundary check |
@@ -129,6 +129,7 @@ If a requested task requires any of the following, stop at AST preservation:
 | Closure materialization | Build closure AST; do not create callable objects |
 | Effect / sync | Parse as names; do not interpret effect system |
 | Library / import / export | v0.1 has no such syntax; preserve raw :: paths only |
+| Entity alias binding (`let binder === EntityRef`) | Future design only; not a v0.1 parser rule |
 | Meta-function AST consumption | Built-in privilege; do not generalize to user macros |
 | `struct` / field syntax | Not parser syntax; future built-in meta-function may consume raw AST |
 

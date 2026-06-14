@@ -37,7 +37,7 @@ executed, type-checked, or lowered.
 | `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
 | `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                          |
 | `entity-ref-design.md`     | Future compile-time entity reference syntax and parser/semantic boundary. Not a v0.1 parser rule.                                                                       |
-| `entity-alias-design.md`   | Future lexical alias binding syntax using `let binder === EntityRef`. Not a v0.1 parser rule.                                                                           |
+| `entity-alias-design.md`   | Future lexical alias binding syntax using `let binder === EntityRef`. Phase 4.3 design complete. Not a v0.1 parser rule.                                                                           |
 | `diagnostics-v0.1.md`      | Diagnostic categories, trigger conditions, span policy, recovery behavior.                                                                                              |
 | `glossary.md`              | Terminology definitions and distinctions.                                                                                                                               |
 | `roadmap.md`               | Stage model from v0.1 to v1.0, scope boundaries.                                                                                                                        |
@@ -50,7 +50,7 @@ If a conflict arises between documents, `ast-construction-v0.1.md` takes
 precedence.
 
 `entity-ref-design.md` and `entity-alias-design.md` document future strong
-syntax contexts only. They do not change current parser acceptance.
+syntax contexts only (Phase 4.2 and 4.3 design complete). They do not change current parser acceptance.
 
 ## Boundaries
 
@@ -94,9 +94,10 @@ Diagnostics in v0.1 cover lexer and parser errors only:
 1. Start here.
 2. Read `ast-construction-v0.1.md` to understand syntax rules and AST shapes.
 3. Refer to `glossary.md` when a term is unclear.
-4. Consult `diagnostics-v0.1.md` for error behavior.
-5. Check `roadmap.md` to understand what is deferred.
-6. Check `open-questions.md` for unresolved design items before making
+4. Read `entity-ref-design.md` and `entity-alias-design.md` for future `EntityRef` and alias binding design (documentation only, not implemented).
+5. Consult `diagnostics-v0.1.md` for error behavior.
+6. Check `roadmap.md` to understand what is deferred.
+7. Check `open-questions.md` for unresolved design items before making
    decisions.
 
 ## Current implementation status
@@ -125,6 +126,9 @@ The current implementation includes:
   positions.
 - Full v0.1 diagnostic taxonomy in DiagnosticCode; most codes reachable.
 - Golden test suites: 9 lexer, 154 parser, 27 diagnostics tests.
+- Phase 4.2 compile-time `EntityRef` syntax design (documentation only).
+- Phase 4.3 lexical alias binding design (`let binder === EntityRef`)
+  (documentation only).
 
 It does **not** yet cover:
 

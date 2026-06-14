@@ -387,25 +387,27 @@ design).
 
 ## 21. Lexical alias binding and entity references
 
-**Status:** Open (future design note, not implemented)
+**Status:** Documentation phase complete (Phase 4.2 / 4.3 design); implementation unresolved
 
 **Current v0.1 decision:**
 `EntityRef` is documented as future compile-time entity reference syntax in
-`spec/entity-ref-design.md`. `let binder === EntityRef` is reserved as future
-lexical alias binding syntax and is documented in
-`spec/entity-alias-design.md`, but the current parser does not accept `===`,
-does not parse `EntityRef`, and does not build `LetAliasAst`.
-Parser phase 4 also does not preserve `===` as a single token: the current
-lexer may still tokenize it as `==` followed by `=`. A later alias-parser phase
-must update lexer maximal-munch rules to reserve `===` before adding alias
-syntax preservation.
+`spec/entity-ref-design.md`. `let binder === EntityRef` is documented as future
+lexical alias binding syntax in `spec/entity-alias-design.md`. Phase 4.3
+completes the design documentation for alias binding: surface grammar, lexical
+scope rule, distinction from ordinary `let`, ordinary name and operator alias
+rules, `===` delimiter semantics, future diagnostics sketch, and full
+parser/semantic boundary.
+
+The current parser does not accept `===`, does not parse `EntityRef`, and does
+not build `LetAliasAst`. The current lexer may tokenize `===` as `==` followed
+by `=`; a later alias-parser phase must update lexer maximal-munch rules.
 
 The intended boundary is syntax preservation only:
 
 ```text
 EntityRef ::= EntityPath
 EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-             | EntityPathLeaf
+              | EntityPathLeaf
 EntityPathSegment ::= Name
 EntityPathLeaf ::= Name | OperatorName
 
@@ -416,19 +418,97 @@ AliasBinder ::= Name | OperatorName
 The right-hand side is a compile-time entity reference, not `PipeExpr`,
 `ArgPack`, `ClosureAst`, an operator expression, or any runtime expression.
 
+Operator aliases are restricted: the binder operator identity must match the
+target leaf operator identity (`spelling + fixity + arity`). This validation is
+deferred to a future static validation or name-resolution-adjacent phase.
+
 **Why it does not block v0.1:**
 v0.1 does not implement entity references, name lookup, namespace resolution,
-dependency resolution, or import semantics. Parser phase 4.1 supplies the
-operator-name syntax that future alias binding depends on, but alias binding
-itself still belongs before semantic name resolution and after EntityRef syntax
-is specified.
+dependency resolution, or import semantics. Phase 4.1 supplies the
+operator-name syntax that alias binding depends on. Phase 4.2 and 4.3 document
+the design boundaries.
 
-**Future stage:** Phase 4.2/4.3 design after operator binder/path-leaf syntax.
-Phase 4.4 may optionally preserve raw alias-binding AST if explicitly assigned.
+**Future stages:** Phase 4.4 may optionally preserve raw alias-binding AST if
+explicitly assigned. See also open questions 22–25 below.
 
-**Open follow-up:**
-The provisional grammar allows a single unqualified `EntityPathLeaf`, such as
-`some_entity`, as an `EntityRef`. Future semantic/name-resolution design must
-decide whether unqualified entity references are allowed in all `EntityRef`
-contexts or only in selected contexts. Parser phase 4.2 does not resolve that
-semantic policy.
+---
+
+## 22. Operator alias identity mismatch: diagnostic phase
+
+**Status:** Open
+
+**Current Phase 4.3 design:**
+The operator alias rule requires `spelling + fixity + arity` match between
+binder and target leaf. The design document recommends deferring the full
+identity check to a static validation or name-resolution-adjacent phase.
+A first-pass spelling-only comparison is possible as optional future parser
+validation.
+
+**Question:** Should operator alias identity mismatch be a parser diagnostic
+(spelling-only), a static semantic diagnostic (full identity), or deferred
+to name resolution?
+
+**Why it does not block v0.1:**
+No alias parsing exists in v0.1. The answer affects future implementation
+ordering only.
+
+**Future stage:** Phase 4.4 (alias parser preservation) or later
+name-resolution design.
+
+---
+
+## 23. Alias binding position: all forms or top-level only
+
+**Status:** Open
+
+**Question:** Should alias bindings be allowed in all form positions (top-level,
+inside closures, inside expressions) or only at top-level / namespace-level
+positions?
+
+The current Phase 4.3 design defines lexical scoping but does not constrain
+where alias bindings may appear syntactically. This decision affects parser
+state management and scope nesting.
+
+**Why it does not block v0.1:**
+No alias parsing exists.
+
+**Future stage:** Phase 4.4 (alias parser) or later scope/semantic design.
+
+---
+
+## 24. Alias binding with `guard` or `with`
+
+**Status:** Open
+
+**Current Phase 4.3 recommendation:** Alias binding should not permit `guard`
+or `with`. Alias bindings have no runtime value, no drop obligation, and no
+lifetime dependency.
+
+**Question:** Could future alias binding semantics justify a `guard` or
+`with` clause (e.g., compile-time alias ordering or dependency)?
+
+**Why it does not block v0.1:**
+No alias parsing exists. The current recommendation is documented but not
+binding on future design.
+
+**Future stage:** Phase 4.4 or later scope/semantic design.
+
+---
+
+## 25. Alias binding visibility and export modifiers
+
+**Status:** Open
+
+**Question:** Should alias binding have a visibility or export modifier (e.g.,
+`public`/`private`/`restricted`)?
+
+The current Phase 4.3 design does not include visibility modifiers for alias
+bindings. Access control and namespace export are documented as namespace-graph
+and resolver concerns in `spec/library-namespace-design-note.md`. Whether alias
+bindings need source-level visibility annotations is an open namespace design
+question.
+
+**Why it does not block v0.1:**
+No alias parsing or namespace resolution exists.
+
+**Future stage:** Namespace assembly phase or later language design.

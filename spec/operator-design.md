@@ -396,7 +396,8 @@ where the example's type names come from.
 
 ## Relationship To Entity Alias Binding
 
-`spec/entity-alias-design.md` documents future lexical alias binding:
+`spec/entity-alias-design.md` documents future lexical alias binding (Phase 4.3
+design complete):
 
 ```text
 let binder === EntityRef
@@ -412,7 +413,8 @@ let + === checked_int::+
 
 Operator aliasing may select a concrete visible operator implementation from
 another namespace, but it cannot rename one operator spelling into another. The
-operator identity remains `spelling + fixity + arity`.
+operator identity remains `spelling + fixity + arity`. The identity check is
+deferred to a future static validation or name-resolution-adjacent phase.
 
 Alias binding remains future design only. Phase 4.1 does not implement
 operator lookup, entity lookup, namespace resolution, import/package semantics,

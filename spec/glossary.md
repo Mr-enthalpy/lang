@@ -365,6 +365,68 @@ _See also: EntityPath, OperatorName, EntityRef._
 
 ---
 
+## Alias binding
+
+A future declaration form `let binder === EntityRef` that creates a
+compile-time lookup alias in the current lexical scope. Alias binding is
+not runtime value binding, not an expression, not equality, not operator
+syntax, and not package import syntax. It is not implemented in v0.1.
+
+> **Distinction**: Alias binding is a future lexical-scope construct.
+> It is not an ordinary `let name: annotation = expr`. It has no `=`
+> value expression, no declaration annotation, no `guard`, and no `with`.
+> No target entity resolution occurs in the parser.
+
+_See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef._
+
+---
+
+## Lexical alias
+
+A compile-time lookup name introduced by alias binding into a lexical
+scope. A lexical alias shadows previous bindings of the same name in the
+current scope and nested scopes but does not mutate the original entity or
+change namespace state globally. Lexical aliases are future design only and
+are not resolved by the parser.
+
+_See also: Alias binding, Entity alias._
+
+---
+
+## Entity alias
+
+A lexical alias whose target is a compile-time entity reference (`EntityRef`).
+The alias binds a name or operator to a compile-time entity path without
+evaluating or constructing a runtime value. Entity aliases are a future
+name-resolution construct, not a v0.1 parser feature.
+
+_See also: Alias binding, Lexical alias, EntityRef._
+
+---
+
+## AliasBinder
+
+The binder position in a future `let binder === EntityRef` form. It may be a
+`Name` or `OperatorName`. This is a future parser concept: the binder is
+preserved as raw AST syntax without resolving the target entity.
+
+_See also: Alias binding, Operator alias._
+
+---
+
+## Operator alias
+
+A future alias binding whose binder is an `OperatorName`. Operator aliases
+are stricter than ordinary name aliases: the operator binder and the final
+operator leaf of the target `EntityRef` must have the same operator identity
+(`spelling + fixity + arity`). An operator alias cannot rename one operator
+spelling into another. Operator alias validation is future static validation
+or name-resolution work, not current parser behavior.
+
+_See also: Alias binding, AliasBinder, OperatorName, EntityRef._
+
+---
+
 ## Non-associative operator
 
 An operator class that cannot be chained without explicit grouping in the
