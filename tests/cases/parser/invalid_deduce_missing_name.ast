@@ -1,6 +1,5 @@
 Program
   Let
-    attrs:
     binder:
       Extract
         deduce:
@@ -8,7 +7,8 @@ Program
             binders:
         skeleton:
           CanonicalName role=NodeName name=x
-    with:
+    with_clause:
+      None
     value:
       Expr
         Pipe

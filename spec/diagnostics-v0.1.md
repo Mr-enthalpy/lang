@@ -111,6 +111,18 @@ spanning the failed region.
 - **Recovery**: Skip to the current form boundary.
 - **AST effect**: Use an error expression as the let value.
 
+#### Invalid `with` clause shape
+
+- **Trigger**: A let-local `with` clause is not followed by `{`, has a trailing
+  comma, or has a malformed/unclosed `{ ... }` block.
+- **Primary span**: The unexpected token, the trailing `}`, or the opening `{`
+  for unclosed blocks.
+- **Recovery**: Recover to `}`, `=`, or the current form boundary.
+- **AST effect**: Preserve `WithClauseKind::Error` when a `WithClauseAst` is
+  retained, or omit the with clause and recover locally. Malformed `with`
+  syntax must not normalize to `WithClauseKind::Lexical`; only valid `with {}`
+  may produce lexical with.
+
 #### `EmptyPipeSegment`
 
 - **Trigger**: A `|>` operator at the start of a pipe expression (no left
@@ -176,10 +188,13 @@ spanning the failed region.
 
 #### `UnclosedBrace`
 
-- **Trigger**: An opening `{` without a matching `}` by end of input.
+- **Trigger**: An opening `{` without a matching `}` in a context that owns a
+  brace-delimited grammar, such as a closure body or with block.
 - **Primary span**: The opening `{`.
-- **Recovery**: Insert implicit `}` at EOF. Parse body contents as `Form*`.
-- **AST effect**: The `BodyBlock` is created with forms parsed before recovery.
+- **Recovery**: Context-dependent. A closure body may recover as an incomplete
+  `BodyBlock`; a malformed `with` block recovers as invalid with syntax.
+- **AST effect**: Context-dependent. Do not assume every unclosed `{` creates a
+  `BodyBlock`.
 
 #### `InvalidDeduceList`
 
@@ -241,9 +256,10 @@ top-level comma"`, `"invalid argument pack position"`) until the diagnostic
 
 #### `UnusedClosureAst`
 
-- **Trigger** (optional / currently not guaranteed emitted): A closure literal appears in a
-  position where it cannot be consumed by an operator, pipe, or binding.
-- **Primary span**: The closure body or `{}` token.
+- **Trigger** (optional / currently not guaranteed emitted): A headed or
+  explicit closure literal appears in a position where it cannot be consumed by
+  an operator, pipe, or binding.
+- **Primary span**: The closure body token.
 - **Recovery**: The closure AST is still produced.
 - **AST effect**: The closure AST node is preserved.
 

@@ -213,7 +213,7 @@ both lines and diagnose `UnclosedParen` if the `)` is never found.
 ### 4.1 Let statement shape
 
 ```text
-LetStmt ::= "let" LetAttr* LetBinder LetWithClause? "=" PipeExpr
+LetStmt ::= "let" LetBinder LetWithClause? "=" PipeExpr
 ```
 
 The declaration annotation after `:` is required for simple binders. v0.1 does
@@ -223,35 +223,22 @@ AST:
 
 ```text
 LetAst {
-    attrs: Vec<LetAttrAst>,
     binder: LetBinderAst,
-    with_deps: Vec<NameAst>,
+    with_clause: Option<WithClauseAst>,
     value: ExprAst,
     span: Span
 }
 ```
 
-### 4.2 Let attributes
+There is no let-level attribute list. `guard` is an ordinary `Name` unless a
+future syntax reintroduces it explicitly.
+
+### 4.2 With clause
 
 ```text
-LetAttr ::= "guard"
-```
-
-`guard` is interpreted only inside the let parser state.
-
-Outside a let statement it is an ordinary name.
-
-AST:
-
-```text
-LetAttrAst ::= Guard
-```
-
-### 4.3 With clause
-
-```text
-LetWithClause ::= "with" NameList
-NameList ::= Name ("," Name)*
+LetWithClause ::= "with" WithBlock
+WithBlock ::= "{" WithItems? "}"
+WithItems ::= Name ("," Name)*
 ```
 
 `with` is interpreted only inside the let parser state.
@@ -259,12 +246,24 @@ NameList ::= Name ("," Name)*
 AST:
 
 ```text
-with_deps: Vec<NameAst>
+WithClauseAst {
+    kind: WithClauseKind,
+    span: Span
+}
+
+WithClauseKind ::= Lexical | Semantic { items: Vec<NameAst> } | Error(ErrorAst)
 ```
 
-No lifetime semantics are executed in v0.1.
+`with {}` is an explicit lexical-only with clause. It is distinct from having
+no with clause. `with { a, b }` preserves a non-empty syntactic payload. No
+lifetime or dependency semantics are executed in Raw AST.
 
-### 4.4 Let binder
+`with` without `{` is invalid. `with a, b` is invalid. Trailing commas in
+`with { ... }` are rejected. Malformed `with` syntax must not produce
+`WithClauseKind::Lexical`; only valid source text `with {}` may produce the
+lexical-only with-clause kind.
+
+### 4.3 Let binder
 
 ```text
 LetBinder ::= SimpleLetBinder | ExtractLetBinder
@@ -500,11 +499,11 @@ fn f(x) { x }
 ```
 
 `fn` is an ordinary `Name` token. The parser sees `Name("fn")`, then `Name("f")`,
-then `ArgPack(x)`, then `InlineClosureAst`. Since the first token is not
-`Name("let")`, the form is selected as `ExprStmt`. The parser must not
-create a `FnDecl` AST node. Depending on future expression adjacency rules,
-tokens such as `(` or `{` after `f(x)` may produce diagnostics, but the
-core conclusion is: no function declaration syntax exists in v0.1.
+then `ArgPack(x)`, then an unexpected bare `{`. Since the first token is not
+`Name("let")`, the form is selected as an expression form. The parser must not
+create a `FnDecl` AST node. Tokens such as `(` or `{` after `f(x)` may produce
+diagnostics, but the core conclusion is: no function declaration syntax exists
+in v0.1.
 
 ```text
 type T = expr
@@ -913,8 +912,11 @@ AtomBase ::=
     Name
   | Literal
   | Group
-  | ClosureAst
+  | HeadedOrExplicitClosureAst
 ```
+
+`HeadedOrExplicitClosureAst` means headed inline closure or explicit closure.
+Bare `{ ... }` is not an atom-base closure form.
 
 AST:
 
@@ -1355,18 +1357,15 @@ ClosureAst ::=
 ### 10.2 Inline closure
 
 ```text
-InlineClosureAst ::= FnHeadPrefix? BodyBlock
+InlineClosureAst ::= FnHeadPrefix BodyBlock
 ```
 
-Minimal form:
+Bare `{ ... }` in atom position is not a closure literal and must not produce
+`ClosureAst`. Braces delimit a closure body only after explicit closure syntax,
+such as `FnHeadPrefix => BodyBlock`, or after a valid closure head where the
+inline headed form is accepted.
 
-```text
-{}
-```
-
-In atom position, `{ ... }` is always parsed as `InlineClosureAst`.
-
-It is not a normal block expression.
+`{ ... }` is not a normal block expression.
 
 ### 10.3 Explicit closure
 
@@ -1560,11 +1559,12 @@ return constraints are not type-checked or constraint-solved in v0.1.
 
 When the expression parser expects an atom:
 
-1. If the current token is `{`, parse `InlineClosureAst`.
-2. Otherwise attempt finite lookahead for `FnHeadPrefix`.
-3. If the prefix is followed by `=>` and `{`, parse `ExplicitClosureAst`.
-4. If the prefix is followed directly by `{`, parse prefixed `InlineClosureAst`.
-5. If these attempts fail, restore cursor and parse ordinary atom.
+1. Attempt finite lookahead for `FnHeadPrefix`.
+2. If the prefix is followed by `=>` and `{`, parse `ExplicitClosureAst`.
+3. If the prefix is followed directly by `{`, parse headed `InlineClosureAst`.
+4. If these attempts fail, restore cursor and parse ordinary atom.
+
+A bare `{` in atom position is not a closure-recognition entry point.
 
 This is finite lookahead, not semantic backtracking.
 Failed closure-head lookahead must not leak diagnostics or consume tokens.
@@ -1602,8 +1602,8 @@ The closure recognition algorithm first checks:
 - Then `=>` is encountered in a non-closure-head context. Since `=>` is only
   valid as a closure-head `=> BodyBlock` separator, emit `UnexpectedToken`
   at `=>`.
-- If the parser encounters `{` next, it may parse it as an `InlineClosureAst`
-  depending on remaining context.
+- If the parser encounters `{` next in atom position, it is unexpected. It must
+  not parse as an `InlineClosureAst`.
 
 v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
 forms remain `() => {}` and `(x) => {}` where the `()` is a `ParamClause`.
@@ -1663,7 +1663,7 @@ obj match (a) { }
 ```
 
 The parser sees `Name("obj")`, then `Name("match")`, then `ArgPack(a)`,
-then `InlineClosureAst`. The high-level AST is:
+then an unexpected bare `{`. The high-level expression prefix is:
 
 ```text
 PipeExpr
@@ -1671,10 +1671,11 @@ PipeExpr
     Atom Name(obj)
     Atom Name(match)
     ArgPack RightTargetSubsegment
-    Atom InlineClosure({ })
 ```
 
-No special match-arm relationship exists at the parser level.
+No special match-arm relationship exists at the parser level. Bare `{}` does
+not become a match arm; match-style expressions that use closure arms must use
+valid headed closure syntax inside the argument pack.
 
 ## 13. Error nodes
 
@@ -1758,8 +1759,6 @@ x |> f (a) g
 
 x |> f (a) g (b) h
 
-{}
-
 () => {}
 
 <T>(x: T): runtime -> T => {
@@ -1793,7 +1792,7 @@ let binder === EntityRef
 ```
 
 Alias binding is distinct from ordinary `let`. It does not have declaration
-annotations, `guard` attributes, `with` clauses, deduce lists, canonical
+annotations, `with` clauses, deduce lists, canonical
 skeletons, or `=` value expressions.
 
 The parser preserves alias binding as raw AST. It does not resolve entities,

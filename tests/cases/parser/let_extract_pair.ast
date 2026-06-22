@@ -1,6 +1,5 @@
 Program
   Let
-    attrs:
     binder:
       Extract
         deduce:
@@ -23,7 +22,8 @@ Program
                 names:
                   List
                   Cons
-    with:
+    with_clause:
+      None
     value:
       Expr
         Pipe

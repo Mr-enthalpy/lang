@@ -2,16 +2,16 @@
 
 **Status:** Accepted
 
-**Context:** Many languages treat `{ ... }` as a block expression and closure
-as a runtime object. A decision was needed for the v0.1 parser.
+**Context:** Many languages treat `{ ... }` as a block expression and closures
+as runtime objects. A decision was needed for the v0.1 parser.
 
-**Decision:** `{ ... }` in atom position produces `ClosureAST`, not a block
-expression and not a callable `ClosureObject`. Materialization into a callable
-object is a future semantic pass.
+**Decision:** Closure syntax produces `ClosureAST`, not a callable
+`ClosureObject`. Bare `{ ... }` in atom position is not a closure literal.
+Braces delimit a closure body only after explicit closure syntax. Materialization
+into a callable object is a future semantic pass.
 
 **Consequences:**
 - The parser has no block-expression AST node.
-- Closure literals can be consumed by future meta-functions (match, effect,
+- Closure AST can be consumed by future meta-functions (match, effect,
   sync) at the AST level without materialization.
-- Dump output shows `Closure(InlineClosureAst(...))` rather than a callable
-  value.
+- Dump output shows closure AST rather than a callable value.

@@ -1,6 +1,5 @@
 Program
   Let
-    attrs:
     binder:
       Extract
         deduce:
@@ -24,7 +23,8 @@ Program
                     elements:
                       CanonicalName role=Hole name=b
               CanonicalName role=NodeName name=Pair
-    with:
+    with_clause:
+      None
     value:
       Expr
         Pipe

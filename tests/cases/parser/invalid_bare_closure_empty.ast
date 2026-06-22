@@ -1,0 +1,5 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false

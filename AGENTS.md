@@ -23,9 +23,8 @@ spec/open-questions.md (known gaps)
 
 ## Scope
 
-This repository completed its `v0.1` Raw AST frontend stage as the current Raw AST baseline. The current
-v0.2 Raw AST Contract Freeze is completed. The current
-work is Normalized AST specification (v0.3).
+The v0.1 Raw AST Frontend was completed as an initial Raw AST baseline.
+The Raw AST contract has been reopened for a breaking guard/with/brace correction before v0.3.
 
 The v0.1 output is:
 
@@ -161,7 +160,8 @@ Examples:
 * `let` at form start introduces a let binding.
 * `where` and `acquire` are reserved future closure-head clause names, but are
   not active parser clauses in Phase 3.1.
-* `guard` and `with` may be interpreted inside a let-binding context.
+* `with` may be interpreted inside a let-binding context only as `with { ... }`.
+* `guard` is an ordinary `Name` unless future syntax reintroduces it explicitly.
 
 Outside the relevant parser state, these names remain ordinary names.
 
@@ -201,7 +201,8 @@ described in `spec/ast-construction-v0.1.md`.
 
 `{ ... }` is not a normal block expression.
 
-In expression/atom position, `{ ... }` produces a closure AST.
+In expression/atom position, bare `{ ... }` does not produce a closure AST.
+Braces are closure body delimiters only after explicit closure syntax.
 
 Closure literals initially produce AST, not callable objects. Object
 materialization is a future semantic pass.
@@ -263,6 +264,13 @@ meta-function passes may later interpret preserved shapes.
 
 v0.1 must not add special AST nodes just because a future built-in
 meta-function may understand a shape.
+
+Do not reintroduce let guard.
+Do not parse guard as a let attribute.
+Do not keep LetAttrAst or LetAst.attrs.
+Do not parse with NameList.
+Do not represent with {} as an empty dependency list.
+Do not parse bare { ... } as an atom-level closure.
 
 Parse left to right. Do not go back to reinterpret meaning. The parser should
 be streaming-friendly. Contextual parsing is allowed only for explicitly
@@ -441,7 +449,7 @@ parser/
   argpack_roles
   dot_sugar
   doubledot_sugar
-  closure_inline
+  closure_head_inline
   closure_explicit
   closure_head
   match_style_expression

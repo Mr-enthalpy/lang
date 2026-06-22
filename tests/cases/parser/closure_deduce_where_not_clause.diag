@@ -1,3 +1,4 @@
 error InvalidOperatorExpression "unsupported prefix operator `<`" @ 1:1 [0..1]
 error UnexpectedToken "unexpected token `:`" @ 1:6 [5..6]
 error UnexpectedToken "unexpected token `=>`" @ 1:19 [18..20]
+error UnexpectedToken "unexpected token `{`" @ 1:22 [21..22]

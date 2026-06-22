@@ -1,13 +1,13 @@
 Program
   Let
-    attrs:
     binder:
       Simple
         name:
           TextName x
         annotation:
           Error "expected declaration annotation"
-    with:
+    with_clause:
+      None
     value:
       Expr
         Error "expected `=` in let"
