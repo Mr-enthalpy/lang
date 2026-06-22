@@ -1,1 +1,1 @@
-let map === std::iter::map
+let map === map::iter::std

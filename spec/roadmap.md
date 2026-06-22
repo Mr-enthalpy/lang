@@ -10,8 +10,8 @@ not strict chronological gates.
 
 ```
 v0.1 — Raw AST Frontend — completed
-v0.2 — Raw AST Contract Freeze — completed
-v0.3 — Normalized AST Specification — current
+v0.2 — Raw AST Contract Freeze — reopened for hard corrections
+v0.3 — Normalized AST Specification — pending after corrections
 v0.4 — Raw AST → Normalized AST Prototype
 v0.5 — Normalized AST Stabilization
 v0.6+ — Later semantic design stages
@@ -53,7 +53,7 @@ A syntax frontend that:
 - Golden test suite covering all syntax rules.
 - Specification documents for AST construction and diagnostics.
 - Operator expression parsing as raw AST sugar.
-- Operator names in binder and final path-leaf positions.
+- Operator names in binder and innermost navigation-component positions.
 - Alias binding (`let binder === EntityRef`) as raw AST preservation.
 - EntityRef parser for alias RHS.
 - 31 DiagnosticCode variants across lexer, parser, operator, and alias categories.
@@ -65,7 +65,7 @@ that future normalization passes may rely on, see
 
 ---
 
-### v0.2 — Raw AST Contract Freeze — completed
+### v0.2 — Raw AST Contract Freeze — reopened for hard corrections
 
 **Goal**: Document the invariants of the completed v0.1 Raw AST so that
 future normalization passes can safely desugar it.
@@ -77,12 +77,15 @@ Raw AST. It lists invariants for every AST node category and explicitly
 states what normalization must not assume (name resolution, type checking,
 operator lookup, alias resolution, etc.).
 
-**No new syntax or parser behavior.** The Raw AST contract is a
-documentation-only deliverable.
+The original v0.2 freeze was completed, then reopened for breaking
+guard/with/brace and inner-to-outer navigation corrections before v0.3.
+Navigation order is inner-to-outer: the leftmost component is the innermost
+selected symbol and the rightmost component is the outermost scope component.
+Raw AST preserves source-order navigation components and performs no lookup.
 
 ---
 
-### v0.3 — Normalized AST Specification — current
+### v0.3 — Normalized AST Specification — pending after corrections
 
 **Goal**: Define the Normalized AST node set and document how Raw AST
 constructs desugar into Normalized AST.

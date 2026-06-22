@@ -4,6 +4,7 @@ Program
       Operator +
     target:
       EntityRef
-        segment std
-        segment int
-        leaf Operator +
+        components:
+          component Operator +
+          component Name int
+          component Name std

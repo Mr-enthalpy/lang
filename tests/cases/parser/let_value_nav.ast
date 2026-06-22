@@ -20,8 +20,7 @@ Program
           Segment has_incoming=false
             OperatorExpr
               Atom
-                Path
-                  base:
-                    Name a
-                  names:
-                    TextName b
+                NavPath
+                  components:
+                    component Name a
+                    component Name b

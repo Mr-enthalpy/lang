@@ -663,9 +663,9 @@ CanonicalAtom ::=
     "_"
   | Name
   | Literal
-  | CanonicalPath
+  | CanonicalNavPath
 
-CanonicalPath ::= Name ("::" Name)*
+CanonicalNavPath ::= Name ("::" Name)*
 ```
 
 AST:
@@ -688,7 +688,7 @@ CanonicalSkeletonAst ::=
         role: CanonicalNameRole,
         span: Span
     }
-  | Path {
+  | NavPath {
         names: Vec<NameAst>,
         span: Span
     }
@@ -848,9 +848,8 @@ OperatorExprAst ::=
         args: Vec<OperatorExprAst>,
         span: Span
     }
-  | Path {
-        base: OperatorExprAst,
-        leaves: Vec<SelectorAst>,
+  | NavPath {
+        components: Vec<NavComponentAst>,
         span: Span
     }
   | MemberSugar {
@@ -870,13 +869,15 @@ Binary and prefix operator sugar belong to `OperatorExprAst`, not to
 `AtomAst`. Postfix operator suffixes compose with atom suffix parsing, but the
 resulting sugar is still represented at the operator-expression layer.
 Therefore, after a postfix operator, continuing suffixes such as `::`, `.`, and
-`..` are preserved by operator-level `Path`, `MemberSugar`, and
+`..` are preserved by operator-level `NavPath`, `MemberSugar`, and
 `DoubleDotSugar` nodes.
 
 These operator-level suffix nodes are raw AST preservation only. They do not
-perform lookup, lower to calls, or assign member semantics. Operator path
-leaves such as `t::+` and `std::int::+` are accepted only as final `::` leaves
-and remain unresolved raw syntax.
+perform lookup, lower to calls, or assign member semantics. Navigation order is
+inner-to-outer: the leftmost component is the innermost selected symbol, and the
+rightmost component is the outermost scope component. Operator names are valid
+only as innermost navigation components, such as `+::int::std`, unless a future
+design explicitly allows operator-named scopes.
 
 ```text
 a + b |> f
@@ -926,7 +927,7 @@ AtomAst ::=
   | Literal(LiteralAst)
   | Group(Box<ExprAst>)
   | Closure(ClosureAst)
-  | Path(...)
+  | NavPath(...)
   | MemberSugar(...)
   | DoubleDotSugar(...)
   | Error(...)
@@ -965,7 +966,7 @@ the same suffix loop.
 Suffixes:
 
 ```text
-:: Selector
+:: NavComponent
 . Selector
 .. Selector ArgPack
 PostfixOperator
@@ -978,9 +979,9 @@ Postfix unary operators participate in the same left-folding suffix loop as
 postfix operator does not terminate suffix parsing.
 
 Before the first postfix operator, suffix folding may produce atom-level
-`Path`, `MemberSugar`, or `DoubleDotSugar` nodes. After an operator-level value
+`NavPath`, `MemberSugar`, or `DoubleDotSugar` nodes. After an operator-level value
 exists, such as `obj!`, continued suffix folding is preserved with
-operator-level `Path`, `MemberSugar`, or `DoubleDotSugar` nodes inside
+operator-level `NavPath`, `MemberSugar`, or `DoubleDotSugar` nodes inside
 `OperatorExprAst`. This is an AST-shape preservation rule only; it does not
 perform lookup, lower suffixes to calls, or assign member semantics.
 
@@ -990,11 +991,22 @@ SelectorAst for this phase:
 SelectorAst ::=
     Text(NameAst)
   | Numeric(NumericNameAst)
-  | Operator(OperatorNameAst)
 ```
 
-`Operator(OperatorNameAst)` is valid only as a final path leaf after `::`.
-It is not valid after `.` or `..`.
+Navigation components for this phase:
+
+```text
+NavComponentAst ::=
+    Text(NameAst)
+  | Numeric(NumericNameAst)
+  | Operator(OperatorNameAst)
+  | Group(Box<ExprAst>)
+  | Error(ErrorAst)
+```
+
+`Operator(OperatorNameAst)` is valid only as the innermost navigation
+component. It is not valid after `.`, after `..`, or as an outer component
+after `::`.
 
 A numeric token (`IntLiteral`) in atom-base position produces a numeric literal
 atom (`IntLiteral`). The same token class in selector/name-leaf position
@@ -1010,22 +1022,25 @@ obj..1(args)
 1.x
 ```
 
-### 8.4 Path folding
+### 8.4 Navigation folding
 
 Input:
 
 ```text
-base :: a :: b
+x :: T :: std
 ```
 
 AST:
 
 ```text
-Path {
-    base,
-    leaves: [a, b]
+NavPath {
+    components: [x, T, std]
 }
 ```
+
+Navigation order is inner-to-outer. The leftmost component is the innermost
+selected symbol. The rightmost component is the outermost scope component. Raw
+AST preserves source-order navigation components and performs no lookup.
 
 Example:
 
@@ -1038,26 +1053,48 @@ is parsed as:
 ```text
 Segment[
   Atom(Name(a)),
-  Atom(Path(base=Name(b), leaves=[c]))
+  Atom(NavPath(components=[b, c]))
 ]
 ```
 
 not as:
 
 ```text
-Path(base = Segment[a, b], leaves=[c])
+NavPath(components=[Segment[a, b], c])
 ```
 
 ```text
-Path ::= PathHead "::" PathLeaf
-PathHead ::= PathSegment ("::" PathSegment)*
-PathSegment ::= Name | NumericName
-PathLeaf ::= Name | NumericName | OperatorName
+NavPath ::= NavComponent "::" NavOuterComponent ("::" NavOuterComponent)*
+
+NavComponent ::= Name | NumericName | OperatorName
+
+NavOuterComponent ::= Name | NumericName | Group
 ```
 
-Operator names may only be final path leaves. Valid shapes include `t::+`,
-`std::int::+`, and `std::bit::<<`. Invalid shapes include `+::x`,
-`t::+::x`, and `t::+::-`.
+Operator names may only be innermost navigation components. Valid shapes
+include `+::int::std` and `<<::bit::std`. Invalid shapes include `x::+`,
+`x::int::+`, and `+::x::+`.
+
+Parenthesized right-side scope expressions after `::` are allowed:
+
+```text
+xxx::(int Vec::std)
+```
+
+The grouped expression is stored as a grouped outer navigation component.
+Without parentheses, `::` consumes only one immediate valid navigation
+component:
+
+```text
+xxx::int Vec::std
+```
+
+is parsed as two segment elements:
+
+```text
+xxx::int
+Vec::std
+```
 
 ### 8.4a Operator sugar
 
@@ -1070,7 +1107,7 @@ OperatorExprAst ::=
         args: Vec<OperatorExprAst>,
         span: Span
     }
-  | Path { base: OperatorExprAst, leaves: Vec<SelectorAst>, span: Span }
+  | NavPath { components: Vec<NavComponentAst>, span: Span }
   | MemberSugar { object: OperatorExprAst, selector: SelectorAst, span: Span }
   | DoubleDotSugar {
         object: OperatorExprAst,
@@ -1082,7 +1119,7 @@ OperatorExprAst ::=
 
 Operator syntax is preserved as AST sugar at the `OperatorExprAst` layer. The
 parser must not lower it into ordinary calls in v0.1. The operator-level
-`Path`, `MemberSugar`, and `DoubleDotSugar` variants exist only so postfix
+`NavPath`, `MemberSugar`, and `DoubleDotSugar` variants exist only so postfix
 operator results can continue through suffix folding, for example
 `obj!.field`, `obj.field?`, and `obj..map(a)!`.
 
@@ -1735,7 +1772,7 @@ For the current full test count, see `spec/implementation-status-v0.1.md`.
 ```text
 let t: type = int Option Vec
 
-let val: std::int Vec::elements_type = expr
+let val: int::std elements_type::Vec = expr
 
 let ns1: namespace = expr
 
@@ -1770,11 +1807,11 @@ obj (
     (_ option::None) { ... }
 ) match
 
-let Vec === std::collections::Vector
+let Vec === Vector::collections::std
 
-let + === checked_int::+
+let + === +::checked_int
 
-let << === xxx_bit::<<
+let << === <<::xxx_bit
 
 let local === some_entity
 
@@ -1805,15 +1842,20 @@ AliasBinding ::= "let" AliasBinder "===" EntityRef
 
 AliasBinder ::= Name | OperatorName
 
-EntityRef ::= EntityPath
+EntityRef ::= EntityNavigation
 
-EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-             | EntityPathLeaf
+EntityNavigation ::= EntityComponent ("::" EntityOuterComponent)*
 
-EntityPathSegment ::= Name
+EntityComponent ::= Name | OperatorName
 
-EntityPathLeaf ::= Name | OperatorName
+EntityOuterComponent ::= Name
 ```
+
+EntityRef navigation order is inner-to-outer. The leftmost component is the
+innermost selected symbol, and the rightmost component is the outermost scope
+component. Raw AST preserves source-order navigation components and performs no
+lookup. Operator names are valid only as innermost entity-reference components
+unless a future design explicitly allows operator-named scopes.
 
 `===` is a structural delimiter token (`Symbol::TripleEqual`), not an
 expression operator. It is not available as `OperatorName`.
@@ -1851,20 +1893,9 @@ AliasBinderAst ::=
   | Error(ErrorAst)
 
 EntityRefAst {
-    path: Vec<EntityPathSegmentAst>,
-    leaf: EntityPathLeafAst,
+    components: Vec<NavComponentAst>,
     span: Span
 }
-
-EntityPathSegmentAst {
-    name: NameAst,
-    span: Span
-}
-
-EntityPathLeafAst ::=
-    Name(NameAst)
-  | Operator(OperatorNameAst)
-  | Error(ErrorAst)
 ```
 
 ### 16.5 EntityRef parsing
@@ -1872,8 +1903,9 @@ EntityPathLeafAst ::=
 EntityRef is parsed only inside alias-let RHS. It is not a general expression
 parser mode.
 
-Operator names are valid only as final `EntityPathLeaf`. If an operator is
-followed by `::`, the parser emits `InvalidEntityRef`.
+Operator names are valid only as the innermost entity-reference navigation
+component. If an operator appears as an outer component after `::`, the parser
+emits `InvalidEntityRef`.
 
 After completing the entity reference, the parser checks for residual
 expression tokens. If the current position is not a form boundary (EOF,
@@ -1906,10 +1938,10 @@ The parser does not:
 Valid:
 
 ```text
-let Vec === std::collections::Vector
-let map === std::iter::map
-let + === checked_int::+
-let << === xxx_bit::<<
+let Vec === Vector::collections::std
+let map === map::iter::std
+let + === +::checked_int
+let << === <<::xxx_bit
 let local === some_entity
 let + === +
 ```

@@ -22,7 +22,7 @@ pub enum DiagnosticCode {
     InvalidClosureHead,
     InvalidOperatorExpression,
     ChainedNonAssociativeOperator,
-    OperatorPathLeafNotFinal,
+    InvalidNavComponent,
     TopLevelComma,
     UnusedClosureAst,
     ExpectedAliasTarget,

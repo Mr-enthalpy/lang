@@ -1,6 +1,6 @@
 use crate::{
-    token::operator_spelling_in_expr_context, AtomAst, AtomKind, DiagnosticCode, NameAst,
-    NumericNameAst, OperatorNameAst, SelectorAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, DiagnosticCode, ErrorAst, NameAst, NavComponentAst, NumericNameAst,
+    SelectorAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -30,23 +30,14 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             break;
         }
         if parser.cursor.at_symbol(Symbol::ColonColon) {
-            let coloncolon = parser.cursor.bump_non_trivia();
-            if path_ends_with_operator_leaf(&atom) {
-                parser.error(
-                    DiagnosticCode::OperatorPathLeafNotFinal,
-                    "operator path leaf cannot be followed by `::`",
-                    coloncolon.span,
-                );
-                let _ = parse_path_selector(parser);
-                break;
-            }
-            if let Some(selector) = parse_path_selector(parser) {
-                atom = extend_or_create_path(atom, selector);
+            parser.cursor.bump_non_trivia();
+            if let Some(component) = parse_nav_outer_component(parser) {
+                atom = extend_or_create_nav_path(parser, atom, component);
             } else {
                 let span = parser.cursor.current_span();
                 parser.error(
                     DiagnosticCode::ExpectedName,
-                    "expected name after `::`",
+                    "expected navigation component after `::`",
                     span,
                 );
                 break;
@@ -175,56 +166,111 @@ pub fn parse_member_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
     }
 }
 
-pub fn parse_path_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
-    if let Some(selector) = parse_member_selector(parser) {
-        return Some(selector);
-    }
-
+pub fn parse_nav_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
     let token = parser.cursor.peek_non_trivia();
-    let spelling = operator_spelling_in_expr_context(&token.kind)?;
-    let token = parser.cursor.bump_non_trivia();
-    Some(SelectorAst::Operator(OperatorNameAst {
-        spelling: spelling.as_source_text().to_string(),
-        span: token.span,
-    }))
+    match token.kind {
+        TokenKind::Name => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Text(NameAst {
+                text: token.text.clone(),
+                span: token.span,
+            }))
+        }
+        TokenKind::IntLiteral => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Numeric(NumericNameAst {
+                text: token.text.clone(),
+                span: token.span,
+            }))
+        }
+        TokenKind::Symbol(Symbol::LParen) => parse_group(parser).map(|group| match group.kind {
+            AtomKind::Group(expr) => NavComponentAst::Group(expr),
+            AtomKind::Error(error) => NavComponentAst::Error(error),
+            _ => NavComponentAst::Error(ErrorAst {
+                message: "invalid navigation group".to_string(),
+                span: group.span,
+            }),
+        }),
+        _ if token.kind.is_operator_spelling() => {
+            let operator = parser.cursor.bump_non_trivia();
+            parser.error(
+                DiagnosticCode::InvalidNavComponent,
+                "operator cannot be an outer navigation component",
+                operator.span,
+            );
+            Some(NavComponentAst::Error(parser.error_ast(
+                "operator cannot be an outer navigation component",
+                operator.span,
+            )))
+        }
+        _ => None,
+    }
 }
 
 pub fn selector_span(selector: &SelectorAst) -> Span {
     match selector {
         SelectorAst::Text(name) => name.span,
         SelectorAst::Numeric(num) => num.span,
-        SelectorAst::Operator(operator) => operator.span,
     }
 }
 
-pub fn selector_is_operator(selector: &SelectorAst) -> bool {
-    matches!(selector, SelectorAst::Operator(_))
-}
-
-fn path_ends_with_operator_leaf(atom: &AtomAst) -> bool {
-    match &atom.kind {
-        AtomKind::Path { names, .. } => names.last().is_some_and(selector_is_operator),
-        _ => false,
+fn nav_component_span(component: &NavComponentAst) -> Span {
+    match component {
+        NavComponentAst::Text(name) => name.span,
+        NavComponentAst::Numeric(num) => num.span,
+        NavComponentAst::Operator(operator) => operator.span,
+        NavComponentAst::Group(expr) => expr.span,
+        NavComponentAst::Error(error) => error.span,
     }
 }
 
-fn extend_or_create_path(atom: AtomAst, selector: SelectorAst) -> AtomAst {
-    let sel_span = selector_span(&selector);
+pub fn nav_component_is_operator(component: &NavComponentAst) -> bool {
+    matches!(component, NavComponentAst::Operator(_))
+}
+
+fn atom_to_nav_component(parser: &Parser<'_>, atom: AtomAst) -> NavComponentAst {
     match atom.kind {
-        AtomKind::Path { base, mut names } => {
-            let span = atom.span.join(sel_span);
-            names.push(selector);
+        AtomKind::Name(name) => NavComponentAst::Text(name),
+        AtomKind::IntLiteral(text) => NavComponentAst::Numeric(NumericNameAst {
+            text,
+            span: atom.span,
+        }),
+        AtomKind::Group(expr) => NavComponentAst::Group(expr),
+        AtomKind::Error(error) => NavComponentAst::Error(error),
+        _ => NavComponentAst::Error(parser.error_ast("invalid navigation component", atom.span)),
+    }
+}
+
+pub fn extend_nav_components(
+    span: Span,
+    mut components: Vec<NavComponentAst>,
+    component: NavComponentAst,
+) -> (Vec<NavComponentAst>, Span) {
+    let component_span = nav_component_span(&component);
+    components.push(component);
+    (components, span.join(component_span))
+}
+
+fn extend_or_create_nav_path(
+    parser: &Parser<'_>,
+    atom: AtomAst,
+    component: NavComponentAst,
+) -> AtomAst {
+    let component_span = nav_component_span(&component);
+    match atom.kind {
+        AtomKind::NavPath { mut components } => {
+            let span = atom.span.join(component_span);
+            components.push(component);
             AtomAst {
-                kind: AtomKind::Path { base, names },
+                kind: AtomKind::NavPath { components },
                 span,
             }
         }
         _ => {
-            let span = atom.span.join(sel_span);
+            let span = atom.span.join(component_span);
             AtomAst {
-                kind: AtomKind::Path {
-                    base: Box::new(atom),
-                    names: vec![selector],
+                kind: AtomKind::NavPath {
+                    components: vec![atom_to_nav_component(parser, atom), component],
                 },
                 span,
             }

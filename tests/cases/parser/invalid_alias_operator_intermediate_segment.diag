@@ -1,1 +1,1 @@
-error InvalidEntityRef "operator cannot appear as intermediate entity path segment" @ 1:15 [14..16]
+error InvalidEntityRef "operator cannot be an outer navigation component" @ 1:14 [13..14]

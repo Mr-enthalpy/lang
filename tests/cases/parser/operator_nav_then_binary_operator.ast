@@ -6,12 +6,10 @@ Program
           OperatorExpr
             OperatorSugar fixity=Binary operator="+"
               lhs:
-                Atom
-                  Path
-                    base:
-                      Name a
-                    names:
-                      OperatorName +
+                NavPath
+                  components:
+                    component Operator +
+                    component Name a
               rhs:
                 Atom
                   Name b

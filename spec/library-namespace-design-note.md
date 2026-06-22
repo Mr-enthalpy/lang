@@ -13,7 +13,7 @@ There is no source-level syntax such as:
 
 ```text
 import mylib
-use mylib::math
+use math::mylib
 include "x.lang"
 mod ns { ... }
 ```
@@ -61,8 +61,8 @@ mylib/
         impl.lang
 ```
 
-may correspond to the namespace paths `mylib::math::vector` and
-`mylib::math::matrix`, but this mapping is performed by the build layer,
+may correspond to the namespace navigations `vector::math::mylib` and
+`matrix::math::mylib`, but this mapping is performed by the build layer,
 not the source language.
 
 For example, both implementation files:
@@ -75,14 +75,14 @@ src/math/vector/ops.lang
 contribute to:
 
 ```text
-mylib::math::vector
+vector::math::mylib
 ```
 
 They do not create:
 
 ```text
-mylib::math::vector::impl
-mylib::math::vector::ops
+impl::vector::math::mylib
+ops::vector::math::mylib
 ```
 
 Directory paths provide the physical namespace skeleton. Implementation

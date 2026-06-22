@@ -1,13 +1,11 @@
 use crate::{
-    token::operator_spelling_in_expr_context, DiagnosticCode, OperatorExprAst, OperatorExprKind,
-    OperatorFixity, OperatorNameAst, OperatorSpelling, SelectorAst, Span, Symbol, TokenKind,
+    token::operator_spelling_in_expr_context, DiagnosticCode, NavComponentAst, OperatorExprAst,
+    OperatorExprKind, OperatorFixity, OperatorNameAst, OperatorSpelling, Span, Symbol, TokenKind,
 };
 
 use super::{
     argpack::parse_argpack,
-    atom::{
-        parse_atom, parse_member_selector, parse_path_selector, selector_is_operator, selector_span,
-    },
+    atom::{parse_atom, parse_member_selector, parse_nav_outer_component, selector_span},
     form::Parser,
 };
 
@@ -38,6 +36,13 @@ fn parse_binary_expr(
         let Some(current) = current_operator(parser) else {
             break;
         };
+
+        if matches!(
+            parser.cursor.peek_next_non_trivia().kind,
+            TokenKind::Symbol(Symbol::ColonColon)
+        ) {
+            break;
+        }
 
         let Some(binary) = binary_info(current.spelling) else {
             break;
@@ -135,19 +140,7 @@ fn parse_prefix_expr(
                 parser.cursor.peek_next_non_trivia().kind,
                 TokenKind::Symbol(Symbol::ColonColon)
             ) {
-                let operator = bump_operator(parser, current);
-                parser.error(
-                    DiagnosticCode::OperatorPathLeafNotFinal,
-                    "operator path leaf must follow a path head and be final",
-                    operator.span,
-                );
-                parser.cursor.consume_symbol(Symbol::ColonColon);
-                let _ = parse_path_selector(parser);
-                return Some(error_operator_expr(
-                    parser,
-                    "operator path leaf cannot start a path",
-                    operator.span,
-                ));
+                return Some(parse_operator_nav_path(parser, current));
             }
 
             let operator = bump_operator(parser, current);
@@ -208,23 +201,14 @@ fn parse_postfix_expr(
         }
 
         if parser.cursor.at_symbol(Symbol::ColonColon) {
-            let coloncolon = parser.cursor.bump_non_trivia();
-            if operator_path_ends_with_operator_leaf(&expr) {
-                parser.error(
-                    DiagnosticCode::OperatorPathLeafNotFinal,
-                    "operator path leaf cannot be followed by `::`",
-                    coloncolon.span,
-                );
-                let _ = parse_path_selector(parser);
-                break;
-            }
-            if let Some(selector) = parse_path_selector(parser) {
-                expr = extend_or_create_operator_path(expr, selector);
+            parser.cursor.bump_non_trivia();
+            if let Some(component) = parse_nav_outer_component(parser) {
+                expr = extend_operator_nav_path(expr, component);
             } else {
                 let span = parser.cursor.current_span();
                 parser.error(
                     DiagnosticCode::ExpectedName,
-                    "expected name after `::`",
+                    "expected navigation component after `::`",
                     span,
                 );
                 break;
@@ -296,39 +280,77 @@ fn consume_invalid_operator_selector(parser: &mut Parser<'_>) {
     }
 }
 
-fn extend_or_create_operator_path(expr: OperatorExprAst, selector: SelectorAst) -> OperatorExprAst {
-    let selector_end = selector_span(&selector);
+fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) -> OperatorExprAst {
+    let operator = bump_operator(parser, current);
+    let mut components = vec![NavComponentAst::Operator(OperatorNameAst {
+        spelling: operator.spelling.clone(),
+        span: operator.span,
+    })];
+    let mut span = operator.span;
+
+    while parser.cursor.consume_symbol(Symbol::ColonColon).is_some() {
+        if let Some(component) = parse_nav_outer_component(parser) {
+            let component_span = nav_component_span(&component);
+            span = span.join(component_span);
+            components.push(component);
+        } else {
+            let error_span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::ExpectedName,
+                "expected navigation component after `::`",
+                error_span,
+            );
+            span = span.join(error_span);
+            break;
+        }
+    }
+
+    OperatorExprAst {
+        kind: OperatorExprKind::NavPath { components, span },
+        span,
+    }
+}
+
+fn nav_component_span(component: &NavComponentAst) -> Span {
+    match component {
+        NavComponentAst::Text(name) => name.span,
+        NavComponentAst::Numeric(num) => num.span,
+        NavComponentAst::Operator(operator) => operator.span,
+        NavComponentAst::Group(expr) => expr.span,
+        NavComponentAst::Error(error) => error.span,
+    }
+}
+
+fn extend_operator_nav_path(expr: OperatorExprAst, component: NavComponentAst) -> OperatorExprAst {
+    let component_span = nav_component_span(&component);
     match expr.kind {
-        OperatorExprKind::Path {
-            base,
-            mut names,
+        OperatorExprKind::NavPath {
+            mut components,
             span,
         } => {
-            let span = span.join(selector_end);
-            names.push(selector);
+            let span = span.join(component_span);
+            components.push(component);
             OperatorExprAst {
-                kind: OperatorExprKind::Path { base, names, span },
+                kind: OperatorExprKind::NavPath { components, span },
                 span,
             }
         }
         _ => {
-            let span = expr.span.join(selector_end);
+            let span = expr.span.join(component_span);
             OperatorExprAst {
-                kind: OperatorExprKind::Path {
-                    base: Box::new(expr),
-                    names: vec![selector],
+                kind: OperatorExprKind::NavPath {
+                    components: vec![
+                        NavComponentAst::Error(crate::ErrorAst {
+                            message: "invalid navigation component".to_string(),
+                            span: expr.span,
+                        }),
+                        component,
+                    ],
                     span,
                 },
                 span,
             }
         }
-    }
-}
-
-fn operator_path_ends_with_operator_leaf(expr: &OperatorExprAst) -> bool {
-    match &expr.kind {
-        OperatorExprKind::Path { names, .. } => names.last().is_some_and(selector_is_operator),
-        _ => false,
     }
 }
 

@@ -7,13 +7,11 @@ Program
             Atom
               Name value
           OperatorExpr
-            Atom
-              Path
-                base:
-                  Name std
-                names:
-                  TextName int
-                  OperatorName +
+            NavPath
+              components:
+                component Operator +
+                component Name int
+                component Name std
           OperatorExpr
             Atom
               Name next

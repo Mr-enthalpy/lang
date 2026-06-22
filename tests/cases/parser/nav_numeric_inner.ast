@@ -1,0 +1,11 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              NavPath
+                components:
+                  component Numeric 1
+                  component Name uint8

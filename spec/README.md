@@ -42,8 +42,11 @@ frontend. Each document has a defined authority level.
 If two spec documents conflict, `ast-construction-v0.1.md` takes priority for
 current parser behavior. `operator-design.md` defines operator syntax behavior
 and future lookup boundaries. Operator expression parsing is implemented as raw
-AST sugar, and operator names are preserved in binder/final-path-leaf
-positions. Alias binding (`let binder === EntityRef`) is implemented as raw
+AST sugar, and operator names are preserved in binder and innermost
+navigation-component positions. Navigation order is inner-to-outer: the
+leftmost component is the innermost selected symbol and the rightmost component
+is the outermost scope component. Raw AST preserves source-order navigation
+components and performs no lookup. Alias binding (`let binder === EntityRef`) is implemented as raw
 AST preservation; alias semantics, target resolution, operator identity
 validation, and lookup remain future work. `entity-ref-design.md` defines the
 general `EntityRef` design; the alias-RHS subset is implemented.

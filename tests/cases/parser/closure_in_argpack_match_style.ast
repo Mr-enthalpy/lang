@@ -31,7 +31,7 @@ Program
                                       CanonicalSegment
                                         elements:
                                           CanonicalName role=Hole name=val
-                                          CanonicalPath
+                                          CanonicalNavPath
                                             names:
                                               option
                                               Sum
@@ -63,7 +63,7 @@ Program
                                       CanonicalSegment
                                         elements:
                                           CanonicalWildcard _
-                                          CanonicalPath
+                                          CanonicalNavPath
                                             names:
                                               option
                                               None

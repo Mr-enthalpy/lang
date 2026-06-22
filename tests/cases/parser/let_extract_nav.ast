@@ -14,10 +14,10 @@ Program
               CanonicalArgPack
                 elements:
                   CanonicalName role=Hole name=x
-                  CanonicalPath
+                  CanonicalNavPath
                     names:
-                      List
                       Cons
+                      List
               CanonicalName role=NodeName name=Node
     with_clause:
       None

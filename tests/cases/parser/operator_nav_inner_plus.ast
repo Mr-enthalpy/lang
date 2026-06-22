@@ -1,0 +1,11 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            NavPath
+              components:
+                component Operator +
+                component Name int
+                component Name std

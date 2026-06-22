@@ -1,9 +1,8 @@
 use crate::{
     AliasBinderAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst, DeclAnnotationAst,
-    Diagnostic, DiagnosticCode, EntityPathLeafAst, EntityPathSegmentAst, EntityRefAst, ExprAst,
-    ExprKind, FormAst, LetAliasAst, LetAst, LetBinderAst, OperatorExprKind, PipeExprAst,
-    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
-    TypeObjectAnnotationAst, WithClauseKind,
+    Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
+    LetBinderAst, OperatorExprKind, PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol,
+    Token, TokenKind, TriviaKind, TypeObjectAnnotationAst, WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -123,31 +122,9 @@ fn dump_alias_binder(output: &mut String, binder: &AliasBinderAst, indent: usize
 
 fn dump_entity_ref(output: &mut String, entity_ref: &EntityRefAst, indent: usize) {
     line(output, indent, "EntityRef");
-    for segment in &entity_ref.path {
-        dump_entity_path_segment(output, segment, indent + 1);
-    }
-    dump_entity_path_leaf(output, &entity_ref.leaf, indent + 1);
-}
-
-fn dump_entity_path_segment(output: &mut String, segment: &EntityPathSegmentAst, indent: usize) {
-    line(output, indent, &format!("segment {}", segment.name.text));
-}
-
-fn dump_entity_path_leaf(output: &mut String, leaf: &EntityPathLeafAst, indent: usize) {
-    match leaf {
-        EntityPathLeafAst::Name(name) => line(output, indent, &format!("leaf Name {}", name.text)),
-        EntityPathLeafAst::Operator(operator) => line(
-            output,
-            indent,
-            &format!("leaf Operator {}", operator.spelling),
-        ),
-        EntityPathLeafAst::Error(error) => {
-            line(
-                output,
-                indent,
-                &format!("leaf Error \"{}\"", escape_text(&error.message)),
-            );
-        }
+    line(output, indent + 1, "components:");
+    for component in &entity_ref.components {
+        dump_nav_component(output, component, indent + 2);
     }
 }
 
@@ -245,8 +222,8 @@ fn dump_canonical_skeleton(
                 ),
             );
         }
-        crate::CanonicalSkeletonAst::Path { names, .. } => {
-            line(output, indent, "CanonicalPath");
+        crate::CanonicalSkeletonAst::NavPath { names, .. } => {
+            line(output, indent, "CanonicalNavPath");
             line(output, indent + 1, "names:");
             for name in names {
                 line(output, indent + 2, &name.text);
@@ -400,13 +377,11 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
                 }
             }
         }
-        OperatorExprKind::Path { base, names, .. } => {
-            line(output, indent, "Path");
-            line(output, indent + 1, "base:");
-            dump_operator_expr(output, base, indent + 2);
-            line(output, indent + 1, "names:");
-            for selector in names {
-                dump_selector(output, selector, indent + 2);
+        OperatorExprKind::NavPath { components, .. } => {
+            line(output, indent, "NavPath");
+            line(output, indent + 1, "components:");
+            for component in components {
+                dump_nav_component(output, component, indent + 2);
             }
         }
         OperatorExprKind::MemberSugar {
@@ -477,13 +452,11 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent, "Group");
             dump_expr(output, expr, indent + 1);
         }
-        AtomKind::Path { base, names } => {
-            line(output, indent, "Path");
-            line(output, indent + 1, "base:");
-            dump_atom(output, base, indent + 2);
-            line(output, indent + 1, "names:");
-            for selector in names {
-                dump_selector(output, selector, indent + 2);
+        AtomKind::NavPath { components } => {
+            line(output, indent, "NavPath");
+            line(output, indent + 1, "components:");
+            for component in components {
+                dump_nav_component(output, component, indent + 2);
             }
         }
         AtomKind::MemberSugar { object, selector } => {
@@ -523,10 +496,30 @@ fn dump_selector(output: &mut String, selector: &crate::SelectorAst, indent: usi
         crate::SelectorAst::Numeric(num) => {
             line(output, indent, &format!("NumericName {}", num.text))
         }
-        crate::SelectorAst::Operator(operator) => line(
+    }
+}
+
+fn dump_nav_component(output: &mut String, component: &crate::NavComponentAst, indent: usize) {
+    match component {
+        crate::NavComponentAst::Text(name) => {
+            line(output, indent, &format!("component Name {}", name.text))
+        }
+        crate::NavComponentAst::Numeric(num) => {
+            line(output, indent, &format!("component Numeric {}", num.text))
+        }
+        crate::NavComponentAst::Operator(operator) => line(
             output,
             indent,
-            &format!("OperatorName {}", operator.spelling),
+            &format!("component Operator {}", operator.spelling),
+        ),
+        crate::NavComponentAst::Group(expr) => {
+            line(output, indent, "component Group");
+            dump_expr(output, expr, indent + 1);
+        }
+        crate::NavComponentAst::Error(error) => line(
+            output,
+            indent,
+            &format!("component Error \"{}\"", escape_text(&error.message)),
         ),
     }
 }
@@ -750,7 +743,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidClosureHead => "InvalidClosureHead",
         DiagnosticCode::InvalidOperatorExpression => "InvalidOperatorExpression",
         DiagnosticCode::ChainedNonAssociativeOperator => "ChainedNonAssociativeOperator",
-        DiagnosticCode::OperatorPathLeafNotFinal => "OperatorPathLeafNotFinal",
+        DiagnosticCode::InvalidNavComponent => "InvalidNavComponent",
         DiagnosticCode::TopLevelComma => "TopLevelComma",
         DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
         DiagnosticCode::ExpectedAliasTarget => "ExpectedAliasTarget",

@@ -4,5 +4,7 @@ Program
       Name x
     target:
       EntityRef
-        segment a
-        leaf Error "operator path leaf not final"
+        components:
+          component Name a
+          component Error "operator cannot be an outer navigation component"
+          component Name b

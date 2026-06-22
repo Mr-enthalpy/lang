@@ -24,7 +24,8 @@ spec/open-questions.md (known gaps)
 ## Scope
 
 The v0.1 Raw AST Frontend was completed as an initial Raw AST baseline.
-The Raw AST contract has been reopened for a breaking guard/with/brace correction before v0.3.
+The Raw AST contract has been reopened for breaking guard/with/brace and
+inner-to-outer navigation corrections before v0.3.
 
 The v0.1 output is:
 
@@ -171,7 +172,7 @@ that word a language construct.
 Operator spellings are syntax-level operator names. They are not keywords and
 do not imply built-in arithmetic, comparison, mutation, assignment, lookup, or
 ADL. The parser preserves expression-level operator syntax as raw AST sugar
-and preserves operator names in binder/final-path-leaf positions. Operator
+and preserves operator names in binder and innermost navigation-component positions. Operator
 lookup, lowering, and semantic validation remain future work unless explicitly
 assigned.
 
@@ -324,9 +325,12 @@ AST.
 ### No library/import/export/package syntax
 
 v0.1 has no library, import, export, module, or package syntax. The parser
-only preserves raw namespace path syntax such as `std::Vec`,
-`mylib::math::vector::Vec3`, and `((int)std::Vec)::ns1` where expressible by
-raw AST rules.
+only preserves raw inner-to-outer navigation syntax such as `Vec::std`,
+`Vec3::vector::math::mylib`, and `ns1::(int Vec::std)` where expressible by
+raw AST rules. Navigation order is inner-to-outer: the leftmost component is
+the innermost selected symbol, and the rightmost component is the outermost
+scope component. Raw AST preserves source-order navigation components and
+performs no lookup.
 
 Do not create AST nodes such as `ImportDecl`, `UseDecl`, `IncludeDecl`,
 `ModuleDecl`, `LibraryDecl`, `PackageDecl`, or `ExportDecl`.
@@ -423,6 +427,15 @@ Do:
 ## AST policy
 
 AST must preserve syntax rather than interpret semantics.
+
+Do not reintroduce old outer-to-inner path terminology or AST shape:
+
+* Do not reintroduce the removed base-plus-name-list navigation AST shape.
+* Do not reintroduce the removed entity path segment/leaf AST types.
+* Do not reintroduce the removed diagnostic for non-innermost operator navigation.
+* Do not describe operators as outer or terminal path components.
+* Do not parse operator names as outer navigation components unless a future
+  explicit design allows operator-named scopes.
 
 For example:
 

@@ -3,8 +3,9 @@
 **Status:**
 - **AliasRhsEntityRef**: implemented in Phase 4.4 as raw AST preservation
   inside `let binder === EntityRef`. The parser produces `EntityRefAst`
-  with path segments and a leaf. EntityRef parsing is available only in
-  alias-let RHS position; it is not a general expression parser mode.
+  with source-order inner-to-outer navigation components. EntityRef parsing is
+  available only in alias-let RHS position; it is not a general expression
+  parser mode.
 - **GeneralEntityRef**: future design. Standalone `EntityRef` parsing in
   arbitrary strong contexts is not yet implemented.
 
@@ -33,51 +34,50 @@ alias binding design documentation that uses `EntityRef` on the RHS.
 ## Provisional Grammar
 
 ```text
-EntityRef ::= EntityPath
+EntityRef ::= EntityNavigation
 
-EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-             | EntityPathLeaf
+EntityNavigation ::= EntityComponent ("::" EntityOuterComponent)*
 
-EntityPathSegment ::= Name
+EntityComponent ::= Name | OperatorName
 
-EntityPathLeaf ::= Name | OperatorName
+EntityOuterComponent ::= Name
 ```
 
-The distinction between `EntityPathSegment` and `EntityPathLeaf` is
-intentional:
-
-- intermediate `EntityPathSegment` entries must be text names;
-- the final `EntityPathLeaf` may be a text name or an operator name.
+Navigation order is inner-to-outer. The leftmost component is the innermost
+selected symbol, and the rightmost component is the outermost scope component.
+Raw AST preserves source-order navigation components and performs no lookup.
+Operator names may only be innermost entity-reference components unless a
+future design explicitly allows operator-named scopes.
 
 Valid future design examples:
 
 ```text
-std::int::+
-checked_int::+
-xxx_bit::<<
-some_library::some_entity
++::int::std
++::checked_int
+<<::xxx_bit
+some_entity::some_library
 some_entity
 ```
 
 Invalid future design examples:
 
 ```text
-+::x
-std::+::x
-std::+::-
-<<::impl
+x::+
+x::int::+
++::x::+
+impl::<<
 ```
 
-Operator names may be final referred entities. They are not namespace-like
-intermediate path segments.
+Operator names may be innermost referred entities. They are not outer scope
+components.
 
-## Relationship To Expression Paths
+## Relationship To Expression Navigation
 
-`EntityRef` is related to ordinary expression path syntax, but it is a distinct
+`EntityRef` is related to ordinary expression navigation syntax, but it is a distinct
 future syntax form.
 
-Expression paths appear inside normal expression parsing and produce ordinary
-expression AST. They remain subject to the current `PipeExpr`, segment,
+Expression navigation appears inside normal expression parsing and produces
+ordinary expression AST. It remains subject to the current `PipeExpr`, segment,
 operator-expression, atom, and suffix rules.
 
 `EntityRef` appears only inside future strong contexts that explicitly require a
@@ -88,18 +88,18 @@ complete) is:
 let binder === EntityRef
 ```
 
-The parser must not globally reinterpret ordinary paths as entity references.
+The parser must not globally reinterpret ordinary navigation as entity references.
 Outside a future `EntityRef` context, existing expression parsing remains
 unchanged.
 
 ## Relationship To Operator Names
 
-Parser phase 4.1 introduced operator names in binder positions and final path
-leaf positions. `EntityRef` reuses only the final-leaf part of that surface
-capability:
+Parser phase 4.1 introduced operator names in binder positions and innermost
+navigation-component positions. `EntityRef` reuses only that innermost
+component capability:
 
 ```text
-EntityPathLeaf ::= Name | OperatorName
+EntityComponent ::= Name | OperatorName
 ```
 
 This does not implement operator lookup. It does not check that the operator
@@ -120,20 +120,9 @@ The alias-let RHS parser produces the following raw AST (implemented in
 
 ```text
 EntityRefAst {
-    path: Vec<EntityPathSegmentAst>,
-    leaf: EntityPathLeafAst,
+    components: Vec<NavComponentAst>,
     span: Span
 }
-
-EntityPathSegmentAst {
-    name: NameAst,
-    span: Span
-}
-
-EntityPathLeafAst =
-    Name(NameAst)
-  | Operator(OperatorNameAst)
-  | Error(ErrorAst)
 ```
 
 ### Future general EntityRef contexts

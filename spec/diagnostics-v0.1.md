@@ -293,16 +293,16 @@ resolution, assignment, mutation, or type checking.
   and continue to the segment or form boundary.
 - **AST effect**: Operator sugar that was already parsed remains preserved.
 
-#### `OperatorPathLeafNotFinal`
+#### `InvalidNavComponent`
 
-- **Trigger**: An operator name appears as a path segment that is not the final
-  leaf, such as `std::+::int`, `a::+::b`, or `+::int`.
-- **Primary span**: The `::` following an operator leaf, or the leading
-  operator token when the path starts with an operator.
-- **Recovery**: Preserve the path through the operator leaf when possible,
-  consume the local malformed continuation, and continue parsing the form.
-- **AST effect**: No lookup or resolution is performed. Any preserved path
-  remains raw syntax.
+- **Trigger**: An operator name appears as an outer navigation component after
+  `::`, such as `x::+`, `x::int::+`, or `+::x::+`.
+- **Primary span**: The operator token used as an invalid outer navigation
+  component.
+- **Recovery**: Preserve the navigation path with a local error component when
+  possible, consume the malformed component, and continue parsing the form.
+- **AST effect**: No lookup or resolution is performed. Any preserved
+  navigation remains raw syntax.
 
 ### 3.5 Alias-parser diagnostics (Phase 4.4)
 

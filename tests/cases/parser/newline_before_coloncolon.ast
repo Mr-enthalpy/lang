@@ -5,8 +5,7 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Path
-                base:
-                  Name obj
-                names:
-                  TextName field
+              NavPath
+                components:
+                  component Name obj
+                  component Name field

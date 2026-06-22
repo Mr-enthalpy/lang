@@ -1,0 +1,14 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name a
+          OperatorExpr
+            Atom
+              NavPath
+                components:
+                  component Name b
+                  component Name c

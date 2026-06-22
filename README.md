@@ -3,7 +3,8 @@
 `lang` is an experimental programming language frontend.
 
 **Current status:** The v0.1 Raw AST Frontend was completed as an initial Raw AST baseline.
-The Raw AST contract has been reopened for a breaking guard/with/brace correction before v0.3.
+The Raw AST contract has been reopened for breaking guard/with/brace and
+inner-to-outer navigation corrections before v0.3.
 It lexes, parses, builds raw AST, emits diagnostics, and has golden tests. It does not
 perform semantic analysis.
 
@@ -54,7 +55,7 @@ perform semantic analysis.
 
 ## Two repository tracks
 
-1. **Frontend track** (active): Raw AST frontend (v0.1) completed; Normalized AST specification (v0.3) current.
+1. **Frontend track** (active): Raw AST frontend (v0.1) completed; Raw AST correction gate before Normalized AST specification (v0.3) current.
    Delivers `source text -> tokens -> Raw AST -> diagnostics`.
 
 2. **Build/package/namespace assembly track** (documentation only for now):
@@ -96,6 +97,24 @@ Examples:
 - `with` inside let bindings, only as `with { ... }`
 
 Outside their context, they remain ordinary names.
+
+### 2a. Inner-to-outer navigation
+
+Navigation order is inner-to-outer. The leftmost component is the innermost
+selected symbol, and the rightmost component is the outermost scope component.
+Raw AST preserves source-order navigation components and performs no lookup.
+
+Examples:
+
+```text
+x::T::std
++::int::std
+xxx::(int Vec::std)
+```
+
+Parenthesized right-side scope expressions after `::` are preserved as grouped
+navigation components. Without parentheses, `::` consumes only one immediate
+valid navigation component.
 
 ### 3. No traditional call syntax
 

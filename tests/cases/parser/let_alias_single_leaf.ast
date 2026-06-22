@@ -4,4 +4,5 @@ Program
       Name local
     target:
       EntityRef
-        leaf Name some_entity
+        components:
+          component Name some_entity
