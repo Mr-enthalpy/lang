@@ -13,6 +13,7 @@ diagnostics.
 
 Follow this workflow for every change:
 
+0. **Gate new tasks against existing PR branches**
 1. **Read the specs**
 2. **Decide what to implement**
 3. **Edit code + update specs together**
@@ -39,6 +40,35 @@ Follow this workflow for every change:
 | 11 | `spec/glossary.md` | Terminology reference |
 | 12 | `spec/roadmap.md` | Scope boundary check |
 | 13 | `spec/open-questions.md` | Before touching uncertain areas |
+
+## 1a. New-task PR branch gate
+
+Before starting a new task that is not correction feedback for the current PR,
+check whether the current branch belongs to an already-open or already-merged
+PR.
+
+Preferred local helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .git/local/pr-task-gate.ps1
+```
+
+The helper lives under `.git/local/` so it is local-only and must not be
+committed or uploaded.
+
+Rules:
+
+- If the current branch is the remote default branch, fast-forward it from
+  origin before starting the new task.
+- If the current branch's PR is merged, switch to the default branch,
+  fast-forward it from origin, delete the local PR branch, and delete the
+  remote PR branch if it still exists.
+- If the current branch's PR is not merged, refuse the unrelated new task and
+  ask the user to either keep working on that PR or merge/close it first.
+- If branch or PR state is ambiguous, stop and ask for clarification.
+
+Do not run this gate when the user is explicitly requesting corrections to the
+current PR.
 
 ## 2. Core invariant
 
@@ -193,7 +223,21 @@ cargo check --workspace
 cargo test
 ```
 
-## 10. Spec update rules
+## 10. PR creation
+
+When publishing local changes, prefer `gh` over connector-based PR creation.
+
+Default flow:
+
+1. Run `gh --version` and `gh auth status`.
+2. Inspect `git status -sb` and the diff before staging.
+3. Create a task branch if currently on the default branch.
+4. Commit intentionally, push with upstream tracking, then create a draft PR
+   with `gh pr create --draft`.
+5. Use connector PR creation only when the user explicitly asks for it or `gh`
+   cannot perform the required operation.
+
+## 11. Spec update rules
 
 - When changing **parser behavior**: update `spec/ast-construction-v0.1.md`.
 - When changing **diagnostic behavior**: update `spec/diagnostics-v0.1.md`.

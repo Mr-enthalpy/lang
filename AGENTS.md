@@ -76,6 +76,36 @@ cargo test
 If the workspace is not initialized yet, create the minimal Rust workspace
 first, then make these commands valid.
 
+## PR branch hygiene before new tasks
+
+When the user starts describing a new task and is not giving correction
+feedback for the current pull request, check the current branch before doing
+work.
+
+Use the local helper script when available:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .git/local/pr-task-gate.ps1
+```
+
+This helper is intentionally local and must not be committed or uploaded.
+
+Required behavior:
+
+1. If the current branch is the default branch, sync it with the remote default
+   branch before starting the new task.
+2. If the current branch has an associated remote PR and that PR is merged,
+   switch to the default branch, fast-forward it from origin, delete the local
+   PR branch, and delete the remote PR branch if it still exists.
+3. If the current branch has an associated remote PR and that PR is not merged,
+   refuse the new task. Ask the user to either continue with corrections for
+   that PR or merge/close it before starting unrelated work.
+4. If the branch/PR state cannot be determined, stop and ask for clarification
+   rather than starting the new task.
+
+Do not use this gate when the user is explicitly asking for corrections to the
+current PR.
+
 ## Preferred technology
 
 Use Rust stable.
@@ -488,6 +518,21 @@ Do not change parser or diagnostic behavior without updating the corresponding
 spec or tests.
 
 Documentation-only status realignment may update docs without source changes.
+
+## PR creation
+
+When asked to create a PR from local changes, prefer GitHub CLI (`gh`) as the
+default mechanism for PR creation. Use connector-based PR creation only if the
+user explicitly asks for it or `gh` is unavailable/insufficient for the repo.
+
+Default PR behavior:
+
+1. Verify `gh --version` and `gh auth status`.
+2. Inspect `git status -sb` and the diff before staging.
+3. Create a branch when starting from the default branch.
+4. Commit intentionally and push with upstream tracking.
+5. Create a draft PR with `gh pr create --draft`, using an explicit title and
+   body.
 
 ## Spec awareness
 
