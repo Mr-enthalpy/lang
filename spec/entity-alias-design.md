@@ -49,7 +49,7 @@ Phase 4.4 implemented raw parser preservation for `let binder === EntityRef`.
 - Operator names are valid only as the final entity path leaf; `+::x` and `a::+::b` emit `InvalidEntityRef`.
 - Residual expression tokens after the entity reference emit `UnexpectedAliasRhsExpression`.
 - Missing targets emit `ExpectedAliasTarget`.
-- The alias-let dispatch guards against `guard`, extract-let, annotation, and `with` paths: none of these parse as alias declarations.
+- The alias-let dispatch guards against extract-let, annotation, and `with` paths: none of these parse as alias declarations. `guard` is an ordinary binder name, not an alias modifier.
 
 **What is not implemented:**
 
@@ -128,7 +128,6 @@ An alias binding has **no**:
 
 - declaration annotation (`: type`, `: _ : fn`);
 - `=` value expression;
-- `guard` attribute;
 - `with` clause;
 - deduce list;
 - canonical skeleton;

@@ -5,7 +5,11 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Inline
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
                 BodyBlock
                   forms:
                     ExprForm

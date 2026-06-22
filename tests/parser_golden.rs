@@ -63,8 +63,18 @@ fn let_type_object_rank() {
 }
 
 #[test]
-fn let_guard_with() {
-    assert_parser_case("let_guard_with", false);
+fn let_with_lexical() {
+    assert_parser_case("let_with_lexical", false);
+}
+
+#[test]
+fn let_with_semantic_one() {
+    assert_parser_case("let_with_semantic_one", false);
+}
+
+#[test]
+fn let_with_semantic_many() {
+    assert_parser_case("let_with_semantic_many", false);
 }
 
 #[test]
@@ -343,16 +353,6 @@ fn invalid_closure_capture_bad_head_recovery() {
 }
 
 #[test]
-fn closure_inline_empty() {
-    assert_parser_case("closure_inline_empty", false);
-}
-
-#[test]
-fn closure_inline_body_expr() {
-    assert_parser_case("closure_inline_body_expr", false);
-}
-
-#[test]
 fn closure_explicit_empty_params() {
     assert_parser_case("closure_explicit_empty_params", false);
 }
@@ -445,6 +445,16 @@ fn invalid_closure_where_not_parsed() {
 #[test]
 fn invalid_closure_acquire_not_parsed() {
     assert_parser_case("invalid_closure_acquire_not_parsed", true);
+}
+
+#[test]
+fn invalid_bare_closure_empty() {
+    assert_parser_case("invalid_bare_closure_empty", true);
+}
+
+#[test]
+fn invalid_bare_closure_body() {
+    assert_parser_case("invalid_bare_closure_body", true);
 }
 
 #[test]
@@ -930,6 +940,26 @@ fn invalid_alias_annotation_not_alias() {
 #[test]
 fn invalid_alias_with_not_alias() {
     assert_parser_case("invalid_alias_with_not_alias", true);
+}
+
+#[test]
+fn invalid_with_namelist() {
+    assert_parser_case("invalid_with_namelist", true);
+}
+
+#[test]
+fn invalid_with_missing_block() {
+    assert_parser_case("invalid_with_missing_block", true);
+}
+
+#[test]
+fn invalid_with_unclosed_block() {
+    assert_parser_case("invalid_with_unclosed_block", true);
+}
+
+#[test]
+fn invalid_with_trailing_comma() {
+    assert_parser_case("invalid_with_trailing_comma", true);
 }
 
 #[test]

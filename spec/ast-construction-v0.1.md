@@ -213,7 +213,7 @@ both lines and diagnose `UnclosedParen` if the `)` is never found.
 ### 4.1 Let statement shape
 
 ```text
-LetStmt ::= "let" LetAttr* LetBinder LetWithClause? "=" PipeExpr
+LetStmt ::= "let" LetBinder LetWithClause? "=" PipeExpr
 ```
 
 The declaration annotation after `:` is required for simple binders. v0.1 does
@@ -223,35 +223,22 @@ AST:
 
 ```text
 LetAst {
-    attrs: Vec<LetAttrAst>,
     binder: LetBinderAst,
-    with_deps: Vec<NameAst>,
+    with_clause: Option<WithClauseAst>,
     value: ExprAst,
     span: Span
 }
 ```
 
-### 4.2 Let attributes
+There is no let-level attribute list. `guard` is an ordinary `Name` unless a
+future syntax reintroduces it explicitly.
+
+### 4.2 With clause
 
 ```text
-LetAttr ::= "guard"
-```
-
-`guard` is interpreted only inside the let parser state.
-
-Outside a let statement it is an ordinary name.
-
-AST:
-
-```text
-LetAttrAst ::= Guard
-```
-
-### 4.3 With clause
-
-```text
-LetWithClause ::= "with" NameList
-NameList ::= Name ("," Name)*
+LetWithClause ::= "with" WithBlock
+WithBlock ::= "{" WithItems? "}"
+WithItems ::= Name ("," Name)*
 ```
 
 `with` is interpreted only inside the let parser state.
@@ -259,12 +246,22 @@ NameList ::= Name ("," Name)*
 AST:
 
 ```text
-with_deps: Vec<NameAst>
+WithClauseAst {
+    kind: WithClauseKind,
+    span: Span
+}
+
+WithClauseKind ::= Lexical | Semantic { items: Vec<NameAst> }
 ```
 
-No lifetime semantics are executed in v0.1.
+`with {}` is an explicit lexical-only with clause. It is distinct from having
+no with clause. `with { a, b }` preserves a non-empty syntactic payload. No
+lifetime or dependency semantics are executed in Raw AST.
 
-### 4.4 Let binder
+`with` without `{` is invalid. `with a, b` is invalid. Trailing commas in
+`with { ... }` are rejected.
+
+### 4.3 Let binder
 
 ```text
 LetBinder ::= SimpleLetBinder | ExtractLetBinder
@@ -1355,18 +1352,15 @@ ClosureAst ::=
 ### 10.2 Inline closure
 
 ```text
-InlineClosureAst ::= FnHeadPrefix? BodyBlock
+InlineClosureAst ::= FnHeadPrefix BodyBlock
 ```
 
-Minimal form:
+Bare `{ ... }` in atom position is not a closure literal and must not produce
+`ClosureAst`. Braces delimit a closure body only after explicit closure syntax,
+such as `FnHeadPrefix => BodyBlock`, or after a valid closure head where the
+inline headed form is accepted.
 
-```text
-{}
-```
-
-In atom position, `{ ... }` is always parsed as `InlineClosureAst`.
-
-It is not a normal block expression.
+`{ ... }` is not a normal block expression.
 
 ### 10.3 Explicit closure
 
@@ -1758,8 +1752,6 @@ x |> f (a) g
 
 x |> f (a) g (b) h
 
-{}
-
 () => {}
 
 <T>(x: T): runtime -> T => {
@@ -1793,7 +1785,7 @@ let binder === EntityRef
 ```
 
 Alias binding is distinct from ordinary `let`. It does not have declaration
-annotations, `guard` attributes, `with` clauses, deduce lists, canonical
+annotations, `with` clauses, deduce lists, canonical
 skeletons, or `=` value expressions.
 
 The parser preserves alias binding as raw AST. It does not resolve entities,

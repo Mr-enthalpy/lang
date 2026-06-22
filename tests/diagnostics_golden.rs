@@ -159,3 +159,28 @@ fn missing_equal_before_newline() {
 fn unexpected_token_before_newline() {
     assert_diagnostics_case("unexpected_token_before_newline");
 }
+
+#[test]
+fn let_guard_not_attr() {
+    assert_diagnostics_case("let_guard_not_attr");
+}
+
+#[test]
+fn invalid_with_namelist() {
+    assert_diagnostics_case("invalid_with_namelist");
+}
+
+#[test]
+fn invalid_bare_closure_empty() {
+    assert_diagnostics_case("invalid_bare_closure_empty");
+}
+
+#[test]
+fn invalid_with_missing_block() {
+    assert_diagnostics_case("invalid_with_missing_block");
+}
+
+#[test]
+fn invalid_with_unclosed_block() {
+    assert_diagnostics_case("invalid_with_unclosed_block");
+}

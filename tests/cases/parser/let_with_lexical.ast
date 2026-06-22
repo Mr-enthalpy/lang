@@ -1,0 +1,23 @@
+Program
+  Let
+    binder:
+      Simple
+        name:
+          TextName x
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+    with_clause:
+      Lexical
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name y

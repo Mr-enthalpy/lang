@@ -44,7 +44,7 @@ _See also: Token, Strong context._
 
 A parser state in which certain `Name` tokens or symbols are interpreted
 structurally. Examples: `let` at form start, `where`/`acquire` in closure heads,
-`guard`/`with` inside let bindings, `<>` in binding contexts.
+`with` inside let bindings, `<>` in binding contexts.
 
 Outside a strong context, these tokens retain their ordinary `Name` or `Symbol`
 identity.
@@ -449,15 +449,15 @@ _See also: OperatorSugar._
 The AST representation of a closure literal before materialization into a
 callable object. Two forms:
 
-- **InlineClosureAst**: `{ ... }` or `FnHeadPrefix { ... }`
+- **InlineClosureAst**: `FnHeadPrefix { ... }`
 - **ExplicitClosureAst**: `FnHeadPrefix => { ... }`
 
 > **Distinction**: `ClosureAST` is **not** `ClosureObject`. Closure literals
 > produce AST first. A later semantic pass may materialize closure AST into
 > callable objects.
 
-> **Distinction**: `{ ... }` in atom position always produces a `ClosureAST`,
-> not a normal block expression. There is no block-expression node in v0.1 AST.
+> **Distinction**: Bare `{ ... }` in atom position does not produce a
+> `ClosureAST`. There is no block-expression node in v0.1 AST.
 
 _See also: InlineClosureAST, ExplicitClosureAST, ClosureObject, Materialization._
 
@@ -465,8 +465,8 @@ _See also: InlineClosureAST, ExplicitClosureAST, ClosureObject, Materialization.
 
 ## InlineClosureAST
 
-A closure literal without `=>`. Minimal form: `{}`. May be prefixed with a
-`FnHeadPrefix`. Parsed when the parser sees `{` in atom position.
+A headed closure literal without `=>`: `FnHeadPrefix BodyBlock`. Bare `{ ... }`
+is not an inline closure.
 
 _See also: ClosureAST, ExplicitClosureAST, FnHeadPrefix._
 
@@ -535,7 +535,7 @@ _See also: Let binding, DeclAnnotation._
 A top-level `let` form that introduces a name. A simple let binding requires
 a `DeclAnnotation` (`Name ":" DeclAnnotation`); an extract let binding uses
 `DeduceList CanonicalSkeleton` instead. Both are followed by `=` and a value.
-The grammar is `let LetAttr* LetBinder LetWithClause? "=" PipeExpr`.
+The grammar is `let LetBinder LetWithClause? "=" PipeExpr`.
 Let bindings are the only declaration path in v0.1.
 
 _See also: Declaration, LetBinder, DeclAnnotation._
@@ -776,7 +776,7 @@ _See also: Normalization, ArgPack, ArgPackRole, OperatorSugar, PipeExpr._
 ## Declaration normalization
 
 Desugaring let/alias-let forms into normalized declaration forms. Declaration
-normalization may separate guard/with clauses from binders and unify
+normalization may preserve optional `with { ... }` clauses and unify
 simple and extract let forms into a common structure. It does not resolve
 aliases, check types, or decide declaration semantics.
 

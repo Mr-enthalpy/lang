@@ -164,8 +164,8 @@ No CFG is built. The parser does not construct a control-flow graph.
 
 **Why it does not block v0.1:**
 Ownership and lifetime analysis is out of scope for v0.1. The raw AST
-contains sufficient structure (form order, closure bodies, guard/with
-annotations) for a future CFG construction pass.
+contains sufficient structure (form order, closure bodies, and explicit
+`with { ... }` syntax) for future passes.
 
 **Future stage:** v0.10 (ownership/NLL/drop design).
 
@@ -392,7 +392,8 @@ Raw parser preservation for `let binder === EntityRef` is implemented in
 Phase 4.4. The lexer recognizes `===` as `Symbol::TripleEqual`. The parser
 produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
 EntityRef parsing is available inside alias-let RHS only. Alias-let dispatch
-correctly rejects guard, extract-let, annotation, and `with` paths. See
+correctly rejects extract-let, annotation, and `with` paths. `guard` is parsed
+as an ordinary simple-let binder name, not as an alias modifier. See
 `spec/implementation-status-v0.1.md` and `spec/entity-alias-design.md`.
 
 **What is not implemented:**
@@ -445,16 +446,16 @@ only.
 
 ---
 
-## 24. Alias binding with `guard` or `with`
+## 24. Alias binding with `with`
 
 **Status:** Open
 
-**Current Phase 4.3 recommendation:** Alias binding should not permit `guard`
-or `with`. Alias bindings have no runtime value, no drop obligation, and no
-lifetime dependency.
+**Current decision:** Alias binding does not permit `with`. `guard` is not a
+let attribute and has no alias-specific syntax. Alias bindings have no runtime
+value, no drop obligation, and no lifetime dependency.
 
-**Question:** Could future alias binding semantics justify a `guard` or
-`with` clause (e.g., compile-time alias ordering or dependency)?
+**Question:** Could future alias binding semantics justify a `with { ... }`
+clause (e.g., compile-time alias ordering or dependency)?
 
 **Why it does not block v0.1:**
 Raw alias parsing exists; the current recommendation is documented but not

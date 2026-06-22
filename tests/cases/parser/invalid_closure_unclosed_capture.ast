@@ -8,13 +8,4 @@ Program
               Name x
           OperatorExpr
             Atom
-              Closure Inline
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+              Name x

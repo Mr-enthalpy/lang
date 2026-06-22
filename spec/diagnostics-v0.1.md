@@ -111,6 +111,16 @@ spanning the failed region.
 - **Recovery**: Skip to the current form boundary.
 - **AST effect**: Use an error expression as the let value.
 
+#### Invalid `with` clause shape
+
+- **Trigger**: A let-local `with` clause is not followed by `{`, has a trailing
+  comma, or has a malformed/unclosed `{ ... }` block.
+- **Primary span**: The unexpected token, the trailing `}`, or the opening `{`
+  for unclosed blocks.
+- **Recovery**: Recover to `}`, `=`, or the current form boundary.
+- **AST effect**: Preserve a local error-tolerant `WithClauseAst` when possible;
+  do not interpret `with NameList` as valid syntax.
+
 #### `EmptyPipeSegment`
 
 - **Trigger**: A `|>` operator at the start of a pipe expression (no left
@@ -241,9 +251,10 @@ top-level comma"`, `"invalid argument pack position"`) until the diagnostic
 
 #### `UnusedClosureAst`
 
-- **Trigger** (optional / currently not guaranteed emitted): A closure literal appears in a
-  position where it cannot be consumed by an operator, pipe, or binding.
-- **Primary span**: The closure body or `{}` token.
+- **Trigger** (optional / currently not guaranteed emitted): A headed or
+  explicit closure literal appears in a position where it cannot be consumed by
+  an operator, pipe, or binding.
+- **Primary span**: The closure body token.
 - **Recovery**: The closure AST is still produced.
 - **AST effect**: The closure AST node is preserved.
 

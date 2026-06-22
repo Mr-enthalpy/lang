@@ -1,8 +1,8 @@
 use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, BinderNameAst, DeclAnnotationAst,
     DiagnosticCode, EntityPathLeafAst, EntityPathSegmentAst, EntityRefAst, ErrorAst, ExprAst,
-    ExprKind, FormAst, LetAliasAst, LetAst, LetAttrAst, LetBinderAst, NameAst, OperatorNameAst,
-    Span, Symbol, TokenKind, TypeObjectAnnotationAst,
+    ExprKind, FormAst, LetAliasAst, LetAst, LetBinderAst, NameAst, OperatorNameAst, Span, Symbol,
+    TokenKind, TypeObjectAnnotationAst, WithClauseAst, WithClauseKind,
 };
 
 use super::{
@@ -16,30 +16,14 @@ pub fn parse_let_form(parser: &mut Parser<'_>) -> FormAst {
         .consume_name("let")
         .expect("parse_let_form called at let");
 
-    if parser.cursor.at_name("guard") {
-        let attrs = parse_guard_attrs(parser);
-        let binder = parse_let_binder(parser);
-        let with_deps = parse_with_clause(parser);
-        let value = parse_let_value(parser);
-        let span = let_token.span.join(value.span);
-        return FormAst::Let(LetAst {
-            attrs,
-            binder,
-            with_deps,
-            value,
-            span,
-        });
-    }
-
     if parser.cursor.at_symbol(Symbol::Less) {
         let binder = parse_extract_binder(parser);
-        let with_deps = parse_with_clause(parser);
+        let with_clause = parse_with_clause(parser);
         let value = parse_let_value(parser);
         let span = let_token.span.join(value.span);
         return FormAst::Let(LetAst {
-            attrs: vec![],
             binder,
-            with_deps,
+            with_clause,
             value,
             span,
         });
@@ -54,13 +38,12 @@ pub fn parse_let_form(parser: &mut Parser<'_>) -> FormAst {
     }
 
     let binder = parse_let_binder(parser);
-    let with_deps = parse_with_clause(parser);
+    let with_clause = parse_with_clause(parser);
     let value = parse_let_value(parser);
     let span = let_token.span.join(value.span);
     FormAst::Let(LetAst {
-        attrs: vec![],
         binder,
-        with_deps,
+        with_clause,
         value,
         span,
     })
@@ -101,14 +84,6 @@ fn binder_name_to_alias_binder(token: &crate::Token) -> AliasBinderAst {
             }
         }
     }
-}
-
-fn parse_guard_attrs(parser: &mut Parser<'_>) -> Vec<LetAttrAst> {
-    let mut attrs = Vec::new();
-    while parser.cursor.consume_name("guard").is_some() {
-        attrs.push(LetAttrAst::Guard);
-    }
-    attrs
 }
 
 fn parse_let_value(parser: &mut Parser<'_>) -> ExprAst {
@@ -411,10 +386,32 @@ fn annotation_stop(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::Equal) || parser.cursor.at_name("with")
 }
 
-fn parse_with_clause(parser: &mut Parser<'_>) -> Vec<NameAst> {
-    let mut deps = Vec::new();
-    if parser.cursor.consume_name("with").is_none() {
-        return deps;
+fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
+    let Some(with_token) = parser.cursor.consume_name("with") else {
+        return None;
+    };
+
+    let Some(lbrace) = parser.cursor.consume_symbol(Symbol::LBrace) else {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::UnexpectedToken,
+            "expected `{` after `with`",
+            span,
+        );
+        recover_to_equal(parser);
+        return Some(WithClauseAst {
+            kind: WithClauseKind::Lexical,
+            span: with_token.span,
+        });
+    };
+
+    let mut items = Vec::new();
+
+    if let Some(rbrace) = parser.cursor.consume_symbol(Symbol::RBrace) {
+        return Some(WithClauseAst {
+            kind: WithClauseKind::Lexical,
+            span: with_token.span.join(rbrace.span),
+        });
     }
 
     loop {
@@ -425,11 +422,12 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Vec<NameAst> {
                 "expected name in with clause",
                 token.span,
             );
+            recover_to_with_block_end(parser);
             break;
         }
 
         let token = parser.cursor.bump_non_trivia();
-        deps.push(NameAst {
+        items.push(NameAst {
             text: token.text.clone(),
             span: token.span,
         });
@@ -437,9 +435,46 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Vec<NameAst> {
         if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
             break;
         }
+
+        if parser.cursor.at_symbol(Symbol::RBrace) {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::ExpectedName,
+                "expected name after `,` in with clause",
+                span,
+            );
+            break;
+        }
     }
 
-    deps
+    let end = if let Some(rbrace) = parser.cursor.consume_symbol(Symbol::RBrace) {
+        rbrace.span
+    } else {
+        parser.error(
+            DiagnosticCode::UnclosedBrace,
+            "unclosed with block, expected `}`",
+            lbrace.span,
+        );
+        parser.cursor.current_span()
+    };
+
+    Some(WithClauseAst {
+        kind: if items.is_empty() {
+            WithClauseKind::Lexical
+        } else {
+            WithClauseKind::Semantic { items }
+        },
+        span: with_token.span.join(end),
+    })
+}
+
+fn recover_to_with_block_end(parser: &mut Parser<'_>) {
+    while !parser.is_form_boundary()
+        && !parser.cursor.at_symbol(Symbol::Equal)
+        && !parser.cursor.at_symbol(Symbol::RBrace)
+    {
+        parser.cursor.bump_non_trivia();
+    }
 }
 
 fn recover_to_equal(parser: &mut Parser<'_>) {

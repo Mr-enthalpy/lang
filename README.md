@@ -2,11 +2,10 @@
 
 `lang` is an experimental programming language frontend.
 
-**Current status:** The v0.1 Raw AST Frontend is completed as the current Raw AST baseline. It lexes,
-parses, builds raw AST, emits diagnostics, and has golden tests. It does not
+**Current status:** The v0.1 Raw AST Frontend was completed as an initial Raw AST baseline.
+The Raw AST contract has been reopened for a breaking guard/with/brace correction before v0.3.
+It lexes, parses, builds raw AST, emits diagnostics, and has golden tests. It does not
 perform semantic analysis.
-
-The v0.2 Raw AST Contract Freeze is completed. The next work is Normalized AST specification (v0.3).
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
 - **Normalized AST**: future desugared AST that unifies calls, extraction,
@@ -94,8 +93,7 @@ Examples:
 - `let` at form start
 - `where`/`acquire` as reserved future closure-head positions, not active
   Phase 3.1 parser clauses
-- `guard` inside let bindings
-- `with` inside let bindings
+- `with` inside let bindings, only as `with { ... }`
 
 Outside their context, they remain ordinary names.
 
@@ -147,12 +145,12 @@ A closure literal initially produces closure AST, not a callable object.
 Examples:
 
 ```text
-{}
 () => {}
 ```
 
-A later semantic pass may materialize closure AST into callable objects in
-binding or call contexts.
+Bare `{}` is not a standalone closure literal. Braces are closure body
+delimiters only after explicit closure syntax. A later semantic pass may
+materialize closure AST into callable objects in binding or call contexts.
 
 Compiler meta-functions may directly consume closure AST.
 

@@ -53,7 +53,7 @@ namespace  struct
 ```
 
 Parser contexts may interpret selected names structurally, but only when
-explicitly defined by the spec (e.g., `let` at form start and `guard`/`with`
+explicitly defined by the spec (e.g., `let` at form start and `with { ... }`
 in let bindings). `where` and `acquire` are reserved future closure-head
 positions, not active parser clauses in Phase 3.1.
 
@@ -108,7 +108,7 @@ Do not implement this as a traditional precedence parser.
 
 ## 5. Closure rules
 
-- `{ ... }` in atom position is closure AST, not a block expression.
+- Bare `{ ... }` in atom position is not closure AST and not a block expression.
 - `FnHead => { ... }` is explicit closure AST.
 - `FnHead { ... }` is inline closure AST.
 - A closure literal is AST first. It is not a callable object.
@@ -128,7 +128,7 @@ If a requested task requires any of the following, stop at AST preservation:
 | `return` | Parse as a name; do not implement return semantics |
 | `else` | Parse as a name; do not implement else branching |
 | `drop` / `move` | Parse as names; do not mark blue nodes |
-| `guard` / `with` | Preserve annotations in AST; do not run lifetime analysis |
+| `with { ... }` | Preserve syntax in AST; do not run lifetime analysis |
 | Type/rank checking | Preserve bare annotations exactly; parse explicit `type_object_annotation : rank_annotation`; do not check semantic validity |
 | `fn f(x) { }` | Parse as an expression form or emit syntax diagnostics as required; never create FnDecl |
 | Canonical matching | Build canonical skeleton AST; do not execute matching |
@@ -172,7 +172,7 @@ stabilization (see `spec/roadmap.md` for current coverage):
 ```text
 lexer/        names, symbols, comments, invalid, operators
 parser/       let_simple, let_extract, pipe_basic, argpack_roles,
-              dot_sugar, doubledot_sugar, closure_inline,
+              dot_sugar, doubledot_sugar, closure_head_inline,
               closure_explicit, closure_head, match_style_expression,
               operator_expr, operator_binder, alias_let
 diagnostics/  invalid_dot, invalid_doubledot, unclosed_group,

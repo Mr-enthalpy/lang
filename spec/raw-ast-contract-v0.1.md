@@ -44,7 +44,7 @@ Normalization must **not** assume:
 - closures are materialized
 - match / effect / sync have semantics
 - drop / move / ref are semantic events
-- guard / with have lifetime semantics
+- `with { ... }` has lifetime or dependency semantics
 - ErrorAst means parsing has failed globally (it means a local recovery marker)
 
 ## Program / Form invariants
@@ -55,7 +55,10 @@ Normalization must **not** assume:
 
 ## Let and alias-let invariants
 
-- `LetAst` preserves `attrs` (guard attributes), `binder`, `with_deps`, `value`, and `span`.
+- `LetAst` preserves `binder`, optional `with_clause`, `value`, and `span`.
+- The absence of a with clause is distinct from explicit `with {}`.
+- `WithClauseKind::Lexical` preserves `with {}` as lexical-only syntax.
+- `WithClauseKind::Semantic` preserves non-empty `with { name, ... }` payloads syntactically.
 - `LetBinderAst` distinguishes `Simple` (name + annotation), `Extract` (deduce + skeleton), and `Error`.
 - `LetAliasAst` preserves `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
@@ -150,7 +153,8 @@ Normalization must **not** assume:
 - `Hole` / `NodeName` roles have been validated.
 - Closures have been materialized into callable objects.
 - `match` / `effect` / `sync` have been recognized as anything beyond ordinary names.
-- `guard` / `with` carry lifetime semantics.
+- `guard` is anything beyond an ordinary name unless future syntax reintroduces it explicitly.
+- `with { ... }` carries lifetime or dependency semantics.
 - `drop` / `move` / `ref` carry ownership semantics.
 - `ErrorAst` nodes indicate that the entire form failed.
 - The parser preserved any information not explicitly documented above.

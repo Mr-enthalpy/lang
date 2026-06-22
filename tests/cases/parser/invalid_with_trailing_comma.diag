@@ -1,0 +1,1 @@
+error ExpectedName "expected name after `,` in with clause" @ 1:23 [22..23]

@@ -54,20 +54,6 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
 // -- Closure entry from atom parser --
 
 pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
-    // Bare inline closure: { ... }
-    if parser.cursor.at_symbol(Symbol::LBrace) {
-        let body = parse_body_block(parser);
-        let span = body.span;
-        return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Inline(InlineClosureAst {
-                head: None,
-                body,
-                span,
-            })),
-            span,
-        });
-    }
-
     // Attempt FnHeadPrefix lookahead
     let saved = parser.cursor.current_index();
     parser.gate_diagnostics();
@@ -120,11 +106,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         let body = parse_body_block(parser);
         let span = head.span.join(body.span);
         return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Inline(InlineClosureAst {
-                head: Some(head),
-                body,
-                span,
-            })),
+            kind: AtomKind::Closure(ClosureAst::Inline(InlineClosureAst { head, body, span })),
             span,
         });
     }

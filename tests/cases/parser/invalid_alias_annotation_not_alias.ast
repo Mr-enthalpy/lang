@@ -1,6 +1,5 @@
 Program
   Let
-    attrs:
     binder:
       Simple
         name:
@@ -16,7 +15,8 @@ Program
                   OperatorExpr
                     Atom
                       Name y
-    with:
+    with_clause:
+      None
     value:
       Expr
         Error "expected `=` in let"

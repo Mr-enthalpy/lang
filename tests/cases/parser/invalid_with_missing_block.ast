@@ -1,7 +1,5 @@
 Program
   Let
-    attrs:
-      Guard
     binder:
       Simple
         name:
@@ -14,9 +12,8 @@ Program
                   OperatorExpr
                     Atom
                       Name type
-    with:
-      a
-      b
+    with_clause:
+      Lexical
     value:
       Expr
         Pipe

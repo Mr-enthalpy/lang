@@ -1,9 +1,9 @@
 use crate::{
     AliasBinderAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst, DeclAnnotationAst,
     Diagnostic, DiagnosticCode, EntityPathLeafAst, EntityPathSegmentAst, EntityRefAst, ExprAst,
-    ExprKind, FormAst, LetAliasAst, LetAst, LetAttrAst, LetBinderAst, OperatorExprKind,
-    PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
-    TypeObjectAnnotationAst,
+    ExprKind, FormAst, LetAliasAst, LetAst, LetBinderAst, OperatorExprKind, PipeExprAst,
+    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
+    TypeObjectAnnotationAst, WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -73,17 +73,20 @@ fn dump_form(output: &mut String, form: &FormAst, indent: usize) {
 
 fn dump_let(output: &mut String, let_ast: &LetAst, indent: usize) {
     line(output, indent, "Let");
-    line(output, indent + 1, "attrs:");
-    for attr in &let_ast.attrs {
-        match attr {
-            LetAttrAst::Guard => line(output, indent + 2, "Guard"),
-        }
-    }
     line(output, indent + 1, "binder:");
     dump_binder(output, &let_ast.binder, indent + 2);
-    line(output, indent + 1, "with:");
-    for dep in &let_ast.with_deps {
-        line(output, indent + 2, &dep.text);
+    line(output, indent + 1, "with_clause:");
+    match &let_ast.with_clause {
+        None => line(output, indent + 2, "None"),
+        Some(with_clause) => match &with_clause.kind {
+            WithClauseKind::Lexical => line(output, indent + 2, "Lexical"),
+            WithClauseKind::Semantic { items } => {
+                line(output, indent + 2, "Semantic");
+                for item in items {
+                    line(output, indent + 3, &item.text);
+                }
+            }
+        },
     }
     line(output, indent + 1, "value:");
     dump_expr(output, &let_ast.value, indent + 2);
@@ -527,9 +530,7 @@ fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize)
     match closure {
         crate::ClosureAst::Inline(inner) => {
             line(output, indent, "Closure Inline");
-            if let Some(head) = &inner.head {
-                dump_fn_head_prefix(output, head, indent + 1);
-            }
+            dump_fn_head_prefix(output, &inner.head, indent + 1);
             dump_body_block(output, &inner.body, indent + 1);
         }
         crate::ClosureAst::Explicit(inner) => {

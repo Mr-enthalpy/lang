@@ -1,6 +1,5 @@
 Program
   Let
-    attrs:
     binder:
       Simple
         name:
@@ -13,7 +12,8 @@ Program
                   OperatorExpr
                     Atom
                       Name type
-    with:
+    with_clause:
+      None
     value:
       Expr
         Pipe

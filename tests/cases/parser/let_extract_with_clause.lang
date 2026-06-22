@@ -1,1 +1,1 @@
-let <x> x with dep = value
+let <x> x with { dep } = value

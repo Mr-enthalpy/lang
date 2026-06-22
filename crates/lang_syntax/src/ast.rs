@@ -20,16 +20,22 @@ pub enum FormAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LetAst {
-    pub attrs: Vec<LetAttrAst>,
     pub binder: LetBinderAst,
-    pub with_deps: Vec<NameAst>,
+    pub with_clause: Option<WithClauseAst>,
     pub value: ExprAst,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum LetAttrAst {
-    Guard,
+pub struct WithClauseAst {
+    pub kind: WithClauseKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WithClauseKind {
+    Lexical,
+    Semantic { items: Vec<NameAst> },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -274,7 +280,7 @@ pub enum ClosureAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlineClosureAst {
-    pub head: Option<FnHeadPrefixAst>,
+    pub head: FnHeadPrefixAst,
     pub body: BodyBlockAst,
     pub span: Span,
 }

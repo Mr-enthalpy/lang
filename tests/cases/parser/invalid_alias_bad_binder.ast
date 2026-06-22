@@ -1,9 +1,9 @@
 Program
   Let
-    attrs:
     binder:
       Error "expected name after `let`"
-    with:
+    with_clause:
+      None
     value:
       Expr
         Error "expected `=` in let"

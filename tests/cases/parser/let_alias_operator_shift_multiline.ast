@@ -7,7 +7,6 @@ Program
         segment xxx_bit
         leaf Operator <<
   Let
-    attrs:
     binder:
       Simple
         name:
@@ -20,7 +19,8 @@ Program
                   OperatorExpr
                     Atom
                       Name type
-    with:
+    with_clause:
+      None
     value:
       Expr
         Pipe

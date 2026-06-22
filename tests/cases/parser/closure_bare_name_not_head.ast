@@ -8,16 +8,7 @@ Program
               Name x
           OperatorExpr
             Atom
-              Closure Inline
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+              Name x
   ExprForm
     Expr
       Pipe
@@ -27,16 +18,7 @@ Program
               Name x
           OperatorExpr
             Atom
-              Closure Inline
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+              Name x
   ExprForm
     Expr
       Pipe
@@ -49,16 +31,7 @@ Program
               Name C
           OperatorExpr
             Atom
-              Closure Inline
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+              Name x
   ExprForm
     Expr
       Pipe
@@ -71,13 +44,4 @@ Program
               Name A
           OperatorExpr
             Atom
-              Closure Inline
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+              Name x

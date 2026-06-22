@@ -1,6 +1,5 @@
 Program
   Let
-    attrs:
     binder:
       Extract
         deduce:
@@ -14,7 +13,8 @@ Program
             elements:
               CanonicalName role=Hole name=x
               Error "expected canonical skeleton element"
-    with:
+    with_clause:
+      None
     value:
       Expr
         Pipe
