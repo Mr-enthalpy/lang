@@ -898,6 +898,36 @@ fn invalid_alias_operator_intermediate_segment() {
 }
 
 #[test]
+fn let_alias_grouped_outer_scope() {
+    assert_parser_case("let_alias_grouped_outer_scope", false);
+}
+
+#[test]
+fn let_alias_operator_inner_qualified() {
+    assert_parser_case("let_alias_operator_inner_qualified", false);
+}
+
+#[test]
+fn invalid_alias_grouped_innermost() {
+    assert_parser_case("invalid_alias_grouped_innermost", true);
+}
+
+#[test]
+fn invalid_nav_grouped_innermost() {
+    assert_parser_case("invalid_nav_grouped_innermost", true);
+}
+
+#[test]
+fn invalid_alias_outer_operator() {
+    assert_parser_case("invalid_alias_outer_operator", true);
+}
+
+#[test]
+fn invalid_alias_outer_operator_after_scope() {
+    assert_parser_case("invalid_alias_outer_operator_after_scope", true);
+}
+
+#[test]
 fn invalid_alias_bad_binder() {
     assert_parser_case("invalid_alias_bad_binder", true);
 }

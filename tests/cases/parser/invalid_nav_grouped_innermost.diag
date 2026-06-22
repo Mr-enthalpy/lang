@@ -1,0 +1,1 @@
+error InvalidNavComponent "grouped expression cannot be an innermost navigation component" @ 1:1 [0..14]

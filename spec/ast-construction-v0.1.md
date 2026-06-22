@@ -1082,6 +1082,15 @@ xxx::(int Vec::std)
 ```
 
 The grouped expression is stored as a grouped outer navigation component.
+
+The innermost navigation component must be a syntactic symbol component:
+`Name`, `NumericName`, or `OperatorName`. A grouped expression is valid only as
+an outer navigation component after `::`; it represents a scope-producing
+expression, not a selected symbol. A parenthesized form used as the innermost
+component, such as `(int Vec::std)::ns`, is invalid and emits
+`InvalidNavComponent`. The grouped expression is replaced by a local error
+component and the remaining outer components are preserved.
+
 Without parentheses, `::` consumes only one immediate valid navigation
 component:
 
@@ -1846,9 +1855,9 @@ EntityRef ::= EntityNavigation
 
 EntityNavigation ::= EntityComponent ("::" EntityOuterComponent)*
 
-EntityComponent ::= Name | OperatorName
+EntityComponent ::= Name | NumericName | OperatorName
 
-EntityOuterComponent ::= Name
+EntityOuterComponent ::= Name | NumericName | Group
 ```
 
 EntityRef navigation order is inner-to-outer. The leftmost component is the
@@ -1856,6 +1865,12 @@ innermost selected symbol, and the rightmost component is the outermost scope
 component. Raw AST preserves source-order navigation components and performs no
 lookup. Operator names are valid only as innermost entity-reference components
 unless a future design explicitly allows operator-named scopes.
+
+The innermost component must be a syntactic symbol component (`Name`,
+`NumericName`, or `OperatorName`). A grouped expression is valid only as an
+outer navigation component after `::`, matching ordinary Raw AST navigation:
+`xxx::(int Vec::std)` is valid, while a grouped expression as the innermost
+component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
 
 `===` is a structural delimiter token (`Symbol::TripleEqual`), not an
 expression operator. It is not available as `OperatorName`.
@@ -1907,6 +1922,15 @@ Operator names are valid only as the innermost entity-reference navigation
 component. If an operator appears as an outer component after `::`, the parser
 emits `InvalidEntityRef`.
 
+Outer navigation components after `::` may be `Name`, `NumericName`, or a
+parenthesized grouped scope expression (`NavComponentAst::Group`), shared with
+ordinary navigation parsing. A grouped expression used as the innermost
+component (such as `(int Vec::std)::ns`, or any parenthesized form like
+`(a, b)`) emits `InvalidEntityRef` with "grouped expression cannot be an
+innermost navigation component". This is distinct from `ExpectedAliasTarget`,
+which is reserved for an absent RHS or a token that cannot begin an entity
+reference at all.
+
 After completing the entity reference, the parser checks for residual
 expression tokens. If the current position is not a form boundary (EOF,
 semicolon, right brace, or promoted newline), the parser emits
@@ -1916,8 +1940,8 @@ semicolon, right brace, or promoted newline), the parser emits
 
 | Code                           | Trigger                                                                         |
 | ------------------------------ | ------------------------------------------------------------------------------- |
-| `ExpectedAliasTarget`          | `===` is followed by a token that cannot start an `EntityRef`.                  |
-| `InvalidEntityRef`             | Malformed entity reference (e.g., operator in segment position, dangling `::`). |
+| `ExpectedAliasTarget`          | `===` is followed by an absent RHS or a token that cannot begin an `EntityRef` at all.  |
+| `InvalidEntityRef`             | Malformed entity reference (e.g., operator as an outer component, grouped expression as the innermost component, dangling `::`). |
 | `UnexpectedAliasRhsExpression` | Valid `EntityRef` was parsed, but residual expression tokens follow.            |
 
 `InvalidAliasBinder` is reserved for future use but not currently emitted.

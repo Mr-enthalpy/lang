@@ -295,10 +295,13 @@ resolution, assignment, mutation, or type checking.
 
 #### `InvalidNavComponent`
 
-- **Trigger**: An operator name appears as an outer navigation component after
-  `::`, such as `x::+`, `x::int::+`, or `+::x::+`.
+- **Trigger**: A component is invalid in a navigation path. Either an operator
+  name appears as an outer navigation component after `::`, such as `x::+`,
+  `x::int::+`, or `+::x::+`; or a grouped expression appears as the innermost
+  navigation component, such as `(int Vec::std)::ns`. A grouped expression is
+  valid only as an outer navigation component after `::`.
 - **Primary span**: The operator token used as an invalid outer navigation
-  component.
+  component, or the grouped expression used as an invalid innermost component.
 - **Recovery**: Preserve the navigation path with a local error component when
   possible, consume the malformed component, and continue parsing the form.
 - **AST effect**: No lookup or resolution is performed. Any preserved
@@ -312,9 +315,12 @@ operator identity validation, name lookup, or namespace resolution.
 
 #### `ExpectedAliasTarget`
 
-- **Trigger**: After `===` in an alias binding, the current token cannot start
-  an `EntityRef` (not a `Name` or operator-eligible token), and no path
-  segments have been parsed.
+- **Trigger**: After `===` in an alias binding, the right-hand side is absent or
+  the current token cannot start an `EntityRef` at all (not a `Name`,
+  `NumericName`, or operator-eligible token), and no components have been
+  parsed. A parenthesized form used as the innermost component (such as
+  `(int Vec::std)::ns` or `(a, b)`) is reported as `InvalidEntityRef`, not
+  `ExpectedAliasTarget`.
 - **Primary span**: The current token.
 - **Recovery**: Consume the offending token and recover to the form boundary.
 - **AST effect**: An `Error` leaf is inserted in the `EntityRefAst`.
@@ -322,9 +328,13 @@ operator identity validation, name lookup, or namespace resolution.
 #### `InvalidEntityRef`
 
 - **Trigger**: The `EntityRef` structure is malformed. Examples: an operator
-  name appears in an intermediate segment position (followed by `::`), or
-  a dangling `::` follows a segment with no further entity reference token.
-- **Primary span**: The `::` following the operator, or the dangling token.
+  name appears as an outer navigation component after `::` (`x::+`,
+  `x::int::+`); a grouped expression appears as the innermost component
+  (`(int Vec::std)::ns`), which emits "grouped expression cannot be an
+  innermost navigation component"; or a dangling `::` follows a component with
+  no further entity reference token.
+- **Primary span**: The operator token, the grouped-expression token, or the
+  dangling `::` / token.
 - **Recovery**: Preserve parsed segments when possible, consume the malformed
   continuation, and recover to the form boundary.
 - **AST effect**: An `Error` leaf replaces the expected final leaf. Parsed

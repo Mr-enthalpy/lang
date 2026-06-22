@@ -1,0 +1,10 @@
+Program
+  LetAlias
+    binder:
+      Name x
+    target:
+      EntityRef
+        components:
+          component Name x
+          component Name int
+          component Error "operator cannot be an outer navigation component"

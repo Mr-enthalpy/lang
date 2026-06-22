@@ -6,8 +6,8 @@ use crate::{
 };
 
 use super::{
-    canonical::parse_canonical_skeleton, deduce::parse_deduce_list, expr::parse_expr_until,
-    form::Parser,
+    atom::parse_nav_group_component, canonical::parse_canonical_skeleton,
+    deduce::parse_deduce_list, expr::parse_expr_until, form::Parser,
 };
 
 pub fn parse_let_form(parser: &mut Parser<'_>) -> FormAst {
@@ -121,17 +121,24 @@ fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
 
     let Some(first) = parse_entity_inner_component(parser) else {
         let span = parser.cursor.current_span();
-        parser.error(
-            DiagnosticCode::ExpectedAliasTarget,
-            "expected entity reference after `===`",
-            span,
-        );
+        let (code, message, node_message) = if parser.cursor.at_symbol(Symbol::LParen) {
+            (
+                DiagnosticCode::InvalidEntityRef,
+                "grouped expression cannot be an innermost navigation component",
+                "grouped expression cannot be an innermost navigation component",
+            )
+        } else {
+            (
+                DiagnosticCode::ExpectedAliasTarget,
+                "expected entity reference after `===`",
+                "expected entity reference",
+            )
+        };
+        parser.error(code, message, span);
         parser.cursor.bump_non_trivia();
         parser.recover_to_form_boundary();
         return EntityRefAst {
-            components: vec![NavComponentAst::Error(
-                parser.error_ast("expected entity reference", span),
-            )],
+            components: vec![NavComponentAst::Error(parser.error_ast(node_message, span))],
             span: start.join(span),
         };
     };
@@ -243,6 +250,7 @@ fn parse_entity_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentA
                 span: token.span,
             }))
         }
+        TokenKind::Symbol(Symbol::LParen) => parse_nav_group_component(parser),
         _ if token.kind.is_operator_spelling() => {
             let token = parser.cursor.bump_non_trivia();
             parser.error(

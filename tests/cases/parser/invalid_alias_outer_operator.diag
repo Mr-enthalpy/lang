@@ -1,0 +1,1 @@
+error InvalidEntityRef "operator cannot be an outer navigation component" @ 1:14 [13..14]

@@ -1,0 +1,11 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              NavPath
+                components:
+                  component Error "grouped expression cannot be an innermost navigation component"
+                  component Name ns

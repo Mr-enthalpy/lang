@@ -296,7 +296,9 @@ NavComponent ::= Name | NumericName | OperatorName | GroupedExpr | Error
 Operator names are valid only as innermost navigation components unless a
 future design explicitly allows operator-named scopes. Parenthesized
 right-side scope expressions after `::` are preserved as grouped components.
-Without parentheses, `::` consumes only one immediate valid component.
+A grouped expression is valid only as an outer component; used as the innermost
+component (`(int Vec::std)::ns`) it emits `InvalidNavComponent`. Without
+parentheses, `::` consumes only one immediate valid component.
 
 _See also: NavPath, SelectorAst, OperatorName._
 
@@ -339,14 +341,17 @@ _See also: EntityRef, NavPath._
 The navigation syntax inside a future `EntityRef`:
 
 ```text
-EntityComponent ::= Name | OperatorName
-EntityOuterComponent ::= Name
+EntityComponent ::= Name | NumericName | OperatorName
+EntityOuterComponent ::= Name | NumericName | Group
 ```
 
 EntityRef navigation is inner-to-outer and preserves source-order components.
 An operator name is allowed only as the innermost component unless a future
-design explicitly allows operator-named scopes. The parser does not perform
-operator lookup, name lookup, namespace resolution, or existence checking.
+design explicitly allows operator-named scopes. A grouped expression is valid
+only as an outer navigation component after `::`; a grouped expression used as
+the innermost component (`(int Vec::std)::ns`) emits `InvalidEntityRef`. The
+parser does not perform operator lookup, name lookup, namespace resolution, or
+existence checking.
 
 _See also: NavPath, OperatorName, EntityRef._
 

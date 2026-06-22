@@ -26,7 +26,7 @@ only records what it currently does.
 | Operator binder names (`let +: _: operator = ...`) | `implemented-syntax` | `let_stmt.rs`, `token.rs` | `operator-design.md` | Operator names accepted as binder; `<` not accepted (extract-let strong context). |
 | PipeExpr / Segment / ArgPack roles | `implemented-syntax` | `pipe.rs`, `argpack.rs` | `ast-construction-v0.1.md` §7-9 | SourcePack, InsertPack, RightTargetSubsegment role assignment. |
 | OperatorExpr (prefix `-`, postfix, binary) | `implemented-syntax` | `operator.rs` | `operator-design.md` + `ast-construction-v0.1.md` §7.3 | Raw AST sugar; precedence/associativity per operator-design.md. No lookup or lowering. |
-| `::` navigation suffix | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.4 | `NavPath` node in AtomAst and OperatorExprAst; components preserved source-order inner-to-outer. |
+| `::` navigation suffix | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.4 | `NavPath` node in AtomAst and OperatorExprAst; components preserved source-order inner-to-outer. Parenthesized scope expressions after `::` are preserved as grouped outer components; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidNavComponent`. |
 | `.` member sugar | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.5 | `MemberSugar` node. Text or numeric selector. |
 | `..` double-dot sugar | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.6 | `DoubleDotSugar` node. Requires selector + ArgPack. |
 | Numeric selectors (`obj.1`, `uint8::1`) | `implemented-syntax` | `atom.rs` | `ast-construction-v0.1.md` §8.3 | IntLiteral in selector position → NumericNameAst. |

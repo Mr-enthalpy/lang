@@ -46,6 +46,8 @@ Phase 4.4 implemented raw parser preservation for `let binder === EntityRef`.
 - The parser accepts `let Name === EntityRef` and `let OperatorName === EntityRef` in let-form position.
 - `AliasBinderAst` preserves the binder as `Name(NameAst)` or `Operator(OperatorNameAst)`.
 - `EntityRefAst` preserves the right-hand side as source-order inner-to-outer navigation components.
+- Outer navigation components after `::` may be `Name`, `NumericName`, or a parenthesized grouped scope expression (`NavComponentAst::Group`), matching ordinary Raw AST navigation. `xxx::(int Vec::std)` is valid.
+- The innermost component must be a syntactic symbol component (`Name`, `NumericName`, or `OperatorName`). A grouped expression is valid only as an outer component; `(int Vec::std)::ns` emits `InvalidEntityRef` ("grouped expression cannot be an innermost navigation component").
 - Operator names are valid only as innermost entity-reference components; `x::+` and `a::+::b` emit `InvalidEntityRef`.
 - Residual expression tokens after the entity reference emit `UnexpectedAliasRhsExpression`.
 - Missing targets emit `ExpectedAliasTarget`.

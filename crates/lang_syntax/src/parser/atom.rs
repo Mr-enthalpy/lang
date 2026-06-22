@@ -183,14 +183,7 @@ pub fn parse_nav_outer_component(parser: &mut Parser<'_>) -> Option<NavComponent
                 span: token.span,
             }))
         }
-        TokenKind::Symbol(Symbol::LParen) => parse_group(parser).map(|group| match group.kind {
-            AtomKind::Group(expr) => NavComponentAst::Group(expr),
-            AtomKind::Error(error) => NavComponentAst::Error(error),
-            _ => NavComponentAst::Error(ErrorAst {
-                message: "invalid navigation group".to_string(),
-                span: group.span,
-            }),
-        }),
+        TokenKind::Symbol(Symbol::LParen) => parse_nav_group_component(parser),
         _ if token.kind.is_operator_spelling() => {
             let operator = parser.cursor.bump_non_trivia();
             parser.error(
@@ -205,6 +198,17 @@ pub fn parse_nav_outer_component(parser: &mut Parser<'_>) -> Option<NavComponent
         }
         _ => None,
     }
+}
+
+pub fn parse_nav_group_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
+    parse_group(parser).map(|group| match group.kind {
+        AtomKind::Group(expr) => NavComponentAst::Group(expr),
+        AtomKind::Error(error) => NavComponentAst::Error(error),
+        _ => NavComponentAst::Error(ErrorAst {
+            message: "invalid navigation group".to_string(),
+            span: group.span,
+        }),
+    })
 }
 
 pub fn selector_span(selector: &SelectorAst) -> Span {
@@ -228,14 +232,24 @@ pub fn nav_component_is_operator(component: &NavComponentAst) -> bool {
     matches!(component, NavComponentAst::Operator(_))
 }
 
-fn atom_to_nav_component(parser: &Parser<'_>, atom: AtomAst) -> NavComponentAst {
+fn atom_to_nav_component(parser: &mut Parser<'_>, atom: AtomAst) -> NavComponentAst {
     match atom.kind {
         AtomKind::Name(name) => NavComponentAst::Text(name),
         AtomKind::IntLiteral(text) => NavComponentAst::Numeric(NumericNameAst {
             text,
             span: atom.span,
         }),
-        AtomKind::Group(expr) => NavComponentAst::Group(expr),
+        AtomKind::Group(_) => {
+            parser.error(
+                DiagnosticCode::InvalidNavComponent,
+                "grouped expression cannot be an innermost navigation component",
+                atom.span,
+            );
+            NavComponentAst::Error(parser.error_ast(
+                "grouped expression cannot be an innermost navigation component",
+                atom.span,
+            ))
+        }
         AtomKind::Error(error) => NavComponentAst::Error(error),
         _ => NavComponentAst::Error(parser.error_ast("invalid navigation component", atom.span)),
     }
@@ -252,7 +266,7 @@ pub fn extend_nav_components(
 }
 
 fn extend_or_create_nav_path(
-    parser: &Parser<'_>,
+    parser: &mut Parser<'_>,
     atom: AtomAst,
     component: NavComponentAst,
 ) -> AtomAst {

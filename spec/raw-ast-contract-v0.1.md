@@ -122,12 +122,14 @@ Normalization must **not** assume:
 - Raw AST performs no lookup for navigation paths.
 - Operator names are valid only as innermost navigation components unless a future design explicitly allows operator-named scopes. They are not valid after `.`, `..`, or as outer navigation components after `::`.
 - Parenthesized right-side scope expressions after `::` are preserved as grouped navigation components. Without parentheses, `::` consumes only the immediate valid navigation component.
+- The innermost navigation component must be a syntactic symbol component (`Name`, `NumericName`, or `OperatorName`). A grouped expression is valid only as an outer component; used as the innermost component (`(int Vec::std)::ns`) it emits `InvalidNavComponent`.
 
 ## EntityRef invariants
 
 - `EntityRefAst` preserves source-order inner-to-outer `NavComponentAst` entries.
 - `EntityRef` is parsed only inside alias-let RHS (`let binder === EntityRef`). It is not a general expression parser mode.
 - Operator names are valid only as innermost entity-reference navigation components unless a future design explicitly allows operator-named scopes. Outer components must not be operator names.
+- Outer entity-reference components after `::` may be `Name`, `NumericName`, or a parenthesized grouped scope expression (`NavComponentAst::Group`), matching ordinary navigation. The innermost component must be a syntactic symbol component; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
 
 ## Diagnostic / ErrorAst invariants
 
