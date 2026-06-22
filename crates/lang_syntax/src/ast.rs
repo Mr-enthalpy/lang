@@ -36,6 +36,7 @@ pub struct WithClauseAst {
 pub enum WithClauseKind {
     Lexical,
     Semantic { items: Vec<NameAst> },
+    Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

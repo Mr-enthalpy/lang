@@ -13,8 +13,7 @@ Program
                     Atom
                       Name type
     with_clause:
-      Semantic
-        a
+      Error "invalid with clause"
     value:
       Expr
         Pipe

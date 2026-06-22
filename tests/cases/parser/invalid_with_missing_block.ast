@@ -13,7 +13,7 @@ Program
                     Atom
                       Name type
     with_clause:
-      Lexical
+      Error "invalid with clause"
     value:
       Expr
         Pipe

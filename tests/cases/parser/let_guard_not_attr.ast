@@ -1,0 +1,17 @@
+Program
+  Let
+    binder:
+      Simple
+        name:
+          TextName guard
+        annotation:
+          Error "expected declaration annotation"
+    with_clause:
+      None
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name y

@@ -59,6 +59,7 @@ Normalization must **not** assume:
 - The absence of a with clause is distinct from explicit `with {}`.
 - `WithClauseKind::Lexical` preserves `with {}` as lexical-only syntax.
 - `WithClauseKind::Semantic` preserves non-empty `with { name, ... }` payloads syntactically.
+- `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
 - `LetBinderAst` distinguishes `Simple` (name + annotation), `Extract` (deduce + skeleton), and `Error`.
 - `LetAliasAst` preserves `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
@@ -103,7 +104,8 @@ Normalization must **not** assume:
 
 ## Closure AST invariants
 
-- `ClosureAst` distinguishes `Inline` (`FnHeadPrefix? BodyBlock`) and `Explicit` (`FnHeadPrefix => BodyBlock`).
+- `ClosureAst` distinguishes headed `Inline` (`FnHeadPrefix BodyBlock`) and `Explicit` (`FnHeadPrefix => BodyBlock`).
+- Raw AST has no representation for a bare `{ ... }` closure. A bare `{ ... }` in atom position is an error, not `ClosureAst`.
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, and `span`. All clauses are optional.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries containing expression AST.
 - `ParamClauseAst` preserves ordered `ParamItemAst` entries.

@@ -933,6 +933,11 @@ fn invalid_alias_guard_not_alias() {
 }
 
 #[test]
+fn let_guard_not_attr() {
+    assert_parser_case("let_guard_not_attr", true);
+}
+
+#[test]
 fn invalid_alias_annotation_not_alias() {
     assert_parser_case("invalid_alias_annotation_not_alias", true);
 }

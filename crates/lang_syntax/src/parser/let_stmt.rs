@@ -399,13 +399,15 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
             span,
         );
         recover_to_equal(parser);
+        let error_span = with_token.span.join(span);
         return Some(WithClauseAst {
-            kind: WithClauseKind::Lexical,
-            span: with_token.span,
+            kind: WithClauseKind::Error(parser.error_ast("invalid with clause", error_span)),
+            span: error_span,
         });
     };
 
     let mut items = Vec::new();
+    let mut invalid_span: Option<Span> = None;
 
     if let Some(rbrace) = parser.cursor.consume_symbol(Symbol::RBrace) {
         return Some(WithClauseAst {
@@ -422,6 +424,7 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
                 "expected name in with clause",
                 token.span,
             );
+            invalid_span = Some(token.span);
             recover_to_with_block_end(parser);
             break;
         }
@@ -443,6 +446,7 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
                 "expected name after `,` in with clause",
                 span,
             );
+            invalid_span = Some(span);
             break;
         }
     }
@@ -455,8 +459,20 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
             "unclosed with block, expected `}`",
             lbrace.span,
         );
-        parser.cursor.current_span()
+        let span = parser.cursor.current_span();
+        invalid_span = Some(invalid_span.map_or(lbrace.span, |invalid| invalid.join(span)));
+        span
     };
+
+    let span = with_token.span.join(end);
+    if let Some(invalid_span) = invalid_span {
+        return Some(WithClauseAst {
+            kind: WithClauseKind::Error(
+                parser.error_ast("invalid with clause", with_token.span.join(invalid_span)),
+            ),
+            span,
+        });
+    }
 
     Some(WithClauseAst {
         kind: if items.is_empty() {
@@ -464,7 +480,7 @@ fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {
         } else {
             WithClauseKind::Semantic { items }
         },
-        span: with_token.span.join(end),
+        span,
     })
 }
 

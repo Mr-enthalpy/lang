@@ -118,8 +118,10 @@ spanning the failed region.
 - **Primary span**: The unexpected token, the trailing `}`, or the opening `{`
   for unclosed blocks.
 - **Recovery**: Recover to `}`, `=`, or the current form boundary.
-- **AST effect**: Preserve a local error-tolerant `WithClauseAst` when possible;
-  do not interpret `with NameList` as valid syntax.
+- **AST effect**: Preserve `WithClauseKind::Error` when a `WithClauseAst` is
+  retained, or omit the with clause and recover locally. Malformed `with`
+  syntax must not normalize to `WithClauseKind::Lexical`; only valid `with {}`
+  may produce lexical with.
 
 #### `EmptyPipeSegment`
 
@@ -186,10 +188,13 @@ spanning the failed region.
 
 #### `UnclosedBrace`
 
-- **Trigger**: An opening `{` without a matching `}` by end of input.
+- **Trigger**: An opening `{` without a matching `}` in a context that owns a
+  brace-delimited grammar, such as a closure body or with block.
 - **Primary span**: The opening `{`.
-- **Recovery**: Insert implicit `}` at EOF. Parse body contents as `Form*`.
-- **AST effect**: The `BodyBlock` is created with forms parsed before recovery.
+- **Recovery**: Context-dependent. A closure body may recover as an incomplete
+  `BodyBlock`; a malformed `with` block recovers as invalid with syntax.
+- **AST effect**: Context-dependent. Do not assume every unclosed `{` creates a
+  `BodyBlock`.
 
 #### `InvalidDeduceList`
 

@@ -53,5 +53,5 @@ workspace smoke tests).
 | Category | Count |
 |---|---|
 | Lexer golden cases | 11 |
-| Parser golden cases | 187 |
+| Parser golden cases | 188 |
 | Diagnostic golden cases | 32 |

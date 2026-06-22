@@ -86,6 +86,11 @@ fn dump_let(output: &mut String, let_ast: &LetAst, indent: usize) {
                     line(output, indent + 3, &item.text);
                 }
             }
+            WithClauseKind::Error(error) => line(
+                output,
+                indent + 2,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            ),
         },
     }
     line(output, indent + 1, "value:");
