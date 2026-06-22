@@ -912,8 +912,11 @@ AtomBase ::=
     Name
   | Literal
   | Group
-  | ClosureAst
+  | HeadedOrExplicitClosureAst
 ```
+
+`HeadedOrExplicitClosureAst` means headed inline closure or explicit closure.
+Bare `{ ... }` is not an atom-base closure form.
 
 AST:
 
