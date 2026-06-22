@@ -80,9 +80,10 @@ parser boundary, and raw-AST sketch.
 For this design, the relevant parts are:
 
 - `EntityRef` is a compile-time entity reference, not a runtime expression.
-- The path may contain intermediate text-name segments and a final leaf that
-  may be a text name or an operator name.
-- Operator names are valid only in binder position or innermost navigation-component position.
+- The EntityRef preserves source-order inner-to-outer navigation components.
+- The innermost component may be a text name, numeric name, or operator name.
+- Outer components may be text names, numeric names, or grouped scope-producing expressions.
+- Operator names are not valid as outer navigation components.
 
 ## Meaning
 
