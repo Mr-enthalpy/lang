@@ -1,1 +1,0 @@
-error OperatorPathLeafNotFinal "operator path leaf cannot be followed by `::`" @ 1:7 [6..8]

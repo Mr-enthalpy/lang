@@ -3,8 +3,9 @@
 ## Purpose
 
 This skill defines how to work on the `lang` repository. The v0.1 Raw AST
-frontend is completed. Current work is Normalized AST specification (v0.3); v0.2 Raw AST Contract Freeze is completed and
-Normalized AST design.
+frontend is completed. The Raw AST contract has been reopened for breaking
+guard/with/brace and inner-to-outer navigation corrections before Normalized
+AST specification (v0.3).
 
 The only accepted outputs for implementation work are tokens, AST, and
 diagnostics.
@@ -114,9 +115,13 @@ Before changing expression parsing, read both `spec/ast-construction-v0.1.md`
 and `spec/operator-design.md`.
 
 Operator expression parsing is implemented as raw AST sugar, and operator names
-are preserved in binder/final-path-leaf positions. If the task is not
+are preserved in binder and innermost navigation-component positions. If the task is not
 explicitly about a later operator phase, do not add operator lookup, lowering,
 alias binding, or semantic validation.
+
+Navigation order is inner-to-outer. The leftmost component is the innermost
+selected symbol; the rightmost component is the outermost scope component. Raw
+AST preserves source-order navigation components and performs no lookup.
 
 ## 4. AST construction order
 

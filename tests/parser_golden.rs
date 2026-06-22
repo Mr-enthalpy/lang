@@ -43,8 +43,23 @@ fn expr_name() {
 }
 
 #[test]
-fn expr_path() {
-    assert_parser_case("expr_path", false);
+fn expr_nav_path() {
+    assert_parser_case("expr_nav_path", false);
+}
+
+#[test]
+fn nav_group_scope() {
+    assert_parser_case("nav_group_scope", false);
+}
+
+#[test]
+fn nav_ungrouped_scope() {
+    assert_parser_case("nav_ungrouped_scope", false);
+}
+
+#[test]
+fn nav_two_elements() {
+    assert_parser_case("nav_two_elements", false);
 }
 
 #[test]
@@ -78,8 +93,8 @@ fn let_with_semantic_many() {
 }
 
 #[test]
-fn let_value_path() {
-    assert_parser_case("let_value_path", false);
+fn let_value_nav() {
+    assert_parser_case("let_value_nav", false);
 }
 
 #[test]
@@ -173,8 +188,8 @@ fn member_nested() {
 }
 
 #[test]
-fn path_numeric_leaf() {
-    assert_parser_case("path_numeric_leaf", false);
+fn nav_numeric_inner() {
+    assert_parser_case("nav_numeric_inner", false);
 }
 
 #[test]
@@ -258,8 +273,8 @@ fn let_extract_wildcard() {
 }
 
 #[test]
-fn let_extract_path() {
-    assert_parser_case("let_extract_path", false);
+fn let_extract_nav() {
+    assert_parser_case("let_extract_nav", false);
 }
 
 #[test]
@@ -758,28 +773,28 @@ fn operator_binder_postfix_bang() {
 }
 
 #[test]
-fn operator_path_leaf_plus() {
-    assert_parser_case("operator_path_leaf_plus", false);
+fn operator_nav_inner_plus() {
+    assert_parser_case("operator_nav_inner_plus", false);
 }
 
 #[test]
-fn operator_path_leaf_shift() {
-    assert_parser_case("operator_path_leaf_shift", false);
+fn operator_nav_inner_shift() {
+    assert_parser_case("operator_nav_inner_shift", false);
 }
 
 #[test]
-fn operator_path_leaf_after_numeric() {
-    assert_parser_case("operator_path_leaf_after_numeric", false);
+fn nav_numeric_inner_chain() {
+    assert_parser_case("nav_numeric_inner_chain", false);
 }
 
 #[test]
-fn operator_path_leaf_in_expression() {
-    assert_parser_case("operator_path_leaf_in_expression", false);
+fn operator_nav_in_expression() {
+    assert_parser_case("operator_nav_in_expression", false);
 }
 
 #[test]
-fn operator_path_leaf_then_binary_operator() {
-    assert_parser_case("operator_path_leaf_then_binary_operator", false);
+fn operator_nav_then_binary_operator() {
+    assert_parser_case("operator_nav_then_binary_operator", false);
 }
 
 #[test]
@@ -788,18 +803,18 @@ fn invalid_operator_binder_missing_colon() {
 }
 
 #[test]
-fn invalid_operator_path_leaf_not_final() {
-    assert_parser_case("invalid_operator_path_leaf_not_final", true);
+fn invalid_nav_outer_operator() {
+    assert_parser_case("invalid_nav_outer_operator", true);
 }
 
 #[test]
-fn invalid_operator_path_leaf_not_final_suffix() {
-    assert_parser_case("invalid_operator_path_leaf_not_final_suffix", true);
+fn invalid_nav_outer_operator_after_scope() {
+    assert_parser_case("invalid_nav_outer_operator_after_scope", true);
 }
 
 #[test]
-fn invalid_operator_path_starts_with_operator() {
-    assert_parser_case("invalid_operator_path_starts_with_operator", true);
+fn invalid_nav_operator_outer_after_inner() {
+    assert_parser_case("invalid_nav_operator_outer_after_inner", true);
 }
 
 #[test]
@@ -880,6 +895,36 @@ fn invalid_alias_rhs_operator_expr() {
 #[test]
 fn invalid_alias_operator_intermediate_segment() {
     assert_parser_case("invalid_alias_operator_intermediate_segment", true);
+}
+
+#[test]
+fn let_alias_grouped_outer_scope() {
+    assert_parser_case("let_alias_grouped_outer_scope", false);
+}
+
+#[test]
+fn let_alias_operator_inner_qualified() {
+    assert_parser_case("let_alias_operator_inner_qualified", false);
+}
+
+#[test]
+fn invalid_alias_grouped_innermost() {
+    assert_parser_case("invalid_alias_grouped_innermost", true);
+}
+
+#[test]
+fn invalid_nav_grouped_innermost() {
+    assert_parser_case("invalid_nav_grouped_innermost", true);
+}
+
+#[test]
+fn invalid_alias_outer_operator() {
+    assert_parser_case("invalid_alias_outer_operator", true);
+}
+
+#[test]
+fn invalid_alias_outer_operator_after_scope() {
+    assert_parser_case("invalid_alias_outer_operator_after_scope", true);
 }
 
 #[test]

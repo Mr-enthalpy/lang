@@ -185,7 +185,7 @@ fn parse_canonical_name_or_path(
             },
         );
         span = name.span.join(span);
-        CanonicalSkeletonAst::Path {
+        CanonicalSkeletonAst::NavPath {
             names: path_names,
             span,
         }

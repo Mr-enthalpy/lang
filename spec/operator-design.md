@@ -2,7 +2,8 @@
 
 This document defines the language-level operator design. Parser phase 4
 implements expression-level operator syntax as raw AST sugar. Parser phase 4.1
-implements operator names in binder position and final path-leaf position.
+implements operator names in binder position and innermost navigation-component
+position.
 
 Operators are surface syntax for specially shaped function invocation. They are
 not built-in arithmetic, comparison, mutation, assignment syntax, parser-level
@@ -107,7 +108,7 @@ Conceptual suffix grammar:
 Atom := Primary AtomSuffix*
 
 AtomSuffix :=
-    "::" PathLeaf
+    "::" NavComponent
   | "." Name
   | ".." Name ArgPack
   | PostfixOperator
@@ -282,11 +283,11 @@ Operator names may appear in:
 
 - expression operator sugar, implemented in Phase 4;
 - binder-name position, implemented in Phase 4.1;
-- final path-leaf position after `::`, implemented in Phase 4.1.
+- innermost navigation-component position before `::`, implemented in Phase 4.1.
 
 ```text
 BinderName := Name | OperatorName
-PathLeaf   := Name | OperatorName
+NavComponent := Name | NumericName | OperatorName | GroupedExpr
 ```
 
 Valid design cases:
@@ -294,8 +295,8 @@ Valid design cases:
 ```text
 let +: _: operator = expr
 let >: _: operator = expr
-t::+
-std::int::+
++::int::std
+<<::bit::std
 ```
 
 Phase 4.1 does not accept `<` as a simple operator binder spelling:
@@ -311,14 +312,18 @@ simple operator binder. This is a syntax disambiguation limitation, not an
 operator semantic rule. A future phase may add escaping or another explicit
 disambiguation rule if `<` needs to be declared as an operator binder.
 
-Operator names may only be path leaves. They are not namespace-like
-intermediate path nodes.
+Navigation order is inner-to-outer. The leftmost component is the innermost
+selected symbol, and the rightmost component is the outermost scope component.
+Raw AST preserves source-order navigation components and performs no lookup.
+Operator names may only be innermost navigation components unless a future
+design explicitly allows operator-named scopes.
 
 Invalid design cases:
 
 ```text
-+::x
-t::+::x
+x::+
+x::int::+
++::x::+
 t::+::-
 ```
 
@@ -407,8 +412,8 @@ Parser phase 4.1 supplies the operator-name syntax that future aliases need in
 binder and entity path-leaf positions:
 
 ```text
-let << === xxx_bit::<<
-let + === checked_int::+
+let << === <<::xxx_bit
+let + === +::checked_int
 ```
 
 Operator aliasing may select a concrete visible operator implementation from

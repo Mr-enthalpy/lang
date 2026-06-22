@@ -544,7 +544,7 @@ fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
         CanonicalSkeletonAst::ArgPack { span, .. } => *span,
         CanonicalSkeletonAst::Wildcard { span } => *span,
         CanonicalSkeletonAst::Name { span, .. } => *span,
-        CanonicalSkeletonAst::Path { span, .. } => *span,
+        CanonicalSkeletonAst::NavPath { span, .. } => *span,
         CanonicalSkeletonAst::Literal { span, .. } => *span,
         CanonicalSkeletonAst::Error(error) => error.span,
     }

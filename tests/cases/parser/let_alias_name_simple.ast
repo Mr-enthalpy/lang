@@ -4,6 +4,7 @@ Program
       Name Vec
     target:
       EntityRef
-        segment std
-        segment collections
-        leaf Name Vector
+        components:
+          component Name Vector
+          component Name collections
+          component Name std

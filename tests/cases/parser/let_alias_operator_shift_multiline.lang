@@ -1,2 +1,2 @@
-let << === xxx_bit::<<
+let << === <<::xxx_bit
 let x: type = y

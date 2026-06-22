@@ -1,7 +1,0 @@
-Program
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
-          OperatorExpr
-            Error "operator path leaf cannot start a path"

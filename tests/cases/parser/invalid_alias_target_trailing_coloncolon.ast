@@ -4,5 +4,6 @@ Program
       Name x
     target:
       EntityRef
-        segment a
-        leaf Error "expected entity reference"
+        components:
+          component Name a
+          component Error "expected navigation component"

@@ -1,0 +1,10 @@
+Program
+  LetAlias
+    binder:
+      Name p
+    target:
+      EntityRef
+        components:
+          component Operator +
+          component Name int
+          component Name std

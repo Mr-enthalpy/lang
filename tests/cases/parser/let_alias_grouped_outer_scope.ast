@@ -1,0 +1,21 @@
+Program
+  LetAlias
+    binder:
+      Name m
+    target:
+      EntityRef
+        components:
+          component Name xxx
+          component Group
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name int
+                  OperatorExpr
+                    Atom
+                      NavPath
+                        components:
+                          component Name Vec
+                          component Name std

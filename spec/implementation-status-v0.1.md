@@ -26,11 +26,11 @@ only records what it currently does.
 | Operator binder names (`let +: _: operator = ...`) | `implemented-syntax` | `let_stmt.rs`, `token.rs` | `operator-design.md` | Operator names accepted as binder; `<` not accepted (extract-let strong context). |
 | PipeExpr / Segment / ArgPack roles | `implemented-syntax` | `pipe.rs`, `argpack.rs` | `ast-construction-v0.1.md` §7-9 | SourcePack, InsertPack, RightTargetSubsegment role assignment. |
 | OperatorExpr (prefix `-`, postfix, binary) | `implemented-syntax` | `operator.rs` | `operator-design.md` + `ast-construction-v0.1.md` §7.3 | Raw AST sugar; precedence/associativity per operator-design.md. No lookup or lowering. |
-| `::` path suffix | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.4 | `Path` node in AtomAst and OperatorExprAst. |
+| `::` navigation suffix | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.4 | `NavPath` node in AtomAst and OperatorExprAst; components preserved source-order inner-to-outer. Parenthesized scope expressions after `::` are preserved as grouped outer components; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidNavComponent`. |
 | `.` member sugar | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.5 | `MemberSugar` node. Text or numeric selector. |
 | `..` double-dot sugar | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.6 | `DoubleDotSugar` node. Requires selector + ArgPack. |
 | Numeric selectors (`obj.1`, `uint8::1`) | `implemented-syntax` | `atom.rs` | `ast-construction-v0.1.md` §8.3 | IntLiteral in selector position → NumericNameAst. |
-| Operator final path leaves (`std::int::+`) | `implemented-syntax` | `atom.rs`, `operator.rs` | `operator-design.md` | Valid only after `::`, not after `.` or `..`. Not valid as intermediate segment. |
+| Operator innermost navigation components (`+::int::std`) | `implemented-syntax` | `atom.rs`, `operator.rs` | `operator-design.md` | Valid only as innermost navigation component. Not valid after `.`, `..`, or as an outer navigation component. |
 | Closure AST (headed inline, explicit `() => {}`) | `implemented-syntax` | `closure.rs` | `ast-construction-v0.1.md` §10-11 | Bare `{}` is invalid in atom position. Closure AST only; no materialization into callable objects. |
 | Closure head (deduce, capture, param, fn-item-trait, return clauses) | `implemented-syntax` | `closure.rs`, `deduce.rs`, `canonical.rs` | `ast-construction-v0.1.md` §11 | All clauses parsed and preserved. |
 | `where` / `acquire` in closure head | `reserved-not-active` | `closure.rs` | `ast-construction-v0.1.md` §11.7-11.8 | Recognized as reserved positions but not parsed as clauses. Lookahead rejects them. |
@@ -53,5 +53,5 @@ workspace smoke tests).
 | Category | Count |
 |---|---|
 | Lexer golden cases | 11 |
-| Parser golden cases | 188 |
+| Parser golden cases | 190 |
 | Diagnostic golden cases | 32 |

@@ -43,10 +43,12 @@ Phase 4.4 implemented raw parser preservation for `let binder === EntityRef`.
 **What is implemented:**
 
 - `===` is lexed as `Symbol::TripleEqual`, one structural token (before `==` and `=`).
-- The parser accepts `let Name === EntityPath` and `let OperatorName === EntityPath` in let-form position.
+- The parser accepts `let Name === EntityRef` and `let OperatorName === EntityRef` in let-form position.
 - `AliasBinderAst` preserves the binder as `Name(NameAst)` or `Operator(OperatorNameAst)`.
-- `EntityRefAst` preserves the right-hand side as a sequence of `EntityPathSegmentAst` (text names) terminated by `EntityPathLeafAst` (Name or OperatorName).
-- Operator names are valid only as the final entity path leaf; `+::x` and `a::+::b` emit `InvalidEntityRef`.
+- `EntityRefAst` preserves the right-hand side as source-order inner-to-outer navigation components.
+- Outer navigation components after `::` may be `Name`, `NumericName`, or a parenthesized grouped scope expression (`NavComponentAst::Group`), matching ordinary Raw AST navigation. `xxx::(int Vec::std)` is valid.
+- The innermost component must be a syntactic symbol component (`Name`, `NumericName`, or `OperatorName`). A grouped expression is valid only as an outer component; `(int Vec::std)::ns` emits `InvalidEntityRef` ("grouped expression cannot be an innermost navigation component").
+- Operator names are valid only as innermost entity-reference components; `x::+` and `a::+::b` emit `InvalidEntityRef`.
 - Residual expression tokens after the entity reference emit `UnexpectedAliasRhsExpression`.
 - Missing targets emit `ExpectedAliasTarget`.
 - The alias-let dispatch guards against extract-let, annotation, and `with` paths: none of these parse as alias declarations. `guard` is an ordinary binder name, not an alias modifier.
@@ -68,19 +70,20 @@ AliasBinding ::= "let" AliasBinder "===" EntityRef
 
 AliasBinder ::= Name | OperatorName
 
-EntityRef ::= EntityPath
+EntityRef ::= EntityNavigation
 ```
 
-`EntityRef` is defined by `spec/entity-ref-design.md`. The full `EntityPath`
-grammar is not duplicated here; see that document for the complete definition,
+`EntityRef` is defined by `spec/entity-ref-design.md`. The full
+`EntityNavigation` grammar is not duplicated here; see that document for the complete definition,
 parser boundary, and raw-AST sketch.
 
 For this design, the relevant parts are:
 
 - `EntityRef` is a compile-time entity reference, not a runtime expression.
-- The path may contain intermediate text-name segments and a final leaf that
-  may be a text name or an operator name.
-- Operator names are valid only in binder position or final path-leaf position.
+- The EntityRef preserves source-order inner-to-outer navigation components.
+- The innermost component may be a text name, numeric name, or operator name.
+- Outer components may be text names, numeric names, or grouped scope-producing expressions.
+- Operator names are not valid as outer navigation components.
 
 ## Meaning
 
@@ -145,9 +148,9 @@ or `:`.
 For text-name binders, aliasing may rename the target:
 
 ```text
-let local_name === package::module::exported_name
-let Vec === std::collections::Vector
-let map === std::iter::map
+let local_name === exported_name::module::package
+let Vec === Vector::collections::std
+let map === map::iter::std
 ```
 
 These examples are future syntax only.
@@ -178,16 +181,16 @@ spelling + fixity + arity
 Valid future design examples:
 
 ```text
-let << === xxx_bit::<<
+let << === <<::xxx_bit
 let >> === xxx_bit::>>
-let + === checked_int::+
+let + === +::checked_int
 ```
 
 Invalid future design examples:
 
 ```text
 let << === xxx_bit::>>
-let + === xxx_bit::<<
+let + === <<::xxx_bit
 let - === some_lib::+
 ```
 
@@ -336,18 +339,9 @@ AliasBinderAst =
   | Error(ErrorAst)
 
 EntityRefAst {
-    path: Vec<EntityPathSegmentAst>,
-    leaf: EntityPathLeafAst,
+    components: Vec<NavComponentAst>,
     span: Span
 }
-
-EntityPathSegmentAst =
-    Name(NameAst)
-
-EntityPathLeafAst =
-    Name(NameAst)
-  | Operator(OperatorNameAst)
-  | Error(ErrorAst)
 ```
 
 The exact `EntityRefAst` shape is defined in `spec/entity-ref-design.md`.

@@ -9,11 +9,10 @@ Program
                 object:
                   MemberSugar
                     object:
-                      Path
-                        base:
-                          Name a
-                        names:
-                          TextName b
+                      NavPath
+                        components:
+                          component Name a
+                          component Name b
                     selector:
                       TextName c
                 selector:

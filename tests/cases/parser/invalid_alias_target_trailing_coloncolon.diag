@@ -1,1 +1,1 @@
-error InvalidEntityRef "expected entity reference after `===`" @ 2:1 [14..14]
+error InvalidEntityRef "expected navigation component after `::`" @ 2:1 [14..14]

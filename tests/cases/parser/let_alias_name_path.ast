@@ -4,6 +4,7 @@ Program
       Name map
     target:
       EntityRef
-        segment std
-        segment iter
-        leaf Name map
+        components:
+          component Name map
+          component Name iter
+          component Name std

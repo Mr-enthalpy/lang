@@ -119,7 +119,7 @@ pub enum CanonicalSkeletonAst {
         role: CanonicalNameRole,
         span: Span,
     },
-    Path {
+    NavPath {
         names: Vec<NameAst>,
         span: Span,
     },
@@ -178,9 +178,8 @@ pub enum OperatorExprKind {
         args: Vec<OperatorExprAst>,
         span: Span,
     },
-    Path {
-        base: Box<OperatorExprAst>,
-        names: Vec<SelectorAst>,
+    NavPath {
+        components: Vec<NavComponentAst>,
         span: Span,
     },
     MemberSugar {
@@ -231,7 +230,15 @@ pub enum ArgPackRole {
 pub enum SelectorAst {
     Text(NameAst),
     Numeric(NumericNameAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NavComponentAst {
+    Text(NameAst),
+    Numeric(NumericNameAst),
     Operator(OperatorNameAst),
+    Group(Box<ExprAst>),
+    Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -254,9 +261,8 @@ pub enum AtomKind {
     IntLiteral(String),
     StringLiteral(String),
     Group(Box<ExprAst>),
-    Path {
-        base: Box<AtomAst>,
-        names: Vec<SelectorAst>,
+    NavPath {
+        components: Vec<NavComponentAst>,
     },
     MemberSugar {
         object: Box<AtomAst>,
@@ -391,20 +397,6 @@ pub enum AliasBinderAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntityRefAst {
-    pub path: Vec<EntityPathSegmentAst>,
-    pub leaf: EntityPathLeafAst,
+    pub components: Vec<NavComponentAst>,
     pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EntityPathSegmentAst {
-    pub name: NameAst,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum EntityPathLeafAst {
-    Name(NameAst),
-    Operator(OperatorNameAst),
-    Error(ErrorAst),
 }

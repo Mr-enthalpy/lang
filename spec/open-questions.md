@@ -233,9 +233,11 @@ Implemented in parser phase 4 at the `OperatorExprAst` layer.
 **Status:** Resolved
 
 **Resolution:**
-Operator names may appear as binder names and as path leaves:
-`BinderName := Name | OperatorName` and `PathLeaf := Name | OperatorName`.
-Operator names may only be leaves, not namespace-like intermediate path nodes.
+Operator names may appear as binder names and as innermost navigation
+components: `BinderName := Name | OperatorName` and
+`NavComponent := Name | NumericName | OperatorName | GroupedExpr`.
+Operator names may only be innermost navigation components, not outer scope
+components.
 
 **Implementation status:**
 Implemented in parser phase 4.1 as raw AST preservation. Operator lookup,

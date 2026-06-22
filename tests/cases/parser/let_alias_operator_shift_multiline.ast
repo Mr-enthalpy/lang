@@ -4,8 +4,9 @@ Program
       Operator <<
     target:
       EntityRef
-        segment xxx_bit
-        leaf Operator <<
+        components:
+          component Operator <<
+          component Name xxx_bit
   Let
     binder:
       Simple

@@ -18,7 +18,7 @@ Program
                 elements:
                   CanonicalName role=Hole name=head
                   CanonicalName role=Hole name=tail
-              CanonicalPath
+              CanonicalNavPath
                 names:
                   List
                   Cons

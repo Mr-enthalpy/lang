@@ -155,7 +155,7 @@ The smallest self-contained expression unit. Atoms include:
 - `StringLiteral("\"text\"")`
 - `Group(PipeExpr)`
 - `Closure(ClosureAst)`
-- `Path(base, leaves)` (leaves are `SelectorAst`)
+- `NavPath(components)` (components are `NavComponentAst` in source order)
 - `MemberSugar(object, selector)` (selector is `SelectorAst`)
 - `DoubleDotSugar(object, selector, args)` (selector is `SelectorAst`)
 - `Error`
@@ -164,30 +164,26 @@ Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
 `..`, and postfix operators once implemented). Operator sugar itself is stored
 at the `OperatorExpr` layer, not as a general `Atom` variant.
 
-_See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator, SelectorAst._
+_See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator, SelectorAst, NavPath._
 
 ---
 
 ## SelectorAst
 
-A name-like construct appearing in suffix position after `::`, `.`, or `..`.
+A name-like construct appearing in suffix position after `.` or `..`.
 In the current parser phase:
 
 ```text
 SelectorAst ::=
     Text(NameAst)     // from TokenKind::Name
   | Numeric(NumericNameAst)  // from TokenKind::IntLiteral
-  | Operator(OperatorNameAst) // final path leaf after `::`
 ```
-
-Operator selectors are valid only as final path leaves after `::`; they are not
-valid after `.` or `..`.
 
 A numeric token (`IntLiteral`) in selector position becomes `NumericNameAst`,
 while the same token class in atom-base position becomes a numeric literal atom.
 This distinction is mandatory.
 
-_See also: NumericNameAst, NameAst, PathLeaf, MemberSugar, DoubleDotSugar._
+_See also: NumericNameAst, NameAst, NavComponent, MemberSugar, DoubleDotSugar._
 
 ---
 
@@ -204,13 +200,13 @@ _See also: SelectorAst, NameAst._
 ## OperatorName
 
 A symbol spelling that can be used as an operator identity component, an
-expression operator, a binder name, or a final path leaf. Operator names are
-not keywords, and their spelling does not imply arithmetic, comparison,
+expression operator, a binder name, or an innermost navigation component.
+Operator names are not keywords, and their spelling does not imply arithmetic, comparison,
 mutation, assignment, lookup, or evaluation semantics.
 
 Operator identity is `spelling + fixity + arity`.
 
-_See also: Fixity, Arity, PathLeaf, OperatorSugar._
+_See also: Fixity, Arity, NavComponent, OperatorSugar._
 
 ---
 
@@ -260,7 +256,7 @@ A unary operator suffix that composes with other atom suffixes. In the
 operator-aware design, postfix operators do not terminate suffix parsing, so
 `obj!.field` has the same shape as `(obj!).field`.
 
-_See also: OperatorSugar, Atom, PathLeaf._
+_See also: OperatorSugar, Atom, NavPath._
 
 ---
 
@@ -273,24 +269,38 @@ _See also: OperatorSugar, Fixity._
 
 ---
 
-## PathLeaf
+## NavPath
 
-The final lookup component after `::`. In the current parser phase:
-
-```text
-PathLeaf ::= Name | NumericName
-```
-
-In the operator-aware design:
+A source-order inner-to-outer navigation chain separated by `::`.
 
 ```text
-PathLeaf ::= Name | NumericName | OperatorName
+NavPath ::= NavComponent "::" NavOuterComponent ("::" NavOuterComponent)*
 ```
 
-Operator names may appear only as leaves, not as namespace-like intermediate
-path nodes.
+The leftmost component is the innermost selected symbol. The rightmost
+component is the outermost scope component. Raw AST preserves navigation
+components in source order and performs no lookup.
 
-_See also: SelectorAst, OperatorName, Atom._
+_See also: NavComponent, OperatorName, Atom._
+
+---
+
+## NavComponent
+
+A component in a `NavPath`:
+
+```text
+NavComponent ::= Name | NumericName | OperatorName | GroupedExpr | Error
+```
+
+Operator names are valid only as innermost navigation components unless a
+future design explicitly allows operator-named scopes. Parenthesized
+right-side scope expressions after `::` are preserved as grouped components.
+A grouped expression is valid only as an outer component; used as the innermost
+component (`(int Vec::std)::ns`) it emits `InvalidNavComponent`. Without
+parentheses, `::` consumes only one immediate valid component.
+
+_See also: NavPath, SelectorAst, OperatorName._
 
 ---
 
@@ -305,14 +315,14 @@ expression parser mode.
 Provisional grammar:
 
 ```text
-EntityRef ::= EntityPath
+EntityRef ::= EntityComponent ("::" EntityOuterComponent)*
 ```
 
 `EntityRef` may appear only in future explicit strong contexts, such as the
 right-hand side of `let binder === EntityRef`. Current v0.1 parser behavior is
 unchanged.
 
-_See also: EntityPath, EntityPathSegment, EntityPathLeaf._
+_See also: NavPath, NavComponent._
 
 ---
 
@@ -322,48 +332,28 @@ The conceptual role of `EntityRef`: a source-level reference to a compile-time
 entity that may later be resolved by semantic/name-resolution phases. It does
 not denote a runtime value and is not checked for existence by the parser.
 
-_See also: EntityRef, EntityPath._
+_See also: EntityRef, NavPath._
 
 ---
 
-## EntityPath
+## EntityRef navigation
 
-The path syntax inside a future `EntityRef`:
+The navigation syntax inside a future `EntityRef`:
 
 ```text
-EntityPath ::= EntityPathSegment ("::" EntityPathSegment)* "::" EntityPathLeaf
-             | EntityPathLeaf
+EntityComponent ::= Name | NumericName | OperatorName
+EntityOuterComponent ::= Name | NumericName | Group
 ```
 
-Intermediate segments are text names. The final leaf may be a text name or an
-operator name.
+EntityRef navigation is inner-to-outer and preserves source-order components.
+An operator name is allowed only as the innermost component unless a future
+design explicitly allows operator-named scopes. A grouped expression is valid
+only as an outer navigation component after `::`; a grouped expression used as
+the innermost component (`(int Vec::std)::ns`) emits `InvalidEntityRef`. The
+parser does not perform operator lookup, name lookup, namespace resolution, or
+existence checking.
 
-_See also: EntityPathSegment, EntityPathLeaf, EntityRef._
-
----
-
-## EntityPathSegment
-
-An intermediate text-name segment in a future `EntityPath`. It must be a
-`Name`; operator names are not namespace-like intermediate path segments.
-
-_See also: EntityPath, EntityPathLeaf._
-
----
-
-## EntityPathLeaf
-
-The final referred entity in a future `EntityPath`:
-
-```text
-EntityPathLeaf ::= Name | OperatorName
-```
-
-An operator name is allowed only in this final position. The parser does not
-perform operator lookup, name lookup, namespace resolution, or existence
-checking.
-
-_See also: EntityPath, OperatorName, EntityRef._
+_See also: NavPath, OperatorName, EntityRef._
 
 ---
 

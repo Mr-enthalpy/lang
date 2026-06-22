@@ -1,0 +1,1 @@
+error InvalidNavComponent "operator cannot be an outer navigation component" @ 1:9 [8..9]

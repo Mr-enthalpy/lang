@@ -1,0 +1,12 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              NavPath
+                components:
+                  component Name x
+                  component Name int
+                  component Error "operator cannot be an outer navigation component"

@@ -1,0 +1,26 @@
+Program
+  Let
+    binder:
+      Simple
+        name:
+          TextName x
+        annotation:
+          Bare
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+    with_clause:
+      None
+    value:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                NavPath
+                  components:
+                    component Name a
+                    component Name b

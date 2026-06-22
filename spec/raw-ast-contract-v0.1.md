@@ -89,18 +89,18 @@ Normalization must **not** assume:
 
 ## OperatorExpr invariants
 
-- `OperatorExprAst` preserves `Atom`, `OperatorSugar`, `Path`, `MemberSugar`, `DoubleDotSugar`, and `Error`.
+- `OperatorExprAst` preserves `Atom`, `OperatorSugar`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, and `Error`.
 - `OperatorSugar` preserves the operator name (`OperatorNameAst`), `fixity` (`Prefix`, `Postfix`, `Binary`), `args`, and `span`.
-- `Path`, `MemberSugar`, and `DoubleDotSugar` at the `OperatorExpr` layer exist to support postfix operator suffix continuation (e.g., `obj!.field`).
+- `NavPath`, `MemberSugar`, and `DoubleDotSugar` at the `OperatorExpr` layer exist to support postfix operator suffix continuation (e.g., `obj!.field`).
 - Operator expressions are segment-local: they do not cross `|>` pipe boundaries.
 
 ## Atom and suffix-sugar invariants
 
-- `AtomAst` preserves `Name`, `IntLiteral`, `StringLiteral`, `Group`, `Path`, `MemberSugar`, `DoubleDotSugar`, `Closure`, and `Error`.
-- `Path` atoms preserve a base and ordered selector leaves.
+- `AtomAst` preserves `Name`, `IntLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `Closure`, and `Error`.
+- `NavPath` atoms preserve source-order inner-to-outer navigation components.
 - `MemberSugar` preserves an object and a selector.
 - `DoubleDotSugar` preserves an object, a selector, and an `ArgPackAst`.
-- The parser's suffix pipeline includes `:: Selector`, `. Selector`, `.. Selector ArgPack`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves path/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
+- The parser's suffix pipeline includes `:: NavComponent`, `. Selector`, `.. Selector ArgPack`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves navigation/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
 
 ## Closure AST invariants
 
@@ -114,17 +114,22 @@ Normalization must **not** assume:
 - `ReturnBinderAst` distinguishes `TypeExpr`, `ExtractType` (deduce + skeleton), and `Error`.
 - `BodyBlockAst` preserves ordered `FormAst` entries and `span`.
 
-## Selector and operator-name invariants
+## Selector and navigation invariants
 
-- `SelectorAst` distinguishes `Text(NameAst)`, `Numeric(NumericNameAst)`, and `Operator(OperatorNameAst)`.
-- Numeric selectors (`obj.1`, `uint8::1`) use `NumericNameAst` in selector position. The same token class (`IntLiteral`) produces `IntLiteral` atoms in expression position.
-- Operator selectors are valid only as final path leaves after `::`. They are not valid after `.` or `..`.
+- `SelectorAst` distinguishes `Text(NameAst)` and `Numeric(NumericNameAst)` for `.` and `..` suffixes.
+- Numeric selectors (`obj.1`, `uint8::1`) use `NumericNameAst` in selector/navigation position. The same token class (`IntLiteral`) produces `IntLiteral` atoms in expression position.
+- `NavPathAst` preserves source-order `NavComponentAst` entries. Navigation order is inner-to-outer: the leftmost component is the innermost selected symbol, and the rightmost component is the outermost scope component.
+- Raw AST performs no lookup for navigation paths.
+- Operator names are valid only as innermost navigation components unless a future design explicitly allows operator-named scopes. They are not valid after `.`, `..`, or as outer navigation components after `::`.
+- Parenthesized right-side scope expressions after `::` are preserved as grouped navigation components. Without parentheses, `::` consumes only the immediate valid navigation component.
+- The innermost navigation component must be a syntactic symbol component (`Name`, `NumericName`, or `OperatorName`). A grouped expression is valid only as an outer component; used as the innermost component (`(int Vec::std)::ns`) it emits `InvalidNavComponent`.
 
 ## EntityRef invariants
 
-- `EntityRefAst` preserves ordered `EntityPathSegmentAst` entries (text names) and a final `EntityPathLeafAst` (Name or OperatorName).
+- `EntityRefAst` preserves source-order inner-to-outer `NavComponentAst` entries.
 - `EntityRef` is parsed only inside alias-let RHS (`let binder === EntityRef`). It is not a general expression parser mode.
-- Operator names are valid only as final `EntityPathLeaf`. Intermediate segments must be text names.
+- Operator names are valid only as innermost entity-reference navigation components unless a future design explicitly allows operator-named scopes. Outer components must not be operator names.
+- Outer entity-reference components after `::` may be `Name`, `NumericName`, or a parenthesized grouped scope expression (`NavComponentAst::Group`), matching ordinary navigation. The innermost component must be a syntactic symbol component; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
 
 ## Diagnostic / ErrorAst invariants
 

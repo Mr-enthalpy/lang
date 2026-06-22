@@ -1,13 +1,13 @@
 use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, BinderNameAst, DeclAnnotationAst,
-    DiagnosticCode, EntityPathLeafAst, EntityPathSegmentAst, EntityRefAst, ErrorAst, ExprAst,
-    ExprKind, FormAst, LetAliasAst, LetAst, LetBinderAst, NameAst, OperatorNameAst, Span, Symbol,
+    DiagnosticCode, EntityRefAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
+    LetBinderAst, NameAst, NavComponentAst, NumericNameAst, OperatorNameAst, Span, Symbol,
     TokenKind, TypeObjectAnnotationAst, WithClauseAst, WithClauseKind,
 };
 
 use super::{
-    canonical::parse_canonical_skeleton, deduce::parse_deduce_list, expr::parse_expr_until,
-    form::Parser,
+    atom::parse_nav_group_component, canonical::parse_canonical_skeleton,
+    deduce::parse_deduce_list, expr::parse_expr_until, form::Parser,
 };
 
 pub fn parse_let_form(parser: &mut Parser<'_>) -> FormAst {
@@ -103,7 +103,7 @@ fn is_valid_alias_binder(kind: &TokenKind) -> bool {
 
 fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
     let start = parser.cursor.current_raw_span();
-    let mut path: Vec<EntityPathSegmentAst> = Vec::new();
+    let mut components: Vec<NavComponentAst> = Vec::new();
 
     if is_entity_ref_boundary(parser) {
         parser.error(
@@ -111,97 +111,88 @@ fn parse_entity_ref(parser: &mut Parser<'_>) -> EntityRefAst {
             "expected entity reference after `===`",
             start,
         );
-        let leaf = EntityPathLeafAst::Error(parser.error_ast("expected entity reference", start));
         return EntityRefAst {
-            path,
-            leaf,
+            components: vec![NavComponentAst::Error(
+                parser.error_ast("expected entity reference", start),
+            )],
             span: start,
         };
     }
 
-    loop {
-        let token = parser.cursor.peek_non_trivia();
+    let Some(first) = parse_entity_inner_component(parser) else {
+        let span = parser.cursor.current_span();
+        let (code, message, node_message) = if parser.cursor.at_symbol(Symbol::LParen) {
+            (
+                DiagnosticCode::InvalidEntityRef,
+                "grouped expression cannot be an innermost navigation component",
+                "grouped expression cannot be an innermost navigation component",
+            )
+        } else {
+            (
+                DiagnosticCode::ExpectedAliasTarget,
+                "expected entity reference after `===`",
+                "expected entity reference",
+            )
+        };
+        parser.error(code, message, span);
+        parser.cursor.bump_non_trivia();
+        parser.recover_to_form_boundary();
+        return EntityRefAst {
+            components: vec![NavComponentAst::Error(parser.error_ast(node_message, span))],
+            span: start.join(span),
+        };
+    };
 
-        match &token.kind {
-            TokenKind::Name => {
-                let name_token = parser.cursor.bump_non_trivia();
-                let name = NameAst {
-                    text: name_token.text.clone(),
-                    span: name_token.span,
-                };
+    let mut span = start.join(nav_component_span(&first));
+    components.push(first);
 
-                if coloncolon_follows(parser) {
-                    parser.cursor.bump_non_trivia();
-                    path.push(EntityPathSegmentAst {
-                        name,
-                        span: name_token.span,
-                    });
-                    continue;
-                }
-
-                let leaf = EntityPathLeafAst::Name(name);
-                let end_span = name_token.span;
-                let span = start.join(end_span);
-                return finish_entity_ref(parser, path, leaf, span);
-            }
-            _ => {
-                if let Some(spelling) = operator_spelling_in_expr_context(&token.kind) {
-                    let op_token = parser.cursor.bump_non_trivia();
-                    let operator = OperatorNameAst {
-                        spelling: spelling.as_source_text().to_string(),
-                        span: op_token.span,
-                    };
-
-                    if coloncolon_follows(parser) {
-                        let cc_span = parser.cursor.bump_non_trivia().span;
-                        parser.error(
-                            DiagnosticCode::InvalidEntityRef,
-                            "operator cannot appear as intermediate entity path segment",
-                            cc_span,
-                        );
-                        parser.recover_to_form_boundary();
-                        let leaf = EntityPathLeafAst::Error(
-                            parser.error_ast("operator path leaf not final", cc_span),
-                        );
-                        let span = start.join(cc_span);
-                        return EntityRefAst { path, leaf, span };
-                    }
-
-                    let leaf = EntityPathLeafAst::Operator(operator);
-                    let end_span = op_token.span;
-                    let span = start.join(end_span);
-                    return finish_entity_ref(parser, path, leaf, span);
-                }
-
-                let span = token.span;
-                let code = if path.is_empty() {
-                    DiagnosticCode::ExpectedAliasTarget
-                } else {
-                    DiagnosticCode::InvalidEntityRef
-                };
-                parser.error(code, "expected entity reference after `===`", span);
-                parser.cursor.bump_non_trivia();
-                parser.recover_to_form_boundary();
-                let leaf =
-                    EntityPathLeafAst::Error(parser.error_ast("expected entity reference", span));
-                return EntityRefAst {
-                    path,
-                    leaf,
-                    span: start.join(span),
-                };
-            }
+    while !is_entity_ref_boundary(parser)
+        && parser.cursor.consume_symbol(Symbol::ColonColon).is_some()
+    {
+        if is_entity_ref_boundary(parser) {
+            let error_span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::ExpectedAliasTarget,
+                "expected navigation component after `::`",
+                error_span,
+            );
+            span = span.join(error_span);
+            components.push(NavComponentAst::Error(
+                parser.error_ast("expected navigation component", error_span),
+            ));
+            break;
         }
+
+        let Some(component) = parse_entity_outer_component(parser) else {
+            let error_span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidEntityRef,
+                "expected navigation component after `::`",
+                error_span,
+            );
+            parser.cursor.bump_non_trivia();
+            parser.recover_to_form_boundary();
+            span = span.join(error_span);
+            components.push(NavComponentAst::Error(
+                parser.error_ast("expected navigation component", error_span),
+            ));
+            break;
+        };
+
+        span = span.join(nav_component_span(&component));
+        components.push(component);
     }
+
+    finish_entity_ref(parser, components, span)
 }
 
 fn finish_entity_ref(
     parser: &mut Parser<'_>,
-    path: Vec<EntityPathSegmentAst>,
-    leaf: EntityPathLeafAst,
+    components: Vec<NavComponentAst>,
     span: Span,
 ) -> EntityRefAst {
     if parser.is_alias_rhs_boundary() {
-        return EntityRefAst { path, leaf, span };
+        return EntityRefAst { components, span };
     }
 
     let next = parser.cursor.peek_non_trivia();
@@ -211,7 +202,79 @@ fn finish_entity_ref(
         next.span,
     );
     parser.recover_to_form_boundary();
-    EntityRefAst { path, leaf, span }
+    EntityRefAst { components, span }
+}
+
+fn parse_entity_inner_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
+    let token = parser.cursor.peek_non_trivia();
+    match token.kind {
+        TokenKind::Name => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Text(NameAst {
+                text: token.text.clone(),
+                span: token.span,
+            }))
+        }
+        TokenKind::IntLiteral => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Numeric(NumericNameAst {
+                text: token.text.clone(),
+                span: token.span,
+            }))
+        }
+        _ => {
+            let spelling = operator_spelling_in_expr_context(&token.kind)?;
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Operator(OperatorNameAst {
+                spelling: spelling.as_source_text().to_string(),
+                span: token.span,
+            }))
+        }
+    }
+}
+
+fn parse_entity_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
+    let token = parser.cursor.peek_non_trivia();
+    match token.kind {
+        TokenKind::Name => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Text(NameAst {
+                text: token.text.clone(),
+                span: token.span,
+            }))
+        }
+        TokenKind::IntLiteral => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(NavComponentAst::Numeric(NumericNameAst {
+                text: token.text.clone(),
+                span: token.span,
+            }))
+        }
+        TokenKind::Symbol(Symbol::LParen) => parse_nav_group_component(parser),
+        _ if token.kind.is_operator_spelling() => {
+            let token = parser.cursor.bump_non_trivia();
+            parser.error(
+                DiagnosticCode::InvalidEntityRef,
+                "operator cannot be an outer navigation component",
+                token.span,
+            );
+            Some(NavComponentAst::Error(parser.error_ast(
+                "operator cannot be an outer navigation component",
+                token.span,
+            )))
+        }
+        _ => None,
+    }
+}
+
+fn nav_component_span(component: &NavComponentAst) -> Span {
+    match component {
+        NavComponentAst::Text(name) => name.span,
+        NavComponentAst::Numeric(num) => num.span,
+        NavComponentAst::Operator(operator) => operator.span,
+        NavComponentAst::Group(expr) => expr.span,
+        NavComponentAst::Error(error) => error.span,
+    }
 }
 
 fn is_entity_ref_boundary(parser: &mut Parser<'_>) -> bool {
@@ -226,12 +289,6 @@ fn is_entity_ref_boundary(parser: &mut Parser<'_>) -> bool {
         return true;
     }
     false
-}
-
-fn coloncolon_follows(parser: &Parser<'_>) -> bool {
-    let idx = parser.cursor.current_index();
-    let (_, token) = parser.cursor.peek_at_skip_trivia(idx);
-    matches!(token.kind, TokenKind::Symbol(Symbol::ColonColon))
 }
 
 fn parse_let_binder(parser: &mut Parser<'_>) -> LetBinderAst {
@@ -270,7 +327,7 @@ fn skeleton_span(skeleton: &crate::CanonicalSkeletonAst) -> Span {
         crate::CanonicalSkeletonAst::ArgPack { span, .. } => *span,
         crate::CanonicalSkeletonAst::Wildcard { span } => *span,
         crate::CanonicalSkeletonAst::Name { span, .. } => *span,
-        crate::CanonicalSkeletonAst::Path { span, .. } => *span,
+        crate::CanonicalSkeletonAst::NavPath { span, .. } => *span,
         crate::CanonicalSkeletonAst::Literal { span, .. } => *span,
         crate::CanonicalSkeletonAst::Error(error) => error.span,
     }

@@ -4,4 +4,5 @@ Program
       Operator +
     target:
       EntityRef
-        leaf Operator +
+        components:
+          component Operator +

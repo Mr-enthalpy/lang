@@ -4,8 +4,9 @@ Program
       Operator +
     target:
       EntityRef
-        segment checked_int
-        leaf Operator +
+        components:
+          component Operator +
+          component Name checked_int
   Let
     binder:
       Simple

@@ -4,7 +4,8 @@ Program
       Name x
     target:
       EntityRef
-        leaf Name a
+        components:
+          component Name a
   Let
     binder:
       Simple

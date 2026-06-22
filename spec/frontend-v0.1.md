@@ -35,7 +35,7 @@ executed, type-checked, or lowered.
 | Document                   | What it covers                                                                                                                                                          |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
-| `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, path/binder leaves, and lookup boundary.                                          |
+| `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, binder/navigation-component positions, and lookup boundary.                       |
 | `entity-ref-design.md`     | Future general compile-time entity reference syntax design. Alias-RHS EntityRef subset implemented in Phase 4.4.                                                        |
 | `entity-alias-design.md`   | Lexical alias binding syntax using `let binder === EntityRef`. Phase 4.3 design; Phase 4.4 raw parser preservation implemented; future semantic meaning remains future work. |
 | `diagnostics-v0.1.md`      | Diagnostic categories, trigger conditions, span policy, recovery behavior.                                                                                              |

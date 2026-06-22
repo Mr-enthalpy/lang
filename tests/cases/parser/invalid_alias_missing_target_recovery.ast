@@ -4,7 +4,8 @@ Program
       Name x
     target:
       EntityRef
-        leaf Error "expected entity reference"
+        components:
+          component Error "expected entity reference"
   Let
     binder:
       Simple
