@@ -1,0 +1,1 @@
+error UnexpectedAliasRhsExpression "unexpected token `let` after entity reference" @ 2:1 [25..28]

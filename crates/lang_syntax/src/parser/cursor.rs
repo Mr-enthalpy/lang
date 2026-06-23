@@ -1,4 +1,4 @@
-use crate::{Span, Symbol, Token, TokenKind, TriviaKind};
+use crate::{Span, Symbol, Token, TokenKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParenClassification {
@@ -222,8 +222,7 @@ impl<'tokens> Cursor<'tokens> {
         )
     }
 
-    // Top-level newline form boundaries are now implemented.
-    // The cursor can detect newline-containing trivia ahead without advancing.
+    // Hard form boundaries: `;`, `}`, EOF.
     pub fn is_form_boundary(&mut self) -> bool {
         matches!(
             self.peek_non_trivia().kind,
@@ -241,44 +240,5 @@ impl<'tokens> Cursor<'tokens> {
         ) {
             self.bump();
         }
-    }
-
-    pub fn has_newline_trivia_ahead(&self) -> bool {
-        let mut i = self.index;
-        while i < self.tokens.len() {
-            let token = &self.tokens[i];
-            if matches!(token.kind, TokenKind::Trivia(TriviaKind::LineComment)) {
-                return true;
-            }
-            if let TokenKind::Trivia(TriviaKind::Whitespace) = &token.kind {
-                if token.text.contains('\n') {
-                    return true;
-                }
-            }
-            if !matches!(token.kind, TokenKind::Trivia(_)) {
-                return false;
-            }
-            i += 1;
-        }
-        false
-    }
-
-    #[allow(dead_code)]
-    pub fn at_trivia_newline(&self) -> bool {
-        matches!(
-            self.peek().kind,
-            TokenKind::Trivia(TriviaKind::Whitespace) if self.peek().text.contains('\n')
-        )
-    }
-
-    pub fn peek_prev_significant(&self, from_index: usize) -> &Token {
-        let mut i = from_index;
-        while i > 0 {
-            i -= 1;
-            if !matches!(self.tokens[i].kind, TokenKind::Trivia(_) | TokenKind::Eof) {
-                return &self.tokens[i];
-            }
-        }
-        &self.tokens[0]
     }
 }

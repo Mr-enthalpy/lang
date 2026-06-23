@@ -349,7 +349,7 @@ operator identity validation, name lookup, or namespace resolution.
 #### `UnexpectedAliasRhsExpression`
 
 - **Trigger**: A valid `EntityRef` was parsed, but the next token is not a form
-  boundary (EOF, semicolon, right brace, or promoted newline). The residual
+  boundary (EOF, semicolon, or right brace). The residual
   tokens form an expression shape such as `PipeExpr`, `ArgPack`, closure, or
   operator expression.
 - **Primary span**: The first residual non-trivia token.

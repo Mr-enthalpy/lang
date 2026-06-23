@@ -25,8 +25,16 @@ Operator identity is:
 spelling + fixity + arity
 ```
 
-The same spelling may have multiple operator identities. For example, `-` may
-be a binary operator spelling or prefix negative operator sugar.
+The same spelling may have multiple overloadable operator identities. For
+example, `+` may have distinct binary and unary operator identities declared
+at different visible bindings.
+
+Prefix negative `-x` is **not** an overloadable operator identity. It is
+parser-recognized surface syntax preserved as Raw AST sugar
+(`OperatorSugar { fixity: Prefix, operator: "-" }`). Normalization rewrites it
+to `()zero::(x |> type) - x`, where only the generated binary `-` participates
+in operator lookup. The spelling `-` as a declarable, aliasable, and
+overloadable operator identity refers exclusively to binary minus.
 
 ## Initial Spellings
 
@@ -108,14 +116,23 @@ Ordinary postfix unary operators:
 ! @ ~ ^ $ ++ -- ?
 ```
 
-Prefix operators:
+Prefix negative syntax:
 
 ```text
 -
 ```
 
-Prefix `-x` is prefix negative operator sugar. It is not a negative literal.
-The lexer still produces `-` and the following literal or atom separately.
+Prefix `-x` is prefix negative surface sugar, not an overloadable prefix
+operator. The parser stores it as `OperatorSugar { fixity: Prefix }` (a Raw
+AST marker, not an overloadable operator identity). It is not a negative
+literal; the lexer produces `-` and the following literal or atom separately.
+
+Normalization rewrites prefix negative to typed-zero binary subtraction:
+
+    -x  ⟶  ()zero::(x |> type) - x
+
+Only the generated binary `-` participates in operator lookup. The `Prefix`
+fixity is never a declarable or aliasable operator fixity.
 
 No other C-like prefix operators are part of this design. In particular,
 `!x`, `&x`, `*x`, `~x`, `++x`, and `--x` are not prefix forms.
@@ -206,7 +223,7 @@ Precedence order from tightest to loosest:
 atom suffix:
     :: . .. postfix-operator
 
-prefix negative:
+prefix negative sugar:
     -x
 
 multiplicative:
@@ -340,18 +357,21 @@ let >: _: operator = expr
 <<::bit::std
 ```
 
-Phase 4.1 does not accept `<` as a simple operator binder spelling:
+Phase 4.1 accepts `<` as a simple operator binder spelling when it is not followed
+by a valid binding deduce-list start. A binding deduce list must contain a
+binder / hole name after `<`; therefore:
 
 ```text
-let <: _: operator = expr
+let <: _: operator = less_impl
+let < = less_impl
 ```
 
-In `let` binder position, `<` is already the strong-context entry for an
-extract-let deduce list (`let <x> ... = ...`). The parser therefore commits to
-extract-let parsing when it sees `<` after `let`, rather than treating `<` as a
-simple operator binder. This is a syntax disambiguation limitation, not an
-operator semantic rule. A future phase may add escaping or another explicit
-disambiguation rule if `<` needs to be declared as an operator binder.
+are parsed as operator binder `<` because `:` and `=` are not valid
+deduce-list binder starts. No escaping or disambiguation rule is required.
+
+When `<` is followed by a valid deduce-list binder start (a `Name` token after
+`<`, or `>` for an empty deduce list), the parser enters normal DeduceList
+parsing:
 
 Navigation order is inner-to-outer. The leftmost component is the innermost
 selected symbol, and the rightmost component is the outermost scope component.
@@ -412,7 +432,9 @@ Examples:
 
 - `obj!` produces postfix operator sugar, not a call.
 - `a + b` produces binary operator sugar.
-- `-x` produces prefix operator sugar, not a negative literal.
+- `-x` produces Raw AST prefix-negative sugar (`OperatorSugar { fixity: Prefix,
+  operator: "-" }`). Normalization rewrites it to
+  `()zero::(x |> type) - x`. No prefix operator lookup occurs for `-x`.
 
 ## Lookup Boundary
 
@@ -427,6 +449,9 @@ Future operator lookup follows ordinary visible binding lookup.
    operators.
 6. Any forwarding behavior belongs to the operator binding implementation, not
    to parser syntax.
+7. Prefix negative `-x` bypasses operator lookup entirely. Normalization
+   rewrites it to `()zero::(x |> type) - x` before lookup; only the
+   generated binary `-` participates in operator lookup.
 
 Future design example:
 

@@ -212,17 +212,26 @@ expression operator, a binder name, or an innermost navigation component.
 Operator names are not keywords, and their spelling does not imply arithmetic, comparison,
 mutation, assignment, lookup, or evaluation semantics.
 
-Operator identity is `spelling + fixity + arity`.
+An overloadable operator identity is `spelling + fixity + arity`, where fixity
+is `Binary` or `Postfix`. `Prefix` fixity is a Raw AST marker reserved for
+the prefix-negative surface sugar `-x` (normalized away before operator lookup);
+it is not an overloadable operator fixity.
 
-_See also: Fixity, Arity, NavComponent, OperatorSugar._
+_See also: Fixity, Arity, NavComponent, OperatorSugar, PrefixNegative._
 
 ---
 
 ## Fixity
 
 The syntactic position of an operator relative to its operands. The operator
-design uses `Prefix`, `Postfix`, and `Binary` fixities. Fixity is part of
-operator identity.
+design distinguishes:
+
+- `Binary` and `Postfix`: overloadable operator fixities (part of operator
+  identity for declaration, alias, and lookup).
+- `Prefix`: a Raw AST surface marker used only for the prefix-negative `-x`
+  sugar. Prefix negative is normalized to typed-zero binary subtraction before
+  operator lookup. The `Prefix` fixity is not a declarable or overloadable
+  operator fixity.
 
 _See also: OperatorName, Arity, PrefixNegative, PostfixOperator._
 
@@ -270,10 +279,21 @@ _See also: OperatorSugar, Atom, NavPath._
 
 ## PrefixNegative
 
-The prefix `-x` operator sugar form. It is not a negative literal; the lexer
-produces `-` and the following literal or atom separately.
+Parser-preserved prefix-negative surface syntax. The parser produces
+`OperatorSugar { fixity: Prefix, operator: "-" }` for `-x`. It is not a
+negative literal; the lexer produces `-` and the following literal or atom
+separately.
 
-_See also: OperatorSugar, Fixity._
+Normalization rewrites prefix negative to typed-zero binary subtraction:
+
+    -x  ⟶  ()zero::(x |> type) - x
+
+Prefix negative is not an overloadable operator identity. The spelling `-`
+as a declarable or aliasable operator identity refers only to binary minus.
+Only the generated binary `-` participates in operator lookup after
+normalization.
+
+_See also: OperatorSugar, Fixity, OperatorName._
 
 ---
 
@@ -420,8 +440,11 @@ _See also: Alias binding, Operator alias._
 
 A future alias binding whose binder is an `OperatorName`. Operator aliases
 are stricter than ordinary name aliases: the operator binder and the final
-operator leaf of the target `EntityRef` must have the same operator identity
-(`spelling + fixity + arity`). An operator alias cannot rename one operator
+operator leaf of the target `EntityRef` must have the same overloadable
+operator identity (`spelling + fixity + arity`, where fixity is `Binary` or
+`Postfix`). Prefix negative is not an overloadable operator identity and
+cannot appear as an alias binder or target. An operator alias cannot rename
+one operator
 spelling into another. Operator alias validation is future static validation
 or name-resolution work, not current parser behavior.
 
@@ -447,34 +470,40 @@ _See also: OperatorSugar._
 The AST representation of a closure literal before materialization into a
 callable object. Two forms:
 
-- **InlineClosureAst**: `FnHeadPrefix { ... }`
-- **ExplicitClosureAst**: `FnHeadPrefix => { ... }`
+- **InPlaceClosureAst**: Bare `{ ... }` in atom position. An in-place control-flow
+  closure with no capture clause, parameters, or head clauses.
+- **ExplicitClosureAst**: `FnHeadPrefix => { ... }`. A headed closure that
+  requires `=>` between the head and body.
 
 > **Distinction**: `ClosureAST` is **not** `ClosureObject`. Closure literals
 > produce AST first. A later semantic pass may materialize closure AST into
 > callable objects.
 
-> **Distinction**: Bare `{ ... }` in atom position does not produce a
-> `ClosureAST`. There is no block-expression node in v0.1 AST.
+> **Distinction**: Bare `{ ... }` in atom position is an `InPlaceClosureAst`,
+> not a normal block expression.
 
-_See also: InlineClosureAST, ExplicitClosureAST, ClosureObject, Materialization._
+_See also: InPlaceClosureAST, ExplicitClosureAST, ClosureObject, Materialization._
 
 ---
 
-## InlineClosureAST
+## InPlaceClosureAST
 
-A headed closure literal without `=>`: `FnHeadPrefix BodyBlock`. Bare `{ ... }`
-is not an inline closure.
+A bare `{ ... }` in atom position that produces an in-place closure. It has no
+capture clause, no parameter clause, no return clause, and no head clauses. It
+is the Raw AST representation of a control-flow-embedding closure block.
 
-_See also: ClosureAST, ExplicitClosureAST, FnHeadPrefix._
+_See also: ClosureAST, ExplicitClosureAST._
 
 ---
 
 ## ExplicitClosureAST
 
-A closure literal with `=>`: `FnHeadPrefix => BodyBlock`. Minimal form: `() => {}`.
+A closure literal with an explicit head and `=>`: `FnHeadPrefix => BodyBlock`.
+The head may contain deduce list, capture clause, parameter clause, trait clause,
+return clause, and head clauses. The body is a form block. Headed closures
+without `=>` (e.g., `[](){}` or `(x){x}`) are rejected.
 
-_See also: ClosureAST, InlineClosureAST, FnHeadPrefix._
+_See also: ClosureAST, InPlaceClosureAST, FnHeadPrefix._
 
 ---
 
@@ -693,7 +722,7 @@ _See also: Raw AST, Desugaring, Normalization, HIR, Raw AST contract._
 ## Desugaring
 
 Removing surface syntax sugar into simpler normalized forms. Examples:
-operator sugar (prefix `-`, postfix `!`, binary `+`) lowered to named operator
+operator sugar (prefix-negative `-x`, postfix `!`, binary `+`) lowered to named operator
 calls; member/double-dot sugar lowered to lookup forms; ArgPack roles unified
 into a single call structure; extraction skeletons desugared into pattern forms.
 

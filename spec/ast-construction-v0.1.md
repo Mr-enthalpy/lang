@@ -132,29 +132,17 @@ FormAst ::=
 
 ### 3.3 Form boundary
 
-A form ends at any of:
+A form ends only at one of:
 
 - `;`
 - `}`
 - EOF
 
-A line break (`\n`) is lexical trivia; it is **not** itself a form boundary.
+A line break (`\n`) is lexical trivia. It is never promoted to a form
+separator. The parser must not use line breaks to decide whether two adjacent
+expressions belong to one expression/segment or to two forms.
 
-At form-level decision points, a top-level line break **may be promoted** to a
-soft form separator (FormSep) only if all of the following hold:
-
-1. Current nesting depth of `()`, `[]`, `{}` is zero.
-2. The previous significant token can end a form
-   (`Name`, `IntLiteral`, `StringLiteral`, `)`, `]`, `}`).
-3. The next significant token can start a form
-   (`Name`, `IntLiteral`, `StringLiteral`, `(`, `{`).
-4. Neither side is a continuation token.
-5. The parser is not inside a syntactic frame that requires more tokens
-   (e.g., the right side of a `|>` pipe expression).
-
-Continuation tokens include at least:
-`|>`, `=>`, `->`, `.`, `..`, `::`, `,`, `=`, `:`, `<`, `>`, and
-`Operator` tokens (the lexer's operator spellings).
+If two adjacent forms are intended, the source must use `;`, `}`, or EOF.
 
 Examples:
 
@@ -162,37 +150,38 @@ Examples:
 a
 b
 ```
-→ two forms (Name can end form; Name can start form).
+→ one expression form. Two atoms `a` and `b` in the same segment.
+
+```text
+a;
+b
+```
+→ two forms. The `;` is a hard form boundary.
+
+```text
+f
+(x)
+```
+→ one expression. `(x)` is an ArgPack in the same segment.
+
+```text
+obj
+.field
+```
+→ one `MemberSugar`. Newline is skipped as trivia; `.field` is a suffix.
+
+```text
+a
++ b
+```
+→ one binary operator expression. Newline is trivia; `+` continues the
+expression.
 
 ```text
 a |>
 b
 ```
-→ one `PipeExpr` (`|>` is a continuation token; newline is not promoted).
-
-```text
-a +
-b
-```
-→ future: one `OperatorExpr`, not two forms (`+` is a continuation token;
-newline is not promoted).
-
-```text
-obj.
-field
-```
-→ one `MemberSugar` (`.` is a continuation token in the suffix loop;
-newline before a suffix-start token is not promoted).
-
-```text
-obj::
-field
-```
-→ one `Path` (same reasoning as above).
-
-This is a provisional v0.1 rule. The broader language-design question of
-whether form boundaries should remain line-based or become fully explicit
-remains open (see `spec/open-questions.md` §2).
+→ one `PipeExpr`. `|>` is a pipe delimiter; newline before `b` is trivia.
 
 **Negative / diagnostic example:**
 
@@ -202,11 +191,9 @@ let x = (a
 ```
 
 Here `let x = ` is a structurally valid unannotated binding slot whose
-initializer starts at `(`.
-
-Line 1 ends inside `(...)`, nesting depth is 1, so the line break is NOT a
-form boundary. The form continues through line 2. The parser should consume
-both lines and diagnose `UnclosedParen` if the `)` is never found.
+initializer starts at `(`. The newline inside `(...)` is trivia; the form
+continues through line 2. The parser should consume both lines and diagnose
+`UnclosedParen` if the `)` is never found.
 
 ## 4. Let statements
 
@@ -259,6 +246,12 @@ WithClauseKind ::= Empty | Items { items: Vec<NameAst> } | Error(ErrorAst)
 clause. `with { a, b }` preserves a non-empty syntactic payload. The parser
 does not resolve the names, decide same-level binding dependencies, or run
 lifetime/dependency checks.
+
+The non-empty payload of `with { ... }` is intentionally limited to source-level
+`Name` items. It does not accept symbols, operator names, paths, expressions,
+EntityRef syntax, canonical skeletons, or token trees. The Raw AST stores these
+names syntactically only; it does not check whether any name exists in an outer
+or earlier scope.
 
 `with` without `{` is invalid. `with a, b` is invalid. Trailing commas in
 `with { ... }` are rejected. Malformed `with` syntax must not produce
@@ -385,17 +378,17 @@ let >: _: operator = expr
 let + = expr
 ```
 
-Phase 4.1 intentionally does not parse `<` as a simple operator binder:
+`<` is accepted as an operator binder. The binding-slot deduce-list recognition
+is guarded by a binder-name lookahead: `<` only starts DeduceList parsing when
+it is followed by a valid deduce-list binder start (a `Name` token or `>`).
 
 ```text
-let <: _: operator = expr
+let <: _: operator = less_impl
+let < = less_impl
 ```
 
-After `let`, `<` is the strong-context entry for a binding-slot deduce list.
-The parser therefore treats `let <...` as binding-slot syntax and
-does not reinterpret the token as an operator binder. This keeps the current
-binding grammar streaming-friendly. Declaring `<` as an operator binder requires
-a future escaping or disambiguation rule.
+Both are parsed as operator binder `<` because `:` and `=` are not valid
+deduce-list binder starts. No escaping syntax is required for this case.
 
 The `BindingAnnotationAst::Expr` variant covers a single written annotation
 expression, such as `let f: fn = ...`, `let t: type = ...`, or
@@ -1247,11 +1240,16 @@ Examples:
 ```text
 obj!    => postfix OperatorSugarAst
 a + b   => binary OperatorSugarAst
--x      => prefix OperatorSugarAst
+-x      => prefix OperatorSugarAst (Raw AST preservation only)
 ```
 
 Prefix `-x` is not a negative literal; the lexer emits `-` and `x`
-separately.
+separately. The `Prefix` fixity in `OperatorSugar` is a Raw AST surface
+marker. In v0.1 it is used only for the prefix-negative shape
+(`operator="-"`, `fixity=Prefix`). It is not an overloadable prefix operator
+declaration and must not be lowered as an ordinary operator call.
+Normalization must special-case this shape and rewrite it to
+`()zero::(x |> type) - x`.
 
 Comparison, equality, and equals-suffixed operator chains are
 non-associative in this phase. The parser diagnoses:
@@ -1586,28 +1584,32 @@ Name(h)
 
 ```text
 ClosureAst ::=
-    InlineClosureAst
+    InPlaceClosureAst
   | ExplicitClosureAst
 ```
 
-### 10.2 Inline closure
+### 10.2 In-place closure
 
 ```text
-InlineClosureAst ::= FnHeadPrefix BodyBlock
+InPlaceClosureAst ::= BodyBlock
 ```
 
-Bare `{ ... }` in atom position is not a closure literal and must not produce
-`ClosureAst`. Braces delimit a closure body only after explicit closure syntax,
-such as `FnHeadPrefix => BodyBlock`, or after a valid closure head where the
-inline headed form is accepted.
+A bare `{ ... }` in atom position is an in-place closure. It has no capture
+clause, no parameter clause, no return clause, and no head clauses. It is the
+Raw AST representation of a control-flow-embedding closure block.
 
-`{ ... }` is not a normal block expression.
+`{ ... }` is not a normal block expression; it always produces
+`ClosureAst::InPlace`.
 
 ### 10.3 Explicit closure
 
 ```text
 ExplicitClosureAst ::= FnHeadPrefix "=>" BodyBlock
 ```
+
+A headed closure must use `=>`. Forms such as `[](){}`, `[x]{}`, `(){}`, and
+`pre c {}` are invalid headed closures without `=>` and produce
+`InvalidClosureHead` diagnostics.
 
 Minimal form:
 
@@ -1630,13 +1632,11 @@ BodyBlockAst {
 }
 ```
 
-Inside `{ ... }`, form boundaries are `;`, `}`, and EOF.  Newline promotion
-to form separator is suppressed because nesting depth is non-zero inside the
-body block.  This means `{ x \n y }` parses as a single form containing a
-segment with two atoms `x y`, not as two separate forms.  This is the
-provisional v0.1 rule; the broader language-design question of body-block
-form separation remains open. Semicolon-separated forms still split normally:
-`{ x; y; }` contains two body forms.
+Inside `{ ... }`, form boundaries are `;`, `}`, and EOF. Newlines are
+trivia everywhere; body blocks use the same hard-only boundary rule as the
+top level. `{ x \n y }` parses as a single form containing a segment with
+two atoms `x y`, not as two separate forms. Semicolon-separated forms split
+normally: `{ x; y; }` contains two body forms.
 
 ## 11. Closure head
 
@@ -1871,12 +1871,16 @@ inactive closure-head position (§11.7).
 
 When the expression parser expects an atom:
 
-1. Attempt finite lookahead for `FnHeadPrefix`.
-2. If the prefix is followed by `=>` and `{`, parse `ExplicitClosureAst`.
-3. If the prefix is followed directly by `{`, parse headed `InlineClosureAst`.
-4. If these attempts fail, restore cursor and parse ordinary atom.
+1. If the current token is `{`, parse an in-place closure `InPlaceClosureAst`
+   (bare `BodyBlock` with no head).
+2. Otherwise, attempt finite lookahead for `FnHeadPrefix`. If `FnHeadPrefix`
+   is parsed and followed by `=>` + `{`, parse `ExplicitClosureAst`.
+3. If `FnHeadPrefix` is parsed but followed directly by `{` without `=>`, emit
+   `InvalidClosureHead` and consume the body block for error recovery.
+4. If `FnHeadPrefix` lookahead fails, restore cursor and parse ordinary atom.
 
-A bare `{` in atom position is not a closure-recognition entry point.
+A bare `{` in atom position always produces an in-place closure.
+Closure head without `=>` before `{` is invalid.
 
 This is finite lookahead, not semantic backtracking.
 Failed closure-head lookahead must not leak diagnostics or consume tokens.
@@ -1884,7 +1888,7 @@ Committed malformed closure parsing keeps diagnostics. Nested diagnostic gates
 must preserve outer gated diagnostics until the outer gate is explicitly kept
 or dropped.
 
-The following are not recognized as successful closure heads in Phase 3.1:
+The following are not recognized as successful closure heads:
 
 ```text
 x => { x }
@@ -1897,31 +1901,14 @@ acquire A => { x }
 <T>(x: T) acquire A => { x }
 ```
 
-**Negative / diagnostic example:**
-
-```text
-x => { }
-```
-
-The closure recognition algorithm first checks:
-
-- Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
-  ParamClause? FnItemTraitClause? ReturnClause? HeadClause*` (plus future
-  reserved WhereClause?). `HeadClause` covers `require`/`pre`/`post`/`lifetime
-  pre`/`lifetime post`; a bare `x` is none of these.
-  A bare `Name("x")` does not match any of these clauses.
-- Therefore the lookahead fails. The parser backtracks and parses `x` as an
-  ordinary `Atom(Name("x"))`.
-- Then `=>` is encountered in a non-closure-head context. Since `=>` is only
-  valid as a closure-head `=> BodyBlock` separator, emit `UnexpectedToken`
-  at `=>`.
-- If the parser encounters `{` next in atom position, it is unexpected. It must
-  not parse as an `InlineClosureAst`.
+**Headed closures without `=>`:**
+Forms such as `[](){}`, `[x]{ body }`, `(){ body }`, and `pre c { body }`
+produce `InvalidClosureHead` diagnostics.
 
 v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
-forms remain `() => {}` and `(x) => {}` where the `()` is a `ParamClause`.
-`(x) => {}` with a single param inside parens is the simplest parametrized
-explicit closure form.
+forms remain `() => {}` and `{ }`, and `(x) => {}` where the `()` is a
+`ParamClause`. `(x) => {}` with a single param inside parens is the simplest
+parametrized explicit closure form.
 
 ## 12. Match-style expression
 
@@ -2205,7 +2192,7 @@ reference at all.
 
 After completing the entity reference, the parser checks for residual
 expression tokens. If the current position is not a form boundary (EOF,
-semicolon, right brace, or promoted newline), the parser emits
+semicolon, or right brace), the parser emits
 `UnexpectedAliasRhsExpression` and recovers to the form boundary.
 
 ### 16.6 Diagnostics

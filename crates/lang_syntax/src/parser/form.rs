@@ -4,30 +4,10 @@ use crate::{
 
 use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Continuation {
-    None,
-    PipeRight,
-    // Future: AtomSuffix, LetValue, ClosureBody, OperatorRight
-    //
-    // NOTE: Continuation is a phase-2 temporary parser-state enum.
-    // It is not the final continuation-frame design.  When closure,
-    // operator, deduce-list, and canonical-skeleton parsers land,
-    // continuation state should be stack/frame-based rather than a
-    // single flat enum on Parser.
-}
-
-impl Continuation {
-    pub fn is_active(self) -> bool {
-        !matches!(self, Continuation::None)
-    }
-}
-
 pub struct Parser<'tokens> {
     pub cursor: Cursor<'tokens>,
     diagnostics: Vec<Diagnostic>,
     nesting_depth: usize,
-    pub continuation: Continuation,
     diagnostic_gates: Vec<Vec<Diagnostic>>,
 }
 
@@ -37,7 +17,6 @@ impl<'tokens> Parser<'tokens> {
             cursor: Cursor::new(tokens),
             diagnostics,
             nesting_depth: 0,
-            continuation: Continuation::None,
             diagnostic_gates: Vec::new(),
         }
     }
@@ -87,125 +66,17 @@ impl<'tokens> Parser<'tokens> {
     }
 
     pub fn is_form_boundary(&mut self) -> bool {
-        if self.can_promote_newline_to_form_sep() {
-            return true;
-        }
         self.cursor.is_form_boundary()
     }
 
-    pub fn at_top_level_newline(&self) -> bool {
-        self.nesting_depth == 0 && self.cursor.has_newline_trivia_ahead()
-    }
-
-    fn can_promote_newline_to_form_sep(&self) -> bool {
-        if self.nesting_depth != 0 {
-            return false;
-        }
-        if self.continuation.is_active() {
-            return false;
-        }
-        if !self.cursor.has_newline_trivia_ahead() {
-            return false;
-        }
-        let cursor_index = self.cursor.current_index();
-        let prev = self.cursor.peek_prev_significant(cursor_index);
-        if !Self::can_end_form_token(prev) {
-            return false;
-        }
-        let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
-        if !Self::can_start_form_token(next) {
-            return false;
-        }
-        if Self::is_continuation_token(prev) || Self::is_continuation_token(next) {
-            return false;
-        }
-        true
-    }
-
-    pub fn can_promote_newline_after_segment_element(&self) -> bool {
-        if self.nesting_depth != 0 {
-            return false;
-        }
-        if !self.cursor.has_newline_trivia_ahead() {
-            return false;
-        }
-        let cursor_index = self.cursor.current_index();
-        let prev = self.cursor.peek_prev_significant(cursor_index);
-        if !Self::can_end_form_token(prev) {
-            return false;
-        }
-        let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
-        if !Self::can_start_form_token(next) {
-            return false;
-        }
-        if Self::is_continuation_token(prev) || Self::is_continuation_token(next) {
-            return false;
-        }
-        true
-    }
-
     pub fn is_alias_rhs_boundary(&mut self) -> bool {
-        self.is_alias_rhs_newline_boundary() || self.is_alias_rhs_hard_boundary()
+        self.is_alias_rhs_hard_boundary()
     }
 
     pub fn is_alias_rhs_hard_boundary(&mut self) -> bool {
         matches!(
             self.cursor.peek_non_trivia().kind,
             TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon | Symbol::RBrace)
-        )
-    }
-
-    pub fn is_alias_rhs_newline_boundary(&self) -> bool {
-        if self.nesting_depth != 0 {
-            return false;
-        }
-        if !self.cursor.has_newline_trivia_ahead() {
-            return false;
-        }
-        let cursor_index = self.cursor.current_index();
-        let (_, next) = self.cursor.peek_at_skip_trivia(cursor_index);
-        Self::can_start_form_token(next) && !Self::is_continuation_token(next)
-    }
-
-    fn can_end_form_token(token: &Token) -> bool {
-        matches!(
-            token.kind,
-            TokenKind::Name
-                | TokenKind::IntLiteral
-                | TokenKind::StringLiteral
-                | TokenKind::Symbol(Symbol::RParen)
-                | TokenKind::Symbol(Symbol::RBracket)
-                | TokenKind::Symbol(Symbol::RBrace)
-        )
-    }
-
-    fn can_start_form_token(token: &Token) -> bool {
-        matches!(
-            token.kind,
-            TokenKind::Name
-                | TokenKind::IntLiteral
-                | TokenKind::StringLiteral
-                | TokenKind::Symbol(Symbol::LParen)
-                | TokenKind::Symbol(Symbol::LBrace)
-        )
-    }
-
-    fn is_continuation_token(token: &Token) -> bool {
-        matches!(
-            token.kind,
-            TokenKind::Symbol(
-                Symbol::PipeGreater
-                    | Symbol::Dot
-                    | Symbol::DotDot
-                    | Symbol::ColonColon
-                    | Symbol::Comma
-                    | Symbol::FatArrow
-                    | Symbol::ThinArrow
-                    | Symbol::Equal
-                    | Symbol::Colon
-                    | Symbol::Less
-                    | Symbol::Greater
-            ) | TokenKind::Operator(_)
         )
     }
 

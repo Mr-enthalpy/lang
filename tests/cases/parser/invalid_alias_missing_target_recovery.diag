@@ -1,1 +1,1 @@
-error ExpectedAliasTarget "expected entity reference after `===`" @ 1:10 [9..10]
+error UnexpectedAliasRhsExpression "unexpected token `y` after entity reference" @ 2:5 [14..15]

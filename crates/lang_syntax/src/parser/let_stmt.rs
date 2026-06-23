@@ -39,6 +39,17 @@ pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<ExprAst>) -> FormA
     FormAst::Let(LetAst { slot, span })
 }
 
+fn starts_binding_deduce_list(parser: &mut Parser<'_>) -> bool {
+    if !parser.cursor.at_symbol(Symbol::Less) {
+        return false;
+    }
+    let next = parser.cursor.peek_next_non_trivia();
+    matches!(
+        next.kind,
+        TokenKind::Name | TokenKind::Symbol(Symbol::Greater | Symbol::Comma)
+    )
+}
+
 pub fn parse_binding_slot(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
@@ -48,7 +59,7 @@ pub fn parse_binding_slot(
     let start = parser.cursor.current_span();
     let (policy, has_let) = parse_slot_policy_and_let(parser, context);
 
-    let deduce = if parser.cursor.at_symbol(Symbol::Less) {
+    let deduce = if starts_binding_deduce_list(parser) {
         Some(parse_deduce_list(parser))
     } else {
         None
@@ -193,7 +204,6 @@ fn parse_binding_pattern(
     }
 
     if parser.cursor.at_symbol(Symbol::LParen)
-        || parser.cursor.at_symbol(Symbol::Less)
         || starts_skeleton_name(parser, context)
         || matches!(token.kind, TokenKind::Name if token.text == "_")
     {
@@ -650,17 +660,7 @@ fn nav_component_span(component: &NavComponentAst) -> Span {
 }
 
 fn is_entity_ref_boundary(parser: &mut Parser<'_>) -> bool {
-    let raw = parser.cursor.peek();
-    if matches!(
-        raw.kind,
-        TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon | Symbol::RBrace)
-    ) {
-        return true;
-    }
-    if parser.is_alias_rhs_newline_boundary() {
-        return true;
-    }
-    false
+    parser.cursor.is_form_boundary()
 }
 
 fn parse_with_clause(parser: &mut Parser<'_>) -> Option<WithClauseAst> {

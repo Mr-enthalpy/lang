@@ -11,10 +11,6 @@ Program
               rhs:
                 Atom
                   Name b
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             OperatorSugar fixity=Binary operator="|"
               lhs:
@@ -23,10 +19,6 @@ Program
               rhs:
                 Atom
                   Name b
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             OperatorSugar fixity=Binary operator="&="
               lhs:
@@ -35,10 +27,6 @@ Program
               rhs:
                 Atom
                   Name b
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             OperatorSugar fixity=Binary operator="|="
               lhs:
@@ -47,10 +35,6 @@ Program
               rhs:
                 Atom
                   Name b
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             OperatorSugar fixity=Binary operator="&&"
               lhs:
@@ -59,10 +43,6 @@ Program
               rhs:
                 Atom
                   Name b
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             OperatorSugar fixity=Binary operator="||"
               lhs:

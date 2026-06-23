@@ -1,6 +1,6 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DiagnosticCode,
-    ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst, InlineClosureAst, ParamClauseAst,
+    ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst, InPlaceClosureAst, ParamClauseAst,
     ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
@@ -55,7 +55,15 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
 // -- Closure entry from atom parser --
 
 pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
-    // Attempt FnHeadPrefix lookahead
+    if parser.cursor.at_symbol(Symbol::LBrace) {
+        let body = parse_body_block(parser);
+        let span = body.span;
+        return Some(AtomAst {
+            kind: AtomKind::Closure(ClosureAst::InPlace(InPlaceClosureAst { body, span })),
+            span,
+        });
+    }
+
     let saved = parser.cursor.current_index();
     parser.gate_diagnostics();
     let head = match parse_fn_head_prefix(parser) {
@@ -67,7 +75,6 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         }
     };
 
-    // Check for closure continuation
     if parser.cursor.consume_symbol(Symbol::FatArrow).is_some() {
         parser.ungate_keep_diagnostics();
         if parser.cursor.at_symbol(Symbol::LBrace) {
@@ -75,14 +82,13 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
             let span = head.span.join(body.span);
             return Some(AtomAst {
                 kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                    head: Some(head),
+                    head,
                     body,
                     span,
                 })),
                 span,
             });
         }
-        // => consumed but no { follows — malformed explicit closure
         let body_start = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidClosureHead,
@@ -96,23 +102,29 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         let span = head.span.join(body.span);
         return Some(AtomAst {
             kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                head: Some(head),
+                head,
                 body,
                 span,
             })),
             span,
         });
-    } else if parser.cursor.at_symbol(Symbol::LBrace) {
+    }
+
+    if parser.cursor.at_symbol(Symbol::LBrace) {
         parser.ungate_keep_diagnostics();
+        parser.error(
+            DiagnosticCode::InvalidClosureHead,
+            "closure head before `{` requires `=>`; in-place closure cannot have captures or parameters",
+            head.span,
+        );
         let body = parse_body_block(parser);
         let span = head.span.join(body.span);
         return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Inline(InlineClosureAst { head, body, span })),
+            kind: AtomKind::Error(parser.error_ast("invalid headed closure without `=>`", span)),
             span,
         });
     }
 
-    // Head parsed but no valid closure continuation — restore and retry
     parser.cursor.set_index(saved);
     parser.ungate_drop_diagnostics();
     None

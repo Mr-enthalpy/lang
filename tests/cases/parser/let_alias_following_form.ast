@@ -6,28 +6,3 @@ Program
       EntityRef
         components:
           component Name a
-  Let
-    slot:
-      BindingSlot let=true
-        deduce:
-          None
-        pattern:
-          Binder
-            TextName y
-        annotation:
-          AnnotationExpr
-            Expr
-              Pipe
-                Segment has_incoming=false
-                  OperatorExpr
-                    Atom
-                      Name type
-        with_clause:
-          None
-        initializer:
-          Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name z

@@ -58,7 +58,12 @@ Normalization must **not** assume:
 - `LetAst` preserves a `BindingSlotAst` and `span`.
 - The absence of a with clause is distinct from explicit `with {}`.
 - `WithClauseKind::Empty` preserves `with {}` as an explicit empty modifier.
-- `WithClauseKind::Items` preserves non-empty `with { name, ... }` payloads syntactically.
+- `WithClauseKind::Items` preserves non-empty `with { name, ... }` payloads as
+  `Vec<NameAst>` only. Each element is a source-level `Name`; symbols, operator
+  names, paths, expressions, EntityRef syntax, canonical skeletons, and token
+  trees are not accepted. Existence, dependency validity, and lifetime meaning
+  are not checked by the parser or normalization; they belong to later name-
+  resolution / ownership / lifetime phases.
 - `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
 - `BindingSlotAst` preserves an optional `policy` expression, optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`. A policy is recognized only by the shape `Expr let`; `policy = None` means the policy was unwritten (implicit / inferred later), not "no policy". The parser performs no policy validation.
 - `BindingPatternAst` distinguishes simple binder names from canonical skeleton patterns.
@@ -96,6 +101,10 @@ Normalization must **not** assume:
 
 - `OperatorExprAst` preserves `Atom`, `OperatorSugar`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, and `Error`.
 - `OperatorSugar` preserves the operator name (`OperatorNameAst`), `fixity` (`Prefix`, `Postfix`, `Binary`), `args`, and `span`.
+- `OperatorSugar` with `fixity = Prefix` and `operator = "-"` is the sole
+  prefix-negative Raw AST shape. Future normalization must lower it by the
+  prefix-negative rule (`()zero::(x |> type) - x`) and must not resolve it
+  as a prefix operator declaration.
 - `NavPath`, `MemberSugar`, `DoubleDotSugar`, and `BracketCallSugar` at the `OperatorExpr` layer exist to support postfix operator suffix continuation (e.g., `obj!.field`, `obj![a]`).
 - `BracketCallSugar` preserves an object, the operator name (`OperatorNameAst` with spelling `[]`), and an `ArgPackAst`. It is source-preserving bracket-call sugar (`obj[args...]`); the parser does not lower it or attach indexing/container semantics. `[]` is a contextual paired operator name, also bindable/aliasable/referable in operator-name positions.
 - Operator expressions are segment-local: they do not cross `|>` pipe boundaries.
@@ -111,10 +120,11 @@ Normalization must **not** assume:
 
 ## Closure AST invariants
 
-- `ClosureAst` distinguishes headed `Inline` (`FnHeadPrefix BodyBlock`) and `Explicit` (`FnHeadPrefix => BodyBlock`).
-- Raw AST has no representation for a bare `{ ... }` closure. A bare `{ ... }` in atom position is an error, not `ClosureAst`.
+- `ClosureAst` distinguishes `InPlace` (bare `BodyBlock`, no head) and `Explicit` (`FnHeadPrefix => BodyBlock`).
+- A bare `{ ... }` in atom position is an `InPlaceClosureAst`, not a normal block expression. It has no capture clause, no parameter clause, no return clause, and no head clauses.
+- `ExplicitClosureAst` requires a non-optional `FnHeadPrefixAst` and a body. Headed closures without `=>` (e.g., `[](){}`) are syntax errors, not valid closure AST.
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
-- `CaptureClauseAst` preserves ordered `CaptureItemAst` entries containing expression AST.
+- `CaptureClauseAst` preserves ordered `CaptureItemAst` entries. Each `CaptureItemAst` holds a full `ExprAst`, not a name or token tree. The parser does not validate whether a capture expression is movable, borrowable, copyable, lifetime-safe, or admissible as a capture.
 - `ParamClauseAst` preserves ordered `BindingSlotAst` parameter entries.
 - `ReturnClauseAst` preserves a `BindingSlotAst`.
 - Parameter and return binding slots reuse the same raw binding-site shape as let, with context-specific restrictions on initializer and `with`.
@@ -155,6 +165,9 @@ Normalization must **not** assume:
 - Spans are valid and refer to the normalized source text.
 - Artifact nodes (`ErrorAst`, `Diagnostic`) carry enough information for diagnostic rewiring.
 - `ArgPackRole` assignment is position-based and deterministic.
+- `OperatorSugarAst` with `fixity = Prefix` and `operator = "-"` is the only
+  prefix-negative shape. Normalization must lower it to typed-zero binary
+  subtraction and must not attempt prefix operator lookup for this node.
 
 ## What normalization must not assume
 

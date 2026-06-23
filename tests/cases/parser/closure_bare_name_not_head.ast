@@ -8,21 +8,31 @@ Program
               Name x
           OperatorExpr
             Atom
-              Name x
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x
           OperatorExpr
             Atom
               Name x
           OperatorExpr
             Atom
-              Name x
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x
           OperatorExpr
             Atom
               Name where
@@ -31,11 +41,16 @@ Program
               Name C
           OperatorExpr
             Atom
-              Name x
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x
           OperatorExpr
             Atom
               Name acquire
@@ -44,4 +59,13 @@ Program
               Name A
           OperatorExpr
             Atom
-              Name x
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

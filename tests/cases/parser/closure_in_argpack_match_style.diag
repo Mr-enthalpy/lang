@@ -1,0 +1,2 @@
+error InvalidClosureHead "closure head before `{` requires `=>`; in-place closure cannot have captures or parameters" @ 2:5 [10..37]
+error InvalidClosureHead "closure head before `{` requires `=>`; in-place closure cannot have captures or parameters" @ 3:5 [49..67]

@@ -303,20 +303,19 @@ pub enum AtomKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClosureAst {
-    Inline(InlineClosureAst),
+    InPlace(InPlaceClosureAst),
     Explicit(ExplicitClosureAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InlineClosureAst {
-    pub head: FnHeadPrefixAst,
+pub struct InPlaceClosureAst {
     pub body: BodyBlockAst,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExplicitClosureAst {
-    pub head: Option<FnHeadPrefixAst>,
+    pub head: FnHeadPrefixAst,
     pub body: BodyBlockAst,
     pub span: Span,
 }

@@ -1,0 +1,25 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name type
+                  OperatorExpr
+                    Atom
+                      Name y
+        with_clause:
+          None
+        initializer:
+          Expr
+            Error "expected `=` in let"

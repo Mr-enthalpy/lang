@@ -178,6 +178,12 @@ Operator identity is:
 spelling + fixity + arity
 ```
 
+Prefix negative `-x` is not an overloadable operator identity (see
+`spec/operator-design.md`). The `Prefix` fixity is a Raw AST surface marker
+reserved for the prefix-negative sugar and does not participate in operator
+alias identity. The `-` spelling in alias binder or target position refers
+exclusively to binary minus.
+
 Valid future design examples:
 
 ```text
@@ -282,6 +288,11 @@ let x === a + b
 
 Note: `f(a)` is not traditional call syntax in this language anyway; still,
 alias RHS must not parse as an expression/ArgPack structure.
+
+The alias RHS ends only at `;`, `}`, or EOF. Newlines are trivia inside alias
+RHS parsing. If a token remains after the parsed EntityRef before a hard
+boundary, it is an alias-RHS residual expression error, not the start of a new
+form.
 
 ## Parser Boundary
 

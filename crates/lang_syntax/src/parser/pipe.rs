@@ -4,9 +4,7 @@ use crate::{
 };
 
 use super::{
-    argpack::parse_argpack,
-    cursor::ParenClassification,
-    form::{Continuation, Parser},
+    argpack::parse_argpack, cursor::ParenClassification, form::Parser,
     operator::parse_operator_expr,
 };
 
@@ -34,8 +32,6 @@ pub fn parse_pipe_expr(
         });
         segments.push(seg);
 
-        parser.continuation = Continuation::None;
-
         if stop(parser) || parser.is_form_boundary() {
             break;
         }
@@ -43,8 +39,6 @@ pub fn parse_pipe_expr(
         if !parser.cursor.consume_symbol(Symbol::PipeGreater).is_some() {
             break;
         }
-
-        parser.continuation = Continuation::PipeRight;
 
         if stop(parser) || parser.is_form_boundary() {
             let span = parser.cursor.current_span();
@@ -98,7 +92,6 @@ fn parse_segment(
 
         if let Some(element) = parse_segment_element(parser, &mut stop) {
             elements.push(element);
-            parser.continuation = Continuation::None;
         } else if stop(parser) {
             break;
         } else {

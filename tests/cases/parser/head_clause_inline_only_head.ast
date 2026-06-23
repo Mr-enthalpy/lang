@@ -5,22 +5,4 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Inline
-                FnHeadPrefix
-                  clauses:
-                    Require
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+              Error "invalid headed closure without `=>`"

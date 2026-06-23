@@ -582,16 +582,13 @@ fn dump_nav_component(output: &mut String, component: &crate::NavComponentAst, i
 
 fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize) {
     match closure {
-        crate::ClosureAst::Inline(inner) => {
-            line(output, indent, "Closure Inline");
-            dump_fn_head_prefix(output, &inner.head, indent + 1);
+        crate::ClosureAst::InPlace(inner) => {
+            line(output, indent, "Closure InPlace");
             dump_body_block(output, &inner.body, indent + 1);
         }
         crate::ClosureAst::Explicit(inner) => {
             line(output, indent, "Closure Explicit");
-            if let Some(head) = &inner.head {
-                dump_fn_head_prefix(output, head, indent + 1);
-            }
+            dump_fn_head_prefix(output, &inner.head, indent + 1);
             dump_body_block(output, &inner.body, indent + 1);
         }
     }

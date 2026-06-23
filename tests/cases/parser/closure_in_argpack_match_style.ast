@@ -13,81 +13,13 @@ Program
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Closure Inline
-                          FnHeadPrefix
-                            deduce:
-                              DeduceList
-                                binders:
-                                  BinderDecl name=val
-                                    annotation:
-                                      AnnotationTermHole _
-                            params:
-                              ParamClause
-                                params:
-                                  BindingSlot let=false
-                                    deduce:
-                                      None
-                                    pattern:
-                                      PatternSkeleton
-                                        CanonicalSegment
-                                          elements:
-                                            CanonicalName role=Hole name=val
-                                            CanonicalNavPath
-                                              names:
-                                                option
-                                                Sum
-                                    annotation:
-                                      None
-                                    with_clause:
-                                      None
-                                    initializer:
-                                      None
-                          BodyBlock
-                            forms:
-                              ExprForm
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name val
+                        Error "invalid headed closure without `=>`"
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Closure Inline
-                          FnHeadPrefix
-                            params:
-                              ParamClause
-                                params:
-                                  BindingSlot let=false
-                                    deduce:
-                                      None
-                                    pattern:
-                                      PatternSkeleton
-                                        CanonicalSegment
-                                          elements:
-                                            CanonicalWildcard _
-                                            CanonicalNavPath
-                                              names:
-                                                option
-                                                None
-                                    annotation:
-                                      None
-                                    with_clause:
-                                      None
-                                    initializer:
-                                      None
-                          BodyBlock
-                            forms:
-                              ExprForm
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name none
+                        Error "invalid headed closure without `=>`"
           OperatorExpr
             Atom
               Name match

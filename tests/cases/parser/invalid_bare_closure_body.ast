@@ -5,4 +5,13 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Name x
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

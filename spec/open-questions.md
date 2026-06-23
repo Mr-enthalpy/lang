@@ -24,22 +24,20 @@ stage can add nesting if the language grammar requires it.
 
 ## 2. Form boundary: line-based vs explicit
 
-**Status:** Open
+**Status:** Resolved
 
-**Current v0.1 decision:**
-Form boundaries are: `;`, top-level line break (nesting depth 0), `}`, EOF.
-Line breaks inside `()`, `[]`, `{}` are not form boundaries.
+**Resolution:**
+Form boundaries are explicit and hard-only: `;`, `}`, EOF.
+A line break is trivia and is never promoted to a form separator.
 
-The provisional v0.1 top-level newline boundary rule is implemented.
-The broader language-design question of whether form boundaries should remain
-line-based or become fully explicit remains open.
+The language follows a strong-semicolon rule. The parser has no mixed
+line-based / explicit boundary mode.
 
-**Why it does not block v0.1:**
-The provisional rule works for a line-oriented subset. A future explicit
-terminator or indentation-based system can replace it without changing AST
-construction.
-
-**Future stage:** v0.5 (Normalized AST Stabilization) or later language design.
+**Implementation status:**
+Newline promotion, continuation tokens, and soft separator logic are removed
+from the parser. `is_form_boundary()`, `is_alias_rhs_boundary()`, and
+`is_entity_ref_boundary()` all delegate directly to the hard-boundary check
+on the cursor.
 
 ---
 
@@ -81,20 +79,19 @@ may restructure the AST to make right-target subsegments explicit sub-trees.
 
 ## 5. Whether capture clause stores token trees or expression AST
 
-**Status:** Partially resolved for v0.1 parser preservation
+**Status:** Resolved
 
-**Current v0.1 decision:**
-`CaptureClause` is parsed as a bracket-delimited clause, but capture items
-are stored as syntactic `CaptureItemAst` entries containing expression AST.
-No capture validation, move/ref/copy interpretation, or capture analysis is
-performed in v0.1.
+**Resolution:**
+Capture clause items are full `ExprAst` nodes, not token trees and not
+name-only items. The parser preserves `[expr1, expr2, ...]` syntactically.
+Capture materialization is a later lowering step that assigns synthetic
+closure fields in source order. Lifetime, ownership, and capture
+admissibility checks are not parser work.
 
-**Why it does not block v0.1:**
-The parser can recognize and preserve `[ item, item ]` syntax. Deeper
-capture semantics can be added later without changing the v0.1 preservation
-policy.
-
-**Future stage:** v0.3 (Normalized AST Specification) or v0.8 (closure materialization).
+**Implementation status:**
+`CaptureItemAst { expr: ExprAst }` is implemented in `ast.rs`.
+`parse_capture_clause` uses `parse_expr_until` to parse each capture item.
+No semantic capture validation is performed.
 
 ---
 
@@ -244,12 +241,15 @@ components.
 Implemented in parser phase 4.1 as raw AST preservation. Operator lookup,
 lowering, overload resolution, and alias binding remain future work.
 
-**Known syntax limitation:**
-The `<` spelling is not currently accepted as a simple operator binder after
-`let`. In that position, `<` starts the strong-context extract-let deduce list,
-so `let <: ...` follows extract-let recovery instead of `BinderName::Operator`.
-The `>` spelling does not have this conflict. A future phase needs an escaping
-or dedicated disambiguation rule if `<` must be declared as an operator binder.
+**Resolution update (v0.1 boundary recission):**
+The `<` spelling is accepted as an operator binder when it is not followed by a
+valid binding deduce-list start. A binding deduce list must contain a binder /
+hole name after `<`; therefore `let <: _: operator = expr` and `let < = expr`
+are parsed as operator binder declarations, not as extract-let deduce lists.
+
+No escaping syntax is required for this case. The parser only enters
+DeduceList parsing when `<` is followed by a valid deduce-list binder start
+(`Name` token or `>` for the empty list).
 
 ---
 
@@ -425,7 +425,11 @@ as an ordinary simple-let binder name, not as an alias modifier. See
 
 **Current Phase 4.3 design:**
 The operator alias rule requires `spelling + fixity + arity` match between
-binder and target leaf. The design document recommends deferring the full
+binder and target leaf, where fixity is `Binary` or `Postfix` (overloadable
+fixities only). Prefix negative `-x` is a normalization-special-cased surface
+sugar, not an overloadable operator identity; the `-` spelling in alias binder
+or target position refers exclusively to binary minus. The design document
+recommends deferring the full
 identity check to a static validation or name-resolution-adjacent phase.
 A first-pass spelling-only comparison is possible as optional future parser
 validation.
@@ -500,35 +504,29 @@ Raw alias parsing exists; namespace resolution does not.
 
 ---
 
-## 26. Alias RHS continuation-token after newline
+## 27. With-clause payload grammar and Raw AST boundary
 
-**Status:** Open (Phase 4.4.1 observation)
+**Status:** Resolved
 
-**Context:** When an alias RHS is followed by a newline and the next line begins
-with an operator token, the current form-boundary rules may treat the operator
-line as a continuation rather than a new form:
+**Resolution:**
+`with {}` is the only empty with clause. A non-empty `with { ... }` accepts only
+comma-separated source-level `Name` items. It does not accept expressions,
+paths, operator names, EntityRef syntax, canonical skeletons, or token trees.
 
-```text
-let x === a
-+ b
-```
+The Raw AST preserves these names as `Vec<NameAst>` only. It does not check
+whether a name exists above, earlier in the same binding list, in the same scope,
+or in any dependency/lifetime environment. Existence, dependency validity, and
+lifetime meaning belong to later name-resolution / ownership / lifetime phases.
 
-Because `+` is an operator token and operator tokens are general continuation
-tokens in the form-boundary system, the newline before `+ b` may not be
-promoted to a form separator. The `is_alias_rhs_boundary` check in Phase 4.4.1
-uses `!is_continuation_token(next)` to guard against this, so `+ b` on the next
-line would NOT be treated as a new form starting at `+`.
+Trailing commas in `with { ... }` are rejected by the parser.
 
-If a future design wants `+ b` on a new line to be a separate expression form
-rather than part of the alias RHS, the form-boundary continuation-token rules
-would need a broader change. This remains documented as an open edge case.
+**Implementation status:**
+Already implemented in `let_stmt.rs` (`parse_with_clause`); no parser change
+required.
 
 **Why it does not block v0.1:**
-The existing newline-promotion rules already define this behavior; expanding
-them to let operator tokens participate in form-boundary separation is a
-general parser question, not alias-specific.
-
-**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) or later expression design.
+The parser already enforces this grammar. The boundary is a documentation
+clarification, not an implementation change.
 
 ---
 
@@ -545,7 +543,7 @@ Items resolved during the documentation reset pass. Recorded here for audit.
 | `InvalidAliasBinder` diagnostic reserved but not emitted | In DiagnosticCode, never triggered | Undocumented as reserved | Marked "reserved; not currently emitted" in diagnostics spec | No |
 | `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |
 | Right-target subsegment AST shape | Flat representation; future may nest | Already open question §4 | No change needed | No |
-| Form boundary promotion rules | Provisional rules implemented | Already open question §2 | No change needed | No |
+| Form boundary promotion rules | Provisional rules implemented | Already open question §2 | Replaced with strong-semicolon rule (§2). Newline promotion removed. | No |
 
 ---
 

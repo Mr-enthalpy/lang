@@ -11,11 +11,7 @@ Program
                     OperatorExpr
                       Atom
                         Name x
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
-          ArgPack role=SourcePack
+          ArgPack role=RightTargetSubsegment
             args:
               Expr
                 Pipe
@@ -26,10 +22,6 @@ Program
           OperatorExpr
             Atom
               Name y
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             Atom
               Group
@@ -43,10 +35,6 @@ Program
           OperatorExpr
             Atom
               Name f
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             Atom
               MemberSugar

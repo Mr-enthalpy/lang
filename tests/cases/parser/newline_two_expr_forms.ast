@@ -6,10 +6,6 @@ Program
           OperatorExpr
             Atom
               Name a
-  ExprForm
-    Expr
-      Pipe
-        Segment has_incoming=false
           OperatorExpr
             Atom
               Name b

@@ -1,0 +1,60 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  captures:
+                    CaptureClause
+                      items:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                OperatorSugar fixity=Binary operator="+"
+                                  lhs:
+                                    Atom
+                                      Name x
+                                  rhs:
+                                    Atom
+                                      Name y
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  MemberSugar
+                                    object:
+                                      Name obj
+                                    selector:
+                                      TextName field
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name f
+                              OperatorExpr
+                                Atom
+                                  Group
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name a
+                  params:
+                    ParamClause
+                      params:
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name result

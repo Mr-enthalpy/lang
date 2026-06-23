@@ -1,0 +1,1 @@
+[x + y, obj.field, f(a)]() => { result }

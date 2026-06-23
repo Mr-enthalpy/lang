@@ -1,0 +1,23 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name if
+          OperatorExpr
+            Atom
+              Name cond
+          OperatorExpr
+            Atom
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name body

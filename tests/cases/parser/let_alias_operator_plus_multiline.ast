@@ -7,28 +7,3 @@ Program
         components:
           component Operator +
           component Name checked_int
-  Let
-    slot:
-      BindingSlot let=true
-        deduce:
-          None
-        pattern:
-          Binder
-            TextName x
-        annotation:
-          AnnotationExpr
-            Expr
-              Pipe
-                Segment has_incoming=false
-                  OperatorExpr
-                    Atom
-                      Name type
-        with_clause:
-          None
-        initializer:
-          Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name y

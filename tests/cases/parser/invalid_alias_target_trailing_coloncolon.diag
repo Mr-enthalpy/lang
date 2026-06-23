@@ -1,1 +1,1 @@
-error InvalidEntityRef "expected navigation component after `::`" @ 2:1 [14..14]
+error ExpectedAliasTarget "expected navigation component after `::`" @ 2:1 [14..14]

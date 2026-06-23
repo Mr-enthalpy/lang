@@ -193,6 +193,11 @@ block/body form
 This restriction is stronger than ordinary `let name: annotation = expr`.
 Alias binding does not bind a runtime value.
 
+The alias RHS ends only at `;`, `}`, or EOF. Newlines are trivia inside alias
+RHS parsing. If a token remains after the parsed EntityRef before a hard
+boundary, it is an alias-RHS residual expression error, not the start of a new
+form.
+
 ## Lexer Note For `===`
 
 Phase 4.2 does not implement lexer changes.

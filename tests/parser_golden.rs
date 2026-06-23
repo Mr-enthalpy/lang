@@ -120,6 +120,11 @@ fn let_with_semantic_many() {
 }
 
 #[test]
+fn let_with_empty_not_inplace() {
+    assert_parser_case("let_with_empty_not_inplace", false);
+}
+
+#[test]
 fn let_value_nav() {
     assert_parser_case("let_value_nav", false);
 }
@@ -255,8 +260,13 @@ fn newline_two_expr_forms() {
 }
 
 #[test]
+fn newline_expr_one_form() {
+    assert_parser_case("newline_expr_one_form", false);
+}
+
+#[test]
 fn newline_two_let_forms() {
-    assert_parser_case("newline_two_let_forms", false);
+    assert_parser_case("newline_two_let_forms", true);
 }
 
 #[test]
@@ -436,12 +446,12 @@ fn closure_explicit_full_head() {
 
 #[test]
 fn closure_prefixed_inline() {
-    assert_parser_case("closure_prefixed_inline", false);
+    assert_parser_case("closure_prefixed_inline", true);
 }
 
 #[test]
 fn closure_prefixed_inline_params() {
-    assert_parser_case("closure_prefixed_inline_params", false);
+    assert_parser_case("closure_prefixed_inline_params", true);
 }
 
 #[test]
@@ -486,7 +496,22 @@ fn binding_param_with_items() {
 
 #[test]
 fn closure_in_argpack_match_style() {
-    assert_parser_case("closure_in_argpack_match_style", false);
+    assert_parser_case("closure_in_argpack_match_style", true);
+}
+
+#[test]
+fn closure_inplace_empty() {
+    assert_parser_case("closure_inplace_empty", false);
+}
+
+#[test]
+fn closure_inplace_body() {
+    assert_parser_case("closure_inplace_body", false);
+}
+
+#[test]
+fn closure_inplace_control_flow() {
+    assert_parser_case("closure_inplace_control_flow", false);
 }
 
 #[test]
@@ -515,13 +540,28 @@ fn invalid_closure_acquire_not_parsed() {
 }
 
 #[test]
+fn invalid_closure_headed_no_arrow_1() {
+    assert_parser_case("invalid_closure_headed_no_arrow_1", true);
+}
+
+#[test]
+fn invalid_closure_headed_no_arrow_2() {
+    assert_parser_case("invalid_closure_headed_no_arrow_2", true);
+}
+
+#[test]
+fn invalid_closure_headed_no_arrow_3() {
+    assert_parser_case("invalid_closure_headed_no_arrow_3", true);
+}
+
+#[test]
 fn invalid_bare_closure_empty() {
-    assert_parser_case("invalid_bare_closure_empty", true);
+    assert_parser_case("invalid_bare_closure_empty", false);
 }
 
 #[test]
 fn invalid_bare_closure_body() {
-    assert_parser_case("invalid_bare_closure_body", true);
+    assert_parser_case("invalid_bare_closure_body", false);
 }
 
 #[test]
@@ -546,17 +586,17 @@ fn head_clause_only_head() {
 
 #[test]
 fn head_clause_inline_empty_params() {
-    assert_parser_case("head_clause_inline_empty_params", false);
+    assert_parser_case("head_clause_inline_empty_params", true);
 }
 
 #[test]
 fn head_clause_inline_pre_post() {
-    assert_parser_case("head_clause_inline_pre_post", false);
+    assert_parser_case("head_clause_inline_pre_post", true);
 }
 
 #[test]
 fn head_clause_inline_only_head() {
-    assert_parser_case("head_clause_inline_only_head", false);
+    assert_parser_case("head_clause_inline_only_head", true);
 }
 
 #[test]
@@ -757,6 +797,11 @@ fn closure_capture_simple() {
 #[test]
 fn closure_capture_multiple() {
     assert_parser_case("closure_capture_multiple", false);
+}
+
+#[test]
+fn closure_explicit_capture_exprs() {
+    assert_parser_case("closure_explicit_capture_exprs", false);
 }
 
 #[test]
@@ -1070,6 +1115,16 @@ fn operator_binder_postfix_bang() {
 }
 
 #[test]
+fn operator_binder_less() {
+    assert_parser_case("operator_binder_less", false);
+}
+
+#[test]
+fn operator_binder_less_unannotated() {
+    assert_parser_case("operator_binder_less_unannotated", false);
+}
+
+#[test]
 fn operator_nav_inner_plus() {
     assert_parser_case("operator_nav_inner_plus", false);
 }
@@ -1146,12 +1201,12 @@ fn let_alias_operator_shift() {
 
 #[test]
 fn let_alias_operator_plus_multiline() {
-    assert_parser_case("let_alias_operator_plus_multiline", false);
+    assert_parser_case("let_alias_operator_plus_multiline", true);
 }
 
 #[test]
 fn let_alias_operator_shift_multiline() {
-    assert_parser_case("let_alias_operator_shift_multiline", false);
+    assert_parser_case("let_alias_operator_shift_multiline", true);
 }
 
 #[test]
@@ -1236,7 +1291,27 @@ fn invalid_alias_extract_let_not_alias() {
 
 #[test]
 fn let_alias_following_form() {
-    assert_parser_case("let_alias_following_form", false);
+    assert_parser_case("let_alias_following_form", true);
+}
+
+#[test]
+fn alias_newline_residual_single() {
+    assert_parser_case("alias_newline_residual_single", true);
+}
+
+#[test]
+fn alias_newline_residual_semicolon() {
+    assert_parser_case("alias_newline_residual_semicolon", true);
+}
+
+#[test]
+fn alias_newline_valid_entityref() {
+    assert_parser_case("alias_newline_valid_entityref", false);
+}
+
+#[test]
+fn alias_newline_residual_path() {
+    assert_parser_case("alias_newline_residual_path", true);
 }
 
 #[test]

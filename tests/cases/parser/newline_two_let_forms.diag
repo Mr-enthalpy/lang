@@ -1,0 +1,2 @@
+error UnexpectedToken "unexpected token `:`" @ 2:6 [21..22]
+error UnexpectedToken "unexpected token `=`" @ 2:13 [28..29]

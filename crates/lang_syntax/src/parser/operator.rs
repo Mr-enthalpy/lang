@@ -25,10 +25,6 @@ fn parse_binary_expr(
     let mut seen_nonassoc = false;
 
     loop {
-        if parser.can_promote_newline_after_segment_element() {
-            break;
-        }
-
         if is_operator_expr_boundary(parser, stop) {
             break;
         }
@@ -171,10 +167,6 @@ fn parse_postfix_expr(
     };
 
     loop {
-        if parser.can_promote_newline_after_segment_element() {
-            break;
-        }
-
         if is_operator_expr_boundary(parser, stop) {
             break;
         }
@@ -375,12 +367,10 @@ fn is_operator_expr_boundary(
     stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
 ) -> bool {
     let saved_index = parser.cursor.current_index();
-    if !parser.at_top_level_newline() {
-        if stop(parser) {
-            return true;
-        }
-        parser.cursor.set_index(saved_index);
+    if stop(parser) {
+        return true;
     }
+    parser.cursor.set_index(saved_index);
 
     let (_, token) = parser
         .cursor

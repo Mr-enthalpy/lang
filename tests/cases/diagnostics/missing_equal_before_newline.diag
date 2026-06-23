@@ -1,1 +1,1 @@
-error ExpectedEqual "expected `=` in let" @ 2:1 [12..13]
+error ExpectedEqual "expected `=` in let" @ 2:2 [13..13]
