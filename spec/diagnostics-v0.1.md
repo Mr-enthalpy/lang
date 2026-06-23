@@ -227,7 +227,10 @@ spanning the failed region.
 - **Trigger**: A sequence that starts like a `FnHeadPrefix` but contains a
   malformed clause (e.g., duplicate deduce list, misplaced `=>`, unrecognizable
   param list contents, missing function item trait after `:`, missing return
-  binder after `->`, or missing return constraint after `:`).
+  binder after `->`, missing return constraint after `:`, or a head clause
+  keyword (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) immediately
+  followed by a clause/body boundary with no expression — message `expected
+  expression after \`<keyword>\``).
 - **Primary span**: The failing clause or token.
 - **Recovery**: Depending on severity, either skip the malformed clause or
   fall back to parsing as a non-closure atom.
@@ -242,7 +245,10 @@ parent gate rather than directly to final diagnostics.
 #### `TopLevelComma`
 
 - **Trigger**: A comma at the top level of a form (outside any `ArgPack` or
-  parenthesized group).
+  parenthesized group). This includes a top-level comma inside a head-clause
+  expression slot (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`),
+  which means the single-expression clause slot has been split into more than
+  one expression-shaped part.
 - **Primary span**: The comma token.
 - **Recovery**: Produce diagnostic and continue; the comma is consumed but
   does not create additional AST structure.

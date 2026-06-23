@@ -105,9 +105,10 @@ policy.
 **Current v0.1 decision:**
 The closure recognition algorithm (section 11.9 of ast-construction-v0.1.md)
 uses finite lookahead. The exact lookahead depth is bounded by the maximum
-implemented clause prefix length: `<T>[cap](x: T): runtime -> T`. `where`
-and `acquire` remain reserved but are not active closure-head clauses in
-Phase 3.1.
+implemented clause prefix length: `<T>[cap](x: T): runtime -> T`, after which a
+head clause tail (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) is
+parsed. The head clauses are now active; `where` remains reserved-inactive and
+`acquire` is an ordinary name.
 
 **Why it does not block v0.1:**
 The bounded lookahead is implemented with cursor save/restore and stack-based
@@ -527,7 +528,7 @@ Items resolved during the documentation reset pass. Recorded here for audit.
 |---|---|---|---|---|
 | Operator syntax added after initial v0.1 boundary | Implemented as raw AST sugar | AGENTS.md said "do not implement operator syntax" | Updated AGENTS.md, SKILL.md | No |
 | Alias parser preservation after entity-alias documented as future | Implemented as raw AST preservation | AGENTS.md, SKILL.md, README.md said "future only" | Updated all entry docs + entity-alias-design.md | No |
-| `where`/`acquire` reserved but not active | Reserved, not parsed in closure head | Already documented correctly | Confirmed; marked `reserved-not-active` in implementation-status | No |
+| `where`/`acquire` reserved but not active | `where` reserved-inactive; `acquire` superseded | Previously both reserved | `where` stays reserved-inactive; `acquire` direction replaced by active `pre`/`post` head clauses (plus `require`/`lifetime pre`/`lifetime post`) | No |
 | EntityRef general design vs alias-RHS subset | AliasRhsEntityRef implemented; GeneralEntityRef future | entity-ref-design.md said "not implemented" | Split into status banner distinguishing AliasRhsEntityRef vs GeneralEntityRef | No |
 | `InvalidAliasBinder` diagnostic reserved but not emitted | In DiagnosticCode, never triggered | Undocumented as reserved | Marked "reserved; not currently emitted" in diagnostics spec | No |
 | `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |

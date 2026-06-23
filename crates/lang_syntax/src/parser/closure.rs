@@ -1,9 +1,11 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DiagnosticCode,
-    ExplicitClosureAst, FnHeadPrefixAst, InlineClosureAst, ParamClauseAst, ReturnClauseAst, Symbol,
+    ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst, InlineClosureAst, ParamClauseAst,
+    ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
 use super::{
+    argpack::error_expr,
     deduce::parse_deduce_list,
     expr::parse_expr_until,
     form::Parser,
@@ -166,10 +168,12 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
+    let clauses = parse_head_clauses(parser);
+
     let end = parser.cursor.current_span();
     let span = start.join(end);
 
-    if deduce.is_none() && captures.is_none() && params.is_none() {
+    if deduce.is_none() && captures.is_none() && params.is_none() && clauses.is_empty() {
         return None;
     }
 
@@ -179,8 +183,120 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         params,
         fn_item_trait,
         returns,
+        clauses,
         span,
     })
+}
+
+// -- Head clauses (require / pre / post / lifetime pre / lifetime post) --
+
+#[derive(Clone, Copy)]
+enum HeadClauseKind {
+    Require,
+    Pre,
+    Post,
+    LifetimePre,
+    LifetimePost,
+}
+
+impl HeadClauseKind {
+    fn keyword_text(self) -> &'static str {
+        match self {
+            HeadClauseKind::Require => "require",
+            HeadClauseKind::Pre => "pre",
+            HeadClauseKind::Post => "post",
+            HeadClauseKind::LifetimePre => "lifetime pre",
+            HeadClauseKind::LifetimePost => "lifetime post",
+        }
+    }
+
+    fn into_clause(self, expr: ExprAst, span: Span) -> HeadClauseAst {
+        match self {
+            HeadClauseKind::Require => HeadClauseAst::Require { expr, span },
+            HeadClauseKind::Pre => HeadClauseAst::Pre { expr, span },
+            HeadClauseKind::Post => HeadClauseAst::Post { expr, span },
+            HeadClauseKind::LifetimePre => HeadClauseAst::LifetimePre { expr, span },
+            HeadClauseKind::LifetimePost => HeadClauseAst::LifetimePost { expr, span },
+        }
+    }
+}
+
+// A head clause keyword starts at `from` (skipping trivia) when the token is
+// `require`/`pre`/`post`, or `lifetime` immediately followed by `pre`/`post`.
+pub(super) fn token_index_starts_head_clause(parser: &Parser<'_>, from: usize) -> bool {
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(from);
+    if !matches!(first.kind, TokenKind::Name) {
+        return false;
+    }
+    match first.text.as_str() {
+        "require" | "pre" | "post" => true,
+        "lifetime" => {
+            let (_, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+            matches!(second.kind, TokenKind::Name)
+                && (second.text == "pre" || second.text == "post")
+        }
+        _ => false,
+    }
+}
+
+pub(super) fn at_head_clause_keyword(parser: &Parser<'_>) -> bool {
+    token_index_starts_head_clause(parser, parser.cursor.current_index())
+}
+
+fn clause_expr_boundary(parser: &mut Parser<'_>) -> bool {
+    parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || parser.is_form_boundary()
+        || at_head_clause_keyword(parser)
+}
+
+fn consume_head_clause_keyword(parser: &mut Parser<'_>) -> Option<(HeadClauseKind, Span)> {
+    if !at_head_clause_keyword(parser) {
+        return None;
+    }
+    let first = parser.cursor.bump_non_trivia();
+    let start = first.span;
+    let kind = match first.text.as_str() {
+        "require" => HeadClauseKind::Require,
+        "pre" => HeadClauseKind::Pre,
+        "post" => HeadClauseKind::Post,
+        "lifetime" => {
+            let second = parser.cursor.bump_non_trivia();
+            if second.text == "post" {
+                return Some((HeadClauseKind::LifetimePost, start.join(second.span)));
+            }
+            return Some((HeadClauseKind::LifetimePre, start.join(second.span)));
+        }
+        _ => return None,
+    };
+    Some((kind, start))
+}
+
+fn parse_head_clauses(parser: &mut Parser<'_>) -> Vec<HeadClauseAst> {
+    let mut clauses = Vec::new();
+
+    while at_head_clause_keyword(parser) {
+        let Some((kind, header_span)) = consume_head_clause_keyword(parser) else {
+            break;
+        };
+
+        let expr = if clause_expr_boundary(parser) {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                format!("expected expression after `{}`", kind.keyword_text()),
+                span,
+            );
+            error_expr(parser, "missing head clause expression", span)
+        } else {
+            parse_expr_until(parser, clause_expr_boundary)
+        };
+
+        let span = header_span.join(expr.span);
+        clauses.push(kind.into_clause(expr, span));
+    }
+
+    clauses
 }
 
 // -- Capture clause --

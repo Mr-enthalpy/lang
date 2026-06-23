@@ -313,7 +313,22 @@ pub struct FnHeadPrefixAst {
     pub params: Option<ParamClauseAst>,
     pub fn_item_trait: Option<ExprAst>,
     pub returns: Option<ReturnClauseAst>,
+    pub clauses: Vec<HeadClauseAst>,
     pub span: Span,
+}
+
+// Source-preserving closure/function head clauses. Each clause holds exactly
+// one raw expression slot. The parser does not decide whether the expression
+// is a valid contract, lifetime condition, resource condition, type-level
+// object, rank-level object, or semantic predicate.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HeadClauseAst {
+    Require { expr: ExprAst, span: Span },
+    Pre { expr: ExprAst, span: Span },
+    Post { expr: ExprAst, span: Span },
+    LifetimePre { expr: ExprAst, span: Span },
+    LifetimePost { expr: ExprAst, span: Span },
+    Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

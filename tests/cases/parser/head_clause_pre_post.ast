@@ -1,0 +1,53 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                  clauses:
+                    Pre
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              OperatorSugar fixity=Binary operator=">"
+                                lhs:
+                                  Atom
+                                    Name x
+                                rhs:
+                                  Atom
+                                    IntLiteral 0
+                    Post
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name result
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

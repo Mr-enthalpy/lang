@@ -74,7 +74,9 @@ Normalization must **not** assume:
 - `CanonicalSkeletonAst` preserves `Segment`, `ArgPack`, `Wildcard`, `Name` (with `CanonicalNameRole`), `Path`, `Literal`, and `Error`.
 - `CanonicalNameRole` distinguishes `Hole`, `NodeName`, and `Unknown`.
 - The `Hole` / `NodeName` distinction is a parse-time role marker. No semantic matching is performed.
-- `where` and `acquire` are reserved closure-head positions but are not parsed as active clauses.
+- `where` is a reserved closure-head position but is not parsed as an active clause. `acquire` is an ordinary name.
+- `FnHeadPrefixAst` carries `clauses: Vec<HeadClauseAst>` for the head clause tail (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`).
+- `HeadClauseAst` preserves the clause keyword (`Require`, `Pre`, `Post`, `LifetimePre`, `LifetimePost`, or `Error`) and exactly one `ExprAst` slot. The parser performs no contract, lifetime, resource, type-level, rank-level, or predicate validation on the clause expression.
 
 ## Expression invariants
 
@@ -108,7 +110,7 @@ Normalization must **not** assume:
 
 - `ClosureAst` distinguishes headed `Inline` (`FnHeadPrefix BodyBlock`) and `Explicit` (`FnHeadPrefix => BodyBlock`).
 - Raw AST has no representation for a bare `{ ... }` closure. A bare `{ ... }` in atom position is an error, not `ClosureAst`.
-- `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, and `span`. All clauses are optional.
+- `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries containing expression AST.
 - `ParamClauseAst` preserves ordered `BindingSlotAst` parameter entries.
 - `ReturnClauseAst` preserves a `BindingSlotAst`.

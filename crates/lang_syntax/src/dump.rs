@@ -1,8 +1,8 @@
 use crate::{
     AliasBinderAst, AnnotationTermAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode,
-    EntityRefAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst,
-    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
+    EntityRefAst, ExprAst, ExprKind, FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind,
+    PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
     WithClauseKind,
 };
 
@@ -580,6 +580,44 @@ fn dump_fn_head_prefix(output: &mut String, head: &crate::FnHeadPrefixAst, inden
     if let Some(returns) = &head.returns {
         line(output, indent + 1, "returns:");
         dump_return_clause(output, returns, indent + 2);
+    }
+    if !head.clauses.is_empty() {
+        line(output, indent + 1, "clauses:");
+        for clause in &head.clauses {
+            dump_head_clause(output, clause, indent + 2);
+        }
+    }
+}
+
+fn dump_head_clause(output: &mut String, clause: &HeadClauseAst, indent: usize) {
+    match clause {
+        HeadClauseAst::Require { expr, .. } => {
+            line(output, indent, "Require");
+            dump_expr(output, expr, indent + 1);
+        }
+        HeadClauseAst::Pre { expr, .. } => {
+            line(output, indent, "Pre");
+            dump_expr(output, expr, indent + 1);
+        }
+        HeadClauseAst::Post { expr, .. } => {
+            line(output, indent, "Post");
+            dump_expr(output, expr, indent + 1);
+        }
+        HeadClauseAst::LifetimePre { expr, .. } => {
+            line(output, indent, "LifetimePre");
+            dump_expr(output, expr, indent + 1);
+        }
+        HeadClauseAst::LifetimePost { expr, .. } => {
+            line(output, indent, "LifetimePost");
+            dump_expr(output, expr, indent + 1);
+        }
+        HeadClauseAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
     }
 }
 

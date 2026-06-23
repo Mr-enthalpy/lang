@@ -184,3 +184,13 @@ fn invalid_with_missing_block() {
 fn invalid_with_unclosed_block() {
     assert_diagnostics_case("invalid_with_unclosed_block");
 }
+
+#[test]
+fn invalid_head_clause_comma() {
+    assert_diagnostics_case("invalid_head_clause_comma");
+}
+
+#[test]
+fn invalid_head_clause_missing_expr() {
+    assert_diagnostics_case("invalid_head_clause_missing_expr");
+}

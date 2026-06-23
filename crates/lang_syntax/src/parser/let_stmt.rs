@@ -191,10 +191,33 @@ fn starts_skeleton_name(parser: &mut Parser<'_>, context: BindingSlotContext) ->
     if matches!(next.kind, TokenKind::Name) && next.text == "with" {
         return false;
     }
+    if matches!(
+        context,
+        BindingSlotContext::Param | BindingSlotContext::Return
+    ) && next_token_starts_head_clause(parser)
+    {
+        return false;
+    }
     !is_binding_pattern_stop_kind(&next.kind, context)
 }
 
+// Head clauses (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) only act
+// as binding-slot boundaries inside closure-head parameter and return slots.
+fn next_token_starts_head_clause(parser: &Parser<'_>) -> bool {
+    let (current_index, _) = parser
+        .cursor
+        .peek_at_skip_trivia(parser.cursor.current_index());
+    super::closure::token_index_starts_head_clause(parser, current_index + 1)
+}
+
 fn at_binding_pattern_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {
+    if matches!(
+        context,
+        BindingSlotContext::Param | BindingSlotContext::Return
+    ) && super::closure::at_head_clause_keyword(parser)
+    {
+        return true;
+    }
     is_binding_pattern_stop_kind(&parser.cursor.peek_non_trivia().kind, context)
         || parser.is_form_boundary()
 }
@@ -273,6 +296,10 @@ fn annotation_stop(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool
         || parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
         || (matches!(context, BindingSlotContext::Let) && parser.cursor.at_symbol(Symbol::Equal))
+        || (matches!(
+            context,
+            BindingSlotContext::Param | BindingSlotContext::Return
+        ) && super::closure::at_head_clause_keyword(parser))
         || parser.is_form_boundary()
 }
 

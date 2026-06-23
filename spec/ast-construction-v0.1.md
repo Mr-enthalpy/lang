@@ -433,12 +433,18 @@ let f: _: fn with {deps} = expr
 **In parameter binding-slot context** (inside closure-head parameter list):
 
 - Binding annotations stop at a top-level `with`, `,`, or `)`.
+- A head-clause keyword (`require`, `pre`, `post`, `lifetime pre`,
+  `lifetime post`) is also a stop, so the binder/annotation does not absorb a
+  following head clause.
 
 **In return binding-slot context** (after `->` in a closure head):
 
 - Binding annotations stop at a top-level `with`, `=>`, or `{`.
-- `where` and `acquire` are future reserved stop tokens; they are not
-  active Phase 3 parser stops.
+- A head-clause keyword (`require`, `pre`, `post`, `lifetime pre`,
+  `lifetime post`) is also a stop, so `-> T require c => { ... }` parses `T`
+  as the return binder and `require c` as a head clause.
+- `where` is a future reserved stop token; it is not an active Phase 3 parser
+  stop. `acquire` is an ordinary name and is not a stop.
 - `with { ... }` is rejected in return binding slots.
 
 ### 4.6 Binding annotation examples
@@ -1504,11 +1510,15 @@ FnHeadPrefix ::=
     ParamClause?
     FnItemTraitClause?
     ReturnClause?
+    HeadClause*
 
-// Future reserved, not implemented in Phase 3.1:
+// Future reserved, not implemented:
 //   WhereClause?
-//   AcquireClause?
 ```
+
+`HeadClause` covers the active head clauses `require`/`pre`/`post`/`lifetime
+pre`/`lifetime post` (see §11.8). `acquire` is no longer a reserved head-clause
+position; only `where` remains future reserved.
 
 The order is fixed.
 
@@ -1638,13 +1648,85 @@ contextual parser structure, not a semantic dependency check.
 > Concrete `where` syntax is deferred until a dedicated closure-clause parser
 > and logical-constraint grammar exist.
 
-### 11.8 Acquire clause (future reserved)
+### 11.8 Head clauses (`require` / `pre` / `post` / `lifetime pre` / `lifetime post`)
 
-> **Not implemented in Phase 3.1.** `acquire` is a reserved closure-head
-> position.
-> It remains an ordinary name outside a future acquire-parser state.
-> Concrete `acquire` syntax is deferred until a dedicated closure-clause parser
-> and resource-requirement grammar exist.
+The closure/function head may carry a tail of source-preserving clauses after
+the deduce, capture, parameter, fn-item-trait, and return clauses:
+
+```text
+FnHeadPrefix ::=
+    DeduceList?
+    CaptureClause?
+    ParamClause?
+    FnItemTraitClause?
+    ReturnClause?
+    HeadClause*
+
+HeadClause ::=
+    RequireClause
+  | PreClause
+  | PostClause
+  | LifetimePreClause
+  | LifetimePostClause
+
+RequireClause      ::= "require" Expr
+PreClause          ::= "pre" Expr
+PostClause         ::= "post" Expr
+LifetimePreClause  ::= "lifetime" "pre" Expr
+LifetimePostClause ::= "lifetime" "post" Expr
+```
+
+Each clause holds exactly one `ExprAst`. The clause expression stops at the
+next head-clause keyword (`require`, `pre`, `post`, `lifetime pre`,
+`lifetime post`), at the closure body boundary (`=>` or `{`), or at a form
+boundary / EOF. A clause is never a list: a top-level comma inside a clause
+slot is diagnosed (`TopLevelComma`) because the slot then holds more than one
+expression-shaped part rather than exactly one expression.
+
+`=> BodyBlock` has priority as the closure head/body delimiter. In closure-head
+context it terminates the head and starts the body, in the same way that
+`{ ... }` confirms the structure of `with { ... }`. A head clause expression
+therefore stops *before* that outer `=> BodyBlock`. For example:
+
+```text
+require x => { x }
+```
+
+parses as a clause-only head `Require(x)` plus body `{ x }`. It is **not**
+reinterpreted as `Require(x => { x })`. A bare `x => { x }` is not a valid
+expression in any case, because expression-position closure literals require
+parenthesized parameters (e.g. `(x) => { x }`); closure parameters cannot drop
+the parentheses. If a future expression-position closure literal appears inside
+a head clause expression, it must satisfy the ordinary expression grammar and
+closure-head requirements.
+
+`lifetime pre` and `lifetime post` are two-token clause heads recognized only
+in the head clause-tail context. A bare `lifetime` not followed by `pre` or
+`post` is not a clause head and remains an ordinary name. These two-token heads
+keep their space-separated spelling; underscore forms such as `lifetime_pre`
+are not used.
+
+Head clauses are active only in the closure/function head clause-tail context.
+Outside that context the words `require`, `pre`, `post`, and `lifetime` remain
+ordinary names. A clause-headed form is recognized as a closure only when a
+closure body boundary (`=>` or `{`) follows; otherwise the speculative head
+parse is discarded and the words are reparsed as ordinary names. There is no
+special rule rejecting clause-only heads: whether the source reduces to a
+closure expression is decided by ordinary closure-head recognition.
+
+These clauses are source-preserving only. **Clause expressions are Raw AST
+expressions. The parser preserves the expression shape and does not decide
+whether the expression is a valid contract, valid lifetime condition, valid
+resource condition, type-level object, rank-level object, or semantic
+predicate. Those decisions belong to later type calculation, name resolution,
+and checking phases.** The AST node names (`Require`, `Pre`, `Post`,
+`LifetimePre`, `LifetimePost`) record only the source clause keyword; they do
+not imply semantic validation.
+
+`acquire` is no longer a reserved head-clause position; the earlier
+`acquire A` direction is replaced by the explicit `pre Expr` / `post Expr`
+clauses above. `acquire` is an ordinary name. `where` remains a reserved,
+inactive closure-head position (§11.7).
 
 ### 11.9 Closure recognition algorithm
 
@@ -1685,8 +1767,9 @@ x => { }
 The closure recognition algorithm first checks:
 
 - Is `x` a `FnHeadPrefix`? No — `FnHeadPrefix ::= DeduceList? CaptureClause?
-  ParamClause? FnItemTraitClause? ReturnClause?` (plus future reserved
-  WhereClause?/AcquireClause?).
+  ParamClause? FnItemTraitClause? ReturnClause? HeadClause*` (plus future
+  reserved WhereClause?). `HeadClause` covers `require`/`pre`/`post`/`lifetime
+  pre`/`lifetime post`; a bare `x` is none of these.
   A bare `Name("x")` does not match any of these clauses.
 - Therefore the lookahead fails. The parser backtracks and parses `x` as an
   ordinary `Atom(Name("x"))`.

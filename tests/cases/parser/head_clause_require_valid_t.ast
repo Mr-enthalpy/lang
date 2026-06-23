@@ -1,0 +1,44 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                  clauses:
+                    Require
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name valid
+                            OperatorExpr
+                              Atom
+                                Name T
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x
