@@ -1889,26 +1889,30 @@ not imply semantic validation.
 clauses above. `acquire` is an ordinary name. `where` remains a reserved,
 inactive closure-head position (§11.7).
 
-### 11.9 Closure recognition algorithm
+### 11.9 Closure / with / in-place body disambiguation
 
-When the expression parser expects an atom:
+The parser uses fixed finite lookahead, not semantic backtracking.
 
-1. If the current token is `{`, parse an in-place closure `InPlaceClosureAst`
-   (bare `BodyBlock` with no head).
-2. Otherwise, attempt finite lookahead for `FnHeadPrefix`. If `FnHeadPrefix`
-   is parsed and followed by `=>` + `{`, parse `ExplicitClosureAst`.
-3. If `FnHeadPrefix` is parsed but followed directly by `{` without `=>`, emit
-   `InvalidClosureHead` and consume the body block for error recovery.
-4. If `FnHeadPrefix` lookahead fails, restore cursor and parse ordinary atom.
+A `{ ... }` body-like form is assigned by its immediate syntactic owner:
 
-A bare `{` in atom position always produces an in-place closure.
-Closure head without `=>` before `{` is invalid.
+1. In a binding slot, `with { ... }` is parsed as `WithClauseAst`.
+   The body block is consumed by the binding parser and is not offered to the
+   expression atom parser.
 
-This is finite lookahead, not semantic backtracking.
-Failed closure-head lookahead must not leak diagnostics or consume tokens.
-Committed malformed closure parsing keeps diagnostics. Nested diagnostic gates
-must preserve outer gated diagnostics until the outer gate is explicitly kept
-or dropped.
+2. In expression atom position, a bare `{ ... }` with no preceding committed
+   closure head is parsed as `InPlaceClosureAst`.
+
+3. A successfully parsed `FnHeadPrefix` followed by `=> { ... }` is parsed as
+   `ExplicitClosureAst`.
+
+4. A successfully parsed `FnHeadPrefix` followed directly by `{ ... }` without
+   `=>` is invalid and produces `InvalidClosureHead`; it is not reinterpreted as
+   an in-place closure.
+
+Failed speculative `FnHeadPrefix` lookahead restores the cursor and drops gated
+diagnostics. Committed malformed closure-head parsing keeps diagnostics. Nested
+diagnostic gates must preserve outer gated diagnostics until the outer gate is
+explicitly kept or dropped.
 
 The following are not recognized as successful closure heads:
 

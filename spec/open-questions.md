@@ -94,24 +94,30 @@ No semantic capture validation is performed.
 
 ## 6. How much closure-head finite lookahead is allowed
 
-**Status:** Open
+**Status:** Resolved
 
-**Current v0.1 decision:**
-The closure recognition algorithm (section 11.9 of ast-construction-v0.1.md)
-uses finite lookahead. The exact lookahead depth is bounded by the maximum
-implemented clause prefix length: `<T>[cap](x: T): runtime -> T`, after which a
-head clause tail (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) is
-parsed. The head clauses are now active; `where` remains reserved-inactive and
-`acquire` is an ordinary name.
+**Resolution:**
+Closure-head lookahead is finite and structurally committed by the first
+enclosing body/with delimiter. When a `{ ... }` body-like form is encountered:
 
-**Why it does not block v0.1:**
-The bounded lookahead is implemented with cursor save/restore and stack-based
-diagnostic gates. Phase 3.1 adds regression tests for failed lookahead,
-group/product ambiguity, and `where`/`acquire` non-recognition. A formal upper
-bound should still be specified before future closure-head clauses are added.
+- If immediately owned by `with`, it is parsed as `with { ... }`
+  (a binding-slot clause, consumed by the binding parser).
+- If a successfully parsed `FnHeadPrefix` is followed by `=> { ... }`,
+  it is parsed as `ExplicitClosureAst`.
+- With no `with` owner and no committed `=>` closure head, a bare `{ ... }`
+  in atom position is parsed as `InPlaceClosureAst`.
 
-**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) — document the exact maximum lookahead
-and add tests for edge cases.
+A `FnHeadPrefix` followed directly by `{ ... }` without `=>` is invalid
+(`InvalidClosureHead`) and is not reinterpreted as an in-place closure.
+
+These are fixed longest-match cases. The parser does not perform unbounded
+semantic backtracking.
+
+**Implementation status:**
+The parser already implements this disambiguation in `try_parse_closure`,
+`parse_with_clause`, and `parse_binding_slot`. Golden tests lock the four
+committed cases: `let_with_empty_not_inplace`, `closure_inplace_empty`,
+`closure_explicit_empty_params`, and `invalid_closure_headed_no_arrow_1/2/3`.
 
 ---
 
