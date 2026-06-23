@@ -195,6 +195,11 @@ fn product_extract_unit() {
 }
 
 #[test]
+fn product_extract_double_trailing_unit() {
+    assert_parser_case("product_extract_double_trailing_unit", false);
+}
+
+#[test]
 fn product_bare_expr() {
     assert_parser_case("product_bare_expr", false);
 }
@@ -785,6 +790,16 @@ fn product_comma_trailing() {
 }
 
 #[test]
+fn product_comma_double_trailing() {
+    assert_parser_case("product_comma_double_trailing", false);
+}
+
+#[test]
+fn product_all_empty_slots() {
+    assert_parser_case("product_all_empty_slots", false);
+}
+
+#[test]
 fn head_clause_require_valid_t() {
     assert_parser_case("head_clause_require_valid_t", false);
 }
@@ -950,6 +965,11 @@ fn canonical_product_trailing_unit() {
 }
 
 #[test]
+fn canonical_product_double_trailing_unit() {
+    assert_parser_case("canonical_product_double_trailing_unit", false);
+}
+
+#[test]
 fn newline_between_coloncolon_and_leaf() {
     assert_parser_case("newline_between_coloncolon_and_leaf", false);
 }
@@ -1080,8 +1100,8 @@ fn operator_grouped_nonassoc_right() {
 }
 
 #[test]
-fn operator_inside_product() {
-    assert_parser_case("operator_inside_product", false);
+fn operator_inside_group() {
+    assert_parser_case("operator_inside_group", false);
 }
 
 #[test]

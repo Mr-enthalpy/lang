@@ -66,7 +66,7 @@ Normalization must **not** assume:
   resolution / ownership / lifetime phases.
 - `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
 - `BindingSlotAst` preserves an optional `policy` expression, optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`. A policy is recognized only by the shape `Expr let`; `policy = None` means the policy was unwritten (implicit / inferred later), not "no policy". The parser performs no policy validation.
-- `BindingPatternAst` distinguishes simple binder names from canonical skeleton patterns.
+- `BindingPatternAst` distinguishes `Binder`, `Implicit`, `Product`, `Skeleton`, and `Error`.
 - `LetAliasAst` preserves an optional `policy` expression (same `Expr let` rule as `BindingSlotAst`), `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
 - `BindingAnnotationAst` distinguishes a single preserved expression, an explicit compound annotation, and `Error`.
@@ -90,7 +90,7 @@ Normalization must **not** assume:
 - `ProductExprAst` preserves ordered `ProductElementAst` elements and span. A parenthesized top-level-comma form in expression context is product construction.
 - `ProductElementAst` is either `Expr(ExprAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit product elements. They are not skipped, not wildcards, and not implicit discards.
 - There is no standalone `ExprKind::Unit`; unit from commas is scoped to product elements only.
-- There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, or `MatchExpr` node in Raw AST.
+- There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, `MatchExpr`, `IfExpr`, `IfStmt`, `ElseClause`, `ElseIf`, `MatchStmt`, `CallExpr`, or `ArgPack` as a semantic construct in Raw AST.
 
 ## PipeExpr / Segment / Product invariants
 

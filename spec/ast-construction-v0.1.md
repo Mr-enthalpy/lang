@@ -1037,8 +1037,9 @@ AtomAst ::=
 
 ```text
 Group ::= "(" PipeExpr ")"
-ProductForm ::= "(" ProductElementList? ")"
-ProductElementList ::= PipeExpr ("," PipeExpr)* ","?
+ProductForm ::= "(" ProductSlotList? ")"          (see §9.1)
+ProductSlotList ::= ProductSlot ("," ProductSlot)* ","?
+ProductSlot ::= PipeExpr | <empty>
 ```
 
 A group is valid only if its contents do not contain a top-level comma.

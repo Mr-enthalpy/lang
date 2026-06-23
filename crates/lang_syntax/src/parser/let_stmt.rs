@@ -155,6 +155,13 @@ pub fn parse_product_extract(
                 elements.push(ProductExtractElementAst::Unit { span: comma.span });
             }
             expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(ProductExtractElementAst::Unit { span: comma.span });
+                break;
+            }
             continue;
         }
 

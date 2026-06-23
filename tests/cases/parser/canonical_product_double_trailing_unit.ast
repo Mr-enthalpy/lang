@@ -1,0 +1,37 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=x
+                annotation:
+                  None
+        pattern:
+          PatternSkeleton
+            CanonicalSegment
+              elements:
+                CanonicalName role=Hole name=x
+                CanonicalProductExtract
+                  elements:
+                    CanonicalName role=Hole name=x
+                    CanonicalProductUnit
+                    CanonicalProductUnit
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name T
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name z

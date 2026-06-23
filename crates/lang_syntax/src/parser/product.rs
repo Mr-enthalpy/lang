@@ -46,6 +46,10 @@ fn parse_delimited_product_expr(
                 elements.push(ProductElementAst::Unit { span: comma.span });
             }
             expect_element = true;
+            if at_product_end(parser, close) {
+                elements.push(ProductElementAst::Unit { span: comma.span });
+                break;
+            }
             continue;
         }
 
