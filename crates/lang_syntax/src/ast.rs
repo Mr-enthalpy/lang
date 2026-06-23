@@ -55,7 +55,6 @@ pub struct BindingSlotAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BindingPatternAst {
     Binder(BinderNameAst),
-    Implicit { span: Span },
     Product(ProductExtractAst),
     Skeleton(CanonicalSkeletonAst),
     Error(ErrorAst),

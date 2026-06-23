@@ -1,0 +1,1 @@
+error ExpectedName "expected binding pattern after `let`" @ 1:4 [3..4]

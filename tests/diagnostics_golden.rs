@@ -204,3 +204,13 @@ fn unclosed_bracket_call() {
 fn unclosed_bracket_call_comma() {
     assert_diagnostics_case("unclosed_bracket_call_comma");
 }
+
+#[test]
+fn invalid_binding_missing_pattern() {
+    assert_diagnostics_case("invalid_binding_missing_pattern");
+}
+
+#[test]
+fn invalid_param_missing_pattern() {
+    assert_diagnostics_case("invalid_param_missing_pattern");
+}

@@ -1037,10 +1037,19 @@ AtomAst ::=
 
 ```text
 Group ::= "(" PipeExpr ")"
-ProductForm ::= "(" ProductSlotList? ")"          (see §9.1)
+
+ProductForm ::=
+    "()"
+  | "(" ProductSlot "," ProductSlotList? ")"
+  | "(" "," ProductSlotList? ")"
+
 ProductSlotList ::= ProductSlot ("," ProductSlot)* ","?
 ProductSlot ::= PipeExpr | <empty>
 ```
+
+A non-empty parenthesized form without a top-level comma is always Group.
+The empty parenthesized form `()` is the zero-element Product.
+A non-empty parenthesized form with at least one top-level comma is Product.
 
 A group is valid only if its contents do not contain a top-level comma.
 

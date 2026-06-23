@@ -110,9 +110,6 @@ fn dump_binding_pattern(output: &mut String, pattern: &BindingPatternAst, indent
             line(output, indent, "Binder");
             dump_binder_name(output, name, indent + 1);
         }
-        BindingPatternAst::Implicit { .. } => {
-            line(output, indent, "ImplicitExtract");
-        }
         BindingPatternAst::Product(product) => {
             line(output, indent, "ProductExtract");
             dump_product_extract(output, product, indent + 1);

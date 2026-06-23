@@ -263,16 +263,13 @@ fn slot_policy_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) ->
 fn parse_binding_pattern(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
-    has_let: bool,
+    _has_let: bool,
     local_deduce: Option<&DeduceListAst>,
     inherited_deduce: Option<&DeduceListAst>,
 ) -> BindingPatternAst {
     let token = parser.cursor.peek_non_trivia();
 
     if at_binding_pattern_boundary(parser, context) {
-        if has_let && parser.cursor.at_symbol(Symbol::Colon) {
-            return BindingPatternAst::Implicit { span: token.span };
-        }
         let message = match context {
             BindingSlotContext::Let => "expected binding pattern after `let`",
             BindingSlotContext::Param => "expected parameter binding pattern",
@@ -870,7 +867,6 @@ fn recover_to_initializer(parser: &mut Parser<'_>) {
 fn binding_pattern_span(pattern: &BindingPatternAst) -> Span {
     match pattern {
         BindingPatternAst::Binder(name) => binder_name_span(name),
-        BindingPatternAst::Implicit { span } => *span,
         BindingPatternAst::Product(product) => product.span,
         BindingPatternAst::Skeleton(skeleton) => skeleton_span(skeleton),
         BindingPatternAst::Error(error) => error.span,

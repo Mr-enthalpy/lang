@@ -66,7 +66,7 @@ Normalization must **not** assume:
   resolution / ownership / lifetime phases.
 - `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
 - `BindingSlotAst` preserves an optional `policy` expression, optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`. A policy is recognized only by the shape `Expr let`; `policy = None` means the policy was unwritten (implicit / inferred later), not "no policy". The parser performs no policy validation.
-- `BindingPatternAst` distinguishes `Binder`, `Implicit`, `Product`, `Skeleton`, and `Error`.
+- `BindingPatternAst` distinguishes `Binder`, `Product`, `Skeleton`, and `Error`.
 - `LetAliasAst` preserves an optional `policy` expression (same `Expr let` rule as `BindingSlotAst`), `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
 - `BindingAnnotationAst` distinguishes a single preserved expression, an explicit compound annotation, and `Error`.

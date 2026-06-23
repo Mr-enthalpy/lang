@@ -73,7 +73,8 @@ Program
                             deduce:
                               None
                             pattern:
-                              ImplicitExtract
+                              Binder
+                                TextName u
                             annotation:
                               AnnotationExpr
                                 Expr
