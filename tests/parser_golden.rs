@@ -523,6 +523,36 @@ fn closure_deduce_acquire_not_clause() {
 }
 
 #[test]
+fn head_clause_require() {
+    assert_parser_case("head_clause_require", false);
+}
+
+#[test]
+fn head_clause_require_valid_t() {
+    assert_parser_case("head_clause_require_valid_t", false);
+}
+
+#[test]
+fn head_clause_pre_post() {
+    assert_parser_case("head_clause_pre_post", false);
+}
+
+#[test]
+fn head_clause_lifetime() {
+    assert_parser_case("head_clause_lifetime", false);
+}
+
+#[test]
+fn head_clause_multiple() {
+    assert_parser_case("head_clause_multiple", false);
+}
+
+#[test]
+fn head_clause_names_outside_head() {
+    assert_parser_case("head_clause_names_outside_head", false);
+}
+
+#[test]
 fn closure_body_multi_form() {
     assert_parser_case("closure_body_multi_form", false);
 }

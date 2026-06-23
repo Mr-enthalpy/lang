@@ -126,9 +126,11 @@ It does **not** yet cover:
   type-directed lookup.
 - Compile-time `EntityRef` resolution.
 - Operator alias identity validation.
-- `where`/`acquire` closure clauses, closure object materialization, type/kind
-  checking, name resolution, semantic analysis, lowering, interpretation, or
-  code generation.
+- The reserved-inactive `where` closure clause, closure object materialization,
+  type/kind checking, name resolution, semantic analysis, lowering,
+  interpretation, or code generation. (The `require`/`pre`/`post`/`lifetime
+  pre`/`lifetime post` head clauses are parsed as raw AST shape only; their
+  meaning is deferred to later phases.)
 
 The expression segment design is:
 

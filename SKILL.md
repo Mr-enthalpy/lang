@@ -85,8 +85,10 @@ namespace  struct
 
 Parser contexts may interpret selected names structurally, but only when
 explicitly defined by the spec (e.g., `let` at form start and `with { ... }`
-in let bindings). `where` and `acquire` are reserved future closure-head
-positions, not active parser clauses in Phase 3.1.
+in let bindings). `require`/`pre`/`post`/`lifetime pre`/`lifetime post` are
+active closure-head clauses parsed as raw `HeadClauseAst` shape (one expression
+slot each, no semantic validation). `where` remains a reserved, inactive
+closure-head position; `acquire` is an ordinary name.
 
 The weak lexer treats unrecognized words as `Name` tokens. This does not
 make those words language constructs.

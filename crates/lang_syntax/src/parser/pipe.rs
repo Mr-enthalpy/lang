@@ -145,13 +145,17 @@ fn parse_segment_element(
 
     match class {
         ParenClassification::ArgPack => {
-            // Check if this is a closure param clause before parsing as ArgPack
+            // Check if this is a closure param clause before parsing as ArgPack.
+            // A `(...)` followed by `=>`, `{`, or a head-clause keyword
+            // (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) is a
+            // closure-head parameter clause rather than a source ArgPack.
             if let Some(idx) = after_idx {
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
                 if matches!(
                     after.kind,
                     TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
-                ) {
+                ) || super::closure::token_index_starts_head_clause(parser, idx)
+                {
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }

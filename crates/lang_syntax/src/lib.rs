@@ -17,10 +17,10 @@ pub use ast::{
     BinderNameAst, BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst,
     CanonicalNameRole, CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst,
     DeduceListAst, EntityRefAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst,
-    FormAst, InlineClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst, NumericNameAst,
-    OperatorExprAst, OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst,
-    PipeExprAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst, SelectorAst,
-    WithClauseAst, WithClauseKind,
+    FormAst, HeadClauseAst, InlineClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst,
+    NumericNameAst, OperatorExprAst, OperatorExprKind, OperatorFixity, OperatorNameAst,
+    ParamClauseAst, PipeExprAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
+    SelectorAst, WithClauseAst, WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};

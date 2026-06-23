@@ -1,0 +1,17 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name require
+          OperatorExpr
+            Atom
+              Name pre
+          OperatorExpr
+            Atom
+              Name post
+          OperatorExpr
+            Atom
+              Name lifetime

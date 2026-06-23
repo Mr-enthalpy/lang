@@ -1,0 +1,1 @@
+error InvalidClosureHead "expected expression after `require`" @ 1:13 [12..14]
