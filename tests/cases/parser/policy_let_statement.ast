@@ -1,0 +1,33 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name policy
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name T
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value

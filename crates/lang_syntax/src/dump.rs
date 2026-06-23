@@ -79,6 +79,10 @@ fn dump_let(output: &mut String, let_ast: &LetAst, indent: usize) {
 
 fn dump_binding_slot(output: &mut String, slot: &BindingSlotAst, indent: usize) {
     line(output, indent, &format!("BindingSlot let={}", slot.has_let));
+    if let Some(policy) = &slot.policy {
+        line(output, indent + 1, "policy:");
+        dump_expr(output, policy, indent + 2);
+    }
     line(output, indent + 1, "deduce:");
     match &slot.deduce {
         Some(deduce) => dump_deduce_list(output, deduce, indent + 2),
@@ -146,6 +150,10 @@ fn dump_with_clause(
 
 fn dump_alias_let(output: &mut String, alias: &LetAliasAst, indent: usize) {
     line(output, indent, "LetAlias");
+    if let Some(policy) = &alias.policy {
+        line(output, indent + 1, "policy:");
+        dump_expr(output, policy, indent + 2);
+    }
     line(output, indent + 1, "binder:");
     dump_alias_binder(output, &alias.binder, indent + 2);
     line(output, indent + 1, "target:");

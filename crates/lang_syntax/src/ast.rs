@@ -39,6 +39,10 @@ pub enum WithClauseKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BindingSlotAst {
+    // Optional policy expression written before `let`. `None` means the policy
+    // was not written (implicit / to be inferred later), not "no policy". The
+    // parser preserves the expression shape only; it performs no validation.
+    pub policy: Option<ExprAst>,
     pub has_let: bool,
     pub deduce: Option<DeduceListAst>,
     pub pattern: BindingPatternAst,
@@ -371,6 +375,8 @@ pub struct ErrorAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LetAliasAst {
+    // Optional policy expression written before `let` (see `BindingSlotAst`).
+    pub policy: Option<ExprAst>,
     pub binder: AliasBinderAst,
     pub target: EntityRefAst,
     pub span: Span,

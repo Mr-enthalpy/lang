@@ -68,9 +68,21 @@ impl<'tokens> Parser<'tokens> {
 
     pub fn parse_form(&mut self) -> FormAst {
         if self.cursor.at_name("let") {
-            parse_let_form(self)
+            parse_let_form(self, None)
         } else {
-            FormAst::Expr(parse_expr_until(self, |parser| parser.is_form_boundary()))
+            // A policy expression is recognized only by the shape `Expr let`.
+            // Parse a leading expression that stops at a top-level `let`; if a
+            // `let` follows, this is a policy-prefixed binding form. Otherwise
+            // the same expression is the ordinary expression form (no top-level
+            // `let` means the result is identical to parsing to the boundary).
+            let expr = parse_expr_until(self, |parser| {
+                parser.cursor.at_name("let") || parser.is_form_boundary()
+            });
+            if self.cursor.at_name("let") {
+                parse_let_form(self, Some(expr))
+            } else {
+                FormAst::Expr(expr)
+            }
         }
     }
 

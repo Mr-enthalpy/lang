@@ -1,0 +1,15 @@
+Program
+  LetAlias
+    policy:
+      Expr
+        Pipe
+          Segment has_incoming=false
+            OperatorExpr
+              Atom
+                Name policy
+    binder:
+      Name x
+    target:
+      EntityRef
+        components:
+          component Name y

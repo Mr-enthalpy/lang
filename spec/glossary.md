@@ -537,9 +537,17 @@ _See also: Declaration, BindingSlot, BindingAnnotation._
 ## BindingSlot
 
 A parser-level binding-site shape reused by let bindings, closure parameters,
-and closure returns. It preserves optional `let`, optional `DeduceList`, a
-binding pattern, optional binding annotation, optional `with { ... }`, and an
-optional initializer where the surrounding context allows one.
+and closure returns. It preserves an optional policy expression, optional `let`,
+optional `DeduceList`, a binding pattern, optional binding annotation, optional
+`with { ... }`, and an optional initializer where the surrounding context allows
+one.
+
+The optional **policy** is recognized only by the contextual shape `Expr let`:
+an expression written immediately before `let`. Without the trailing `let`, the
+same tokens stay in the binding pattern / canonical skeleton. A `policy` of
+`None` means the policy was unwritten (implicit / inferred later), not that the
+binding has no policy. The parser preserves the expression shape only and
+performs no policy validation.
 
 _See also: Let binding, BindingAnnotation, CanonicalSkeleton._
 

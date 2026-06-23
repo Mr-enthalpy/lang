@@ -1,0 +1,46 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
+                        BindingSlot let=true
+                          policy:
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name policy
+                          deduce:
+                            DeduceList
+                              binders:
+                                BinderDecl name=T
+                                  annotation:
+                                    None
+                          pattern:
+                            PatternSkeleton
+                              CanonicalSegment
+                                elements:
+                                  CanonicalName role=NodeName name=x
+                                  CanonicalName role=NodeName name=pattern
+                          annotation:
+                            AnnotationExpr
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Name T
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                BodyBlock
+                  forms:
