@@ -43,6 +43,18 @@ fn expr_name() {
 }
 
 #[test]
+fn member_int_base() {
+    // `1.2` is member sugar `(IntLiteral 1).(NumericName 2)`, not a float.
+    assert_parser_case("member_int_base", false);
+}
+
+#[test]
+fn member_int_chain() {
+    // `1.2.3` is left-associated member sugar `(1.2).3`.
+    assert_parser_case("member_int_chain", false);
+}
+
+#[test]
 fn expr_nav_path() {
     assert_parser_case("expr_nav_path", false);
 }

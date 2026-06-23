@@ -1108,7 +1108,23 @@ obj.42
 uint8::1
 obj..1(args)
 1.x
+1.2
+1.2.3
 ```
+
+`1.2` is **member sugar on an integer-literal object**, not a float literal:
+
+```text
+1.2 ↦ MemberSugar { object: IntLiteral("1"), selector: NumericName("2") }
+```
+
+Float literals are not lexer/Raw-AST primitives; there is no `FloatLiteral`
+token or node. `1.2` lexes as `IntLiteral · Dot · IntLiteral` and folds through
+the ordinary `.`-suffix rule. Chains are left-associated: `1.2.3 ↦ (1.2).3`.
+The parser does not decide whether such a chain is a valid number, an invalid
+numeric chain, or a user-defined selector chain; numeric-selector semantics
+(including the function-object/`self` positional rule) are deferred to later
+phases. See open question §17.
 
 ### 8.4 Navigation folding
 

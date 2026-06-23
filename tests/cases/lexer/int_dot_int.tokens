@@ -1,0 +1,5 @@
+IntLiteral "1" @ 1:1 [0..1]
+Symbol.Dot "." @ 1:2 [1..2]
+IntLiteral "2" @ 1:3 [2..3]
+Trivia.Whitespace "\n" @ 1:4 [3..4]
+Eof "" @ 2:1 [4..4]
