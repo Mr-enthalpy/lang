@@ -9,17 +9,52 @@ Program
                 annotation:
                   None
         pattern:
-          PatternSkeleton
-            CanonicalSegment
-              elements:
-                CanonicalArgPack
-                  elements:
-                    CanonicalName role=Hole name=x
+          ProductExtract
+            elements:
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName x
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  PatternSkeleton
                     CanonicalLiteral "42"
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  PatternSkeleton
                     CanonicalLiteral "\"s\""
-                CanonicalName role=NodeName name=Triple
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
         annotation:
-          None
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name Triple
         with_clause:
           None
         initializer:

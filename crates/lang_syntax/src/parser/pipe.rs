@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::{
-    argpack::parse_argpack, cursor::ParenClassification, form::Parser,
-    operator::parse_operator_expr,
+    cursor::ParenClassification, form::Parser, operator::parse_operator_expr,
+    product::parse_product_expr,
 };
 
 pub fn parse_pipe_expr(
@@ -64,13 +64,24 @@ pub fn parse_pipe_expr(
         }
     }
 
-    assign_segment_roles(&mut segments);
+    for (i, segment) in segments.iter_mut().enumerate() {
+        segment.has_incoming = i > 0;
+    }
 
     let span = segments
         .first()
         .map(|s| s.span)
         .unwrap_or(start)
         .join(segments.last().map(|s| s.span).unwrap_or(start));
+
+    if segments.len() == 1 && segments[0].elements.len() == 1 {
+        if let SegmentElementAst::Product(product) = &segments[0].elements[0] {
+            return ExprAst {
+                kind: ExprKind::Product(product.clone()),
+                span: product.span,
+            };
+        }
+    }
 
     ExprAst {
         kind: ExprKind::Pipe(PipeExprAst { segments, span }),
@@ -137,56 +148,35 @@ fn parse_segment_element(
     let (class, after_idx) = parser.cursor.classify_paren_at_segment_position();
 
     match class {
-        ParenClassification::ArgPack => {
-            // Check if this is a closure param clause before parsing as ArgPack.
-            // A `(...)` followed by `=>`, `{`, or a head-clause keyword
+        ParenClassification::Product => {
+            // Check if this is a closure param clause before parsing as Product.
+            // A `(...)` followed by `=>`, `->`, `{`, or a head-clause keyword
             // (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) is a
-            // closure-head parameter clause rather than a source ArgPack.
+            // closure-head parameter clause rather than a product expression.
             if let Some(idx) = after_idx {
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
                 if matches!(
                     after.kind,
-                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
+                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow)
                 ) || super::closure::token_index_starts_head_clause(parser, idx)
                 {
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }
             }
-            let argpack = parse_argpack(parser);
-            Some(SegmentElementAst::ArgPack(argpack))
+            let product = parse_product_expr(parser);
+            Some(SegmentElementAst::Product(product))
         }
         ParenClassification::Group => {
             let op_expr = parse_operator_expr(parser, stop)?;
             Some(SegmentElementAst::OperatorExpr(op_expr))
         }
         ParenClassification::Unclosed => {
-            let argpack = parse_argpack(parser);
-            Some(SegmentElementAst::ArgPack(argpack))
+            let product = parse_product_expr(parser);
+            Some(SegmentElementAst::Product(product))
         }
         ParenClassification::NotParen => {
             parse_operator_expr(parser, stop).map(SegmentElementAst::OperatorExpr)
-        }
-    }
-}
-
-fn assign_segment_roles(segments: &mut [SegmentAst]) {
-    for (i, segment) in segments.iter_mut().enumerate() {
-        segment.has_incoming = i > 0;
-
-        let mut insert_used = false;
-
-        for (j, element) in segment.elements.iter_mut().enumerate() {
-            if let SegmentElementAst::ArgPack(argpack) = element {
-                argpack.role = if j == 0 {
-                    crate::ArgPackRole::SourcePack
-                } else if segment.has_incoming && !insert_used {
-                    insert_used = true;
-                    crate::ArgPackRole::InsertPack
-                } else {
-                    crate::ArgPackRole::RightTargetSubsegment
-                };
-            }
         }
     }
 }
@@ -205,6 +195,6 @@ fn empty_error_segment(parser: &Parser<'_>, message: &str, span: Span) -> Segmen
 fn element_span(element: &SegmentElementAst) -> Span {
     match element {
         SegmentElementAst::OperatorExpr(op_expr) => op_expr.span,
-        SegmentElementAst::ArgPack(argpack) => argpack.span,
+        SegmentElementAst::Product(product) => product.span,
     }
 }

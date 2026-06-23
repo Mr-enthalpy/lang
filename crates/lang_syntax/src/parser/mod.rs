@@ -1,4 +1,3 @@
-pub mod argpack;
 pub mod atom;
 pub mod canonical;
 pub mod closure;
@@ -9,6 +8,7 @@ pub mod form;
 pub mod let_stmt;
 pub mod operator;
 pub mod pipe;
+pub mod product;
 
 use crate::{lex, Diagnostic, ProgramAst, Token};
 

@@ -92,7 +92,7 @@ constructs desugar into Normalized AST.
 
 Normalized AST unifies:
 
-- call forms (ArgPack, pipe, operator sugar) into simple call nodes
+- call/product forms (product, pipe, operator sugar) into simple normalized nodes
 - extraction forms (canonical skeletons, deduce lists) into pattern nodes
 - declaration forms (simple let, extract let, alias let) into declaration nodes
 
@@ -100,7 +100,7 @@ Define:
 
 - Normalized form for let bindings, preserving optional `with { ... }` syntax
   without lifetime semantics, and unifying simple/extract.
-- Normalized form for pipe expressions (flattened segments, desugared ArgPack roles).
+- Normalized form for pipe expressions (flattened segments, preserved product placement).
 - Normalized form for operator sugar (lowered to named operator calls).
 - Normalized form for closure heads (canonicalized clause order).
 - Normalized form for canonical skeletons (pattern representation, not matching).

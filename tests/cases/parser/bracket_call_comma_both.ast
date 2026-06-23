@@ -9,9 +9,7 @@ Program
                 object:
                   Name obj
                 args:
-                  ArgPack role=Unknown
-                    args:
-                      Expr
-                        Unit
-                      Expr
-                        Unit
+                  Product
+                    elements:
+                      ProductUnit
+                      ProductUnit

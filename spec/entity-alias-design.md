@@ -268,7 +268,7 @@ It must **not** accept:
 
 ```text
 PipeExpr
-ArgPack
+Product
 ClosureAst
 operator expression
 runtime expression
@@ -287,7 +287,7 @@ let x === a + b
 ```
 
 Note: `f(a)` is not traditional call syntax in this language anyway; still,
-alias RHS must not parse as an expression/ArgPack structure.
+alias RHS must not parse as an expression/product structure.
 
 The alias RHS ends only at `;`, `}`, or EOF. Newlines are trivia inside alias
 RHS parsing. If a token remains after the parsed EntityRef before a hard
@@ -324,7 +324,7 @@ The following diagnostic codes are implemented in `DiagnosticCode` (Phase 4.4):
 | `ExpectedAliasTarget`               | Implemented    | `let binder ===` is not followed by a valid `EntityRef`.                |
 | `InvalidAliasBinder`                | Reserved       | The binder position after `let` is not a valid `Name` or `OperatorName`. Currently not emitted; falls through to ordinary-let `ExpectedName`. |
 | `InvalidEntityRef`                  | Implemented    | The `EntityRef` on the RHS is malformed (e.g., operator in segment position). |
-| `UnexpectedAliasRhsExpression`      | Implemented    | The RHS of `===` is an expression form (PipeExpr, ArgPack, closure, etc.) instead of `EntityRef`. |
+| `UnexpectedAliasRhsExpression`      | Implemented    | The RHS of `===` is an expression form (PipeExpr, product, closure, etc.) instead of `EntityRef`. |
 
 Future diagnostics, not implemented:
 

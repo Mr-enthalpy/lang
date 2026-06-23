@@ -120,7 +120,7 @@ fn parse_annotation_term_in_deduce(parser: &mut Parser<'_>) -> AnnotationTermAst
             "expected deduce annotation after `:`",
             span,
         );
-        return AnnotationTermAst::Expr(super::argpack::error_expr(
+        return AnnotationTermAst::Expr(super::product::error_expr(
             parser,
             "missing deduce annotation",
             span,

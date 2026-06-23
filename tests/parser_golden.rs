@@ -145,23 +145,28 @@ fn pipe_basic() {
 }
 
 #[test]
-fn argpack_source() {
-    assert_parser_case("argpack_source", false);
+fn group_segment_start() {
+    assert_parser_case("group_segment_start", false);
 }
 
 #[test]
-fn argpack_right_target() {
-    assert_parser_case("argpack_right_target", false);
+fn group_after_name() {
+    assert_parser_case("group_after_name", false);
 }
 
 #[test]
-fn argpack_insert() {
-    assert_parser_case("argpack_insert", false);
+fn group_in_pipe_segment() {
+    assert_parser_case("group_in_pipe_segment", false);
 }
 
 #[test]
-fn argpack_multiple() {
-    assert_parser_case("argpack_multiple", false);
+fn multiple_groups_in_pipe_segment() {
+    assert_parser_case("multiple_groups_in_pipe_segment", false);
+}
+
+#[test]
+fn product_in_pipe_segment() {
+    assert_parser_case("product_in_pipe_segment", false);
 }
 
 #[test]
@@ -170,13 +175,48 @@ fn group_basic() {
 }
 
 #[test]
+fn group_containing_product() {
+    assert_parser_case("group_containing_product", false);
+}
+
+#[test]
 fn let_pipe_value() {
     assert_parser_case("let_pipe_value", false);
 }
 
 #[test]
-fn let_argpack_value() {
-    assert_parser_case("let_argpack_value", false);
+fn let_product_value() {
+    assert_parser_case("let_product_value", false);
+}
+
+#[test]
+fn product_let_extract_construct() {
+    assert_parser_case("product_let_extract_construct", false);
+}
+
+#[test]
+fn product_extract_unit() {
+    assert_parser_case("product_extract_unit", false);
+}
+
+#[test]
+fn product_extract_double_trailing_unit() {
+    assert_parser_case("product_extract_double_trailing_unit", false);
+}
+
+#[test]
+fn product_bare_expr() {
+    assert_parser_case("product_bare_expr", false);
+}
+
+#[test]
+fn product_empty() {
+    assert_parser_case("product_empty", false);
+}
+
+#[test]
+fn product_after_name() {
+    assert_parser_case("product_after_name", false);
 }
 
 #[test]
@@ -250,8 +290,8 @@ fn doubledot_next_element() {
 }
 
 #[test]
-fn invalid_doubledot_missing_argpack_field() {
-    assert_parser_case("invalid_doubledot_missing_argpack_field", true);
+fn invalid_doubledot_missing_product_field() {
+    assert_parser_case("invalid_doubledot_missing_product_field", true);
 }
 
 #[test]
@@ -280,8 +320,8 @@ fn newline_inside_group_not_boundary() {
 }
 
 #[test]
-fn newline_inside_argpack_not_boundary() {
-    assert_parser_case("newline_inside_argpack_not_boundary", false);
+fn newline_inside_product_not_boundary() {
+    assert_parser_case("newline_inside_product_not_boundary", false);
 }
 
 #[test]
@@ -320,8 +360,8 @@ fn let_extract_literal() {
 }
 
 #[test]
-fn let_extract_nested_argpack() {
-    assert_parser_case("let_extract_nested_argpack", false);
+fn let_extract_nested_product() {
+    assert_parser_case("let_extract_nested_product", false);
 }
 
 #[test]
@@ -375,18 +415,8 @@ fn invalid_closure_unclosed_capture() {
 }
 
 #[test]
-fn invalid_closure_missing_param_after_comma() {
-    assert_parser_case("invalid_closure_missing_param_after_comma", true);
-}
-
-#[test]
 fn invalid_closure_bad_head_recovery() {
     assert_parser_case("invalid_closure_bad_head_recovery", true);
-}
-
-#[test]
-fn invalid_closure_trailing_param_comma() {
-    assert_parser_case("invalid_closure_trailing_param_comma", true);
 }
 
 #[test]
@@ -397,6 +427,11 @@ fn invalid_closure_missing_trait_after_colon() {
 #[test]
 fn invalid_closure_missing_return_after_arrow() {
     assert_parser_case("invalid_closure_missing_return_after_arrow", true);
+}
+
+#[test]
+fn closure_product_extract_trailing_unit() {
+    assert_parser_case("closure_product_extract_trailing_unit", false);
 }
 
 #[test]
@@ -465,6 +500,16 @@ fn closure_explicit_multi_param() {
 }
 
 #[test]
+fn closure_product_extract_explicit_let() {
+    assert_parser_case("closure_product_extract_explicit_let", false);
+}
+
+#[test]
+fn closure_product_extract_implicit_let() {
+    assert_parser_case("closure_product_extract_implicit_let", false);
+}
+
+#[test]
 fn closure_explicit_multi_typed_param() {
     assert_parser_case("closure_explicit_multi_typed_param", false);
 }
@@ -495,8 +540,8 @@ fn binding_param_with_items() {
 }
 
 #[test]
-fn closure_in_argpack_match_style() {
-    assert_parser_case("closure_in_argpack_match_style", true);
+fn closure_in_product_match_style() {
+    assert_parser_case("closure_in_product_match_style", true);
 }
 
 #[test]
@@ -520,8 +565,8 @@ fn closure_group_not_head() {
 }
 
 #[test]
-fn closure_argpack_not_head() {
-    assert_parser_case("closure_argpack_not_head", false);
+fn closure_product_not_head() {
+    assert_parser_case("closure_product_not_head", false);
 }
 
 #[test]
@@ -730,23 +775,28 @@ fn bracket_call_comma_trailing() {
 }
 
 #[test]
-fn bracket_call_comma_both() {
-    assert_parser_case("bracket_call_comma_both", false);
+fn product_comma_leading() {
+    assert_parser_case("product_comma_leading", false);
 }
 
 #[test]
-fn argpack_comma_leading() {
-    assert_parser_case("argpack_comma_leading", false);
+fn product_comma_double() {
+    assert_parser_case("product_comma_double", false);
 }
 
 #[test]
-fn argpack_comma_double() {
-    assert_parser_case("argpack_comma_double", false);
+fn product_comma_trailing() {
+    assert_parser_case("product_comma_trailing", false);
 }
 
 #[test]
-fn argpack_comma_trailing() {
-    assert_parser_case("argpack_comma_trailing", false);
+fn product_comma_double_trailing() {
+    assert_parser_case("product_comma_double_trailing", false);
+}
+
+#[test]
+fn product_all_empty_slots() {
+    assert_parser_case("product_all_empty_slots", false);
 }
 
 #[test]
@@ -855,6 +905,11 @@ fn invalid_binding_return_with() {
 }
 
 #[test]
+fn invalid_return_product_with() {
+    assert_parser_case("invalid_return_product_with", true);
+}
+
+#[test]
 fn invalid_deduce_unclosed() {
     assert_parser_case("invalid_deduce_unclosed", true);
 }
@@ -900,13 +955,18 @@ fn invalid_canonical_missing_skeleton() {
 }
 
 #[test]
-fn invalid_canonical_unclosed_argpack() {
-    assert_parser_case("invalid_canonical_unclosed_argpack", true);
+fn invalid_canonical_unclosed_product() {
+    assert_parser_case("invalid_canonical_unclosed_product", true);
 }
 
 #[test]
-fn invalid_canonical_trailing_comma() {
-    assert_parser_case("invalid_canonical_trailing_comma", true);
+fn canonical_product_trailing_unit() {
+    assert_parser_case("canonical_product_trailing_unit", false);
+}
+
+#[test]
+fn canonical_product_double_trailing_unit() {
+    assert_parser_case("canonical_product_double_trailing_unit", false);
 }
 
 #[test]
@@ -1025,6 +1085,16 @@ fn operator_segment_local() {
 }
 
 #[test]
+fn operator_product_rhs() {
+    assert_parser_case("operator_product_rhs", false);
+}
+
+#[test]
+fn operator_product_prefix() {
+    assert_parser_case("operator_product_prefix", false);
+}
+
+#[test]
 fn operator_angle_less_greater() {
     assert_parser_case("operator_angle_less_greater", false);
 }
@@ -1040,8 +1110,8 @@ fn operator_grouped_nonassoc_right() {
 }
 
 #[test]
-fn operator_inside_argpack() {
-    assert_parser_case("operator_inside_argpack", false);
+fn operator_inside_group() {
+    assert_parser_case("operator_inside_group", false);
 }
 
 #[test]
@@ -1235,8 +1305,8 @@ fn invalid_alias_rhs_closure() {
 }
 
 #[test]
-fn invalid_alias_rhs_argpack() {
-    assert_parser_case("invalid_alias_rhs_argpack", true);
+fn invalid_alias_rhs_product() {
+    assert_parser_case("invalid_alias_rhs_product", true);
 }
 
 #[test]

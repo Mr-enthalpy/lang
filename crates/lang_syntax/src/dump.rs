@@ -1,9 +1,9 @@
 use crate::{
-    AliasBinderAst, AnnotationTermAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst,
-    BindingAnnotationAst, BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode,
-    EntityRefAst, ExprAst, ExprKind, FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind,
-    PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
-    WithClauseKind,
+    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
+    BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind,
+    FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, ProductElementAst,
+    ProductExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind,
+    TriviaKind, WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -109,6 +109,10 @@ fn dump_binding_pattern(output: &mut String, pattern: &BindingPatternAst, indent
         BindingPatternAst::Binder(name) => {
             line(output, indent, "Binder");
             dump_binder_name(output, name, indent + 1);
+        }
+        BindingPatternAst::Product(product) => {
+            line(output, indent, "ProductExtract");
+            dump_product_extract(output, product, indent + 1);
         }
         BindingPatternAst::Skeleton(skeleton) => {
             line(output, indent, "PatternSkeleton");
@@ -227,11 +231,18 @@ fn dump_canonical_skeleton(
                 dump_canonical_skeleton(output, elem, indent + 2);
             }
         }
-        crate::CanonicalSkeletonAst::ArgPack { elements, .. } => {
-            line(output, indent, "CanonicalArgPack");
+        crate::CanonicalSkeletonAst::ProductExtract { elements, .. } => {
+            line(output, indent, "CanonicalProductExtract");
             line(output, indent + 1, "elements:");
             for elem in elements {
-                dump_canonical_skeleton(output, elem, indent + 2);
+                match elem {
+                    crate::CanonicalProductElementAst::Skeleton(skeleton) => {
+                        dump_canonical_skeleton(output, skeleton, indent + 2)
+                    }
+                    crate::CanonicalProductElementAst::Unit { .. } => {
+                        line(output, indent + 2, "CanonicalProductUnit")
+                    }
+                }
             }
         }
         crate::CanonicalSkeletonAst::Wildcard { .. } => {
@@ -317,7 +328,7 @@ fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
     line(output, indent, "Expr");
     match &expr.kind {
         ExprKind::Pipe(pipe) => dump_pipe(output, pipe, indent + 1),
-        ExprKind::Unit => line(output, indent + 1, "Unit"),
+        ExprKind::Product(product) => dump_product(output, product, indent + 1),
         ExprKind::Error(error) => {
             line(
                 output,
@@ -352,7 +363,7 @@ fn dump_segment_element(output: &mut String, element: &SegmentElementAst, indent
             line(output, indent, "OperatorExpr");
             dump_operator_expr(output, op_expr, indent + 1);
         }
-        SegmentElementAst::ArgPack(argpack) => dump_argpack(output, argpack, indent),
+        SegmentElementAst::Product(product) => dump_product(output, product, indent),
     }
 }
 
@@ -361,6 +372,9 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
         OperatorExprKind::Atom(atom) => {
             line(output, indent, "Atom");
             dump_atom(output, atom, indent + 1);
+        }
+        OperatorExprKind::Product(product) => {
+            dump_product(output, product, indent);
         }
         OperatorExprKind::OperatorSugar {
             operator,
@@ -424,7 +438,7 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
             line(output, indent + 1, "selector:");
             dump_selector(output, selector, indent + 2);
             line(output, indent + 1, "args:");
-            dump_argpack(output, args, indent + 2);
+            dump_product(output, args, indent + 2);
         }
         OperatorExprKind::BracketCallSugar {
             object,
@@ -443,7 +457,7 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
             line(output, indent + 1, "object:");
             dump_operator_expr(output, object, indent + 2);
             line(output, indent + 1, "args:");
-            dump_argpack(output, args, indent + 2);
+            dump_product(output, args, indent + 2);
         }
         OperatorExprKind::Error(error) => {
             line(
@@ -463,15 +477,28 @@ fn operator_fixity_label(fixity: crate::OperatorFixity) -> &'static str {
     }
 }
 
-fn dump_argpack(output: &mut String, argpack: &ArgPackAst, indent: usize) {
-    line(
-        output,
-        indent,
-        &format!("ArgPack role={}", argpack_role_label(argpack.role)),
-    );
-    line(output, indent + 1, "args:");
-    for arg in &argpack.args {
-        dump_expr(output, arg, indent + 2);
+fn dump_product(output: &mut String, product: &ProductExprAst, indent: usize) {
+    line(output, indent, "Product");
+    line(output, indent + 1, "elements:");
+    for element in &product.elements {
+        match element {
+            ProductElementAst::Expr(expr) => dump_expr(output, expr, indent + 2),
+            ProductElementAst::Unit { .. } => line(output, indent + 2, "ProductUnit"),
+        }
+    }
+}
+
+fn dump_product_extract(output: &mut String, product: &crate::ProductExtractAst, indent: usize) {
+    line(output, indent, "elements:");
+    for element in &product.elements {
+        match element {
+            crate::ProductExtractElementAst::Slot(slot) => {
+                dump_binding_slot(output, slot, indent + 1)
+            }
+            crate::ProductExtractElementAst::Unit { .. } => {
+                line(output, indent + 1, "ProductExtractUnit")
+            }
+        }
     }
 }
 
@@ -515,7 +542,7 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent + 1, "selector:");
             dump_selector(output, selector, indent + 2);
             line(output, indent + 1, "args:");
-            dump_argpack(output, args, indent + 2);
+            dump_product(output, args, indent + 2);
         }
         AtomKind::BracketCallSugar {
             object,
@@ -533,7 +560,7 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent + 1, "object:");
             dump_atom(output, object, indent + 2);
             line(output, indent + 1, "args:");
-            dump_argpack(output, args, indent + 2);
+            dump_product(output, args, indent + 2);
         }
         AtomKind::Closure(closure) => dump_closure(output, closure, indent),
         AtomKind::Error(error) => {
@@ -674,10 +701,8 @@ fn dump_capture_clause(output: &mut String, clause: &crate::CaptureClauseAst, in
 
 fn dump_param_clause(output: &mut String, clause: &crate::ParamClauseAst, indent: usize) {
     line(output, indent, "ParamClause");
-    line(output, indent + 1, "params:");
-    for param in &clause.params {
-        dump_binding_slot(output, param, indent + 2);
-    }
+    line(output, indent + 1, "extract:");
+    dump_product_extract(output, &clause.extract, indent + 2);
 }
 
 fn dump_return_clause(output: &mut String, clause: &crate::ReturnClauseAst, indent: usize) {
@@ -754,7 +779,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::EmptyPipeSegment => "EmptyPipeSegment",
         DiagnosticCode::ExpectedNameAfterDot => "ExpectedNameAfterDot",
         DiagnosticCode::ExpectedNameAfterDoubleDot => "ExpectedNameAfterDoubleDot",
-        DiagnosticCode::ExpectedArgPackAfterDoubleDotName => "ExpectedArgPackAfterDoubleDotName",
+        DiagnosticCode::ExpectedProductAfterDoubleDotName => "ExpectedProductAfterDoubleDotName",
         DiagnosticCode::UnclosedParen => "UnclosedParen",
         DiagnosticCode::UnclosedBracket => "UnclosedBracket",
         DiagnosticCode::UnclosedBrace => "UnclosedBrace",
@@ -770,15 +795,6 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidAliasBinder => "InvalidAliasBinder",
         DiagnosticCode::InvalidEntityRef => "InvalidEntityRef",
         DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
-    }
-}
-
-fn argpack_role_label(role: ArgPackRole) -> &'static str {
-    match role {
-        ArgPackRole::SourcePack => "SourcePack",
-        ArgPackRole::InsertPack => "InsertPack",
-        ArgPackRole::RightTargetSubsegment => "RightTargetSubsegment",
-        ArgPackRole::Unknown => "Unknown",
     }
 }
 

@@ -2,8 +2,8 @@ use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, AnnotationTermAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, CanonicalSkeletonAst, DeduceListAst,
     DiagnosticCode, EntityRefAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
-    NameAst, NavComponentAst, NumericNameAst, OperatorNameAst, Span, Symbol, TokenKind,
-    WithClauseAst, WithClauseKind,
+    NameAst, NavComponentAst, NumericNameAst, OperatorNameAst, ProductExtractAst,
+    ProductExtractElementAst, Span, Symbol, TokenKind, WithClauseAst, WithClauseKind,
 };
 
 use super::{
@@ -77,7 +77,8 @@ pub fn parse_binding_slot(
         }
     }
 
-    let pattern = parse_binding_pattern(parser, context, deduce.as_ref(), inherited_deduce);
+    let pattern =
+        parse_binding_pattern(parser, context, has_let, deduce.as_ref(), inherited_deduce);
     let mut end = binding_pattern_span(&pattern);
 
     let annotation = parse_binding_annotation(parser, context);
@@ -123,6 +124,80 @@ pub fn parse_binding_slot(
         with_clause,
         initializer,
         span: start.join(end),
+    }
+}
+
+pub fn parse_product_extract(
+    parser: &mut Parser<'_>,
+    element_context: BindingSlotContext,
+    inherited_deduce: Option<&DeduceListAst>,
+) -> ProductExtractAst {
+    let lparen = parser
+        .cursor
+        .consume_symbol(Symbol::LParen)
+        .expect("parse_product_extract at `(`");
+
+    parser.enter_nesting();
+    let mut elements = Vec::new();
+    let mut expect_element = true;
+
+    loop {
+        if parser.cursor.at_eof()
+            || parser.cursor.at_symbol(Symbol::RParen)
+            || parser.is_form_boundary()
+        {
+            break;
+        }
+
+        if parser.cursor.at_symbol(Symbol::Comma) {
+            let comma = parser.cursor.bump_non_trivia();
+            if expect_element {
+                elements.push(ProductExtractElementAst::Unit { span: comma.span });
+            }
+            expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(ProductExtractElementAst::Unit { span: comma.span });
+                break;
+            }
+            continue;
+        }
+
+        let element = parse_binding_slot(parser, element_context, inherited_deduce, false);
+        elements.push(ProductExtractElementAst::Slot(element));
+
+        if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
+            expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(ProductExtractElementAst::Unit { span: comma.span });
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    let end = if let Some(rparen) = parser.cursor.consume_symbol(Symbol::RParen) {
+        rparen.span
+    } else {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::UnclosedParen,
+            "unclosed product extraction, expected `)`",
+            lparen.span,
+        );
+        span
+    };
+
+    parser.leave_nesting();
+    ProductExtractAst {
+        elements,
+        span: lparen.span.join(end),
     }
 }
 
@@ -188,6 +263,7 @@ fn slot_policy_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) ->
 fn parse_binding_pattern(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
+    _has_let: bool,
     local_deduce: Option<&DeduceListAst>,
     inherited_deduce: Option<&DeduceListAst>,
 ) -> BindingPatternAst {
@@ -203,9 +279,21 @@ fn parse_binding_pattern(
         return BindingPatternAst::Error(parser.error_ast(message, token.span));
     }
 
-    if parser.cursor.at_symbol(Symbol::LParen)
-        || starts_skeleton_name(parser, context)
+    if parser.cursor.at_symbol(Symbol::LParen) {
+        let element_context = match context {
+            BindingSlotContext::Return => BindingSlotContext::Return,
+            BindingSlotContext::Let | BindingSlotContext::Param => BindingSlotContext::Param,
+        };
+        return BindingPatternAst::Product(parse_product_extract(
+            parser,
+            element_context,
+            local_deduce.or(inherited_deduce),
+        ));
+    }
+
+    if starts_skeleton_name(parser, context)
         || matches!(token.kind, TokenKind::Name if token.text == "_")
+        || matches!(token.kind, TokenKind::IntLiteral | TokenKind::StringLiteral)
     {
         let empty_deduce;
         let deduce_ref = match local_deduce.or(inherited_deduce) {
@@ -779,6 +867,7 @@ fn recover_to_initializer(parser: &mut Parser<'_>) {
 fn binding_pattern_span(pattern: &BindingPatternAst) -> Span {
     match pattern {
         BindingPatternAst::Binder(name) => binder_name_span(name),
+        BindingPatternAst::Product(product) => product.span,
         BindingPatternAst::Skeleton(skeleton) => skeleton_span(skeleton),
         BindingPatternAst::Error(error) => error.span,
     }
@@ -802,7 +891,7 @@ fn binding_annotation_span(annotation: &BindingAnnotationAst) -> Span {
 fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
     match skeleton {
         CanonicalSkeletonAst::Segment { span, .. } => *span,
-        CanonicalSkeletonAst::ArgPack { span, .. } => *span,
+        CanonicalSkeletonAst::ProductExtract { span, .. } => *span,
         CanonicalSkeletonAst::Wildcard { span } => *span,
         CanonicalSkeletonAst::Name { span, .. } => *span,
         CanonicalSkeletonAst::NavPath { span, .. } => *span,

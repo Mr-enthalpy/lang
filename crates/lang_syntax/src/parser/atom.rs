@@ -4,10 +4,10 @@ use crate::{
 };
 
 use super::{
-    argpack::{parse_argpack, parse_bracket_argpack},
     closure::try_parse_closure,
     form::Parser,
     pipe::parse_pipe_expr,
+    product::{parse_bracket_product_expr, parse_product_expr},
 };
 
 pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
@@ -57,20 +57,20 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             let dotdot_token = parser.cursor.bump_non_trivia();
             if let Some(selector) = parse_member_selector(parser) {
                 if parser.cursor.at_symbol(Symbol::LParen) {
-                    let argpack = parse_argpack(parser);
-                    let span = atom.span.join(argpack.span);
+                    let product = parse_product_expr(parser);
+                    let span = atom.span.join(product.span);
                     atom = AtomAst {
                         kind: AtomKind::DoubleDotSugar {
                             object: Box::new(atom),
                             selector,
-                            args: argpack,
+                            args: product,
                         },
                         span,
                     };
                 } else {
                     parser.error(
-                        DiagnosticCode::ExpectedArgPackAfterDoubleDotName,
-                        "expected argument pack after `.. Selector`",
+                        DiagnosticCode::ExpectedProductAfterDoubleDotName,
+                        "expected product after `.. Selector`",
                         selector_span(&selector),
                     );
                     break;
@@ -85,7 +85,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 break;
             }
         } else if parser.cursor.at_symbol(Symbol::LBracket) {
-            let args = parse_bracket_argpack(parser);
+            let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),
                 span: args.span,

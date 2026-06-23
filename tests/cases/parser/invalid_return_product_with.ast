@@ -1,0 +1,42 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                  returns:
+                    ReturnClause
+                      slot:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            ProductExtract
+                              elements:
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName x
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    Empty
+                                  initializer:
+                                    None
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                BodyBlock
+                  forms:

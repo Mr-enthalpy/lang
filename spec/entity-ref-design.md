@@ -182,7 +182,7 @@ It must not accept:
 
 ```text
 PipeExpr
-ArgPack
+Product
 ClosureAst
 operator expression
 runtime expression

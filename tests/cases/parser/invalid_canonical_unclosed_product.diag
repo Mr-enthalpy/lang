@@ -1,0 +1,2 @@
+error ExpectedName "expected parameter binding pattern" @ 1:13 [12..13]
+error UnclosedParen "unclosed product extraction, expected `)`" @ 1:9 [8..9]

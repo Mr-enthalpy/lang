@@ -1,0 +1,25 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            OperatorSugar fixity=Binary operator="+"
+              lhs:
+                Atom
+                  Name x
+              rhs:
+                Product
+                  elements:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name a
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name b

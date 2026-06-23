@@ -13,7 +13,7 @@ pub enum DiagnosticCode {
     EmptyPipeSegment,
     ExpectedNameAfterDot,
     ExpectedNameAfterDoubleDot,
-    ExpectedArgPackAfterDoubleDotName,
+    ExpectedProductAfterDoubleDotName,
     UnclosedParen,
     UnclosedBracket,
     UnclosedBrace,

@@ -11,8 +11,8 @@ Program
                 selector:
                   NumericName 1
                 args:
-                  ArgPack role=Unknown
-                    args:
+                  Product
+                    elements:
                       Expr
                         Pipe
                           Segment has_incoming=false

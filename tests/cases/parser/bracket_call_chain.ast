@@ -11,8 +11,8 @@ Program
                     object:
                       Name obj
                     args:
-                      ArgPack role=Unknown
-                        args:
+                      Product
+                        elements:
                           Expr
                             Pipe
                               Segment has_incoming=false
@@ -20,8 +20,8 @@ Program
                                   Atom
                                     Name a
                 args:
-                  ArgPack role=Unknown
-                    args:
+                  Product
+                    elements:
                       Expr
                         Pipe
                           Segment has_incoming=false

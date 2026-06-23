@@ -9,7 +9,8 @@ Program
                 FnHeadPrefix
                   params:
                     ParamClause
-                      params:
+                      extract:
+                        elements:
                 BodyBlock
                   forms:
                     Let

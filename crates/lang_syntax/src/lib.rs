@@ -13,13 +13,14 @@ pub mod span;
 pub mod token;
 
 pub use ast::{
-    AliasBinderAst, AnnotationTermAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderDeclAst,
-    BinderNameAst, BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst,
-    CanonicalNameRole, CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst,
+    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
+    BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
+    CanonicalProductElementAst, CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst,
     DeduceListAst, EntityRefAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst,
     FormAst, HeadClauseAst, InPlaceClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst,
     NumericNameAst, OperatorExprAst, OperatorExprKind, OperatorFixity, OperatorNameAst,
-    ParamClauseAst, PipeExprAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
+    ParamClauseAst, PipeExprAst, ProductElementAst, ProductExprAst, ProductExtractAst,
+    ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
     SelectorAst, WithClauseAst, WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};

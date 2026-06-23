@@ -55,6 +55,7 @@ pub struct BindingSlotAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BindingPatternAst {
     Binder(BinderNameAst),
+    Product(ProductExtractAst),
     Skeleton(CanonicalSkeletonAst),
     Error(ErrorAst),
 }
@@ -112,8 +113,8 @@ pub enum CanonicalSkeletonAst {
         elements: Vec<CanonicalSkeletonAst>,
         span: Span,
     },
-    ArgPack {
-        elements: Vec<CanonicalSkeletonAst>,
+    ProductExtract {
+        elements: Vec<CanonicalProductElementAst>,
         span: Span,
     },
     Wildcard {
@@ -135,6 +136,12 @@ pub enum CanonicalSkeletonAst {
     Error(ErrorAst),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CanonicalProductElementAst {
+    Skeleton(CanonicalSkeletonAst),
+    Unit { span: Span },
+}
+
 // --- Expression skeleton ---
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -146,10 +153,20 @@ pub struct ExprAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprKind {
     Pipe(PipeExprAst),
-    // An empty argument slot created by a comma (leading, double, or trailing)
-    // in an argpack. Source-preserving only; later phases decide meaning.
-    Unit,
+    Product(ProductExprAst),
     Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProductExprAst {
+    pub elements: Vec<ProductElementAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProductElementAst {
+    Expr(ExprAst),
+    Unit { span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -168,7 +185,7 @@ pub struct SegmentAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SegmentElementAst {
     OperatorExpr(OperatorExprAst),
-    ArgPack(ArgPackAst),
+    Product(ProductExprAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -180,6 +197,7 @@ pub struct OperatorExprAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OperatorExprKind {
     Atom(AtomAst),
+    Product(ProductExprAst),
     OperatorSugar {
         operator: OperatorNameAst,
         fixity: OperatorFixity,
@@ -198,7 +216,7 @@ pub enum OperatorExprKind {
     DoubleDotSugar {
         object: Box<OperatorExprAst>,
         selector: SelectorAst,
-        args: ArgPackAst,
+        args: ProductExprAst,
         span: Span,
     },
     // `obj[args...]` bracket-call sugar for the operator spelling `[]`.
@@ -206,7 +224,7 @@ pub enum OperatorExprKind {
     BracketCallSugar {
         object: Box<OperatorExprAst>,
         operator: OperatorNameAst,
-        args: ArgPackAst,
+        args: ProductExprAst,
         span: Span,
     },
     Error(ErrorAst),
@@ -223,21 +241,6 @@ pub enum OperatorFixity {
     Prefix,
     Postfix,
     Binary,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ArgPackAst {
-    pub args: Vec<ExprAst>,
-    pub role: ArgPackRole,
-    pub span: Span,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ArgPackRole {
-    SourcePack,
-    InsertPack,
-    RightTargetSubsegment,
-    Unknown,
 }
 
 // --- Selectors ---
@@ -287,13 +290,13 @@ pub enum AtomKind {
     DoubleDotSugar {
         object: Box<AtomAst>,
         selector: SelectorAst,
-        args: ArgPackAst,
+        args: ProductExprAst,
     },
     // `obj[args...]` bracket-call sugar for the operator spelling `[]`.
     BracketCallSugar {
         object: Box<AtomAst>,
         operator: OperatorNameAst,
-        args: ArgPackAst,
+        args: ProductExprAst,
     },
     Closure(ClosureAst),
     Error(ErrorAst),
@@ -365,8 +368,20 @@ pub struct CaptureItemAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParamClauseAst {
-    pub params: Vec<BindingSlotAst>,
+    pub extract: ProductExtractAst,
     pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProductExtractAst {
+    pub elements: Vec<ProductExtractElementAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProductExtractElementAst {
+    Slot(BindingSlotAst),
+    Unit { span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

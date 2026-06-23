@@ -4,9 +4,11 @@ use crate::{
 };
 
 use super::{
-    argpack::{parse_argpack, parse_bracket_argpack},
     atom::{parse_atom, parse_member_selector, parse_nav_outer_component, selector_span},
+    closure::token_index_starts_head_clause,
+    cursor::ParenClassification,
     form::Parser,
+    product::{parse_bracket_product_expr, parse_product_expr},
 };
 
 pub fn parse_operator_expr(
@@ -156,15 +158,51 @@ fn parse_prefix_expr(
     parse_postfix_expr(parser, stop)
 }
 
+fn parse_operand(
+    parser: &mut Parser<'_>,
+    stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
+) -> Option<OperatorExprAst> {
+    if is_operator_expr_boundary(parser, stop) {
+        return None;
+    }
+
+    if parser.cursor.at_symbol(Symbol::LParen) {
+        let (class, after_idx) = parser.cursor.classify_paren_at_segment_position();
+        if matches!(class, ParenClassification::Product) {
+            if let Some(idx) = after_idx {
+                let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
+                if matches!(
+                    after.kind,
+                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow)
+                ) || token_index_starts_head_clause(parser, idx)
+                {
+                    let atom = parse_atom(parser)?;
+                    return Some(OperatorExprAst {
+                        span: atom.span,
+                        kind: OperatorExprKind::Atom(atom),
+                    });
+                }
+            }
+            let product = parse_product_expr(parser);
+            return Some(OperatorExprAst {
+                span: product.span,
+                kind: OperatorExprKind::Product(product),
+            });
+        }
+    }
+
+    let atom = parse_atom(parser)?;
+    Some(OperatorExprAst {
+        span: atom.span,
+        kind: OperatorExprKind::Atom(atom),
+    })
+}
+
 fn parse_postfix_expr(
     parser: &mut Parser<'_>,
     stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
 ) -> Option<OperatorExprAst> {
-    let atom = parse_atom(parser)?;
-    let mut expr = OperatorExprAst {
-        span: atom.span,
-        kind: OperatorExprKind::Atom(atom),
-    };
+    let mut expr = parse_operand(parser, stop)?;
 
     loop {
         if is_operator_expr_boundary(parser, stop) {
@@ -230,7 +268,7 @@ fn parse_postfix_expr(
             let dotdot_token = parser.cursor.bump_non_trivia();
             if let Some(selector) = parse_member_selector(parser) {
                 if parser.cursor.at_symbol(Symbol::LParen) {
-                    let args = parse_argpack(parser);
+                    let args = parse_product_expr(parser);
                     let span = expr.span.join(args.span);
                     expr = OperatorExprAst {
                         kind: OperatorExprKind::DoubleDotSugar {
@@ -243,8 +281,8 @@ fn parse_postfix_expr(
                     };
                 } else {
                     parser.error(
-                        DiagnosticCode::ExpectedArgPackAfterDoubleDotName,
-                        "expected argument pack after `.. Selector`",
+                        DiagnosticCode::ExpectedProductAfterDoubleDotName,
+                        "expected product after `.. Selector`",
                         selector_span(&selector),
                     );
                     break;
@@ -259,7 +297,7 @@ fn parse_postfix_expr(
                 break;
             }
         } else if parser.cursor.at_symbol(Symbol::LBracket) {
-            let args = parse_bracket_argpack(parser);
+            let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),
                 span: args.span,

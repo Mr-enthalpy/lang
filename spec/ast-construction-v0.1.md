@@ -162,7 +162,7 @@ b
 f
 (x)
 ```
-→ one expression. `(x)` is an ArgPack in the same segment.
+→ one expression. `(x)` is a group in the same segment.
 
 ```text
 obj
@@ -581,7 +581,7 @@ fn f(x) { x }
 ```
 
 `fn` is an ordinary `Name` token. The parser sees `Name("fn")`, then `Name("f")`,
-then `ArgPack(x)`, then an unexpected bare `{`. Since the first token is not
+then a grouped/product parenthesized form, then an unexpected bare `{`. Since the first token is not
 `Name("let")`, the form is selected as an expression form. The parser must not
 create a `FnDecl` AST node. Tokens such as `(` or `{` after `f(x)` may produce
 diagnostics, but the core conclusion is: no function declaration syntax exists
@@ -714,10 +714,10 @@ v0.1 builds their AST but does not execute matching.
 **All canonical skeleton tests in this phase are parser preservation tests
 only.**  No semantic commitment is implied by any of the following:
 
-- a hole name in an argpack or as a standalone element;
-- a path (`Name::Name`) as a skeleton element or inside an argpack;
+- a hole name in a product extraction or as a standalone element;
+- a path (`Name::Name`) as a skeleton element or inside a product extraction;
 - a literal (integer, string) in skeleton position;
-- the nesting depth of argpacks;
+- the nesting depth of product extractions;
 - the presence or absence of wildcards;
 - the relative positioning of holes, node-names, paths, and literals.
 
@@ -733,11 +733,12 @@ decision.
 CanonicalSkeleton ::= CanonicalElement+
 
 CanonicalElement ::=
-    CanonicalArgPack
+    CanonicalProductExtract
   | CanonicalAtom
 
-CanonicalArgPack ::= "(" CanonicalSkeletonList? ")"
-CanonicalSkeletonList ::= CanonicalSkeleton ("," CanonicalSkeleton)*
+CanonicalProductExtract ::= "(" CanonicalProductSlotList? ")"
+CanonicalProductSlotList ::= CanonicalProductSlot ("," CanonicalProductSlot)* ","?
+CanonicalProductSlot ::= CanonicalSkeleton | <empty>
 
 CanonicalAtom ::=
     "_"
@@ -756,8 +757,8 @@ CanonicalSkeletonAst ::=
         elements: Vec<CanonicalSkeletonAst>,
         span: Span
     }
-  | ArgPack {
-        elements: Vec<CanonicalSkeletonAst>,
+  | ProductExtract {
+        elements: Vec<CanonicalProductElementAst>,
         span: Span
     }
   | Wildcard {
@@ -778,6 +779,16 @@ CanonicalSkeletonAst ::=
     }
 ```
 
+```text
+CanonicalProductElementAst ::=
+    Skeleton(CanonicalSkeletonAst)
+  | Unit { span: Span }
+```
+
+Empty slots produced by leading, doubled, or trailing commas in canonical
+product extraction are preserved as `Unit { span }`. They are not omitted, not
+wildcards, and not implicit discards.
+
 `CanonicalNameRole`:
 
 ```text
@@ -797,7 +808,7 @@ The following examples document the AST shapes the parser produces. They do
 not express semantic admissibility decisions.
 
 ```text
-let <head, tail> (head, tail) List::Cons = xs
+let <head, tail> (head, tail): List::Cons = xs
 ```
 
 Construct:
@@ -807,7 +818,7 @@ Let.Extract
   deduce: [head, tail]
   skeleton:
     Segment
-      ArgPack
+      ProductExtract
         Name(head, Hole)
         Name(tail, Hole)
       Path(List, Cons)
@@ -815,7 +826,7 @@ Let.Extract
 ```
 
 ```text
-let <x> (_, x, _) Triple = t
+let <x> (_, x, _): Triple = t
 ```
 
 Construct:
@@ -825,7 +836,7 @@ Let.Extract
   deduce: [x]
   skeleton:
     Segment
-      ArgPack
+      ProductExtract
         Wildcard
         Name(x, Hole)
         Wildcard
@@ -837,13 +848,16 @@ Let.Extract
 ### 7.1 Expression entry
 
 ```text
-Expr ::= PipeExpr
+Expr ::= PipeExpr | ProductExpr
 ```
 
 AST:
 
 ```text
-ExprAst ::= Pipe(PipeExprAst)
+ExprAst ::=
+    Pipe(PipeExprAst)
+  | Product(ProductExprAst)
+  | Error(ErrorAst)
 ```
 
 ### 7.2 Pipe expression
@@ -896,7 +910,7 @@ has_incoming = i > 0
 
 ```text
 Segment ::= SegmentElement+
-SegmentElement ::= OperatorExpr | ArgPack
+SegmentElement ::= OperatorExpr | ProductExpr
 OperatorExpr ::= segment-local operator expression built from Atom
 ```
 
@@ -912,7 +926,8 @@ SegmentAst {
 
 Segment parsing does not directly execute function application.
 
-It records element sequence and ArgPack roles.
+It records element sequence only. Product elements do not receive source,
+insert, or right-target roles in Raw AST.
 
 `OperatorExpr` is the ordinary-operator expression layer built from atoms.
 Ordinary operators bind more tightly than both whitespace auto-pipe and `|>`.
@@ -940,7 +955,7 @@ OperatorExprAst ::=
   | DoubleDotSugar {
         object: OperatorExprAst,
         selector: SelectorAst,
-        args: ArgPackAst,
+        args: ProductExprAst,
         span: Span
     }
 ```
@@ -993,11 +1008,15 @@ AtomBase ::=
     Name
   | Literal
   | Group
-  | HeadedOrExplicitClosureAst
+  | InPlaceClosureAst
+  | ExplicitClosureAst
 ```
 
-`HeadedOrExplicitClosureAst` means headed inline closure or explicit closure.
-Bare `{ ... }` is not an atom-base closure form.
+`InPlaceClosureAst` is a bare `{ ... }` atom. It is closure AST, not a normal
+block expression, and has no capture clause, parameter clause, return clause,
+or head clauses.
+
+`ExplicitClosureAst` is a `FnHeadPrefix => BodyBlock` atom.
 
 AST:
 
@@ -1010,33 +1029,48 @@ AtomAst ::=
   | NavPath(...)
   | MemberSugar(...)
   | DoubleDotSugar(...)
-  | BracketCallSugar { object, operator: OperatorName "[]", args: ArgPackAst }
+  | BracketCallSugar { object, operator: OperatorName "[]", args: ProductExprAst }
   | Error(...)
 ```
 
-### 8.2 Group
+### 8.2 Group and product form
 
 ```text
 Group ::= "(" PipeExpr ")"
+
+ProductForm ::=
+    "()"
+  | "(" ProductSlot "," ProductSlotList? ")"
+  | "(" "," ProductSlotList? ")"
+
+ProductSlotList ::= ProductSlot ("," ProductSlot)* ","?
+ProductSlot ::= PipeExpr | <empty>
 ```
+
+A non-empty parenthesized form without a top-level comma is always Group.
+The empty parenthesized form `()` is the zero-element Product.
+A non-empty parenthesized form with at least one top-level comma is Product.
 
 A group is valid only if its contents do not contain a top-level comma.
 
-If a parenthesized form contains top-level commas, it is an `ArgPack`, not a group.
+A parenthesized form with top-level commas is a product form, not an ArgPack.
 
-Non-ArgPack `(a, b)` is invalid in v0.1.
-
-**Negative / diagnostic example:**
+In expression context, `(a, b)` is product construction:
 
 ```text
-let x: type = (a, b)
+ExprKind::Product(ProductExprAst { elements: [a, b], span })
 ```
 
-At the top level of a form, `(a, b)` is interpreted as an `ArgPack` because
-it contains a top-level comma. In expression position, a bare `ArgPack` with
-no incoming segment or preceding atom triggers `InvalidArgPack` or
-`TopLevelComma` diagnostics. The parser should produce a diagnostic and
-still parse the `ArgPack` node.
+In binding / extraction context, `(a, b)` is product extraction:
+
+```text
+BindingPatternAst::Product(ProductExtractAst { elements: [a, b], span })
+```
+
+The same surface product form does not change syntax shape. Later phases may
+interpret expression-context products as construction and extraction-context
+products as destructuring / matching, but the parser performs no constructible,
+destructible, layout, or type validation.
 
 ### 8.3 Suffix folding
 
@@ -1049,7 +1083,7 @@ Suffixes:
 ```text
 :: NavComponent
 . Selector
-.. Selector ArgPack
+.. Selector ProductExpr
 PostfixOperator
 ```
 
@@ -1218,13 +1252,13 @@ OperatorExprAst ::=
   | DoubleDotSugar {
         object: OperatorExprAst,
         selector: SelectorAst,
-        args: ArgPackAst,
+        args: ProductExprAst,
         span: Span
     }
   | BracketCallSugar {
         object: OperatorExprAst,
         operator: OperatorName,   // spelling "[]"
-        args: ArgPackAst,
+        args: ProductExprAst,
         span: Span
     }
 ```
@@ -1321,7 +1355,7 @@ AST:
 DoubleDotSugar {
     object,
     selector: SelectorAst,
-    args: ArgPackAst,
+    args: ProductExprAst,
     span
 }
 ```
@@ -1329,9 +1363,9 @@ DoubleDotSugar {
 Parser constraints:
 
 - `..` must be followed by a valid selector token (`Name` or `IntLiteral`).
-- The selector must be followed by `ArgPack`.
+- The selector must be followed by a product form.
 
-Missing ArgPack examples:
+Missing product examples:
 
 ```text
 obj..member
@@ -1346,8 +1380,8 @@ obj..42
 ```
 
 `..` is followed by `IntLiteral("42")` which is a valid numeric selector,
-but `42` is NOT followed by `ArgPack`. Emit
-`ExpectedArgPackAfterDoubleDotName` with primary span on `42`. Consume
+but `42` is NOT followed by a product form. Emit
+`ExpectedProductAfterDoubleDotName` with primary span on `42`. Consume
 `..` and selector, stop suffix folding. Do not construct a `DoubleDotSugar` node.
 
 ```text
@@ -1381,7 +1415,7 @@ AST:
 BracketCallSugar {
     object,
     operator: OperatorNameAst,   // spelling "[]"
-    args: ArgPackAst,
+    args: ProductExprAst,
     span
 }
 ```
@@ -1423,160 +1457,133 @@ calculation, and checking.
 `[` in expression-suffix position begins a bracket call; `[` at closure-head
 prefix position begins a capture clause. The distinction is purely contextual.
 
-## 9. ArgPack
+## 9. Product form
 
 ### 9.1 Syntax
 
 ```text
-ArgPack ::= "(" ArgList? ")"
-BracketArgPack ::= "[" ArgList? "]"
-ArgList ::= ArgSlot ("," ArgSlot)*
-ArgSlot ::= PipeExpr | <empty>
+ProductExpr ::= "(" ProductSlotList? ")"
+BracketProductExpr ::= "[" ProductSlotList? "]"
+ProductSlotList ::= ProductSlot ("," ProductSlot)* ","?
+ProductSlot ::= PipeExpr | <empty>
 ```
 
 AST:
 
 ```text
-ArgPackAst {
-    args: Vec<ExprAst>,
+ProductExprAst {
+    elements: Vec<ProductElementAst>,
     span: Span
+}
+
+ProductElementAst ::=
+    Expr(ExprAst)
+  | Unit { span: Span }
+```
+
+A parenthesized form with top-level commas is a product form. In expression
+context, it is preserved as `ExprKind::Product(ProductExprAst)` and later phases
+may interpret it as product construction.
+
+A parenthesized form with no top-level comma remains a group expression:
+
+```text
+(a)       -> Group(a)
+(a, b)    -> ProductExpr([a, b])
+(a, b, c) -> ProductExpr([a, b, c])
+()        -> ProductExpr([])
+```
+
+Raw AST does not create `ExprKind::Unit` for empty comma slots. Empty elements
+from leading, doubled, or trailing commas are preserved as unit product
+elements. They are not omitted, not wildcards, and not implicit discards.
+
+```text
+(, a)    -> ProductExpr([Unit, a])
+(a,, b)  -> ProductExpr([a, Unit, b])
+(a,)     -> ProductExpr([a, Unit])
+```
+
+### 9.2 Extraction-side product form
+
+In binding / extraction context, the same surface product form is parsed as
+product extraction:
+
+```text
+ProductExtract ::= "(" ProductExtractSlotList? ")"
+ProductExtractSlotList ::= ProductExtractSlot ("," ProductExtractSlot)* ","?
+ProductExtractSlot ::= BindingSlot | <empty>
+```
+
+AST:
+
+```text
+ProductExtractAst {
+    elements: Vec<ProductExtractElementAst>,
+    span: Span
+}
+
+ProductExtractElementAst ::=
+    Slot(BindingSlotAst)
+  | Unit { span: Span }
+```
+
+Empty product positions produced by leading, doubled, or trailing commas are
+preserved as unit product extraction elements. `_` is the explicit wildcard /
+consuming pattern. A comma-created unit position matches only unit.
+
+Product extraction elements inherit the binding-slot context of the surrounding
+position. Closure parameter products parse elements with parameter-slot
+restrictions. Return products parse elements with return-slot restrictions, so
+`with { ... }` remains rejected inside `-> (...)`. Top-level `let` product
+extraction currently parses elements with parameter-like binding-slot
+restrictions because the outer `let` supplies the initializer context.
+
+Examples:
+
+```text
+let (a2, b2) = (a1, b1)
+```
+
+Raw AST shape:
+
+```text
+Let {
+    pattern: ProductExtract(a2, b2),
+    initializer: ProductExpr(a1, b1)
 }
 ```
 
-**Comma-slot rule (paren and bracket argpacks).** Commas create argument slots.
-An empty slot — produced by a leading, double, or trailing comma — is preserved
-as the unit expression (`ExprKind::Unit`). Zero slots without any comma is an
-empty argpack. Examples:
+The parser does not decide whether a product is constructible, destructible,
+layout-compatible, type-compatible, or otherwise semantically admissible.
+
+### 9.3 Segment interaction
+
+Product forms may appear in pipe segments as product elements, but no
+role enum exists. The parser does not assign source, insert, or right-target
+roles.
+
+Examples:
 
 ```text
-(args) f        // [args]
-(,a) f          // [unit, a]
-(a,,b) f        // [a, unit, b]
-(a,) f          // [a, unit]
-obj[]           // []
-obj[,a]         // [unit, a]
-obj[a,]         // [a, unit]
+(a, b)
 ```
 
-`Unit` is source-preserving only: later phases decide whether a unit argument is
-meaningful for a given call/operator. Exact empty `()` / `obj[]` (no commas)
-remain empty argpacks. This rule applies to expression argpacks; canonical
-skeleton argpacks keep their own grammar.
-
-### 9.2 Role assignment
-
-Every `ArgPack` appearing inside a `Segment` must receive a role:
+produces a standalone product expression.
 
 ```text
-ArgPackRole ::=
-    SourcePack
-  | InsertPack
-  | RightTargetSubsegment
-  | Unknown
+f (a, b)
 ```
 
-`Unknown` is allowed only for error recovery.
-
-### 9.3 Segment role algorithm
-
-Given:
+preserves `Name("f")` followed by a product element. Whether that combination
+normalizes to a call/application shape is a later Normalized AST concern.
 
 ```text
-Segment(elements, has_incoming)
+x |> f (a, b)
 ```
 
-where elements are `OperatorExpr` or `ArgPack`.
-
-Process left-to-right.
-
-State:
-
-```text
-index: usize
-insert_used: bool = false
-```
-
-Rules:
-
-1. If an `ArgPack` appears at index `0`, mark it `SourcePack`.
-
-2. If an `ArgPack` appears after an `OperatorExpr`, and:
-
-   - `has_incoming == true`
-   - `insert_used == false`
-
-   then mark it `InsertPack` and set `insert_used = true`.
-
-3. Otherwise, mark the `ArgPack` as `RightTargetSubsegment`.
-
-4. A `RightTargetSubsegment` starts a recursively parsed subsegment extending from that ArgPack to the current segment boundary.
-
-The AST may either:
-
-- store the flat segment with roles, or
-- explicitly nest right-target subsegments.
-
-v0.1 should prefer a flat representation with roles unless a later pass needs nested structure.
-
-### 9.4 Examples
-
-Input:
-
-```text
-(args) f g
-```
-
-Segment roles:
-
-```text
-ArgPack(args): SourcePack
-Name(f)
-Name(g)
-```
-
-Input:
-
-```text
-x |> f (a) g
-```
-
-Right segment roles:
-
-```text
-Name(f)
-ArgPack(a): InsertPack
-Name(g)
-```
-
-Input:
-
-```text
-f (a) g
-```
-
-Single segment, no incoming input:
-
-```text
-Name(f)
-ArgPack(a): RightTargetSubsegment
-Name(g)
-```
-
-Input:
-
-```text
-x |> f (a) g (b) h
-```
-
-Right segment:
-
-```text
-Name(f)
-ArgPack(a): InsertPack
-Name(g)
-ArgPack(b): RightTargetSubsegment
-Name(h)
-```
+preserves the pipe segmentation and product form without assigning an insert
+role to `(a, b)`.
 
 ## 10. Closure AST
 
@@ -1687,17 +1694,18 @@ CaptureClauseAst {
 ### 11.3 Param clause
 
 ```text
-ParamClause ::= "(" ParamItemList? ")"
-ParamItemList ::= ParamItem ("," ParamItem)*
+ParamClause ::= ProductExtract
 ```
 
-This is a closure-head parameter context, not a general `ArgPack`.
+This is a closure-head extraction context. The whole parenthesized parameter
+clause is one product extraction form, not a list of independent parameter
+slots and not an ArgPack.
 
 AST:
 
 ```text
 ParamClauseAst {
-    params: Vec<BindingSlotAst>,
+    extract: ProductExtractAst,
     span: Span
 }
 ```
@@ -1707,6 +1715,20 @@ ParamClauseAst {
 ```text
 ParamItem ::= BindingSlotWithoutInitializer
 ```
+
+`ParamItem` entries are the elements of `ParamClauseAst.extract`.
+
+Examples:
+
+```text
+<T, U>(let <a, b> (a, b): T, let: U) => {}
+<T, U>(<a, b> (a, b): T, let: U) => {}
+```
+
+Both forms parse the closure parameters as one `ProductExtractAst`. The closure
+head is already a binding / extraction context, so an element without a policy
+may omit the local `let` anchor. If a policy expression is written for an
+element, the policy still requires the `Expr let` anchor.
 
 Function parameter slots reuse the general binding-slot grammar:
 
@@ -1929,7 +1951,7 @@ Expected high-level AST shape:
 PipeExpr
   Segment
     Atom Name(obj)
-    ArgPack RightTargetSubsegment
+    Product
       Explicit/Inline Closure AST arm 1
       Explicit/Inline Closure AST arm 2
     Atom Name(match)
@@ -1962,7 +1984,7 @@ No `MatchExpr` is created. This is correct v0.1 behavior.
 obj match (a) { }
 ```
 
-The parser sees `Name("obj")`, then `Name("match")`, then `ArgPack(a)`,
+The parser sees `Name("obj")`, then `Name("match")`, then `Group(a)`,
 then an unexpected bare `{`. The high-level expression prefix is:
 
 ```text
@@ -1970,12 +1992,12 @@ PipeExpr
   Segment
     Atom Name(obj)
     Atom Name(match)
-    ArgPack RightTargetSubsegment
+    Group
 ```
 
 No special match-arm relationship exists at the parser level. Bare `{}` does
 not become a match arm; match-style expressions that use closure arms must use
-valid headed closure syntax inside the argument pack.
+valid headed closure syntax inside the product form.
 
 ## 13. Error nodes
 
@@ -1994,11 +2016,11 @@ Recommended recoverable errors:
 
 - expected `Name` after `.`
 - expected `Name` after `..`
-- expected `ArgPack` after `.. Name`
+- expected product after `.. Name`
 - unclosed `(`
 - unclosed `[`
 - unclosed `{`
-- top-level comma outside `ArgPack`
+- top-level comma outside a product form
 - invalid deduce list
 - invalid closure head
 - invalid canonical skeleton
@@ -2273,14 +2295,14 @@ document.
 | §5.3 Expression-context `<`/`>`      | `a < b > c`                                 | `ChainedNonAssociativeOperator` on the ungrouped non-associative chain                   |
 | §7.2 Pipe split                      | `\|> f` at form start                       | `UnexpectedToken` at `\|>`                                                               |
 | §7.2 Pipe split                      | `x \|> \|> g` (empty middle)                | Diagnostic on empty segment                                                              |
-| §8.2 Group                           | `let x: type = (a, b)` at expr top          | `TopLevelComma` or `InvalidArgPack`                                                      |
+| §8.2 Product form                    | `let x: type = (a, b)` at expr top          | No diagnostic; product construction                                                      |
 | §8.5 Member `.`                      | `obj.42`                                    | No diagnostic (valid numeric selector)                                                   |
 | §8.5 Member `.`                      | `obj.(field)`                               | `ExpectedNameAfterDot`                                                                   |
 | §8.5 Member `.`                      | `obj."field"`                               | `ExpectedNameAfterDot`                                                                   |
-| §8.6 Double-dot `..`                 | `obj..42`                                   | No diagnostic expected for selector; `ExpectedArgPackAfterDoubleDotName` if no ArgPack   |
-| §8.6 Double-dot `..`                 | `obj..1` (no `ArgPack`)                     | `ExpectedArgPackAfterDoubleDotName`                                                      |
+| §8.6 Double-dot `..`                 | `obj..42`                                   | No diagnostic expected for selector; `ExpectedProductAfterDoubleDotName` if no product   |
+| §8.6 Double-dot `..`                 | `obj..1` (no product)                       | `ExpectedProductAfterDoubleDotName`                                                      |
 | §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
 | §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator selectors are valid only after `::`)              |
 | §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |
 | §12 Match non-special                | `match obj` at form start                   | No diagnostic (name, not syntax)                                                         |
-| §12 Match non-special                | `obj match (a) { }`                         | No diagnostic (name + argpack + closure)                                                 |
+| §12 Match non-special                | `obj match (a) { }`                         | No diagnostic (name + group + closure)                                                   |

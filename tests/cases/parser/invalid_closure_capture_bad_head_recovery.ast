@@ -24,25 +24,26 @@ Program
                                   Name cap
                   params:
                     ParamClause
-                      params:
-                        BindingSlot let=false
-                          deduce:
-                            None
-                          pattern:
-                            Binder
-                              TextName x
-                          annotation:
-                            AnnotationExpr
-                              Expr
-                                Pipe
-                                  Segment has_incoming=false
-                                    OperatorExpr
-                                      Atom
-                                        Name T
-                          with_clause:
-                            None
-                          initializer:
-                            None
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName x
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name T
+                            with_clause:
+                              None
+                            initializer:
+                              None
                 BodyBlock
                   forms:
                     ExprForm

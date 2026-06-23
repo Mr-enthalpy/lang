@@ -1,0 +1,23 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          Product
+            elements:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name a
+              ProductUnit
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name b
+          OperatorExpr
+            Atom
+              Name f

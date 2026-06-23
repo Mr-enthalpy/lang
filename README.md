@@ -127,8 +127,9 @@ f(args)
 
 as a general call form.
 
-Parenthesized argument packs participate in the expression skeleton through
-pipe and segment rules.
+Parenthesized top-level-comma forms are product forms. In expression context
+they are product construction; in binding / extraction context they are product
+extraction.
 
 ### 4. `|>` as expression skeleton
 
@@ -142,13 +143,13 @@ top-level |> segmentation
   -> per-segment atom folding
   -> per-segment operator sugar
   -> per-segment automatic pipe
-  -> argpack role assignment
+  -> product form preservation
 ```
 
 The current parser preserves a segment-local `OperatorExpr` layer:
 
 ```text
-SegmentElement := OperatorExpr | ArgPack
+SegmentElement := OperatorExpr | Product
 ```
 
 Ordinary operators bind tighter than whitespace auto-pipe and `|>`, but they

@@ -3,14 +3,15 @@ Program
     Expr
       Pipe
         Segment has_incoming=false
-          ArgPack role=SourcePack
-            args:
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name x
+          OperatorExpr
+            Atom
+              Group
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name x
           OperatorExpr
             Atom
               Name where

@@ -19,13 +19,11 @@ Program
           None
         initializer:
           Expr
-            Pipe
-              Segment has_incoming=false
-                ArgPack role=SourcePack
-                  args:
-                    Expr
-                      Pipe
-                        Segment has_incoming=false
-                          OperatorExpr
-                            Atom
-                              Name a
+            Product
+              elements:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name a

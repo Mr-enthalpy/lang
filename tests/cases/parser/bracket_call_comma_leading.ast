@@ -9,10 +9,9 @@ Program
                 object:
                   Name obj
                 args:
-                  ArgPack role=Unknown
-                    args:
-                      Expr
-                        Unit
+                  Product
+                    elements:
+                      ProductUnit
                       Expr
                         Pipe
                           Segment has_incoming=false

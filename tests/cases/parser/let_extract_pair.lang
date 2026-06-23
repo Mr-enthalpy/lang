@@ -1,1 +1,1 @@
-let <head, tail> (head, tail) List::Cons = xs
+let <head, tail> (head, tail): List::Cons = xs

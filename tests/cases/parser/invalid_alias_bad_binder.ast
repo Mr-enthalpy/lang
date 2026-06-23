@@ -5,10 +5,20 @@ Program
         deduce:
           None
         pattern:
-          PatternSkeleton
-            CanonicalArgPack
-              elements:
-                CanonicalName role=NodeName name=x
+          ProductExtract
+            elements:
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName x
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
         annotation:
           None
         with_clause:

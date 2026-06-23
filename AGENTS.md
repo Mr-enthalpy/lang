@@ -228,15 +228,16 @@ f(args)
 
 as a normal function call.
 
-Parenthesized argument packs participate only in the expression skeleton rules
-described in `spec/ast-construction-v0.1.md`.
+Parenthesized top-level-comma product forms participate in the expression
+skeleton rules described in `spec/ast-construction-v0.1.md`.
 
 ### Blocks and closures
 
 `{ ... }` is not a normal block expression.
 
-In expression/atom position, bare `{ ... }` does not produce a closure AST.
-Braces are closure body delimiters only after explicit closure syntax.
+In expression/atom position, bare `{ ... }` produces `ClosureAst::InPlace`.
+It has no closure head. Braces also delimit explicit closure bodies after
+`FnHeadPrefix =>`.
 
 Closure literals initially produce AST, not callable objects. Object
 materialization is a future semantic pass.
@@ -248,8 +249,15 @@ Do not add syntax nodes such as:
 * `ReturnStmt`
 * `ElseExpr`
 * `MatchExpr`
+* `IfExpr`
+* `IfStmt`
+* `ElseClause`
+* `ElseIf`
+* `MatchStmt`
+* `CallExpr`
+* `ArgPack`
 
-At `v0.1`, `return`, `else`, and `match` remain ordinary names and ordinary
+At `v0.1`, `return`, `else`, `match`, and `if` remain ordinary names and ordinary
 expression atoms unless some later semantic pass interprets them.
 
 ### Match
@@ -304,7 +312,8 @@ Do not parse guard as a let attribute.
 Do not keep LetAttrAst or LetAst.attrs.
 Do not parse with NameList.
 Do not represent with {} as an empty dependency list.
-Do not parse bare { ... } as an atom-level closure.
+Preserve bare { ... } in atom position as ClosureAst::InPlace; it is not a
+normal block expression and has no closure head.
 
 Parse left to right. Do not go back to reinterpret meaning. The parser should
 be streaming-friendly. Contextual parsing is allowed only for explicitly
@@ -408,7 +417,7 @@ Do:
 │   │           ├── expr.rs
 │   │           ├── atom.rs
 │   │           ├── pipe.rs
-│   │           ├── argpack.rs
+│   │           ├── product.rs
 │   │           ├── closure.rs
 │   │           ├── canonical.rs
 │   │           ├── deduce.rs
@@ -452,7 +461,7 @@ obj (
 The parser should produce ordinary expression structure containing:
 
 * `Name("obj")`
-* an `ArgPack`
+* a `Product`
 * closure AST arms
 * `Name("match")`
 
@@ -492,7 +501,7 @@ parser/
   let_simple
   let_extract
   pipe_basic
-  argpack_roles
+  product_forms
   dot_sugar
   doubledot_sugar
   closure_head_inline
@@ -509,7 +518,7 @@ diagnostics/
   invalid_doubledot
   unclosed_group
   unclosed_closure
-  invalid_argpack
+  invalid_product
   invalid_operator
   invalid_alias
 ```

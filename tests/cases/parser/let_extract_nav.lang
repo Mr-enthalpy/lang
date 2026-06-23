@@ -1,1 +1,1 @@
-let <x> (x, Cons::List) Node = t
+let <x> (x, Cons::List): Node = t

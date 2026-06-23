@@ -10,7 +10,7 @@ The v0.1 Raw AST is surface-preserving and non-desugared. Every syntactic
 form the parser accepts has a corresponding Raw AST node. Future
 normalization will desugar this Raw AST into a Normalized AST that unifies:
 
-- call forms (ArgPack, pipe, operator sugar)
+- call/product forms (product, pipe, operator sugar)
 - extraction forms (canonical skeletons, deduce lists)
 - declaration forms (simple let, extract let, alias let)
 
@@ -66,7 +66,7 @@ Normalization must **not** assume:
   resolution / ownership / lifetime phases.
 - `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
 - `BindingSlotAst` preserves an optional `policy` expression, optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`. A policy is recognized only by the shape `Expr let`; `policy = None` means the policy was unwritten (implicit / inferred later), not "no policy". The parser performs no policy validation.
-- `BindingPatternAst` distinguishes simple binder names from canonical skeleton patterns.
+- `BindingPatternAst` distinguishes `Binder`, `Product`, `Skeleton`, and `Error`.
 - `LetAliasAst` preserves an optional `policy` expression (same `Expr let` rule as `BindingSlotAst`), `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
 - `BindingAnnotationAst` distinguishes a single preserved expression, an explicit compound annotation, and `Error`.
@@ -76,7 +76,8 @@ Normalization must **not** assume:
 ## DeduceList and CanonicalSkeleton invariants
 
 - `DeduceListAst` preserves declared binder names (`BinderDeclAst`) and their optional annotations.
-- `CanonicalSkeletonAst` preserves `Segment`, `ArgPack`, `Wildcard`, `Name` (with `CanonicalNameRole`), `Path`, `Literal`, and `Error`.
+- `CanonicalSkeletonAst` preserves `Segment`, `ProductExtract`, `Wildcard`, `Name` (with `CanonicalNameRole`), `Path`, `Literal`, and `Error`.
+- `CanonicalProductElementAst` is either `Skeleton(CanonicalSkeletonAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas in canonical product extraction are preserved as unit elements.
 - `CanonicalNameRole` distinguishes `Hole`, `NodeName`, and `Unknown`.
 - The `Hole` / `NodeName` distinction is a parse-time role marker. No semantic matching is performed.
 - `where` is a reserved closure-head position but is not parsed as an active clause. `acquire` is an ordinary name.
@@ -85,17 +86,18 @@ Normalization must **not** assume:
 
 ## Expression invariants
 
-- `ExprAst` is a `Pipe(PipeExprAst)`, `Unit`, or `Error(ErrorAst)`.
-- `Unit` represents an empty argpack slot created by a comma (leading, double, or trailing). It is source-preserving; the parser performs no validation of its meaning.
-- There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, or `MatchExpr` node in Raw AST.
+- `ExprAst` is a `Pipe(PipeExprAst)`, `Product(ProductExprAst)`, or `Error(ErrorAst)`.
+- `ProductExprAst` preserves ordered `ProductElementAst` elements and span. A parenthesized top-level-comma form in expression context is product construction.
+- `ProductElementAst` is either `Expr(ExprAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit product elements. They are not skipped, not wildcards, and not implicit discards.
+- There is no standalone `ExprKind::Unit`; unit from commas is scoped to product elements only.
+- There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, `MatchExpr`, `IfExpr`, `IfStmt`, `ElseClause`, `ElseIf`, `MatchStmt`, `CallExpr`, or `ArgPack` as a semantic construct in Raw AST.
 
-## PipeExpr / Segment / ArgPack invariants
+## PipeExpr / Segment / Product invariants
 
 - `PipeExprAst` preserves ordered `SegmentAst` values.
 - `SegmentAst` preserves ordered `SegmentElementAst` values and `has_incoming` (whether a prior segment exists via `|>`).
-- `SegmentElementAst` distinguishes `OperatorExpr` and `ArgPack`.
-- `ArgPackAst` preserves `args`, `role`, and `span`. Both paren and bracket argpacks reuse `ArgPackAst`; commas create argument slots and an empty slot is preserved as `ExprKind::Unit`. Zero slots without commas is an empty argpack.
-- `ArgPackRole` preserves `SourcePack`, `InsertPack`, `RightTargetSubsegment`, and `Unknown`.
+- `SegmentElementAst` distinguishes `OperatorExpr` and `Product`.
+- Product forms do not receive source/insert/right-target roles. Later normalization may interpret product placement, but Raw AST does not assign call/application roles.
 
 ## OperatorExpr invariants
 
@@ -106,7 +108,7 @@ Normalization must **not** assume:
   prefix-negative rule (`()zero::(x |> type) - x`) and must not resolve it
   as a prefix operator declaration.
 - `NavPath`, `MemberSugar`, `DoubleDotSugar`, and `BracketCallSugar` at the `OperatorExpr` layer exist to support postfix operator suffix continuation (e.g., `obj!.field`, `obj![a]`).
-- `BracketCallSugar` preserves an object, the operator name (`OperatorNameAst` with spelling `[]`), and an `ArgPackAst`. It is source-preserving bracket-call sugar (`obj[args...]`); the parser does not lower it or attach indexing/container semantics. `[]` is a contextual paired operator name, also bindable/aliasable/referable in operator-name positions.
+- `BracketCallSugar` preserves an object, the operator name (`OperatorNameAst` with spelling `[]`), and a `ProductExprAst`. It is source-preserving bracket-call sugar (`obj[args...]`); the parser does not lower it or attach indexing/container semantics. `[]` is a contextual paired operator name, also bindable/aliasable/referable in operator-name positions.
 - Operator expressions are segment-local: they do not cross `|>` pipe boundaries.
 
 ## Atom and suffix-sugar invariants
@@ -114,9 +116,9 @@ Normalization must **not** assume:
 - `AtomAst` preserves `Name`, `IntLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
 - `NavPath` atoms preserve source-order inner-to-outer navigation components.
 - `MemberSugar` preserves an object and a selector.
-- `DoubleDotSugar` preserves an object, a selector, and an `ArgPackAst`.
-- `BracketCallSugar` preserves an object, the `[]` operator name, and an `ArgPackAst` (the bracket arguments). Left-associative; `obj[a][b]` nests.
-- The parser's suffix pipeline includes `:: NavComponent`, `. Selector`, `.. Selector ArgPack`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves navigation/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
+- `DoubleDotSugar` preserves an object, a selector, and a `ProductExprAst`.
+- `BracketCallSugar` preserves an object, the `[]` operator name, and a `ProductExprAst` (the bracket arguments). Left-associative; `obj[a][b]` nests.
+- The parser's suffix pipeline includes `:: NavComponent`, `. Selector`, `.. Selector Product`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves navigation/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
 
 ## Closure AST invariants
 
@@ -125,7 +127,9 @@ Normalization must **not** assume:
 - `ExplicitClosureAst` requires a non-optional `FnHeadPrefixAst` and a body. Headed closures without `=>` (e.g., `[](){}`) are syntax errors, not valid closure AST.
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries. Each `CaptureItemAst` holds a full `ExprAst`, not a name or token tree. The parser does not validate whether a capture expression is movable, borrowable, copyable, lifetime-safe, or admissible as a capture.
-- `ParamClauseAst` preserves ordered `BindingSlotAst` parameter entries.
+- `ParamClauseAst` preserves one `ProductExtractAst`, not a parameter-slot list.
+- `ProductExtractAst` preserves ordered `ProductExtractElementAst` elements and span. A parenthesized top-level-comma form in binding / extraction context is product extraction.
+- `ProductExtractElementAst` is either `Slot(BindingSlotAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit extraction elements. They are not skipped, not wildcards, and not implicit discards.
 - `ReturnClauseAst` preserves a `BindingSlotAst`.
 - Parameter and return binding slots reuse the same raw binding-site shape as let, with context-specific restrictions on initializer and `with`.
 - `BodyBlockAst` preserves ordered `FormAst` entries and `span`.
@@ -164,7 +168,7 @@ Normalization must **not** assume:
 - All node variants enumerated above exist and carry the documented fields.
 - Spans are valid and refer to the normalized source text.
 - Artifact nodes (`ErrorAst`, `Diagnostic`) carry enough information for diagnostic rewiring.
-- `ArgPackRole` assignment is position-based and deterministic.
+- Product forms have no role enum; normalization must not assume source/insert/right-target role assignment exists in Raw AST.
 - `OperatorSugarAst` with `fixity = Prefix` and `operator = "-"` is the only
   prefix-negative shape. Normalization must lower it to typed-zero binary
   subtraction and must not attempt prefix operator lookup for this node.

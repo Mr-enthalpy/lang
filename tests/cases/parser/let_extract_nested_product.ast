@@ -1,0 +1,81 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=a
+                annotation:
+                  None
+              BinderDecl name=b
+                annotation:
+                  None
+        pattern:
+          ProductExtract
+            elements:
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  ProductExtract
+                    elements:
+                      BindingSlot let=false
+                        deduce:
+                          None
+                        pattern:
+                          Binder
+                            TextName a
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  ProductExtract
+                    elements:
+                      BindingSlot let=false
+                        deduce:
+                          None
+                        pattern:
+                          Binder
+                            TextName b
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name Pair
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name xs

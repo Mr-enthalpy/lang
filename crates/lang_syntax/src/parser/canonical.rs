@@ -1,6 +1,6 @@
 use crate::{
-    CanonicalNameRole, CanonicalSkeletonAst, DeduceListAst, DiagnosticCode, ErrorAst, NameAst,
-    Symbol, TokenKind,
+    CanonicalNameRole, CanonicalProductElementAst, CanonicalSkeletonAst, DeduceListAst,
+    DiagnosticCode, ErrorAst, NameAst, Symbol, TokenKind,
 };
 
 use super::form::Parser;
@@ -59,7 +59,7 @@ fn parse_canonical_element(
     let token = parser.cursor.peek_non_trivia();
 
     match &token.kind {
-        TokenKind::Symbol(Symbol::LParen) => Some(parse_canonical_argpack(parser, deduce)),
+        TokenKind::Symbol(Symbol::LParen) => Some(parse_canonical_product_extract(parser, deduce)),
         TokenKind::Name if token.text == "_" => {
             let token = parser.cursor.bump_non_trivia();
             Some(CanonicalSkeletonAst::Wildcard { span: token.span })
@@ -76,17 +76,18 @@ fn parse_canonical_element(
     }
 }
 
-fn parse_canonical_argpack(
+fn parse_canonical_product_extract(
     parser: &mut Parser<'_>,
     deduce: &DeduceListAst,
 ) -> CanonicalSkeletonAst {
     let lparen = parser
         .cursor
         .consume_symbol(Symbol::LParen)
-        .expect("parse_canonical_argpack at `(`");
+        .expect("parse_canonical_product_extract at `(`");
 
     parser.enter_nesting();
     let mut elements = Vec::new();
+    let mut expect_element = true;
 
     loop {
         if parser.cursor.at_eof()
@@ -96,23 +97,35 @@ fn parse_canonical_argpack(
             break;
         }
 
-        let element = parse_canonical_skeleton(parser, deduce);
-        elements.push(element);
-
-        if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
-            break;
+        if parser.cursor.at_symbol(Symbol::Comma) {
+            let comma = parser.cursor.bump_non_trivia();
+            if expect_element {
+                elements.push(CanonicalProductElementAst::Unit { span: comma.span });
+            }
+            expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(CanonicalProductElementAst::Unit { span: comma.span });
+                break;
+            }
+            continue;
         }
 
-        if parser.cursor.at_symbol(Symbol::RParen)
-            || parser.cursor.at_eof()
-            || parser.is_form_boundary()
-        {
-            let span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::InvalidCanonicalSkeleton,
-                "trailing comma in canonical argument pack",
-                span,
-            );
+        let element = parse_canonical_skeleton(parser, deduce);
+        elements.push(CanonicalProductElementAst::Skeleton(element));
+
+        if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
+            expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(CanonicalProductElementAst::Unit { span: comma.span });
+                break;
+            }
+        } else {
             break;
         }
     }
@@ -123,14 +136,14 @@ fn parse_canonical_argpack(
         let span = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidCanonicalSkeleton,
-            "unclosed canonical argument pack, expected `)`",
+            "unclosed canonical product extraction, expected `)`",
             lparen.span,
         );
         span
     };
 
     parser.leave_nesting();
-    CanonicalSkeletonAst::ArgPack {
+    CanonicalSkeletonAst::ProductExtract {
         elements,
         span: lparen.span.join(end),
     }

@@ -9,5 +9,5 @@ Program
                 object:
                   Name obj
                 args:
-                  ArgPack role=Unknown
-                    args:
+                  Product
+                    elements:

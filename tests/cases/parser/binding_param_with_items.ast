@@ -9,26 +9,27 @@ Program
                 FnHeadPrefix
                   params:
                     ParamClause
-                      params:
-                        BindingSlot let=false
-                          deduce:
-                            None
-                          pattern:
-                            Binder
-                              TextName val
-                          annotation:
-                            AnnotationExpr
-                              Expr
-                                Pipe
-                                  Segment has_incoming=false
-                                    OperatorExpr
-                                      Atom
-                                        Name annotation
-                          with_clause:
-                            Items
-                              a
-                              b
-                          initializer:
-                            None
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName val
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name annotation
+                            with_clause:
+                              Items
+                                a
+                                b
+                            initializer:
+                              None
                 BodyBlock
                   forms:

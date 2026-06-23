@@ -1,0 +1,2 @@
+error ExpectedProductAfterDoubleDotName "expected product after `.. Selector`" @ 1:6 [5..6]
+error UnexpectedToken "unexpected token `.`" @ 1:7 [6..7]

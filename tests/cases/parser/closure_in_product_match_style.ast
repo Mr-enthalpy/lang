@@ -1,0 +1,25 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name obj
+          Product
+            elements:
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Error "invalid headed closure without `=>`"
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Error "invalid headed closure without `=>`"
+          OperatorExpr
+            Atom
+              Name match

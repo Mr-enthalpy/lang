@@ -1,0 +1,91 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  deduce:
+                    DeduceList
+                      binders:
+                        BinderDecl name=T
+                          annotation:
+                            None
+                        BinderDecl name=U
+                          annotation:
+                            None
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                          BindingSlot let=true
+                            deduce:
+                              DeduceList
+                                binders:
+                                  BinderDecl name=a
+                                    annotation:
+                                      None
+                                  BinderDecl name=b
+                                    annotation:
+                                      None
+                            pattern:
+                              ProductExtract
+                                elements:
+                                  BindingSlot let=false
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Binder
+                                        TextName a
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                                  BindingSlot let=false
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Binder
+                                        TextName b
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name T
+                            with_clause:
+                              None
+                            initializer:
+                              None
+                          BindingSlot let=true
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName u
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name U
+                            with_clause:
+                              None
+                            initializer:
+                              None
+                BodyBlock
+                  forms:
