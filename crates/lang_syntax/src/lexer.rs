@@ -188,10 +188,10 @@ impl<'src> Lexer<'src> {
         //   1. 3-char operators:   <<=  >>=
         //   2. 2-char structural:  =>   ->   |>   ..   ::
         //   3. 2-char operators:   ++   --
-        //   4. 2-char operators:   +=   -=   *=   /=
+        //   4. 2-char operators:   +=   -=   *=   /=   &=   |=   &&   ||
         //   5. 2-char operators:   <=   >=   ==   !=
         //   6. 2-char operators:   <<   >>
-        //   7. 1-char operators:   +  -  *  /  !  &  @  ~  ^  $  ?
+        //   7. 1-char operators:   +  -  *  /  !  &  |  @  ~  ^  $  ?
         //   8. 1-char structural:  <  >  =  .  :  ,  ;  (  )  [  ]  {  }
 
         // Step 0: 3-char structural symbol
@@ -278,7 +278,7 @@ impl<'src> Lexer<'src> {
             return true;
         }
 
-        // Step 4: +=  -=  *=  /=
+        // Step 4: +=  -=  *=  /=  &=  |=  &&  ||
         if self.starts_with("+=") {
             let start = self.mark();
             self.advance_char();
@@ -305,6 +305,34 @@ impl<'src> Lexer<'src> {
             self.advance_char();
             self.advance_char();
             self.push_token(TokenKind::Operator(OperatorSpelling::SlashEqual), start);
+            return true;
+        }
+        if self.starts_with("&=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::AmpEqual), start);
+            return true;
+        }
+        if self.starts_with("|=") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::PipeEqual), start);
+            return true;
+        }
+        if self.starts_with("&&") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::AmpAmp), start);
+            return true;
+        }
+        if self.starts_with("||") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Operator(OperatorSpelling::PipePipe), start);
             return true;
         }
 
@@ -362,6 +390,7 @@ impl<'src> Lexer<'src> {
             ('/', OperatorSpelling::Slash),
             ('!', OperatorSpelling::Bang),
             ('&', OperatorSpelling::Amp),
+            ('|', OperatorSpelling::Pipe),
             ('@', OperatorSpelling::At),
             ('~', OperatorSpelling::Tilde),
             ('^', OperatorSpelling::Caret),

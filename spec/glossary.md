@@ -424,7 +424,7 @@ _See also: Alias binding, AliasBinder, OperatorName, EntityRef._
 ## Non-associative operator
 
 An operator class that cannot be chained without explicit grouping in the
-operator-aware parser design. Comparison, equality, and compound-looking
+operator-aware parser design. Comparison, equality, and equals-suffixed
 operators are non-associative in this phase, so `a < b < c`, `a == b == c`,
 and `a += b += c` require grouping.
 

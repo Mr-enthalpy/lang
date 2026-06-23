@@ -713,6 +713,11 @@ fn operator_compound_looking() {
 }
 
 #[test]
+fn operator_binary_ordinary_spellings() {
+    assert_parser_case("operator_binary_ordinary_spellings", false);
+}
+
+#[test]
 fn operator_prefix_minus_name() {
     assert_parser_case("operator_prefix_minus_name", false);
 }
@@ -815,6 +820,11 @@ fn invalid_operator_chained_equality() {
 #[test]
 fn invalid_operator_chained_compound() {
     assert_parser_case("invalid_operator_chained_compound", true);
+}
+
+#[test]
+fn invalid_operator_postfix_amp() {
+    assert_parser_case("invalid_operator_postfix_amp", true);
 }
 
 #[test]

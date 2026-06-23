@@ -435,32 +435,47 @@ fn binary_info(spelling: OperatorSpelling) -> Option<BinaryInfo> {
     use OperatorSpelling::*;
     let info = match spelling {
         Star | Slash => BinaryInfo {
-            precedence: 6,
+            precedence: 10,
             associativity: Associativity::Left,
         },
         Plus | Minus => BinaryInfo {
-            precedence: 5,
+            precedence: 9,
             associativity: Associativity::Left,
         },
         LessLess | GreaterGreater => BinaryInfo {
-            precedence: 4,
+            precedence: 8,
             associativity: Associativity::Left,
         },
         Less | LessEqual | Greater | GreaterEqual => BinaryInfo {
-            precedence: 3,
+            precedence: 7,
             associativity: Associativity::NonAssociative,
         },
         EqualEqual | BangEqual => BinaryInfo {
-            precedence: 2,
+            precedence: 6,
             associativity: Associativity::NonAssociative,
         },
-        PlusEqual | MinusEqual | StarEqual | SlashEqual | LessLessEqual | GreaterGreaterEqual => {
-            BinaryInfo {
-                precedence: 1,
-                associativity: Associativity::NonAssociative,
-            }
-        }
-        Bang | Amp | At | Tilde | Caret | Dollar | PlusPlus | MinusMinus | Question => {
+        Amp => BinaryInfo {
+            precedence: 5,
+            associativity: Associativity::Left,
+        },
+        Pipe => BinaryInfo {
+            precedence: 4,
+            associativity: Associativity::Left,
+        },
+        AmpAmp => BinaryInfo {
+            precedence: 3,
+            associativity: Associativity::Left,
+        },
+        PipePipe => BinaryInfo {
+            precedence: 2,
+            associativity: Associativity::Left,
+        },
+        PlusEqual | MinusEqual | StarEqual | SlashEqual | AmpEqual | PipeEqual | LessLessEqual
+        | GreaterGreaterEqual => BinaryInfo {
+            precedence: 1,
+            associativity: Associativity::NonAssociative,
+        },
+        Bang | At | Tilde | Caret | Dollar | PlusPlus | MinusMinus | Question => {
             return None;
         }
     };
@@ -471,7 +486,6 @@ fn is_postfix_operator(spelling: OperatorSpelling) -> bool {
     matches!(
         spelling,
         OperatorSpelling::Bang
-            | OperatorSpelling::Amp
             | OperatorSpelling::At
             | OperatorSpelling::Tilde
             | OperatorSpelling::Caret

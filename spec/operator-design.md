@@ -36,18 +36,38 @@ Initial operator spellings are:
 +  -  *  /
 <  <=  >=  >  ==  !=
 <<  >>
-!  &  @  ~  ^  $  ++  --  ?
-+=  -=  *=  /=  <<=  >>=
+&  |  &&  ||
+!  @  ~  ^  $  ++  --  ?
++=  -=  *=  /=  &=  |=  <<=  >>=
 ```
 
 These are operator names only. Conventional mathematical or C-like readings are
 not built-in semantics.
 
 - `<<` and `>>` are only shift-looking operator spellings.
-- `+=` is only a compound-looking operator spelling and does not imply
-  assignment or mutation semantics.
+- `&` and `|` are only ordinary binary operator spellings and do not imply
+  built-in integer operations.
+- `&=` and `|=` are only equals-suffixed ordinary binary operator spellings
+  and do not imply assignment or mutation semantics.
+- `&&` and `||` are only ordinary binary operator spellings. They do not
+  introduce parser-level lazy evaluation or control-flow constructs.
+- `+=`, `-=`, `*=`, `/=`, `<<=`, and `>>=` are only equals-suffixed ordinary
+  binary operator spellings and do not imply assignment or mutation semantics.
 - `*` is only the binary `*` operator spelling. It is not unary dereference.
 - There is no symbol-encoded dereference operator in this design.
+
+Operator spelling is syntax. Operator meaning comes from later operator
+resolution. The global built-in operator implementation set remains empty.
+Only type companion namespaces may provide built-in implementations. The
+current intended built-in companion implementations are:
+
+- `int`, `uint`, and `float` families: basic arithmetic, ordering or partial
+  ordering where applicable, and equality.
+- `bool`: `!`, `&&`, and `||` as ordinary eager bool operator implementations,
+  not parser-level control flow.
+
+This spelling-table adjustment does not add built-in `&`, `|`, `&=`, or `|=`
+implementations for integer, unsigned integer, float, or bool families.
 
 ### Lexical Longest Match
 
@@ -61,6 +81,9 @@ Examples:
 - `>>=` is one operator spelling, not `>>` followed by `=`.
 - `<=` is one operator spelling, not `<` followed by `=`.
 - `>=` is one operator spelling, not `>` followed by `=`.
+- `&=` is one operator spelling, not `&` followed by `=`.
+- `|=` is one operator spelling, not `|` followed by `=`.
+- `&&` and `||` are single operator spellings.
 - `==` and `!=` are single operator spellings.
 - `++` and `--` are single operator spellings.
 
@@ -75,13 +98,14 @@ Ordinary binary operators:
 + - * /
 < <= >= > == !=
 << >>
-+= -= *= /= <<= >>=
+& | && ||
++= -= *= /= &= |= <<= >>=
 ```
 
 Ordinary postfix unary operators:
 
 ```text
-! & @ ~ ^ $ ++ -- ?
+! @ ~ ^ $ ++ -- ?
 ```
 
 Prefix operators:
@@ -200,8 +224,20 @@ comparison:
 equality:
     == !=
 
-compound-looking:
-    += -= *= /= <<= >>=
+ampersand spelling:
+    &
+
+pipe spelling:
+    |
+
+double-ampersand spelling:
+    &&
+
+double-pipe spelling:
+    ||
+
+equals-suffixed:
+    += -= *= /= &= |= <<= >>=
 
 pipe:
     |>
@@ -217,6 +253,10 @@ Left-associative:
 * /
 + -
 << >>
+&
+|
+&&
+||
 ```
 
 Non-associative in this phase:
@@ -224,7 +264,7 @@ Non-associative in this phase:
 ```text
 < <= > >=
 == !=
-+= -= *= /= <<= >>=
++= -= *= /= &= |= <<= >>=
 ```
 
 The following require explicit grouping:
@@ -233,6 +273,7 @@ The following require explicit grouping:
 a < b < c
 a == b == c
 a += b += c
+a &= b &= c
 ```
 
 The parser emits a diagnostic for ungrouped chains:
@@ -436,7 +477,7 @@ implement in this phase:
 - operator lowering;
 - operator overload resolution;
 - ADL;
-- mutation semantics for compound-looking operators.
+- mutation semantics for equals-suffixed operator spellings.
 
 v0.1 remains a syntax frontend whose output is tokens, raw AST, and
 diagnostics.

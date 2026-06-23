@@ -1,4 +1,4 @@
-Invalid "|" @ 1:1 [0..1]
+Invalid "#" @ 1:1 [0..1]
 Trivia.Whitespace "\n" @ 1:2 [1..2]
 Operator.Minus "-" @ 2:1 [2..3]
 Trivia.Whitespace "\n" @ 2:2 [3..4]
