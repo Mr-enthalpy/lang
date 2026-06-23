@@ -43,6 +43,12 @@ fn names() {
 }
 
 #[test]
+fn int_dot_int() {
+    // Locks that `1.2` lexes as IntLiteral `.` IntLiteral, never a float token.
+    assert_lexer_case("int_dot_int", false);
+}
+
+#[test]
 fn symbols() {
     assert_lexer_case("symbols", false);
 }

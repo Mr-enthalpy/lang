@@ -1,0 +1,16 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              MemberSugar
+                object:
+                  MemberSugar
+                    object:
+                      IntLiteral 1
+                    selector:
+                      NumericName 2
+                selector:
+                  NumericName 3

@@ -288,25 +288,37 @@ parser must not hard-code positional access semantics.
 
 ## 17. Float, scientific, and unit-adjacent numeric literals
 
-**Status:** Open
+**Status:** Partially resolved — bare `1.2` is decided; scientific/unit forms remain open
 
-**Current v0.1 decision:**
-The spellings `1.2`, `1.2ms`, `1e3ms`, `1.2e3`, and `1.2e3ms` are reserved
-for future numeric literal design. The current parser must not add golden tests
-that force a particular interpretation of these forms.
+**Resolution for `Digit+ "." Digit+` (e.g. `1.2`):**
+`1.2` is **member sugar**, not a float literal:
 
-The natural unit syntax `1ms` and `1 ms` remain equivalent as
-`IntLiteral(1)` followed by `Name(ms)` at the non-trivia token/parser
-structure level. No `UnitLiteral` AST node exists.
+```text
+1.2 ↦ MemberSugar { object: IntLiteral("1"), selector: NumericName("2") }
+```
+
+Float literals are not lexer/Raw-AST primitives in this design. There is no
+`FloatLiteral` token or node. `1.2` lexes as `IntLiteral("1") · Dot ·
+IntLiteral("2")` and folds through the ordinary `.`-suffix rule. Chains are
+left-associated: `1.2.3 ↦ (1.2).3`. This is locked by golden tests
+(`member_int_base`, `member_int_chain`, lexer `int_dot_int`). A "float" value
+such as `1.2float32` arises naturally later as ordinary sugar/normalization,
+not from a primitive token — so `1.2` never becomes a float token.
+
+**Still open (scientific / unit-adjacent):**
+The spellings `1.2ms`, `1e3ms`, `1.2e3`, and `1.2e3ms` are reserved for future
+numeric literal design. The current parser must not force an interpretation of
+these forms. The natural unit syntax `1ms` and `1 ms` remain equivalent as
+`IntLiteral(1)` followed by `Name(ms)` at the non-trivia token/parser structure
+level. No `UnitLiteral` AST node exists.
 
 **Why it does not block v0.1:**
-The existing lexer does not yet produce `FloatLiteral`, `ScientificLiteral`, or
+The lexer does not produce `FloatLiteral`, `ScientificLiteral`, or
 `FloatScientificLiteral` tokens. Numeric tokens in selector position go through
 the same token class but produce `NumericNameAst` rather than numeric literal
-atoms. The boundary between `Digit+ "." Digit+` (future float) and
-`object "." Name` (member sugar) will be decided with future lexer changes.
+atoms.
 
-**Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) or later numeric literal design.
+**Future stage:** later numeric literal design (scientific/unit forms only).
 
 ---
 
