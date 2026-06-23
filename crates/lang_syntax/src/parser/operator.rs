@@ -4,9 +4,9 @@ use crate::{
 };
 
 use super::{
-    argpack::{parse_argpack, parse_bracket_argpack},
     atom::{parse_atom, parse_member_selector, parse_nav_outer_component, selector_span},
     form::Parser,
+    product::{parse_bracket_product_expr, parse_product_expr},
 };
 
 pub fn parse_operator_expr(
@@ -230,7 +230,7 @@ fn parse_postfix_expr(
             let dotdot_token = parser.cursor.bump_non_trivia();
             if let Some(selector) = parse_member_selector(parser) {
                 if parser.cursor.at_symbol(Symbol::LParen) {
-                    let args = parse_argpack(parser);
+                    let args = parse_product_expr(parser);
                     let span = expr.span.join(args.span);
                     expr = OperatorExprAst {
                         kind: OperatorExprKind::DoubleDotSugar {
@@ -243,8 +243,8 @@ fn parse_postfix_expr(
                     };
                 } else {
                     parser.error(
-                        DiagnosticCode::ExpectedArgPackAfterDoubleDotName,
-                        "expected argument pack after `.. Selector`",
+                        DiagnosticCode::ExpectedProductAfterDoubleDotName,
+                        "expected product after `.. Selector`",
                         selector_span(&selector),
                     );
                     break;
@@ -259,7 +259,7 @@ fn parse_postfix_expr(
                 break;
             }
         } else if parser.cursor.at_symbol(Symbol::LBracket) {
-            let args = parse_bracket_argpack(parser);
+            let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),
                 span: args.span,

@@ -34,7 +34,7 @@ executed, type-checked, or lowered.
 
 | Document                   | What it covers                                                                                                                                                          |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, ArgPack roles, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
+| `ast-construction-v0.1.md` | Token classes consumed by parser, form/let/expr grammar, product forms, closure AST, deduce lists, canonical skeletons, atom suffix folding, error nodes, golden cases. |
 | `operator-design.md`       | Operator syntax design: operator names, fixity, precedence, associativity, AST sugar, binder/navigation-component positions, and lookup boundary.                       |
 | `entity-ref-design.md`     | Future general compile-time entity reference syntax design. Alias-RHS EntityRef subset implemented in Phase 4.4.                                                        |
 | `entity-alias-design.md`   | Lexical alias binding syntax using `let binder === EntityRef`. Phase 4.3 design; Phase 4.4 raw parser preservation implemented; future semantic meaning remains future work. |
@@ -109,7 +109,7 @@ Diagnostics in v0.1 cover lexer and parser errors only:
 The v0.1 frontend covers:
 
 - Operator-aware lexer with CRLF/LF normalization, operator spellings, and `===` token
-- Full parser: simple let, extract let, let alias, pipe/segment/argpack,
+- Full parser: simple let, extract let, let alias, pipe/segment/product,
   operator expressions, path/member/double-dot sugar, closures with heads,
   canonical skeletons, deduce lists
 - Stable token, AST, and diagnostic dumps
@@ -135,7 +135,7 @@ It does **not** yet cover:
 The expression segment design is:
 
 ```text
-SegmentElement := OperatorExpr | ArgPack
+SegmentElement := OperatorExpr | Product
 ```
 
 `OperatorExpr` is a segment-local expression layer built from atoms. Operator

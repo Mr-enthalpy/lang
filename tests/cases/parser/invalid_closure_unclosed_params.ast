@@ -1,25 +1,23 @@
 Program
   ExprForm
     Expr
-      Pipe
-        Segment has_incoming=false
-          ArgPack role=SourcePack
-            args:
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name x
-                    OperatorExpr
-                      Atom
-                        Closure InPlace
-                          BodyBlock
-                            forms:
-                              ExprForm
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name x
+      Product
+        elements:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name x
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name x

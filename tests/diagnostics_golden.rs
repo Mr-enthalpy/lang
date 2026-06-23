@@ -111,33 +111,33 @@ fn expected_name_after_doubledot_operator() {
 }
 
 #[test]
-fn expected_argpack_after_doubledot_text() {
-    assert_diagnostics_case("expected_argpack_after_doubledot_text");
+fn expected_product_after_doubledot_text() {
+    assert_diagnostics_case("expected_product_after_doubledot_text");
 }
 
 #[test]
-fn expected_argpack_after_doubledot_text_next() {
-    assert_diagnostics_case("expected_argpack_after_doubledot_text_next");
+fn expected_product_after_doubledot_text_next() {
+    assert_diagnostics_case("expected_product_after_doubledot_text_next");
 }
 
 #[test]
-fn expected_argpack_after_doubledot_text_field() {
-    assert_diagnostics_case("expected_argpack_after_doubledot_text_field");
+fn expected_product_after_doubledot_text_field() {
+    assert_diagnostics_case("expected_product_after_doubledot_text_field");
 }
 
 #[test]
-fn expected_argpack_after_doubledot_numeric() {
-    assert_diagnostics_case("expected_argpack_after_doubledot_numeric");
+fn expected_product_after_doubledot_numeric() {
+    assert_diagnostics_case("expected_product_after_doubledot_numeric");
 }
 
 #[test]
-fn expected_argpack_after_doubledot_numeric_next() {
-    assert_diagnostics_case("expected_argpack_after_doubledot_numeric_next");
+fn expected_product_after_doubledot_numeric_next() {
+    assert_diagnostics_case("expected_product_after_doubledot_numeric_next");
 }
 
 #[test]
-fn expected_argpack_after_doubledot_numeric_field() {
-    assert_diagnostics_case("expected_argpack_after_doubledot_numeric_field");
+fn expected_product_after_doubledot_numeric_field() {
+    assert_diagnostics_case("expected_product_after_doubledot_numeric_field");
 }
 
 #[test]

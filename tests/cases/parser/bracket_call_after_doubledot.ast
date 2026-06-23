@@ -13,8 +13,8 @@ Program
                     selector:
                       TextName method
                     args:
-                      ArgPack role=Unknown
-                        args:
+                      Product
+                        elements:
                           Expr
                             Pipe
                               Segment has_incoming=false
@@ -22,8 +22,8 @@ Program
                                   Atom
                                     Name args
                 args:
-                  ArgPack role=Unknown
-                    args:
+                  Product
+                    elements:
                       Expr
                         Pipe
                           Segment has_incoming=false

@@ -1,1 +1,1 @@
-let <x> (x, 42, "s") Triple = t
+let <x> (x, 42, "s"): Triple = t

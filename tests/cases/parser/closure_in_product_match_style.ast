@@ -3,17 +3,23 @@ Program
     Expr
       Pipe
         Segment has_incoming=false
-          ArgPack role=SourcePack
-            args:
+          OperatorExpr
+            Atom
+              Name obj
+          Product
+            elements:
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Name a
+                        Error "invalid headed closure without `=>`"
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Name b
+                        Error "invalid headed closure without `=>`"
+          OperatorExpr
+            Atom
+              Name match

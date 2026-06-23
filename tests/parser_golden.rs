@@ -145,23 +145,23 @@ fn pipe_basic() {
 }
 
 #[test]
-fn argpack_source() {
-    assert_parser_case("argpack_source", false);
+fn product_source() {
+    assert_parser_case("product_source", false);
 }
 
 #[test]
-fn argpack_right_target() {
-    assert_parser_case("argpack_right_target", false);
+fn product_right_target() {
+    assert_parser_case("product_right_target", false);
 }
 
 #[test]
-fn argpack_insert() {
-    assert_parser_case("argpack_insert", false);
+fn product_insert() {
+    assert_parser_case("product_insert", false);
 }
 
 #[test]
-fn argpack_multiple() {
-    assert_parser_case("argpack_multiple", false);
+fn product_multiple() {
+    assert_parser_case("product_multiple", false);
 }
 
 #[test]
@@ -175,8 +175,23 @@ fn let_pipe_value() {
 }
 
 #[test]
-fn let_argpack_value() {
-    assert_parser_case("let_argpack_value", false);
+fn let_product_value() {
+    assert_parser_case("let_product_value", false);
+}
+
+#[test]
+fn product_let_extract_construct() {
+    assert_parser_case("product_let_extract_construct", false);
+}
+
+#[test]
+fn product_bare_expr() {
+    assert_parser_case("product_bare_expr", false);
+}
+
+#[test]
+fn product_after_name() {
+    assert_parser_case("product_after_name", false);
 }
 
 #[test]
@@ -250,8 +265,8 @@ fn doubledot_next_element() {
 }
 
 #[test]
-fn invalid_doubledot_missing_argpack_field() {
-    assert_parser_case("invalid_doubledot_missing_argpack_field", true);
+fn invalid_doubledot_missing_product_field() {
+    assert_parser_case("invalid_doubledot_missing_product_field", true);
 }
 
 #[test]
@@ -280,8 +295,8 @@ fn newline_inside_group_not_boundary() {
 }
 
 #[test]
-fn newline_inside_argpack_not_boundary() {
-    assert_parser_case("newline_inside_argpack_not_boundary", false);
+fn newline_inside_product_not_boundary() {
+    assert_parser_case("newline_inside_product_not_boundary", false);
 }
 
 #[test]
@@ -320,8 +335,8 @@ fn let_extract_literal() {
 }
 
 #[test]
-fn let_extract_nested_argpack() {
-    assert_parser_case("let_extract_nested_argpack", false);
+fn let_extract_nested_product() {
+    assert_parser_case("let_extract_nested_product", false);
 }
 
 #[test]
@@ -465,6 +480,16 @@ fn closure_explicit_multi_param() {
 }
 
 #[test]
+fn closure_product_extract_explicit_let() {
+    assert_parser_case("closure_product_extract_explicit_let", false);
+}
+
+#[test]
+fn closure_product_extract_implicit_let() {
+    assert_parser_case("closure_product_extract_implicit_let", false);
+}
+
+#[test]
 fn closure_explicit_multi_typed_param() {
     assert_parser_case("closure_explicit_multi_typed_param", false);
 }
@@ -495,8 +520,8 @@ fn binding_param_with_items() {
 }
 
 #[test]
-fn closure_in_argpack_match_style() {
-    assert_parser_case("closure_in_argpack_match_style", true);
+fn closure_in_product_match_style() {
+    assert_parser_case("closure_in_product_match_style", true);
 }
 
 #[test]
@@ -520,8 +545,8 @@ fn closure_group_not_head() {
 }
 
 #[test]
-fn closure_argpack_not_head() {
-    assert_parser_case("closure_argpack_not_head", false);
+fn closure_product_not_head() {
+    assert_parser_case("closure_product_not_head", false);
 }
 
 #[test]
@@ -735,18 +760,18 @@ fn bracket_call_comma_both() {
 }
 
 #[test]
-fn argpack_comma_leading() {
-    assert_parser_case("argpack_comma_leading", false);
+fn product_comma_leading() {
+    assert_parser_case("product_comma_leading", false);
 }
 
 #[test]
-fn argpack_comma_double() {
-    assert_parser_case("argpack_comma_double", false);
+fn product_comma_double() {
+    assert_parser_case("product_comma_double", false);
 }
 
 #[test]
-fn argpack_comma_trailing() {
-    assert_parser_case("argpack_comma_trailing", false);
+fn product_comma_trailing() {
+    assert_parser_case("product_comma_trailing", false);
 }
 
 #[test]
@@ -900,8 +925,8 @@ fn invalid_canonical_missing_skeleton() {
 }
 
 #[test]
-fn invalid_canonical_unclosed_argpack() {
-    assert_parser_case("invalid_canonical_unclosed_argpack", true);
+fn invalid_canonical_unclosed_product() {
+    assert_parser_case("invalid_canonical_unclosed_product", true);
 }
 
 #[test]
@@ -1040,8 +1065,8 @@ fn operator_grouped_nonassoc_right() {
 }
 
 #[test]
-fn operator_inside_argpack() {
-    assert_parser_case("operator_inside_argpack", false);
+fn operator_inside_product() {
+    assert_parser_case("operator_inside_product", false);
 }
 
 #[test]
@@ -1235,8 +1260,8 @@ fn invalid_alias_rhs_closure() {
 }
 
 #[test]
-fn invalid_alias_rhs_argpack() {
-    assert_parser_case("invalid_alias_rhs_argpack", true);
+fn invalid_alias_rhs_product() {
+    assert_parser_case("invalid_alias_rhs_product", true);
 }
 
 #[test]

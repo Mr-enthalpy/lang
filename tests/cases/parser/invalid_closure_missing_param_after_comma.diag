@@ -1,1 +1,1 @@
-error InvalidClosureHead "trailing comma in parameter list" @ 1:5 [4..5]
+error InvalidCanonicalSkeleton "trailing comma in product extraction" @ 1:5 [4..5]

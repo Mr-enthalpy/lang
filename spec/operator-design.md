@@ -151,7 +151,7 @@ Atom := Primary AtomSuffix*
 AtomSuffix :=
     "::" NavComponent
   | "." Name
-  | ".." Name ArgPack
+  | ".." Name Product
   | PostfixOperator
 ```
 
@@ -211,7 +211,7 @@ not:
 Operator-aware segment grammar:
 
 ```text
-SegmentElement := OperatorExpr | ArgPack
+SegmentElement := OperatorExpr | Product
 ```
 
 This is not a traditional C-like precedence language. Operator precedence is a

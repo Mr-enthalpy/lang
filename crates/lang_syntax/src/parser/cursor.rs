@@ -4,7 +4,7 @@ use crate::{Span, Symbol, Token, TokenKind};
 pub enum ParenClassification {
     NotParen,
     Group,
-    ArgPack,
+    Product,
     Unclosed,
 }
 
@@ -186,12 +186,7 @@ impl<'tokens> Cursor<'tokens> {
         }
 
         if has_comma {
-            return (ParenClassification::ArgPack, Some(i));
-        }
-
-        let (_, after) = self.peek_at_skip_trivia(i);
-        if Self::can_start_segment_element(after) {
-            (ParenClassification::ArgPack, Some(i))
+            (ParenClassification::Product, Some(i))
         } else {
             (ParenClassification::Group, Some(i))
         }

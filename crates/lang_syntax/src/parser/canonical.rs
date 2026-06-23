@@ -59,7 +59,7 @@ fn parse_canonical_element(
     let token = parser.cursor.peek_non_trivia();
 
     match &token.kind {
-        TokenKind::Symbol(Symbol::LParen) => Some(parse_canonical_argpack(parser, deduce)),
+        TokenKind::Symbol(Symbol::LParen) => Some(parse_canonical_product_extract(parser, deduce)),
         TokenKind::Name if token.text == "_" => {
             let token = parser.cursor.bump_non_trivia();
             Some(CanonicalSkeletonAst::Wildcard { span: token.span })
@@ -76,14 +76,14 @@ fn parse_canonical_element(
     }
 }
 
-fn parse_canonical_argpack(
+fn parse_canonical_product_extract(
     parser: &mut Parser<'_>,
     deduce: &DeduceListAst,
 ) -> CanonicalSkeletonAst {
     let lparen = parser
         .cursor
         .consume_symbol(Symbol::LParen)
-        .expect("parse_canonical_argpack at `(`");
+        .expect("parse_canonical_product_extract at `(`");
 
     parser.enter_nesting();
     let mut elements = Vec::new();
@@ -110,7 +110,7 @@ fn parse_canonical_argpack(
             let span = parser.cursor.current_span();
             parser.error(
                 DiagnosticCode::InvalidCanonicalSkeleton,
-                "trailing comma in canonical argument pack",
+                "trailing comma in canonical product extraction",
                 span,
             );
             break;
@@ -123,14 +123,14 @@ fn parse_canonical_argpack(
         let span = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidCanonicalSkeleton,
-            "unclosed canonical argument pack, expected `)`",
+            "unclosed canonical product extraction, expected `)`",
             lparen.span,
         );
         span
     };
 
     parser.leave_nesting();
-    CanonicalSkeletonAst::ArgPack {
+    CanonicalSkeletonAst::ProductExtract {
         elements,
         span: lparen.span.join(end),
     }

@@ -9,27 +9,28 @@ Program
                 FnHeadPrefix
                   params:
                     ParamClause
-                      params:
-                        BindingSlot let=false
-                          deduce:
-                            None
-                          pattern:
-                            PatternSkeleton
-                              CanonicalSegment
-                                elements:
-                                  CanonicalName role=NodeName name=policy
-                                  CanonicalName role=NodeName name=x
-                          annotation:
-                            AnnotationExpr
-                              Expr
-                                Pipe
-                                  Segment has_incoming=false
-                                    OperatorExpr
-                                      Atom
-                                        Name T
-                          with_clause:
-                            None
-                          initializer:
-                            None
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              PatternSkeleton
+                                CanonicalSegment
+                                  elements:
+                                    CanonicalName role=NodeName name=policy
+                                    CanonicalName role=NodeName name=x
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name T
+                            with_clause:
+                              None
+                            initializer:
+                              None
                 BodyBlock
                   forms:

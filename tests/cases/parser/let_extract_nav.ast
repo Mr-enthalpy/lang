@@ -9,19 +9,43 @@ Program
                 annotation:
                   None
         pattern:
-          PatternSkeleton
-            CanonicalSegment
-              elements:
-                CanonicalArgPack
-                  elements:
-                    CanonicalName role=Hole name=x
+          ProductExtract
+            elements:
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName x
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  PatternSkeleton
                     CanonicalNavPath
                       names:
                         Cons
                         List
-                CanonicalName role=NodeName name=Node
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
         annotation:
-          None
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name Node
         with_clause:
           None
         initializer:

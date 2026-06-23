@@ -5,21 +5,18 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Name obj
-          ArgPack role=RightTargetSubsegment
-            args:
+              Name f
+          Product
+            elements:
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Error "invalid headed closure without `=>`"
+                        Name a
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
-                        Error "invalid headed closure without `=>`"
-          OperatorExpr
-            Atom
-              Name match
+                        Name b

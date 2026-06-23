@@ -1,0 +1,53 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          ProductExtract
+            elements:
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName a2
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName b2
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Product
+              elements:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name a1
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name b1

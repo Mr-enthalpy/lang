@@ -1,0 +1,1 @@
+<T, U>(let <a, b> (a, b): T, let: U) => {}

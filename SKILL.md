@@ -134,10 +134,10 @@ Expression AST must be built according to:
 2. Fold atom suffixes:
    - ::
    - .
-   - .. name ArgPack
+   - .. name Product
 3. Split PipeExpr at top-level |>.
 4. Parse each Segment.
-5. Assign ArgPack roles.
+5. Preserve product forms.
 6. Build final ExprAst.
 ```
 
@@ -208,12 +208,12 @@ stabilization (see `spec/roadmap.md` for current coverage):
 
 ```text
 lexer/        names, symbols, comments, invalid, operators
-parser/       let_simple, let_extract, pipe_basic, argpack_roles,
+parser/       let_simple, let_extract, pipe_basic, product_forms,
               dot_sugar, doubledot_sugar, closure_head_inline,
               closure_explicit, closure_head, match_style_expression,
               operator_expr, operator_binder, alias_let
 diagnostics/  invalid_dot, invalid_doubledot, unclosed_group,
-              unclosed_closure, invalid_argpack, invalid_operator,
+              unclosed_closure, invalid_product, invalid_operator,
               invalid_alias
 ```
 

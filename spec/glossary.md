@@ -89,38 +89,24 @@ interpretation, or admissibility) is assigned to any skeleton shape.
 The `Hole`/`NodeName` distinction is a parse-time role marker, not a
 semantic binding commitment.
 
-_See also: DeduceList, Hole, ArgPack, CanonicalNameRole._
+_See also: DeduceList, Hole, ProductForm, CanonicalNameRole._
 
 ---
 
-## ArgPack
+## ProductForm
 
-A parenthesized comma-separated list of expressions: `(a, b, c)`. ArgPacks
-participate in expression construction through segment-local role assignment.
-They are not traditional function call arguments.
+A parenthesized form with top-level commas, such as `(a, b, c)`.
 
-> **Distinction**: `f(args)` is not a traditional function call. The `(args)`
-> is an `ArgPack` that receives a role (`SourcePack`, `InsertPack`, or
-> `RightTargetSubsegment`) within a `Segment`.
+In expression context, a product form is product construction and is preserved
+as `ProductExprAst`. In binding / extraction context, the same surface form is
+product extraction and is preserved as `ProductExtractAst` or a canonical
+product extraction skeleton.
 
-_See also: ArgPackRole, Segment, PipeExpr._
+The parser does not decide whether a product is constructible, destructible,
+layout-compatible, type-compatible, or callable. ArgPack and ArgPackRole are
+removed historical terms and are not language-level concepts.
 
----
-
-## ArgPackRole
-
-The syntactic function assigned to each `ArgPack` within a `Segment`:
-
-- **SourcePack**: an `ArgPack` at segment index 0. Starts the
-  segment-local source pack. This role is assigned positionally,
-  before considering non-initial insert packs or incoming pipe state.
-- **InsertPack**: the first `ArgPack` after position 0 in a segment that
-  receives an incoming pipe; accepts the piped value.
-- **RightTargetSubsegment**: any `ArgPack` after `InsertPack` has been used;
-  starts a recursive subsegment.
-- **Unknown**: error-recovery placeholder.
-
-_See also: ArgPack, Segment._
+_See also: ProductExtract, Segment, PipeExpr._
 
 ---
 
@@ -133,18 +119,17 @@ A top-level expression formed by splitting tokens at `|>` into segments.
 PipeExpr ::= Segment ("|>" Segment)*
 ```
 
-_See also: Segment, ArgPackRole._
+_See also: Segment, ProductForm._
 
 ---
 
 ## Segment
 
-One part of a `PipeExpr`, containing a sequence of `OperatorExpr` and `ArgPack`
-elements in the operator-aware design. The current parser phase may still store
-plain `Atom` elements until operator parsing is implemented. Each segment has
-an `has_incoming` flag indicating whether a prior segment exists.
+One part of a `PipeExpr`, containing a sequence of `OperatorExpr` and product
+elements in the operator-aware design. Each segment has a `has_incoming` flag
+indicating whether a prior segment exists.
 
-_See also: PipeExpr, Atom, ArgPack._
+_See also: PipeExpr, Atom, ProductForm._
 
 ---
 
@@ -160,7 +145,7 @@ The smallest self-contained expression unit. Atoms include:
 - `NavPath(components)` (components are `NavComponentAst` in source order)
 - `MemberSugar(object, selector)` (selector is `SelectorAst`)
 - `DoubleDotSugar(object, selector, args)` (selector is `SelectorAst`)
-- `BracketCallSugar(object, operator, args)` (`obj[args...]`; operator spelling `[]`, `args` is an `ArgPackAst`)
+- `BracketCallSugar(object, operator, args)` (`obj[args...]`; operator spelling `[]`, `args` is a `ProductExprAst`)
 - `Error`
 
 Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
@@ -170,9 +155,8 @@ stored at the `OperatorExpr` layer, not as a general `Atom` variant.
 `BracketCallSugar` is source-preserving sugar for the operator spelling `[]`; it
 is not indexing/slicing/container access. The `[]` operator is a contextual
 paired operator name, bindable/aliasable/referable in operator-name positions.
-An empty argpack slot created by a comma is preserved as the `Unit` expression.
 
-_See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator, SelectorAst, NavPath._
+_See also: ClosureAST, ProductForm, OperatorSugar, PostfixOperator, SelectorAst, NavPath._
 
 ---
 
@@ -336,7 +320,7 @@ _See also: NavPath, SelectorAst, OperatorName._
 
 A compile-time entity reference syntax. Phase 4.2 defines the design; Phase
 4.4 implements a raw `EntityRef` parser inside alias-let RHS only. `EntityRef`
-is not a runtime expression, not a `PipeExpr`, not an `ArgPack`, not a
+is not a runtime expression, not a `PipeExpr`, not a product form, not a
 closure, and not resolved by the parser. EntityRef parsing is not a general
 expression parser mode.
 
@@ -704,7 +688,7 @@ _See also: Normalized AST, Normalization, Raw AST contract._
 
 ## Normalized AST
 
-A future desugared AST that unifies calls (ArgPack, pipe, operator sugar),
+A future desugared AST that unifies call/product forms (product, pipe, operator sugar),
 extraction forms (canonical skeletons, deduce lists), and declaration forms
 (simple let, extract let, alias let) into simple pattern / call / declaration
 structures. Normalized AST is desugared but still non-semantic; it is not HIR,
@@ -723,7 +707,7 @@ _See also: Raw AST, Desugaring, Normalization, HIR, Raw AST contract._
 
 Removing surface syntax sugar into simpler normalized forms. Examples:
 operator sugar (prefix-negative `-x`, postfix `!`, binary `+`) lowered to named operator
-calls; member/double-dot sugar lowered to lookup forms; ArgPack roles unified
+calls; member/double-dot sugar lowered to lookup forms; product placement unified
 into a single call structure; extraction skeletons desugared into pattern forms.
 
 Desugaring does **not** perform name resolution, operator lookup, type checking,
@@ -746,7 +730,7 @@ _See also: Desugaring, Normalized AST, Raw AST, Non-semantic lowering._
 ## Surface-preserving
 
 A property of Raw AST: syntactic sugar and surface forms (operator expressions,
-member sugar, double-dot sugar, pipes, argpacks, extraction skeletons) are
+member sugar, double-dot sugar, pipes, products, extraction skeletons) are
 preserved as-is in the AST tree. No desugaring or canonicalization is performed
 by the parser.
 
@@ -801,12 +785,12 @@ _See also: Normalization, CanonicalSkeleton, DeduceList._
 
 ## Call normalization
 
-Desugaring ArgPack/pipe/operator-sugar structures into a unified normalized
-call form. Call normalization flattens pipe segments, resolves ArgPack roles,
+Desugaring product/pipe/operator-sugar structures into a unified normalized
+call form. Call normalization flattens pipe segments, interprets product placement,
 and lowers operator sugar to named operator calls. It does not perform
 overload resolution or determine which declaration is being called.
 
-_See also: Normalization, ArgPack, ArgPackRole, OperatorSugar, PipeExpr._
+_See also: Normalization, ProductForm, OperatorSugar, PipeExpr._
 
 ---
 

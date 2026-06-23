@@ -1,2 +1,0 @@
-error InvalidCanonicalSkeleton "expected canonical skeleton element" @ 1:13 [12..13]
-error InvalidCanonicalSkeleton "unclosed canonical argument pack, expected `)`" @ 1:9 [8..9]

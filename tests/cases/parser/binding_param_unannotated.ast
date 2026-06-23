@@ -9,18 +9,19 @@ Program
                 FnHeadPrefix
                   params:
                     ParamClause
-                      params:
-                        BindingSlot let=false
-                          deduce:
-                            None
-                          pattern:
-                            Binder
-                              TextName val
-                          annotation:
-                            None
-                          with_clause:
-                            None
-                          initializer:
-                            None
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName val
+                            annotation:
+                              None
+                            with_clause:
+                              None
+                            initializer:
+                              None
                 BodyBlock
                   forms:

@@ -13,14 +13,14 @@ pub mod span;
 pub mod token;
 
 pub use ast::{
-    AliasBinderAst, AnnotationTermAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderDeclAst,
-    BinderNameAst, BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst,
-    CanonicalNameRole, CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst,
-    DeduceListAst, EntityRefAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst,
-    FormAst, HeadClauseAst, InPlaceClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst,
+    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
+    BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
+    CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DeduceListAst,
+    EntityRefAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, InPlaceClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst,
     NumericNameAst, OperatorExprAst, OperatorExprKind, OperatorFixity, OperatorNameAst,
-    ParamClauseAst, PipeExprAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
-    SelectorAst, WithClauseAst, WithClauseKind,
+    ParamClauseAst, PipeExprAst, ProductExprAst, ProductExtractAst, ProgramAst, ReturnClauseAst,
+    SegmentAst, SegmentElementAst, SelectorAst, WithClauseAst, WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};

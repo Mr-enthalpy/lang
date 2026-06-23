@@ -9,21 +9,24 @@ Program
                 annotation:
                   None
         pattern:
-          PatternSkeleton
-            CanonicalSegment
-              elements:
-                CanonicalArgPack
-                  elements:
-                    CanonicalName role=Hole name=x
-                CanonicalName role=NodeName name=T
+          ProductExtract
+            elements:
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName x
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
         annotation:
           None
         with_clause:
           None
         initializer:
           Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name z
+            Error "expected `=` in let"

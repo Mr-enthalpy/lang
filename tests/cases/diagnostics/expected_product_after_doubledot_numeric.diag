@@ -1,0 +1,1 @@
+error ExpectedProductAfterDoubleDotName "expected product after `.. Selector`" @ 1:6 [5..6]

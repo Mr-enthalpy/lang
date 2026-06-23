@@ -1,1 +1,2 @@
-error InvalidCanonicalSkeleton "trailing comma in canonical argument pack" @ 1:13 [12..13]
+error InvalidCanonicalSkeleton "trailing comma in product extraction" @ 1:13 [12..13]
+error ExpectedEqual "expected `=` in let" @ 1:15 [14..15]

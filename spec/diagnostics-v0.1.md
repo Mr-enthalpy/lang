@@ -151,10 +151,9 @@ spanning the failed region.
   without the `..` suffix.
 - **AST effect**: No additional AST node. The `..` is dropped.
 
-#### `ExpectedArgPackAfterDoubleDotName`
+#### `ExpectedProductAfterDoubleDotName`
 
-- **Trigger**: A `.. Selector` suffix is not followed by an `ArgPack` (parenthesized
-  list).
+- **Trigger**: A `.. Selector` suffix is not followed by a product form.
 - **Primary span**: The selector token after `..`.
 - **Recovery**: Consume the `..` and selector, then resynchronize to the next
   segment boundary or form end. Do not construct a partial `DoubleDotSugar`.
@@ -171,11 +170,11 @@ spanning the failed region.
   parser's original parse context:
   - If the parser was attempting a `Group ::= "(" PipeExpr ")"` (no top-level
     commas in the content), recover as `Group`.
-  - If the parser was attempting an `ArgPack` (top-level commas present),
-    recover as `ArgPack`.
+  - If the parser was attempting a product form (top-level commas present),
+    recover as `Product`.
   - If the context cannot be determined from the partially parsed content,
     produce an `ErrorAst` and preserve whatever content was already parsed.
-- **AST effect**: The `ArgPack` (or group) is created with whatever contents
+- **AST effect**: The product (or group) is created with whatever contents
   were parsed before recovery.
 
 #### `UnclosedBracket`
@@ -244,7 +243,7 @@ parent gate rather than directly to final diagnostics.
 
 #### `TopLevelComma`
 
-- **Trigger**: A comma at the top level of a form (outside any `ArgPack` or
+- **Trigger**: A comma at the top level of a form (outside any product form or
   parenthesized group). This includes a top-level comma inside a head-clause
   expression slot (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`),
   which means the single-expression clause slot has been split into more than
@@ -254,11 +253,9 @@ parent gate rather than directly to final diagnostics.
   does not create additional AST structure.
 - **AST effect**: No change to AST. The comma is discarded.
 
-> **Implementation note (parser phase 2)**: `TopLevelComma` and `InvalidArgPack`
-> remain specified v0.1 diagnostic categories, but this parser phase may report
-> them as `UnexpectedToken` with a specific message (e.g. `"unexpected
-top-level comma"`, `"invalid argument pack position"`) until the diagnostic
-> taxonomy is expanded.
+> **Implementation note:** `TopLevelComma` remains a v0.1 diagnostic category.
+> Product forms make parenthesized top-level commas legal, so there is no
+> language-level `InvalidArgPack` category.
 
 #### `UnusedClosureAst`
 
@@ -350,7 +347,7 @@ operator identity validation, name lookup, or namespace resolution.
 
 - **Trigger**: A valid `EntityRef` was parsed, but the next token is not a form
   boundary (EOF, semicolon, or right brace). The residual
-  tokens form an expression shape such as `PipeExpr`, `ArgPack`, closure, or
+  tokens form an expression shape such as `PipeExpr`, product, closure, or
   operator expression.
 - **Primary span**: The first residual non-trivia token.
 - **Recovery**: Consume tokens until the form boundary.

@@ -5,11 +5,11 @@ use crate::{
 };
 
 use super::{
-    argpack::error_expr,
     deduce::parse_deduce_list,
     expr::parse_expr_until,
     form::Parser,
-    let_stmt::{parse_binding_slot, BindingSlotContext},
+    let_stmt::{parse_binding_slot, parse_product_extract, BindingSlotContext},
+    product::error_expr,
 };
 
 // -- Body block --
@@ -366,60 +366,9 @@ fn parse_param_clause(
     parser: &mut Parser<'_>,
     head_deduce: Option<&crate::DeduceListAst>,
 ) -> ParamClauseAst {
-    let lparen = parser
-        .cursor
-        .consume_symbol(Symbol::LParen)
-        .expect("parse_param_clause at `(`");
-
-    parser.enter_nesting();
-    let mut params = Vec::new();
-
-    loop {
-        if parser.cursor.at_eof()
-            || parser.cursor.at_symbol(Symbol::RParen)
-            || parser.is_form_boundary()
-        {
-            break;
-        }
-
-        let param = parse_binding_slot(parser, BindingSlotContext::Param, head_deduce, false);
-        params.push(param);
-
-        if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
-            break;
-        }
-
-        if parser.cursor.at_symbol(Symbol::RParen)
-            || parser.cursor.at_eof()
-            || parser.is_form_boundary()
-        {
-            let span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::InvalidClosureHead,
-                "trailing comma in parameter list",
-                span,
-            );
-            break;
-        }
-    }
-
-    let end = if let Some(rparen) = parser.cursor.consume_symbol(Symbol::RParen) {
-        rparen.span
-    } else {
-        let span = parser.cursor.current_span();
-        parser.error(
-            DiagnosticCode::UnclosedParen,
-            "unclosed parameter clause, expected `)`",
-            lparen.span,
-        );
-        span
-    };
-
-    parser.leave_nesting();
-    ParamClauseAst {
-        params,
-        span: lparen.span.join(end),
-    }
+    let extract = parse_product_extract(parser, head_deduce);
+    let span = extract.span;
+    ParamClauseAst { extract, span }
 }
 
 // -- Return clause --

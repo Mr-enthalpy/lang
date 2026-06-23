@@ -228,8 +228,8 @@ f(args)
 
 as a normal function call.
 
-Parenthesized argument packs participate only in the expression skeleton rules
-described in `spec/ast-construction-v0.1.md`.
+Parenthesized top-level-comma product forms participate in the expression
+skeleton rules described in `spec/ast-construction-v0.1.md`.
 
 ### Blocks and closures
 
@@ -408,7 +408,7 @@ Do:
 │   │           ├── expr.rs
 │   │           ├── atom.rs
 │   │           ├── pipe.rs
-│   │           ├── argpack.rs
+│   │           ├── product.rs
 │   │           ├── closure.rs
 │   │           ├── canonical.rs
 │   │           ├── deduce.rs
@@ -452,7 +452,7 @@ obj (
 The parser should produce ordinary expression structure containing:
 
 * `Name("obj")`
-* an `ArgPack`
+* a `Product`
 * closure AST arms
 * `Name("match")`
 
@@ -492,7 +492,7 @@ parser/
   let_simple
   let_extract
   pipe_basic
-  argpack_roles
+  product_forms
   dot_sugar
   doubledot_sugar
   closure_head_inline
@@ -509,7 +509,7 @@ diagnostics/
   invalid_doubledot
   unclosed_group
   unclosed_closure
-  invalid_argpack
+  invalid_product
   invalid_operator
   invalid_alias
 ```

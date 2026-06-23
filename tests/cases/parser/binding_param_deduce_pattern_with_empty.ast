@@ -9,43 +9,44 @@ Program
                 FnHeadPrefix
                   params:
                     ParamClause
-                      params:
-                        BindingSlot let=false
-                          deduce:
-                            DeduceList
-                              binders:
-                                BinderDecl name=val
-                                  annotation:
-                                    None
-                                BinderDecl name=T
-                                  annotation:
-                                    None
-                          pattern:
-                            PatternSkeleton
-                              CanonicalSegment
-                                elements:
-                                  CanonicalName role=Hole name=val
-                                  CanonicalName role=NodeName name=pattern
-                          annotation:
-                            AnnotationCompound
-                              left:
-                                AnnotationTermExpr
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              DeduceList
+                                binders:
+                                  BinderDecl name=val
+                                    annotation:
+                                      None
+                                  BinderDecl name=T
+                                    annotation:
+                                      None
+                            pattern:
+                              PatternSkeleton
+                                CanonicalSegment
+                                  elements:
+                                    CanonicalName role=Hole name=val
+                                    CanonicalName role=NodeName name=pattern
+                            annotation:
+                              AnnotationCompound
+                                left:
+                                  AnnotationTermExpr
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name T
+                                right:
                                   Expr
                                     Pipe
                                       Segment has_incoming=false
                                         OperatorExpr
                                           Atom
-                                            Name T
-                              right:
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name annotation
-                          with_clause:
-                            Empty
-                          initializer:
-                            None
+                                            Name annotation
+                            with_clause:
+                              Empty
+                            initializer:
+                              None
                 BodyBlock
                   forms:

@@ -1,1 +1,1 @@
-error UnclosedParen "unclosed parameter clause, expected `)`" @ 1:9 [8..9]
+error UnclosedParen "unclosed product extraction, expected `)`" @ 1:9 [8..9]

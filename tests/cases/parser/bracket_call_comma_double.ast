@@ -9,16 +9,14 @@ Program
                 object:
                   Name obj
                 args:
-                  ArgPack role=Unknown
-                    args:
+                  Product
+                    elements:
                       Expr
                         Pipe
                           Segment has_incoming=false
                             OperatorExpr
                               Atom
                                 Name a
-                      Expr
-                        Unit
                       Expr
                         Pipe
                           Segment has_incoming=false

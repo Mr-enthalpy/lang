@@ -48,7 +48,8 @@ Program
                                               Name a
                   params:
                     ParamClause
-                      params:
+                      extract:
+                        elements:
                 BodyBlock
                   forms:
                     ExprForm

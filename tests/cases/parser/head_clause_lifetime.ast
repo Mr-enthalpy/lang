@@ -9,19 +9,20 @@ Program
                 FnHeadPrefix
                   params:
                     ParamClause
-                      params:
-                        BindingSlot let=false
-                          deduce:
-                            None
-                          pattern:
-                            Binder
-                              TextName x
-                          annotation:
-                            None
-                          with_clause:
-                            None
-                          initializer:
-                            None
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName x
+                            annotation:
+                              None
+                            with_clause:
+                              None
+                            initializer:
+                              None
                   clauses:
                     LifetimePre
                       Expr

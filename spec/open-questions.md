@@ -43,37 +43,29 @@ on the cursor.
 
 ## 3. Whether non-ArgPack `(a, b)` is always illegal
 
-**Status:** Open
+**Status:** Resolved
 
-**Current v0.1 decision:**
-A parenthesized form with top-level commas is always an `ArgPack`. A
-parenthesized form without commas is a group `(PipeExpr)`. Non-ArgPack
-`(a, b)` is illegal.
+**Resolution:**
+A parenthesized form with top-level commas is a product form, not an ArgPack.
+It is always syntactically legal.
 
-**Why it does not block v0.1:**
-The distinction between ArgPack and group is clear in v0.1. A future pass
-may interpret certain ArgPacks as tuples, heterogeneous lists, or other
-constructs, but that does not affect parsing.
+In expression context, `(a, b)` is product construction.
+In binding / extraction context, `(a, b)` is product extraction.
 
-**Future stage:** v0.9 (type/kind checking design) — tuple types or value types may
-reinterpret ArgPacks.
+ArgPack is not a language-level concept. Parser and Raw AST terminology use
+Product / ProductExtract instead.
 
 ---
 
 ## 4. Exact AST shape for right-target subsegments
 
-**Status:** Open
+**Status:** Resolved
 
-**Current v0.1 decision:**
-Right-target subsegments are stored as flat `SegmentElement` nodes with
-`ArgPackRole::RightTargetSubsegment`. The AST may optionally nest them,
-but v0.1 prefers a flat representation.
-
-**Why it does not block v0.1:**
-A flat representation is sufficient for golden tests. A later lowering pass
-may restructure the AST to make right-target subsegments explicit sub-trees.
-
-**Future stage:** v0.3 (Normalized AST Specification) or v0.4 (Raw AST → Normalized AST Prototype).
+**Resolution:**
+`ArgPackRole::RightTargetSubsegment` has been removed with the ArgPack
+abstraction. Product forms are ordinary expression / extraction constructs in
+Raw AST. Any later call/application nesting is a Normalized AST concern, not a
+Raw AST role-assignment rule.
 
 ---
 
@@ -110,7 +102,7 @@ parsed. The head clauses are now active; `where` remains reserved-inactive and
 **Why it does not block v0.1:**
 The bounded lookahead is implemented with cursor save/restore and stack-based
 diagnostic gates. Phase 3.1 adds regression tests for failed lookahead,
-group/ArgPack ambiguity, and `where`/`acquire` non-recognition. A formal upper
+group/product ambiguity, and `where`/`acquire` non-recognition. A formal upper
 bound should still be specified before future closure-head clauses are added.
 
 **Future stage:** v0.5 (Normalized AST Stabilization or frontend robustness) — document the exact maximum lookahead
@@ -382,14 +374,14 @@ specification exists.
 
 **Current v0.1 decision:**
 The parser preserves all canonical skeleton shapes (names, wildcards, literals,
-paths, argpacks) as raw AST. The Hole/NodeName distinction is a parse-time role
+paths, product extractions) as raw AST. The Hole/NodeName distinction is a parse-time role
 marker.  No semantic matching, destructuring, equality, constructor, or
 admissibility semantics are assigned to any skeleton shape.
 
 **Why it does not block v0.1:**
 v0.1 is a syntax frontend only.  The canonical skeleton grammar is broad enough
 to capture extraction syntax for later semantic interpretation.  Whether a
-particular shape (literal in skeleton, bare node-name, nested argpack) is
+particular shape (literal in skeleton, bare node-name, nested product extraction) is
 admissible, produces a constraint, or is rejected by a future semantic match
 is a deferred design decision that does not require changing the AST.
 

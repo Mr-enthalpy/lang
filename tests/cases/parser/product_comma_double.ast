@@ -3,17 +3,20 @@ Program
     Expr
       Pipe
         Segment has_incoming=false
-          OperatorExpr
-            Atom
-              Name f
-          ArgPack role=RightTargetSubsegment
-            args:
+          Product
+            elements:
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
                         Name a
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name b
           OperatorExpr
             Atom
-              Name g
+              Name f
