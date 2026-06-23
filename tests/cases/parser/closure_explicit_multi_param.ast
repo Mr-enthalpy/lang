@@ -10,11 +10,29 @@ Program
                   params:
                     ParamClause
                       params:
-                        NameParam name=x
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
                           annotation:
                             None
-                        NameParam name=y
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName y
                           annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
                             None
                 BodyBlock
                   forms:

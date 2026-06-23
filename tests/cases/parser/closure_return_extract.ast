@@ -12,18 +12,25 @@ Program
                       params:
                   returns:
                     ReturnClause
-                      binder:
-                        ExtractType
+                      slot:
+                        BindingSlot let=false
                           deduce:
                             DeduceList
                               binders:
                                 BinderDecl name=x
                                   annotation:
                                     None
-                          skeleton:
-                            CanonicalSegment
-                              elements:
-                                CanonicalName role=Hole name=x
-                                CanonicalName role=NodeName name=Node
+                          pattern:
+                            PatternSkeleton
+                              CanonicalSegment
+                                elements:
+                                  CanonicalName role=Hole name=x
+                                  CanonicalName role=NodeName name=Node
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
                 BodyBlock
                   forms:

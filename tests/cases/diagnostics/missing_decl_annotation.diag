@@ -1,1 +1,1 @@
-error ExpectedDeclAnnotation "expected declaration annotation" @ 1:8 [7..8]
+error ExpectedBindingAnnotation "expected binding annotation" @ 1:8 [7..8]

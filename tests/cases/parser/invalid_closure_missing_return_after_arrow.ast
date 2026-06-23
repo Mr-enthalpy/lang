@@ -10,13 +10,32 @@ Program
                   params:
                     ParamClause
                       params:
-                        NameParam name=x
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
                           annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
                             None
                   returns:
                     ReturnClause
-                      binder:
-                        Error "expected return type"
+                      slot:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Error "expected return binding pattern after `->`"
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
                 BodyBlock
                   forms:
                     ExprForm

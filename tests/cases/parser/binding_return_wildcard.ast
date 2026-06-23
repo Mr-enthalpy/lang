@@ -1,0 +1,29 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      params:
+                  returns:
+                    ReturnClause
+                      slot:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            PatternSkeleton
+                              CanonicalWildcard _
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                BodyBlock
+                  forms:

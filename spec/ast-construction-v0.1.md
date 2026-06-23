@@ -199,10 +199,8 @@ let x = (a
 + b)
 ```
 
-Here `let x = ` is missing the required `: DeclAnnotation` before `=`, so the
-form is structurally invalid before reaching the `(`. The parser should
-diagnose the missing declaration annotation. For this example to be structurally
-valid, it must be `let x: type = (a` (see §4.1 for the full let grammar).
+Here `let x = ` is a structurally valid unannotated binding slot whose
+initializer starts at `(`.
 
 Line 1 ends inside `(...)`, nesting depth is 1, so the line break is NOT a
 form boundary. The form continues through line 2. The parser should consume
@@ -213,19 +211,18 @@ both lines and diagnose `UnclosedParen` if the `)` is never found.
 ### 4.1 Let statement shape
 
 ```text
-LetStmt ::= "let" LetBinder LetWithClause? "=" PipeExpr
+LetStmt ::= "let" BindingSlotWithInitializer
 ```
 
-The declaration annotation after `:` is required for simple binders. v0.1 does
-not make it optional.
+A let binding uses the general binding-slot shape. The initializer is required
+for ordinary let bindings. The annotation after `:` is optional and is preserved
+as syntax rather than classified as a type annotation.
 
 AST:
 
 ```text
 LetAst {
-    binder: LetBinderAst,
-    with_clause: Option<WithClauseAst>,
-    value: ExprAst,
+    slot: BindingSlotAst,
     span: Span
 }
 ```
@@ -241,7 +238,8 @@ WithBlock ::= "{" WithItems? "}"
 WithItems ::= Name ("," Name)*
 ```
 
-`with` is interpreted only inside the let parser state.
+`with` is interpreted only in binding-slot parser states that allow a
+block-delimited with clause.
 
 AST:
 
@@ -251,82 +249,101 @@ WithClauseAst {
     span: Span
 }
 
-WithClauseKind ::= Lexical | Semantic { items: Vec<NameAst> } | Error(ErrorAst)
+WithClauseKind ::= Empty | Items { items: Vec<NameAst> } | Error(ErrorAst)
 ```
 
-`with {}` is an explicit lexical-only with clause. It is distinct from having
-no with clause. `with { a, b }` preserves a non-empty syntactic payload. No
-lifetime or dependency semantics are executed in Raw AST.
+`with {}` is an explicit empty with clause. It is distinct from having no with
+clause. `with { a, b }` preserves a non-empty syntactic payload. The parser
+does not resolve the names, decide same-level binding dependencies, or run
+lifetime/dependency checks.
 
 `with` without `{` is invalid. `with a, b` is invalid. Trailing commas in
 `with { ... }` are rejected. Malformed `with` syntax must not produce
-`WithClauseKind::Lexical`; only valid source text `with {}` may produce the
-lexical-only with-clause kind.
+`WithClauseKind::Empty`; only valid source text `with {}` may produce the empty
+with-clause kind.
 
-### 4.3 Let binder
+### 4.3 Binding slot
 
 ```text
-LetBinder ::= SimpleLetBinder | ExtractLetBinder
+BindingSlot ::=
+    OptionalLet
+    OptionalDeduceList
+    BindingPattern
+    OptionalAnnotation
+    OptionalWithClause
+    OptionalInitializer
 ```
 
-Simple binder:
+Context restrictions:
 
 ```text
-SimpleLetBinder ::= Name ":" DeclAnnotation
+let binding:
+    initializer is required for ordinary let syntax
+    with { ... } is allowed
 
-DeclAnnotation ::= BareDeclAnnotation | TypeObjectAnnotation ":" RankAnnotation
+function parameter slot:
+    initializer is absent
+    with { ... } is allowed
+    let is allowed but redundant
+    <> is allowed per slot
 
-BareDeclAnnotation ::= PipeExpr
-
-TypeObjectAnnotation ::= PipeExpr | TypeHole
-
-TypeHole ::= "_"
-
-RankAnnotation ::= PipeExpr
+function return slot:
+    initializer is absent
+    with { ... } is rejected
+    let is allowed but redundant
+    <> is allowed per slot
 ```
 
-Extract binder:
+Binding pattern:
 
 ```text
-ExtractLetBinder ::= DeduceList CanonicalSkeleton
+BindingPattern ::= BinderName | CanonicalSkeleton
+BinderName ::= Name | OperatorName
 ```
 
 AST:
 
 ```text
-LetBinderAst ::=
-    Simple {
-        name: NameAst,
-        annotation: DeclAnnotationAst
-    }
-  | Extract {
-        deduce: DeduceListAst,
-        skeleton: CanonicalSkeletonAst
-    }
+BindingSlotAst {
+    has_let: bool,
+    deduce: Option<DeduceListAst>,
+    pattern: BindingPatternAst,
+    annotation: Option<BindingAnnotationAst>,
+    with_clause: Option<WithClauseAst>,
+    initializer: Option<ExprAst>,
+    span: Span
+}
 
-DeclAnnotationAst ::=
-    Bare(ExprAst)
-  | TypeObjectWithRank {
-        type_object_annotation: TypeObjectAnnotationAst,
-        rank_annotation: ExprAst
-    }
+BindingPatternAst ::=
+    Binder(BinderNameAst)
+  | Skeleton(CanonicalSkeletonAst)
+  | Error(ErrorAst)
 
-TypeObjectAnnotationAst ::=
+BindingAnnotationAst ::=
+    Expr(ExprAst)
+  | Compound {
+        left: AnnotationTermAst,
+        right: ExprAst
+    }
+  | Error(ErrorAst)
+
+AnnotationTermAst ::=
     Expr(ExprAst)
   | Hole
 ```
 
 ```text
-BinderName ::= Name | OperatorName
-SimpleLetBinder ::= BinderName ":" DeclAnnotation
+let val = expr
+let val: annotation = expr
+let <val, T> val pattern: T: annotation with {a, b} = expr
 ```
 
-Operator binder names use the same declaration annotation rules as ordinary
-names. For example, operator-named binders may use the explicit rank form:
+Operator binder names use the same optional annotation rules as ordinary names:
 
 ```text
 let +: _: operator = expr
 let >: _: operator = expr
+let + = expr
 ```
 
 Phase 4.1 intentionally does not parse `<` as a simple operator binder:
@@ -335,73 +352,94 @@ Phase 4.1 intentionally does not parse `<` as a simple operator binder:
 let <: _: operator = expr
 ```
 
-After `let`, `<` is the strong-context entry for `ExtractLetBinder` and its
-deduce list. The parser therefore treats `let <...` as extract-let syntax and
+After `let`, `<` is the strong-context entry for a binding-slot deduce list.
+The parser therefore treats `let <...` as binding-slot syntax and
 does not reinterpret the token as an operator binder. This keeps the current
 binding grammar streaming-friendly. Declaring `<` as an operator binder requires
 a future escaping or disambiguation rule.
 
-The `DeclAnnotationAst::Bare` variant covers a single written annotation
-expression, such as `let f: fn = ...` and `let t: type = ...`. A bare
-declaration annotation is preserved exactly as written.
+The `BindingAnnotationAst::Expr` variant covers a single written annotation
+expression, such as `let f: fn = ...`, `let t: type = ...`, or
+`let r: rank1 + rank2 = ...`. The annotation is preserved exactly as written.
+The parser does not decide whether it denotes a type, rank, custom rank,
+concept, region, value object, type object, or future classifier.
 
-Rank annotation syntax requires the explicit form:
+Compound annotation syntax preserves an explicit colon inside the annotation
+slot:
 
 ```text
-type_object_annotation : rank_annotation
+left_annotation : right_annotation
 ```
 
-The `DeclAnnotationAst::TypeObjectWithRank` variant covers the form
-`let f: _: fn = ...`, where `_` is a `TypeHole` and `fn` is a rank annotation.
+The `BindingAnnotationAst::Compound` variant covers source such as
+`let f: _: fn = ...` without interpreting `_` as a type object or `fn` as a
+rank. That interpretation is deferred.
+
+For a binding skeleton example:
+
+```text
+let <val, T> val pattern: T: annotation = expr
+```
+
+the Raw AST reading is:
+
+```text
+deduce = [val, T]
+pattern = CanonicalSkeleton(val pattern)
+annotation = Compound(left = T, right = annotation)
+initializer = expr
+```
+
+`val` is a canonical-skeleton hole because it is declared in the deduce list;
+`pattern` remains a node name. This is one binding skeleton inside one
+`BindingSlotAst`, not an outer binder named `val` plus a separate pattern.
 
 v0.1 does not check that annotation names resolve to anything. Annotation
 validity is a future semantic pass.
 
 ### 4.5 Annotation parsing boundaries
 
-Because `TypeObjectAnnotation ::= PipeExpr | TypeHole` and
-`RankAnnotation ::= PipeExpr`, the parser must know where the annotation
-sub-expressions stop in each strong context. The termination tokens are
-determined by the surrounding syntactic frame.
+Because binding annotations are preserved expression syntax, the parser must
+know where annotation sub-expressions stop in each strong context. The
+termination tokens are determined by the surrounding syntactic frame.
 
-**In `SimpleLetBinder` context** (parsing the binder after `let`):
+**In let binding context**:
 
-- `TypeObjectAnnotation` stops at a top-level `:` (which starts a rank
+- A binding annotation stops at a top-level `:` (which starts a compound
   annotation), `with`, or `=`.
-- If `TypeObjectAnnotation` stopped at `:`, the following expression is
-  `RankAnnotation`.
-- `RankAnnotation` stops at a top-level `with` or `=`.
+- If the first annotation expression stopped at `:`, the following expression
+  is the right side of a compound annotation.
+- The right side of a compound annotation stops at a top-level `with` or `=`.
 
 Example:
 
 ```text
 let f: _: fn = expr
-     ^^^^^^---- TypeObjectAnnotation stops at the second `:`
-            ^^--- RankAnnotation, stops at `=`
+     ^^^^^^---- left annotation term stops at the second `:`
+            ^^--- right annotation expression, stops at `=`
 
-let f: _: fn with deps = expr
-     ^^^^---- TypeObjectAnnotation, containing `_`
-          ^---- this `:` starts RankAnnotation
-           ^^--------- RankAnnotation, stops at `with`
+let f: _: fn with {deps} = expr
+     ^^^^---- left annotation term, containing `_`
+          ^---- this `:` starts the compound annotation right side
+           ^^--------- right annotation expression, stops at `with`
 ```
 
 **In `DeduceList BinderDecl` context** (inside `<...>`):
 
-- `TypeObjectAnnotation` stops at a top-level `,` or `>`.
+- Binder annotations stop at a top-level `,` or `>`.
 
-**In `ParamItem` context** (inside closure-head parameter list):
+**In parameter binding-slot context** (inside closure-head parameter list):
 
-- `TypeObjectAnnotation` stops at a top-level `,` or `)`.
+- Binding annotations stop at a top-level `with`, `,`, or `)`.
 
-**In `ReturnBinder` context** (after `->` in a closure head):
+**In return binding-slot context** (after `->` in a closure head):
 
-- `TypeObjectAnnotation` stops at a top-level `:`, `=>`, or `{`.
+- Binding annotations stop at a top-level `with`, `=>`, or `{`.
 - `where` and `acquire` are future reserved stop tokens; they are not
   active Phase 3 parser stops.
-- If stopped by `:`, the following expression is `ReturnConstraint`, not
-  `RankAnnotation`.
+- `with { ... }` is rejected in return binding slots.
 
-### 4.6 Declaration annotation examples
+### 4.6 Binding annotation examples
 
 **Positive examples:**
 
@@ -412,17 +450,19 @@ let f: _: fn = expr
 AST-level reading:
 
 ```text
-SimpleLetBinder {
-    name: f,
-    annotation: TypeObjectWithRank {
-        type_object_annotation: TypeHole("_"),
-        rank_annotation: Expr(Name("fn"))
-    }
+BindingSlot {
+    pattern: Binder(f),
+    annotation: AnnotationCompound {
+        left: AnnotationTermHole("_"),
+        right: Expr(Name("fn"))
+    },
+    initializer: Expr(Name("expr"))
 }
 ```
 
-Deferred semantic reading: `f` has an anonymous type-object whose kind/rank
-is the source name `fn`.
+Deferred semantic reading may decide that `f` has an anonymous type-object
+whose kind/rank is the source name `fn`, but the parser does not make that
+decision.
 
 ```text
 let t: type = expr
@@ -431,9 +471,10 @@ let t: type = expr
 AST-level reading:
 
 ```text
-SimpleLetBinder {
-    name: t,
-    annotation: Bare(Expr(Name("type")))
+BindingSlot {
+    pattern: Binder(t),
+    annotation: AnnotationExpr(Expr(Name("type"))),
+    initializer: Expr(Name("expr"))
 }
 ```
 
@@ -447,9 +488,10 @@ let ns1: namespace = expr
 AST-level reading:
 
 ```text
-SimpleLetBinder {
-    name: ns1,
-    annotation: Bare(Expr(Name("namespace")))
+BindingSlot {
+    pattern: Binder(ns1),
+    annotation: AnnotationExpr(Expr(Name("namespace"))),
+    initializer: Expr(Name("expr"))
 }
 ```
 
@@ -463,33 +505,35 @@ let f: _: fn = expr
 This is an explicit rank-annotation form. The parser produces:
 
 ```text
-SimpleLetBinder {
-    name: f,
-    annotation: TypeObjectWithRank {
-        type_object_annotation: TypeHole("_"),
-        rank_annotation: Expr(Name("fn"))
-    }
+BindingSlot {
+    pattern: Binder(f),
+    annotation: AnnotationCompound {
+        left: AnnotationTermHole("_"),
+        right: Expr(Name("fn"))
+    },
+    initializer: Expr(Name("expr"))
 }
 ```
 
 A bare annotation such as `let f: fn = expr` is preserved as raw syntax
-(`Bare(Expr(Name("fn")))`) but is **not** function declaration sugar.
+(`AnnotationExpr(Expr(Name("fn")))`) but is **not** function declaration sugar.
 The language does not define `let f: fn = ...` as a normative function
 declaration spelling.  A function-like declaration must use the explicit
-rank-annotation form `let f: _: fn = ...`.
+compound annotation form `let f: _: fn = ...` if that is the intended source
+shape.
 
 **Alignment:**
 
 ```text
 let f: _: fn = ...
     |  |  |
-    |  |  +-- rank annotation
-    |  +----- type-object annotation
+    |  |  +-- right annotation expression
+    |  +----- left annotation term
     +-------- declared object
 ```
 
-The explicit rank form has two annotation layers:
-`type_object_annotation : rank_annotation`. The bare form has one annotation
+The explicit compound form has two annotation layers:
+`left_annotation : right_annotation`. The bare form has one annotation
 expression and must not be lowered or reinterpreted by the parser.
 
 **Negative / non-declaration examples:**
@@ -523,20 +567,18 @@ The `=` may produce `UnexpectedToken`. No `NamespaceDecl` AST node is created.
 
 ### 4.7 Terminology note
 
-A **type-object** is a type-theoretic object: the type of some value, or an
-object that itself represents a type.
+Binding annotations are raw syntax slots. They may later be interpreted as
+type objects, rank objects, custom ranks, concepts, regions, value objects,
+type objects, or future classifiers. The parser preserves the source shape and
+does not choose among those meanings.
 
-A **kind/rank object** classifies type-objects. In source text, names such as
-`fn` and `type` may appear in explicit rank annotation position.
+Source names in annotations must be distinguished from semantic classifier
+objects:
 
-These terms must be distinguished from source names:
-
-- The declared object may be a type-object. The source name `type`, when used
-  in bare declaration annotation position, is just a preserved `Name`.
-- The source name `type`, when used after the second `:` in an explicit rank
-  annotation, may denote the kind/rank of type-objects.
-- The source name `fn`, when used after the second `:` in an explicit rank
-  annotation, may denote the kind/rank of function type-objects.
+- The source name `type`, when used in annotation position, is just a
+  preserved `Name`.
+- The source name `fn`, when used in annotation position, is just a preserved
+  `Name`.
 - `fn` is not a lexical keyword.
 - `type` is not a lexical keyword.
 - `namespace` is not a lexical keyword.
@@ -551,7 +593,7 @@ annotation structure.
 let t: = expr
 ```
 
-The parser expects a `DeclAnnotation` after `:`. If `=` follows immediately,
+The parser expects a binding annotation after `:`. If `=` follows immediately,
 emit `UnexpectedToken` at `=`, insert `ErrorAst` for the annotation, and
 continue parsing the value.
 
@@ -560,7 +602,7 @@ let t: 42 = x
 ```
 
 `42` is a valid `Literal` which is a valid `PipeExpr` which is a valid
-`DeclAnnotationAst::Bare`. Annotation validity is deferred,
+`BindingAnnotationAst::Expr`. Annotation validity is deferred,
 so this is syntactically valid in v0.1 (even if semantically nonsensical).
 
 ## 5. Deduce lists
@@ -576,7 +618,7 @@ The parser only recognizes a deduce list in strong binding contexts.
 ```text
 DeduceList ::= "<" BinderDeclList? ">"
 BinderDeclList ::= BinderDecl ("," BinderDecl)*
-BinderDecl ::= Name [ ":" TypeObjectAnnotation ]
+BinderDecl ::= Name [ ":" AnnotationTerm ]
 ```
 
 An empty deduce list (`<>`) is syntactically valid (the `BinderDeclList?` is
@@ -594,7 +636,7 @@ DeduceListAst {
 
 BinderDeclAst {
     name: NameAst,
-    annotation: Option<TypeObjectAnnotationAst>,
+    annotation: Option<AnnotationTermAst>,
     span: Span
 }
 ```
@@ -1503,7 +1545,7 @@ AST:
 
 ```text
 ParamClauseAst {
-    params: Vec<ParamItemAst>,
+    params: Vec<BindingSlotAst>,
     span: Span
 }
 ```
@@ -1511,27 +1553,23 @@ ParamClauseAst {
 ### 11.4 Param item
 
 ```text
-ParamItem ::=
-    Name [ ":" TypeObjectAnnotation ]
-  | DeduceList? CanonicalSkeleton [ ":" TypeObjectAnnotation ]
+ParamItem ::= BindingSlotWithoutInitializer
 ```
 
-AST:
+Function parameter slots reuse the general binding-slot grammar:
 
 ```text
-ParamItemAst ::=
-    NameParam {
-        name: NameAst,
-        type_object_annotation: Option<TypeObjectAnnotationAst>,
-        span: Span
-    }
-  | ExtractParam {
-        deduce: Option<DeduceListAst>,
-        skeleton: CanonicalSkeletonAst,
-        type_object_annotation: Option<TypeObjectAnnotationAst>,
-        span: Span
-    }
+val
+val: annotation
+let val: annotation with {}
+<val, T> val pattern: T: annotation with {}
+val: annotation with {a, b}
 ```
+
+`with { ... }` is preserved syntactically. The parser does not decide whether
+names inside the with block are valid, same-level, earlier parameters, or
+resolvable dependencies. Those checks belong to name resolution, type
+calculation, and later ownership/lifetime checking.
 
 ### 11.5 Function item trait clause
 
@@ -1549,41 +1587,45 @@ fn_item_trait: Option<ExprAst>
 ### 11.6 Return clause
 
 ```text
-ReturnClause ::= "->" ReturnBinder [ ":" ReturnConstraint ]
-```
-
-```text
-ReturnBinder ::=
-    TypeObjectAnnotation
-  | DeduceList CanonicalSkeleton
-```
-
-```text
-ReturnConstraint ::= PipeExpr
+ReturnClause ::= "->" BindingSlotWithoutInitializer
 ```
 
 AST:
 
 ```text
 ReturnClauseAst {
-    binder: ReturnBinderAst,
-    constraint: Option<ExprAst>,
+    slot: BindingSlotAst,
     span: Span
 }
 ```
 
+Return clauses are binding sites, not traditional return-type slots. The form:
+
 ```text
-ReturnBinderAst ::=
-    TypeExpr(ExprAst)
-  | ExtractType {
-        deduce: DeduceListAst,
-        skeleton: CanonicalSkeletonAst
-    }
-  | Error(ErrorAst)
+-> result
 ```
 
-Return clauses preserve syntax only. `TypeExpr`, `ExtractType`, and optional
-return constraints are not type-checked or constraint-solved in v0.1.
+binds a named return slot named `result` with no explicit annotation. The form:
+
+```text
+-> _: annotation
+```
+
+is the anonymous return slot constrained by the written annotation.
+
+Valid return binding-slot examples include:
+
+```text
+-> _
+-> _: annotation
+-> result
+-> result: annotation
+-> let result: annotation
+-> <T> result pattern: annotation
+```
+
+Return slots reject `with { ... }` in this phase. That restriction is
+contextual parser structure, not a semantic dependency check.
 
 ### 11.7 Where clause (future reserved)
 
@@ -2006,11 +2048,11 @@ document.
 | Section                              | Negative / diagnostic example               | Expected diagnostic                                                                      |
 | ------------------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | §3.3 Form boundary                   | `let x: type = (a` with newline             | `UnclosedParen` if `)` never found                                                       |
-| §4.6 DeclAnnotation                  | `let t: = x` after `let`                    | `UnexpectedToken` at `=`                                                                 |
-| §4.6 DeclAnnotation                  | `let t: 42 = x` (syntactically valid)       | No diagnostic (valid syntax)                                                             |
-| §4.6 DeclAnnotation                  | `fn f(x) { x }` — not a FnDecl              | No diagnostic (ordinary expr; adjacencies may vary)                                      |
-| §4.6 DeclAnnotation                  | `type T = expr` — not a TypeDecl            | `=` may produce `UnexpectedToken`                                                        |
-| §4.6 DeclAnnotation                  | `namespace ns = expr` — not a NamespaceDecl | `=` may produce `UnexpectedToken`                                                        |
+| §4.6 BindingAnnotation               | `let t: = x` after `let`                    | `ExpectedBindingAnnotation` at `=`                                                       |
+| §4.6 BindingAnnotation               | `let t: 42 = x` (syntactically valid)       | No diagnostic (valid syntax)                                                             |
+| §4.6 BindingAnnotation               | `fn f(x) { x }` — not a FnDecl              | No diagnostic (ordinary expr; adjacencies may vary)                                      |
+| §4.6 BindingAnnotation               | `type T = expr` — not a TypeDecl            | `=` may produce `UnexpectedToken`                                                        |
+| §4.6 BindingAnnotation               | `namespace ns = expr` — not a NamespaceDecl | `=` may produce `UnexpectedToken`                                                        |
 | §5.3 Expression-context `<`/`>`      | `a < b > c`                                 | `ChainedNonAssociativeOperator` on the ungrouped non-associative chain                   |
 | §7.2 Pipe split                      | `\|> f` at form start                       | `UnexpectedToken` at `\|>`                                                               |
 | §7.2 Pipe split                      | `x \|> \|> g` (empty middle)                | Diagnostic on empty segment                                                              |

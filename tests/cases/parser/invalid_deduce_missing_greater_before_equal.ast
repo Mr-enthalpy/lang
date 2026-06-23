@@ -1,27 +1,29 @@
 Program
   Let
-    binder:
-      Extract
+    slot:
+      BindingSlot let=true
         deduce:
           DeduceList
             binders:
               BinderDecl name=x
                 annotation:
-                  Expr
+                  AnnotationTermExpr
                     Expr
                       Pipe
                         Segment has_incoming=false
                           OperatorExpr
                             Atom
                               Name type
-        skeleton:
-          Error "expected canonical skeleton element"
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name z
+        pattern:
+          Error "expected binding pattern after `let`"
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name z

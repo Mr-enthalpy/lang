@@ -1,17 +1,20 @@
 Program
   Let
-    binder:
-      Simple
-        name:
-          OperatorName +
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            OperatorName +
         annotation:
-          Error "expected declaration annotation"
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name plus_impl
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name plus_impl

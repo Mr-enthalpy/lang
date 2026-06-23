@@ -1,34 +1,37 @@
 Program
   Let
-    binder:
-      Simple
-        name:
-          TextName x
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x
         annotation:
-          Bare
+          AnnotationExpr
             Expr
               Pipe
                 Segment has_incoming=false
                   OperatorExpr
                     Atom
                       Name type
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            ArgPack role=SourcePack
-              args:
-                Expr
-                  Pipe
-                    Segment has_incoming=false
-                      OperatorExpr
-                        Atom
-                          Name a
-                Expr
-                  Pipe
-                    Segment has_incoming=false
-                      OperatorExpr
-                        Atom
-                          Name b
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                ArgPack role=SourcePack
+                  args:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name a
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name b

@@ -12,20 +12,24 @@ Program
                       params:
                   returns:
                     ReturnClause
-                      binder:
-                        TypeExpr
-                          Expr
-                            Pipe
-                              Segment has_incoming=false
-                                OperatorExpr
-                                  Atom
-                                    Name T
-                      constraint:
-                        Expr
-                          Pipe
-                            Segment has_incoming=false
-                              OperatorExpr
-                                Atom
-                                  Name C
+                      slot:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName T
+                          annotation:
+                            AnnotationExpr
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Name C
+                          with_clause:
+                            None
+                          initializer:
+                            None
                 BodyBlock
                   forms:

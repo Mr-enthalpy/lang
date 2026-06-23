@@ -513,74 +513,75 @@ _See also: Name, Strong context._
 
 A user-visible binding introduced by `let`. In v0.1, all declarations enter
 through `let`. There is no separate `fn`, `type`, or `namespace`
-declaration syntax. Declarations carry a `DeclAnnotation` that is parsed
-and preserved but not semantically checked.
+declaration syntax. Declarations use a binding slot whose annotation, when
+present, is parsed and preserved but not semantically checked.
 
-_See also: Let binding, DeclAnnotation._
+_See also: Let binding, BindingSlot, BindingAnnotation._
 
 ---
 
 ## Let binding
 
-A top-level `let` form that introduces a name. A simple let binding requires
-a `DeclAnnotation` (`Name ":" DeclAnnotation`); an extract let binding uses
-`DeduceList CanonicalSkeleton` instead. Both are followed by `=` and a value.
-The grammar is `let LetBinder LetWithClause? "=" PipeExpr`.
+A top-level `let` form that introduces a binding slot. A let binding may bind
+a simple binder name or a canonical skeleton pattern, may carry a per-slot
+deduce list, may carry an optional binding annotation, may carry `with { ... }`,
+and is followed by `=` and an initializer expression.
 Let bindings are the only declaration path in v0.1.
 
-_See also: Declaration, LetBinder, DeclAnnotation._
+_See also: Declaration, BindingSlot, BindingAnnotation._
 
 ---
 
-## DeclAnnotation
+## BindingSlot
 
-The annotation following `:` in a `SimpleLetBinder`. It preserves the written
-annotation associated with a declared name. It has two explicit forms: a bare
-annotation expression, or a type-object annotation followed by a rank
-annotation. v0.1 does not determine whether the declared object is a value,
-type-object, namespace-like object, or function-like object. The grammar is
-`DeclAnnotation ::= BareDeclAnnotation | TypeObjectAnnotation ":" RankAnnotation`.
-Parsed into `DeclAnnotationAst::Bare` (single expression)
-or `DeclAnnotationAst::TypeObjectWithRank` (type-object annotation + rank).
+A parser-level binding-site shape reused by let bindings, closure parameters,
+and closure returns. It preserves optional `let`, optional `DeduceList`, a
+binding pattern, optional binding annotation, optional `with { ... }`, and an
+optional initializer where the surrounding context allows one.
 
-> **Distinction**: `DeclAnnotation` is a parser-level construct, not a
+_See also: Let binding, BindingAnnotation, CanonicalSkeleton._
+
+---
+
+## BindingAnnotation
+
+The annotation following `:` in a `BindingSlot`. It preserves the written
+annotation associated with a binding site. It has two explicit raw forms: a
+single annotation expression, or a compound annotation with a preserved `:`
+between the left annotation term and right annotation expression. v0.1 does
+not determine whether the annotation denotes a value object, type object, rank
+object, custom rank, concept, region, or future classifier. Parsed into
+`BindingAnnotationAst::Expr` or `BindingAnnotationAst::Compound`.
+
+> **Distinction**: `BindingAnnotation` is a parser-level construct, not a
 > semantic type. v0.1 does not check that annotation names resolve to
-> anything. A bare declaration annotation is preserved exactly as written.
+> anything. A single-expression annotation is preserved exactly as written.
 
-_See also: TypeObjectAnnotation, RankAnnotation, Type-object._
-
----
-
-## TypeObjectAnnotation
-
-The first part of an explicit rank `DeclAnnotation`, before the second `:`.
-Can be a `PipeExpr` or a `TypeHole` (`_`). In `let f: fn = ...`, there is no
-type-object annotation; the whole annotation is `Bare(Name("fn"))`.
-
-_See also: DeclAnnotation, TypeHole, RankAnnotation, Type-object._
+_See also: BindingSlot, AnnotationTerm, Type-object._
 
 ---
 
-## TypeHole
+## AnnotationTerm
 
-The token `_` used as a type-object annotation placeholder. Appears in
-forms like `let f: _: fn = ...`, where the type-object is anonymous and only
-the rank is specified. Represented as `TypeObjectAnnotationAst::Hole`.
+The left side of a compound `BindingAnnotation`, before the second `:`. It can
+be a preserved expression or a hole (`_`). In `let f: fn = ...`, there is no
+compound annotation; the whole annotation is `BindingAnnotationAst::Expr`.
 
-> **Distinction**: `TypeHole` is a type-object level placeholder, distinct
+_See also: BindingAnnotation, AnnotationHole, Type-object._
+
+---
+
+## AnnotationHole
+
+The token `_` used as an annotation-term placeholder. Appears in forms like
+`let f: _: fn = ...`, where the left annotation term is anonymous and the
+right annotation expression is preserved. Represented as
+`AnnotationTermAst::Hole`.
+
+> **Distinction**: `AnnotationHole` is an annotation-term placeholder, distinct
 > from a canonical skeleton wildcard `_`.
 
-_See also: TypeObjectAnnotation, CanonicalSkeleton, Type-object._
-
----
-
-## RankAnnotation
-
-The second part of a `DeclAnnotation` after the second `:`. Appears in
-forms like `let f: _: fn = ...` where `fn` is the rank annotation. Stored
-as an `ExprAst`. v0.1 does not check rank validity.
-
-_See also: DeclAnnotation, TypeObjectAnnotation._
+_See also: AnnotationTerm, CanonicalSkeleton, Type-object._
 
 ---
 
@@ -590,10 +591,11 @@ A type-theoretic object: the type of some value, or an object that itself
 represents a type. In v0.1 declarations:
 
 - In `let t: type = ...`, `type` is preserved as a bare annotation expression.
-- In `let f: _: fn = ...`, `_` is an anonymous type-object (a `TypeHole`)
-  whose kind/rank is given by the source name `fn`.
+- In `let f: _: fn = ...`, `_` is an annotation hole. A later semantic pass may
+  interpret it as an anonymous type-object whose kind/rank is given by the
+  source name `fn`.
 
-_See also: Kind/rank object, TypeObjectAnnotation, TypeHole._
+_See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 
 ---
 
@@ -607,10 +609,10 @@ and `type` may appear in explicit rank annotation position:
 - `let f: _: fn = ...` - the source name `fn` occupies the kind/rank
   annotation position for the anonymous type-object `_`.
 
-v0.1 does not check kind/rank validity. The parser preserves the annotation
+v0.1 does not check kind/rank validity. The parser preserves binding annotation
 structure only.
 
-_See also: Type-object, RankAnnotation, DeclAnnotation._
+_See also: Type-object, BindingAnnotation, AnnotationTerm._
 
 ---
 

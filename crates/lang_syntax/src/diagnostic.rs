@@ -8,7 +8,7 @@ pub enum DiagnosticCode {
     UnexpectedToken,
     ExpectedName,
     ExpectedColon,
-    ExpectedDeclAnnotation,
+    ExpectedBindingAnnotation,
     ExpectedEqual,
     EmptyPipeSegment,
     ExpectedNameAfterDot,

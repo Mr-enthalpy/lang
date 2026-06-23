@@ -18,11 +18,10 @@ only records what it currently does.
 | Weak lexer (Name / IntLiteral / StringLiteral / Symbol / Trivia / Invalid / Eof) | `implemented-syntax` | `token.rs`, `lexer.rs` | `ast-construction-v0.1.md` §2 | No keyword classification. Contextual names are ordinary `Name` tokens. |
 | Operator-aware lexer (26 operator spellings) | `implemented-syntax` | `token.rs` (OperatorSpelling), `lexer.rs` | `operator-design.md` | Maximal-munch. `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `<<`, `>>`, `!`, `&`, `@`, `~`, `^`, `$`, `++`, `--`, `?`, `+=`, `-=`, `*=`, `/=`, `<<=`, `>>=` |
 | `===` / TripleEqual token | `implemented-syntax` | `token.rs` (Symbol::TripleEqual), `lexer.rs` | `entity-alias-design.md` | Lexed before `==` and `=`. Structural delimiter, NOT an operator spelling. |
-| `let` simple binder (`name: annotation = expr`) | `implemented-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4 | `DeclAnnotation` parsed and preserved; no semantic checking. |
-| `let` extract binder (`<holes> skeleton = expr`) | `implemented-syntax` | `let_stmt.rs`, `deduce.rs`, `canonical.rs` | `ast-construction-v0.1.md` §4-6 | DeduceList + CanonicalSkeleton parsed and preserved. |
+| Binding slots (let, parameters, returns) | `implemented-syntax` | `let_stmt.rs`, `closure.rs`, `deduce.rs`, `canonical.rs` | `ast-construction-v0.1.md` §4, §11 | Optional `let`, per-slot deduce list, binding pattern, optional annotation, optional `with` where allowed, optional initializer by context. |
 | `guard` attrs | `removed-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4 | `guard` is ordinary `Name` unless future syntax reintroduces it. |
-| `with { ... }` clause | `implemented-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4.2 | `with {}` is lexical-only; non-empty names are preserved syntactically; no lifetime semantics. |
-| Declaration annotation (`: type`, `: _ : fn`) | `implemented-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4.4-4.6 | `DeclAnnotationAst::Bare` and `TypeObjectWithRank` preserved; no semantic checking. |
+| `with { ... }` clause | `implemented-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4.2 | `with {}` is empty; non-empty names are preserved syntactically; no name resolution or lifetime semantics. |
+| Binding annotation (`: type`, `: _ : fn`) | `implemented-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4.4-4.6 | `BindingAnnotationAst::Expr` and `Compound` preserved; no type/rank/classifier checking. |
 | Operator binder names (`let +: _: operator = ...`) | `implemented-syntax` | `let_stmt.rs`, `token.rs` | `operator-design.md` | Operator names accepted as binder; `<` not accepted (extract-let strong context). |
 | PipeExpr / Segment / ArgPack roles | `implemented-syntax` | `pipe.rs`, `argpack.rs` | `ast-construction-v0.1.md` §7-9 | SourcePack, InsertPack, RightTargetSubsegment role assignment. |
 | OperatorExpr (prefix `-`, postfix, binary) | `implemented-syntax` | `operator.rs` | `operator-design.md` + `ast-construction-v0.1.md` §7.3 | Raw AST sugar; precedence/associativity per operator-design.md. No lookup or lowering. |
@@ -53,5 +52,5 @@ workspace smoke tests).
 | Category | Count |
 |---|---|
 | Lexer golden cases | 11 |
-| Parser golden cases | 190 |
+| Parser golden cases | 210 |
 | Diagnostic golden cases | 32 |

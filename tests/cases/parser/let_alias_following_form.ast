@@ -7,24 +7,27 @@ Program
         components:
           component Name a
   Let
-    binder:
-      Simple
-        name:
-          TextName y
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName y
         annotation:
-          Bare
+          AnnotationExpr
             Expr
               Pipe
                 Segment has_incoming=false
                   OperatorExpr
                     Atom
                       Name type
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name z
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name z

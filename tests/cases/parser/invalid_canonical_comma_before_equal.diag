@@ -1,1 +1,2 @@
-error InvalidCanonicalSkeleton "expected canonical skeleton element" @ 1:9 [8..9]
+error ExpectedName "expected binding pattern after `let`" @ 1:9 [8..9]
+error ExpectedEqual "expected `=` in let" @ 1:9 [8..9]

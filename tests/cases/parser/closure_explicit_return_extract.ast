@@ -10,24 +10,40 @@ Program
                   params:
                     ParamClause
                       params:
-                        NameParam name=x
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
                           annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
                             None
                   returns:
                     ReturnClause
-                      binder:
-                        ExtractType
+                      slot:
+                        BindingSlot let=false
                           deduce:
                             DeduceList
                               binders:
                                 BinderDecl name=y
                                   annotation:
                                     None
-                          skeleton:
-                            CanonicalSegment
-                              elements:
-                                CanonicalName role=Hole name=y
-                                CanonicalName role=NodeName name=Node
+                          pattern:
+                            PatternSkeleton
+                              CanonicalSegment
+                                elements:
+                                  CanonicalName role=Hole name=y
+                                  CanonicalName role=NodeName name=Node
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
                 BodyBlock
                   forms:
                     ExprForm

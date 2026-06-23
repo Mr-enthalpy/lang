@@ -1,7 +1,7 @@
 Program
   Let
-    binder:
-      Extract
+    slot:
+      BindingSlot let=true
         deduce:
           DeduceList
             binders:
@@ -11,23 +11,26 @@ Program
               BinderDecl name=tail
                 annotation:
                   None
-        skeleton:
-          CanonicalSegment
-            elements:
-              CanonicalArgPack
-                elements:
-                  CanonicalName role=Hole name=head
-                  CanonicalName role=Hole name=tail
-              CanonicalNavPath
-                names:
-                  List
-                  Cons
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name xs
+        pattern:
+          PatternSkeleton
+            CanonicalSegment
+              elements:
+                CanonicalArgPack
+                  elements:
+                    CanonicalName role=Hole name=head
+                    CanonicalName role=Hole name=tail
+                CanonicalNavPath
+                  names:
+                    List
+                    Cons
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name xs

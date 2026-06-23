@@ -96,13 +96,13 @@ spanning the failed region.
 - **Recovery**: Skip to `=` or the current form boundary.
 - **AST effect**: Preserve the let binder name and attach an error annotation.
 
-#### `ExpectedDeclAnnotation`
+#### `ExpectedBindingAnnotation`
 
-- **Trigger**: A simple let binder has `:` but no declaration annotation before
-  `=` or `with`.
+- **Trigger**: A binding slot has `:` but no binding annotation before its
+  context-specific boundary, such as `=`, `with`, `,`, `)`, `=>`, or `{`.
 - **Primary span**: The token where the annotation was expected.
-- **Recovery**: Continue at `=` or `with`.
-- **AST effect**: Use `DeclAnnotationAst::Error`.
+- **Recovery**: Continue at the context-specific boundary.
+- **AST effect**: Use `BindingAnnotationAst::Error`.
 
 #### `ExpectedEqual`
 
@@ -120,8 +120,8 @@ spanning the failed region.
 - **Recovery**: Recover to `}`, `=`, or the current form boundary.
 - **AST effect**: Preserve `WithClauseKind::Error` when a `WithClauseAst` is
   retained, or omit the with clause and recover locally. Malformed `with`
-  syntax must not normalize to `WithClauseKind::Lexical`; only valid `with {}`
-  may produce lexical with.
+  syntax must not normalize to `WithClauseKind::Empty`; only valid `with {}`
+  may produce an empty with clause.
 
 #### `EmptyPipeSegment`
 

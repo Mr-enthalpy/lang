@@ -1,6 +1,6 @@
 use crate::{
-    BinderDeclAst, DeduceListAst, DiagnosticCode, NameAst, Span, Symbol, TokenKind,
-    TypeObjectAnnotationAst,
+    AnnotationTermAst, BinderDeclAst, DeduceListAst, DiagnosticCode, NameAst, Span, Symbol,
+    TokenKind,
 };
 
 use super::form::Parser;
@@ -41,15 +41,15 @@ pub fn parse_deduce_list(parser: &mut Parser<'_>) -> DeduceListAst {
         let start_span = name.span;
 
         let annotation = if parser.cursor.consume_symbol(Symbol::Colon).is_some() {
-            let type_object = parse_type_object_in_deduce(parser);
-            Some(type_object)
+            let annotation = parse_annotation_term_in_deduce(parser);
+            Some(annotation)
         } else {
             None
         };
 
         let end_span = annotation
             .as_ref()
-            .map(|a| type_object_span(a))
+            .map(|a| annotation_term_span(a))
             .unwrap_or(name.span);
 
         binders.push(BinderDeclAst {
@@ -96,7 +96,7 @@ pub fn parse_deduce_list(parser: &mut Parser<'_>) -> DeduceListAst {
     }
 }
 
-fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationAst {
+fn parse_annotation_term_in_deduce(parser: &mut Parser<'_>) -> AnnotationTermAst {
     if parser.cursor.at_name("_") {
         let next = parser.cursor.peek_next_non_trivia();
         if matches!(
@@ -105,7 +105,7 @@ fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationA
         ) || matches!(next.kind, TokenKind::Eof)
         {
             let hole = parser.cursor.bump_non_trivia();
-            return TypeObjectAnnotationAst::Hole { span: hole.span };
+            return AnnotationTermAst::Hole { span: hole.span };
         }
     }
 
@@ -117,12 +117,12 @@ fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationA
         let span = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidDeduceList,
-            "expected type-object annotation after `:`",
+            "expected deduce annotation after `:`",
             span,
         );
-        return TypeObjectAnnotationAst::Expr(super::argpack::error_expr(
+        return AnnotationTermAst::Expr(super::argpack::error_expr(
             parser,
-            "missing type-object annotation",
+            "missing deduce annotation",
             span,
         ));
     }
@@ -132,13 +132,13 @@ fn parse_type_object_in_deduce(parser: &mut Parser<'_>) -> TypeObjectAnnotationA
             || p.cursor.at_symbol(Symbol::Greater)
             || p.cursor.at_symbol(Symbol::Equal)
     });
-    TypeObjectAnnotationAst::Expr(expr)
+    AnnotationTermAst::Expr(expr)
 }
 
-fn type_object_span(annotation: &TypeObjectAnnotationAst) -> Span {
+fn annotation_term_span(annotation: &AnnotationTermAst) -> Span {
     match annotation {
-        TypeObjectAnnotationAst::Expr(expr) => expr.span,
-        TypeObjectAnnotationAst::Hole { span } => *span,
+        AnnotationTermAst::Expr(expr) => expr.span,
+        AnnotationTermAst::Hole { span } => *span,
     }
 }
 

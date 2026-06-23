@@ -1,2 +1,1 @@
-error ExpectedName "expected name after `let`" @ 1:5 [4..5]
-error ExpectedEqual "expected `=` in let" @ 1:5 [4..5]
+error ExpectedEqual "expected `=` in let" @ 1:9 [8..11]

@@ -4,28 +4,51 @@ Program
       Pipe
         Segment has_incoming=false
           OperatorExpr
-            Error "unsupported prefix operator"
-          OperatorExpr
-            OperatorSugar fixity=Binary operator=">"
-              lhs:
-                Atom
-                  Name T
-              rhs:
-                Error "expected operator right-hand side"
-          OperatorExpr
             Atom
-              Name cap
-          ArgPack role=RightTargetSubsegment
-            args:
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name x
-                    OperatorExpr
-                      Atom
-                        Name T
-                    OperatorExpr
-                      Atom
-                        Name x
+              Closure Explicit
+                FnHeadPrefix
+                  deduce:
+                    DeduceList
+                      binders:
+                        BinderDecl name=T
+                          annotation:
+                            None
+                  captures:
+                    CaptureClause
+                      items:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name cap
+                  params:
+                    ParamClause
+                      params:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
+                          annotation:
+                            AnnotationExpr
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Name T
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

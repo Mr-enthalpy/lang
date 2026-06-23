@@ -55,16 +55,18 @@ Normalization must **not** assume:
 
 ## Let and alias-let invariants
 
-- `LetAst` preserves `binder`, optional `with_clause`, `value`, and `span`.
+- `LetAst` preserves a `BindingSlotAst` and `span`.
 - The absence of a with clause is distinct from explicit `with {}`.
-- `WithClauseKind::Lexical` preserves `with {}` as lexical-only syntax.
-- `WithClauseKind::Semantic` preserves non-empty `with { name, ... }` payloads syntactically.
+- `WithClauseKind::Empty` preserves `with {}` as an explicit empty modifier.
+- `WithClauseKind::Items` preserves non-empty `with { name, ... }` payloads syntactically.
 - `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
-- `LetBinderAst` distinguishes `Simple` (name + annotation), `Extract` (deduce + skeleton), and `Error`.
+- `BindingSlotAst` preserves optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`.
+- `BindingPatternAst` distinguishes simple binder names from canonical skeleton patterns.
 - `LetAliasAst` preserves `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
-- `DeclAnnotationAst` distinguishes `Bare` (single expression), `TypeObjectWithRank` (type-object + rank), and `Error`.
-- `TypeObjectAnnotationAst` distinguishes `Expr` and `Hole`.
+- `BindingAnnotationAst` distinguishes a single preserved expression, an explicit compound annotation, and `Error`.
+- `AnnotationTermAst` distinguishes `Expr` and `Hole`.
+- Raw AST preserves binding-site shape. It does not determine whether an annotation denotes a type, rank, custom rank, type object, value object, concept, region, or future classifier. It also does not resolve `with` names or decide same-level binding dependencies.
 
 ## DeduceList and CanonicalSkeleton invariants
 
@@ -108,10 +110,9 @@ Normalization must **not** assume:
 - Raw AST has no representation for a bare `{ ... }` closure. A bare `{ ... }` in atom position is an error, not `ClosureAst`.
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, and `span`. All clauses are optional.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries containing expression AST.
-- `ParamClauseAst` preserves ordered `ParamItemAst` entries.
-- `ParamItemAst` distinguishes `NameParam` (name + optional annotation), `ExtractParam` (deduce + skeleton + optional annotation), and `Error`.
-- `ReturnClauseAst` preserves a `ReturnBinderAst` and optional constraint expression.
-- `ReturnBinderAst` distinguishes `TypeExpr`, `ExtractType` (deduce + skeleton), and `Error`.
+- `ParamClauseAst` preserves ordered `BindingSlotAst` parameter entries.
+- `ReturnClauseAst` preserves a `BindingSlotAst`.
+- Parameter and return binding slots reuse the same raw binding-site shape as let, with context-specific restrictions on initializer and `with`.
 - `BodyBlockAst` preserves ordered `FormAst` entries and `span`.
 
 ## Selector and navigation invariants

@@ -1,14 +1,13 @@
-use crate::TokenKind;
 use crate::{
-    AtomAst, AtomKind, BodyBlockAst, CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst,
-    ClosureAst, DiagnosticCode, ExplicitClosureAst, FnHeadPrefixAst, InlineClosureAst, NameAst,
-    ParamClauseAst, ParamItemAst, ReturnBinderAst, ReturnClauseAst, Span, Symbol,
-    TypeObjectAnnotationAst,
+    AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DiagnosticCode,
+    ExplicitClosureAst, FnHeadPrefixAst, InlineClosureAst, ParamClauseAst, ReturnClauseAst, Symbol,
 };
 
 use super::{
-    canonical::parse_canonical_skeleton, deduce::parse_deduce_list, expr::parse_expr_until,
+    deduce::parse_deduce_list,
+    expr::parse_expr_until,
     form::Parser,
+    let_stmt::{parse_binding_slot, BindingSlotContext},
 };
 
 // -- Body block --
@@ -255,7 +254,7 @@ fn parse_param_clause(
             break;
         }
 
-        let param = parse_param_item(parser, head_deduce);
+        let param = parse_binding_slot(parser, BindingSlotContext::Param, head_deduce, false);
         params.push(param);
 
         if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
@@ -295,217 +294,14 @@ fn parse_param_clause(
     }
 }
 
-fn parse_param_item(
-    parser: &mut Parser<'_>,
-    head_deduce: Option<&crate::DeduceListAst>,
-) -> ParamItemAst {
-    let token = parser.cursor.peek_non_trivia();
-
-    // Extract param: starts with <, (, or _
-    if parser.cursor.at_symbol(Symbol::Less) || parser.cursor.at_symbol(Symbol::LParen) {
-        let deduce = if parser.cursor.at_symbol(Symbol::Less) {
-            Some(parse_deduce_list(parser))
-        } else {
-            None
-        };
-        let empty_deduce;
-        let deduce_ref = match &deduce {
-            Some(d) => d,
-            None => match head_deduce {
-                Some(hd) => hd,
-                None => {
-                    empty_deduce = crate::DeduceListAst {
-                        binders: vec![],
-                        span: parser.cursor.current_span(),
-                    };
-                    &empty_deduce
-                }
-            },
-        };
-        let skeleton = parse_canonical_skeleton(parser, deduce_ref);
-        let annotation = parse_param_annotation(parser);
-        let span = deduce
-            .as_ref()
-            .map(|d| d.span)
-            .unwrap_or(skeleton_span(&skeleton));
-        let end = annotation
-            .as_ref()
-            .map(|a| type_object_span(a))
-            .unwrap_or(span);
-        return ParamItemAst::ExtractParam {
-            deduce,
-            skeleton,
-            annotation,
-            span: span.join(end),
-        };
-    }
-
-    if matches!(token.kind, TokenKind::Name if token.text == "_") && is_at_param_stop(parser, true)
-    {
-        let wildcard_span = parser.cursor.current_span();
-        parser.cursor.bump_non_trivia();
-        let skeleton = CanonicalSkeletonAst::Wildcard {
-            span: wildcard_span,
-        };
-        let annotation = parse_param_annotation(parser);
-        let end = annotation
-            .as_ref()
-            .map(|a| type_object_span(a))
-            .unwrap_or(wildcard_span);
-        return ParamItemAst::ExtractParam {
-            deduce: None,
-            skeleton,
-            annotation,
-            span: wildcard_span.join(end),
-        };
-    }
-
-    // Name param or extract skeleton starting with Name
-    if matches!(token.kind, TokenKind::Name) {
-        let next = parser.cursor.peek_next_non_trivia();
-        if !matches!(
-            next.kind,
-            TokenKind::Symbol(Symbol::Colon | Symbol::Comma | Symbol::RParen)
-        ) && !matches!(next.kind, TokenKind::Eof)
-        {
-            // Name is the start of a canonical skeleton, not a simple name param
-            let empty_deduce;
-            let deduce_ref = match head_deduce {
-                Some(hd) => hd,
-                None => {
-                    empty_deduce = crate::DeduceListAst {
-                        binders: vec![],
-                        span: parser.cursor.current_span(),
-                    };
-                    &empty_deduce
-                }
-            };
-            let skeleton = parse_canonical_skeleton(parser, deduce_ref);
-            let annotation = parse_param_annotation(parser);
-            let sk_span = skeleton_span(&skeleton);
-            let end = annotation
-                .as_ref()
-                .map(|a| type_object_span(a))
-                .unwrap_or(sk_span);
-            return ParamItemAst::ExtractParam {
-                deduce: None,
-                skeleton,
-                annotation,
-                span: sk_span.join(end),
-            };
-        }
-
-        let name_token = parser.cursor.bump_non_trivia();
-        let name_span = name_token.span;
-        let name = NameAst {
-            text: name_token.text.clone(),
-            span: name_span,
-        };
-        let annotation = parse_param_annotation(parser);
-        let end = annotation
-            .as_ref()
-            .map(|a| type_object_span(a))
-            .unwrap_or(name_span);
-        return ParamItemAst::NameParam {
-            span: name_span.join(end),
-            name,
-            annotation,
-        };
-    }
-
-    let span = token.span;
-    parser.error(
-        DiagnosticCode::InvalidClosureHead,
-        "expected parameter",
-        span,
-    );
-    ParamItemAst::Error(parser.error_ast("expected parameter", span))
-}
-
-fn parse_param_annotation(parser: &mut Parser<'_>) -> Option<TypeObjectAnnotationAst> {
-    if !parser.cursor.consume_symbol(Symbol::Colon).is_some() {
-        return None;
-    }
-    let token = parser.cursor.peek_non_trivia();
-    if matches!(token.kind, TokenKind::Name if token.text == "_") && is_at_param_stop(parser, false)
-    {
-        let hole = parser.cursor.bump_non_trivia();
-        return Some(TypeObjectAnnotationAst::Hole { span: hole.span });
-    }
-    let expr = parse_expr_until(parser, |p| {
-        p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RParen)
-    });
-    Some(TypeObjectAnnotationAst::Expr(expr))
-}
-
-fn is_at_param_stop(parser: &mut Parser<'_>, check_next: bool) -> bool {
-    let look = if check_next {
-        parser.cursor.peek_next_non_trivia()
-    } else {
-        parser.cursor.peek_non_trivia()
-    };
-    matches!(look.kind, TokenKind::Symbol(Symbol::Comma | Symbol::RParen))
-        || matches!(look.kind, TokenKind::Eof)
-}
-
 // -- Return clause --
 
 fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
     let start = parser.cursor.current_span();
-
-    let binder = if at_return_binder_boundary(parser) {
-        let span = parser.cursor.current_span();
-        parser.error(
-            DiagnosticCode::InvalidClosureHead,
-            "expected return type after `->`",
-            span,
-        );
-        ReturnBinderAst::Error(parser.error_ast("expected return type", span))
-    } else if parser.cursor.at_symbol(Symbol::Less) {
-        let deduce = parse_deduce_list(parser);
-        let skeleton = parse_canonical_skeleton(parser, &deduce);
-        let span = deduce.span.join(skeleton_span(&skeleton));
-        ReturnBinderAst::ExtractType {
-            deduce,
-            skeleton,
-            span,
-        }
-    } else {
-        let expr = parse_expr_until(parser, |p| {
-            p.cursor.at_symbol(Symbol::Colon)
-                || p.cursor.at_symbol(Symbol::FatArrow)
-                || p.cursor.at_symbol(Symbol::LBrace)
-                || p.cursor.is_form_boundary()
-        });
-        ReturnBinderAst::TypeExpr(expr)
-    };
-
-    let constraint = if parser.cursor.consume_symbol(Symbol::Colon).is_some() {
-        if at_return_constraint_boundary(parser) {
-            let span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::InvalidClosureHead,
-                "expected return constraint after `:`",
-                span,
-            );
-        }
-        let expr = parse_expr_until(parser, |p| {
-            p.cursor.at_symbol(Symbol::FatArrow)
-                || p.cursor.at_symbol(Symbol::LBrace)
-                || p.is_form_boundary()
-        });
-        Some(expr)
-    } else {
-        None
-    };
-
-    let end = constraint
-        .as_ref()
-        .map(|c| c.span)
-        .unwrap_or(return_binder_span(&binder));
+    let slot = parse_binding_slot(parser, BindingSlotContext::Return, None, false);
+    let end = slot.span;
     ReturnClauseAst {
-        binder,
-        constraint,
+        slot,
         span: start.join(end),
     }
 }
@@ -515,44 +311,4 @@ fn at_fn_item_trait_boundary(parser: &mut Parser<'_>) -> bool {
         || parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
         || parser.is_form_boundary()
-}
-
-fn at_return_binder_boundary(parser: &mut Parser<'_>) -> bool {
-    parser.cursor.at_symbol(Symbol::Colon)
-        || parser.cursor.at_symbol(Symbol::FatArrow)
-        || parser.cursor.at_symbol(Symbol::LBrace)
-        || parser.is_form_boundary()
-}
-
-fn at_return_constraint_boundary(parser: &mut Parser<'_>) -> bool {
-    parser.cursor.at_symbol(Symbol::FatArrow)
-        || parser.cursor.at_symbol(Symbol::LBrace)
-        || parser.is_form_boundary()
-}
-
-fn return_binder_span(binder: &ReturnBinderAst) -> Span {
-    match binder {
-        ReturnBinderAst::TypeExpr(expr) => expr.span,
-        ReturnBinderAst::ExtractType { span, .. } => *span,
-        ReturnBinderAst::Error(error) => error.span,
-    }
-}
-
-fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
-    match skeleton {
-        CanonicalSkeletonAst::Segment { span, .. } => *span,
-        CanonicalSkeletonAst::ArgPack { span, .. } => *span,
-        CanonicalSkeletonAst::Wildcard { span } => *span,
-        CanonicalSkeletonAst::Name { span, .. } => *span,
-        CanonicalSkeletonAst::NavPath { span, .. } => *span,
-        CanonicalSkeletonAst::Literal { span, .. } => *span,
-        CanonicalSkeletonAst::Error(error) => error.span,
-    }
-}
-
-fn type_object_span(annotation: &TypeObjectAnnotationAst) -> Span {
-    match annotation {
-        TypeObjectAnnotationAst::Expr(expr) => expr.span,
-        TypeObjectAnnotationAst::Hole { span } => *span,
-    }
 }

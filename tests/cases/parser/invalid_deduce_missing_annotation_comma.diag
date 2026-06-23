@@ -1,1 +1,1 @@
-error InvalidDeduceList "expected type-object annotation after `:`" @ 1:8 [7..8]
+error InvalidDeduceList "expected deduce annotation after `:`" @ 1:8 [7..8]
