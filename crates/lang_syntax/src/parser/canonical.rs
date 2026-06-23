@@ -1,6 +1,6 @@
 use crate::{
-    CanonicalNameRole, CanonicalSkeletonAst, DeduceListAst, DiagnosticCode, ErrorAst, NameAst,
-    Symbol, TokenKind,
+    CanonicalNameRole, CanonicalProductElementAst, CanonicalSkeletonAst, DeduceListAst,
+    DiagnosticCode, ErrorAst, NameAst, Symbol, TokenKind,
 };
 
 use super::form::Parser;
@@ -87,6 +87,7 @@ fn parse_canonical_product_extract(
 
     parser.enter_nesting();
     let mut elements = Vec::new();
+    let mut expect_element = true;
 
     loop {
         if parser.cursor.at_eof()
@@ -96,23 +97,28 @@ fn parse_canonical_product_extract(
             break;
         }
 
-        let element = parse_canonical_skeleton(parser, deduce);
-        elements.push(element);
-
-        if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
-            break;
+        if parser.cursor.at_symbol(Symbol::Comma) {
+            let comma = parser.cursor.bump_non_trivia();
+            if expect_element {
+                elements.push(CanonicalProductElementAst::Unit { span: comma.span });
+            }
+            expect_element = true;
+            continue;
         }
 
-        if parser.cursor.at_symbol(Symbol::RParen)
-            || parser.cursor.at_eof()
-            || parser.is_form_boundary()
-        {
-            let span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::InvalidCanonicalSkeleton,
-                "trailing comma in canonical product extraction",
-                span,
-            );
+        let element = parse_canonical_skeleton(parser, deduce);
+        elements.push(CanonicalProductElementAst::Skeleton(element));
+
+        if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
+            expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(CanonicalProductElementAst::Unit { span: comma.span });
+                break;
+            }
+        } else {
             break;
         }
     }

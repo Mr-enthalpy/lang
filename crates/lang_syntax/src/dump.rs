@@ -238,7 +238,14 @@ fn dump_canonical_skeleton(
             line(output, indent, "CanonicalProductExtract");
             line(output, indent + 1, "elements:");
             for elem in elements {
-                dump_canonical_skeleton(output, elem, indent + 2);
+                match elem {
+                    crate::CanonicalProductElementAst::Skeleton(skeleton) => {
+                        dump_canonical_skeleton(output, skeleton, indent + 2)
+                    }
+                    crate::CanonicalProductElementAst::Unit { .. } => {
+                        line(output, indent + 2, "CanonicalProductUnit")
+                    }
+                }
             }
         }
         crate::CanonicalSkeletonAst::Wildcard { .. } => {

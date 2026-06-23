@@ -366,7 +366,7 @@ fn parse_param_clause(
     parser: &mut Parser<'_>,
     head_deduce: Option<&crate::DeduceListAst>,
 ) -> ParamClauseAst {
-    let extract = parse_product_extract(parser, head_deduce);
+    let extract = parse_product_extract(parser, BindingSlotContext::Param, head_deduce);
     let span = extract.span;
     ParamClauseAst { extract, span }
 }

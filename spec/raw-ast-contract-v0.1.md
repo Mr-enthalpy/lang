@@ -77,6 +77,7 @@ Normalization must **not** assume:
 
 - `DeduceListAst` preserves declared binder names (`BinderDeclAst`) and their optional annotations.
 - `CanonicalSkeletonAst` preserves `Segment`, `ProductExtract`, `Wildcard`, `Name` (with `CanonicalNameRole`), `Path`, `Literal`, and `Error`.
+- `CanonicalProductElementAst` is either `Skeleton(CanonicalSkeletonAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas in canonical product extraction are preserved as unit elements.
 - `CanonicalNameRole` distinguishes `Hole`, `NodeName`, and `Unknown`.
 - The `Hole` / `NodeName` distinction is a parse-time role marker. No semantic matching is performed.
 - `where` is a reserved closure-head position but is not parsed as an active clause. `acquire` is an ordinary name.

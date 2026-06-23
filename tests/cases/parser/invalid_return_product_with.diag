@@ -1,0 +1,1 @@
+error InvalidClosureHead "with clause is not allowed in return slot" @ 1:10 [9..16]

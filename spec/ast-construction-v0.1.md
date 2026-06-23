@@ -736,8 +736,9 @@ CanonicalElement ::=
     CanonicalProductExtract
   | CanonicalAtom
 
-CanonicalProductExtract ::= "(" CanonicalSkeletonList? ")"
-CanonicalSkeletonList ::= CanonicalSkeleton ("," CanonicalSkeleton)*
+CanonicalProductExtract ::= "(" CanonicalProductSlotList? ")"
+CanonicalProductSlotList ::= CanonicalProductSlot ("," CanonicalProductSlot)* ","?
+CanonicalProductSlot ::= CanonicalSkeleton | <empty>
 
 CanonicalAtom ::=
     "_"
@@ -757,7 +758,7 @@ CanonicalSkeletonAst ::=
         span: Span
     }
   | ProductExtract {
-        elements: Vec<CanonicalSkeletonAst>,
+        elements: Vec<CanonicalProductElementAst>,
         span: Span
     }
   | Wildcard {
@@ -777,6 +778,16 @@ CanonicalSkeletonAst ::=
         span: Span
     }
 ```
+
+```text
+CanonicalProductElementAst ::=
+    Skeleton(CanonicalSkeletonAst)
+  | Unit { span: Span }
+```
+
+Empty slots produced by leading, doubled, or trailing commas in canonical
+product extraction are preserved as `Unit { span }`. They are not omitted, not
+wildcards, and not implicit discards.
 
 `CanonicalNameRole`:
 
@@ -1441,9 +1452,10 @@ prefix position begins a capture clause. The distinction is purely contextual.
 ### 9.1 Syntax
 
 ```text
-ProductExpr ::= "(" ProductExprList? ")"
-BracketProductExpr ::= "[" ProductExprList? "]"
-ProductExprList ::= PipeExpr ("," PipeExpr)* ","?
+ProductExpr ::= "(" ProductSlotList? ")"
+BracketProductExpr ::= "[" ProductSlotList? "]"
+ProductSlotList ::= ProductSlot ("," ProductSlot)* ","?
+ProductSlot ::= PipeExpr | <empty>
 ```
 
 AST:
@@ -1488,6 +1500,14 @@ In binding / extraction context, the same surface product form is parsed as
 product extraction:
 
 ```text
+ProductExtract ::= "(" ProductExtractSlotList? ")"
+ProductExtractSlotList ::= ProductExtractSlot ("," ProductExtractSlot)* ","?
+ProductExtractSlot ::= BindingSlot | <empty>
+```
+
+AST:
+
+```text
 ProductExtractAst {
     elements: Vec<ProductExtractElementAst>,
     span: Span
@@ -1501,6 +1521,13 @@ ProductExtractElementAst ::=
 Empty product positions produced by leading, doubled, or trailing commas are
 preserved as unit product extraction elements. `_` is the explicit wildcard /
 consuming pattern. A comma-created unit position matches only unit.
+
+Product extraction elements inherit the binding-slot context of the surrounding
+position. Closure parameter products parse elements with parameter-slot
+restrictions. Return products parse elements with return-slot restrictions, so
+`with { ... }` remains rejected inside `-> (...)`. Top-level `let` product
+extraction currently parses elements with parameter-like binding-slot
+restrictions because the outer `let` supplies the initializer context.
 
 Examples:
 

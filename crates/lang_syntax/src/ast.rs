@@ -115,7 +115,7 @@ pub enum CanonicalSkeletonAst {
         span: Span,
     },
     ProductExtract {
-        elements: Vec<CanonicalSkeletonAst>,
+        elements: Vec<CanonicalProductElementAst>,
         span: Span,
     },
     Wildcard {
@@ -135,6 +135,12 @@ pub enum CanonicalSkeletonAst {
         span: Span,
     },
     Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CanonicalProductElementAst {
+    Skeleton(CanonicalSkeletonAst),
+    Unit { span: Span },
 }
 
 // --- Expression skeleton ---

@@ -145,23 +145,28 @@ fn pipe_basic() {
 }
 
 #[test]
-fn product_source() {
-    assert_parser_case("product_source", false);
+fn group_segment_start() {
+    assert_parser_case("group_segment_start", false);
 }
 
 #[test]
-fn product_right_target() {
-    assert_parser_case("product_right_target", false);
+fn group_after_name() {
+    assert_parser_case("group_after_name", false);
 }
 
 #[test]
-fn product_insert() {
-    assert_parser_case("product_insert", false);
+fn group_in_pipe_segment() {
+    assert_parser_case("group_in_pipe_segment", false);
 }
 
 #[test]
-fn product_multiple() {
-    assert_parser_case("product_multiple", false);
+fn multiple_groups_in_pipe_segment() {
+    assert_parser_case("multiple_groups_in_pipe_segment", false);
+}
+
+#[test]
+fn product_in_pipe_segment() {
+    assert_parser_case("product_in_pipe_segment", false);
 }
 
 #[test]
@@ -885,6 +890,11 @@ fn invalid_binding_return_with() {
 }
 
 #[test]
+fn invalid_return_product_with() {
+    assert_parser_case("invalid_return_product_with", true);
+}
+
+#[test]
 fn invalid_deduce_unclosed() {
     assert_parser_case("invalid_deduce_unclosed", true);
 }
@@ -935,8 +945,8 @@ fn invalid_canonical_unclosed_product() {
 }
 
 #[test]
-fn invalid_canonical_trailing_comma() {
-    assert_parser_case("invalid_canonical_trailing_comma", true);
+fn canonical_product_trailing_unit() {
+    assert_parser_case("canonical_product_trailing_unit", false);
 }
 
 #[test]

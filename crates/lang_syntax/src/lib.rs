@@ -15,9 +15,9 @@ pub mod token;
 pub use ast::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
-    CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DeduceListAst,
-    EntityRefAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, InPlaceClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst,
+    CanonicalProductElementAst, CanonicalSkeletonAst, CaptureClauseAst, CaptureItemAst, ClosureAst,
+    DeduceListAst, EntityRefAst, ErrorAst, ExplicitClosureAst, ExprAst, ExprKind, FnHeadPrefixAst,
+    FormAst, HeadClauseAst, InPlaceClosureAst, LetAliasAst, LetAst, NameAst, NavComponentAst,
     NumericNameAst, OperatorExprAst, OperatorExprKind, OperatorFixity, OperatorNameAst,
     ParamClauseAst, PipeExprAst, ProductElementAst, ProductExprAst, ProductExtractAst,
     ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,

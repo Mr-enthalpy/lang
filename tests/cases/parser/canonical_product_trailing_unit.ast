@@ -25,9 +25,19 @@ Program
                   None
               ProductExtractUnit
         annotation:
-          None
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name T
         with_clause:
           None
         initializer:
           Expr
-            Error "expected `=` in let"
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name z

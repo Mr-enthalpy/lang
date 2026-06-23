@@ -129,6 +129,7 @@ pub fn parse_binding_slot(
 
 pub fn parse_product_extract(
     parser: &mut Parser<'_>,
+    element_context: BindingSlotContext,
     inherited_deduce: Option<&DeduceListAst>,
 ) -> ProductExtractAst {
     let lparen = parser
@@ -157,8 +158,7 @@ pub fn parse_product_extract(
             continue;
         }
 
-        let element =
-            parse_binding_slot(parser, BindingSlotContext::Param, inherited_deduce, false);
+        let element = parse_binding_slot(parser, element_context, inherited_deduce, false);
         elements.push(ProductExtractElementAst::Slot(element));
 
         if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
@@ -276,8 +276,13 @@ fn parse_binding_pattern(
     }
 
     if parser.cursor.at_symbol(Symbol::LParen) {
+        let element_context = match context {
+            BindingSlotContext::Return => BindingSlotContext::Return,
+            BindingSlotContext::Let | BindingSlotContext::Param => BindingSlotContext::Param,
+        };
         return BindingPatternAst::Product(parse_product_extract(
             parser,
+            element_context,
             local_deduce.or(inherited_deduce),
         ));
     }
