@@ -1683,6 +1683,23 @@ boundary / EOF. A clause is never a list: a top-level comma inside a clause
 slot is diagnosed (`TopLevelComma`) because the slot then holds more than one
 expression-shaped part rather than exactly one expression.
 
+`=> BodyBlock` has priority as the closure head/body delimiter. In closure-head
+context it terminates the head and starts the body, in the same way that
+`{ ... }` confirms the structure of `with { ... }`. A head clause expression
+therefore stops *before* that outer `=> BodyBlock`. For example:
+
+```text
+require x => { x }
+```
+
+parses as a clause-only head `Require(x)` plus body `{ x }`. It is **not**
+reinterpreted as `Require(x => { x })`. A bare `x => { x }` is not a valid
+expression in any case, because expression-position closure literals require
+parenthesized parameters (e.g. `(x) => { x }`); closure parameters cannot drop
+the parentheses. If a future expression-position closure literal appears inside
+a head clause expression, it must satisfy the ordinary expression grammar and
+closure-head requirements.
+
 `lifetime pre` and `lifetime post` are two-token clause heads recognized only
 in the head clause-tail context. A bare `lifetime` not followed by `pre` or
 `post` is not a clause head and remains an ordinary name. These two-token heads
