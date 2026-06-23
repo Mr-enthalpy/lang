@@ -1510,11 +1510,15 @@ FnHeadPrefix ::=
     ParamClause?
     FnItemTraitClause?
     ReturnClause?
+    HeadClause*
 
-// Future reserved, not implemented in Phase 3.1:
+// Future reserved, not implemented:
 //   WhereClause?
-//   AcquireClause?
 ```
+
+`HeadClause` covers the active head clauses `require`/`pre`/`post`/`lifetime
+pre`/`lifetime post` (see §11.8). `acquire` is no longer a reserved head-clause
+position; only `where` remains future reserved.
 
 The order is fixed.
 

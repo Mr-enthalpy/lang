@@ -110,7 +110,7 @@ Normalization must **not** assume:
 
 - `ClosureAst` distinguishes headed `Inline` (`FnHeadPrefix BodyBlock`) and `Explicit` (`FnHeadPrefix => BodyBlock`).
 - Raw AST has no representation for a bare `{ ... }` closure. A bare `{ ... }` in atom position is an error, not `ClosureAst`.
-- `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, and `span`. All clauses are optional.
+- `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries containing expression AST.
 - `ParamClauseAst` preserves ordered `BindingSlotAst` parameter entries.
 - `ReturnClauseAst` preserves a `BindingSlotAst`.

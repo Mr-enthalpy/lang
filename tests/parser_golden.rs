@@ -528,6 +528,11 @@ fn head_clause_require() {
 }
 
 #[test]
+fn head_clause_only_head() {
+    assert_parser_case("head_clause_only_head", false);
+}
+
+#[test]
 fn head_clause_require_valid_t() {
     assert_parser_case("head_clause_require_valid_t", false);
 }
