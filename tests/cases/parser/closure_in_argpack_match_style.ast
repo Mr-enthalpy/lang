@@ -20,22 +20,27 @@ Program
                                 binders:
                                   BinderDecl name=val
                                     annotation:
-                                      Hole _
+                                      AnnotationTermHole _
                             params:
                               ParamClause
                                 params:
-                                  ExtractParam
+                                  BindingSlot let=false
                                     deduce:
                                       None
-                                    skeleton:
-                                      CanonicalSegment
-                                        elements:
-                                          CanonicalName role=Hole name=val
-                                          CanonicalNavPath
-                                            names:
-                                              option
-                                              Sum
+                                    pattern:
+                                      PatternSkeleton
+                                        CanonicalSegment
+                                          elements:
+                                            CanonicalName role=Hole name=val
+                                            CanonicalNavPath
+                                              names:
+                                                option
+                                                Sum
                                     annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
                                       None
                           BodyBlock
                             forms:
@@ -56,18 +61,23 @@ Program
                             params:
                               ParamClause
                                 params:
-                                  ExtractParam
+                                  BindingSlot let=false
                                     deduce:
                                       None
-                                    skeleton:
-                                      CanonicalSegment
-                                        elements:
-                                          CanonicalWildcard _
-                                          CanonicalNavPath
-                                            names:
-                                              option
-                                              None
+                                    pattern:
+                                      PatternSkeleton
+                                        CanonicalSegment
+                                          elements:
+                                            CanonicalWildcard _
+                                            CanonicalNavPath
+                                              names:
+                                                option
+                                                None
                                     annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
                                       None
                           BodyBlock
                             forms:

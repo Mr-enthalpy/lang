@@ -1,26 +1,29 @@
 Program
   Let
-    binder:
-      Simple
-        name:
-          OperatorName +
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            OperatorName +
         annotation:
-          TypeObjectWithRank
-            type_object:
-              Hole _
-            rank:
+          AnnotationCompound
+            left:
+              AnnotationTermHole _
+            right:
               Expr
                 Pipe
                   Segment has_incoming=false
                     OperatorExpr
                       Atom
                         Name operator
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name plus_impl
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name plus_impl

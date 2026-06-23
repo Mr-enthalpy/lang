@@ -1,2 +1,2 @@
 error InvalidDeduceList "unclosed deduce list, expected `>`" @ 1:5 [4..5]
-error InvalidCanonicalSkeleton "expected canonical skeleton element" @ 1:11 [10..11]
+error ExpectedName "expected binding pattern after `let`" @ 1:11 [10..11]

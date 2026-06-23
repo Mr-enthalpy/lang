@@ -1,8 +1,9 @@
 use crate::{
-    AliasBinderAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst, DeclAnnotationAst,
-    Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
-    LetBinderAst, OperatorExprKind, PipeExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol,
-    Token, TokenKind, TriviaKind, TypeObjectAnnotationAst, WithClauseKind,
+    AliasBinderAst, AnnotationTermAst, ArgPackAst, ArgPackRole, AtomAst, AtomKind, BinderNameAst,
+    BindingAnnotationAst, BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode,
+    EntityRefAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst,
+    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
+    WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -72,28 +73,75 @@ fn dump_form(output: &mut String, form: &FormAst, indent: usize) {
 
 fn dump_let(output: &mut String, let_ast: &LetAst, indent: usize) {
     line(output, indent, "Let");
-    line(output, indent + 1, "binder:");
-    dump_binder(output, &let_ast.binder, indent + 2);
-    line(output, indent + 1, "with_clause:");
-    match &let_ast.with_clause {
+    line(output, indent + 1, "slot:");
+    dump_binding_slot(output, &let_ast.slot, indent + 2);
+}
+
+fn dump_binding_slot(output: &mut String, slot: &BindingSlotAst, indent: usize) {
+    line(output, indent, &format!("BindingSlot let={}", slot.has_let));
+    line(output, indent + 1, "deduce:");
+    match &slot.deduce {
+        Some(deduce) => dump_deduce_list(output, deduce, indent + 2),
         None => line(output, indent + 2, "None"),
+    }
+    line(output, indent + 1, "pattern:");
+    dump_binding_pattern(output, &slot.pattern, indent + 2);
+    line(output, indent + 1, "annotation:");
+    match &slot.annotation {
+        Some(annotation) => dump_binding_annotation(output, annotation, indent + 2),
+        None => line(output, indent + 2, "None"),
+    }
+    line(output, indent + 1, "with_clause:");
+    dump_with_clause(output, &slot.with_clause, indent + 2);
+    line(output, indent + 1, "initializer:");
+    match &slot.initializer {
+        Some(initializer) => dump_expr(output, initializer, indent + 2),
+        None => line(output, indent + 2, "None"),
+    }
+}
+
+fn dump_binding_pattern(output: &mut String, pattern: &BindingPatternAst, indent: usize) {
+    match pattern {
+        BindingPatternAst::Binder(name) => {
+            line(output, indent, "Binder");
+            dump_binder_name(output, name, indent + 1);
+        }
+        BindingPatternAst::Skeleton(skeleton) => {
+            line(output, indent, "PatternSkeleton");
+            dump_canonical_skeleton(output, skeleton, indent + 1);
+        }
+        BindingPatternAst::Error(error) => {
+            line(
+                output,
+                indent,
+                &format!("Error \"{}\"", escape_text(&error.message)),
+            );
+        }
+    }
+}
+
+fn dump_with_clause(
+    output: &mut String,
+    with_clause: &Option<crate::WithClauseAst>,
+    indent: usize,
+) {
+    match with_clause {
+        None => line(output, indent, "None"),
         Some(with_clause) => match &with_clause.kind {
-            WithClauseKind::Lexical => line(output, indent + 2, "Lexical"),
-            WithClauseKind::Semantic { items } => {
-                line(output, indent + 2, "Semantic");
+            WithClauseKind::Empty => line(output, indent, "Empty"),
+            WithClauseKind::Items { items } => {
+                line(output, indent, "Items");
                 for item in items {
-                    line(output, indent + 3, &item.text);
+                    line(output, indent + 1, &item.text);
                 }
             }
             WithClauseKind::Error(error) => line(
                 output,
-                indent + 2,
+                indent,
                 &format!("Error \"{}\"", escape_text(&error.message)),
             ),
         },
     }
-    line(output, indent + 1, "value:");
-    dump_expr(output, &let_ast.value, indent + 2);
 }
 
 fn dump_alias_let(output: &mut String, alias: &LetAliasAst, indent: usize) {
@@ -128,36 +176,6 @@ fn dump_entity_ref(output: &mut String, entity_ref: &EntityRefAst, indent: usize
     }
 }
 
-fn dump_binder(output: &mut String, binder: &LetBinderAst, indent: usize) {
-    match binder {
-        LetBinderAst::Simple {
-            name, annotation, ..
-        } => {
-            line(output, indent, "Simple");
-            line(output, indent + 1, "name:");
-            dump_binder_name(output, name, indent + 2);
-            line(output, indent + 1, "annotation:");
-            dump_decl_annotation(output, annotation, indent + 2);
-        }
-        LetBinderAst::Extract {
-            deduce, skeleton, ..
-        } => {
-            line(output, indent, "Extract");
-            line(output, indent + 1, "deduce:");
-            dump_deduce_list(output, deduce, indent + 2);
-            line(output, indent + 1, "skeleton:");
-            dump_canonical_skeleton(output, skeleton, indent + 2);
-        }
-        LetBinderAst::Error(error) => {
-            line(
-                output,
-                indent,
-                &format!("Error \"{}\"", escape_text(&error.message)),
-            );
-        }
-    }
-}
-
 fn dump_binder_name(output: &mut String, name: &BinderNameAst, indent: usize) {
     match name {
         BinderNameAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
@@ -183,7 +201,7 @@ fn dump_binder_decl(output: &mut String, binder: &crate::BinderDeclAst, indent: 
     );
     line(output, indent + 1, "annotation:");
     match &binder.annotation {
-        Some(annotation) => dump_type_object_annotation(output, annotation, indent + 2),
+        Some(annotation) => dump_annotation_term(output, annotation, indent + 2),
         None => line(output, indent + 2, "None"),
     }
 }
@@ -254,24 +272,20 @@ fn canonical_name_role_label(role: crate::CanonicalNameRole) -> &'static str {
     }
 }
 
-fn dump_decl_annotation(output: &mut String, annotation: &DeclAnnotationAst, indent: usize) {
+fn dump_binding_annotation(output: &mut String, annotation: &BindingAnnotationAst, indent: usize) {
     match annotation {
-        DeclAnnotationAst::Bare(expr) => {
-            line(output, indent, "Bare");
+        BindingAnnotationAst::Expr(expr) => {
+            line(output, indent, "AnnotationExpr");
             dump_expr(output, expr, indent + 1);
         }
-        DeclAnnotationAst::TypeObjectWithRank {
-            type_object_annotation,
-            rank_annotation,
-            ..
-        } => {
-            line(output, indent, "TypeObjectWithRank");
-            line(output, indent + 1, "type_object:");
-            dump_type_object_annotation(output, type_object_annotation, indent + 2);
-            line(output, indent + 1, "rank:");
-            dump_expr(output, rank_annotation, indent + 2);
+        BindingAnnotationAst::Compound { left, right, .. } => {
+            line(output, indent, "AnnotationCompound");
+            line(output, indent + 1, "left:");
+            dump_annotation_term(output, left, indent + 2);
+            line(output, indent + 1, "right:");
+            dump_expr(output, right, indent + 2);
         }
-        DeclAnnotationAst::Error(error) => {
+        BindingAnnotationAst::Error(error) => {
             line(
                 output,
                 indent,
@@ -281,17 +295,13 @@ fn dump_decl_annotation(output: &mut String, annotation: &DeclAnnotationAst, ind
     }
 }
 
-fn dump_type_object_annotation(
-    output: &mut String,
-    annotation: &TypeObjectAnnotationAst,
-    indent: usize,
-) {
+fn dump_annotation_term(output: &mut String, annotation: &AnnotationTermAst, indent: usize) {
     match annotation {
-        TypeObjectAnnotationAst::Expr(expr) => {
-            line(output, indent, "Expr");
+        AnnotationTermAst::Expr(expr) => {
+            line(output, indent, "AnnotationTermExpr");
             dump_expr(output, expr, indent + 1);
         }
-        TypeObjectAnnotationAst::Hole { .. } => line(output, indent, "Hole _"),
+        AnnotationTermAst::Hole { .. } => line(output, indent, "AnnotationTermHole _"),
     }
 }
 
@@ -585,85 +595,14 @@ fn dump_param_clause(output: &mut String, clause: &crate::ParamClauseAst, indent
     line(output, indent, "ParamClause");
     line(output, indent + 1, "params:");
     for param in &clause.params {
-        dump_param_item(output, param, indent + 2);
-    }
-}
-
-fn dump_param_item(output: &mut String, item: &crate::ParamItemAst, indent: usize) {
-    match item {
-        crate::ParamItemAst::NameParam {
-            name, annotation, ..
-        } => {
-            line(output, indent, &format!("NameParam name={}", name.text));
-            line(output, indent + 1, "annotation:");
-            match annotation {
-                Some(a) => dump_type_object_annotation(output, a, indent + 2),
-                None => line(output, indent + 2, "None"),
-            }
-        }
-        crate::ParamItemAst::ExtractParam {
-            deduce,
-            skeleton,
-            annotation,
-            ..
-        } => {
-            line(output, indent, "ExtractParam");
-            line(output, indent + 1, "deduce:");
-            match deduce {
-                Some(d) => dump_deduce_list(output, d, indent + 2),
-                None => line(output, indent + 2, "None"),
-            }
-            line(output, indent + 1, "skeleton:");
-            dump_canonical_skeleton(output, skeleton, indent + 2);
-            line(output, indent + 1, "annotation:");
-            match annotation {
-                Some(a) => dump_type_object_annotation(output, a, indent + 2),
-                None => line(output, indent + 2, "None"),
-            }
-        }
-        crate::ParamItemAst::Error(error) => {
-            line(
-                output,
-                indent,
-                &format!("Error \"{}\"", escape_text(&error.message)),
-            );
-        }
+        dump_binding_slot(output, param, indent + 2);
     }
 }
 
 fn dump_return_clause(output: &mut String, clause: &crate::ReturnClauseAst, indent: usize) {
     line(output, indent, "ReturnClause");
-    line(output, indent + 1, "binder:");
-    dump_return_binder(output, &clause.binder, indent + 2);
-    if let Some(constraint) = &clause.constraint {
-        line(output, indent + 1, "constraint:");
-        dump_expr(output, constraint, indent + 2);
-    }
-}
-
-fn dump_return_binder(output: &mut String, binder: &crate::ReturnBinderAst, indent: usize) {
-    match binder {
-        crate::ReturnBinderAst::TypeExpr(expr) => {
-            line(output, indent, "TypeExpr");
-            dump_expr(output, expr, indent + 1);
-        }
-        crate::ReturnBinderAst::ExtractType {
-            deduce, skeleton, ..
-        } => {
-            line(output, indent, "ExtractType");
-            line(output, indent + 1, "deduce:");
-            dump_deduce_list(output, deduce, indent + 2);
-            line(output, indent + 1, "skeleton:");
-            dump_canonical_skeleton(output, skeleton, indent + 2);
-        }
-        crate::ReturnBinderAst::Error(error) => {
-            line(
-                output,
-                indent,
-                &format!("Error \"{}\"", escape_text(&error.message)),
-            );
-        }
-    }
+    line(output, indent + 1, "slot:");
+    dump_binding_slot(output, &clause.slot, indent + 2);
 }
 
 fn line(output: &mut String, indent: usize, text: &str) {
@@ -729,7 +668,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::UnexpectedToken => "UnexpectedToken",
         DiagnosticCode::ExpectedName => "ExpectedName",
         DiagnosticCode::ExpectedColon => "ExpectedColon",
-        DiagnosticCode::ExpectedDeclAnnotation => "ExpectedDeclAnnotation",
+        DiagnosticCode::ExpectedBindingAnnotation => "ExpectedBindingAnnotation",
         DiagnosticCode::ExpectedEqual => "ExpectedEqual",
         DiagnosticCode::EmptyPipeSegment => "EmptyPipeSegment",
         DiagnosticCode::ExpectedNameAfterDot => "ExpectedNameAfterDot",

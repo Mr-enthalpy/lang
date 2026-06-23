@@ -1,13 +1,19 @@
 Program
   Let
-    binder:
-      Simple
-        name:
-          TextName guard
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          PatternSkeleton
+            CanonicalSegment
+              elements:
+                CanonicalName role=NodeName name=guard
+                CanonicalName role=NodeName name=x
         annotation:
-          Error "expected declaration annotation"
-    with_clause:
-      None
-    value:
-      Expr
-        Error "expected `=` in let"
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Error "expected `=` in let"

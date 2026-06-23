@@ -1,29 +1,32 @@
 Program
   Let
-    binder:
-      Extract
+    slot:
+      BindingSlot let=true
         deduce:
           DeduceList
             binders:
               BinderDecl name=x
                 annotation:
-                  Expr
+                  AnnotationTermExpr
                     Expr
-                      Error "missing type-object annotation"
+                      Error "missing deduce annotation"
               BinderDecl name=y
                 annotation:
                   None
-        skeleton:
-          CanonicalSegment
-            elements:
-              CanonicalName role=Hole name=x
-              CanonicalName role=NodeName name=Node
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name y
+        pattern:
+          PatternSkeleton
+            CanonicalSegment
+              elements:
+                CanonicalName role=Hole name=x
+                CanonicalName role=NodeName name=Node
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name y

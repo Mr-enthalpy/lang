@@ -20,9 +20,7 @@ pub enum FormAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LetAst {
-    pub binder: LetBinderAst,
-    pub with_clause: Option<WithClauseAst>,
-    pub value: ExprAst,
+    pub slot: BindingSlotAst,
     pub span: Span,
 }
 
@@ -34,23 +32,26 @@ pub struct WithClauseAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WithClauseKind {
-    Lexical,
-    Semantic { items: Vec<NameAst> },
+    Empty,
+    Items { items: Vec<NameAst> },
     Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum LetBinderAst {
-    Simple {
-        name: BinderNameAst,
-        annotation: DeclAnnotationAst,
-        span: Span,
-    },
-    Extract {
-        deduce: DeduceListAst,
-        skeleton: CanonicalSkeletonAst,
-        span: Span,
-    },
+pub struct BindingSlotAst {
+    pub has_let: bool,
+    pub deduce: Option<DeduceListAst>,
+    pub pattern: BindingPatternAst,
+    pub annotation: Option<BindingAnnotationAst>,
+    pub with_clause: Option<WithClauseAst>,
+    pub initializer: Option<ExprAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BindingPatternAst {
+    Binder(BinderNameAst),
+    Skeleton(CanonicalSkeletonAst),
     Error(ErrorAst),
 }
 
@@ -61,18 +62,18 @@ pub enum BinderNameAst {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum DeclAnnotationAst {
-    Bare(ExprAst),
-    TypeObjectWithRank {
-        type_object_annotation: TypeObjectAnnotationAst,
-        rank_annotation: ExprAst,
+pub enum BindingAnnotationAst {
+    Expr(ExprAst),
+    Compound {
+        left: AnnotationTermAst,
+        right: ExprAst,
         span: Span,
     },
     Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TypeObjectAnnotationAst {
+pub enum AnnotationTermAst {
     Expr(ExprAst),
     Hole { span: Span },
 }
@@ -88,7 +89,7 @@ pub struct DeduceListAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BinderDeclAst {
     pub name: NameAst,
-    pub annotation: Option<TypeObjectAnnotationAst>,
+    pub annotation: Option<AnnotationTermAst>,
     pub span: Span,
 }
 
@@ -329,42 +330,14 @@ pub struct CaptureItemAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParamClauseAst {
-    pub params: Vec<ParamItemAst>,
+    pub params: Vec<BindingSlotAst>,
     pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ParamItemAst {
-    NameParam {
-        name: NameAst,
-        annotation: Option<TypeObjectAnnotationAst>,
-        span: Span,
-    },
-    ExtractParam {
-        deduce: Option<DeduceListAst>,
-        skeleton: CanonicalSkeletonAst,
-        annotation: Option<TypeObjectAnnotationAst>,
-        span: Span,
-    },
-    Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReturnClauseAst {
-    pub binder: ReturnBinderAst,
-    pub constraint: Option<ExprAst>,
+    pub slot: BindingSlotAst,
     pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ReturnBinderAst {
-    TypeExpr(ExprAst),
-    ExtractType {
-        deduce: DeduceListAst,
-        skeleton: CanonicalSkeletonAst,
-        span: Span,
-    },
-    Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

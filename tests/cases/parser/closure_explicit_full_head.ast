@@ -25,15 +25,24 @@ Program
                   params:
                     ParamClause
                       params:
-                        NameParam name=x
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
                           annotation:
-                            Expr
+                            AnnotationExpr
                               Expr
                                 Pipe
                                   Segment has_incoming=false
                                     OperatorExpr
                                       Atom
                                         Name T
+                          with_clause:
+                            None
+                          initializer:
+                            None
                   fn_item_trait:
                     Expr
                       Pipe
@@ -43,14 +52,19 @@ Program
                               Name runtime
                   returns:
                     ReturnClause
-                      binder:
-                        TypeExpr
-                          Expr
-                            Pipe
-                              Segment has_incoming=false
-                                OperatorExpr
-                                  Atom
-                                    Name T
+                      slot:
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName T
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
                 BodyBlock
                   forms:
                     ExprForm

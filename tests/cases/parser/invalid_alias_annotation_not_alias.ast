@@ -1,11 +1,14 @@
 Program
   Let
-    binder:
-      Simple
-        name:
-          TextName x
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x
         annotation:
-          Bare
+          AnnotationExpr
             Expr
               Pipe
                 Segment has_incoming=false
@@ -15,8 +18,8 @@ Program
                   OperatorExpr
                     Atom
                       Name y
-    with_clause:
-      None
-    value:
-      Expr
-        Error "expected `=` in let"
+        with_clause:
+          None
+        initializer:
+          Expr
+            Error "expected `=` in let"

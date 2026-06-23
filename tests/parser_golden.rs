@@ -78,6 +78,21 @@ fn let_type_object_rank() {
 }
 
 #[test]
+fn let_unannotated() {
+    assert_parser_case("let_unannotated", false);
+}
+
+#[test]
+fn let_annotation_neutral() {
+    assert_parser_case("let_annotation_neutral", false);
+}
+
+#[test]
+fn let_compound_binding_skeleton() {
+    assert_parser_case("let_compound_binding_skeleton", false);
+}
+
+#[test]
 fn let_with_lexical() {
     assert_parser_case("let_with_lexical", false);
 }
@@ -99,7 +114,7 @@ fn let_value_nav() {
 
 #[test]
 fn invalid_missing_colon() {
-    assert_parser_case("invalid_missing_colon", true);
+    assert_parser_case("invalid_missing_colon", false);
 }
 
 #[test]
@@ -433,6 +448,31 @@ fn closure_explicit_multi_typed_param() {
 }
 
 #[test]
+fn binding_param_unannotated() {
+    assert_parser_case("binding_param_unannotated", false);
+}
+
+#[test]
+fn binding_param_annotation() {
+    assert_parser_case("binding_param_annotation", false);
+}
+
+#[test]
+fn binding_param_let_with_empty() {
+    assert_parser_case("binding_param_let_with_empty", false);
+}
+
+#[test]
+fn binding_param_deduce_pattern_with_empty() {
+    assert_parser_case("binding_param_deduce_pattern_with_empty", false);
+}
+
+#[test]
+fn binding_param_with_items() {
+    assert_parser_case("binding_param_with_items", false);
+}
+
+#[test]
 fn closure_in_argpack_match_style() {
     assert_parser_case("closure_in_argpack_match_style", false);
 }
@@ -528,6 +568,36 @@ fn closure_return_extract_constraint() {
 }
 
 #[test]
+fn binding_return_wildcard() {
+    assert_parser_case("binding_return_wildcard", false);
+}
+
+#[test]
+fn binding_return_wildcard_annotation() {
+    assert_parser_case("binding_return_wildcard_annotation", false);
+}
+
+#[test]
+fn binding_return_named() {
+    assert_parser_case("binding_return_named", false);
+}
+
+#[test]
+fn binding_return_named_annotation() {
+    assert_parser_case("binding_return_named_annotation", false);
+}
+
+#[test]
+fn binding_return_let_named_annotation() {
+    assert_parser_case("binding_return_let_named_annotation", false);
+}
+
+#[test]
+fn invalid_binding_return_with() {
+    assert_parser_case("invalid_binding_return_with", true);
+}
+
+#[test]
 fn invalid_deduce_unclosed() {
     assert_parser_case("invalid_deduce_unclosed", true);
 }
@@ -540,6 +610,11 @@ fn invalid_deduce_missing_annotation() {
 #[test]
 fn invalid_deduce_missing_annotation_comma() {
     assert_parser_case("invalid_deduce_missing_annotation_comma", true);
+}
+
+#[test]
+fn invalid_deduce_missing_name() {
+    assert_parser_case("invalid_deduce_missing_name", true);
 }
 
 #[test]
@@ -799,7 +874,7 @@ fn operator_nav_then_binary_operator() {
 
 #[test]
 fn invalid_operator_binder_missing_colon() {
-    assert_parser_case("invalid_operator_binder_missing_colon", true);
+    assert_parser_case("invalid_operator_binder_missing_colon", false);
 }
 
 #[test]
@@ -979,7 +1054,7 @@ fn invalid_alias_guard_not_alias() {
 
 #[test]
 fn let_guard_not_attr() {
-    assert_parser_case("let_guard_not_attr", true);
+    assert_parser_case("let_guard_not_attr", false);
 }
 
 #[test]

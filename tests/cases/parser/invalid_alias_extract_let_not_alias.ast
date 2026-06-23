@@ -1,17 +1,20 @@
 Program
   Let
-    binder:
-      Extract
+    slot:
+      BindingSlot let=true
         deduce:
           DeduceList
             binders:
               BinderDecl name=x
                 annotation:
                   None
-        skeleton:
-          CanonicalName role=Hole name=x
-    with_clause:
-      None
-    value:
-      Expr
-        Error "expected `=` in let"
+        pattern:
+          PatternSkeleton
+            CanonicalName role=Hole name=x
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Error "expected `=` in let"

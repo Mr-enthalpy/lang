@@ -1,9 +1,18 @@
 Program
   Let
-    binder:
-      Error "expected name after `let`"
-    with_clause:
-      None
-    value:
-      Expr
-        Error "expected `=` in let"
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          PatternSkeleton
+            CanonicalArgPack
+              elements:
+                CanonicalName role=NodeName name=x
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Error "expected `=` in let"

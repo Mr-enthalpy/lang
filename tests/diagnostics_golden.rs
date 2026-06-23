@@ -41,8 +41,8 @@ fn unclosed_comment() {
 }
 
 #[test]
-fn missing_colon() {
-    assert_diagnostics_case("missing_colon");
+fn missing_binding_pattern() {
+    assert_diagnostics_case("missing_binding_pattern");
 }
 
 #[test]
@@ -161,8 +161,8 @@ fn unexpected_token_before_newline() {
 }
 
 #[test]
-fn let_guard_not_attr() {
-    assert_diagnostics_case("let_guard_not_attr");
+fn invalid_return_with() {
+    assert_diagnostics_case("invalid_return_with");
 }
 
 #[test]

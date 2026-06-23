@@ -1,22 +1,25 @@
 Program
   Let
-    binder:
-      Extract
+    slot:
+      BindingSlot let=true
         deduce:
           DeduceList
             binders:
               BinderDecl name=x
                 annotation:
                   None
-        skeleton:
-          CanonicalName role=Hole name=x
-    with_clause:
-      Semantic
-        dep
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name value
+        pattern:
+          Binder
+            TextName x
+        annotation:
+          None
+        with_clause:
+          Items
+            dep
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value

@@ -10,24 +10,42 @@ Program
                   params:
                     ParamClause
                       params:
-                        NameParam name=x
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName x
                           annotation:
-                            Expr
+                            AnnotationExpr
                               Expr
                                 Pipe
                                   Segment has_incoming=false
                                     OperatorExpr
                                       Atom
                                         Name T
-                        NameParam name=y
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                        BindingSlot let=false
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName y
                           annotation:
-                            Expr
+                            AnnotationExpr
                               Expr
                                 Pipe
                                   Segment has_incoming=false
                                     OperatorExpr
                                       Atom
                                         Name U
+                          with_clause:
+                            None
+                          initializer:
+                            None
                 BodyBlock
                   forms:
                     ExprForm

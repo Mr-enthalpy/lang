@@ -1,24 +1,27 @@
 Program
   Let
-    binder:
-      Extract
+    slot:
+      BindingSlot let=true
         deduce:
           DeduceList
             binders:
               BinderDecl name=x
                 annotation:
                   None
-        skeleton:
-          CanonicalArgPack
-            elements:
-              CanonicalName role=Hole name=x
-              Error "expected canonical skeleton element"
-    with_clause:
-      None
-    value:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name z
+        pattern:
+          PatternSkeleton
+            CanonicalArgPack
+              elements:
+                CanonicalName role=Hole name=x
+                Error "expected canonical skeleton element"
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name z
