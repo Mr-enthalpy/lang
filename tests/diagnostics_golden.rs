@@ -194,3 +194,13 @@ fn invalid_head_clause_comma() {
 fn invalid_head_clause_missing_expr() {
     assert_diagnostics_case("invalid_head_clause_missing_expr");
 }
+
+#[test]
+fn unclosed_bracket_call() {
+    assert_diagnostics_case("unclosed_bracket_call");
+}
+
+#[test]
+fn unclosed_bracket_call_comma() {
+    assert_diagnostics_case("unclosed_bracket_call_comma");
+}

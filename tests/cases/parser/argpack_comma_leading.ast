@@ -1,0 +1,18 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          ArgPack role=SourcePack
+            args:
+              Expr
+                Unit
+              Expr
+                Pipe
+                  Segment has_incoming=false
+                    OperatorExpr
+                      Atom
+                        Name a
+          OperatorExpr
+            Atom
+              Name f

@@ -1,0 +1,19 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              BracketCallSugar operator="[]"
+                object:
+                  Name obj
+                args:
+                  ArgPack role=Unknown
+                    args:
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name x

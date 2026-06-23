@@ -1,0 +1,9 @@
+Program
+  LetAlias
+    binder:
+      Operator []
+    target:
+      EntityRef
+        components:
+          component Operator []
+          component Name SomeNamespace

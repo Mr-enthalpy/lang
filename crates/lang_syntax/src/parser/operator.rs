@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    argpack::parse_argpack,
+    argpack::{parse_argpack, parse_bracket_argpack},
     atom::{parse_atom, parse_member_selector, parse_nav_outer_component, selector_span},
     form::Parser,
 };
@@ -266,6 +266,22 @@ fn parse_postfix_expr(
                 );
                 break;
             }
+        } else if parser.cursor.at_symbol(Symbol::LBracket) {
+            let args = parse_bracket_argpack(parser);
+            let operator = OperatorNameAst {
+                spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),
+                span: args.span,
+            };
+            let span = expr.span.join(args.span);
+            expr = OperatorExprAst {
+                kind: OperatorExprKind::BracketCallSugar {
+                    object: Box::new(expr),
+                    operator,
+                    args,
+                    span,
+                },
+                span,
+            };
         } else {
             break;
         }
@@ -475,7 +491,7 @@ fn binary_info(spelling: OperatorSpelling) -> Option<BinaryInfo> {
             precedence: 1,
             associativity: Associativity::NonAssociative,
         },
-        Bang | At | Tilde | Caret | Dollar | PlusPlus | MinusMinus | Question => {
+        Bang | At | Tilde | Caret | Dollar | PlusPlus | MinusMinus | Question | BracketCall => {
             return None;
         }
     };

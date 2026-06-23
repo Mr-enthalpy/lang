@@ -598,6 +598,106 @@ fn policy_skeleton_return() {
 }
 
 #[test]
+fn bracket_call_simple() {
+    assert_parser_case("bracket_call_simple", false);
+}
+
+#[test]
+fn bracket_call_args() {
+    assert_parser_case("bracket_call_args", false);
+}
+
+#[test]
+fn bracket_call_empty() {
+    assert_parser_case("bracket_call_empty", false);
+}
+
+#[test]
+fn bracket_call_chain() {
+    assert_parser_case("bracket_call_chain", false);
+}
+
+#[test]
+fn bracket_call_then_member() {
+    assert_parser_case("bracket_call_then_member", false);
+}
+
+#[test]
+fn bracket_call_then_postfix() {
+    assert_parser_case("bracket_call_then_postfix", false);
+}
+
+#[test]
+fn bracket_call_after_postfix() {
+    assert_parser_case("bracket_call_after_postfix", false);
+}
+
+#[test]
+fn bracket_call_after_member() {
+    assert_parser_case("bracket_call_after_member", false);
+}
+
+#[test]
+fn bracket_call_after_doubledot() {
+    assert_parser_case("bracket_call_after_doubledot", false);
+}
+
+#[test]
+fn bracket_call_in_pipe() {
+    assert_parser_case("bracket_call_in_pipe", false);
+}
+
+#[test]
+fn bracket_operator_binder() {
+    assert_parser_case("bracket_operator_binder", false);
+}
+
+#[test]
+fn bracket_operator_alias() {
+    assert_parser_case("bracket_operator_alias", false);
+}
+
+#[test]
+fn bracket_call_newline() {
+    assert_parser_case("bracket_call_newline", false);
+}
+
+#[test]
+fn bracket_call_comma_leading() {
+    assert_parser_case("bracket_call_comma_leading", false);
+}
+
+#[test]
+fn bracket_call_comma_double() {
+    assert_parser_case("bracket_call_comma_double", false);
+}
+
+#[test]
+fn bracket_call_comma_trailing() {
+    assert_parser_case("bracket_call_comma_trailing", false);
+}
+
+#[test]
+fn bracket_call_comma_both() {
+    assert_parser_case("bracket_call_comma_both", false);
+}
+
+#[test]
+fn argpack_comma_leading() {
+    assert_parser_case("argpack_comma_leading", false);
+}
+
+#[test]
+fn argpack_comma_double() {
+    assert_parser_case("argpack_comma_double", false);
+}
+
+#[test]
+fn argpack_comma_trailing() {
+    assert_parser_case("argpack_comma_trailing", false);
+}
+
+#[test]
 fn head_clause_require_valid_t() {
     assert_parser_case("head_clause_require_valid_t", false);
 }

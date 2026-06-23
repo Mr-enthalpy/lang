@@ -80,7 +80,8 @@ Normalization must **not** assume:
 
 ## Expression invariants
 
-- `ExprAst` is either a `Pipe(PipeExprAst)` or `Error(ErrorAst)`.
+- `ExprAst` is a `Pipe(PipeExprAst)`, `Unit`, or `Error(ErrorAst)`.
+- `Unit` represents an empty argpack slot created by a comma (leading, double, or trailing). It is source-preserving; the parser performs no validation of its meaning.
 - There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, or `MatchExpr` node in Raw AST.
 
 ## PipeExpr / Segment / ArgPack invariants
@@ -88,22 +89,24 @@ Normalization must **not** assume:
 - `PipeExprAst` preserves ordered `SegmentAst` values.
 - `SegmentAst` preserves ordered `SegmentElementAst` values and `has_incoming` (whether a prior segment exists via `|>`).
 - `SegmentElementAst` distinguishes `OperatorExpr` and `ArgPack`.
-- `ArgPackAst` preserves `args`, `role`, and `span`.
+- `ArgPackAst` preserves `args`, `role`, and `span`. Both paren and bracket argpacks reuse `ArgPackAst`; commas create argument slots and an empty slot is preserved as `ExprKind::Unit`. Zero slots without commas is an empty argpack.
 - `ArgPackRole` preserves `SourcePack`, `InsertPack`, `RightTargetSubsegment`, and `Unknown`.
 
 ## OperatorExpr invariants
 
-- `OperatorExprAst` preserves `Atom`, `OperatorSugar`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, and `Error`.
+- `OperatorExprAst` preserves `Atom`, `OperatorSugar`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, and `Error`.
 - `OperatorSugar` preserves the operator name (`OperatorNameAst`), `fixity` (`Prefix`, `Postfix`, `Binary`), `args`, and `span`.
-- `NavPath`, `MemberSugar`, and `DoubleDotSugar` at the `OperatorExpr` layer exist to support postfix operator suffix continuation (e.g., `obj!.field`).
+- `NavPath`, `MemberSugar`, `DoubleDotSugar`, and `BracketCallSugar` at the `OperatorExpr` layer exist to support postfix operator suffix continuation (e.g., `obj!.field`, `obj![a]`).
+- `BracketCallSugar` preserves an object, the operator name (`OperatorNameAst` with spelling `[]`), and an `ArgPackAst`. It is source-preserving bracket-call sugar (`obj[args...]`); the parser does not lower it or attach indexing/container semantics. `[]` is a contextual paired operator name, also bindable/aliasable/referable in operator-name positions.
 - Operator expressions are segment-local: they do not cross `|>` pipe boundaries.
 
 ## Atom and suffix-sugar invariants
 
-- `AtomAst` preserves `Name`, `IntLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `Closure`, and `Error`.
+- `AtomAst` preserves `Name`, `IntLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
 - `NavPath` atoms preserve source-order inner-to-outer navigation components.
 - `MemberSugar` preserves an object and a selector.
 - `DoubleDotSugar` preserves an object, a selector, and an `ArgPackAst`.
+- `BracketCallSugar` preserves an object, the `[]` operator name, and an `ArgPackAst` (the bracket arguments). Left-associative; `obj[a][b]` nests.
 - The parser's suffix pipeline includes `:: NavComponent`, `. Selector`, `.. Selector ArgPack`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves navigation/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
 
 ## Closure AST invariants

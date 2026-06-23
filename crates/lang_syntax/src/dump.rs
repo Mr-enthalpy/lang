@@ -317,6 +317,7 @@ fn dump_expr(output: &mut String, expr: &ExprAst, indent: usize) {
     line(output, indent, "Expr");
     match &expr.kind {
         ExprKind::Pipe(pipe) => dump_pipe(output, pipe, indent + 1),
+        ExprKind::Unit => line(output, indent + 1, "Unit"),
         ExprKind::Error(error) => {
             line(
                 output,
@@ -425,6 +426,25 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
             line(output, indent + 1, "args:");
             dump_argpack(output, args, indent + 2);
         }
+        OperatorExprKind::BracketCallSugar {
+            object,
+            operator,
+            args,
+            ..
+        } => {
+            line(
+                output,
+                indent,
+                &format!(
+                    "BracketCallSugar operator=\"{}\"",
+                    escape_text(&operator.spelling)
+                ),
+            );
+            line(output, indent + 1, "object:");
+            dump_operator_expr(output, object, indent + 2);
+            line(output, indent + 1, "args:");
+            dump_argpack(output, args, indent + 2);
+        }
         OperatorExprKind::Error(error) => {
             line(
                 output,
@@ -494,6 +514,24 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             dump_atom(output, object, indent + 2);
             line(output, indent + 1, "selector:");
             dump_selector(output, selector, indent + 2);
+            line(output, indent + 1, "args:");
+            dump_argpack(output, args, indent + 2);
+        }
+        AtomKind::BracketCallSugar {
+            object,
+            operator,
+            args,
+        } => {
+            line(
+                output,
+                indent,
+                &format!(
+                    "BracketCallSugar operator=\"{}\"",
+                    escape_text(&operator.spelling)
+                ),
+            );
+            line(output, indent + 1, "object:");
+            dump_atom(output, object, indent + 2);
             line(output, indent + 1, "args:");
             dump_argpack(output, args, indent + 2);
         }

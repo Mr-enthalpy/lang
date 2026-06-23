@@ -1,10 +1,13 @@
 use crate::{
     AtomAst, AtomKind, DiagnosticCode, ErrorAst, NameAst, NavComponentAst, NumericNameAst,
-    SelectorAst, Span, Symbol, TokenKind,
+    OperatorNameAst, OperatorSpelling, SelectorAst, Span, Symbol, TokenKind,
 };
 
 use super::{
-    argpack::parse_argpack, closure::try_parse_closure, form::Parser, pipe::parse_pipe_expr,
+    argpack::{parse_argpack, parse_bracket_argpack},
+    closure::try_parse_closure,
+    form::Parser,
+    pipe::parse_pipe_expr,
 };
 
 pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
@@ -20,8 +23,9 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 .peek_at_skip_trivia(parser.cursor.current_index());
             if !matches!(
                 next.kind,
-                TokenKind::Symbol(Symbol::ColonColon | Symbol::Dot | Symbol::DotDot)
-                    | TokenKind::Operator(_)
+                TokenKind::Symbol(
+                    Symbol::ColonColon | Symbol::Dot | Symbol::DotDot | Symbol::LBracket
+                ) | TokenKind::Operator(_)
             ) {
                 break;
             }
@@ -93,6 +97,21 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 );
                 break;
             }
+        } else if parser.cursor.at_symbol(Symbol::LBracket) {
+            let args = parse_bracket_argpack(parser);
+            let operator = OperatorNameAst {
+                spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),
+                span: args.span,
+            };
+            let span = atom.span.join(args.span);
+            atom = AtomAst {
+                kind: AtomKind::BracketCallSugar {
+                    object: Box::new(atom),
+                    operator,
+                    args,
+                },
+                span,
+            };
         } else {
             break;
         }
