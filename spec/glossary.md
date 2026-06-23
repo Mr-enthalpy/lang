@@ -160,11 +160,17 @@ The smallest self-contained expression unit. Atoms include:
 - `NavPath(components)` (components are `NavComponentAst` in source order)
 - `MemberSugar(object, selector)` (selector is `SelectorAst`)
 - `DoubleDotSugar(object, selector, args)` (selector is `SelectorAst`)
+- `BracketCallSugar(object, operator, args)` (`obj[args...]`; operator spelling `[]`, `args` is an `ArgPackAst`)
 - `Error`
 
 Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
-`..`, and postfix operators once implemented). Operator sugar itself is stored
-at the `OperatorExpr` layer, not as a general `Atom` variant.
+`..`, `[...]` bracket call, and postfix operators). Operator sugar itself is
+stored at the `OperatorExpr` layer, not as a general `Atom` variant.
+
+`BracketCallSugar` is source-preserving sugar for the operator spelling `[]`; it
+is not indexing/slicing/container access. The `[]` operator is a contextual
+paired operator name, bindable/aliasable/referable in operator-name positions.
+An empty argpack slot created by a comma is preserved as the `Unit` expression.
 
 _See also: ClosureAST, ArgPack, OperatorSugar, PostfixOperator, SelectorAst, NavPath._
 

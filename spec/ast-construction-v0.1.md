@@ -1017,6 +1017,7 @@ AtomAst ::=
   | NavPath(...)
   | MemberSugar(...)
   | DoubleDotSugar(...)
+  | BracketCallSugar { object, operator: OperatorName "[]", args: ArgPackAst }
   | Error(...)
 ```
 
@@ -1211,13 +1212,19 @@ OperatorExprAst ::=
         args: ArgPackAst,
         span: Span
     }
+  | BracketCallSugar {
+        object: OperatorExprAst,
+        operator: OperatorName,   // spelling "[]"
+        args: ArgPackAst,
+        span: Span
+    }
 ```
 
 Operator syntax is preserved as AST sugar at the `OperatorExprAst` layer. The
 parser must not lower it into ordinary calls in v0.1. The operator-level
-`NavPath`, `MemberSugar`, and `DoubleDotSugar` variants exist only so postfix
-operator results can continue through suffix folding, for example
-`obj!.field`, `obj.field?`, and `obj..map(a)!`.
+`NavPath`, `MemberSugar`, `DoubleDotSugar`, and `BracketCallSugar` variants
+exist only so postfix operator results can continue through suffix folding, for
+example `obj!.field`, `obj.field?`, `obj..map(a)!`, and `obj![a]`.
 
 Examples:
 
@@ -1345,13 +1352,72 @@ The token after `..` is an operator, not `Name` or `IntLiteral`. Same as
 `ExpectedNameAfterDoubleDot` case above. Operator selectors are valid only
 after `::`, not after `..`.
 
+### 8.7 Bracket call sugar
+
+Input:
+
+```text
+obj[args...]
+obj[]
+```
+
+AST:
+
+```text
+BracketCallSugar {
+    object,
+    operator: OperatorNameAst,   // spelling "[]"
+    args: ArgPackAst,
+    span
+}
+```
+
+`obj[args...]` is parsed as source-preserving bracket-call operator sugar. It
+participates in the suffix chain like member sugar, double-dot method sugar, and
+postfix operators, and is left-associative: `obj[a][b]` is a bracket call on the
+result of `obj[a]`. It exists at both the atom layer and the operator-expr layer
+(the latter for chaining after a postfix operator, e.g. `obj![a]` is
+`(obj!)[a]`).
+
+It is conceptually normalized later as:
+
+```text
+obj[args...] ↦ obj |> [](args...) ↦ (obj, args...) |> []
+obj[]        ↦ obj |> []()        ↦ (obj) |> []
+```
+
+using the general call/pipe association rule:
+
+```text
+(args1...) |> f(args2...) ↦ (args1..., args2...) |> f
+```
+
+The operator spelling `[]` is an ordinary operator spelling with special
+surface association. It has no global builtin implementation and does **not**
+imply indexing, slicing, container access, bounds checking, address
+calculation, mutation, lvalue/reference behavior, or any special runtime
+operation. `[]` is bindable / aliasable / referable wherever operator names are
+allowed (operator binder, alias binder, entity-ref innermost component); it is
+recognized contextually as the paired empty brackets `[]` rather than a single
+lexer token.
+
+The parser preserves the bracket-call source shape and does not lower it.
+Semantic validity belongs to later normalization, operator resolution, type
+calculation, and checking.
+
+`obj[]` is valid and represents a bracket-call with an empty argument list.
+`[` in expression-suffix position begins a bracket call; `[` at closure-head
+prefix position begins a capture clause. The distinction is purely contextual.
+
 ## 9. ArgPack
 
 ### 9.1 Syntax
 
 ```text
 ArgPack ::= "(" ArgList? ")"
-ArgList ::= PipeExpr ("," PipeExpr)*
+BracketArgPack ::= "[" ArgList? "]"
+ArgList ::= ArgSlot ("," ArgSlot)*
+ArgSlot ::= PipeExpr | <empty>
 ```
 
 AST:
@@ -1362,6 +1428,26 @@ ArgPackAst {
     span: Span
 }
 ```
+
+**Comma-slot rule (paren and bracket argpacks).** Commas create argument slots.
+An empty slot — produced by a leading, double, or trailing comma — is preserved
+as the unit expression (`ExprKind::Unit`). Zero slots without any comma is an
+empty argpack. Examples:
+
+```text
+(args) f        // [args]
+(,a) f          // [unit, a]
+(a,,b) f        // [a, unit, b]
+(a,) f          // [a, unit]
+obj[]           // []
+obj[,a]         // [unit, a]
+obj[a,]         // [a, unit]
+```
+
+`Unit` is source-preserving only: later phases decide whether a unit argument is
+meaningful for a given call/operator. Exact empty `()` / `obj[]` (no commas)
+remain empty argpacks. This rule applies to expression argpacks; canonical
+skeleton argpacks keep their own grammar.
 
 ### 9.2 Role assignment
 

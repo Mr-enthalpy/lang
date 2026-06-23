@@ -146,6 +146,9 @@ pub struct ExprAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprKind {
     Pipe(PipeExprAst),
+    // An empty argument slot created by a comma (leading, double, or trailing)
+    // in an argpack. Source-preserving only; later phases decide meaning.
+    Unit,
     Error(ErrorAst),
 }
 
@@ -195,6 +198,14 @@ pub enum OperatorExprKind {
     DoubleDotSugar {
         object: Box<OperatorExprAst>,
         selector: SelectorAst,
+        args: ArgPackAst,
+        span: Span,
+    },
+    // `obj[args...]` bracket-call sugar for the operator spelling `[]`.
+    // Source-preserving; not indexing/slicing/container access.
+    BracketCallSugar {
+        object: Box<OperatorExprAst>,
+        operator: OperatorNameAst,
         args: ArgPackAst,
         span: Span,
     },
@@ -276,6 +287,12 @@ pub enum AtomKind {
     DoubleDotSugar {
         object: Box<AtomAst>,
         selector: SelectorAst,
+        args: ArgPackAst,
+    },
+    // `obj[args...]` bracket-call sugar for the operator spelling `[]`.
+    BracketCallSugar {
+        object: Box<AtomAst>,
+        operator: OperatorNameAst,
         args: ArgPackAst,
     },
     Closure(ClosureAst),

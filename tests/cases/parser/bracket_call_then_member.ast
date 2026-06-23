@@ -1,0 +1,23 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              MemberSugar
+                object:
+                  BracketCallSugar operator="[]"
+                    object:
+                      Name obj
+                    args:
+                      ArgPack role=Unknown
+                        args:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name a
+                selector:
+                  TextName field

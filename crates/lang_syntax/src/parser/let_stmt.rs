@@ -28,12 +28,8 @@ pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<ExprAst>) -> FormA
         .consume_name("let")
         .expect("parse_let_form called at let");
 
-    let token = parser.cursor.peek_non_trivia();
-    if is_valid_alias_binder(&token.kind) {
-        let next = parser.cursor.peek_next_non_trivia();
-        if matches!(next.kind, TokenKind::Symbol(Symbol::TripleEqual)) {
-            return FormAst::AliasLet(parse_alias_let_body(parser, start, policy));
-        }
+    if alias_binder_followed_by_triple_equal(parser) {
+        return FormAst::AliasLet(parse_alias_let_body(parser, start, policy));
     }
 
     let mut slot = parse_binding_slot(parser, BindingSlotContext::Let, None, true);
@@ -231,6 +227,10 @@ fn parse_binding_pattern(
         }));
     }
 
+    if let Some(operator) = try_consume_bracket_operator_name(parser) {
+        return BindingPatternAst::Binder(BinderNameAst::Operator(operator));
+    }
+
     let message = match context {
         BindingSlotContext::Let => "expected binding pattern after `let`",
         BindingSlotContext::Param => "expected parameter binding pattern",
@@ -379,8 +379,7 @@ fn parse_alias_let_body(
     span_start: Span,
     policy: Option<ExprAst>,
 ) -> LetAliasAst {
-    let name_token = parser.cursor.bump_non_trivia();
-    let binder = binder_name_to_alias_binder(name_token);
+    let binder = parse_alias_binder(parser);
 
     parser.cursor.consume_symbol(Symbol::TripleEqual);
 
@@ -392,6 +391,57 @@ fn parse_alias_let_body(
         target,
         span,
     }
+}
+
+fn parse_alias_binder(parser: &mut Parser<'_>) -> AliasBinderAst {
+    if let Some(operator) = try_consume_bracket_operator_name(parser) {
+        return AliasBinderAst::Operator(operator);
+    }
+    let token = parser.cursor.bump_non_trivia();
+    binder_name_to_alias_binder(token)
+}
+
+// True when the upcoming alias binder (a single-token name/operator, or the
+// paired `[]` operator) is immediately followed by `===`.
+fn alias_binder_followed_by_triple_equal(parser: &mut Parser<'_>) -> bool {
+    let token = parser.cursor.peek_non_trivia();
+    if is_valid_alias_binder(&token.kind) {
+        return matches!(
+            parser.cursor.peek_next_non_trivia().kind,
+            TokenKind::Symbol(Symbol::TripleEqual)
+        );
+    }
+    if matches!(token.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        let cursor_index = parser.cursor.current_index();
+        let (rbracket_index, rbracket) = parser.cursor.peek_at_skip_trivia(cursor_index + 1);
+        if matches!(rbracket.kind, TokenKind::Symbol(Symbol::RBracket)) {
+            let (_, after) = parser.cursor.peek_at_skip_trivia(rbracket_index + 1);
+            return matches!(after.kind, TokenKind::Symbol(Symbol::TripleEqual));
+        }
+    }
+    false
+}
+
+// Recognize the paired empty brackets `[]` as the operator spelling `[]` in
+// operator-name positions (binder, alias binder, entity-ref inner component).
+// `[` followed by content is not the `[]` operator and is left untouched.
+fn try_consume_bracket_operator_name(parser: &mut Parser<'_>) -> Option<OperatorNameAst> {
+    if !parser.cursor.at_symbol(Symbol::LBracket) {
+        return None;
+    }
+    let cursor_index = parser.cursor.current_index();
+    let (_, rbracket) = parser.cursor.peek_at_skip_trivia(cursor_index + 1);
+    if !matches!(rbracket.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return None;
+    }
+    let lbracket_span = parser.cursor.bump_non_trivia().span;
+    let rbracket_span = parser.cursor.bump_non_trivia().span;
+    Some(OperatorNameAst {
+        spelling: crate::OperatorSpelling::BracketCall
+            .as_source_text()
+            .to_string(),
+        span: lbracket_span.join(rbracket_span),
+    })
 }
 
 fn binder_name_to_alias_binder(token: &crate::Token) -> AliasBinderAst {
@@ -525,6 +575,9 @@ fn finish_entity_ref(
 }
 
 fn parse_entity_inner_component(parser: &mut Parser<'_>) -> Option<NavComponentAst> {
+    if let Some(operator) = try_consume_bracket_operator_name(parser) {
+        return Some(NavComponentAst::Operator(operator));
+    }
     let token = parser.cursor.peek_non_trivia();
     match token.kind {
         TokenKind::Name => {

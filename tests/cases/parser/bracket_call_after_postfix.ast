@@ -1,0 +1,21 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            BracketCallSugar operator="[]"
+              object:
+                OperatorSugar fixity=Postfix operator="!"
+                  arg:
+                    Atom
+                      Name obj
+              args:
+                ArgPack role=Unknown
+                  args:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name a

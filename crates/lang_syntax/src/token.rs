@@ -69,6 +69,11 @@ pub enum OperatorSpelling {
     PipePipe,
     LessLessEqual,
     GreaterGreaterEqual,
+    // Paired bracket operator `[]`. Recognized contextually in operator-name
+    // positions (binder, alias binder, entity-ref inner component) and used as
+    // the operator identity of bracket-call sugar. Never produced by the lexer
+    // as a single token.
+    BracketCall,
 }
 
 impl OperatorSpelling {
@@ -106,6 +111,7 @@ impl OperatorSpelling {
             OperatorSpelling::PipePipe => "PipePipe",
             OperatorSpelling::LessLessEqual => "LessLessEqual",
             OperatorSpelling::GreaterGreaterEqual => "GreaterGreaterEqual",
+            OperatorSpelling::BracketCall => "BracketCall",
         }
     }
 
@@ -143,6 +149,7 @@ impl OperatorSpelling {
             OperatorSpelling::PipePipe => "||",
             OperatorSpelling::LessLessEqual => "<<=",
             OperatorSpelling::GreaterGreaterEqual => ">>=",
+            OperatorSpelling::BracketCall => "[]",
         }
     }
 }
