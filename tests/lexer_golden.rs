@@ -97,3 +97,23 @@ fn triple_equal_token() {
 fn triple_equal_plus_equal_tail() {
     assert_lexer_case("triple_equal_plus_equal_tail", false);
 }
+
+#[test]
+fn nested_block_comment() {
+    assert_lexer_case("nested_block_comment", false);
+}
+
+#[test]
+fn block_comment_with_slashes() {
+    assert_lexer_case("block_comment_with_slashes", false);
+}
+
+#[test]
+fn line_comment_with_block_delims() {
+    assert_lexer_case("line_comment_with_block_delims", false);
+}
+
+#[test]
+fn unclosed_nested_block_comment() {
+    assert_lexer_case("unclosed_nested_block_comment", true);
+}

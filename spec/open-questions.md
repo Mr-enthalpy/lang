@@ -8,17 +8,22 @@ stage.
 
 ## 1. Nested block-comment policy
 
-**Status:** Open
+**Status:** Resolved
 
-**Current v0.1 decision:**
-Block comments (`/* ... */`) do not nest. The first `*/` closes the comment.
-Nested `/*` inside a block comment is an error or ignored.
+**Resolution:**
+Block comments nest. A block comment starts at `/*` and ends at the matching
+`*/`. Nested `/*` increments block-comment depth, and `*/` decrements it.
 
-**Why it does not block v0.1:**
-The lexer only needs a simple nesting-unaware comment rule for v0.1. A future
-stage can add nesting if the language grammar requires it.
+Inside a block comment, `//` has no special meaning.
+Inside a line comment, `/*` and `*/` have no special meaning.
 
-**Future stage:** v0.5 (Normalized AST Stabilization) or v0.9 (type/kind checking design).
+Line comments start at `//` and end before the next line break or EOF.
+Comment delimiters are recognized as contiguous character pairs; whitespace may
+surround them but may not split them.
+
+**Implementation status:**
+`lex_block_comment` in `lexer.rs` uses depth counting. `lex_line_comment` is
+unchanged (already newline-sensitive, does not scan for block delimiters).
 
 ---
 

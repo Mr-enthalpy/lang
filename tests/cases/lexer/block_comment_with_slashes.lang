@@ -1,0 +1,2 @@
+let a = 1 /* outer // not line comment
+still block */ ; let b = 2

@@ -159,20 +159,32 @@ impl<'src> Lexer<'src> {
         let start = self.mark();
         self.advance_char();
         self.advance_char();
-        let mut closed = false;
+
+        let mut depth: usize = 1;
 
         while !self.is_eof() {
+            if self.starts_with("/*") {
+                self.advance_char();
+                self.advance_char();
+                depth += 1;
+                continue;
+            }
+
             if self.starts_with("*/") {
                 self.advance_char();
                 self.advance_char();
-                closed = true;
-                break;
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+                continue;
             }
+
             self.advance_char();
         }
 
         let span = self.span_from(start);
-        if !closed {
+        if depth != 0 {
             self.diagnostics.push(Diagnostic::new(
                 DiagnosticCode::UnclosedComment,
                 "unclosed block comment",
