@@ -137,6 +137,7 @@ impl<'tokens> Cursor<'tokens> {
         let _start = i;
         let mut depth: usize = 0;
         let mut has_comma = false;
+        let mut has_content = false;
 
         loop {
             if i >= self.tokens.len() {
@@ -175,7 +176,9 @@ impl<'tokens> Cursor<'tokens> {
                 TokenKind::Eof => {
                     return (ParenClassification::Unclosed, None);
                 }
-                _ => {}
+                _ => {
+                    has_content = true;
+                }
             }
 
             if depth == 0 {
@@ -185,7 +188,7 @@ impl<'tokens> Cursor<'tokens> {
             i += 1;
         }
 
-        if has_comma {
+        if has_comma || !has_content {
             (ParenClassification::Product, Some(i))
         } else {
             (ParenClassification::Group, Some(i))

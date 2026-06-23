@@ -173,7 +173,7 @@ fn parse_operand(
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
                 if matches!(
                     after.kind,
-                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
+                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow)
                 ) || token_index_starts_head_clause(parser, idx)
                 {
                     let atom = parse_atom(parser)?;

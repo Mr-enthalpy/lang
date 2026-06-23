@@ -1482,7 +1482,7 @@ A parenthesized form with no top-level comma remains a group expression:
 (a)       -> Group(a)
 (a, b)    -> ProductExpr([a, b])
 (a, b, c) -> ProductExpr([a, b, c])
-()        -> ProductExpr([]) only where a product parser is explicitly invoked
+()        -> ProductExpr([])
 ```
 
 Raw AST does not create `ExprKind::Unit` for empty comma slots. Empty elements

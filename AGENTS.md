@@ -249,8 +249,15 @@ Do not add syntax nodes such as:
 * `ReturnStmt`
 * `ElseExpr`
 * `MatchExpr`
+* `IfExpr`
+* `IfStmt`
+* `ElseClause`
+* `ElseIf`
+* `MatchStmt`
+* `CallExpr`
+* `ArgPack`
 
-At `v0.1`, `return`, `else`, and `match` remain ordinary names and ordinary
+At `v0.1`, `return`, `else`, `match`, and `if` remain ordinary names and ordinary
 expression atoms unless some later semantic pass interprets them.
 
 ### Match

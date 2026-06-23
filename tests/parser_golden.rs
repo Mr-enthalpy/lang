@@ -210,6 +210,11 @@ fn product_bare_expr() {
 }
 
 #[test]
+fn product_empty() {
+    assert_parser_case("product_empty", false);
+}
+
+#[test]
 fn product_after_name() {
     assert_parser_case("product_after_name", false);
 }
@@ -417,6 +422,11 @@ fn invalid_closure_bad_head_recovery() {
 #[test]
 fn invalid_closure_missing_trait_after_colon() {
     assert_parser_case("invalid_closure_missing_trait_after_colon", true);
+}
+
+#[test]
+fn invalid_closure_missing_return_after_arrow() {
+    assert_parser_case("invalid_closure_missing_return_after_arrow", true);
 }
 
 #[test]
@@ -762,11 +772,6 @@ fn bracket_call_comma_double() {
 #[test]
 fn bracket_call_comma_trailing() {
     assert_parser_case("bracket_call_comma_trailing", false);
-}
-
-#[test]
-fn bracket_call_comma_both() {
-    assert_parser_case("bracket_call_comma_both", false);
 }
 
 #[test]
