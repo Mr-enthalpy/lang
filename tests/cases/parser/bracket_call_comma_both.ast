@@ -11,3 +11,4 @@ Program
                 args:
                   Product
                     elements:
+                      ProductUnit

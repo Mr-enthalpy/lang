@@ -1,4 +1,4 @@
-use crate::{DiagnosticCode, ExprAst, ExprKind, ProductExprAst, Span, Symbol};
+use crate::{DiagnosticCode, ExprAst, ExprKind, ProductElementAst, ProductExprAst, Span, Symbol};
 
 use super::{form::Parser, pipe::parse_pipe_expr};
 
@@ -37,23 +37,30 @@ fn parse_delimited_product_expr(
     parser.enter_nesting();
 
     let mut elements = Vec::new();
+    let mut expect_element = true;
 
     while !at_product_end(parser, close) {
         if parser.cursor.at_symbol(Symbol::Comma) {
-            parser.cursor.bump_non_trivia();
+            let comma = parser.cursor.bump_non_trivia();
+            if expect_element {
+                elements.push(ProductElementAst::Unit { span: comma.span });
+            }
+            expect_element = true;
             continue;
+        }
+
+        let expr = parse_pipe_expr(parser, |p| {
+            p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(close)
+        });
+        elements.push(ProductElementAst::Expr(expr));
+
+        if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
+            expect_element = true;
+            if at_product_end(parser, close) {
+                elements.push(ProductElementAst::Unit { span: comma.span });
+                break;
+            }
         } else {
-            let expr = parse_pipe_expr(parser, |p| {
-                p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(close)
-            });
-            elements.push(expr);
-        }
-
-        if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
-            break;
-        }
-
-        if at_product_end(parser, close) {
             break;
         }
     }

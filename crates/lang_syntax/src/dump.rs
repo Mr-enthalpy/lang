@@ -1,9 +1,9 @@
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
     BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind,
-    FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, ProductExprAst,
-    ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind, TriviaKind,
-    WithClauseKind,
+    FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, ProductElementAst,
+    ProductExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind,
+    TriviaKind, WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -474,14 +474,24 @@ fn dump_product(output: &mut String, product: &ProductExprAst, indent: usize) {
     line(output, indent, "Product");
     line(output, indent + 1, "elements:");
     for element in &product.elements {
-        dump_expr(output, element, indent + 2);
+        match element {
+            ProductElementAst::Expr(expr) => dump_expr(output, expr, indent + 2),
+            ProductElementAst::Unit { .. } => line(output, indent + 2, "ProductUnit"),
+        }
     }
 }
 
 fn dump_product_extract(output: &mut String, product: &crate::ProductExtractAst, indent: usize) {
     line(output, indent, "elements:");
     for element in &product.elements {
-        dump_binding_slot(output, element, indent + 1);
+        match element {
+            crate::ProductExtractElementAst::Slot(slot) => {
+                dump_binding_slot(output, slot, indent + 1)
+            }
+            crate::ProductExtractElementAst::Unit { .. } => {
+                line(output, indent + 1, "ProductExtractUnit")
+            }
+        }
     }
 }
 

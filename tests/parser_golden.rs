@@ -185,6 +185,11 @@ fn product_let_extract_construct() {
 }
 
 #[test]
+fn product_extract_unit() {
+    assert_parser_case("product_extract_unit", false);
+}
+
+#[test]
 fn product_bare_expr() {
     assert_parser_case("product_bare_expr", false);
 }

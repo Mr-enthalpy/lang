@@ -17,6 +17,7 @@ Program
                             OperatorExpr
                               Atom
                                 Name a
+                      ProductUnit
                       Expr
                         Pipe
                           Segment has_incoming=false

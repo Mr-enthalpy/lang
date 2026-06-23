@@ -2,8 +2,8 @@ use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, AnnotationTermAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, CanonicalSkeletonAst, DeduceListAst,
     DiagnosticCode, EntityRefAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
-    NameAst, NavComponentAst, NumericNameAst, OperatorNameAst, ProductExtractAst, Span, Symbol,
-    TokenKind, WithClauseAst, WithClauseKind,
+    NameAst, NavComponentAst, NumericNameAst, OperatorNameAst, ProductExtractAst,
+    ProductExtractElementAst, Span, Symbol, TokenKind, WithClauseAst, WithClauseKind,
 };
 
 use super::{
@@ -138,6 +138,7 @@ pub fn parse_product_extract(
 
     parser.enter_nesting();
     let mut elements = Vec::new();
+    let mut expect_element = true;
 
     loop {
         if parser.cursor.at_eof()
@@ -147,24 +148,29 @@ pub fn parse_product_extract(
             break;
         }
 
-        let element =
-            parse_binding_slot(parser, BindingSlotContext::Param, inherited_deduce, false);
-        elements.push(element);
-
-        if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
-            break;
+        if parser.cursor.at_symbol(Symbol::Comma) {
+            let comma = parser.cursor.bump_non_trivia();
+            if expect_element {
+                elements.push(ProductExtractElementAst::Unit { span: comma.span });
+            }
+            expect_element = true;
+            continue;
         }
 
-        if parser.cursor.at_symbol(Symbol::RParen)
-            || parser.cursor.at_eof()
-            || parser.is_form_boundary()
-        {
-            let span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::InvalidCanonicalSkeleton,
-                "trailing comma in product extraction",
-                span,
-            );
+        let element =
+            parse_binding_slot(parser, BindingSlotContext::Param, inherited_deduce, false);
+        elements.push(ProductExtractElementAst::Slot(element));
+
+        if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
+            expect_element = true;
+            if parser.cursor.at_symbol(Symbol::RParen)
+                || parser.cursor.at_eof()
+                || parser.is_form_boundary()
+            {
+                elements.push(ProductExtractElementAst::Unit { span: comma.span });
+                break;
+            }
+        } else {
             break;
         }
     }

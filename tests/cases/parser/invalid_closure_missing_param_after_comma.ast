@@ -23,5 +23,6 @@ Program
                               None
                             initializer:
                               None
+                          ProductExtractUnit
                 BodyBlock
                   forms:

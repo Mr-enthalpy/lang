@@ -11,6 +11,7 @@ Program
                 args:
                   Product
                     elements:
+                      ProductUnit
                       Expr
                         Pipe
                           Segment has_incoming=false

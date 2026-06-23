@@ -5,6 +5,7 @@ Program
         Segment has_incoming=false
           Product
             elements:
+              ProductUnit
               Expr
                 Pipe
                   Segment has_incoming=false

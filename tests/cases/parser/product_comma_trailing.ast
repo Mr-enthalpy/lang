@@ -11,6 +11,7 @@ Program
                     OperatorExpr
                       Atom
                         Name a
+              ProductUnit
           OperatorExpr
             Atom
               Name f

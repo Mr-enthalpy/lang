@@ -86,8 +86,9 @@ Normalization must **not** assume:
 ## Expression invariants
 
 - `ExprAst` is a `Pipe(PipeExprAst)`, `Product(ProductExprAst)`, or `Error(ErrorAst)`.
-- `ProductExprAst` preserves ordered `ExprAst` elements and span. A parenthesized top-level-comma form in expression context is product construction.
-- There is no `Unit` expression for empty comma-created slots. Empty elements are not promoted into a language-level AST node.
+- `ProductExprAst` preserves ordered `ProductElementAst` elements and span. A parenthesized top-level-comma form in expression context is product construction.
+- `ProductElementAst` is either `Expr(ExprAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit product elements. They are not skipped, not wildcards, and not implicit discards.
+- There is no standalone `ExprKind::Unit`; unit from commas is scoped to product elements only.
 - There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, or `MatchExpr` node in Raw AST.
 
 ## PipeExpr / Segment / Product invariants
@@ -126,7 +127,8 @@ Normalization must **not** assume:
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries. Each `CaptureItemAst` holds a full `ExprAst`, not a name or token tree. The parser does not validate whether a capture expression is movable, borrowable, copyable, lifetime-safe, or admissible as a capture.
 - `ParamClauseAst` preserves one `ProductExtractAst`, not a parameter-slot list.
-- `ProductExtractAst` preserves ordered extraction elements and span. A parenthesized top-level-comma form in binding / extraction context is product extraction.
+- `ProductExtractAst` preserves ordered `ProductExtractElementAst` elements and span. A parenthesized top-level-comma form in binding / extraction context is product extraction.
+- `ProductExtractElementAst` is either `Slot(BindingSlotAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit extraction elements. They are not skipped, not wildcards, and not implicit discards.
 - `ReturnClauseAst` preserves a `BindingSlotAst`.
 - Parameter and return binding slots reuse the same raw binding-site shape as let, with context-specific restrictions on initializer and `with`.
 - `BodyBlockAst` preserves ordered `FormAst` entries and `span`.

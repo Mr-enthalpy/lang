@@ -3,11 +3,7 @@ Program
     slot:
       BindingSlot let=true
         deduce:
-          DeduceList
-            binders:
-              BinderDecl name=x
-                annotation:
-                  None
+          None
         pattern:
           ProductExtract
             elements:
@@ -16,7 +12,7 @@ Program
                   None
                 pattern:
                   Binder
-                    TextName x
+                    TextName a
                 annotation:
                   None
                 with_clause:
@@ -24,10 +20,26 @@ Program
                 initializer:
                   None
               ProductExtractUnit
+              BindingSlot let=false
+                deduce:
+                  None
+                pattern:
+                  Binder
+                    TextName b
+                annotation:
+                  None
+                with_clause:
+                  None
+                initializer:
+                  None
         annotation:
           None
         with_clause:
           None
         initializer:
           Expr
-            Error "expected `=` in let"
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value

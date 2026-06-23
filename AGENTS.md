@@ -235,8 +235,9 @@ skeleton rules described in `spec/ast-construction-v0.1.md`.
 
 `{ ... }` is not a normal block expression.
 
-In expression/atom position, bare `{ ... }` does not produce a closure AST.
-Braces are closure body delimiters only after explicit closure syntax.
+In expression/atom position, bare `{ ... }` produces `ClosureAst::InPlace`.
+It has no closure head. Braces also delimit explicit closure bodies after
+`FnHeadPrefix =>`.
 
 Closure literals initially produce AST, not callable objects. Object
 materialization is a future semantic pass.
@@ -304,7 +305,8 @@ Do not parse guard as a let attribute.
 Do not keep LetAttrAst or LetAst.attrs.
 Do not parse with NameList.
 Do not represent with {} as an empty dependency list.
-Do not parse bare { ... } as an atom-level closure.
+Preserve bare { ... } in atom position as ClosureAst::InPlace; it is not a
+normal block expression and has no closure head.
 
 Parse left to right. Do not go back to reinterpret meaning. The parser should
 be streaming-friendly. Contextual parsing is allowed only for explicitly

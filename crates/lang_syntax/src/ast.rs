@@ -154,8 +154,14 @@ pub enum ExprKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProductExprAst {
-    pub elements: Vec<ExprAst>,
+    pub elements: Vec<ProductElementAst>,
     pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProductElementAst {
+    Expr(ExprAst),
+    Unit { span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -362,8 +368,14 @@ pub struct ParamClauseAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProductExtractAst {
-    pub elements: Vec<BindingSlotAst>,
+    pub elements: Vec<ProductExtractElementAst>,
     pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProductExtractElementAst {
+    Slot(BindingSlotAst),
+    Unit { span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

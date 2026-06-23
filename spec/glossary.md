@@ -102,6 +102,9 @@ as `ProductExprAst`. In binding / extraction context, the same surface form is
 product extraction and is preserved as `ProductExtractAst` or a canonical
 product extraction skeleton.
 
+Leading, doubled, or trailing commas create explicit unit product elements.
+These unit elements are not omitted, not wildcards, and not implicit discards.
+
 The parser does not decide whether a product is constructible, destructible,
 layout-compatible, type-compatible, or callable. ArgPack and ArgPackRole are
 removed historical terms and are not language-level concepts.

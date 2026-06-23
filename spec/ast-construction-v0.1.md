@@ -837,13 +837,16 @@ Let.Extract
 ### 7.1 Expression entry
 
 ```text
-Expr ::= PipeExpr
+Expr ::= PipeExpr | ProductExpr
 ```
 
 AST:
 
 ```text
-ExprAst ::= Pipe(PipeExprAst)
+ExprAst ::=
+    Pipe(PipeExprAst)
+  | Product(ProductExprAst)
+  | Error(ErrorAst)
 ```
 
 ### 7.2 Pipe expression
@@ -994,11 +997,15 @@ AtomBase ::=
     Name
   | Literal
   | Group
-  | HeadedOrExplicitClosureAst
+  | InPlaceClosureAst
+  | ExplicitClosureAst
 ```
 
-`HeadedOrExplicitClosureAst` means headed inline closure or explicit closure.
-Bare `{ ... }` is not an atom-base closure form.
+`InPlaceClosureAst` is a bare `{ ... }` atom. It is closure AST, not a normal
+block expression, and has no capture clause, parameter clause, return clause,
+or head clauses.
+
+`ExplicitClosureAst` is a `FnHeadPrefix => BodyBlock` atom.
 
 AST:
 
@@ -1443,9 +1450,13 @@ AST:
 
 ```text
 ProductExprAst {
-    elements: Vec<ExprAst>,
+    elements: Vec<ProductElementAst>,
     span: Span
 }
+
+ProductElementAst ::=
+    Expr(ExprAst)
+  | Unit { span: Span }
 ```
 
 A parenthesized form with top-level commas is a product form. In expression
@@ -1462,8 +1473,14 @@ A parenthesized form with no top-level comma remains a group expression:
 ```
 
 Raw AST does not create `ExprKind::Unit` for empty comma slots. Empty elements
-from leading, doubled, or trailing commas are not assigned language-level
-meaning by the parser.
+from leading, doubled, or trailing commas are preserved as unit product
+elements. They are not omitted, not wildcards, and not implicit discards.
+
+```text
+(, a)    -> ProductExpr([Unit, a])
+(a,, b)  -> ProductExpr([a, Unit, b])
+(a,)     -> ProductExpr([a, Unit])
+```
 
 ### 9.2 Extraction-side product form
 
@@ -1472,10 +1489,18 @@ product extraction:
 
 ```text
 ProductExtractAst {
-    elements: Vec<BindingSlotAst>,
+    elements: Vec<ProductExtractElementAst>,
     span: Span
 }
+
+ProductExtractElementAst ::=
+    Slot(BindingSlotAst)
+  | Unit { span: Span }
 ```
+
+Empty product positions produced by leading, doubled, or trailing commas are
+preserved as unit product extraction elements. `_` is the explicit wildcard /
+consuming pattern. A comma-created unit position matches only unit.
 
 Examples:
 
