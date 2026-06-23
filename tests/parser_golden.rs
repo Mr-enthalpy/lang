@@ -533,6 +533,21 @@ fn head_clause_only_head() {
 }
 
 #[test]
+fn head_clause_inline_empty_params() {
+    assert_parser_case("head_clause_inline_empty_params", false);
+}
+
+#[test]
+fn head_clause_inline_pre_post() {
+    assert_parser_case("head_clause_inline_pre_post", false);
+}
+
+#[test]
+fn head_clause_inline_only_head() {
+    assert_parser_case("head_clause_inline_only_head", false);
+}
+
+#[test]
 fn head_clause_require_valid_t() {
     assert_parser_case("head_clause_require_valid_t", false);
 }
