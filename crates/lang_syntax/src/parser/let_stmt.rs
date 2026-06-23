@@ -18,8 +18,12 @@ pub enum BindingSlotContext {
     Return,
 }
 
-pub fn parse_let_form(parser: &mut Parser<'_>) -> FormAst {
-    let let_token = parser
+pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<ExprAst>) -> FormAst {
+    let start = policy
+        .as_ref()
+        .map(|expr| expr.span)
+        .unwrap_or_else(|| parser.cursor.current_span());
+    parser
         .cursor
         .consume_name("let")
         .expect("parse_let_form called at let");
@@ -28,13 +32,14 @@ pub fn parse_let_form(parser: &mut Parser<'_>) -> FormAst {
     if is_valid_alias_binder(&token.kind) {
         let next = parser.cursor.peek_next_non_trivia();
         if matches!(next.kind, TokenKind::Symbol(Symbol::TripleEqual)) {
-            return FormAst::AliasLet(parse_alias_let_body(parser, let_token.span));
+            return FormAst::AliasLet(parse_alias_let_body(parser, start, policy));
         }
     }
 
     let mut slot = parse_binding_slot(parser, BindingSlotContext::Let, None, true);
     slot.has_let = true;
-    let span = let_token.span.join(slot.span);
+    slot.policy = policy;
+    let span = start.join(slot.span);
     FormAst::Let(LetAst { slot, span })
 }
 
@@ -45,14 +50,7 @@ pub fn parse_binding_slot(
     require_initializer: bool,
 ) -> BindingSlotAst {
     let start = parser.cursor.current_span();
-    let has_let = if matches!(
-        context,
-        BindingSlotContext::Param | BindingSlotContext::Return
-    ) {
-        parser.cursor.consume_name("let").is_some()
-    } else {
-        false
-    };
+    let (policy, has_let) = parse_slot_policy_and_let(parser, context);
 
     let deduce = if parser.cursor.at_symbol(Symbol::Less) {
         Some(parse_deduce_list(parser))
@@ -110,6 +108,7 @@ pub fn parse_binding_slot(
     }
 
     BindingSlotAst {
+        policy,
         has_let,
         deduce,
         pattern,
@@ -117,6 +116,65 @@ pub fn parse_binding_slot(
         with_clause,
         initializer,
         span: start.join(end),
+    }
+}
+
+// Detect an optional policy expression in `Param`/`Return` binding-slot prefix
+// position. A policy is recognized only by the shape `Expr let`: the parser
+// speculatively parses an expression that stops at a top-level `let`, and keeps
+// it only if a `let` actually follows. Without the `let` anchor the tokens are
+// restored for ordinary pattern / canonical-skeleton parsing. In `Let` context
+// the policy and `let` are handled by `parse_let_form`.
+fn parse_slot_policy_and_let(
+    parser: &mut Parser<'_>,
+    context: BindingSlotContext,
+) -> (Option<ExprAst>, bool) {
+    if !matches!(
+        context,
+        BindingSlotContext::Param | BindingSlotContext::Return
+    ) {
+        return (None, false);
+    }
+
+    if parser.cursor.at_name("let") {
+        parser.cursor.bump_non_trivia();
+        return (None, true);
+    }
+
+    let saved = parser.cursor.current_index();
+    parser.gate_diagnostics();
+    let expr = parse_expr_until(parser, |p| {
+        p.cursor.at_name("let") || slot_policy_boundary(p, context)
+    });
+
+    if parser.cursor.at_name("let") {
+        parser.ungate_keep_diagnostics();
+        parser.cursor.bump_non_trivia();
+        (Some(expr), true)
+    } else {
+        parser.cursor.set_index(saved);
+        parser.ungate_drop_diagnostics();
+        (None, false)
+    }
+}
+
+fn slot_policy_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {
+    if parser.is_form_boundary() {
+        return true;
+    }
+    match context {
+        BindingSlotContext::Param => {
+            parser.cursor.at_symbol(Symbol::Colon)
+                || parser.cursor.at_symbol(Symbol::Comma)
+                || parser.cursor.at_symbol(Symbol::RParen)
+        }
+        BindingSlotContext::Return => {
+            parser.cursor.at_symbol(Symbol::Colon)
+                || parser.cursor.at_symbol(Symbol::FatArrow)
+                || parser.cursor.at_symbol(Symbol::LBrace)
+                || parser.cursor.at_name("with")
+        }
+        BindingSlotContext::Let => true,
     }
 }
 
@@ -316,15 +374,20 @@ fn parse_let_value(parser: &mut Parser<'_>, require_initializer: bool) -> ExprAs
     }
 }
 
-fn parse_alias_let_body(parser: &mut Parser<'_>, let_span_start: Span) -> LetAliasAst {
+fn parse_alias_let_body(
+    parser: &mut Parser<'_>,
+    span_start: Span,
+    policy: Option<ExprAst>,
+) -> LetAliasAst {
     let name_token = parser.cursor.bump_non_trivia();
     let binder = binder_name_to_alias_binder(name_token);
 
     parser.cursor.consume_symbol(Symbol::TripleEqual);
 
     let target = parse_entity_ref(parser);
-    let span = let_span_start.join(target.span);
+    let span = span_start.join(target.span);
     LetAliasAst {
+        policy,
         binder,
         target,
         span,

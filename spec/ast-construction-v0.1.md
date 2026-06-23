@@ -213,10 +213,11 @@ both lines and diagnose `UnclosedParen` if the `)` is never found.
 ### 4.1 Let statement shape
 
 ```text
-LetStmt ::= "let" BindingSlotWithInitializer
+LetStmt ::= OptionalPolicy "let" BindingSlotWithInitializer
 ```
 
-A let binding uses the general binding-slot shape. The initializer is required
+`OptionalPolicy` is an optional `Expr` written before `let` (see §4.3). A let
+binding uses the general binding-slot shape. The initializer is required
 for ordinary let bindings. The annotation after `:` is optional and is preserved
 as syntax rather than classified as a type annotation.
 
@@ -268,13 +269,21 @@ with-clause kind.
 
 ```text
 BindingSlot ::=
+    OptionalPolicy
     OptionalLet
     OptionalDeduceList
     BindingPattern
     OptionalAnnotation
     OptionalWithClause
     OptionalInitializer
+
+OptionalPolicy ::= (Expr "let")?
 ```
+
+A policy expression is recognized **only** by the syntactic shape `Expr let`:
+the expression appears immediately before the `let` keyword in binding-slot
+prefix position. Without the following `let`, the same tokens remain part of the
+binding pattern / canonical skeleton (see §4.4).
 
 Context restrictions:
 
@@ -282,18 +291,23 @@ Context restrictions:
 let binding:
     initializer is required for ordinary let syntax
     with { ... } is allowed
+    policy: optional `Expr let` prefix; `let` is always present in let forms
 
 function parameter slot:
     initializer is absent
     with { ... } is allowed
     let is allowed but redundant
     <> is allowed per slot
+    policy: optional `Expr let` prefix; a written policy REQUIRES the explicit
+        `let` anchor. `policy x: T` (no `let`) is an ordinary pattern/skeleton,
+        not a policy slot, and is not an error.
 
 function return slot:
     initializer is absent
     with { ... } is rejected
     let is allowed but redundant
     <> is allowed per slot
+    policy: optional `Expr let` prefix; same `let`-anchor rule as parameters.
 ```
 
 Binding pattern:
@@ -307,6 +321,7 @@ AST:
 
 ```text
 BindingSlotAst {
+    policy: Option<ExprAst>,
     has_let: bool,
     deduce: Option<DeduceListAst>,
     pattern: BindingPatternAst,
@@ -333,6 +348,28 @@ AnnotationTermAst ::=
     Expr(ExprAst)
   | Hole
 ```
+
+**Binding-slot policy expressions are Raw AST expressions. The parser preserves
+the expression shape and does not decide whether it is a valid accessibility
+policy, capability condition, visibility object, contract, type-level object,
+rank-level object, or semantic predicate. Those checks belong to later
+normalization, name resolution, type calculation, and checking phases.**
+
+A policy expression is recognized only by the syntactic shape `Expr let`.
+Without the following `let`, the same tokens remain part of the binding pattern /
+canonical skeleton. The `let` keyword is the parser-level boundary between the
+policy expression and the rest of the binding slot.
+
+A `policy` of `None` means the policy was **not written** at this binding site
+(implicit / to be supplied or inferred by a later phase). It does not mean the
+binding has "no policy". The AST dump omits the `policy:` line when it is
+unwritten.
+
+The `Expr let` policy prefix is accepted in every position that accepts `let`:
+top-level let forms, let forms inside closure bodies, parameter binding slots,
+return binding slots, and alias-let forms (`LetAliasAst` also carries an
+optional `policy`). In parameter and return slots, where `let` may otherwise be
+omitted, a written policy still requires the explicit `let` anchor.
 
 ```text
 let val = expr
@@ -1975,7 +2012,7 @@ validate operator identity, perform name/operator lookup, or lower aliases.
 ### 16.2 Grammar
 
 ```text
-AliasBinding ::= "let" AliasBinder "===" EntityRef
+AliasBinding ::= OptionalPolicy "let" AliasBinder "===" EntityRef
 
 AliasBinder ::= Name | OperatorName
 
@@ -2007,6 +2044,10 @@ expression operator. It is not available as `OperatorName`.
 
 ### 16.3 Dispatch
 
+An optional policy expression (`Expr let`, see §4.3) may precede `let`. It is
+parsed before `let` and carried onto the alias (`LetAliasAst.policy`); alias
+dispatch is unaffected by its presence.
+
 After consuming `let`:
 
 1. If next token is `guard` → ordinary let only.
@@ -2025,6 +2066,7 @@ FormAst ::=
   | Error(ErrorAst)
 
 LetAliasAst {
+    policy: Option<ExprAst>,
     binder: AliasBinderAst,
     target: EntityRefAst,
     span: Span

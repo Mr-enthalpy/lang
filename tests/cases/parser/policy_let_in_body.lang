@@ -1,0 +1,1 @@
+() => { policy let local: T = value }

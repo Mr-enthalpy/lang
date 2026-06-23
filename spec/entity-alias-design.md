@@ -66,7 +66,7 @@ Phase 4.4 implemented raw parser preservation for `let binder === EntityRef`.
 Grammar:
 
 ```text
-AliasBinding ::= "let" AliasBinder "===" EntityRef
+AliasBinding ::= OptionalPolicy "let" AliasBinder "===" EntityRef
 
 AliasBinder ::= Name | OperatorName
 
@@ -328,6 +328,7 @@ a later static-semantic diagnostic (including fixity/arity).
 
 ```text
 LetAliasAst {
+    policy: Option<ExprAst>,
     binder: AliasBinderAst,
     target: EntityRefAst,
     span: Span

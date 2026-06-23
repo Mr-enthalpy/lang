@@ -548,6 +548,56 @@ fn head_clause_inline_only_head() {
 }
 
 #[test]
+fn policy_let_statement() {
+    assert_parser_case("policy_let_statement", false);
+}
+
+#[test]
+fn policy_let_multitoken() {
+    assert_parser_case("policy_let_multitoken", false);
+}
+
+#[test]
+fn policy_alias_let() {
+    assert_parser_case("policy_alias_let", false);
+}
+
+#[test]
+fn policy_let_param() {
+    assert_parser_case("policy_let_param", false);
+}
+
+#[test]
+fn policy_let_param_deduce() {
+    assert_parser_case("policy_let_param_deduce", false);
+}
+
+#[test]
+fn policy_let_return() {
+    assert_parser_case("policy_let_return", false);
+}
+
+#[test]
+fn policy_let_return_wildcard() {
+    assert_parser_case("policy_let_return_wildcard", false);
+}
+
+#[test]
+fn policy_let_in_body() {
+    assert_parser_case("policy_let_in_body", false);
+}
+
+#[test]
+fn policy_skeleton_param() {
+    assert_parser_case("policy_skeleton_param", false);
+}
+
+#[test]
+fn policy_skeleton_return() {
+    assert_parser_case("policy_skeleton_return", false);
+}
+
+#[test]
 fn head_clause_require_valid_t() {
     assert_parser_case("head_clause_require_valid_t", false);
 }
