@@ -22,6 +22,9 @@ Trivia tokens are skipped by the parser but their spans must remain available
 for diagnostic positioning. The lexer must preserve trivia spans; the parser may
 discard trivia after consumption.
 
+Line and block comments are trivia. Nested block comments are a lexer concern
+(depth counting on `/*`/`*/`), not parser syntax.
+
 _See also: Token._
 
 ---
