@@ -80,14 +80,16 @@ syntax-level operator names:
 +  -  *  /
 <  <=  >=  >  ==  !=
 <<  >>
-!  &  @  ~  ^  $  ++  --  ?
-+=  -=  *=  /=  <<=  >>=
+&  |  &&  ||
+!  @  ~  ^  $  ++  --  ?
++=  -=  *=  /=  &=  |=  <<=  >>=
 ```
 
 Operator-aware tokenization uses maximal munch: when multiple operator
 spellings can start at the same source position, choose the longest spelling.
-For example, `<<=`, `<=`, `++`, and `==` are each single operator spellings,
-not shorter operator spellings followed by another symbol.
+For example, `<<=`, `&=`, `|=`, `&&`, `||`, `<=`, `++`, and `==` are each
+single operator spellings, not shorter operator spellings followed by another
+symbol.
 
 Trivia is skipped by the parser, but spans must remain available.
 
@@ -1185,14 +1187,15 @@ a + b   => binary OperatorSugarAst
 Prefix `-x` is not a negative literal; the lexer emits `-` and `x`
 separately.
 
-Comparison, equality, and compound-looking operator chains are
+Comparison, equality, and equals-suffixed operator chains are
 non-associative in this phase. The parser diagnoses:
 
 ```text
 chained non-associative operator requires explicit grouping
 ```
 
-for ungrouped syntax such as `a < b < c`, `a == b == c`, and `a += b += c`.
+for ungrouped syntax such as `a < b < c`, `a == b == c`, `a += b += c`, and
+`a &= b &= c`.
 
 ### 8.5 Member sugar
 

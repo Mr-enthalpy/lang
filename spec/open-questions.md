@@ -252,12 +252,12 @@ or dedicated disambiguation rule if `<` must be declared as an operator binder.
 
 ---
 
-## 15. Comparison, equality, and compound-looking chaining
+## 15. Comparison, equality, and equals-suffixed chaining
 
 **Status:** Resolved
 
 **Resolution:**
-Comparison, equality, and compound-looking operators are non-associative in
+Comparison, equality, and equals-suffixed operators are non-associative in
 this phase. Ungrouped chains such as `a < b < c`, `a == b == c`, and
 `a += b += c` require explicit grouping.
 
