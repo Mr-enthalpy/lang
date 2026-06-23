@@ -198,6 +198,7 @@ pub struct OperatorExprAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OperatorExprKind {
     Atom(AtomAst),
+    Product(ProductExprAst),
     OperatorSugar {
         operator: OperatorNameAst,
         fixity: OperatorFixity,

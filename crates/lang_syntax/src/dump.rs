@@ -376,6 +376,9 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
             line(output, indent, "Atom");
             dump_atom(output, atom, indent + 1);
         }
+        OperatorExprKind::Product(product) => {
+            dump_product(output, product, indent);
+        }
         OperatorExprKind::OperatorSugar {
             operator,
             fixity,
