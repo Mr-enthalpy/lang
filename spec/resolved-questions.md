@@ -14,9 +14,13 @@ Open and deferred questions remain in `spec/open-questions.md`.
 
 **Resolution:**
 The lexer/parser skeleton is stable. Future v0.1-line changes are limited to
-richer literal spelling and local mechanical whole-form sugar recognition,
+richer literal spelling and local mechanical whole-shape sugar recognition,
 unless a hard correctness error is found against the call-composition
 architecture.
+
+Allowed additions must extend existing lexer/parser entry points and AST
+preservation categories; they must not replace the product/pipe/operator/
+binding/closure/navigation architecture.
 
 The stable surface includes `lex`, `parse`, token dumps, AST dumps, diagnostic
 dumps, Raw AST node categories, diagnostics infrastructure, hard form

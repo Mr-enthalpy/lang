@@ -13,9 +13,11 @@ categories, dump formats, diagnostics infrastructure, and golden-test
 expectations are stable by default.
 
 Allowed work is documentation alignment, Raw AST contract stabilization, richer
-literal spellings, and local mechanical whole-form sugar recognition. It is not
-a semantic stage, not a parser expansion stage, and not a Normalized AST
-implementation stage.
+literal spellings, and local mechanical whole-shape sugar recognition. Allowed
+additions must extend existing lexer/parser entry points and AST preservation
+categories; they must not replace the product/pipe/operator/binding/closure/
+navigation architecture. It is not a semantic stage, not a parser expansion
+stage, and not a Normalized AST implementation stage.
 
 _See also: Raw AST, Raw AST contract, Normalized AST._
 

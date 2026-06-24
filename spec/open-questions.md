@@ -10,7 +10,7 @@ Resolved questions have been moved to `spec/resolved-questions.md`.
 ## Current-stage questions (v0.1.w)
 
 Current-stage questions must be compatible with the Raw AST Stability Window.
-They may cover richer literal spelling or local mechanical whole-form sugar
+They may cover richer literal spelling or local mechanical whole-shape sugar
 recognition, but not parser architecture redesign, semantic analysis,
 normalization, name resolution, type checking, operator lookup, or alias target
 resolution.

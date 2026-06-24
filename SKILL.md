@@ -9,7 +9,10 @@ Stability Window.
 In `v0.1.w`, the lexer/parser architecture, public frontend interfaces, Raw AST
 shape, dump formats, and golden-test expectations are stable by default. Future
 work is maintenance, documentation alignment, contract stabilization, richer
-literal spelling, and local mechanical sugar recognition only.
+literal spelling, and local mechanical whole-shape sugar recognition only.
+Additions must extend existing lexer/parser entry points and AST preservation
+categories; they must not replace the product/pipe/operator/binding/closure/
+navigation architecture.
 
 The only accepted outputs for implementation work are tokens, AST, and
 diagnostics.
@@ -122,8 +125,11 @@ Treat the following as stable by default:
 Allowed additive work in this window:
 
 - richer literal spellings that remain lexical / Raw-AST-preserving
-- local, mechanical, whole-form sugar recognition from finite explicit token
+- local, mechanical, whole-shape sugar recognition from finite explicit token
   shapes, with no semantic validation or lookup
+- additions that extend existing lexer/parser entry points and AST preservation
+  categories without replacing the product/pipe/operator/binding/closure/
+  navigation architecture
 
 Forbidden in this window:
 
@@ -219,7 +225,7 @@ If a requested task requires any of the following, stop at AST preservation:
 For v0.1.w Raw AST stability work:
 - Prefer documentation and contract alignment.
 - Do not restructure the lexer/parser skeleton.
-- Add syntax only for richer literal spellings or local mechanical whole-form
+- Add syntax only for richer literal spellings or local mechanical whole-shape
   sugar recognition.
 - Run `cargo fmt --all` after code or Rust doc-comment changes.
 - Run `cargo test` after code, test, or snapshot changes.
@@ -245,7 +251,7 @@ Every syntax rule requires a golden test with:
 Minimum golden case groups (from `AGENTS.md`). The v0.1 baseline has golden
 coverage for lexer, parser/AST, and diagnostics. During `v0.1.w`, update or add
 golden cases only for narrow documentation-aligned corrections, richer literal
-spellings, or local mechanical sugar recognition:
+spellings, or local mechanical whole-shape sugar recognition:
 
 ```text
 lexer/        names, symbols, comments, invalid, operators

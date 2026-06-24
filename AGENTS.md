@@ -31,6 +31,9 @@ The v0.1 Raw AST Frontend is completed. The current active stage is
 AST shape, dump formats, and golden-test expectations are stable by default.
 Future work in this stage is maintenance, documentation alignment, contract
 stabilization, and narrowly-scoped additive syntax preservation only.
+Additions must extend existing lexer/parser entry points and AST preservation
+categories; they must not replace the product/pipe/operator/binding/closure/
+navigation architecture.
 
 Do not treat `v0.1.w` as an implementation phase for broad parser expansion.
 Refuse or narrow tasks that imply large parser redesign unless the user
@@ -47,7 +50,8 @@ Raw AST is surface-preserving and non-desugared. Normalized AST will be
 a future desugared, non-semantic AST that unifies calls, extraction, and
 declarations into simple pattern/call/declaration structures.
 
-Raw AST → Normalized AST lowering is allowed in a later explicit task.
+Raw AST → Normalized AST lowering is allowed only after `v0.1.w` is explicitly
+closed or an explicit normalization-stage task is opened.
 
 ## v0.1.w stability policy
 
@@ -72,9 +76,12 @@ Allowed additive work:
 * richer literal spellings, such as scientific notation, radix notation,
   numeric separators, richer string literal spellings, escape syntax, and
   literal-adjacent unit spelling if defined as syntax only
-* local, mechanical, whole-form sugar recognition triggered by finite explicit
+* local, mechanical, whole-shape sugar recognition triggered by finite explicit
   token shapes, preserved as Raw AST, with no lookup, inference, semantic
   validation, heuristic reinterpretation, or parser-skeleton restructuring
+* additions that extend existing lexer/parser entry points and AST preservation
+  categories without replacing the product/pipe/operator/binding/closure/
+  navigation architecture
 
 Forbidden in `v0.1.w`:
 
@@ -116,8 +123,8 @@ Do not implement:
 * code generation
 * IR/HIR/MIR or semantic lowering
 
-Raw AST → Normalized AST lowering is allowed only in an explicit
-normalization-stage task.
+Raw AST → Normalized AST lowering is allowed only after `v0.1.w` is explicitly
+closed or an explicit normalization-stage task is opened.
 
 If a change requires any of the above, stop at syntax/AST representation and
 leave the semantic behavior as a documented future pass.

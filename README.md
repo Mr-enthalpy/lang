@@ -8,9 +8,11 @@ v0.1.w Raw AST Stability Window.
 The lexer/parser architecture, public frontend interfaces, Raw AST shape, dump
 formats, and golden-test expectations are stable by default. Future work in
 this window is limited to documentation alignment, contract stabilization,
-richer literal spelling, and local mechanical sugar recognition. It lexes,
-parses, builds raw AST, emits diagnostics, and has golden tests. It does not
-perform semantic analysis.
+richer literal spelling, and local mechanical whole-shape sugar recognition.
+Additions must extend existing lexer/parser entry points and AST preservation
+categories; they must not replace the product/pipe/operator/binding/closure/
+navigation architecture. It lexes, parses, builds raw AST, emits diagnostics,
+and has golden tests. It does not perform semantic analysis.
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
 - **Normalized AST**: future desugared AST that unifies calls, extraction,

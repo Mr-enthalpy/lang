@@ -11,8 +11,8 @@ not strict chronological gates.
 ```
 v0.1 — Raw AST Frontend — completed
 v0.1.w — Raw AST Stability Window — current
-v0.2+ — only after an explicit future decision
-v0.3 — Normalized AST Specification — not active until v0.1.w is closed
+v0.2 — no active stage assigned
+v0.3 — Normalized AST Specification — future, not active until v0.1.w is closed
 v0.4 — Raw AST → Normalized AST Prototype
 v0.5 — Normalized AST Stabilization
 v0.6+ — Later semantic design stages
@@ -57,7 +57,7 @@ A syntax frontend that:
 - Operator names in binder and innermost navigation-component positions.
 - Alias binding (`let binder === EntityRef`) as raw AST preservation.
 - EntityRef parser for alias RHS.
-- 31 DiagnosticCode variants across lexer, parser, operator, and alias categories.
+- 28 DiagnosticCode variants across lexer, parser, operator, and alias categories.
 
 For the authoritative factual inventory of v0.1 delivered features,
 see `spec/implementation-status-v0.1.md`. For the Raw AST contract
@@ -97,10 +97,13 @@ Allowed additive work:
   notation, numeric separators, richer string literal spellings, escape syntax,
   literal-adjacent unit spelling when defined as syntax only, and similar
   lexical / Raw-AST-preserving additions
-- local, mechanical, whole-form sugar recognition, only when triggered by a
+- local, mechanical, whole-shape sugar recognition, only when triggered by a
   finite explicit token shape, preserved as Raw AST, requiring no lookup or
   semantic validation, changing no existing source meaning, and avoiding
   lexer/parser skeleton restructuring
+- additions must extend existing lexer/parser entry points and AST preservation
+  categories; they must not replace the product/pipe/operator/binding/closure/
+  navigation architecture
 
 Forbidden in `v0.1.w`:
 
@@ -131,15 +134,15 @@ current active stage is `v0.1.w`, not an open-ended v0.2 parser revision phase.
 
 ---
 
-### v0.2+ — only after an explicit future decision
+### v0.2 — no active stage assigned
 
-No active `v0.2` implementation or parser-revision phase exists. Any `v0.2+`
-work requires an explicit future decision that defines scope, deliverables, and
-phase gates.
+No active `v0.2` implementation or parser-revision phase exists. `v0.1.w` is
+not a `v0.2` alias and not a `v0.2` parser revision. Any `v0.2` work requires
+an explicit future decision that defines scope, deliverables, and phase gates.
 
 ---
 
-### v0.3 — Normalized AST Specification — not active until v0.1.w is closed
+### v0.3 — Normalized AST Specification — future, not active until v0.1.w is closed
 
 **Goal**: Define the Normalized AST node set and document how Raw AST
 constructs desugar into Normalized AST.
