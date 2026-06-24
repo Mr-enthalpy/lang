@@ -2288,7 +2288,7 @@ document.
 | §8.5 Member `.`                      | `obj.(field)`                               | `ExpectedNameAfterDot`                                                                   |
 | §8.5 Member `.`                      | `obj."field"`                               | `ExpectedNameAfterDot`                                                                   |
 | §8.6 Double-dot `..`                 | `obj..42`                                   | `ExpectedNameAfterDoubleDot` (numeric selectors removed)                                 |
-| §8.6 Double-dot `..`                 | `obj..1` (no product)                       | `ExpectedProductAfterDoubleDotName`                                                      |
+| §8.6 Double-dot `..`                 | `obj..1`                                    | `ExpectedNameAfterDoubleDot` (numeric selectors removed)                                 |
 | §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
 | §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator selectors are valid only after `::`)              |
 | §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |
