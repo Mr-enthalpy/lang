@@ -1,65 +1,15 @@
 # Open Questions
 
-This document tracks unresolved, deferred, and partially-resolved design
-questions for the `lang` language. They do not block v0.1 and should be
-revisited in the appropriate future stage.
+This document tracks open design questions for the `lang` language. Each entry
+specifies the stage at which the question becomes active.
 
 Resolved questions have been moved to `spec/resolved-questions.md`.
 
 ---
 
-## 1. Future canonical value/type grammar
+## Current-stage questions (v0.1–v0.2)
 
-**Status:** Deferred
-
-**Current v0.1 decision:**
-Canonical skeletons use the grammar defined in section 6 of
-ast-construction-v0.1.md. This grammar is provisional and may be revised
-when value/type canonical forms are designed.
-
-**Why it does not block v0.1:**
-The current canonical skeleton grammar builds AST only. No matching is
-performed. Any future revision will produce a different AST shape, but
-v0.1 AST will still be parseable.
-
-**Future stage:** v0.6 (canonical form specification).
-
----
-
-## 2. Future semantics of `return`, `else`, `match`, `effect`, `sync`
-
-**Status:** Deferred
-
-**Current v0.1 decision:**
-These are ordinary `Name` tokens at the lexical and parser level. No special
-AST nodes exist for them.
-
-**Why it does not block v0.1:**
-The v0.1 frontend faithfully preserves these names in expression AST. A
-future semantic pass can interpret them by analyzing the AST structure
-without requiring parser changes.
-
-**Future stage:** v0.11 (or earlier semantic design stages v0.7–v0.9).
-
----
-
-## 3. Future always-NLL CFG requirements
-
-**Status:** Deferred
-
-**Current v0.1 decision:**
-No CFG is built. The parser does not construct a control-flow graph.
-
-**Why it does not block v0.1:**
-Ownership and lifetime analysis is out of scope for v0.1. The raw AST
-contains sufficient structure (form order, closure bodies, and explicit
-`with { ... }` syntax) for future passes.
-
-**Future stage:** v0.10 (ownership/NLL/drop design).
-
----
-
-## 4. Numeric selectors: positional access vs. general sugar
+### 1. Numeric selectors: positional access vs. general sugar
 
 **Status:** Open
 
@@ -78,7 +28,7 @@ parser must not hard-code positional access semantics.
 
 ---
 
-## 5. Float, scientific, and unit-adjacent numeric literals
+### 2. Float, scientific, and unit-adjacent numeric literals
 
 **Status:** Partially resolved — bare `1.2` is decided; scientific/unit forms remain open
 
@@ -114,7 +64,7 @@ atoms.
 
 ---
 
-## 6. Name-polymorphic lookup boundary
+### 3. Name-polymorphic lookup boundary
 
 **Status:** Open (design note, not implemented)
 
@@ -154,7 +104,7 @@ specification exists.
 
 ---
 
-## 7. Canonical skeleton admissibility
+### 4. Canonical skeleton admissibility
 
 **Status:** Open
 
@@ -176,7 +126,7 @@ design).
 
 ---
 
-## 8. Operator alias identity mismatch: diagnostic phase
+### 5. Operator alias identity mismatch: diagnostic phase
 
 **Status:** Open
 
@@ -202,7 +152,7 @@ Raw alias parsing exists; the answer affects future implementation ordering only
 
 ---
 
-## 9. Alias binding with `with`
+### 6. Alias binding with `with`
 
 **Status:** Open
 
@@ -221,7 +171,7 @@ binding on future design.
 
 ---
 
-## 10. Alias binding visibility and export modifiers
+### 7. Alias binding visibility and export modifiers
 
 **Status:** Open
 
@@ -241,6 +191,169 @@ Raw alias parsing exists; namespace resolution does not.
 
 ---
 
+## Later-stage questions
+
+These questions become active when their stage is reached. They do not
+block the current stage.
+
+### v0.3–v0.5: Normalized AST
+
+#### N-AST-1. Exact Normalized AST node set
+
+**Status:** Open
+
+**Question:** What are the exact Normalized AST node types? Candidates:
+normalized call, normalized pattern, normalized declaration. Should there
+be a single unified expression node or distinct per-form nodes?
+
+**Why it does not block current stage:** The Raw AST contract only documents invariants;
+Normalized AST node types are a v0.3 specification detail.
+
+---
+
+#### N-AST-2. Whether Normalized AST lives in `lang_syntax` or a new crate
+
+**Status:** Open
+
+**Question:** Should Normalized AST types and the normalization pass live in
+`lang_syntax` (alongside Raw AST), or in a new crate (e.g., `lang_norm`)?
+
+**Why it does not block current stage:** This is an implementation organization
+question for v0.4.
+
+---
+
+#### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
+
+**Status:** Open
+
+**Question:** Should the normalization pass produce stable dump output that
+can be golden-tested alongside Raw AST dumps?
+
+**Why it does not block current stage:** Golden testing strategy is a v0.4
+implementation question.
+
+---
+
+#### N-AST-4. How to represent symbolic builtins introduced by desugaring
+
+**Status:** Open
+
+**Question:** Desugaring may introduce symbolic names (e.g., `operator::call`,
+`member::lookup`, `pattern::bind`). How should these be represented in
+Normalized AST — as reserved names, as a separate node type, or as
+compiler-generated identifiers?
+
+**Why it does not block current stage:** This is a v0.3 specification detail.
+
+---
+
+#### N-AST-5. How to preserve source origins through desugaring
+
+**Status:** Open
+
+**Question:** Desugaring creates new AST nodes that did not appear in source
+text. How should source spans and diagnostic attribution be preserved through
+normalization?
+
+**Why it does not block current stage:** Source origin preservation is a v0.3–v0.4
+design question.
+
+---
+
+#### N-AST-6. Whether right-target subsegments become nested call nodes
+
+**Status:** Open
+
+**Question:** Right-target subsegments (`f (a) g`) are currently flat in Raw
+AST. Should normalization recursively nest them into explicit (sub-)call
+nodes?
+
+**Why it does not block current stage:** This is a v0.3 desugaring rule.
+
+---
+
+#### N-AST-7. How to represent pattern normalization for let, params, returns, and canonical skeletons
+
+**Status:** Open
+
+**Question:** Extraction contexts (let, params, returns) use canonical
+skeletons. How should normalization unify these into a single normalized
+pattern form? Should deduce lists be merged into the pattern structure
+or kept separate?
+
+**Why it does not block current stage:** Pattern normalization is a v0.3 specification
+detail.
+
+---
+
+#### N-AST-8. How to represent alias declarations before name resolution
+
+**Status:** Open
+
+**Question:** Alias bindings (`let binder === EntityRef`) reference compile-time
+entities that are not yet resolved. Should normalization preserve `EntityRefAst`
+as-is in normalized alias declarations, or desugar it into a different form?
+
+**Why it does not block current stage:** Alias normalization is a v0.3 specification
+detail.
+
+---
+
+### v0.6+: Canonical form specification
+
+#### How should canonical value/type grammar be designed?
+
+**Status:** Open (active at v0.6)
+
+**Current v0.1 foundation:**
+Canonical skeletons use the grammar defined in section 6 of
+ast-construction-v0.1.md. This grammar is provisional and may be revised
+when value/type canonical forms are designed.
+
+**Why it does not block current stage:**
+The current canonical skeleton grammar builds AST only. No matching is
+performed. Any future revision will produce a different AST shape, but
+v0.1 AST will still be parseable.
+
+---
+
+### v0.10+: Ownership and NLL
+
+#### How should the NLL CFG be structured?
+
+**Status:** Open (active at v0.10)
+
+**Current v0.1 foundation:**
+No CFG is built. The raw AST contains sufficient structure (form order,
+closure bodies, and explicit `with { ... }` syntax) for future passes to
+construct a control-flow graph.
+
+**Why it does not block current stage:**
+Ownership and lifetime analysis is out of scope for v0.1. The parser does
+not construct a control-flow graph.
+
+---
+
+### v0.11+: Control-flow and effect semantics
+
+#### How should `return`, `else`, `match`, `effect`, `sync` be semanticized?
+
+**Status:** Open (active at v0.11)
+
+**Current v0.1 foundation:**
+These are ordinary `Name` tokens at the lexical and parser level. No special
+AST nodes exist for them. The p0.1 frontend faithfully preserves these names
+in expression AST.
+
+**Why it does not block current stage:**
+A future semantic pass can interpret these names by analyzing the AST
+structure without requiring parser changes. The parser must not add
+`ReturnStmt`, `ElseExpr`, `MatchExpr`, `IfExpr`, `MatchStmt`, `CallExpr`,
+or `ArgPack` nodes.
+
+---
+
 ## Documentation reset debt
 
 Items resolved during the documentation reset pass. Recorded here for audit.
@@ -255,126 +368,3 @@ Items resolved during the documentation reset pass. Recorded here for audit.
 | `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |
 | Right-target subsegment AST shape | Flat representation; future may nest | Already open question §4 | No change needed | No |
 | Form boundary promotion rules | Provisional rules implemented | Already open question §2 | Replaced with strong-semicolon rule (§2). Newline promotion removed. | No |
-
----
-
-## Normalized AST design questions
-
-These questions are deferred to v0.3–v0.5. They do not block the current
-N0–N1 documentation pass (Raw AST contract freeze).
-
-### N-AST-1. Exact Normalized AST node set
-
-**Status:** Open
-
-**Question:** What are the exact Normalized AST node types? Candidates:
-normalized call, normalized pattern, normalized declaration. Should there
-be a single unified expression node or distinct per-form nodes?
-
-**Why it does not block N0–N1:** The Raw AST contract only documents invariants;
-Normalized AST node types are a v0.3 specification detail.
-
-**Future stage:** v0.3 (Normalized AST Specification).
-
----
-
-### N-AST-2. Whether Normalized AST lives in `lang_syntax` or a new crate
-
-**Status:** Open
-
-**Question:** Should Normalized AST types and the normalization pass live in
-`lang_syntax` (alongside Raw AST), or in a new crate (e.g., `lang_norm`)?
-
-**Why it does not block N0–N1:** This is an implementation organization
-question for v0.4.
-
-**Future stage:** v0.4 (Raw AST → Normalized AST Prototype).
-
----
-
-### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
-
-**Status:** Open
-
-**Question:** Should the normalization pass produce stable dump output that
-can be golden-tested alongside Raw AST dumps?
-
-**Why it does not block N0–N1:** Golden testing strategy is a v0.4
-implementation question.
-
-**Future stage:** v0.4 (Raw AST → Normalized AST Prototype).
-
----
-
-### N-AST-4. How to represent symbolic builtins introduced by desugaring
-
-**Status:** Open
-
-**Question:** Desugaring may introduce symbolic names (e.g., `operator::call`,
-`member::lookup`, `pattern::bind`). How should these be represented in
-Normalized AST — as reserved names, as a separate node type, or as
-compiler-generated identifiers?
-
-**Why it does not block N0–N1:** This is a v0.3 specification detail.
-
-**Future stage:** v0.3 (Normalized AST Specification).
-
----
-
-### N-AST-5. How to preserve source origins through desugaring
-
-**Status:** Open
-
-**Question:** Desugaring creates new AST nodes that did not appear in source
-text. How should source spans and diagnostic attribution be preserved through
-normalization?
-
-**Why it does not block N0–N1:** Source origin preservation is a v0.3–v0.4
-design question.
-
-**Future stage:** v0.3 (Normalized AST Specification), v0.4 (prototype).
-
----
-
-### N-AST-6. Whether right-target subsegments become nested call nodes
-
-**Status:** Open
-
-**Question:** Right-target subsegments (`f (a) g`) are currently flat in Raw
-AST. Should normalization recursively nest them into explicit (sub-)call
-nodes?
-
-**Why it does not block N0–N1:** This is a v0.3 desugaring rule.
-
-**Future stage:** v0.3 (Normalized AST Specification).
-
----
-
-### N-AST-7. How to represent pattern normalization for let, params, returns, and canonical skeletons
-
-**Status:** Open
-
-**Question:** Extraction contexts (let, params, returns) use canonical
-skeletons. How should normalization unify these into a single normalized
-pattern form? Should deduce lists be merged into the pattern structure
-or kept separate?
-
-**Why it does not block N0–N1:** Pattern normalization is a v0.3 specification
-detail.
-
-**Future stage:** v0.3 (Normalized AST Specification).
-
----
-
-### N-AST-8. How to represent alias declarations before name resolution
-
-**Status:** Open
-
-**Question:** Alias bindings (`let binder === EntityRef`) reference compile-time
-entities that are not yet resolved. Should normalization preserve `EntityRefAst`
-as-is in normalized alias declarations, or desugar it into a different form?
-
-**Why it does not block N0–N1:** Alias normalization is a v0.3 specification
-detail.
-
-**Future stage:** v0.3 (Normalized AST Specification).
