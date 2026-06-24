@@ -1105,7 +1105,6 @@ SelectorAst for this phase:
 ```text
 SelectorAst ::=
     Text(NameAst)
-  | Numeric(NumericNameAst)
 ```
 
 Navigation components for this phase:
@@ -1113,7 +1112,6 @@ Navigation components for this phase:
 ```text
 NavComponentAst ::=
     Text(NameAst)
-  | Numeric(NumericNameAst)
   | Operator(OperatorNameAst)
   | Group(Box<ExprAst>)
   | Error(ErrorAst)
@@ -1124,34 +1122,20 @@ component. It is not valid after `.`, after `..`, or as an outer component
 after `::`.
 
 A numeric token (`IntLiteral`) in atom-base position produces a numeric literal
-atom (`IntLiteral`). The same token class in selector/name-leaf position
-produces a `NumericNameAst`. This distinction is mandatory.
+atom (`IntLiteral`). A float token (`FloatLiteral`) produces a float literal atom
+(`FloatLiteral`).
 
-Examples of valid numeric selectors:
+Numeric selectors have been removed. Member selectors accept only `Name`.
+Numeric navigation components have been removed. Use bracket form for
+projection (`pack[0]` instead of `pack.0`).
 
-```text
-obj.1
-obj.42
-uint8::1
-obj..1(args)
-1.x
-1.2
-1.2.3
-```
-
-`1.2` is **member sugar on an integer-literal object**, not a float literal:
+`1.2` is a **float literal** (`FloatLiteral` token), not member sugar:
 
 ```text
-1.2 ↦ MemberSugar { object: IntLiteral("1"), selector: NumericName("2") }
+1.2 ↦ FloatLiteral("1.2")
 ```
 
-Float literals are not lexer/Raw-AST primitives; there is no `FloatLiteral`
-token or node. `1.2` lexes as `IntLiteral · Dot · IntLiteral` and folds through
-the ordinary `.`-suffix rule. Chains are left-associated: `1.2.3 ↦ (1.2).3`.
-The parser does not decide whether such a chain is a valid number, an invalid
-numeric chain, or a user-defined selector chain; numeric-selector semantics
-(including the function-object/`self` positional rule) are deferred to later
-phases. See open question §17.
+`1.x` remains valid member sugar (`IntLiteral` object, `TextName` selector).
 
 ### 8.4 Navigation folding
 
@@ -1197,9 +1181,9 @@ NavPath(components=[Segment[a, b], c])
 ```text
 NavPath ::= NavComponent "::" NavOuterComponent ("::" NavOuterComponent)*
 
-NavComponent ::= Name | NumericName | OperatorName
+NavComponent ::= Name | OperatorName
 
-NavOuterComponent ::= Name | NumericName | Group
+NavOuterComponent ::= Name | Group
 ```
 
 Operator names may only be innermost navigation components. Valid shapes
@@ -1215,7 +1199,7 @@ xxx::(int Vec::std)
 The grouped expression is stored as a grouped outer navigation component.
 
 The innermost navigation component must be a syntactic symbol component:
-`Name`, `NumericName`, or `OperatorName`. A grouped expression is valid only as
+`Name` or `OperatorName`. A grouped expression is valid only as
 an outer navigation component after `::`; it represents a scope-producing
 expression, not a selected symbol. A parenthesized form used as the innermost
 component, such as `(int Vec::std)::ns`, is invalid and emits
@@ -1315,8 +1299,8 @@ MemberSugar {
 }
 ```
 
-The selector is `Text(NameAst)` for textual names and `Numeric(NumericNameAst)` for
-numeric names such as `1` and `42`.
+The selector is `Text(NameAst)` for textual names. Numeric selectors
+have been removed.
 
 Parser constraint:
 
@@ -1379,10 +1363,10 @@ obj..(method)
 obj..42
 ```
 
-`..` is followed by `IntLiteral("42")` which is a valid numeric selector,
-but `42` is NOT followed by a product form. Emit
-`ExpectedProductAfterDoubleDotName` with primary span on `42`. Consume
-`..` and selector, stop suffix folding. Do not construct a `DoubleDotSugar` node.
+`..` is followed by `IntLiteral("42")`, which is not a valid selector because
+numeric selectors have been removed. Emit `ExpectedNameAfterDoubleDot` with the
+primary span on `..` or on the invalid selector boundary, according to the parser
+diagnostic convention. Do not construct a `DoubleDotSugar` node.
 
 ```text
 obj..(method)
@@ -2135,9 +2119,9 @@ EntityRef ::= EntityNavigation
 
 EntityNavigation ::= EntityComponent ("::" EntityOuterComponent)*
 
-EntityComponent ::= Name | NumericName | OperatorName
+EntityComponent ::= Name | OperatorName
 
-EntityOuterComponent ::= Name | NumericName | Group
+EntityOuterComponent ::= Name | Group
 ```
 
 EntityRef navigation order is inner-to-outer. The leftmost component is the
@@ -2146,8 +2130,8 @@ component. Raw AST preserves source-order navigation components and performs no
 lookup. Operator names are valid only as innermost entity-reference components
 unless a future design explicitly allows operator-named scopes.
 
-The innermost component must be a syntactic symbol component (`Name`,
-`NumericName`, or `OperatorName`). A grouped expression is valid only as an
+The innermost component must be a syntactic symbol component (`Name` or
+`OperatorName`). A grouped expression is valid only as an
 outer navigation component after `::`, matching ordinary Raw AST navigation:
 `xxx::(int Vec::std)` is valid, while a grouped expression as the innermost
 component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
@@ -2207,7 +2191,7 @@ Operator names are valid only as the innermost entity-reference navigation
 component. If an operator appears as an outer component after `::`, the parser
 emits `InvalidEntityRef`.
 
-Outer navigation components after `::` may be `Name`, `NumericName`, or a
+Outer navigation components after `::` may be `Name` or a
 parenthesized grouped scope expression (`NavComponentAst::Group`), shared with
 ordinary navigation parsing. A grouped expression used as the innermost
 component (such as `(int Vec::std)::ns`, or any parenthesized form like
@@ -2300,11 +2284,11 @@ document.
 | §7.2 Pipe split                      | `\|> f` at form start                       | `UnexpectedToken` at `\|>`                                                               |
 | §7.2 Pipe split                      | `x \|> \|> g` (empty middle)                | Diagnostic on empty segment                                                              |
 | §8.2 Product form                    | `let x: type = (a, b)` at expr top          | No diagnostic; product construction                                                      |
-| §8.5 Member `.`                      | `obj.42`                                    | No diagnostic (valid numeric selector)                                                   |
+| §8.5 Member `.`                      | `obj.42`                                    | `ExpectedNameAfterDot` (numeric selectors removed)                                       |
 | §8.5 Member `.`                      | `obj.(field)`                               | `ExpectedNameAfterDot`                                                                   |
 | §8.5 Member `.`                      | `obj."field"`                               | `ExpectedNameAfterDot`                                                                   |
-| §8.6 Double-dot `..`                 | `obj..42`                                   | No diagnostic expected for selector; `ExpectedProductAfterDoubleDotName` if no product   |
-| §8.6 Double-dot `..`                 | `obj..1` (no product)                       | `ExpectedProductAfterDoubleDotName`                                                      |
+| §8.6 Double-dot `..`                 | `obj..42`                                   | `ExpectedNameAfterDoubleDot` (numeric selectors removed)                                 |
+| §8.6 Double-dot `..`                 | `obj..1`                                    | `ExpectedNameAfterDoubleDot` (numeric selectors removed)                                 |
 | §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
 | §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator selectors are valid only after `::`)              |
 | §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |

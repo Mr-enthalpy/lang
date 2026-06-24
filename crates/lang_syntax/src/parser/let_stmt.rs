@@ -2,8 +2,8 @@ use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, AnnotationTermAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, CanonicalSkeletonAst, DeduceListAst,
     DiagnosticCode, EntityRefAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
-    NameAst, NavComponentAst, NumericNameAst, OperatorNameAst, ProductExtractAst,
-    ProductExtractElementAst, Span, Symbol, TokenKind, WithClauseAst, WithClauseKind,
+    NameAst, NavComponentAst, OperatorNameAst, ProductExtractAst, ProductExtractElementAst, Span,
+    Symbol, TokenKind, WithClauseAst, WithClauseKind,
 };
 
 use super::{
@@ -730,13 +730,6 @@ fn parse_entity_inner_component(parser: &mut Parser<'_>) -> Option<NavComponentA
                 span: token.span,
             }))
         }
-        TokenKind::IntLiteral => {
-            let token = parser.cursor.bump_non_trivia();
-            Some(NavComponentAst::Numeric(NumericNameAst {
-                text: token.text.clone(),
-                span: token.span,
-            }))
-        }
         _ => {
             let spelling = operator_spelling_in_expr_context(&token.kind)?;
             let token = parser.cursor.bump_non_trivia();
@@ -754,13 +747,6 @@ fn parse_entity_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentA
         TokenKind::Name => {
             let token = parser.cursor.bump_non_trivia();
             Some(NavComponentAst::Text(NameAst {
-                text: token.text.clone(),
-                span: token.span,
-            }))
-        }
-        TokenKind::IntLiteral => {
-            let token = parser.cursor.bump_non_trivia();
-            Some(NavComponentAst::Numeric(NumericNameAst {
                 text: token.text.clone(),
                 span: token.span,
             }))
@@ -785,7 +771,6 @@ fn parse_entity_outer_component(parser: &mut Parser<'_>) -> Option<NavComponentA
 fn nav_component_span(component: &NavComponentAst) -> Span {
     match component {
         NavComponentAst::Text(name) => name.span,
-        NavComponentAst::Numeric(num) => num.span,
         NavComponentAst::Operator(operator) => operator.span,
         NavComponentAst::Group(expr) => expr.span,
         NavComponentAst::Error(error) => error.span,

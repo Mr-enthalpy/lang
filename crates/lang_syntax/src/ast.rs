@@ -248,22 +248,14 @@ pub enum OperatorFixity {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SelectorAst {
     Text(NameAst),
-    Numeric(NumericNameAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NavComponentAst {
     Text(NameAst),
-    Numeric(NumericNameAst),
     Operator(OperatorNameAst),
     Group(Box<ExprAst>),
     Error(ErrorAst),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NumericNameAst {
-    pub text: String,
-    pub span: Span,
 }
 
 // --- Atoms ---
@@ -278,6 +270,7 @@ pub struct AtomAst {
 pub enum AtomKind {
     Name(NameAst),
     IntLiteral(String),
+    FloatLiteral(String),
     StringLiteral(String),
     Group(Box<ExprAst>),
     NavPath {

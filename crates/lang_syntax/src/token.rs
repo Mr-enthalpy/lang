@@ -4,6 +4,7 @@ use crate::Span;
 pub enum TokenKind {
     Name,
     IntLiteral,
+    FloatLiteral,
     StringLiteral,
     Symbol(Symbol),
     Operator(OperatorSpelling),

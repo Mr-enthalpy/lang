@@ -50,8 +50,7 @@ fn member_int_base() {
 
 #[test]
 fn member_int_chain() {
-    // `1.2.3` is left-associated member sugar `(1.2).3`.
-    assert_parser_case("member_int_chain", false);
+    assert_parser_case("member_int_chain", true);
 }
 
 #[test]
@@ -220,6 +219,11 @@ fn product_after_name() {
 }
 
 #[test]
+fn float_then_name() {
+    assert_parser_case("float_then_name", false);
+}
+
+#[test]
 fn invalid_empty_pipe_segment() {
     assert_parser_case("invalid_empty_pipe_segment", true);
 }
@@ -241,12 +245,12 @@ fn member_basic() {
 
 #[test]
 fn member_numeric() {
-    assert_parser_case("member_numeric", false);
+    assert_parser_case("member_numeric", true);
 }
 
 #[test]
 fn member_numeric2() {
-    assert_parser_case("member_numeric2", false);
+    assert_parser_case("member_numeric2", true);
 }
 
 #[test]
@@ -271,7 +275,7 @@ fn doubledot_basic() {
 
 #[test]
 fn doubledot_numeric() {
-    assert_parser_case("doubledot_numeric", false);
+    assert_parser_case("doubledot_numeric", true);
 }
 
 #[test]
@@ -281,7 +285,7 @@ fn mixed_suffixes() {
 
 #[test]
 fn mixed_numeric() {
-    assert_parser_case("mixed_numeric", false);
+    assert_parser_case("mixed_numeric", true);
 }
 
 #[test]

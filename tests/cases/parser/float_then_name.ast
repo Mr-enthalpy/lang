@@ -6,3 +6,6 @@ Program
           OperatorExpr
             Atom
               FloatLiteral 1.2
+          OperatorExpr
+            Atom
+              Name ms

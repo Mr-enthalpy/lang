@@ -113,7 +113,7 @@ Normalization must **not** assume:
 
 ## Atom and suffix-sugar invariants
 
-- `AtomAst` preserves `Name`, `IntLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
+- `AtomAst` preserves `Name`, `IntLiteral`, `FloatLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
 - `NavPath` atoms preserve source-order inner-to-outer navigation components.
 - `MemberSugar` preserves an object and a selector.
 - `DoubleDotSugar` preserves an object, a selector, and a `ProductExprAst`.
@@ -136,20 +136,20 @@ Normalization must **not** assume:
 
 ## Selector and navigation invariants
 
-- `SelectorAst` distinguishes `Text(NameAst)` and `Numeric(NumericNameAst)` for `.` and `..` suffixes.
-- Numeric selectors (`obj.1`, `uint8::1`) use `NumericNameAst` in selector/navigation position. The same token class (`IntLiteral`) produces `IntLiteral` atoms in expression position.
+- `SelectorAst` distinguishes `Text(NameAst)` for `.` and `..` suffixes. Numeric selectors have been removed.
+- Numeric navigation components have been removed. Navigation components accept only `Name` and `OperatorName`. The same token class (`IntLiteral`) produces `IntLiteral` atoms in expression position and `FloatLiteral` atoms for float literals.
 - `NavPathAst` preserves source-order `NavComponentAst` entries. Navigation order is inner-to-outer: the leftmost component is the innermost selected symbol, and the rightmost component is the outermost scope component.
 - Raw AST performs no lookup for navigation paths.
 - Operator names are valid only as innermost navigation components unless a future design explicitly allows operator-named scopes. They are not valid after `.`, `..`, or as outer navigation components after `::`.
 - Parenthesized right-side scope expressions after `::` are preserved as grouped navigation components. Without parentheses, `::` consumes only the immediate valid navigation component.
-- The innermost navigation component must be a syntactic symbol component (`Name`, `NumericName`, or `OperatorName`). A grouped expression is valid only as an outer component; used as the innermost component (`(int Vec::std)::ns`) it emits `InvalidNavComponent`.
+- The innermost navigation component must be a syntactic symbol component (`Name` or `OperatorName`). A grouped expression is valid only as an outer component; used as the innermost component (`(int Vec::std)::ns`) it emits `InvalidNavComponent`.
 
 ## EntityRef invariants
 
 - `EntityRefAst` preserves source-order inner-to-outer `NavComponentAst` entries.
 - `EntityRef` is parsed only inside alias-let RHS (`let binder === EntityRef`). It is not a general expression parser mode.
 - Operator names are valid only as innermost entity-reference navigation components unless a future design explicitly allows operator-named scopes. Outer components must not be operator names.
-- Outer entity-reference components after `::` may be `Name`, `NumericName`, or a parenthesized grouped scope expression (`NavComponentAst::Group`), matching ordinary navigation. The innermost component must be a syntactic symbol component; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
+- Outer entity-reference components after `::` may be `Name` or a parenthesized grouped scope expression (`NavComponentAst::Group`), matching ordinary navigation. The innermost component must be a syntactic symbol component; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
 
 ## Diagnostic / ErrorAst invariants
 

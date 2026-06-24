@@ -187,7 +187,7 @@ Implemented in parser phase 4 at the `OperatorExprAst` layer.
 **Resolution:**
 Operator names may appear as binder names and as innermost navigation
 components: `BinderName := Name | OperatorName` and
-`NavComponent := Name | NumericName | OperatorName | GroupedExpr`.
+`NavComponent := Name | OperatorName | GroupedExpr`.
 Operator names may only be innermost navigation components, not outer scope
 components.
 
@@ -227,8 +227,9 @@ Implemented in parser phase 4 with `ChainedNonAssociativeOperator`.
 
 **Resolution:**
 `IntLiteral` token in atom-base position -> numeric literal atom (`IntLiteral`).
-`IntLiteral` token in selector position -> `NumericNameAst`.
-`IntLiteral` token in path-leaf position -> `NumericNameAst`.
+`IntLiteral` token in atom-base position -> numeric literal atom (`IntLiteral`).
+`IntLiteral` token in selector position is no longer valid (numeric selectors removed).
+`IntLiteral` token in path-leaf position is no longer valid (numeric navigation removed).
 `IntLiteral` token in argument expression position -> numeric literal atom.
 
 The distinction is mandatory and implemented in the current phase.

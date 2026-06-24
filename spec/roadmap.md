@@ -104,7 +104,7 @@ Define:
 - Normalized form for operator sugar (lowered to named operator calls).
 - Normalized form for closure heads (canonicalized clause order).
 - Normalized form for canonical skeletons (pattern representation, not matching).
-- Normalized form for member/double-dot/numeric selector sugar.
+- Normalized form for member/double-dot selector sugar.
 - Normalized form for alias bindings (preserved as unresolved entity references).
 
 This is a design/specification stage. Do not implement Normalized AST yet.

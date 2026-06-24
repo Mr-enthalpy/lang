@@ -174,26 +174,15 @@ In the current parser phase:
 ```text
 SelectorAst ::=
     Text(NameAst)     // from TokenKind::Name
-  | Numeric(NumericNameAst)  // from TokenKind::IntLiteral
 ```
 
-A numeric token (`IntLiteral`) in selector position becomes `NumericNameAst`,
-while the same token class in atom-base position becomes a numeric literal atom.
-This distinction is mandatory.
+Numeric selectors have been removed. Only `Name` selectors are accepted.
 
-_See also: NumericNameAst, NameAst, NavComponent, MemberSugar, DoubleDotSugar._
+_See also: NameAst, NavComponent, MemberSugar, DoubleDotSugar._
 
 ---
 
-## NumericNameAst
-
-A numeric selector (`1`, `42`, etc.) appearing after `.`, `..`, or `::`.
-Carries `text: String` and `span: Span`. Distinct from `NameAst` (textual
-names) and from numeric literal atoms (`IntLiteral`).
-
-_See also: SelectorAst, NameAst._
-
----
+_See also: NavPath, SelectorAst, OperatorName._
 
 ## OperatorName
 
@@ -308,7 +297,7 @@ _See also: NavComponent, OperatorName, Atom._
 A component in a `NavPath`:
 
 ```text
-NavComponent ::= Name | NumericName | OperatorName | GroupedExpr | Error
+NavComponent ::= Name | OperatorName | GroupedExpr | Error
 ```
 
 Operator names are valid only as innermost navigation components unless a
@@ -359,8 +348,8 @@ _See also: EntityRef, NavPath._
 The navigation syntax inside a future `EntityRef`:
 
 ```text
-EntityComponent ::= Name | NumericName | OperatorName
-EntityOuterComponent ::= Name | NumericName | Group
+EntityComponent ::= Name | OperatorName
+EntityOuterComponent ::= Name | Group
 ```
 
 EntityRef navigation is inner-to-outer and preserves source-order components.

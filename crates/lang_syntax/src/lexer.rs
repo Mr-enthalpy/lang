@@ -53,7 +53,7 @@ impl<'src> Lexer<'src> {
         if self.peek_is_ascii_ident_start() {
             self.lex_name();
         } else if self.peek_is_ascii_digit() {
-            self.lex_int_literal();
+            self.lex_numeric_literal();
         } else if self.starts_with("\"") {
             self.lex_string_literal();
         } else if self.peek_is_whitespace() {
@@ -80,11 +80,23 @@ impl<'src> Lexer<'src> {
         self.push_token(TokenKind::Name, start);
     }
 
-    fn lex_int_literal(&mut self) {
+    fn lex_numeric_literal(&mut self) {
         let start = self.mark();
 
         while self.peek_is_ascii_digit() {
             self.advance_char();
+        }
+
+        if self.starts_with(".") {
+            let after_dot = self.source[self.byte + 1..].chars().next();
+            if after_dot.map_or(false, |c| c.is_ascii_digit()) {
+                self.advance_char();
+                while self.peek_is_ascii_digit() {
+                    self.advance_char();
+                }
+                self.push_token(TokenKind::FloatLiteral, start);
+                return;
+            }
         }
 
         self.push_token(TokenKind::IntLiteral, start);

@@ -360,7 +360,6 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
 fn nav_component_span(component: &NavComponentAst) -> Span {
     match component {
         NavComponentAst::Text(name) => name.span,
-        NavComponentAst::Numeric(num) => num.span,
         NavComponentAst::Operator(operator) => operator.span,
         NavComponentAst::Group(expr) => expr.span,
         NavComponentAst::Error(error) => error.span,

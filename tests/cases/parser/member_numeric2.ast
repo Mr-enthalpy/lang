@@ -5,8 +5,7 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              MemberSugar
-                object:
-                  Name obj
-                selector:
-                  NumericName 42
+              Name obj
+          OperatorExpr
+            Atom
+              IntLiteral 42

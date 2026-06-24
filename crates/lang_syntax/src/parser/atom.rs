@@ -1,6 +1,6 @@
 use crate::{
-    AtomAst, AtomKind, DiagnosticCode, ErrorAst, NameAst, NavComponentAst, NumericNameAst,
-    OperatorNameAst, OperatorSpelling, SelectorAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, DiagnosticCode, ErrorAst, NameAst, NavComponentAst, OperatorNameAst,
+    OperatorSpelling, SelectorAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -159,6 +159,13 @@ fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span: token.span,
             })
         }
+        TokenKind::FloatLiteral => {
+            let token = parser.cursor.bump_non_trivia();
+            Some(AtomAst {
+                kind: AtomKind::FloatLiteral(token.text.clone()),
+                span: token.span,
+            })
+        }
         TokenKind::StringLiteral => {
             let token = parser.cursor.bump_non_trivia();
             Some(AtomAst {
@@ -187,13 +194,6 @@ pub fn parse_member_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
                 span: token.span,
             }))
         }
-        TokenKind::IntLiteral => {
-            let token = parser.cursor.bump_non_trivia();
-            Some(SelectorAst::Numeric(NumericNameAst {
-                text: token.text.clone(),
-                span: token.span,
-            }))
-        }
         _ => None,
     }
 }
@@ -204,13 +204,6 @@ pub fn parse_nav_outer_component(parser: &mut Parser<'_>) -> Option<NavComponent
         TokenKind::Name => {
             let token = parser.cursor.bump_non_trivia();
             Some(NavComponentAst::Text(NameAst {
-                text: token.text.clone(),
-                span: token.span,
-            }))
-        }
-        TokenKind::IntLiteral => {
-            let token = parser.cursor.bump_non_trivia();
-            Some(NavComponentAst::Numeric(NumericNameAst {
                 text: token.text.clone(),
                 span: token.span,
             }))
@@ -246,14 +239,12 @@ pub fn parse_nav_group_component(parser: &mut Parser<'_>) -> Option<NavComponent
 pub fn selector_span(selector: &SelectorAst) -> Span {
     match selector {
         SelectorAst::Text(name) => name.span,
-        SelectorAst::Numeric(num) => num.span,
     }
 }
 
 fn nav_component_span(component: &NavComponentAst) -> Span {
     match component {
         NavComponentAst::Text(name) => name.span,
-        NavComponentAst::Numeric(num) => num.span,
         NavComponentAst::Operator(operator) => operator.span,
         NavComponentAst::Group(expr) => expr.span,
         NavComponentAst::Error(error) => error.span,
@@ -267,10 +258,6 @@ pub fn nav_component_is_operator(component: &NavComponentAst) -> bool {
 fn atom_to_nav_component(parser: &mut Parser<'_>, atom: AtomAst) -> NavComponentAst {
     match atom.kind {
         AtomKind::Name(name) => NavComponentAst::Text(name),
-        AtomKind::IntLiteral(text) => NavComponentAst::Numeric(NumericNameAst {
-            text,
-            span: atom.span,
-        }),
         AtomKind::Group(_) => {
             parser.error(
                 DiagnosticCode::InvalidNavComponent,

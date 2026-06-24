@@ -319,8 +319,8 @@ operator identity validation, name lookup, or namespace resolution.
 #### `ExpectedAliasTarget`
 
 - **Trigger**: After `===` in an alias binding, the right-hand side is absent or
-  the current token cannot start an `EntityRef` at all (not a `Name`,
-  `NumericName`, or operator-eligible token), and no components have been
+  the current token cannot start an `EntityRef` at all (not a `Name` or
+  operator-eligible token), and no components have been
   parsed. A parenthesized form used as the innermost component (such as
   `(int Vec::std)::ns` or `(a, b)`) is reported as `InvalidEntityRef`, not
   `ExpectedAliasTarget`.
