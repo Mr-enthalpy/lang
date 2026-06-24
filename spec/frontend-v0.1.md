@@ -6,6 +6,11 @@ This document is a reader entry point for the `lang` v0.1 frontend. It explains
 the pipeline, how the specification documents are organized, and what each
 component is responsible for.
 
+The v0.1 Raw AST Frontend is completed. The current active stage is
+`v0.1.w` — the Raw AST Stability Window. During this window the lexer/parser
+architecture, `lex` / `parse` public interface, Raw AST shape, dump formats,
+and golden-test expectations are stable by default.
+
 It does **not** define syntax rules, AST shapes, or parser algorithms. Those
 are in `ast-construction-v0.1.md`.
 
@@ -27,8 +32,8 @@ v0.1 produces **three** stable, dumpable outputs:
 2. **AST dump**: structured AST tree in a hand-written format.
 3. **Diagnostic dump**: list of errors/warnings with spans.
 
-These three outputs are the only acceptance criterion for v0.1. No program is
-executed, type-checked, or lowered.
+These three outputs remain the acceptance outputs in `v0.1.w`. No program is
+executed, type-checked, semantically analyzed, or lowered.
 
 ## Document division
 
@@ -55,6 +60,10 @@ syntax contexts and alias binding design. Phase 4.4 implements raw parser
 preservation for alias binding and alias-RHS EntityRef.
 
 ## Boundaries
+
+`v0.1.w` is not a semantic stage and not a parser expansion stage. Future work
+in this window is limited to documentation alignment, contract stabilization,
+richer literal spelling, and local mechanical whole-form sugar recognition.
 
 ### Lexer boundary
 
@@ -118,7 +127,7 @@ The v0.1 frontend covers:
 
 For the detailed, factual inventory see `spec/implementation-status-v0.1.md`.
 
-For the current phase breakdown see `spec/roadmap.md`.
+For the current stage model see `spec/roadmap.md`.
 
 It does **not** yet cover:
 

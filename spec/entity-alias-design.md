@@ -4,6 +4,11 @@
 - **Parser preservation** for `let binder === EntityRef` is implemented in v0.1 as raw AST preservation. The lexer recognizes `===` as a single structural delimiter token (`Symbol::TripleEqual`). The parser produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
 - **Alias semantics, lookup, scope validation, operator identity validation, and namespace resolution are future work.** The parser does not resolve targets, validate operator identity, perform entity lookup, or execute alias semantics.
 
+`v0.1.w` status: alias-let parser preservation is stable by default. Changes
+in this window may clarify documentation or preserve narrowly additive syntax,
+but must not implement alias target resolution, namespace lookup, operator
+identity validation, or alias semantics.
+
 This document records the design for lexical alias binding of
 compile-time entities (Phase 4.3 design complete). Phase 4.4 implemented raw
 parser preservation. The remaining sections describe both the implemented

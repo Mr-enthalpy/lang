@@ -9,6 +9,10 @@
 - **GeneralEntityRef**: future design. Standalone `EntityRef` parsing in
   arbitrary strong contexts is not yet implemented.
 
+`v0.1.w` status: the alias-RHS subset is stable Raw AST preservation. General
+EntityRef remains later-stage work and must not become a name-resolution,
+namespace-resolution, or semantic lookup feature in this window.
+
 This document records the future compile-time entity reference syntax used by
 later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
 EntityRef parser inside alias-let RHS only; EntityRef is not a general

@@ -2,10 +2,14 @@
 
 `lang` is an experimental programming language frontend.
 
-**Current status:** The v0.1 Raw AST Frontend was completed as an initial Raw AST baseline.
-The Raw AST contract has been reopened for breaking guard/with/brace and
-inner-to-outer navigation corrections before v0.3.
-It lexes, parses, builds raw AST, emits diagnostics, and has golden tests. It does not
+**Current status:** v0.1 Raw AST Frontend completed; current active stage is
+v0.1.w Raw AST Stability Window.
+
+The lexer/parser architecture, public frontend interfaces, Raw AST shape, dump
+formats, and golden-test expectations are stable by default. Future work in
+this window is limited to documentation alignment, contract stabilization,
+richer literal spelling, and local mechanical sugar recognition. It lexes,
+parses, builds raw AST, emits diagnostics, and has golden tests. It does not
 perform semantic analysis.
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
@@ -55,7 +59,7 @@ perform semantic analysis.
 
 ## Two repository tracks
 
-1. **Frontend track** (active): Raw AST frontend (v0.1) completed; Raw AST correction gate before Normalized AST specification (v0.3) current.
+1. **Frontend track** (active): Raw AST frontend (v0.1) completed; v0.1.w Raw AST Stability Window current.
    Delivers `source text -> tokens -> Raw AST -> diagnostics`.
 
 2. **Build/package/namespace assembly track** (documentation only for now):

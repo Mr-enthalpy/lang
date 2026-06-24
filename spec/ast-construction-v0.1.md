@@ -8,6 +8,13 @@ This document defines how source tokens are converted into AST in `v0.1`.
 
 It defines syntax recognition and AST construction only.
 
+The v0.1 Raw AST Frontend is completed. The current active stage is
+`v0.1.w` — the Raw AST Stability Window. The lexer/parser skeleton and Raw AST
+categories documented here are stable by default. Do not use this document as
+a basis for broad parser expansion during `v0.1.w`; only richer literal
+spellings and local mechanical whole-form sugar recognition are in scope unless
+a hard correctness error is identified.
+
 It does not define:
 
 - type checking

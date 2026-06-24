@@ -6,6 +6,17 @@ This file records implementation facts. It does not override normative syntax
 rules in `ast-construction-v0.1.md`, `operator-design.md`, or
 `diagnostics-v0.1.md`.
 
+**Current stage:** v0.1 Raw AST Frontend completed; active stage is `v0.1.w`
+Raw AST Stability Window.
+
+The implementation listed here is the stable frontend baseline: lexer/parser
+skeleton, `lex` / `parse`, Raw AST categories, token/AST/diagnostic dumps,
+diagnostics infrastructure, and golden-test expectations are stable by default.
+Future work in `v0.1.w` is documentation alignment, contract stabilization,
+richer literal spelling, and local mechanical whole-form sugar recognition
+only, unless a hard correctness error is identified against the
+call-composition architecture.
+
 This document records what the current codebase implements. It is not
 normative for parser behavior — `spec/ast-construction-v0.1.md` and
 `spec/operator-design.md` define what the parser must do. This document

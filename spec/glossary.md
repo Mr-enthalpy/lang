@@ -5,6 +5,22 @@ meanings in general PL theory.
 
 ---
 
+## v0.1.w Raw AST Stability Window
+
+The current active stage after the completed v0.1 Raw AST Frontend. In this
+window the lexer/parser skeleton, `lex` / `parse` public interface, Raw AST
+categories, dump formats, diagnostics infrastructure, and golden-test
+expectations are stable by default.
+
+Allowed work is documentation alignment, Raw AST contract stabilization, richer
+literal spellings, and local mechanical whole-form sugar recognition. It is not
+a semantic stage, not a parser expansion stage, and not a Normalized AST
+implementation stage.
+
+_See also: Raw AST, Raw AST contract, Normalized AST._
+
+---
+
 ## Token
 
 The output of the lexer. A token is the smallest lexical unit: a `Name`, `Literal`,
@@ -325,9 +341,8 @@ Provisional grammar:
 EntityRef ::= EntityComponent ("::" EntityOuterComponent)*
 ```
 
-`EntityRef` may appear only in future explicit strong contexts, such as the
-right-hand side of `let binder === EntityRef`. Current v0.1 parser behavior is
-unchanged.
+In the current implementation, `EntityRef` appears only on the right-hand side
+of `let binder === EntityRef`. Other possible strong contexts are future work.
 
 _See also: NavPath, NavComponent._
 
@@ -387,8 +402,9 @@ _See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef._
 A compile-time lookup name introduced by alias binding into a lexical
 scope. A lexical alias shadows previous bindings of the same name in the
 current scope and nested scopes but does not mutate the original entity or
-change namespace state globally. Lexical aliases are future design only and
-are not resolved by the parser.
+change namespace state globally. Lexical aliases are parser-preserved in Raw
+AST, but their scope and target semantics are future work and are not resolved
+by the parser.
 
 _See also: Alias binding, Entity alias._
 
@@ -398,8 +414,8 @@ _See also: Alias binding, Entity alias._
 
 A lexical alias whose target is a compile-time entity reference (`EntityRef`).
 The alias binds a name or operator to a compile-time entity path without
-evaluating or constructing a runtime value. Entity aliases are a future
-name-resolution construct, not a v0.1 parser feature.
+evaluating or constructing a runtime value. Entity aliases are preserved by the
+v0.1 parser, but target resolution is a future name-resolution construct.
 
 _See also: Alias binding, Lexical alias, EntityRef._
 
@@ -407,9 +423,9 @@ _See also: Alias binding, Lexical alias, EntityRef._
 
 ## AliasBinder
 
-The binder position in a future `let binder === EntityRef` form. It may be a
-`Name` or `OperatorName`. This is a future parser concept: the binder is
-preserved as raw AST syntax without resolving the target entity.
+The binder position in a `let binder === EntityRef` form. It may be a
+`Name` or `OperatorName`. The parser preserves the binder as raw AST syntax
+without resolving the target entity.
 
 _See also: Alias binding, Operator alias._
 
@@ -417,15 +433,14 @@ _See also: Alias binding, Operator alias._
 
 ## Operator alias
 
-A future alias binding whose binder is an `OperatorName`. Operator aliases
-are stricter than ordinary name aliases: the operator binder and the final
-operator leaf of the target `EntityRef` must have the same overloadable
-operator identity (`spelling + fixity + arity`, where fixity is `Binary` or
-`Postfix`). Prefix negative is not an overloadable operator identity and
-cannot appear as an alias binder or target. An operator alias cannot rename
-one operator
-spelling into another. Operator alias validation is future static validation
-or name-resolution work, not current parser behavior.
+An alias binding whose binder is an `OperatorName`. Operator aliases are
+parser-preserved as Raw AST. Later validation may require the operator binder
+and the innermost operator component of the target `EntityRef` to have the same
+overloadable operator identity (`spelling + fixity + arity`, where fixity is
+`Binary` or `Postfix`). Prefix negative is not an overloadable operator
+identity and cannot appear as an alias binder or target. An operator alias
+cannot rename one operator spelling into another. Operator alias validation is
+future static validation or name-resolution work, not current parser behavior.
 
 _See also: Alias binding, AliasBinder, OperatorName, EntityRef._
 
@@ -435,8 +450,8 @@ _See also: Alias binding, AliasBinder, OperatorName, EntityRef._
 
 An operator class that cannot be chained without explicit grouping in the
 operator-aware parser design. Comparison, equality, and equals-suffixed
-operators are non-associative in this phase, so `a < b < c`, `a == b == c`,
-and `a += b += c` require grouping.
+operators are non-associative in the current Raw AST frontend, so `a < b < c`,
+`a == b == c`, and `a += b += c` require grouping.
 
 Semantic validity of grouped expressions remains outside parser scope.
 

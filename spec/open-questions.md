@@ -7,11 +7,17 @@ Resolved questions have been moved to `spec/resolved-questions.md`.
 
 ---
 
-## Current-stage questions (v0.1–v0.2)
+## Current-stage questions (v0.1.w)
+
+Current-stage questions must be compatible with the Raw AST Stability Window.
+They may cover richer literal spelling or local mechanical whole-form sugar
+recognition, but not parser architecture redesign, semantic analysis,
+normalization, name resolution, type checking, operator lookup, or alias target
+resolution.
 
 ### 1. Float, scientific, and unit-adjacent numeric literals
 
-**Status:** Partially resolved — classic decimal `1.2` is decided; scientific/unit forms remain open
+**Status:** Partially resolved — classic decimal `1.2` is decided; richer literal spelling remains open within `v0.1.w`
 
 **Resolution for `Digit+ "." Digit+` (e.g. `1.2`):**
 `1.2` is a **float literal** (`FloatLiteral` token and `AtomKind::FloatLiteral` node).
@@ -29,13 +35,19 @@ Member selectors accept only `Name`; navigation components accept only
 `1ms` tokenizes as `IntLiteral("1") Name("ms")`.
 
 **Still open:**
-- semantic interpretation of literal-name adjacency;
 - scientific notation, such as `1e3` and `1.2e-3`;
-- scientific notation adjacent to unit names, such as `1.2e3ms`;
+- scientific notation adjacent to unit names, such as `1.2e3ms`, if defined
+  as lexical / Raw-AST-preserving syntax only;
 - radix notation;
 - numeric separators;
 - leading-dot and trailing-dot floats;
-- typed/unit-suffixed literal design.
+- richer string literal spellings and escape syntax;
+- typed/unit-suffixed literal spelling only if it does not require semantic
+  interpretation.
+
+**Moved later:**
+- semantic interpretation of literal-name adjacency;
+- type-directed or unit-directed literal meaning.
 
 No `UnitLiteral` AST node exists.
 

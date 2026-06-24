@@ -24,9 +24,18 @@ spec/resolved-questions.md (design decisions — resolved for v0.1)
 
 ## Scope
 
-The v0.1 Raw AST Frontend was completed as an initial Raw AST baseline.
-The Raw AST contract has been reopened for breaking guard/with/brace and
-inner-to-outer navigation corrections before v0.3.
+The v0.1 Raw AST Frontend is completed. The current active stage is
+`v0.1.w` — the Raw AST Stability Window.
+
+`v0.1.w` means the lexer/parser architecture, public frontend interfaces, Raw
+AST shape, dump formats, and golden-test expectations are stable by default.
+Future work in this stage is maintenance, documentation alignment, contract
+stabilization, and narrowly-scoped additive syntax preservation only.
+
+Do not treat `v0.1.w` as an implementation phase for broad parser expansion.
+Refuse or narrow tasks that imply large parser redesign unless the user
+explicitly identifies a hard correctness error against the call-composition
+architecture.
 
 The v0.1 output is:
 
@@ -39,6 +48,57 @@ a future desugared, non-semantic AST that unifies calls, extraction, and
 declarations into simple pattern/call/declaration structures.
 
 Raw AST → Normalized AST lowering is allowed in a later explicit task.
+
+## v0.1.w stability policy
+
+Stable:
+
+* lexer/parser skeleton
+* Raw AST categories
+* `lex` / `parse`
+* token dump, AST dump, and diagnostic dump
+* diagnostics infrastructure
+* hard form boundaries
+* weak lexer
+* product/product-extract architecture
+* pipe/segment/operator-expression architecture
+* closure AST preservation
+* inner-to-outer navigation
+* alias-let parser preservation
+* `with { ... }` narrow payload grammar
+
+Allowed additive work:
+
+* richer literal spellings, such as scientific notation, radix notation,
+  numeric separators, richer string literal spellings, escape syntax, and
+  literal-adjacent unit spelling if defined as syntax only
+* local, mechanical, whole-form sugar recognition triggered by finite explicit
+  token shapes, preserved as Raw AST, with no lookup, inference, semantic
+  validation, heuristic reinterpretation, or parser-skeleton restructuring
+
+Forbidden in `v0.1.w`:
+
+* semantic analysis, name resolution, type/kind checking, operator lookup,
+  alias target resolution, closure materialization, canonical matching,
+  ownership/NLL/drop, interpretation, code generation, import/package/module
+  syntax, traditional call syntax, a general macro system, and major parser
+  architecture rewrites
+
+A hard correctness error is one of:
+
+* the current lexer/parser architecture cannot represent the intended
+  call-composition model at all
+* the current AST shape makes future normalization logically impossible, not
+  merely inconvenient
+* the current grammar forces heuristic parsing or semantic backtracking
+  contrary to the language design
+* the current accepted syntax contradicts the core pipe/product/operator/
+  call-binding architecture
+* a documented invariant is impossible to maintain without structural
+  correction
+
+Do not perform major restructuring for aesthetic cleanup, naming preference,
+local convenience, or speculative future semantic work.
 
 Do not implement:
 

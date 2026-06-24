@@ -10,8 +10,9 @@ not strict chronological gates.
 
 ```
 v0.1 — Raw AST Frontend — completed
-v0.2 — Raw AST Contract Freeze — reopened for hard corrections
-v0.3 — Normalized AST Specification — pending after corrections
+v0.1.w — Raw AST Stability Window — current
+v0.2+ — only after an explicit future decision
+v0.3 — Normalized AST Specification — not active until v0.1.w is closed
 v0.4 — Raw AST → Normalized AST Prototype
 v0.5 — Normalized AST Stabilization
 v0.6+ — Later semantic design stages
@@ -65,27 +66,80 @@ that future normalization passes may rely on, see
 
 ---
 
-### v0.2 — Raw AST Contract Freeze — reopened for hard corrections
+### v0.1.w — Raw AST Stability Window — current
 
-**Goal**: Document the invariants of the completed v0.1 Raw AST so that
-future normalization passes can safely desugar it.
+**Goal**: Stabilize the completed v0.1 Raw AST frontend contract without
+turning the stage into broad parser expansion.
 
-**Deliverable**: `spec/raw-ast-contract-v0.1.md`
+`v0.1.w` is a maintenance and contract-stabilization window. The lexer/parser
+architecture, public frontend interfaces, Raw AST shape, dump formats, and
+golden-test expectations are stable by default.
 
-This document defines what future normalization passes may rely on from
-Raw AST. It lists invariants for every AST node category and explicitly
-states what normalization must not assume (name resolution, type checking,
-operator lookup, alias resolution, etc.).
+Stable by default:
 
-The original v0.2 freeze was completed, then reopened for breaking
-guard/with/brace and inner-to-outer navigation corrections before v0.3.
-Navigation order is inner-to-outer: the leftmost component is the innermost
-selected symbol and the rightmost component is the outermost scope component.
-Raw AST preserves source-order navigation components and performs no lookup.
+- lexer/parser skeleton
+- Raw AST categories
+- `lex` / `parse`
+- token dump, AST dump, and diagnostic dump
+- diagnostics infrastructure
+- hard form boundaries
+- weak lexer
+- product/product-extract architecture
+- pipe/segment/operator-expression architecture
+- closure AST preservation
+- inner-to-outer navigation
+- alias-let parser preservation
+- `with { ... }` narrow payload grammar
+
+Allowed additive work:
+
+- richer literal spellings, including scientific numeric notation, radix
+  notation, numeric separators, richer string literal spellings, escape syntax,
+  literal-adjacent unit spelling when defined as syntax only, and similar
+  lexical / Raw-AST-preserving additions
+- local, mechanical, whole-form sugar recognition, only when triggered by a
+  finite explicit token shape, preserved as Raw AST, requiring no lookup or
+  semantic validation, changing no existing source meaning, and avoiding
+  lexer/parser skeleton restructuring
+
+Forbidden in `v0.1.w`:
+
+- semantic analysis
+- name resolution
+- type/kind checking
+- operator lookup
+- alias target resolution
+- closure materialization
+- canonical matching
+- ownership/NLL/drop
+- import/package/module syntax
+- traditional call syntax
+- general macro system
+- major parser architecture rewrite
+
+Large parser refactors are forbidden unless there is a hard correctness error:
+the current architecture cannot represent the intended call-composition model,
+future normalization is logically impossible, the grammar forces heuristic
+semantic backtracking, current accepted syntax contradicts the core
+pipe/product/operator/call-binding architecture, or a documented invariant is
+impossible to maintain without structural correction.
+
+Historical note: the earlier "v0.2 Raw AST Contract Freeze — reopened for hard
+corrections" wording described a transition after the initial v0.1 baseline.
+Those corrections have been folded into the completed Raw AST frontend and the
+current active stage is `v0.1.w`, not an open-ended v0.2 parser revision phase.
 
 ---
 
-### v0.3 — Normalized AST Specification — pending after corrections
+### v0.2+ — only after an explicit future decision
+
+No active `v0.2` implementation or parser-revision phase exists. Any `v0.2+`
+work requires an explicit future decision that defines scope, deliverables, and
+phase gates.
+
+---
+
+### v0.3 — Normalized AST Specification — not active until v0.1.w is closed
 
 **Goal**: Define the Normalized AST node set and document how Raw AST
 constructs desugar into Normalized AST.

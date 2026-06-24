@@ -6,6 +6,11 @@ This document defines error and warning diagnostics produced by the v0.1 lexer
 and parser. It covers every current `DiagnosticCode` variant in
 `crates/lang_syntax/src/diagnostic.rs`.
 
+The current active stage is `v0.1.w` — the Raw AST Stability Window.
+Diagnostics infrastructure and hand-written diagnostic dumps are stable by
+default. Diagnostic changes in this window should be narrow, additive, and tied
+to lexer/parser preservation or documented invariant failures.
+
 It does **not** define:
 
 - type errors

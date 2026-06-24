@@ -4,6 +4,12 @@ This document defines what future normalization passes may rely on from
 the v0.1 Raw AST output. It is a contract between the completed v0.1 parser
 and future Raw AST → Normalized AST lowering.
 
+The current active stage is `v0.1.w` — the Raw AST Stability Window. During
+this window the Raw AST contract is under stabilization, not open-ended
+redesign. Corrections must be narrow and justified by invariant failure, such
+as an AST shape that makes future normalization logically impossible or a
+documented invariant that cannot be maintained.
+
 ## Scope
 
 The v0.1 Raw AST is surface-preserving and non-desugared. Every syntactic
