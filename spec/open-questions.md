@@ -152,45 +152,6 @@ Raw alias parsing exists; the answer affects future implementation ordering only
 
 ---
 
-### 6. Alias binding with `with`
-
-**Status:** Open
-
-**Current decision:** Alias binding does not permit `with`. `guard` is not a
-let attribute and has no alias-specific syntax. Alias bindings have no runtime
-value, no drop obligation, and no lifetime dependency.
-
-**Question:** Could future alias binding semantics justify a `with { ... }`
-clause (e.g., compile-time alias ordering or dependency)?
-
-**Why it does not block v0.1:**
-Raw alias parsing exists; the current recommendation is documented but not
-binding on future design.
-
-**Future stage:** Later scope/semantic design or alias-validation stage.
-
----
-
-### 7. Alias binding visibility and export modifiers
-
-**Status:** Open
-
-**Question:** Should alias binding have a visibility or export modifier (e.g.,
-`public`/`private`/`restricted`)?
-
-The current Phase 4.3 design does not include visibility modifiers for alias
-bindings. Access control and namespace export are documented as namespace-graph
-and resolver concerns in `spec/library-namespace-design-note.md`. Whether alias
-bindings need source-level visibility annotations is an open namespace design
-question.
-
-**Why it does not block v0.1:**
-Raw alias parsing exists; namespace resolution does not.
-
-**Future stage:** Namespace assembly phase or later language design.
-
----
-
 ## Later-stage questions
 
 These questions become active when their stage is reached. They do not

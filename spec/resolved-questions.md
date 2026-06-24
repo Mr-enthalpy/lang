@@ -313,3 +313,49 @@ required.
 **Why it does not block v0.1:**
 The parser already enforces this grammar. The boundary is a documentation
 clarification, not an implementation change.
+
+---
+
+## 17. Alias binding with `with`
+
+**Status:** Resolved
+
+**Resolution:**
+Alias binding does not accept `with { ... }`.
+
+`with { ... }` belongs to ordinary binding slots. Alias binding is a separate
+form-level construct with a simple lexical shape:
+
+    OptionalPolicy? let AliasBinder === EntityRef
+
+The alias RHS is exactly an `EntityRef`. Any token after the entity reference
+before a hard form boundary is residual alias-RHS material and must be diagnosed.
+
+The parser already enforces this: `finish_entity_ref` in `let_stmt.rs` emits
+`UnexpectedAliasRhsExpression` for any token following the entity reference
+that is not `;`, `}`, or EOF.
+
+---
+
+## 18. Alias binding visibility and export modifiers
+
+**Status:** Resolved
+
+**Resolution:**
+Visibility and export modifiers use the existing `OptionalPolicy?` prefix,
+not new alias-specific syntax.
+
+The form parser recognizes `Expr let` as a policy-prefixed binding form.
+When an expression precedes `let`, the expression is passed as a `policy`
+expression to `parse_let_form`. The alias form already carries
+`policy: Option<ExprAst>` on `LetAliasAst`, so the following shapes are
+accepted at the raw parser level:
+
+    export let A === B;
+    public let A === B;
+    package_visible let A === B;
+
+The v0.1 parser does not interpret the semantics of `export`, `public`, or
+other policy names. Whether a policy expression denotes visibility, package
+export, namespace mounting, re-export, or another concept belongs to later
+name-resolution / package / build-system phases.
