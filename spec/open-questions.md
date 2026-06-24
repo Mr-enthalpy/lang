@@ -206,9 +206,6 @@ block the current stage.
 normalized call, normalized pattern, normalized declaration. Should there
 be a single unified expression node or distinct per-form nodes?
 
-**Why it does not block current stage:** The Raw AST contract only documents invariants;
-Normalized AST node types are a v0.3 specification detail.
-
 ---
 
 #### N-AST-2. Whether Normalized AST lives in `lang_syntax` or a new crate
@@ -218,9 +215,6 @@ Normalized AST node types are a v0.3 specification detail.
 **Question:** Should Normalized AST types and the normalization pass live in
 `lang_syntax` (alongside Raw AST), or in a new crate (e.g., `lang_norm`)?
 
-**Why it does not block current stage:** This is an implementation organization
-question for v0.4.
-
 ---
 
 #### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
@@ -229,9 +223,6 @@ question for v0.4.
 
 **Question:** Should the normalization pass produce stable dump output that
 can be golden-tested alongside Raw AST dumps?
-
-**Why it does not block current stage:** Golden testing strategy is a v0.4
-implementation question.
 
 ---
 
@@ -244,8 +235,6 @@ implementation question.
 Normalized AST — as reserved names, as a separate node type, or as
 compiler-generated identifiers?
 
-**Why it does not block current stage:** This is a v0.3 specification detail.
-
 ---
 
 #### N-AST-5. How to preserve source origins through desugaring
@@ -256,9 +245,6 @@ compiler-generated identifiers?
 text. How should source spans and diagnostic attribution be preserved through
 normalization?
 
-**Why it does not block current stage:** Source origin preservation is a v0.3–v0.4
-design question.
-
 ---
 
 #### N-AST-6. Whether right-target subsegments become nested call nodes
@@ -268,8 +254,6 @@ design question.
 **Question:** Right-target subsegments (`f (a) g`) are currently flat in Raw
 AST. Should normalization recursively nest them into explicit (sub-)call
 nodes?
-
-**Why it does not block current stage:** This is a v0.3 desugaring rule.
 
 ---
 
@@ -282,9 +266,6 @@ skeletons. How should normalization unify these into a single normalized
 pattern form? Should deduce lists be merged into the pattern structure
 or kept separate?
 
-**Why it does not block current stage:** Pattern normalization is a v0.3 specification
-detail.
-
 ---
 
 #### N-AST-8. How to represent alias declarations before name resolution
@@ -294,9 +275,6 @@ detail.
 **Question:** Alias bindings (`let binder === EntityRef`) reference compile-time
 entities that are not yet resolved. Should normalization preserve `EntityRefAst`
 as-is in normalized alias declarations, or desugar it into a different form?
-
-**Why it does not block current stage:** Alias normalization is a v0.3 specification
-detail.
 
 ---
 
@@ -311,11 +289,6 @@ Canonical skeletons use the grammar defined in section 6 of
 ast-construction-v0.1.md. This grammar is provisional and may be revised
 when value/type canonical forms are designed.
 
-**Why it does not block current stage:**
-The current canonical skeleton grammar builds AST only. No matching is
-performed. Any future revision will produce a different AST shape, but
-v0.1 AST will still be parseable.
-
 ---
 
 ### v0.10+: Ownership and NLL
@@ -329,10 +302,6 @@ No CFG is built. The raw AST contains sufficient structure (form order,
 closure bodies, and explicit `with { ... }` syntax) for future passes to
 construct a control-flow graph.
 
-**Why it does not block current stage:**
-Ownership and lifetime analysis is out of scope for v0.1. The parser does
-not construct a control-flow graph.
-
 ---
 
 ### v0.11+: Control-flow and effect semantics
@@ -343,14 +312,8 @@ not construct a control-flow graph.
 
 **Current v0.1 foundation:**
 These are ordinary `Name` tokens at the lexical and parser level. No special
-AST nodes exist for them. The p0.1 frontend faithfully preserves these names
+AST nodes exist for them. The v0.1 frontend faithfully preserves these names
 in expression AST.
-
-**Why it does not block current stage:**
-A future semantic pass can interpret these names by analyzing the AST
-structure without requiring parser changes. The parser must not add
-`ReturnStmt`, `ElseExpr`, `MatchExpr`, `IfExpr`, `MatchStmt`, `CallExpr`,
-or `ArgPack` nodes.
 
 ---
 
