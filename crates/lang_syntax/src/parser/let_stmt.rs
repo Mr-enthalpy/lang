@@ -59,6 +59,32 @@ pub fn parse_binding_slot(
     let start = parser.cursor.current_span();
     let (policy, has_let) = parse_slot_policy_and_let(parser, context);
 
+    if has_let
+        && !matches!(context, BindingSlotContext::Let)
+        && looks_like_alias_binding_start(parser)
+    {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::InvalidAliasPosition,
+            "alias binding must appear as a standalone form",
+            span,
+        );
+        parser.recover_to_form_boundary();
+        let end = parser.cursor.current_span();
+        return BindingSlotAst {
+            policy: None,
+            has_let: false,
+            deduce: None,
+            pattern: BindingPatternAst::Error(
+                parser.error_ast("alias binding must appear as a standalone form", span),
+            ),
+            annotation: None,
+            with_clause: None,
+            initializer: None,
+            span: start.join(end),
+        };
+    }
+
     let deduce = if starts_binding_deduce_list(parser) {
         Some(parse_deduce_list(parser))
     } else {
@@ -562,6 +588,25 @@ fn binder_name_to_alias_binder(token: &crate::Token) -> AliasBinderAst {
             }
         }
     }
+}
+
+pub(super) fn looks_like_alias_binding_start(parser: &mut Parser<'_>) -> bool {
+    let token = parser.cursor.peek_non_trivia();
+    if is_valid_alias_binder(&token.kind) {
+        return matches!(
+            parser.cursor.peek_next_non_trivia().kind,
+            TokenKind::Symbol(Symbol::TripleEqual)
+        );
+    }
+    if matches!(token.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        let cursor_index = parser.cursor.current_index();
+        let (rbracket_index, rbracket) = parser.cursor.peek_at_skip_trivia(cursor_index + 1);
+        if matches!(rbracket.kind, TokenKind::Symbol(Symbol::RBracket)) {
+            let (_, after) = parser.cursor.peek_at_skip_trivia(rbracket_index + 1);
+            return matches!(after.kind, TokenKind::Symbol(Symbol::TripleEqual));
+        }
+    }
+    false
 }
 
 fn is_valid_alias_binder(kind: &TokenKind) -> bool {

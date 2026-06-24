@@ -214,3 +214,23 @@ fn invalid_binding_missing_pattern() {
 fn invalid_param_missing_pattern() {
     assert_diagnostics_case("invalid_param_missing_pattern");
 }
+
+#[test]
+fn invalid_alias_in_parens() {
+    assert_diagnostics_case("invalid_alias_in_parens");
+}
+
+#[test]
+fn invalid_alias_in_param() {
+    assert_diagnostics_case("invalid_alias_in_param");
+}
+
+#[test]
+fn invalid_alias_in_extract() {
+    assert_diagnostics_case("invalid_alias_in_extract");
+}
+
+#[test]
+fn invalid_alias_in_head_clause() {
+    assert_diagnostics_case("invalid_alias_in_head_clause");
+}

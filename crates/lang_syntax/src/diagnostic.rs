@@ -27,6 +27,7 @@ pub enum DiagnosticCode {
     UnusedClosureAst,
     ExpectedAliasTarget,
     InvalidAliasBinder,
+    InvalidAliasPosition,
     InvalidEntityRef,
     UnexpectedAliasRhsExpression,
 }

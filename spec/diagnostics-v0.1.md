@@ -362,6 +362,19 @@ operator identity validation, name lookup, or namespace resolution.
 - **Recovery**: Future. In the current parser, an invalid binder falls through
   to the ordinary-let error path which emits `ExpectedName`.
 
+#### `InvalidAliasPosition`
+
+- **Trigger**: An alias-shaped token sequence (`let` followed by a valid alias
+  binder and `===`) appears in a non-form position: inside a binding slot
+  (parameter, return, product extraction element) or inside an expression
+  (grouped expression, head-clause expression, pipe segment).
+- **Primary span**: The `let` token or the binder token.
+- **Recovery**: Emit the diagnostic and recover to the enclosing delimiter
+  or form boundary. Do not construct a `LetAliasAst` from the invalid
+  position.
+- **Reason**: Alias binding is a form-level construct. It must be written
+  as a standalone form bounded by `;`, `}`, or EOF.
+
 ## 4. Diagnostic format
 
 The dump format for diagnostics in v0.1 should be stable and suitable for

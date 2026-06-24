@@ -1,0 +1,3 @@
+error InvalidAliasPosition "alias binding must appear as a standalone form" @ 1:13 [12..13]
+error UnclosedParen "unclosed product extraction, expected `)`" @ 1:5 [4..5]
+error ExpectedEqual "expected `=` in let" @ 2:1 [25..25]

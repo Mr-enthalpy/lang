@@ -793,6 +793,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::UnusedClosureAst => "UnusedClosureAst",
         DiagnosticCode::ExpectedAliasTarget => "ExpectedAliasTarget",
         DiagnosticCode::InvalidAliasBinder => "InvalidAliasBinder",
+        DiagnosticCode::InvalidAliasPosition => "InvalidAliasPosition",
         DiagnosticCode::InvalidEntityRef => "InvalidEntityRef",
         DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
     }

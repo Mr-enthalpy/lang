@@ -6,6 +6,7 @@ use crate::{
 use super::{
     closure::try_parse_closure,
     form::Parser,
+    let_stmt::looks_like_alias_binding_start,
     pipe::parse_pipe_expr,
     product::{parse_bracket_product_expr, parse_product_expr},
 };
@@ -117,6 +118,31 @@ fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
 
     match &token.kind {
         TokenKind::Name => {
+            let name_text = token.text.clone();
+            let name_span = token.span;
+
+            if name_text == "let" {
+                let saved = parser.cursor.current_index();
+                parser.cursor.bump_non_trivia();
+                let is_alias = looks_like_alias_binding_start(parser);
+                if is_alias {
+                    parser.error(
+                        DiagnosticCode::InvalidAliasPosition,
+                        "alias binding must appear as a standalone form",
+                        name_span,
+                    );
+                    parser.recover_to_form_boundary();
+                    return Some(AtomAst {
+                        kind: AtomKind::Error(parser.error_ast(
+                            "alias binding must appear as a standalone form",
+                            name_span,
+                        )),
+                        span: name_span,
+                    });
+                }
+                parser.cursor.set_index(saved);
+            }
+
             let token = parser.cursor.bump_non_trivia();
             Some(AtomAst {
                 kind: AtomKind::Name(NameAst {

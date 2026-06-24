@@ -1,0 +1,2 @@
+error InvalidAliasPosition "alias binding must appear as a standalone form" @ 1:2 [1..4]
+error UnclosedParen "unclosed parentheses" @ 1:1 [0..1]

@@ -450,21 +450,35 @@ Raw alias parsing exists; the answer affects future implementation ordering only
 
 ## 23. Alias binding position: all forms or top-level only
 
-**Status:** Open
+**Status:** Resolved
 
-**Question:** Should alias bindings be allowed in all form positions (top-level,
-inside closures, inside expressions) or only at top-level / namespace-level
-positions?
+**Resolution:**
+Alias binding is a form-level construct, not a top-level-only construct and not a
+binding-slot construct.
 
-The current Phase 4.3 design defines lexical scoping but does not constrain
-where alias bindings may appear syntactically. This decision affects parser
-state management and scope nesting.
+It may appear wherever a `Form` may appear: at source-file form level and inside
+closure body form lists. It may not appear inside expressions, product extraction
+elements, parameter clauses, return clauses, annotations, head-clause expressions,
+or ordinary binding slots.
 
-**Why it does not block v0.1:**
-Raw alias parsing exists; this decision affects future scope/semantic design
-only.
+The canonical shape is:
 
-**Future stage:** Later scope/semantic design or alias-validation stage.
+    OptionalPolicy? let AliasBinder === EntityRef
+
+and it must be bounded by hard form boundaries: `;`, `}`, or EOF. In normal
+source style this means an alias binding is written as a standalone form:
+
+    let A === B;
+    policy let A === B;
+
+It must not be mixed with preceding or following expression material in the same
+form.
+
+**Implementation status:**
+`parse_let_form` dispatches to alias only at form level. `parse_binding_slot`
+and `parse_atom_base` emit `InvalidAliasPosition` when alias-shaped tokens
+appear in non-form positions (Param, Return, product extraction element,
+or expression atom).
 
 ---
 

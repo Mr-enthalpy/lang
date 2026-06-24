@@ -18,13 +18,16 @@ will use that syntax.
 The language will eventually support a declaration form:
 
 ```text
-let binder === EntityRef
+AliasForm ::= OptionalPolicy? "let" AliasBinder "===" EntityRef FormBoundary
+FormBoundary ::= ";" | "}" | EOF
 ```
+
+AliasForm is recognized only in Form position. It is not valid inside
+BindingSlot, ProductExtract, ParamClause, ReturnClause, Annotation, HeadClause,
+or Expr.
 
 This is similar to `import as` or `using` in traditional languages, but
 stronger. It introduces a lexical-scope alias for a compile-time entity.
-
-An alias binding:
 
 - does not bind a runtime value;
 - does not evaluate an expression;
