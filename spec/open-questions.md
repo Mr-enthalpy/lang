@@ -45,32 +45,6 @@ atoms.
 
 ---
 
-### 2. Operator alias identity mismatch: diagnostic phase
-
-**Status:** Open
-
-**Current Phase 4.3 design:**
-The operator alias rule requires `spelling + fixity + arity` match between
-binder and target leaf, where fixity is `Binary` or `Postfix` (overloadable
-fixities only). Prefix negative `-x` is a normalization-special-cased surface
-sugar, not an overloadable operator identity; the `-` spelling in alias binder
-or target position refers exclusively to binary minus. The design document
-recommends deferring the full
-identity check to a static validation or name-resolution-adjacent phase.
-A first-pass spelling-only comparison is possible as optional future parser
-validation.
-
-**Question:** Should operator alias identity mismatch be a parser diagnostic
-(spelling-only), a static semantic diagnostic (full identity), or deferred
-to name resolution?
-
-**Why it does not block v0.1:**
-Raw alias parsing exists; the answer affects future implementation ordering only.
-
-**Future stage:** Later name-resolution design or alias-validation stage.
-
----
-
 ## Later-stage questions
 
 These questions become active when their stage is reached. They do not
@@ -194,6 +168,28 @@ construct a control-flow graph.
 These are ordinary `Name` tokens at the lexical and parser level. No special
 AST nodes exist for them. The v0.1 frontend faithfully preserves these names
 in expression AST.
+
+---
+
+### Name resolution and alias validation
+
+#### Operator alias identity mismatch: diagnostic phase
+
+**Status:** Open (active at name resolution)
+
+**Current Phase 4.3 design:**
+The operator alias rule requires `spelling + fixity + arity` match between
+binder and target leaf, where fixity is `Binary` or `Postfix` (overloadable
+fixities only). Prefix negative `-x` is a normalization-special-cased surface
+sugar, not an overloadable operator identity; the `-` spelling in alias binder
+or target position refers exclusively to binary minus. The design document
+recommends deferring the full identity check to a static validation or
+name-resolution-adjacent phase. A first-pass spelling-only comparison is
+possible as optional future parser validation.
+
+**Question:** Should operator alias identity mismatch be a parser diagnostic
+(spelling-only), a static semantic diagnostic (full identity), or deferred
+to name resolution?
 
 ---
 
