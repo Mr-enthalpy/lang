@@ -9,26 +9,7 @@ Resolved questions have been moved to `spec/resolved-questions.md`.
 
 ## Current-stage questions (v0.1–v0.2)
 
-### 1. Numeric selectors: positional access vs. general sugar
-
-**Status:** Open
-
-**Current v0.1 decision:**
-Numeric tokens in selector/name-leaf position produce `NumericNameAst`. The
-parser treats `obj.1`, `tuple.1`, and `pack.1` identically as
-`MemberSugar { object, selector: NumericName("1") }`. No special AST nodes
-such as `TupleIndex`, `TupleField`, or `PackIndex` are created.
-
-**Why it does not block v0.1:**
-Any future tuple/pack positional access semantics must be implemented by later
-semantic lookup, namespace forwarding, or compiler-provided functions. The
-parser must not hard-code positional access semantics.
-
-**Future stage:** v0.9 (type/kind checking design) or v0.11.
-
----
-
-### 2. Float, scientific, and unit-adjacent numeric literals
+### 1. Float, scientific, and unit-adjacent numeric literals
 
 **Status:** Partially resolved — bare `1.2` is decided; scientific/unit forms remain open
 
@@ -64,69 +45,7 @@ atoms.
 
 ---
 
-### 3. Name-polymorphic lookup boundary
-
-**Status:** Open (design note, not implemented)
-
-**Current v0.1 decision:**
-`MemberSugar` and `DoubleDotSugar` preserve selector syntax (`TextNameAst` /
-`NumericNameAst`) for later lookup. Selectors may participate in future
-name-polymorphic lookup.
-
-Name-polymorphic lookup is a compile-time-only extension of name binding:
-function-name positions may contain explicitly declared name holes such as
-`<f: TextNameAst>` or `<i: NumericNameAst>`.
-
-This does **not** make lookup dynamic. Concrete names shadow abstract name
-holes. If concrete candidates are found but fail to apply, the compiler reports
-that failure and does **not** fall back to abstract name-polymorphic
-candidates.
-
-Only declarations that explicitly bind the function-name position as a name AST
-hole participate in name-polymorphic lookup. Ordinary functions do not accept
-arbitrary names.
-
-Name constraints must be locally decidable at compile time, and candidate
-ordering must be stable. If multiple applicable name-polymorphic candidates
-remain unordered, lookup is ambiguous.
-
-**Why it does not block v0.1:**
-The selector AST already distinguishes `TextNameAst` and `NumericNameAst`
-as distinct selector classes. This distinction is sufficient to support future
-name-polymorphic lookup without requiring AST changes. v0.1 does not implement
-lookup, binding, or name resolution. The parser only preserves selector shape.
-
-**Future stage:** v0.9 (type/kind checking design) or later name-resolution
-design. A future decision document (e.g.
-`docs/decisions/0005-name-polymorphic-lookup-boundary.md`) may formalize the
-exact rules. The parser must not be changed to accommodate lookup before that
-specification exists.
-
----
-
-### 4. Canonical skeleton admissibility
-
-**Status:** Open
-
-**Current v0.1 decision:**
-The parser preserves all canonical skeleton shapes (names, wildcards, literals,
-paths, product extractions) as raw AST. The Hole/NodeName distinction is a parse-time role
-marker.  No semantic matching, destructuring, equality, constructor, or
-admissibility semantics are assigned to any skeleton shape.
-
-**Why it does not block v0.1:**
-v0.1 is a syntax frontend only.  The canonical skeleton grammar is broad enough
-to capture extraction syntax for later semantic interpretation.  Whether a
-particular shape (literal in skeleton, bare node-name, nested product extraction) is
-admissible, produces a constraint, or is rejected by a future semantic match
-is a deferred design decision that does not require changing the AST.
-
-**Future stage:** v0.6 (canonical form specification) or v0.9 (type/kind checking
-design).
-
----
-
-### 5. Operator alias identity mismatch: diagnostic phase
+### 2. Operator alias identity mismatch: diagnostic phase
 
 **Status:** Open
 
