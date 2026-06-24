@@ -44,8 +44,14 @@ fn names() {
 
 #[test]
 fn int_dot_int() {
-    // Locks that `1.2` lexes as IntLiteral `.` IntLiteral, never a float token.
+    // Locks that `1.2` lexes as a single `FloatLiteral` token.
     assert_lexer_case("int_dot_int", false);
+}
+
+#[test]
+fn float_with_name() {
+    // Locks that `1.2ms` lexes as `FloatLiteral` `Name`, not unit-suffixed.
+    assert_lexer_case("float_with_name", false);
 }
 
 #[test]

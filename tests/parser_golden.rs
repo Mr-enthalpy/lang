@@ -219,6 +219,11 @@ fn product_after_name() {
 }
 
 #[test]
+fn float_then_name() {
+    assert_parser_case("float_then_name", false);
+}
+
+#[test]
 fn invalid_empty_pipe_segment() {
     assert_parser_case("invalid_empty_pipe_segment", true);
 }

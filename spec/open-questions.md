@@ -24,12 +24,20 @@ Numeric selectors (`obj.0`, `pack.1`, `uint8::1`) have been removed.
 Member selectors accept only `Name`; navigation components accept only
 `Name` and `OperatorName`. Use bracket form (`pack[0]`) for projection.
 
-**Still open (scientific / unit-adjacent):**
-The spellings `1.2ms`, `1e3ms`, `1.2e3`, and `1.2e3ms` are reserved for future
-numeric literal design. The current parser must not force an interpretation of
-these forms. The natural unit syntax `1ms` and `1 ms` remain equivalent as
-`IntLiteral(1)` followed by `Name(ms)` at the non-trivia token/parser structure
-level. No `UnitLiteral` AST node exists.
+**Resolved lexical behavior:**
+`1.2ms` tokenizes as `FloatLiteral("1.2") Name("ms")`.
+`1ms` tokenizes as `IntLiteral("1") Name("ms")`.
+
+**Still open:**
+- semantic interpretation of literal-name adjacency;
+- scientific notation, such as `1e3` and `1.2e-3`;
+- scientific notation adjacent to unit names, such as `1.2e3ms`;
+- radix notation;
+- numeric separators;
+- leading-dot and trailing-dot floats;
+- typed/unit-suffixed literal design.
+
+No `UnitLiteral` AST node exists.
 
 ---
 

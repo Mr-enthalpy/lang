@@ -1363,10 +1363,10 @@ obj..(method)
 obj..42
 ```
 
-`..` is followed by `IntLiteral("42")` which is not a valid selector
-(numeric selectors have been removed). Emit
-`ExpectedProductAfterDoubleDotName` with primary span on `42`. Consume
-`..` and selector, stop suffix folding. Do not construct a `DoubleDotSugar` node.
+`..` is followed by `IntLiteral("42")`, which is not a valid selector because
+numeric selectors have been removed. Emit `ExpectedNameAfterDoubleDot` with the
+primary span on `..` or on the invalid selector boundary, according to the parser
+diagnostic convention. Do not construct a `DoubleDotSugar` node.
 
 ```text
 obj..(method)
@@ -2287,7 +2287,7 @@ document.
 | §8.5 Member `.`                      | `obj.42`                                    | `ExpectedNameAfterDot` (numeric selectors removed)                                       |
 | §8.5 Member `.`                      | `obj.(field)`                               | `ExpectedNameAfterDot`                                                                   |
 | §8.5 Member `.`                      | `obj."field"`                               | `ExpectedNameAfterDot`                                                                   |
-| §8.6 Double-dot `..`                 | `obj..42`                                   | No diagnostic expected for selector; `ExpectedProductAfterDoubleDotName` if no product   |
+| §8.6 Double-dot `..`                 | `obj..42`                                   | `ExpectedNameAfterDoubleDot` (numeric selectors removed)                                 |
 | §8.6 Double-dot `..`                 | `obj..1` (no product)                       | `ExpectedProductAfterDoubleDotName`                                                      |
 | §8.6 Double-dot `..`                 | `obj..(method)`                             | `ExpectedNameAfterDoubleDot`                                                             |
 | §8.6 Double-dot `..`                 | `obj..+`                                    | `ExpectedNameAfterDoubleDot` (operator selectors are valid only after `::`)              |

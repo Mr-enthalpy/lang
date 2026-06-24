@@ -1,0 +1,11 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              FloatLiteral 1.2
+          OperatorExpr
+            Atom
+              Name ms
