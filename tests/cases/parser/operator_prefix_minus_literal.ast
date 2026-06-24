@@ -4,7 +4,5 @@ Program
       Pipe
         Segment has_incoming=false
           OperatorExpr
-            OperatorSugar fixity=Prefix operator="-"
-              arg:
-                Atom
-                  IntLiteral 1
+            Atom
+              IntLiteral -1

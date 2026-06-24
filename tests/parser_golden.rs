@@ -50,8 +50,7 @@ fn member_int_base() {
 
 #[test]
 fn member_int_chain() {
-    // `1.2.3` is left-associated member sugar `(1.2).3`.
-    assert_parser_case("member_int_chain", false);
+    assert_parser_case("member_int_chain", true);
 }
 
 #[test]
@@ -241,12 +240,12 @@ fn member_basic() {
 
 #[test]
 fn member_numeric() {
-    assert_parser_case("member_numeric", false);
+    assert_parser_case("member_numeric", true);
 }
 
 #[test]
 fn member_numeric2() {
-    assert_parser_case("member_numeric2", false);
+    assert_parser_case("member_numeric2", true);
 }
 
 #[test]
@@ -271,7 +270,7 @@ fn doubledot_basic() {
 
 #[test]
 fn doubledot_numeric() {
-    assert_parser_case("doubledot_numeric", false);
+    assert_parser_case("doubledot_numeric", true);
 }
 
 #[test]
@@ -281,7 +280,7 @@ fn mixed_suffixes() {
 
 #[test]
 fn mixed_numeric() {
-    assert_parser_case("mixed_numeric", false);
+    assert_parser_case("mixed_numeric", true);
 }
 
 #[test]
@@ -1036,7 +1035,7 @@ fn operator_binary_ordinary_spellings() {
 
 #[test]
 fn operator_prefix_minus_name() {
-    assert_parser_case("operator_prefix_minus_name", false);
+    assert_parser_case("operator_prefix_minus_name", true);
 }
 
 #[test]
@@ -1091,7 +1090,7 @@ fn operator_product_rhs() {
 
 #[test]
 fn operator_product_prefix() {
-    assert_parser_case("operator_product_prefix", false);
+    assert_parser_case("operator_product_prefix", true);
 }
 
 #[test]

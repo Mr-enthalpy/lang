@@ -506,6 +506,7 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
     match &atom.kind {
         AtomKind::Name(name) => line(output, indent, &format!("Name {}", name.text)),
         AtomKind::IntLiteral(value) => line(output, indent, &format!("IntLiteral {}", value)),
+        AtomKind::FloatLiteral(value) => line(output, indent, &format!("FloatLiteral {}", value)),
         AtomKind::StringLiteral(value) => {
             line(
                 output,
@@ -576,9 +577,6 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
 fn dump_selector(output: &mut String, selector: &crate::SelectorAst, indent: usize) {
     match selector {
         crate::SelectorAst::Text(name) => line(output, indent, &format!("TextName {}", name.text)),
-        crate::SelectorAst::Numeric(num) => {
-            line(output, indent, &format!("NumericName {}", num.text))
-        }
     }
 }
 
@@ -586,9 +584,6 @@ fn dump_nav_component(output: &mut String, component: &crate::NavComponentAst, i
     match component {
         crate::NavComponentAst::Text(name) => {
             line(output, indent, &format!("component Name {}", name.text))
-        }
-        crate::NavComponentAst::Numeric(num) => {
-            line(output, indent, &format!("component Numeric {}", num.text))
         }
         crate::NavComponentAst::Operator(operator) => line(
             output,
@@ -723,6 +718,7 @@ fn token_kind_label(kind: &TokenKind) -> String {
     match kind {
         TokenKind::Name => "Name".to_string(),
         TokenKind::IntLiteral => "IntLiteral".to_string(),
+        TokenKind::FloatLiteral => "FloatLiteral".to_string(),
         TokenKind::StringLiteral => "StringLiteral".to_string(),
         TokenKind::Symbol(symbol) => format!("Symbol.{}", symbol_label(*symbol)),
         TokenKind::Operator(spelling) => {

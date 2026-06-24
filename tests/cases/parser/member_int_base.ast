@@ -5,8 +5,4 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              MemberSugar
-                object:
-                  IntLiteral 1
-                selector:
-                  NumericName 2
+              FloatLiteral 1.2

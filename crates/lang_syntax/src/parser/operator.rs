@@ -108,31 +108,6 @@ fn parse_prefix_expr(
             }
         }
 
-        if current.spelling == OperatorSpelling::Minus {
-            let operator = bump_operator(parser, current);
-            let arg = match parse_prefix_expr(parser, stop) {
-                Some(arg) => arg,
-                None => {
-                    parser.error(
-                        DiagnosticCode::InvalidOperatorExpression,
-                        "expected expression after prefix operator `-`",
-                        operator.span,
-                    );
-                    error_operator_expr(parser, "expected prefix operator argument", operator.span)
-                }
-            };
-            let span = operator.span.join(arg.span);
-            return Some(OperatorExprAst {
-                kind: OperatorExprKind::OperatorSugar {
-                    operator,
-                    fixity: OperatorFixity::Prefix,
-                    args: vec![arg],
-                    span,
-                },
-                span,
-            });
-        }
-
         if is_operator_token_at_expr_start(current.spelling) {
             if matches!(
                 parser.cursor.peek_next_non_trivia().kind,
@@ -360,7 +335,6 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
 fn nav_component_span(component: &NavComponentAst) -> Span {
     match component {
         NavComponentAst::Text(name) => name.span,
-        NavComponentAst::Numeric(num) => num.span,
         NavComponentAst::Operator(operator) => operator.span,
         NavComponentAst::Group(expr) => expr.span,
         NavComponentAst::Error(error) => error.span,

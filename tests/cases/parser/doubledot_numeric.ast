@@ -5,17 +5,16 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              DoubleDotSugar
-                object:
-                  Name obj
-                selector:
-                  NumericName 1
-                args:
-                  Product
-                    elements:
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name args
+              Name obj
+          OperatorExpr
+            Atom
+              IntLiteral 1
+          OperatorExpr
+            Atom
+              Group
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name args

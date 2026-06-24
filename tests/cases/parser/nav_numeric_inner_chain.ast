@@ -7,6 +7,6 @@ Program
             Atom
               NavPath
                 components:
-                  component Numeric 1
+                  component Error "invalid navigation component"
                   component Name uint8
                   component Name std
