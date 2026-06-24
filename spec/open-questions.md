@@ -11,22 +11,18 @@ Resolved questions have been moved to `spec/resolved-questions.md`.
 
 ### 1. Float, scientific, and unit-adjacent numeric literals
 
-**Status:** Partially resolved — bare `1.2` is decided; scientific/unit forms remain open
+**Status:** Partially resolved — classic decimal `1.2` is decided; scientific/unit forms remain open
 
 **Resolution for `Digit+ "." Digit+` (e.g. `1.2`):**
-`1.2` is **member sugar**, not a float literal:
+`1.2` is a **float literal** (`FloatLiteral` token and `AtomKind::FloatLiteral` node).
 
-```text
-1.2 ↦ MemberSugar { object: IntLiteral("1"), selector: NumericName("2") }
-```
+Float literals are now lexer/Raw-AST primitives. `1.2` lexes as a single
+`FloatLiteral("1.2")` token, not as `IntLiteral · Dot · IntLiteral`.
+`1.2ms` tokenizes as `FloatLiteral("1.2") Name("ms")`.
 
-Float literals are not lexer/Raw-AST primitives in this design. There is no
-`FloatLiteral` token or node. `1.2` lexes as `IntLiteral("1") · Dot ·
-IntLiteral("2")` and folds through the ordinary `.`-suffix rule. Chains are
-left-associated: `1.2.3 ↦ (1.2).3`. This is locked by golden tests
-(`member_int_base`, `member_int_chain`, lexer `int_dot_int`). A "float" value
-such as `1.2float32` arises naturally later as ordinary sugar/normalization,
-not from a primitive token — so `1.2` never becomes a float token.
+Numeric selectors (`obj.0`, `pack.1`, `uint8::1`) have been removed.
+Member selectors accept only `Name`; navigation components accept only
+`Name` and `OperatorName`. Use bracket form (`pack[0]`) for projection.
 
 **Still open (scientific / unit-adjacent):**
 The spellings `1.2ms`, `1e3ms`, `1.2e3`, and `1.2e3ms` are reserved for future
@@ -34,14 +30,6 @@ numeric literal design. The current parser must not force an interpretation of
 these forms. The natural unit syntax `1ms` and `1 ms` remain equivalent as
 `IntLiteral(1)` followed by `Name(ms)` at the non-trivia token/parser structure
 level. No `UnitLiteral` AST node exists.
-
-**Why it does not block v0.1:**
-The lexer does not produce `FloatLiteral`, `ScientificLiteral`, or
-`FloatScientificLiteral` tokens. Numeric tokens in selector position go through
-the same token class but produce `NumericNameAst` rather than numeric literal
-atoms.
-
-**Future stage:** later numeric literal design (scientific/unit forms only).
 
 ---
 

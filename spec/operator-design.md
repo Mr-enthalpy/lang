@@ -345,7 +345,7 @@ Operator names may appear in:
 
 ```text
 BinderName := Name | OperatorName
-NavComponent := Name | NumericName | OperatorName | GroupedExpr
+NavComponent := Name | OperatorName | GroupedExpr
 ```
 
 Valid design cases:

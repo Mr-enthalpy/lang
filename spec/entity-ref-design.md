@@ -38,9 +38,9 @@ EntityRef ::= EntityNavigation
 
 EntityNavigation ::= EntityComponent ("::" EntityOuterComponent)*
 
-EntityComponent ::= Name | NumericName | OperatorName
+EntityComponent ::= Name | OperatorName
 
-EntityOuterComponent ::= Name | NumericName | Group
+EntityOuterComponent ::= Name | Group
 ```
 
 Navigation order is inner-to-outer. The leftmost component is the innermost
@@ -50,7 +50,7 @@ Operator names may only be innermost entity-reference components unless a
 future design explicitly allows operator-named scopes.
 
 The innermost navigation component must be a syntactic symbol component:
-`Name`, `NumericName`, or `OperatorName`. A grouped expression is valid only as
+`Name` or `OperatorName`. A grouped expression is valid only as
 an outer navigation component after `::`; it represents a scope-producing
 expression, not a selected symbol. This matches ordinary Raw AST navigation.
 `xxx::(int Vec::std)` is valid (grouped outer component); `(int Vec::std)::ns`
