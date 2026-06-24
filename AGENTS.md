@@ -18,7 +18,8 @@ spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/implementation-status-v0.1.md (authoritative factual inventory of current implementation)
 spec/roadmap.md        (scope boundaries)
 spec/glossary.md       (terminology)
-spec/open-questions.md (known gaps)
+spec/open-questions.md (known gaps — unresolved)
+spec/resolved-questions.md (design decisions — resolved for v0.1)
 ```
 
 ## Scope
@@ -396,7 +397,8 @@ Do:
 │   ├── package-manifest-v0.md
 │   ├── namespace-assembly-v0.md
 │   ├── glossary.md
-│   └── open-questions.md
+│   ├── open-questions.md
+│   └── resolved-questions.md
 ├── crates/
 │   ├── lang_syntax/
 │   │   ├── Cargo.toml
@@ -568,5 +570,5 @@ Default PR behavior:
   limitation instead.
 * `spec/open-questions.md` records unresolved design issues. Before implementing
   behavior that touches an open question, check the file and update its status
-  if a decision is reached.
+  if a decision is reached. Resolved items move to `spec/resolved-questions.md`.
 * `spec/glossary.md` enforces terminology. Use terms consistently.
