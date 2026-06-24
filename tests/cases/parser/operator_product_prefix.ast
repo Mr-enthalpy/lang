@@ -4,18 +4,19 @@ Program
       Pipe
         Segment has_incoming=false
           OperatorExpr
-            Error "unsupported prefix operator"
-          Product
-            elements:
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name a
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name b
+            OperatorSugar fixity=Prefix operator="-"
+              arg:
+                Product
+                  elements:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name a
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name b

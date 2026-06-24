@@ -52,8 +52,6 @@ impl<'src> Lexer<'src> {
     fn lex_token(&mut self) {
         if self.peek_is_ascii_ident_start() {
             self.lex_name();
-        } else if self.is_signed_numeric() {
-            self.lex_numeric_literal();
         } else if self.peek_is_ascii_digit() {
             self.lex_numeric_literal();
         } else if self.starts_with("\"") {
@@ -84,9 +82,6 @@ impl<'src> Lexer<'src> {
 
     fn lex_numeric_literal(&mut self) {
         let start = self.mark();
-        if self.starts_with("-") {
-            self.advance_char();
-        }
 
         while self.peek_is_ascii_digit() {
             self.advance_char();
@@ -537,16 +532,6 @@ impl<'src> Lexer<'src> {
 
     fn peek_is_ascii_digit(&self) -> bool {
         matches!(self.peek_char(), Some('0'..='9'))
-    }
-
-    fn is_signed_numeric(&self) -> bool {
-        if !self.starts_with("-") {
-            return false;
-        }
-        self.source[self.byte + 1..]
-            .chars()
-            .next()
-            .map_or(false, |c| c.is_ascii_digit())
     }
 
     fn peek_is_whitespace(&self) -> bool {

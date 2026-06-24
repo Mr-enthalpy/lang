@@ -1035,7 +1035,7 @@ fn operator_binary_ordinary_spellings() {
 
 #[test]
 fn operator_prefix_minus_name() {
-    assert_parser_case("operator_prefix_minus_name", true);
+    assert_parser_case("operator_prefix_minus_name", false);
 }
 
 #[test]
@@ -1090,7 +1090,7 @@ fn operator_product_rhs() {
 
 #[test]
 fn operator_product_prefix() {
-    assert_parser_case("operator_product_prefix", true);
+    assert_parser_case("operator_product_prefix", false);
 }
 
 #[test]

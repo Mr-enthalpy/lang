@@ -4,7 +4,7 @@ Program
       Pipe
         Segment has_incoming=false
           OperatorExpr
-            Error "unsupported prefix operator"
-          OperatorExpr
-            Atom
-              Name x
+            OperatorSugar fixity=Prefix operator="-"
+              arg:
+                Atom
+                  Name x
