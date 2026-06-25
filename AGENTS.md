@@ -17,6 +17,7 @@ spec/raw-ast-contract-v0.1.md (Raw AST invariants for future normalization)
 spec/raw-ast-contract-freeze-v0.2.md (v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff)
 spec/raw-ast-frozen-surface-v0.2.md (frozen Raw AST construct inventory)
 spec/lexical-syntax-v0.2.md (public lexical syntax specification)
+spec/concrete-syntax-v0.2.md (public concrete syntax specification)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/implementation-status-v0.1.md (authoritative factual inventory of current implementation)
 spec/roadmap.md        (scope boundaries)
@@ -463,6 +464,7 @@ Do:
 │   ├── raw-ast-contract-freeze-v0.2.md
 │   ├── raw-ast-frozen-surface-v0.2.md
 │   ├── lexical-syntax-v0.2.md
+│   ├── concrete-syntax-v0.2.md
 │   ├── ast-construction-v0.1.md
 │   ├── operator-design.md
 │   ├── entity-ref-design.md
