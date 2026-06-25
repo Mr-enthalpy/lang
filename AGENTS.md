@@ -18,6 +18,7 @@ spec/raw-ast-contract-freeze-v0.2.md (v0.2 freeze boundary, allowed/forbidden wo
 spec/raw-ast-frozen-surface-v0.2.md (frozen Raw AST construct inventory)
 spec/lexical-syntax-v0.2.md (public lexical syntax specification)
 spec/concrete-syntax-v0.2.md (public concrete syntax specification)
+spec/diagnostics-recovery-v0.2.md (public diagnostics and recovery specification)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/implementation-status-v0.1.md (authoritative factual inventory of current implementation)
 spec/roadmap.md        (scope boundaries)
@@ -465,6 +466,7 @@ Do:
 │   ├── raw-ast-frozen-surface-v0.2.md
 │   ├── lexical-syntax-v0.2.md
 │   ├── concrete-syntax-v0.2.md
+│   ├── diagnostics-recovery-v0.2.md
 │   ├── ast-construction-v0.1.md
 │   ├── operator-design.md
 │   ├── entity-ref-design.md

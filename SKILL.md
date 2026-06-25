@@ -44,14 +44,15 @@ Follow this workflow for every change:
 | 7 | `spec/raw-ast-frozen-surface-v0.2.md` | v0.2 frozen Raw AST construct inventory |
 | 8 | `spec/lexical-syntax-v0.2.md` | Public lexical syntax specification |
 | 9 | `spec/concrete-syntax-v0.2.md` | Public concrete syntax specification |
-| 10 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 11 | `spec/operator-design.md` | Before any operator syntax change |
-| 12 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
-| 13 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
-| 14 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
-| 15 | `spec/glossary.md` | Terminology reference |
-| 16 | `spec/roadmap.md` | Scope boundary check |
-| 17 | `spec/open-questions.md` | Before touching uncertain areas |
+| 10 | `spec/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery specification |
+| 11 | `spec/ast-construction-v0.1.md` | Before any parser change |
+| 12 | `spec/operator-design.md` | Before any operator syntax change |
+| 13 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
+| 14 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
+| 15 | `spec/diagnostics-v0.1.md` | Before any diagnostic change (implementation-level reference) |
+| 16 | `spec/glossary.md` | Terminology reference |
+| 17 | `spec/roadmap.md` | Scope boundary check |
+| 18 | `spec/open-questions.md` | Before touching uncertain areas |
 
 ## 1a. New-task PR branch gate
 

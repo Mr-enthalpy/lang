@@ -16,6 +16,7 @@ frontend. Each document has a defined authority level.
 | `raw-ast-frozen-surface-v0.2.md`   | Normative frozen surface inventory                    | Enumerates frozen Raw AST constructs with guarantees, non-semantic boundaries, v0.3 obligations, and forbidden assumptions.                    |
 | `lexical-syntax-v0.2.md`           | Normative for public lexical syntax                   | Defines source normalization, lexical categories, token spellings, comments, literals, invalid lexical material, and non-semantic lexer boundaries for v0.2. |
 | `concrete-syntax-v0.2.md`          | Normative for public concrete syntax                  | Defines the accepted non-semantic source-level grammar, parser shape, Raw AST preservation boundaries, and parser-level non-semantic constraints for v0.2. |
+| `diagnostics-recovery-v0.2.md`    | Normative for public frontend diagnostics and recovery | Defines v0.2 lexical/parser diagnostic codes, trigger conditions, span policy, recovery behavior, ErrorAst relation, diagnostic stability, and non-semantic diagnostic boundaries. |
 | `diagnostics-v0.1.md`              | Normative for error reporting                         | Defines diagnostic categories, span policy, and recovery behavior.                                                                          |
 | `glossary.md`                      | Normative for terminology                             | Resolves naming ambiguity across all documents.                                                                                             |
 | `roadmap.md`                       | Authoritative for scope and planning; non-normative for parser behavior | Defines stage boundaries (v0.1–v0.11) and what must not leak between stages.                                                                 |
@@ -37,15 +38,16 @@ frontend. Each document has a defined authority level.
 5. `raw-ast-frozen-surface-v0.2.md` - Inspect the frozen Raw AST construct inventory.
 6. `lexical-syntax-v0.2.md` - Understand the public lexical syntax.
 7. `concrete-syntax-v0.2.md` - Understand the public concrete syntax.
-8. `ast-construction-v0.1.md` - Implement the parser.
-9. `operator-design.md` - Understand operator syntax rules.
-10. `entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
-11. `entity-ref-design.md` - Understand future general EntityRef design.
-12. `diagnostics-v0.1.md` - Understand error reporting.
-13. `glossary.md` - Resolve terminology ambiguity.
-14. `roadmap.md` - Understand scope boundaries.
-15. `open-questions.md` - Recognize known gaps.
-16. `resolved-questions.md` - Understand resolved design decisions.
+8. `diagnostics-recovery-v0.2.md` - Understand public diagnostics and recovery.
+9. `ast-construction-v0.1.md` - Implement the parser.
+10. `operator-design.md` - Understand operator syntax rules.
+11. `entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
+12. `entity-ref-design.md` - Understand future general EntityRef design.
+13. `diagnostics-v0.1.md` - Understand error reporting (implementation-level reference).
+14. `glossary.md` - Resolve terminology ambiguity.
+15. `roadmap.md` - Understand scope boundaries.
+16. `open-questions.md` - Recognize known gaps.
+17. `resolved-questions.md` - Understand resolved design decisions.
 
 ## Spec priority
 
