@@ -47,6 +47,7 @@ Before v0.3 handoff or normalization-boundary work:
 ```text
 spec/contracts/raw-ast-contract-v0.1.md
 spec/contracts/raw-ast-contract-freeze-v0.2.md
+spec/contracts/v0.3-normalization-handoff-checklist.md
 spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 ```
 
