@@ -195,16 +195,17 @@ Read these only when working on future design topics.
 
 ## Spec priority
 
-For public v0.2 lexical syntax, concrete syntax, diagnostics, and recovery,
-the documents under `spec/public/v0.2/` are the reader-facing authority.
+For current normalized surface behavior, `spec/public/v0.5/` is the reader-facing
+authority. For frozen Raw AST input syntax, `spec/public/v0.2/` remains
+authoritative.
 
 The implementation and golden snapshots remain the factual behavior source.
 
 Documents under `spec/implementation/`, `spec/contracts/`, `spec/history/`,
 `spec/future/`, and `spec/planning/` remain available for backing reference,
 archaeology, future design, and scope management. They are not the normal
-public syntax entry point.
+public entry point.
 
-If a public v0.2 spec conflicts with an older moved document, treat the
-conflict as documentation debt to repair. Do not use the older document to
-silently reinterpret the public v0.2 syntax surface.
+If public docs conflict with history/future/planning documents, treat that as
+documentation debt; do not use older or future documents to reinterpret current
+behavior.

@@ -35,7 +35,7 @@ completed; not the current active stage). For the current active stage, see
 | Document | Purpose |
 |---|---|
 | `spec/public/v0.3/README.md` | v0.3 stage workspace index |
-| `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification scaffold and work items |
+| `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification baseline (§7 call skeleton, §8 minimum shape) |
 | `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff: may-assume, must-not-assume, required inputs, open questions |
 | `spec/planning/open-questions.md` | Open design questions (N-AST-1 through N-AST-9) |
 
@@ -97,14 +97,17 @@ documents remain present, but they are not part of the normal public reading pat
 
 ## Two repository tracks
 
-1. **Frontend track** (active): v0.3 Normalized AST Specification current. v0.1/v0.1.w/v0.2 completed.
-   v0.2 delivers `source text -> tokens -> Raw AST -> diagnostics` (frozen).
-   v0.3 specifies Normalized AST (specification-only).
+1. **Frontend track** (active): v0.5 Normalized Surface Semantics Stabilization
+   and Public Documentation Reset. v0.1/v0.1.w/v0.2 completed; v0.3 completed
+   the Normalized AST specification baseline; v0.4 completed the Raw AST ->
+   Normalized AST prototype/hardening checkpoint.
 
 2. **Build/package/namespace assembly track** (documentation only for now):
    future build system, package manifest, and namespace assembly design.
 
-Start with `spec/public/v0.3/README.md` for current-stage v0.3 work.
+Start with `spec/public/v0.5/README.md` for current v0.5 public documentation.
+Read `spec/public/v0.3/README.md` only for the completed Normalized AST
+specification baseline.
 Read `spec/public/v0.2/lexical-syntax-v0.2.md` when you need the frozen Raw AST
 input contract. Read `spec/public/v0.2/concrete-syntax-v0.2.md` for parsed
 syntax and `spec/public/v0.2/diagnostics-recovery-v0.2.md` for error behavior.
@@ -352,14 +355,23 @@ none of them.
 
 ## How to read the spec
 
-### Current v0.3 specification work
+### Current v0.5 public documentation
 
-Start here for current-stage v0.3 Normalized AST Specification:
+Start here for the current active stage:
+
+1. `spec/public/v0.5/README.md` — v0.5 public documentation index.
+2. `spec/public/v0.5/normalized-surface-semantics-v0.5.md` — normalized surface semantics (authoritative outline).
+3. `spec/public/v0.5/agent-interpretation-guide-v0.5.md` — how agents should interpret source.
+4. `spec/contracts/v0.4-normalization-prototype-notes.md` — the v0.4 normalization boundary.
+
+### v0.3 Normalized AST specification baseline (completed)
+
+Read these for the completed Normalized AST specification baseline:
 
 1. `spec/public/v0.3/README.md` — v0.3 workspace index.
-2. `spec/public/v0.3/normalized-ast-specification-v0.3.md` — Normalized AST specification scaffold.
+2. `spec/public/v0.3/normalized-ast-specification-v0.3.md` — Normalized AST specification (incl. §7 call skeleton, §8 minimum shape).
 3. `spec/contracts/v0.3-normalization-handoff-checklist.md` — v0.3 may-assume, must-not-assume, required inputs.
-4. `spec/planning/open-questions.md` — Open v0.3 design questions (N-AST-1 through N-AST-8).
+4. `spec/planning/open-questions.md` — Normalized AST design questions (N-AST-1 through N-AST-9).
 
 ### Frozen v0.2 frontend input
 
