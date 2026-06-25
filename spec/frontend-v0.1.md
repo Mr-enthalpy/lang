@@ -6,10 +6,11 @@ This document is a reader entry point for the `lang` v0.1 frontend. It explains
 the pipeline, how the specification documents are organized, and what each
 component is responsible for.
 
-The v0.1 Raw AST Frontend is completed. The current active stage is
-`v0.1.w` — the Raw AST Stability Window. During this window the lexer/parser
-architecture, `lex` / `parse` public interface, Raw AST shape, dump formats,
-and golden-test expectations are stable by default.
+The v0.1 Raw AST Frontend is completed. v0.1.w is closed. The current active
+stage is `v0.2` — Raw AST Contract Freeze / Normalization Boundary Preparation.
+During this stage the lexer/parser architecture, `lex` / `parse` public
+interface, Raw AST shape, dump formats, and golden-test expectations are frozen
+contract material.
 
 It does **not** define syntax rules, AST shapes, or parser algorithms. Those
 are in `ast-construction-v0.1.md`.
@@ -32,7 +33,7 @@ v0.1 produces **three** stable, dumpable outputs:
 2. **AST dump**: structured AST tree in a hand-written format.
 3. **Diagnostic dump**: list of errors/warnings with spans.
 
-These three outputs remain the acceptance outputs in `v0.1.w`. No program is
+These three outputs remain the acceptance outputs in `v0.2`. No program is
 executed, type-checked, semantically analyzed, or lowered.
 
 ## Document division
@@ -61,12 +62,10 @@ preservation for alias binding and alias-RHS EntityRef.
 
 ## Boundaries
 
-`v0.1.w` is not a semantic stage and not a parser expansion stage. Future work
-in this window is limited to documentation alignment, contract stabilization,
-richer literal spelling (completed), and local mechanical whole-shape sugar
-recognition. Allowed additions must extend existing lexer/parser entry points
-and AST preservation categories; they must not replace the product/pipe/operator/
-binding/closure/navigation architecture.
+`v0.2` is not a semantic stage and not a parser expansion stage. It freezes
+the Raw AST contract and prepares the boundary that v0.3 Normalized AST
+Specification will consume. Richer literal spelling (completed) and pipe
+branch-name shorthand (completed) are preserved in the frozen surface.
 
 ### Lexer boundary
 

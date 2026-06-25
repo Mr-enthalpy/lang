@@ -7,11 +7,12 @@ Resolved questions have been moved to `spec/resolved-questions.md`.
 
 ---
 
-## Current-stage questions (v0.1.w)
+## Current-stage questions (v0.2)
 
-All v0.1 current-stage open questions are now closed. Richer literal spelling
-was resolved in the v0.1 literal spelling extension; see
-`spec/resolved-questions.md` §19.
+No current v0.2 open questions at this time. The v0.2 freeze boundary is defined
+in `spec/raw-ast-contract-freeze-v0.2.md`. Open questions will be added if
+ambiguities in the frozen contract are discovered during documentation
+reconciliation.
 
 ## Later-stage questions
 

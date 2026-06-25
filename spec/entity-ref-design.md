@@ -9,7 +9,7 @@
 - **GeneralEntityRef**: future design. Standalone `EntityRef` parsing in
   arbitrary strong contexts is not yet implemented.
 
-`v0.1.w` status: the alias-RHS subset is stable Raw AST preservation. General
+`v0.2` status: the alias-RHS subset is frozen Raw AST preservation. General
 EntityRef remains later-stage work and must not become a name-resolution,
 namespace-resolution, or semantic lookup feature in this window.
 

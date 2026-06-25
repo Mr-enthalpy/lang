@@ -475,3 +475,30 @@ Ranked quote-boundary string parsing is implemented. `InvalidNumericLiteral`
 diagnostic is added for malformed numeric literals (invalid separator position,
 missing digits after radix prefix, empty hex float exponent). All new behavior
 is covered by lexer golden tests.
+
+---
+
+## 20. v0.1.w closure and v0.2 activation
+
+**Status:** Resolved
+
+**Resolution:**
+The v0.1.w Raw AST Stability Window is formally closed. The final
+current-stage open question (richer literal spelling) has been implemented
+and recorded as resolved in §19. The pipe branch-name shorthand has been
+implemented as the only accepted v0.1.w local mechanical whole-shape sugar.
+
+The project now enters v0.2 — Raw AST Contract Freeze / Normalization Boundary
+Preparation. v0.2 means the Raw AST frontend input surface is frozen by
+default. The lexer/parser skeleton, public frontend APIs, Raw AST node
+categories, dump formats, diagnostic infrastructure, and golden-test
+expectations are contract material. v0.2 does not add general syntax features,
+does not implement Normalized AST, and is not a parser-expansion phase. It
+prepares the exact source-preserving contract that v0.3 Normalized AST
+Specification will consume.
+
+v0.3 remains the first Normalized AST specification stage. Normalized AST
+remains desugared but non-semantic. HIR, name resolution, type checking,
+operator lookup, alias resolution, canonical matching, closure materialization,
+ownership/NLL/drop insertion, interpretation, and code generation remain later
+than Normalized AST.

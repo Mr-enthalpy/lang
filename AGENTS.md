@@ -14,6 +14,7 @@ spec/operator-design.md (operator syntax design and implementation boundaries)
 spec/entity-ref-design.md (future general EntityRef design; alias-RHS subset implemented)
 spec/entity-alias-design.md (alias binding design; raw parser preservation implemented; semantics/validation future)
 spec/raw-ast-contract-v0.1.md (Raw AST invariants for future normalization)
+spec/raw-ast-contract-freeze-v0.2.md (v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff)
 spec/diagnostics-v0.1.md       (normative diagnostic rules)
 spec/implementation-status-v0.1.md (authoritative factual inventory of current implementation)
 spec/roadmap.md        (scope boundaries)
@@ -24,21 +25,17 @@ spec/resolved-questions.md (design decisions — resolved for v0.1)
 
 ## Scope
 
-The v0.1 Raw AST Frontend is completed. The current active stage is
-`v0.1.w` — the Raw AST Stability Window.
+The v0.1 Raw AST Frontend is completed. v0.1.w is closed. The current active
+stage is `v0.2` — Raw AST Contract Freeze / Normalization Boundary Preparation.
 
-`v0.1.w` means the lexer/parser architecture, public frontend interfaces, Raw
-AST shape, dump formats, and golden-test expectations are stable by default.
-Future work in this stage is maintenance, documentation alignment, contract
-stabilization, and narrowly-scoped additive syntax preservation only.
-Additions must extend existing lexer/parser entry points and AST preservation
-categories; they must not replace the product/pipe/operator/binding/closure/
-navigation architecture.
+`v0.2` means the Raw AST frontend input surface is frozen by default. The
+lexer/parser skeleton, public frontend APIs, Raw AST node categories, dump
+formats, diagnostic infrastructure, and golden-test expectations are contract
+material. This is not a parser-expansion phase.
 
-Do not treat `v0.1.w` as an implementation phase for broad parser expansion.
-Refuse or narrow tasks that imply large parser redesign unless the user
-explicitly identifies a hard correctness error against the call-composition
-architecture.
+`v0.2` does not add general syntax features. It does not implement Normalized
+AST. It prepares the exact source-preserving contract that `v0.3 Normalized AST
+Specification` will consume.
 
 The v0.1 output is:
 
@@ -50,12 +47,12 @@ Raw AST is surface-preserving and non-desugared. Normalized AST will be
 a future desugared, non-semantic AST that unifies calls, extraction, and
 declarations into simple pattern/call/declaration structures.
 
-Raw AST → Normalized AST lowering is allowed only after `v0.1.w` is explicitly
+Raw AST → Normalized AST lowering is allowed only after v0.2 is explicitly
 closed or an explicit normalization-stage task is opened.
 
-## v0.1.w stability policy
+## v0.2 contract freeze policy
 
-Stable:
+Frozen (may not be broadened / replaced / restructured):
 
 * lexer/parser skeleton
 * Raw AST categories
@@ -71,67 +68,33 @@ Stable:
 * alias-let parser preservation
 * `with { ... }` narrow payload grammar
 
-Allowed additive work:
+Completed v0.1.w additions (preserved in the frozen surface):
 
-* richer literal spellings (completed): radix integers, scientific notation,
+* richer literal spellings: radix integers, scientific notation,
   digit separators, hexadecimal floats, ranked quote-boundary strings;
   literal-name adjacency as ordinary call/composition material
-* local, mechanical, whole-shape sugar recognition triggered by finite explicit
-  token shapes, preserved as Raw AST, with no lookup, inference, semantic
-  validation, heuristic reinterpretation, or parser-skeleton restructuring
-* additions that extend existing lexer/parser entry points and AST preservation
-  categories without replacing the product/pipe/operator/binding/closure/
-  navigation architecture
+* pipe branch-name shorthand `|> name { ... } ⇝ |> (_ name) { ... }`
 
-The only currently accepted `v0.1.w` pipe-branch shorthand is:
+Allowed v0.2 work:
 
-```text
-|> name { ... }
-```
+* documentation consistency repair
+* stale comment cleanup
+* version/stage metadata alignment
+* Raw AST contract freeze checklist
+* diagnostic / golden-test inventory synchronization
+* correction of spec/code mismatches where implementation is settled truth
+* narrowly scoped golden-test additions (frozen behavior not yet locked)
+* no parser behavior change unless a hard correctness error is identified
 
-It is accepted only as a mechanical shorthand for:
+Forbidden in v0.2:
 
-```text
-|> (_ name) { ... }
-```
-
-This is not a precedent for a family of branch-arm sugars. The shorthand is
-accepted only because the local token shape is finite, local, explicit, and
-mechanically equivalent to the already supported explicit form. It recognizes
-only the local incoming segment prefix `|> name { ... }`; after that local
-rewrite, any following token sequence is parsed by ordinary existing pipe /
-segment / composition rules.
-
-This shorthand is a narrow repair for one otherwise-invalid local shape:
-without it, `x |> name { ... }` falls toward continuous right-call composition
-into a headless in-place closure. A headless in-place closure does not mean
-"accept unit"; no extraction head means no extracted input, including no
-implicit unit input.
-
-The branch-name token may have text `_` because `_` is still a bare `Name`
-token in this exact shape. `x |> _ { y; }` is mechanically read as
-`x |> (_ _) { y; }` with no wildcard, unit, ignored-binding, or pattern
-semantics at parser level. At Raw AST level, trailing material after the
-locally rewritten prefix remains ordinary segment material; any later
-right-call or normalized-call interpretation belongs to future normalization.
-
-A closure body in incoming pipe position requires a product/extraction head.
-The product head may be a segment-level product before an in-place closure
-body, the parameter product inside an explicit closure head, or the product
-mechanically inserted by the exact `|> name { ... }` shorthand. `x |> { ... }`
-is rejected because it is the fully headless in-place closure case. It has no
-product/extraction head at all. `x |> () => { ... }`, `x |> (a) => { ... }`,
-and `x |> [] () => { ... }` are ordinary explicit closures with product
-extraction heads. `x |> () { ... }` and `x |> (a) { ... }` are product-head
-plus in-place-closure branch forms in incoming pipe position.
-
-Forbidden in `v0.1.w`:
-
+* broad lexer/parser restructuring, new syntax families
+* traditional call syntax, import/package/module syntax
+* general macro system
 * semantic analysis, name resolution, type/kind checking, operator lookup,
   alias target resolution, closure materialization, canonical matching,
-  ownership/NLL/drop, interpretation, code generation, import/package/module
-  syntax, traditional call syntax, a general macro system, and major parser
-  architecture rewrites
+  ownership/NLL/drop, interpretation, code generation, HIR/MIR/codegen
+* Raw AST → Normalized AST implementation
 
 A hard correctness error is one of:
 
@@ -165,7 +128,7 @@ Do not implement:
 * code generation
 * IR/HIR/MIR or semantic lowering
 
-Raw AST → Normalized AST lowering is allowed only after `v0.1.w` is explicitly
+Raw AST → Normalized AST lowering is allowed only after `v0.2` is explicitly
 closed or an explicit normalization-stage task is opened.
 
 If a change requires any of the above, stop at syntax/AST representation and
@@ -227,7 +190,7 @@ Use:
 * a hand-written parser
 * golden/snapshot tests for tokens, AST, and diagnostics
 
-Do not introduce parser generators in `v0.1`.
+Do not introduce parser generators.
 
 Do not introduce semantic crates such as:
 
@@ -495,6 +458,7 @@ Do:
 │   ├── frontend-v0.1.md
 │   ├── implementation-status-v0.1.md
 │   ├── raw-ast-contract-v0.1.md
+│   ├── raw-ast-contract-freeze-v0.2.md
 │   ├── ast-construction-v0.1.md
 │   ├── operator-design.md
 │   ├── entity-ref-design.md

@@ -5,10 +5,10 @@ implements expression-level operator syntax as raw AST sugar. Parser phase 4.1
 implements operator names in binder position and innermost navigation-component
 position.
 
-Status for `v0.1.w`: implemented operator parsing is part of the stable Raw AST
-frontend surface. Maintenance may clarify contract text or add narrow,
-mechanical syntax preservation, but it must not add operator lookup, semantic
-operator validation, type-directed lookup, or a replacement expression parser.
+Status for `v0.2`: implemented operator parsing is frozen contract material.
+Maintenance may clarify contract text or correct spec/code mismatches, but it
+must not add operator lookup, semantic operator validation, type-directed
+lookup, or a replacement expression parser.
 
 Operators are surface syntax for specially shaped function invocation. They are
 not built-in arithmetic, comparison, mutation, assignment syntax, parser-level
@@ -496,11 +496,11 @@ Alias parsing is implemented as Raw AST preservation only. The parser does not
 implement operator lookup, entity lookup, namespace resolution, import/package
 semantics, alias target validation, or alias semantics.
 
-## v0.1.w Boundary
+## v0.2 Boundary
 
 The current parser implements expression-level operator syntax preservation,
 operator-name preservation in binder and innermost navigation positions, and
-alias-let parser preservation. During `v0.1.w`, do not implement:
+alias-let parser preservation. During `v0.2`, do not implement:
 
 - operator lookup;
 - alias target resolution or semantic alias validation;
@@ -509,5 +509,5 @@ alias-let parser preservation. During `v0.1.w`, do not implement:
 - ADL;
 - mutation semantics for equals-suffixed operator spellings.
 
-`v0.1.w` remains a syntax-preserving stability window whose output is tokens,
+`v0.2` remains a contract-freeze stage whose output is tokens,
 raw AST, and diagnostics.

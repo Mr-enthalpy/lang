@@ -3,16 +3,16 @@
 ## Purpose
 
 This skill defines how to work on the `lang` repository. The v0.1 Raw AST
-frontend is completed. The current active stage is `v0.1.w` — the Raw AST
-Stability Window.
+frontend is completed. v0.1.w is closed. The current active stage is
+`v0.2` — Raw AST Contract Freeze / Normalization Boundary Preparation.
 
-In `v0.1.w`, the lexer/parser architecture, public frontend interfaces, Raw AST
-shape, dump formats, and golden-test expectations are stable by default. Future
-work is maintenance, documentation alignment, contract stabilization, richer
-literal spelling, and local mechanical whole-shape sugar recognition only.
-Additions must extend existing lexer/parser entry points and AST preservation
-categories; they must not replace the product/pipe/operator/binding/closure/
-navigation architecture.
+In `v0.2`, the lexer/parser architecture, public frontend interfaces, Raw AST
+shape, dump formats, and golden-test expectations are frozen contract material.
+Work is documentation reconciliation, contract freezing, consistency repair,
+version/stage metadata alignment, and preparation of the boundary that v0.3
+Normalized AST Specification will consume. Additions must extend existing
+lexer/parser entry points and AST preservation categories; they must not
+replace the product/pipe/operator/binding/closure/navigation architecture.
 
 The only accepted outputs for implementation work are tokens, AST, and
 diagnostics.
@@ -40,14 +40,15 @@ Follow this workflow for every change:
 | 3 | `spec/frontend-v0.1.md` | Pipeline understanding |
 | 4 | `spec/implementation-status-v0.1.md` | Current implementation inventory |
 | 5 | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for normalization |
-| 6 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 7 | `spec/operator-design.md` | Before any operator syntax change |
-| 8 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
-| 9 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
-| 10 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
-| 11 | `spec/glossary.md` | Terminology reference |
-| 12 | `spec/roadmap.md` | Scope boundary check |
-| 13 | `spec/open-questions.md` | Before touching uncertain areas |
+| 6 | `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
+| 7 | `spec/ast-construction-v0.1.md` | Before any parser change |
+| 8 | `spec/operator-design.md` | Before any operator syntax change |
+| 9 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
+| 10 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
+| 11 | `spec/diagnostics-v0.1.md` | Before any diagnostic change |
+| 12 | `spec/glossary.md` | Terminology reference |
+| 13 | `spec/roadmap.md` | Scope boundary check |
+| 14 | `spec/open-questions.md` | Before touching uncertain areas |
 
 ## 1a. New-task PR branch gate
 
@@ -108,9 +109,9 @@ nodes just because a future built-in meta-function may understand a shape.
 
 Parse left to right. Do not go back to reinterpret meaning.
 
-## 2b. v0.1.w stabilization boundary
+## 2b. v0.2 contract freeze boundary
 
-Treat the following as stable by default:
+Treat the following as frozen contract material:
 
 - lexer/parser skeleton
 - `lex` / `parse`
@@ -122,57 +123,29 @@ Treat the following as stable by default:
 - inner-to-outer navigation, alias-let parser preservation
 - `with { ... }` narrow payload grammar
 
-Allowed additive work in this window:
+Completed v0.1.w additions (preserved in the frozen surface):
 
-- richer literal spellings (completed): radix integers, scientific notation,
+- richer literal spellings: radix integers, scientific notation,
   digit separators, hexadecimal floats, ranked quote-boundary strings;
   literal-name adjacency as ordinary call/composition material
-- local, mechanical, whole-shape sugar recognition from finite explicit token
-  shapes, with no semantic validation or lookup
-- additions that extend existing lexer/parser entry points and AST preservation
-  categories without replacing the product/pipe/operator/binding/closure/
-  navigation architecture
+- `|> name { ... }` accepted as mechanical shorthand for `|> (_ name) { ... }`
 
-Current `v0.1.w` sugar:
+Allowed v0.2 work:
 
-- `|> name { ... }` is accepted only as a mechanical shorthand for
-  `|> (_ name) { ... }`.
-- This is not a precedent for a family of branch-arm sugars.
-- The shorthand is accepted only because the local token shape is finite,
-  local, explicit, and mechanically equivalent to the already supported
-  explicit form.
-- The shorthand recognizes only the local incoming segment prefix
-  `|> name { ... }`; after that local rewrite, any following token sequence is
-  parsed by ordinary existing pipe / segment / composition rules.
-- The shorthand is a narrow repair for one otherwise-invalid local shape:
-  without it, `x |> name { ... }` falls toward continuous right-call
-  composition into a headless in-place closure. A headless in-place closure
-  does not mean "accept unit"; no extraction head means no extracted input,
-  including no implicit unit input.
-- The branch-name token may have text `_` because `_` is still a bare `Name`
-  token in this exact shape. `x |> _ { y; }` is mechanically read as
-  `x |> (_ _) { y; }` with no wildcard, unit, ignored-binding, or pattern
-  semantics at parser level.
-- At Raw AST level, trailing material after the locally rewritten prefix
-  remains ordinary segment material; any later right-call or normalized-call
-  interpretation belongs to future normalization.
-- A closure body in incoming pipe position requires a product/extraction head.
-  The product head may be a segment-level product before an in-place closure
-  body, the parameter product inside an explicit closure head, or the product
-  mechanically inserted by the exact `|> name { ... }` shorthand.
-- `x |> { ... }` is rejected because it is the fully headless in-place closure
-  case. It has no product/extraction head at all.
-- `x |> () => { ... }`, `x |> (a) => { ... }`, and
-  `x |> [] () => { ... }` are ordinary explicit closures with product
-  extraction heads. `x |> () { ... }` and `x |> (a) { ... }` are product-head
-  plus in-place-closure branch forms in incoming pipe position.
+- documentation consistency repair, stale comment cleanup
+- version/stage metadata alignment
+- contract freeze checklist, diagnostic/golden-test inventory sync
+- correction of spec/code mismatches where implementation is settled truth
+- narrowly scoped golden-test additions (frozen behavior not yet locked)
+- no parser behavior change unless a hard correctness error is identified
 
-Forbidden in this window:
+Forbidden in v0.2:
 
 - traditional call parsing, statement parsing, import/module/package syntax,
   semantic analysis, name/type/kind/operator/alias resolution, canonical
   matching, closure materialization, ownership/NLL/drop, interpretation,
   code generation, a general macro system, or major parser architecture rewrite
+- Raw AST → Normalized AST implementation
 
 If a task implies large parser redesign, refuse or narrow it unless the user
 identifies a hard correctness error against the call-composition architecture.
@@ -258,7 +231,7 @@ If a requested task requires any of the following, stop at AST preservation:
 
 ## 7a. Phase boundaries
 
-For v0.1.w Raw AST stability work:
+For v0.2 Raw AST contract freeze work:
 - Prefer documentation and contract alignment.
 - Do not restructure the lexer/parser skeleton.
 - Add syntax only for richer literal spellings or local mechanical whole-shape
@@ -285,7 +258,7 @@ Every syntax rule requires a golden test with:
 3. Expected output snapshot.
 
 Minimum golden case groups (from `AGENTS.md`). The v0.1 baseline has golden
-coverage for lexer, parser/AST, and diagnostics. During `v0.1.w`, update or add
+coverage for lexer, parser/AST, and diagnostics. During `v0.2`, update or add
 golden cases only for narrow documentation-aligned corrections, richer literal
 spellings, or local mechanical whole-shape sugar recognition:
 

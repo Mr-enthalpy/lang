@@ -1,7 +1,6 @@
-//! v0.1 frontend library.
+//! v0.2 frontend library.
 //!
-//! The current implementation includes the lexer loop and the first
-//! parser skeleton: source text -> tokens -> AST + diagnostics.
+//! The completed Raw AST frontend: source text -> tokens -> AST + diagnostics.
 
 pub mod ast;
 pub mod diagnostic;
@@ -31,4 +30,4 @@ pub use source::normalize_source_text;
 pub use span::Span;
 pub use token::{OperatorSpelling, Symbol, Token, TokenKind, TriviaKind};
 
-pub const VERSION: &str = "0.1.0";
+pub const VERSION: &str = "0.2.0";

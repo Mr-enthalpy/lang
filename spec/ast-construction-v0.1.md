@@ -8,11 +8,11 @@ This document defines how source tokens are converted into AST in `v0.1`.
 
 It defines syntax recognition and AST construction only.
 
-The v0.1 Raw AST Frontend is completed. The current active stage is
-`v0.1.w` — the Raw AST Stability Window. The lexer/parser skeleton and Raw AST
-categories documented here are stable by default. Do not use this document as
-a basis for broad parser expansion during `v0.1.w`; only richer literal
-spellings and local mechanical whole-shape sugar recognition are in scope
+The v0.1 Raw AST Frontend is completed. v0.1.w is closed. The current active
+stage is `v0.2` — Raw AST Contract Freeze / Normalization Boundary Preparation.
+The lexer/parser skeleton and Raw AST categories documented here are frozen by
+default. Do not use this document as a basis for broad parser expansion during
+`v0.2`; only documentation reconciliation, contract freezing, and
 unless a hard correctness error is identified. Allowed additions must extend
 existing lexer/parser entry points and AST preservation categories; they must
 not replace the product/pipe/operator/binding/closure/navigation architecture.
@@ -148,6 +148,7 @@ AST:
 ```text
 FormAst ::=
     Let(LetAst)
+  | AliasLet(LetAliasAst)
   | Expr(ExprAst)
   | Error(ErrorAst)
 ```
@@ -348,6 +349,7 @@ BindingSlotAst {
 
 BindingPatternAst ::=
     Binder(BinderNameAst)
+  | Product(ProductExtractAst)
   | Skeleton(CanonicalSkeletonAst)
   | Error(ErrorAst)
 
@@ -953,7 +955,7 @@ insert, or right-target roles in Raw AST.
 
 ### 7.1.1 Pipe branch-name shorthand
 
-During `v0.1.w`, the exact local incoming pipe-segment prefix:
+During `v0.1.w` (completed), the exact local incoming pipe-segment prefix:
 
 ```text
 PipeTransition Name BraceBody

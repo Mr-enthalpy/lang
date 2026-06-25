@@ -6,10 +6,10 @@ This document defines error and warning diagnostics produced by the v0.1 lexer
 and parser. It covers every current `DiagnosticCode` variant in
 `crates/lang_syntax/src/diagnostic.rs`.
 
-The current active stage is `v0.1.w` — the Raw AST Stability Window.
-Diagnostics infrastructure and hand-written diagnostic dumps are stable by
-default. Diagnostic changes in this window should be narrow, additive, and tied
-to lexer/parser preservation or documented invariant failures.
+The current active stage is `v0.2` — the Raw AST Contract Freeze.
+Diagnostics infrastructure and hand-written diagnostic dumps are frozen
+contract material. Diagnostic changes in this stage should be narrow, additive,
+and tied to documentation reconciliation or documented invariant failure.
 
 It does **not** define:
 
@@ -153,7 +153,7 @@ spanning the failed region.
 #### `ExpectedNameAfterDot`
 
 - **Trigger**: A `.` atom suffix is followed by a token that is not a valid
-  selector token (`Name` or `IntLiteral`).
+  selector token (`Name`).
 - **Primary span**: The `.` token.
 - **Recovery**: Consume the `.` and stop suffix folding. The atom stands
   without the `.` suffix.
@@ -162,7 +162,7 @@ spanning the failed region.
 #### `ExpectedNameAfterDoubleDot`
 
 - **Trigger**: A `..` atom suffix is followed by a token that is not a valid
-  selector token (`Name` or `IntLiteral`).
+  selector token (`Name`).
 - **Primary span**: The `..` token.
 - **Recovery**: Consume the `..` and stop suffix folding. The atom stands
   without the `..` suffix.

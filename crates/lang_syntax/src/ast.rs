@@ -1,8 +1,9 @@
 use crate::Span;
 
-// First parser skeleton AST. This intentionally covers only a narrow subset:
-// flat name/literal/path expressions and simple let forms. The full v0.1 raw
-// AST will expand in later parser phases.
+// v0.2 Raw AST. The completed Raw AST frontend covers forms, let/alias-let
+// bindings, expression skeleton (pipe/segment/product), operator sugar,
+// navigation/member/double-dot/bracket-call suffix sugar, closure AST,
+// canonical skeletons, and deduce lists.
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProgramAst {

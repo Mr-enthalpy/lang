@@ -1,25 +1,30 @@
 # Glossary
 
-Definitions are specific to this repository's v0.1 usage. Terms may have different
+Definitions are specific to this repository's v0.1/v0.2 usage. Terms may have different
 meanings in general PL theory.
 
 ---
 
 ## v0.1.w Raw AST Stability Window
 
-The current active stage after the completed v0.1 Raw AST Frontend. In this
-window the lexer/parser skeleton, `lex` / `parse` public interface, Raw AST
-categories, dump formats, diagnostics infrastructure, and golden-test
-expectations are stable by default.
+The maintenance and contract-stabilization window after the completed v0.1 Raw
+AST Frontend. During this window richer literal spelling and the pipe
+branch-name shorthand were implemented as the final v0.1.w additions. v0.1.w
+is now closed; the project has entered v0.2.
 
-Allowed work is documentation alignment, Raw AST contract stabilization, richer
-literal spellings, and local mechanical whole-shape sugar recognition. Allowed
-additions must extend existing lexer/parser entry points and AST preservation
-categories; they must not replace the product/pipe/operator/binding/closure/
-navigation architecture. It is not a semantic stage, not a parser expansion
-stage, and not a Normalized AST implementation stage.
+_See also: Raw AST, v0.2 Raw AST Contract Freeze._
 
-_See also: Raw AST, Raw AST contract, Normalized AST._
+---
+
+## v0.2 Raw AST Contract Freeze
+
+The current active stage after v0.1.w closure. The Raw AST frontend input
+surface is frozen by default. Work in this stage is documentation
+reconciliation, consistency repair, contract freeze checklist, and preparation
+of the exact boundary that v0.3 Normalized AST Specification will consume.
+`v0.2` is not a parser-expansion phase and does not implement Normalized AST.
+
+_See also: v0.1.w, Raw AST, Normalized AST, raw-ast-contract-freeze-v0.2.md._
 
 ---
 

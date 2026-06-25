@@ -2,17 +2,17 @@
 
 `lang` is an experimental programming language frontend.
 
-**Current status:** v0.1 Raw AST Frontend completed; current active stage is
-v0.1.w Raw AST Stability Window.
+**Current status:** v0.1 Raw AST Frontend completed; v0.1.w Raw AST Stability
+Window closed. Current active stage is v0.2 — Raw AST Contract Freeze /
+Normalization Boundary Preparation.
 
 The lexer/parser architecture, public frontend interfaces, Raw AST shape, dump
-formats, and golden-test expectations are stable by default. Future work in
-this window is limited to documentation alignment, contract stabilization,
-richer literal spelling, and local mechanical whole-shape sugar recognition.
-Additions must extend existing lexer/parser entry points and AST preservation
-categories; they must not replace the product/pipe/operator/binding/closure/
-navigation architecture. It lexes, parses, builds raw AST, emits diagnostics,
-and has golden tests. It does not perform semantic analysis.
+formats, and golden-test expectations are frozen contract material. Work in
+this stage is documentation reconciliation, contract freezing, consistency
+repair, version/stage metadata alignment, and preparation of the exact boundary
+that v0.3 Normalized AST Specification will consume. It does not implement
+Normalized AST, semantic analysis, or new syntax features. The frontend lexes,
+parses, builds raw AST, emits diagnostics, and has golden tests.
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
 - **Normalized AST**: future desugared AST that unifies calls, extraction,
@@ -27,6 +27,8 @@ and has golden tests. It does not perform semantic analysis.
 |---|---|
 | `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
 | `spec/raw-ast-contract-v0.1.md` | Normative contract: Raw AST invariants for future normalization |
+| `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 Raw AST contract freeze boundary, allowed/forbidden work, v0.3 handoff |
+| `spec/resolved-questions.md` | Design decisions — resolved for v0.1 |
 | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
 | `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
 | `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery |
@@ -61,7 +63,7 @@ and has golden tests. It does not perform semantic analysis.
 
 ## Two repository tracks
 
-1. **Frontend track** (active): Raw AST frontend (v0.1) completed; v0.1.w Raw AST Stability Window current.
+1. **Frontend track** (active): Raw AST frontend (v0.1) completed; v0.1.w closed; v0.2 Contract Freeze current.
    Delivers `source text -> tokens -> Raw AST -> diagnostics`.
 
 2. **Build/package/namespace assembly track** (documentation only for now):
@@ -175,9 +177,9 @@ Examples:
 () => {}
 ```
 
-Bare `{}` is not a standalone closure literal. Braces are closure body
-delimiters only after explicit closure syntax. A later semantic pass may
-materialize closure AST into callable objects in binding or call contexts.
+Bare `{ ... }` in atom position produces `ClosureAst::InPlace`. It is not a
+normal block expression and has no closure head. Braces also delimit explicit
+closure bodies after `FnHeadPrefix =>`.
 
 Compiler meta-functions may directly consume closure AST.
 
@@ -231,6 +233,8 @@ a shape.
 │   ├── README.md
 │   ├── frontend-v0.1.md
 │   ├── implementation-status-v0.1.md
+│   ├── raw-ast-contract-v0.1.md
+│   ├── raw-ast-contract-freeze-v0.2.md
 │   ├── ast-construction-v0.1.md
 │   ├── operator-design.md
 │   ├── entity-ref-design.md
@@ -242,7 +246,8 @@ a shape.
 │   ├── package-manifest-v0.md
 │   ├── namespace-assembly-v0.md
 │   ├── glossary.md
-│   └── open-questions.md
+│   ├── open-questions.md
+│   └── resolved-questions.md
 ├── crates/
 │   ├── lang_syntax/
 │   └── lang_cli/
@@ -284,7 +289,7 @@ lang diag path/to/file.lang
 The repository has golden coverage for lexer, parser/AST, and diagnostics.
 See `spec/implementation-status-v0.1.md` for the current test count.
 
-## Non-goals for v0.1
+## Non-goals for v0.1/v0.2
 
 v0.1 does not implement type checking, kind checking, name resolution,
 operator lookup, alias resolution, closure materialization, NLL/drop
@@ -298,14 +303,16 @@ none of them.
 1. `spec/frontend-v0.1.md` — Understand the pipeline.
 2. `spec/implementation-status-v0.1.md` — Know what is currently implemented.
 3. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
-4. `spec/ast-construction-v0.1.md` — Implement the parser.
-5. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-6. `spec/entity-ref-design.md` — Future general EntityRef design.
-7. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-8. `spec/diagnostics-v0.1.md` — Understand error reporting.
-9. `spec/glossary.md` — Resolve terminology.
-10. `spec/roadmap.md` — Understand scope boundaries.
-11. `spec/open-questions.md` — Recognize known gaps.
+4. `spec/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff requirements.
+5. `spec/ast-construction-v0.1.md` — Implement the parser.
+6. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
+7. `spec/entity-ref-design.md` — Future general EntityRef design.
+8. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+9. `spec/diagnostics-v0.1.md` — Understand error reporting.
+10. `spec/glossary.md` — Resolve terminology.
+11. `spec/roadmap.md` — Understand scope boundaries.
+12. `spec/open-questions.md` — Recognize known gaps.
+13. `spec/resolved-questions.md` — Understand resolved design decisions.
 
 ## Expected future workspace shape
 
