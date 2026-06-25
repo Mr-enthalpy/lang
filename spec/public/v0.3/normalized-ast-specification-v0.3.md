@@ -413,8 +413,12 @@ Prefix negative is special:
 
 ```text
 -x
-=> (<T: type>(val: T) { (zero::T, val) |> - })
+=> (x |> <T: type>(val: T) { (zero::T, val) |> - })
 ```
+
+The operand `x` is piped once into the generated closure and bound to `val`, so
+the operand has a single source and is evaluated once — the same
+single-evaluation rationale as member and double-dot lowering.
 
 Prefix negative is not an overloadable prefix operator. `zero::T` and `-` remain
 unresolved. Only the generated binary minus participates in later operator

@@ -133,9 +133,9 @@ member-call sugar, and bare branch-name sugar was submitted:
 - `expr..member_fun(args...)` → `(expr |> <T: type>(val : T) { (val, args...) |> member_fun::T })`
 - `|> name { body }` → `|> (_ name) { body }`
 
-The proposal is recorded here for decision. It is **not** adopted into the
-§6 work items of `spec/public/v0.3/normalized-ast-specification-v0.3.md`;
-those items remain open.
+The following concerns were recorded before adoption, while the proposal was
+still under review. They are retained as the resolution audit trail; see
+**Resolution (v0.3)** below for how each was settled.
 
 **Concern 1 — lowered closure head omits `=>`.** The lowered member /
 double-dot forms write `<T: type>(val : T) { ... }`. A closure head carrying a
@@ -266,4 +266,4 @@ Items resolved during the documentation reset pass. Recorded here for audit.
 | `UnusedClosureAst` diagnostic optional / not guaranteed emitted | In DiagnosticCode, may never trigger | Documented as optional | Clarified "not guaranteed to be emitted" in diagnostics spec | No |
 | Right-target subsegment AST shape | Flat representation; future may nest | Already open question §4 | No change needed | No |
 | Form boundary promotion rules | Provisional rules implemented | Already open question §2 | Replaced with strong-semicolon rule (§2). Newline promotion removed. | No |
-| Prefix-negative normalized form divergence | Not implemented (v0.3 spec opinion only) | `operator-design.md` and `glossary.md` show `()zero::(x \|> type) - x`; v0.3 §7.10 records `(<T: type>(val: T) { (zero::T, val) \|> - })` | Recorded the v0.3 form; deferred reconciliation of `operator-design.md`/`glossary.md` to a later consistency pass (`raw-ast-frozen-surface-v0.2.md` §13 defers the exact form to v0.3) | No |
+| Prefix-negative normalized form divergence | Not implemented (v0.3 spec opinion only) | `operator-design.md` and `glossary.md` show `()zero::(x \|> type) - x`; v0.3 §7.10 records `(x \|> <T: type>(val: T) { (zero::T, val) \|> - })` | Recorded the v0.3 form; deferred reconciliation of `operator-design.md`/`glossary.md` to a later consistency pass (`raw-ast-frozen-surface-v0.2.md` §13 defers the exact form to v0.3) | No |
