@@ -3,6 +3,8 @@
 //! Value-side `NormExpr` and pattern-side `NormPattern` remain distinct. Raw
 //! expression-shaped syntax is normalized as pattern material only when the
 //! surrounding syntactic context is pattern, annotation, or extraction.
+//! This prototype records that boundary; explicit bridge syntax/lowering is
+//! future work unless it is already present in Raw AST.
 
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
