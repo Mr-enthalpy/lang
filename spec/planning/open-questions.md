@@ -7,9 +7,14 @@ Resolved questions have been moved to `spec/history/v0.1/resolved-questions.md`.
 
 ---
 
-## Current-stage questions (v0.3)
+## Normalized AST questions (v0.3 baseline → v0.5)
 
-These questions become active during v0.3 Normalized AST Specification.
+These questions arose during v0.3 Normalized AST Specification.
+
+> v0.3 specification and v0.4 prototype/hardening have provided the current v0.5
+> baseline. Remaining questions about final Normalized AST stabilization are
+> handled under v0.5. Later pattern-space/extraction-chain questions remain
+> v0.6+.
 
 ### v0.3: Normalized AST
 

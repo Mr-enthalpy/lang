@@ -12,10 +12,10 @@ not strict chronological gates.
 v0.1   — Raw AST Frontend — completed
 v0.1.w — Raw AST Stability Window — closed
 v0.2   — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
-v0.3   — Normalized AST Specification — current
-v0.4   — Raw AST → Normalized AST Prototype — future
-v0.5   — Normalized AST Stabilization — future
-v0.6+  — Later semantic design stages
+v0.3   — Normalized AST Specification — completed specification baseline
+v0.4   — Raw AST → Normalized AST Prototype / Hardening — completed
+v0.5   — Normalized Surface Semantics Stabilization and Public Documentation Reset — active
+v0.6+  — Later semantic design stages — future
 ```
 
 Raw AST is surface-preserving and non-desugared.
@@ -88,7 +88,7 @@ The following deliverables were completed during v0.2:
 
 ---
 
-### v0.3 — Normalized AST Specification — current
+### v0.3 — Normalized AST Specification — completed specification baseline
 
 **Goal**: Define the Normalized AST node set and document how Raw AST
 constructs desugar into Normalized AST.
@@ -110,38 +110,70 @@ Define:
 - Normalized form for member/double-dot selector sugar.
 - Normalized form for alias bindings (preserved as unresolved entity references).
 
-This is a design/specification stage. Do not implement Normalized AST yet.
+v0.3 completed the Normalized AST specification baseline. Implementation of the
+Raw AST → Normalized AST lowering followed in v0.4.
 
 Normalized AST is **not** HIR. It is desugared but still non-semantic.
 
 ---
 
-### v0.4 — Raw AST → Normalized AST Prototype
+### v0.4 — Raw AST → Normalized AST Prototype / Hardening — completed
 
-**Goal**: Implement a Raw AST → Normalized AST lowering pass.
+**Goal**: Implement and harden a Raw AST → Normalized AST lowering pass.
 
-- Implement `normalize.rs` in `lang_syntax` or a new crate.
-- Produce golden-tested Normalized AST dumps.
-- Each desugaring rule from v0.3 should have at least one golden test.
+v0.4 delivered:
 
-The output is a Normalized AST, not a type-checked or name-resolved tree.
+- Raw AST → Normalized AST lowering loop.
+- A stable normalized dump and a CLI normalized dump path.
+- Golden tests and structural invariant tests.
+- Boundary hardening and error recovery through normalization.
+- Explicit `Unsupported` visibility (unsupported Raw AST subshapes remain
+  visible in the dump instead of being silently erased).
+- Value-side `NormExpr` / pattern-side `NormPattern` boundary preservation.
 
-**Do not implement** name resolution, type checking, operator lookup,
-alias resolution, canonical matching, or closure materialization in this
-lowering pass.
+The output is a Normalized AST, not a type-checked or name-resolved tree. The
+v0.4 normalization boundary is recorded in
+`spec/contracts/v0.4-normalization-prototype-notes.md`.
+
+v0.4 did **not** implement name resolution, type checking, operator lookup,
+alias resolution, pattern-head resolution, canonical matching, or closure
+materialization.
 
 ---
 
-### v0.5 — Normalized AST Stabilization
+### v0.5 — Normalized Surface Semantics Stabilization and Public Documentation Reset — active
 
-**Goal**: Harden the Normalized AST representation and the normalization pass.
+**Goal**: Turn the v0.4 prototype/hardening result into a stable public
+documentation structure and stabilize the normalized surface semantics that are
+already implemented.
 
-- Error recovery through normalization (do not crash on malformed input).
-- Diagnostic rewiring (map Raw AST error spans into Normalized AST context).
-- Property-based testing for normalization invariants.
-- AST dump stability for Normalized AST.
+v0.5 turns the v0.4 result into a stable public documentation structure:
 
-**No new semantic features.**
+- history absorbs route / design / discussion material;
+- public docs explain current language behavior;
+- agent docs explain how to interpret source without importing C / Rust / Python
+  call assumptions;
+- future docs retain v0.6+ semantic designs.
+
+v0.5 is still **non-semantic** in the later-compiler sense. It stabilizes the
+normalized surface semantics and the public documentation. It does **not**
+implement type checking, name resolution, operator lookup, pattern-head
+resolution, HIR, closure materialization, runtime evaluation, or code
+generation.
+
+Future pattern-space and extraction-chain semantics (see
+`spec/future/static-pattern-spaces-and-extraction-chains.md`) motivate the
+current normalized boundaries, but they are **not** implemented by the v0.5
+normalizer. `Done`, residual propagation, pattern-space subtraction, `operator+`
+meta-reduction, `match` closing, and pattern-head resolution are not current
+behavior.
+
+v0.5 proceeds in incremental PRs. The first PR (v0.5-1) establishes the
+documentation authority structure and the stage reset; later v0.5 PRs publish
+the normalized surface call-binding semantics, the agent interpretation guide,
+and the historical migration.
+
+The current public v0.5 documentation entry point is `spec/public/v0.5/`.
 
 ---
 

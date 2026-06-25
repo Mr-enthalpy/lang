@@ -2,7 +2,9 @@
 
 ## Stage status
 
-v0.3 — Normalized AST Specification — is the current active stage.
+> Status: v0.3 is the completed Normalized AST specification baseline. The current active stage is v0.5; see ../v0.5/.
+
+v0.3 — Normalized AST Specification — is the completed specification baseline.
 
 v0.3 specifies the Normalized AST. It does not implement Raw AST → Normalized
 AST lowering (that is v0.4).

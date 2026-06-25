@@ -1,18 +1,60 @@
 # Specification Index
 
 This directory contains the specification documents for the `lang` language
-frontend. Documents are organized by role rather than in a flat list. The
-current active stage is v0.3 — Normalized AST Specification.
+frontend and normalizer. Documents are organized by role rather than in a flat
+list. The current active stage is v0.5 — Normalized Surface Semantics
+Stabilization and Public Documentation Reset.
 
-## Public current specification: v0.3
+## Documentation authority hierarchy
 
-**`spec/public/v0.3/`** — The current active specification stage. v0.3
-specifies the Normalized AST. Specification-only; implementation is v0.4.
+Documentation areas have distinct roles and authority levels:
+
+- **`spec/public/`** — Current user-facing and agent-facing language behavior.
+  This is the first place to read current rules.
+- **`spec/contracts/`** — Stage and implementation contracts. These are
+  engineering constraints, not the main user-facing explanation.
+- **`spec/implementation/`** — Implementation inventory and status reports.
+- **`spec/history/`** — Historical route, design discussion, alternatives,
+  resolved disputes, and audit trail. History preserves why decisions were made,
+  but does not define current behavior unless linked from public docs.
+- **`spec/future/`** — Later semantic design tracks. Future docs may motivate
+  current boundaries, but they do not define implemented v0.5 behavior.
+- **`spec/planning/`** — Roadmap and open questions. Planning documents must not
+  substitute for public language behavior.
+
+The main rule:
+
+```text
+If public docs and historical discussion appear to conflict, public docs define
+current behavior.
+If future docs describe later semantics, they must not be read as implemented
+behavior.
+```
+
+## Public current specification: v0.5
+
+**`spec/public/v0.5/`** — The current active specification stage. v0.5 stabilizes
+the normalized surface semantics produced by the v0.4 normalizer and resets the
+public documentation structure. Specification and documentation only; it adds no
+semantic passes.
 
 | File | Authority | Role |
 |---|---|---|
-| `README.md` | Stage workspace index | Entry point for v0.3 Normalized AST Specification work. |
-| `normalized-ast-specification-v0.3.md` | v0.3 specification scaffold | Defines the problem space, non-semantic boundary, active design questions, and specification work items. Does not define the final node set. |
+| `README.md` | Stage workspace index | Entry point for v0.5 public documentation. |
+| `normalized-surface-semantics-v0.5.md` | Authoritative outline (filled by later v0.5 PRs) | Public explanation of the normalized surface: source-product continuation and call binding, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
+| `agent-interpretation-guide-v0.5.md` | Operational outline (filled by later v0.5 PRs) | Normative guidance for coding/documentation agents: how to interpret source without importing conventional call assumptions. |
+
+## Normalized AST specification baseline: v0.3 — completed
+
+**`spec/public/v0.3/`** — The completed Normalized AST specification baseline.
+v0.3 specified the Normalized AST shape; v0.4 implemented and hardened the Raw
+AST → Normalized AST lowering. v0.3 is a baseline reference, not the current
+active stage.
+
+| File | Authority | Role |
+|---|---|---|
+| `README.md` | Stage workspace index (completed baseline) | Entry point for the v0.3 Normalized AST specification. |
+| `normalized-ast-specification-v0.3.md` | v0.3 specification baseline | Defines the problem space, the non-semantic boundary, the source-product continuation call skeleton (§7), and the minimum Normalized AST shape for v0.4 (§8). |
 
 ## Frozen v0.2 frontend input authority
 
@@ -58,6 +100,7 @@ ordinary syntax understanding.
 | `raw-ast-contract-v0.1.md` | Normative contract for future normalization | Defines Raw AST invariants that future normalization passes may rely on. |
 | `raw-ast-contract-freeze-v0.2.md` | Normative for v0.2 contract freeze | Defines v0.2 freeze boundary, allowed work, forbidden work, and handoff requirements for v0.3. |
 | `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
+| `v0.4-normalization-prototype-notes.md` | Normative for the v0.4 normalization boundary | Records what the v0.4 Raw AST → Normalized AST prototype/hardening delivered and the boundary it must not cross (value/pattern separation, annotation patterns, unresolved operator/alias targets, `Unsupported` visibility, no pattern-space/semantic behavior). |
 
 ## Historical design notes
 
@@ -83,6 +126,7 @@ syntax specifications.
 | `build-system-design.md` | Non-normative, future design | Formal design note for the build/package/namespace assembly architecture. |
 | `package-manifest-v0.md` | Non-normative, future design | Provisional build-manifest design surface. |
 | `namespace-assembly-v0.md` | Non-normative, future design | High-level namespace assembly pipeline and phase split. |
+| `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.6+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
 
 ## Planning and debt
 
@@ -96,14 +140,23 @@ not syntax specifications.
 
 ## Reading order
 
-### Current v0.3 specification work
+### Current v0.5 public documentation
 
-Start here for current-stage v0.3 Normalized AST Specification:
+Start here for the current active stage:
+
+1. `public/v0.5/README.md` - v0.5 public documentation index.
+2. `public/v0.5/normalized-surface-semantics-v0.5.md` - normalized surface semantics (authoritative outline).
+3. `public/v0.5/agent-interpretation-guide-v0.5.md` - how agents should interpret source.
+4. `contracts/v0.4-normalization-prototype-notes.md` - the v0.4 normalization boundary.
+
+### v0.3 Normalized AST specification baseline (completed)
+
+Read these for the completed Normalized AST specification baseline:
 
 1. `public/v0.3/README.md` - v0.3 workspace index.
-2. `public/v0.3/normalized-ast-specification-v0.3.md` - Normalized AST specification scaffold.
+2. `public/v0.3/normalized-ast-specification-v0.3.md` - Normalized AST specification (incl. §7 call skeleton, §8 minimum shape).
 3. `contracts/v0.3-normalization-handoff-checklist.md` - v0.3 may-assume, must-not-assume, required inputs.
-4. `planning/open-questions.md` - Open v0.3 design questions (N-AST-1 through N-AST-9).
+4. `planning/open-questions.md` - Normalized AST design questions (N-AST-1 through N-AST-9).
 
 ### Frozen v0.2 frontend input
 

@@ -4,16 +4,20 @@
 
 **Current status:** v0.1 Raw AST Frontend completed; v0.1.w Raw AST Stability
 Window closed; v0.2 Raw AST Contract Freeze / Public Frontend Syntax
-Specification closed. Current active stage is v0.3 — Normalized AST
-Specification.
+Specification closed.
+
+Current active stage: v0.5 — Normalized Surface Semantics Stabilization and
+Public Documentation Reset.
+
+v0.3 is the completed Normalized AST specification baseline.
+v0.4 is the completed Raw AST -> Normalized AST prototype / hardening checkpoint.
+For current public documentation, see `spec/public/v0.5/`.
 
 The Raw AST frontend surface (lexer, parser, AST, diagnostics, golden tests)
-is frozen contract material. Current work is the v0.3 Normalized AST
-Specification — specifying a desugared but non-semantic intermediate
-AST that unifies the Raw AST input surface into a regular structure
-suitable for later semantic passes. v0.3 is specification-only;
-implementation of Normalized AST lowering is v0.4. The frontend lexes,
-parses, builds raw AST, emits diagnostics, and has golden tests.
+is frozen contract material. The v0.4 normalizer lowers Raw AST into a
+desugared, non-semantic Normalized AST with a stable dump and golden tests.
+v0.5 stabilizes the normalized surface semantics and resets the public
+documentation structure; it adds no semantic passes.
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
 - **Normalized AST**: future desugared AST that unifies calls, extraction,
@@ -22,10 +26,11 @@ parses, builds raw AST, emits diagnostics, and has golden tests.
 
 ## Documentation map
 
-### Current v0.3 specification workspace
+### v0.3 Normalized AST specification baseline (completed)
 
-The current active stage is v0.3 — Normalized AST Specification. Start here
-for current-stage work:
+v0.3 is the completed Normalized AST specification baseline (historical /
+completed; not the current active stage). For the current active stage, see
+`spec/public/v0.5/`. The v0.3 baseline documents:
 
 | Document | Purpose |
 |---|---|
