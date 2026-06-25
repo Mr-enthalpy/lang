@@ -58,43 +58,28 @@ Normalized AST does not:
 
 ## 5. Design questions active in v0.3
 
-The following questions from `spec/planning/open-questions.md` become active
-during v0.3. They are listed here without being resolved.
+The following questions from `spec/planning/open-questions.md` are tracked for
+v0.3. Several are now resolved or partially resolved; each entry is annotated
+with its status and the section that records the decision. Full resolution
+detail lives in `spec/planning/open-questions.md`.
 
-- **N-AST-1.** Exact Normalized AST node set. What are the exact node types?
-  Candidates: normalized call, normalized pattern, normalized declaration.
-  Should there be a single unified expression node or distinct per-form nodes?
-
-- **N-AST-2.** Whether Normalized AST lives in `lang_syntax` or a new crate
-  (e.g., `lang_norm`).
-
-- **N-AST-3.** Whether raw-to-normalized dumps should be golden-tested.
-
-- **N-AST-4.** How to represent symbolic builtins introduced by desugaring
-  (e.g., `operator::call`, `member::lookup`, `pattern::bind`).
-
-- **N-AST-5.** How to preserve source origins through desugaring. Desugaring
-  creates new AST nodes that did not appear in source text. How should source
-  spans and diagnostic attribution be preserved?
-
-- **N-AST-6.** Whether right-target subsegments become nested call nodes.
-  Right-target subsegments (`f (a) g`) are currently flat in Raw AST.
-
-- **N-AST-7.** How to represent pattern normalization for let, params, returns,
-  and canonical skeletons.
-
-- **N-AST-8.** How to represent alias declarations before name resolution.
-  Alias bindings reference compile-time entities that are not yet resolved.
-
-- **N-AST-9.** Member / double-dot sugar lowering — **adopted** into §7. The
-  navigation-based pipe + closure lowering for member, double-dot, and
-  bracket-call sugar (and the defensive branch-name expansion) is recorded in
-  §7.11 / §7.14. The earlier review concerns are settled: the lowered forms are
-  normalized construction notation (a concrete v0.2-source rendering of the
-  generated closure would require `=>`); branch-name expansion is defensive-only
-  per the frozen guarantee; and the navigation-based member form is adopted with
-  the frozen `raw-ast-frozen-surface-v0.2.md` §14 wording left unchanged. See
-  `spec/planning/open-questions.md` N-AST-9 for the resolution record.
+- **N-AST-1.** Exact Normalized AST node set — **partially resolved for v0.4
+  start** (§7, §8): minimum node roles specified, exact Rust node set deferred.
+- **N-AST-2.** Crate placement — **resolved**: Normalized AST stays under
+  `lang_syntax`.
+- **N-AST-3.** Normalized dump / golden policy — **resolved for v0.4 start**
+  (§8.11).
+- **N-AST-4.** Symbolic builtins — **resolved for the v0.3 boundary** (§8.7): no
+  general symbolic builtin node family.
+- **N-AST-5.** Source origins through desugaring — **partially resolved**
+  (§7.15): exact Rust source-map deferred to v0.4.
+- **N-AST-6.** Right-target subsegments — **resolved** (§7) via the
+  source-product continuation skeleton.
+- **N-AST-7.** Pattern / binding-site normalization — **resolved for v0.4
+  start** (§8.2–§8.5).
+- **N-AST-8.** Alias declarations before name resolution — **resolved for the
+  v0.3 boundary** (§7.13).
+- **N-AST-9.** Member / double-dot sugar lowering — **adopted** (§7.11, §7.14).
 
 ## 6. Specification work items
 
@@ -530,7 +515,317 @@ The exact Rust representation is a v0.4 implementation question, but v0.3
 requires traceability so that future normalized dumps and diagnostics can
 attribute generated structures to source spans and lowering rules.
 
-## 8. Explicit non-goals
+## 8. Minimum Normalized AST shape for v0.4
+
+This section closes the minimum v0.3 direction questions needed to begin v0.4
+Raw AST → Normalized AST implementation. It builds on the §7 source-product
+continuation call skeleton (which is not reopened here) and defines the intended
+Normalized AST shape boundary — the required structural roles, not final Rust
+types.
+
+This section remains specification-only and non-semantic. v0.3 closeout must not
+perform name resolution, type checking, kind checking, operator lookup, operator
+overload resolution, alias target resolution, namespace resolution, canonical
+matching, closure materialization, capture analysis, ownership/NLL/drop
+insertion, effect interpretation, runtime evaluation, or code generation. The
+exact Rust enum/struct names below are illustrative; v0.4 may choose different
+spellings as long as the structural roles are preserved.
+
+### 8.1 Group does not survive as a normalized expression node
+
+Raw source grouping `(e)` is a group `G`. Normalized AST does not preserve a
+dedicated `NormExpr::Group` node as ordinary expression structure. Per the §7.2
+shape classes:
+
+```text
+(e) -> G
+G   -> e     in ordinary expression position
+G   -> P     when lifted in source-product position
+```
+
+The fact that an expression originated from a group is carried by
+origin/provenance (§7.15), not by a persistent normalized group node. This
+supports the already recorded rule (§7.8):
+
+```text
+x |> f
+=> (x) |> f
+```
+
+where `(x)` is normalized product notation, not a claim that the Raw source
+`(x)` was a Product.
+
+### 8.2 Unified normalized binding-site structure
+
+v0.4 keeps a single normalized binding-site / binding-slot concept. The exact
+Rust type name is an implementation detail; the structural shape is:
+
+```text
+- optional policy / modifiers
+- a DeduceList of local hole declarations
+- a value / extraction pattern
+- an optional annotation pattern
+- an optional with-name list
+- an optional initializer / body, depending on context
+```
+
+This mirrors the frozen `BindingSlotAst` shape (`concrete-syntax-v0.2.md` §7)
+and is reused for the user-visible binding contexts where appropriate:
+
+```text
+let binding slots
+closure parameters
+closure returns / result slots
+generated closure heads introduced by lowering
+```
+
+Do not split let / param / return into unrelated normalized structures unless
+v0.4 implementation later proves it necessary.
+
+### 8.3 DeduceList is a binding-site hole binder list; annotation is a pattern
+
+This is the most important remaining direction decision.
+
+```text
+DeduceList is a binding-site hole binder list.
+Annotation is an annotation pattern / classifier pattern.
+Hole names declared by DeduceList may occur inside annotation patterns.
+DeduceList is not merged into the value / extraction pattern itself.
+Annotation is not normalized as an ordinary runtime expression.
+```
+
+Example:
+
+```text
+let <T> x: T = ...
+```
+
+normalizes structurally as:
+
+```text
+BindingSlot {
+  deduce: [HoleDecl(T)],
+  value_pattern: Binder(x),
+  annotation: AnnotationPattern(HoleRef(T)),
+  ...
+}
+```
+
+A more complex annotation pattern:
+
+```text
+let <T> x: T Option::std = ...
+```
+
+normalizes as:
+
+```text
+BindingSlot {
+  deduce: [HoleDecl(T)],
+  value_pattern: Binder(x),
+  annotation: AnnotationPattern(
+    pattern material containing HoleRef(T) and unresolved Option::std
+  ),
+  ...
+}
+```
+
+`T Option::std` is annotation-pattern material, not a runtime expression or
+ordinary call. v0.3 does not look up `Option::std`, does not check kind/type
+validity, and does not decide whether the annotation pattern is admissible.
+
+Closure head:
+
+```text
+<T: type>(val: T) => { ... }
+```
+
+normalizes structurally as:
+
+```text
+ClosureHead {
+  deduce: [
+    HoleDecl {
+      name: T,
+      annotation: AnnotationPattern(type)
+    }
+  ],
+  params: [
+    BindingSlot {
+      value_pattern: Binder(val),
+      annotation: AnnotationPattern(HoleRef(T))
+    }
+  ],
+  body: ...
+}
+```
+
+A more complex parameter annotation:
+
+```text
+<T: type>(val: T Option::std) => { ... }
+```
+
+normalizes as:
+
+```text
+ClosureHead {
+  deduce: [
+    HoleDecl {
+      name: T,
+      annotation: AnnotationPattern(type)
+    }
+  ],
+  params: [
+    BindingSlot {
+      value_pattern: Binder(val),
+      annotation: AnnotationPattern(
+        pattern material containing HoleRef(T) and unresolved Option::std
+      )
+    }
+  ],
+  body: ...
+}
+```
+
+These shapes are structural only; no type semantics are assigned.
+
+### 8.4 Annotation keeps a dedicated normalized annotation wrapper
+
+Annotations are not normalized into ordinary expressions. They retain a
+dedicated normalized annotation wrapper, e.g.
+`NormAnnotation::Pattern(NormPattern)` or a semantically neutral equivalent such
+as `AnnotationPattern(...)` / `ClassifierPattern(...)`. The exact Rust name is an
+implementation detail; the spec-level decision is:
+
+```text
+annotation position is pattern position, not ordinary expression position.
+```
+
+The internal pattern material is recursively normalized as pattern structure,
+but no name resolution, kind checking, type checking, canonical matching, or
+classifier interpretation is performed in v0.3.
+
+### 8.5 Canonical skeletons are preserved as a normalized pattern subform
+
+v0.4 is not required to fully decompose canonical skeletons into primitive
+pattern nodes. Canonical skeletons normalize into a preserved normalized pattern
+subform, e.g. `NormPattern::Skeleton(...)`, not into a semantic matching
+structure. v0.3 does not perform canonical matching, admissibility checking,
+type-directed decomposition, or semantic pattern interpretation.
+
+A reasonable minimal pattern-role family for v0.4 (roles, not final Rust names):
+
+```text
+NormPattern::Binder
+NormPattern::Product
+NormPattern::Unit
+NormPattern::HoleRef
+NormPattern::AnnotationMaterial / Nav / Name / Literal as needed
+NormPattern::Skeleton
+NormPattern::Error
+```
+
+Record the required roles, not the final enum spelling.
+
+### 8.6 with-clause remains an unresolved name list
+
+For v0.3, `with { ... }` remains structural and is preserved as an unresolved
+list of names on the normalized binding site:
+
+```text
+with { names... } -> unresolved with-name list
+```
+
+It is not dependency injection, lifetime relation, capability import, ownership
+permission, effect requirement, or namespace import.
+
+### 8.7 No general symbolic builtin node family in v0.3
+
+v0.3 does not introduce a general symbolic builtin node family. Do not introduce
+nodes such as:
+
+```text
+BuiltinCall(MemberLookup)
+BuiltinCall(OperatorCall)
+BuiltinCall(PatternBind)
+```
+
+Generated material from lowering is represented as a generated unresolved name /
+nav / operator target carrying origin/provenance (§7.15), not as a semantically
+privileged builtin call. Future phases may introduce semantic builtins if
+needed; v0.3 Normalized AST does not. (This is the v0.3 boundary answer to
+N-AST-4.)
+
+### 8.8 Alias declaration remains a declaration, not an expression
+
+```text
+let binder === EntityRef
+=> unresolved normalized alias declaration
+```
+
+The alias RHS remains `EntityRef`. It is not normalized as ordinary expression,
+product, call, closure, or runtime value (confirms §7.13). Alias target
+resolution, alias scope semantics, operator alias identity validation, and
+namespace resolution are later phases.
+
+### 8.9 Closure normalization boundary
+
+```text
+Closure body forms are recursively normalized.
+Closure head is structurally normalized into binding-site / slot / clause shapes.
+Closure materialization does not occur.
+Capture analysis does not occur.
+require / pre / post / lifetime clauses are preserved structurally, not interpreted.
+```
+
+A headless in-place closure still has no implicit unit input. Generated closures
+introduced by member / double-dot / prefix-negative lowering follow the same
+structural boundary (confirms §7.12).
+
+### 8.10 Error representation is family-local
+
+v0.4 prefers family-local error variants rather than a single universal error
+node:
+
+```text
+NormExpr::Error
+NormPattern::Error
+NormDecl::Error / NormForm::Error
+```
+
+The exact Rust variant names are implementation details. The spec-level decision
+is that error recovery stays in the syntactic family where the error occurred,
+so surrounding normalization can continue without forcing every error into one
+universal node category.
+
+### 8.11 Minimum normalized dump policy for v0.4
+
+This closes N-AST-3 enough for v0.4 to begin. It does not design a final dump
+format. The minimum requirement:
+
+```text
+v0.4 must expose a stable normalized dump entry point.
+The dump must be stable enough for golden tests.
+The dump must not use raw Rust Debug output as the public golden format.
+The dump must show enough structure to verify:
+  - source-product continuation and product merge;
+  - first and second legality repairs;
+  - product / group lifting boundary;
+  - operator lowering and provenance summary;
+  - member / double-dot / bracket-call lowering;
+  - closure body recursive normalization;
+  - alias declaration preservation;
+  - annotation pattern and DeduceList structure;
+  - error recovery placement.
+```
+
+The CLI spelling is an implementation choice. Acceptable options include
+`lang norm <file>` or `lang ast --normalized <file>`, consistent with the
+existing `lang tokens | ast | diag` structure. The final command name and dump
+format are v0.4 implementation details.
+
+## 9. Explicit non-goals
 
 v0.3 must not:
 
@@ -545,25 +840,26 @@ v0.3 must not:
 - perform operator lookup
 - perform alias target resolution
 
-## 9. Status
+## 10. Status
 
-This document is no longer a bare stage-opening scaffold. §3 and §4 boundaries
-are defined and stable. §7 records the v0.3 source-product continuation
-call-skeleton design decision, including product merge, the priority order and
-legality repairs, product normalization, operator lowering, member/double-dot/
-bracket-call lowering, the closure and alias boundaries, branch-name expansion,
-and the origin/provenance requirement.
+§3 and §4 boundaries are defined and stable. §7 records the v0.3 source-product
+continuation call-skeleton design decision (product merge, the priority order
+and legality repairs, product normalization, operator lowering,
+member/double-dot/bracket-call lowering, the closure and alias boundaries,
+branch-name expansion, and the origin/provenance requirement). §8 records the
+minimum Normalized AST shape needed to start v0.4: group non-survival, the
+unified binding-site structure, the DeduceList / annotation-pattern split, the
+annotation wrapper, canonical-skeleton preservation, the with-name list, the
+no-general-builtin boundary, the alias and closure boundaries, family-local
+errors, and the minimum normalized dump policy.
 
-The corresponding §6 work items are now recorded as design decisions (normalized
-call/composition structure, product expression normalization, operator sugar
-normalization, bracket-call/member/double-dot normalization, alias-let
-representation boundary, closure-head normalization boundary, and how generated/
-desugared nodes carry source origin). The §5/open-questions statuses are updated
-accordingly (N-AST-2/6/8 resolved; N-AST-1/5 partially resolved; N-AST-9
-adopted).
+The §6 work items are now recorded as design decisions, and the §5 /
+open-questions statuses are updated accordingly: N-AST-2/6 resolved; N-AST-4/8
+resolved for the v0.3 boundary; N-AST-3/7 resolved for v0.4 start; N-AST-1/5
+partially resolved; N-AST-9 adopted.
 
-This does not mean v0.3 is complete. The remaining §6 work items — product
-extraction and binding-pattern normalization, navigation normalization detail,
-canonical-skeleton/deduce-list pattern normalization (N-AST-7), `ErrorAst` and
-diagnostics origin preservation, normalized dump policy (N-AST-3), and the exact
-Normalized AST node set (N-AST-1) — are still open.
+After this closeout, v0.3 has enough structural direction to start v0.4 Raw AST →
+Normalized AST implementation. This does not mean the full language semantics are
+specified. v0.4 may refine the exact Rust node shapes, origin representation, and
+dump formatting as implementation feedback arrives, as long as it preserves the
+v0.3 structural decisions recorded in §7 and §8.

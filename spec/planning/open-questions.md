@@ -15,7 +15,7 @@ These questions become active during v0.3 Normalized AST Specification.
 
 #### N-AST-1. Exact Normalized AST node set
 
-**Status:** Partially resolved (v0.3 §7)
+**Status:** Partially resolved for v0.4 start
 
 **Question:** What are the exact Normalized AST node types? Candidates:
 normalized call, normalized pattern, normalized declaration. Should there
@@ -23,9 +23,13 @@ be a single unified expression node or distinct per-form nodes?
 
 **Resolution (v0.3, partial):** The call / product / closure / alias structural
 boundaries are clarified by the source-product continuation call skeleton in
-`spec/public/v0.3/normalized-ast-specification-v0.3.md` §7. The exact concrete
-node set (single unified expression node vs distinct per-form nodes) still needs
-final specification and remains open.
+`spec/public/v0.3/normalized-ast-specification-v0.3.md` §7, and the minimum node
+roles for v0.4 start are specified in §8 (unified binding-site structure,
+annotation-pattern wrapper, the minimal pattern-role family including
+`NormPattern::Skeleton`, no general symbolic builtin family, and family-local
+error variants). The exact concrete node set (single unified expression node vs
+distinct per-form nodes) and the final Rust enum/struct names still need final
+specification and remain v0.4 implementation work.
 
 ---
 
@@ -43,21 +47,40 @@ final specification and remains open.
 
 #### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
 
-**Status:** Open
+**Status:** Resolved for v0.4 start
 
 **Question:** Should the normalization pass produce stable dump output that
 can be golden-tested alongside Raw AST dumps?
+
+**Resolution (v0.3):** Yes. `spec/public/v0.3/normalized-ast-specification-v0.3.md`
+§8.11 requires v0.4 to expose a stable normalized dump entry point that is
+golden-test-stable, does not use raw Rust `Debug` as the public golden format,
+and shows enough structure to verify source-product continuation / product
+merge, the two legality repairs, product/group lifting, operator lowering and
+provenance, member/double-dot/bracket-call lowering, closure body
+normalization, alias preservation, annotation-pattern / DeduceList structure,
+and error-recovery placement. The final CLI spelling (`lang norm <file>` vs
+`lang ast --normalized <file>`) and the exact dump format remain v0.4
+implementation details.
 
 ---
 
 #### N-AST-4. How to represent symbolic builtins introduced by desugaring
 
-**Status:** Open
+**Status:** Resolved for the v0.3 boundary
 
 **Question:** Desugaring may introduce symbolic names (e.g., `operator::call`,
 `member::lookup`, `pattern::bind`). How should these be represented in
 Normalized AST — as reserved names, as a separate node type, or as
 compiler-generated identifiers?
+
+**Resolution (v0.3):** v0.3 does not introduce a general symbolic builtin node
+family (no `BuiltinCall(MemberLookup)` / `BuiltinCall(OperatorCall)` /
+`BuiltinCall(PatternBind)`). Generated material from lowering is represented as
+a generated unresolved name / nav / operator target carrying origin/provenance,
+not as a semantically privileged builtin call. See
+`spec/public/v0.3/normalized-ast-specification-v0.3.md` §8.7. Future phases may
+introduce semantic builtins if needed; v0.3 Normalized AST does not.
 
 ---
 
@@ -96,12 +119,29 @@ positive local call sugar, and never overrides source-product continuation.
 
 #### N-AST-7. How to represent pattern normalization for let, params, returns, and canonical skeletons
 
-**Status:** Open
+**Status:** Resolved for v0.4 start
 
 **Question:** Extraction contexts (let, params, returns) use canonical
 skeletons. How should normalization unify these into a single normalized
 pattern form? Should deduce lists be merged into the pattern structure
 or kept separate?
+
+**Resolution (v0.3):** See
+`spec/public/v0.3/normalized-ast-specification-v0.3.md` §8.2–§8.5. The direction
+is:
+
+- Binding sites keep a DeduceList hole binder list.
+- Annotation is an annotation pattern / classifier pattern.
+- DeduceList-declared holes may occur inside annotation patterns.
+- DeduceList is not merged into the value/extraction pattern itself.
+- Canonical skeletons are preserved as a normalized pattern subform
+  (e.g. `NormPattern::Skeleton`), not decomposed into semantic matching.
+- No canonical matching, type checking, kind checking, or semantic
+  interpretation occurs in v0.3.
+
+A single unified binding-site structure is reused for let slots, closure
+parameters, returns, and generated closure heads. Exact Rust enum/struct names
+remain v0.4 implementation work.
 
 ---
 
