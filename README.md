@@ -21,23 +21,33 @@ parses, builds raw AST, emits diagnostics, and has golden tests.
 
 ## Documentation map
 
-### Current implemented specs
+### Public v0.2 frontend specification
+
+The normal public reading path for current lexical and syntactic behavior:
 
 | Document | Purpose |
 |---|---|
-| `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
-| `spec/raw-ast-contract-v0.1.md` | Normative contract: Raw AST invariants for future normalization |
-| `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 Raw AST contract freeze boundary, allowed/forbidden work, v0.3 handoff |
-| `spec/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST surface inventory: construct-by-construct guarantees, v0.3 obligations |
 | `spec/lexical-syntax-v0.2.md` | Public lexical syntax specification: source normalization, token categories, weak lexer, names, literals, symbols, operators, trivia |
 | `spec/concrete-syntax-v0.2.md` | Public concrete syntax specification: form boundaries, let/alias-let, binding slots, products, pipes, operators, closures, skeletons, deduce lists |
 | `spec/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery specification: lexical/parser diagnostic codes, trigger conditions, span policy, ErrorAst recovery, non-semantic boundaries |
-| `spec/resolved-questions.md` | Design decisions — resolved for v0.1 |
-| `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
-| `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
-| `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery |
+| `spec/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST surface inventory: construct-by-construct guarantees, v0.3 obligations |
 | `spec/glossary.md` | Terminology definitions and critical distinctions |
-| `spec/frontend-v0.1.md` | Reader entry point — explains the pipeline and spec organization |
+
+Older v0.1 design and implementation documents remain available as backing
+references, but they are not the normal public entry point.
+
+### Backing and historical references
+
+| Category | Document | Purpose |
+|---|---|---|
+| Implementation | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
+| Implementation | `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery (implementation-level) |
+| Implementation | `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
+| Contract / handoff | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
+| Contract / handoff | `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
+| Design / history | `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
+| Design / history | `spec/resolved-questions.md` | Design decisions — resolved for v0.1 |
+| Design / history | `spec/frontend-v0.1.md` | Reader entry point — explains the pipeline and spec organization |
 
 ### Future design notes
 
@@ -73,11 +83,10 @@ parses, builds raw AST, emits diagnostics, and has golden tests.
 2. **Build/package/namespace assembly track** (documentation only for now):
    future build system, package manifest, and namespace assembly design.
 
-Start with `spec/frontend-v0.1.md` to understand the pipeline, then
-`spec/ast-construction-v0.1.md` for parser behavior. Read
-`spec/operator-design.md` before changing operator syntax. Read
-`spec/entity-ref-design.md` before changing future compile-time entity
-reference or alias-binding syntax.
+Start with `spec/lexical-syntax-v0.2.md` to understand the current lexical
+syntax, then `spec/concrete-syntax-v0.2.md` for parsed syntax and
+`spec/diagnostics-recovery-v0.2.md` for error behavior. Read
+`spec/raw-ast-frozen-surface-v0.2.md` for the frozen Raw AST inventory.
 
 ## Design summary
 
@@ -308,23 +317,39 @@ none of them.
 
 ## How to read the spec
 
-1. `spec/frontend-v0.1.md` — Understand the pipeline.
-2. `spec/implementation-status-v0.1.md` — Know what is currently implemented.
-3. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
-4. `spec/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff requirements.
-5. `spec/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
-6. `spec/lexical-syntax-v0.2.md` — Understand the public lexical syntax.
-7. `spec/concrete-syntax-v0.2.md` — Understand the public concrete syntax.
-8. `spec/diagnostics-recovery-v0.2.md` — Understand public diagnostics and recovery.
-9. `spec/ast-construction-v0.1.md` — Implement the parser.
-10. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-11. `spec/entity-ref-design.md` — Future general EntityRef design.
-12. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-13. `spec/diagnostics-v0.1.md` — Understand error reporting (implementation-level reference).
-14. `spec/glossary.md` — Resolve terminology.
-15. `spec/roadmap.md` — Understand scope boundaries.
-16. `spec/open-questions.md` — Recognize known gaps.
-17. `spec/resolved-questions.md` — Understand resolved design decisions.
+### Normal reading path
+
+This path is sufficient to understand the current non-semantic frontend
+language: lexical syntax, concrete syntax, Raw AST preservation surface,
+diagnostics, and recovery.
+
+1. `spec/lexical-syntax-v0.2.md` — Understand the public lexical syntax.
+2. `spec/concrete-syntax-v0.2.md` — Understand the public concrete syntax.
+3. `spec/diagnostics-recovery-v0.2.md` — Understand public diagnostics and recovery.
+4. `spec/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
+5. `spec/glossary.md` — Resolve terminology.
+
+### Extended implementer reading
+
+Read these only when implementing, auditing, or repairing the frontend.
+
+1. `spec/ast-construction-v0.1.md` — Implement the parser.
+2. `spec/diagnostics-v0.1.md` — Diagnostic catalog (implementation-level reference).
+3. `spec/implementation-status-v0.1.md` — Know current implementation facts.
+4. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
+5. `spec/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff.
+6. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
+7. `spec/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
+
+### Future design and planning
+
+Read these only when working on future design topics.
+
+1. `spec/entity-ref-design.md` — Future general EntityRef design.
+2. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+3. `spec/roadmap.md` — Understand scope boundaries.
+4. `spec/open-questions.md` — Recognize known gaps.
+5. `spec/resolved-questions.md` — Understand resolved design decisions.
 
 ## Expected future workspace shape
 
