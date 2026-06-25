@@ -940,7 +940,7 @@ insert, or right-target roles in Raw AST.
 
 ### 7.1.1 Pipe branch-name shorthand
 
-During `v0.1.w`, the exact incoming pipe-segment token shape:
+During `v0.1.w`, the exact local incoming pipe-segment prefix:
 
 ```text
 PipeTransition Name BraceBody
@@ -964,8 +964,22 @@ in-place closure body. No semantic validation, name resolution, matching,
 closure materialization, or lookup is performed.
 
 This is not a precedent for a family of branch-arm sugars. The shorthand is
-accepted only because the whole token shape is finite, local, explicit, and
+accepted only because the local token shape is finite, local, explicit, and
 mechanically equivalent to the already supported explicit form.
+
+The shorthand recognizes only the local incoming segment prefix
+`|> name { ... }`. After that local rewrite, any following token sequence is
+parsed by the ordinary existing pipe / segment / composition rules. For
+example:
+
+```text
+x |> name { y; } z
+=> x |> (_ name) { y; } z
+=> (x |> (_ name) { y; }) |> z
+```
+
+The trailing `z` is not part of a larger branch-arm sugar. It is handled by the
+existing call-composition machinery after the local prefix rewrite.
 
 The shorthand does not generalize. The parser must not treat any of the
 following as this shorthand:

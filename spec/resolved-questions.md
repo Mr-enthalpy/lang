@@ -46,8 +46,15 @@ syntax, a general macro system, and major parser architecture rewrites.
 `|> (_ name) { ... }`.
 
 This is not a precedent for a family of branch-arm sugars. The shorthand is
-accepted only because the whole token shape is finite, local, explicit, and
+accepted only because the local token shape is finite, local, explicit, and
 mechanically equivalent to the already supported explicit form.
+
+The shorthand recognizes only the local incoming segment prefix
+`|> name { ... }`. After that local rewrite, any following token sequence is
+parsed by ordinary existing pipe / segment / composition rules. Allowing
+`x |> name { y; } z` means only that the local prefix rewrites to
+`x |> (_ name) { y; } z`; the trailing `z` is handled by existing
+call-composition machinery and is not part of a larger branch-arm sugar.
 
 The parser preserves the same Raw AST shape as the explicit form: an incoming
 pipe segment containing a two-element product head (`_`, `name`) followed by an

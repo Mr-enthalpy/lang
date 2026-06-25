@@ -136,9 +136,12 @@ Current `v0.1.w` sugar:
 - `|> name { ... }` is accepted only as a mechanical shorthand for
   `|> (_ name) { ... }`.
 - This is not a precedent for a family of branch-arm sugars.
-- The shorthand is accepted only because the whole token shape is finite,
+- The shorthand is accepted only because the local token shape is finite,
   local, explicit, and mechanically equivalent to the already supported
   explicit form.
+- The shorthand recognizes only the local incoming segment prefix
+  `|> name { ... }`; after that local rewrite, any following token sequence is
+  parsed by ordinary existing pipe / segment / composition rules.
 
 Forbidden in this window:
 

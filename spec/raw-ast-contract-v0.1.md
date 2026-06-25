@@ -108,9 +108,11 @@ Normalization must **not** assume:
   `|> (_ name) { ... }`. It preserves the same Raw AST shape as the explicit
   form: an incoming segment with a two-element product head (`_`, `name`)
   followed by an in-place closure body. This is not a precedent for a family of
-  branch-arm sugars. The shorthand is accepted only because the whole token
+  branch-arm sugars. The shorthand is accepted only because the local token
   shape is finite, local, explicit, and mechanically equivalent to the already
-  supported explicit form.
+  supported explicit form. It recognizes only the local incoming segment prefix
+  `|> name { ... }`; after that local rewrite, any following token sequence is
+  parsed by ordinary existing pipe / segment / composition rules.
 
 ## OperatorExpr invariants
 
