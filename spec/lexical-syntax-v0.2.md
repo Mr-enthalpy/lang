@@ -61,7 +61,9 @@ sync  effect  fn  type  meta  runtime  compile
 namespace  struct  guard  where  acquire
 ```
 
-Any other unrecognized word is also lexed as `Name`. Lexical classification as
+Any other source word matching the Name lexical shape is also lexed as `Name`.
+Characters outside the Name lexical shape are not made into Name tokens merely
+because they look word-like to a human reader. Lexical classification as
 `Name` does not make the word a language construct.
 
 The parser may later recognize selected names structurally in strong contexts
@@ -160,10 +162,11 @@ single `FloatLiteral` token.
 | Trailing dot + scientific | `1.e3` |
 | Leading dot + scientific | `.5e-2` |
 
-The trailing-dot float (`1.`) is recognized only when the character after the
-dot is not an ASCII identifier start. When the dot is followed by an identifier
-start, the integer and dot are tokenized separately (e.g., `1.x` tokenizes as
-`IntLiteral("1")` and `.x` is parsed as member sugar).
+The trailing-dot float (`1.`) is recognized when the dot is not followed by
+another dot and is not followed by an ASCII identifier start. Therefore
+`1..x` starts as `IntLiteral("1")` followed by `DotDot`, and `1.x` starts as
+`IntLiteral("1")` followed by `Dot`. When the dot is followed by neither
+condition, the integer and dot are tokenized as a single `FloatLiteral("1.")`. 
 
 ### 7.2 Hexadecimal float forms
 
@@ -321,8 +324,6 @@ spellings. They are `Symbol` tokens (see §9).
 
 ### 10.1 Symbol-lexed operator names
 
-### 10.1 Symbol-lexed operator names
-
 The spellings `<` and `>` are lexed as `Symbol::Less` and `Symbol::Greater`,
 not as operator tokens. The parser may reinterpret them as operator spellings
 in expression and operator contexts. In strong binding contexts they may
@@ -349,8 +350,9 @@ Operator spellings are syntax-level names. They do not imply:
 - type-directed lookup
 - evaluation
 
-Operator syntax is preserved as Raw AST sugar. Operator lookup, lowering, and
-semantic validation are future work.
+Operator syntax is preserved as Raw AST sugar. Operator lookup and semantic
+validation are future semantic work. Operator-sugar desugaring belongs to the
+future Normalized AST / normalization stages, not to lexical syntax.
 
 ## 11. Trivia
 
