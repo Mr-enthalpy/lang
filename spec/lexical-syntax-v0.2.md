@@ -213,21 +213,25 @@ backslashes are source characters.
 "abc"
 ```
 
-`k = 1`. Closes at `\"`. A bare `"` inside does not close.
+`k = 1`. The boundary is one backslash followed by a quote. A bare `"`
+inside does not close. A quote preceded by one or more consecutive backslashes
+closes; extra backslashes are body.
 
 ```text
 \"text may contain " without ending\"
 ```
 
-`k = 2`. Closes at `\\"`. Bare `"` and `\"` inside do not close.
+`k = 2`. The boundary is two backslashes followed by a quote. Bare `"` and
+`\"` inside do not close. A quote preceded by two or more consecutive
+backslashes closes; extra backslashes are body.
 
 ```text
 \\"text may contain " and \" without ending\\"
 ```
 
-`k = 3`. Closes at `\\\"`. Bare `"`, `\"`, and `\\"` inside do not close.
-An input like `\\\"text\"` closes because the four characters `\`, `\`, `\`,
-`"` decompose as one body backslash plus the closer `\\"`.
+`k = 3`. The boundary is three backslashes followed by a quote. Bare `"`,
+`\"`, and `\\"` inside do not close. A quote preceded by three or more
+consecutive backslashes closes; the extra backslashes beyond three are body.
 
 ```text
 \\\"text may contain " and \" and \\" without ending\\\"
@@ -259,8 +263,8 @@ content is not decoded or normalized. The lexer does not perform adjacent
 string concatenation. `"a" "b"` tokenizes as two separate `StringLiteral`
 tokens with trivia between them.
 
-There is no character literal category. A single character is a string literal
-of length one.
+There is no character-literal token category; a source spelling such as
+`"a"` is tokenized as `StringLiteral`, not as a separate `CharLiteral`.
 
 Literal-string adjacency (`"abc"utf8`) is ordinary expression/call composition
 material: `StringLiteral("\"abc\"")` followed by `Name("utf8")`.
