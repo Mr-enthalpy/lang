@@ -44,7 +44,6 @@ fn expr_name() {
 
 #[test]
 fn member_int_base() {
-    // `1.2` is member sugar `(IntLiteral 1).(NumericName 2)`, not a float.
     assert_parser_case("member_int_base", false);
 }
 
