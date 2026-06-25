@@ -52,37 +52,37 @@ as Raw AST.
 The current `DiagnosticCode` enum contains 29 variants. Each is listed below
 with its category, typical trigger, and stability status.
 
-| Code | Category | Typical trigger | Status |
-|---|---|---|---|
-| `InvalidToken` | Lexer | Unrecognized byte sequence | Guaranteed |
-| `UnclosedString` | Lexer | String literal reaches EOF or newline before closing boundary | Guaranteed |
-| `UnclosedComment` | Lexer | Block comment reaches EOF before `*/` | Guaranteed |
-| `InvalidNumericLiteral` | Lexer | Malformed numeric literal (invalid separator position, missing radix digits, empty hex float exponent) | Guaranteed |
-| `UnexpectedToken` | Parser | Token does not match any expected production | Guaranteed |
-| `ExpectedName` | Parser | Context requires a `Name` token but current token is not a name | Guaranteed |
-| `ExpectedColon` | Parser | Simple let binder name is not followed by `:` | Guaranteed |
-| `ExpectedBindingAnnotation` | Parser | Binding slot has `:` but no annotation before context boundary | Guaranteed |
-| `ExpectedEqual` | Parser | Let binder and optional `with` not followed by `=` | Guaranteed |
-| `EmptyPipeSegment` | Parser | `\|>` at start of pipe expression or two consecutive `\|>` | Guaranteed |
-| `ExpectedNameAfterDot` | Parser | `.` suffix is followed by a non-`Name` token | Guaranteed |
-| `ExpectedNameAfterDoubleDot` | Parser | `..` suffix is followed by a non-`Name` token | Guaranteed |
-| `ExpectedProductAfterDoubleDotName` | Parser | `..` selector is not followed by a product form | Guaranteed |
-| `UnclosedParen` | Parser | `(` without matching `)` by form boundary or EOF | Guaranteed |
-| `UnclosedBracket` | Parser | `[` without matching `]` by form boundary or EOF | Guaranteed |
-| `UnclosedBrace` | Parser | `{` without matching `}` in a delimiter-owned context | Guaranteed |
-| `InvalidDeduceList` | Parser | Malformed deduce list (missing name, trailing comma, unclosed, missing annotation) | Guaranteed |
-| `InvalidCanonicalSkeleton` | Parser | Malformed canonical skeleton in extraction context | Guaranteed |
-| `InvalidClosureHead` | Parser | `FnHeadPrefix { ... }` without `=>`, headless pipe branch body, malformed head clause | Guaranteed |
-| `TopLevelComma` | Parser | Comma at top level of a form outside any product or group | Guaranteed |
-| `UnusedClosureAst` | Parser | Headed or explicit closure literal in a position where it cannot be consumed | Optional / not-guaranteed-emitted |
-| `InvalidOperatorExpression` | Operator | Malformed or unsupported operator syntax (missing operand, unsupported prefix) | Guaranteed |
-| `ChainedNonAssociativeOperator` | Operator | Ungrouped chain of non-associative operators (`a < b < c`) | Guaranteed |
-| `InvalidNavComponent` | Operator | Invalid navigation component (operator as outer component, grouped expression as innermost) | Guaranteed |
-| `ExpectedAliasTarget` | Alias | After `===` in alias binding, RHS is absent or cannot start EntityRef | Guaranteed |
-| `InvalidAliasBinder` | Alias | Binder token is neither `Name` nor operator-eligible | Reserved / not-currently-emitted |
-| `InvalidAliasPosition` | Alias | Alias-shaped token sequence appears in non-form position | Guaranteed |
-| `InvalidEntityRef` | Alias | Malformed EntityRef structure (operator as outer component, grouped as innermost, dangling `::`) | Guaranteed |
-| `UnexpectedAliasRhsExpression` | Alias | Valid EntityRef parsed but next token is not a form boundary | Guaranteed |
+| Code | Category | Typical trigger | Recovery | Status |
+|---|---|---|---|---|---|
+| `InvalidToken` | Lexer | Unrecognized byte sequence | Emit `Invalid` token and continue | Guaranteed |
+| `UnclosedString` | Lexer | String literal reaches EOF or newline before closing boundary | Emit `StringLiteral` token spanning unterminated text; continue | Guaranteed |
+| `UnclosedComment` | Lexer | Block comment reaches EOF before `*/` | Treat comment as closed at EOF; emit trivia token | Guaranteed |
+| `InvalidNumericLiteral` | Lexer | Malformed numeric literal (invalid separator position, missing radix digits, empty hex float exponent) | Emit diagnostic; preserve invalid material in token text; continue | Guaranteed |
+| `UnexpectedToken` | Parser | Token does not match any expected production | Skip to synchronization point or consume offending token; continue | Guaranteed |
+| `ExpectedName` | Parser | Context requires a `Name` token but current token is not a name | Insert `ErrorAst` and continue | Guaranteed |
+| `ExpectedColon` | Parser | Legacy/simple-binder colon expectation | Reserved; not currently emitted by parser | Reserved / not-currently-emitted |
+| `ExpectedBindingAnnotation` | Parser | Binding slot has `:` but no annotation before context boundary | Continue at boundary; use `BindingAnnotationAst::Error` | Guaranteed |
+| `ExpectedEqual` | Parser | Let binder and optional `with` not followed by `=` | Skip to form boundary; use error expression as initializer | Guaranteed |
+| `EmptyPipeSegment` | Parser | `\|>` at start of pipe expression or two consecutive `\|>` | Insert `ErrorAst` as missing segment body | Guaranteed |
+| `ExpectedNameAfterDot` | Parser | `.` suffix is followed by a non-`Name` token | Consume `.` and stop suffix folding | Guaranteed |
+| `ExpectedNameAfterDoubleDot` | Parser | `..` suffix is followed by a non-`Name` token | Consume `..` and stop suffix folding | Guaranteed |
+| `ExpectedProductAfterDoubleDotName` | Parser | `..` selector is not followed by a product form | Consume `..` and selector; no partial `DoubleDotSugar` | Guaranteed |
+| `UnclosedParen` | Parser | `(` without matching `)` by form boundary or EOF | Insert implicit `)` at boundary; preserve parsed content | Guaranteed |
+| `UnclosedBracket` | Parser | `[` without matching `]` by form boundary or EOF | Insert implicit `]` at boundary; preserve parsed content | Guaranteed |
+| `UnclosedBrace` | Parser | `{` without matching `}` in a delimiter-owned context | Insert implicit `}` at boundary; preserve parsed content | Guaranteed |
+| `InvalidDeduceList` | Parser | Malformed deduce list (missing name, trailing comma, unclosed, missing annotation) | Preserve parsed binders; insert `ErrorAst` | Guaranteed |
+| `InvalidCanonicalSkeleton` | Parser | Malformed canonical skeleton in extraction context | Skip to context boundary; insert `ErrorAst` | Guaranteed |
+| `InvalidClosureHead` | Parser | `FnHeadPrefix { ... }` without `=>`, headless pipe branch body, malformed head clause | Replace malformed clause with `ErrorAst`; preserve recoverable parts | Guaranteed |
+| `TopLevelComma` | Parser | Comma at top level of a form outside any product or group | Consume comma; no additional AST structure | Guaranteed |
+| `UnusedClosureAst` | Parser | Headed or explicit closure literal in a position where it cannot be consumed | Closure AST still produced | Optional / not-guaranteed-emitted |
+| `InvalidOperatorExpression` | Operator | Malformed or unsupported operator syntax (missing operand, unsupported prefix) | Best-effort operator expression node or `ErrorAst` | Guaranteed |
+| `ChainedNonAssociativeOperator` | Operator | Ungrouped chain of non-associative operators (`a < b < c`) | Best-effort operator sugar shape; continue | Guaranteed |
+| `InvalidNavComponent` | Operator | Invalid navigation component (operator as outer component, grouped expression as innermost) | Local error component; preserve outer components | Guaranteed |
+| `ExpectedAliasTarget` | Alias | After `===`, RHS is absent or cannot start EntityRef; also covers missing component after `::` when alias RHS reaches a hard boundary | Consume offending token; recover to form boundary | Guaranteed |
+| `InvalidAliasBinder` | Alias | Binder token is neither `Name` nor operator-eligible | Reserved; not currently emitted by parser | Reserved / not-currently-emitted |
+| `InvalidAliasPosition` | Alias | Alias-shaped token sequence appears in non-form position | Emit diagnostic; recover to enclosing delimiter or form boundary | Guaranteed |
+| `InvalidEntityRef` | Alias | Malformed non-boundary EntityRef components (grouped innermost component, operator as outer component) | Preserve parsed segments; replace malformed continuation with error component | Guaranteed |
+| `UnexpectedAliasRhsExpression` | Alias | Valid EntityRef parsed but next token is not a form boundary | Consume tokens until form boundary | Guaranteed |
 
 ## 4. Category overview
 
@@ -143,10 +143,14 @@ A parser context requires a `Name` token but the current token is not a name.
 The parser inserts an `ErrorAst` where the missing name-dependent node would
 appear and continues.
 
-### `ExpectedColon`
+### `ExpectedColon` — reserved
 
-A simple let binder name is not followed by `:`. The parser skips to `=`
-or the current form boundary.
+This diagnostic code exists in the `DiagnosticCode` enum and in the dump
+surface but the current parser does not normally emit it. The binding
+annotation parser handles `:` through optional-colon paths with
+`ExpectedBindingAnnotation` / `ExpectedEqual` alternatives.
+`ExpectedColon` is reserved / not-currently-emitted for the current
+implementation.
 
 ### `UnclosedParen`, `UnclosedBracket`, `UnclosedBrace`
 
@@ -332,8 +336,9 @@ is performed.
 ### `ExpectedAliasTarget`
 
 After `===` in an alias binding, the right-hand side is absent or the
-current token cannot start an `EntityRef`. The parser consumes the offending
-token and recovers to the form boundary.
+current token cannot start an `EntityRef`. Also covers a missing component
+after `::` when the alias RHS reaches a hard boundary. The parser consumes
+the offending token and recovers to the form boundary.
 
 ### `InvalidAliasBinder` — reserved
 
@@ -350,9 +355,9 @@ emits the diagnostic and recovers to the enclosing delimiter or form boundary.
 
 ### `InvalidEntityRef`
 
-The `EntityRef` structure is malformed: an operator name as an outer
-navigation component (`x::+`), a grouped expression as the innermost
-component (`(a, b)::ns`), or a dangling `::`. The parser preserves parsed
+The `EntityRef` structure has malformed non-boundary components: a grouped
+expression used as the innermost component (`(a, b)::ns`), or an operator
+name used as an outer component (`x::+`). The parser preserves parsed
 segments and replaces the malformed continuation with an error component.
 
 ### `UnexpectedAliasRhsExpression`
