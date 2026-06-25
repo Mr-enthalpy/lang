@@ -3,15 +3,16 @@
 `lang` is an experimental programming language frontend.
 
 **Current status:** v0.1 Raw AST Frontend completed; v0.1.w Raw AST Stability
-Window closed. Current active stage is v0.2 — Raw AST Contract Freeze /
-Normalization Boundary Preparation.
+Window closed; v0.2 Raw AST Contract Freeze / Public Frontend Syntax
+Specification closed. Current active stage is v0.3 — Normalized AST
+Specification.
 
-The lexer/parser architecture, public frontend interfaces, Raw AST shape, dump
-formats, and golden-test expectations are frozen contract material. Work in
-this stage is documentation reconciliation, contract freezing, consistency
-repair, version/stage metadata alignment, and preparation of the exact boundary
-that v0.3 Normalized AST Specification will consume. It does not implement
-Normalized AST, semantic analysis, or new syntax features. The frontend lexes,
+The Raw AST frontend surface (lexer, parser, AST, diagnostics, golden tests)
+is frozen contract material. Current work is the v0.3 Normalized AST
+Specification — specifying a desugared but non-semantic intermediate
+AST that unifies the Raw AST input surface into a regular structure
+suitable for later semantic passes. v0.3 is specification-only;
+implementation of Normalized AST lowering is v0.4. The frontend lexes,
 parses, builds raw AST, emits diagnostics, and has golden tests.
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
@@ -21,10 +22,22 @@ parses, builds raw AST, emits diagnostics, and has golden tests.
 
 ## Documentation map
 
-### Public v0.2 frontend specification
+### Current v0.3 specification workspace
 
-The normal public reading path for current lexical and syntactic behavior
-is physically located at `spec/public/v0.2/`:
+The current active stage is v0.3 — Normalized AST Specification. Start here
+for current-stage work:
+
+| Document | Purpose |
+|---|---|
+| `spec/public/v0.3/README.md` | v0.3 stage workspace index |
+| `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification scaffold and work items |
+| `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff: may-assume, must-not-assume, required inputs, open questions |
+| `spec/planning/open-questions.md` | Open design questions (N-AST-1 through N-AST-8) |
+
+### Frozen v0.2 frontend input authority
+
+The v0.2 public frontend specification set remains authoritative for the frozen
+Raw AST input surface. Read these for the input contract that v0.3 consumes:
 
 | Document | Purpose |
 |---|---|
@@ -79,17 +92,17 @@ documents remain present, but they are not part of the normal public reading pat
 
 ## Two repository tracks
 
-1. **Frontend track** (active): Raw AST frontend (v0.1) completed; v0.1.w closed; v0.2 Contract Freeze current.
-   Delivers `source text -> tokens -> Raw AST -> diagnostics`.
+1. **Frontend track** (active): v0.3 Normalized AST Specification current. v0.1/v0.1.w/v0.2 completed.
+   v0.2 delivers `source text -> tokens -> Raw AST -> diagnostics` (frozen).
+   v0.3 specifies Normalized AST (specification-only).
 
 2. **Build/package/namespace assembly track** (documentation only for now):
    future build system, package manifest, and namespace assembly design.
 
-Start with `spec/public/v0.2/lexical-syntax-v0.2.md` to understand the current
-lexical syntax, then `spec/public/v0.2/concrete-syntax-v0.2.md` for parsed
+Start with `spec/public/v0.3/README.md` for current-stage v0.3 work.
+Read `spec/public/v0.2/lexical-syntax-v0.2.md` when you need the frozen Raw AST
+input contract. Read `spec/public/v0.2/concrete-syntax-v0.2.md` for parsed
 syntax and `spec/public/v0.2/diagnostics-recovery-v0.2.md` for error behavior.
-Read `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` for the frozen Raw AST
-inventory.
 
 ## Design summary
 
@@ -248,6 +261,9 @@ a shape.
 ├── spec/
 │   ├── README.md
 │   ├── public/
+│   │   ├── v0.3/
+│   │   │   ├── README.md
+│   │   │   └── normalized-ast-specification-v0.3.md
 │   │   └── v0.2/
 │   │       ├── lexical-syntax-v0.2.md
 │   │       ├── concrete-syntax-v0.2.md
@@ -330,15 +346,22 @@ none of them.
 
 ## How to read the spec
 
-### Normal reading path
+### Current v0.3 specification work
 
-This path is sufficient to understand the current non-semantic frontend
-language: lexical syntax, concrete syntax, Raw AST preservation surface,
-diagnostics, and recovery.
+Start here for current-stage v0.3 Normalized AST Specification:
 
-1. `spec/public/v0.2/lexical-syntax-v0.2.md` — Understand the public lexical syntax.
-2. `spec/public/v0.2/concrete-syntax-v0.2.md` — Understand the public concrete syntax.
-3. `spec/public/v0.2/diagnostics-recovery-v0.2.md` — Understand public diagnostics and recovery.
+1. `spec/public/v0.3/README.md` — v0.3 workspace index.
+2. `spec/public/v0.3/normalized-ast-specification-v0.3.md` — Normalized AST specification scaffold.
+3. `spec/contracts/v0.3-normalization-handoff-checklist.md` — v0.3 may-assume, must-not-assume, required inputs.
+4. `spec/planning/open-questions.md` — Open v0.3 design questions (N-AST-1 through N-AST-8).
+
+### Frozen v0.2 frontend input
+
+Read these for the frozen Raw AST input surface:
+
+1. `spec/public/v0.2/lexical-syntax-v0.2.md` — Understand the frozen lexical syntax.
+2. `spec/public/v0.2/concrete-syntax-v0.2.md` — Understand the frozen concrete syntax.
+3. `spec/public/v0.2/diagnostics-recovery-v0.2.md` — Understand frozen diagnostics and recovery.
 4. `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
 5. `spec/reference/glossary.md` — Resolve terminology.
 

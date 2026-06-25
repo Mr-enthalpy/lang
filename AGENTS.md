@@ -2,16 +2,25 @@
 
 ## Read these files first
 
-For ordinary v0.2 documentation or frontend-surface tasks, read:
+For ordinary v0.3 Normalized AST specification work, read:
 
 ```text
 README.md
 spec/README.md
+spec/public/v0.3/README.md
+spec/public/v0.3/normalized-ast-specification-v0.3.md
+spec/contracts/v0.3-normalization-handoff-checklist.md
+spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
+spec/planning/open-questions.md
+```
+
+For frontend-syntax / Raw AST input questions, read the frozen v0.2 specs:
+
+```text
 spec/public/v0.2/lexical-syntax-v0.2.md
 spec/public/v0.2/concrete-syntax-v0.2.md
 spec/public/v0.2/diagnostics-recovery-v0.2.md
 spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
-spec/reference/glossary.md
 ```
 
 Read older implementation/design documents only when the task specifically
@@ -72,17 +81,13 @@ spec/planning/roadmap.md
 
 ## Scope
 
-The v0.1 Raw AST Frontend is completed. v0.1.w is closed. The current active
-stage is `v0.2` — Raw AST Contract Freeze / Normalization Boundary Preparation.
+The v0.1 Raw AST Frontend is completed. v0.1.w is closed. v0.2 is closed.
+The current active stage is `v0.3` — Normalized AST Specification.
 
-`v0.2` means the Raw AST frontend input surface is frozen by default. The
-lexer/parser skeleton, public frontend APIs, Raw AST node categories, dump
-formats, diagnostic infrastructure, and golden-test expectations are contract
-material. This is not a parser-expansion phase.
-
-`v0.2` does not add general syntax features. It does not implement Normalized
-AST. It prepares the exact source-preserving contract that `v0.3 Normalized AST
-Specification` will consume.
+`v0.3` specifies the Normalized AST, a desugared but non-semantic
+representation that unifies the Raw AST input surface into a regular
+structure suitable for later semantic passes. v0.3 is specification-only.
+Normalized AST implementation (Raw AST → Normalized AST lowering) is v0.4.
 
 The v0.1 output is:
 
@@ -99,7 +104,8 @@ closed or an explicit normalization-stage task is opened.
 
 ## v0.2 contract freeze policy
 
-Frozen (may not be broadened / replaced / restructured):
+v0.2 is closed. The following remain frozen contract material from the
+completed v0.2 Raw AST Contract Freeze stage:
 
 * lexer/parser skeleton
 * Raw AST categories

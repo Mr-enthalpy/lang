@@ -11,8 +11,8 @@ not strict chronological gates.
 ```
 v0.1   — Raw AST Frontend — completed
 v0.1.w — Raw AST Stability Window — closed
-v0.2   — Raw AST Contract Freeze / Normalization Boundary Preparation — current
-v0.3   — Normalized AST Specification — future, begins only after v0.2 contract freeze
+v0.2   — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
+v0.3   — Normalized AST Specification — current
 v0.4   — Raw AST → Normalized AST Prototype — future
 v0.5   — Normalized AST Stabilization — future
 v0.6+  — Later semantic design stages
@@ -81,52 +81,14 @@ completed the remaining Raw AST stability-window questions. During this window:
 
 ---
 
-### v0.2 — Raw AST Contract Freeze / Normalization Boundary Preparation — current
+### v0.2 — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
 
-**Goal**: Freeze the Raw AST contract and prepare the exact boundary that v0.3
-normalization design will consume.
-
-`v0.2` means the Raw AST frontend input surface is frozen by default. The
-lexer/parser skeleton, public frontend APIs, Raw AST node categories, dump
-formats, diagnostic infrastructure, and golden-test expectations are contract
-material.
-
-`v0.2` does not add general syntax features. It does not implement Normalized
-AST. It prepares the exact source-preserving contract that `v0.3 Normalized
-AST Specification` will rely on.
-
-Allowed v0.2 work:
-
-- documentation consistency repair
-- stale comment cleanup
-- version/stage metadata alignment
-- Raw AST contract freeze checklist
-- explicit inventory of frozen parser outputs
-- diagnostic inventory synchronization
-- golden-test inventory synchronization
-- correction of spec/code mismatches where implementation is already the
-  settled Raw AST truth
-- narrowly scoped golden-test additions only if a frozen behavior is
-  implemented but not locked
-
-Forbidden v0.2 work:
-
-- general syntax features, broad lexer/parser restructuring
-- traditional call syntax, import/package/module syntax
-- general macro system
-- semantic analysis, name resolution, type/kind checking, operator lookup,
-  alias target resolution, canonical matching, closure materialization,
-  ownership/NLL/drop, interpretation, code generation, HIR/MIR
-- Raw AST → Normalized AST implementation
-
-A parser or AST change is allowed only if there is a hard correctness error
-against the call-composition architecture (see `spec/contracts/raw-ast-contract-freeze-v0.2.md`).
-
-See `spec/contracts/raw-ast-contract-freeze-v0.2.md` for the full freeze boundary definition.
+v0.2 froze the Raw AST contract and prepared the v0.3 handoff boundary.
+The following deliverables were completed during v0.2:
 
 ---
 
-### v0.3 — Normalized AST Specification — future, not active until v0.2 is closed
+### v0.3 — Normalized AST Specification — current
 
 **Goal**: Define the Normalized AST node set and document how Raw AST
 constructs desugar into Normalized AST.

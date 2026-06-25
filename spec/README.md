@@ -2,15 +2,23 @@
 
 This directory contains the specification documents for the `lang` language
 frontend. Documents are organized by role rather than in a flat list. The
-normal public reading path for current v0.2 lexical and syntactic behavior
-is under `spec/public/v0.2/`.
+current active stage is v0.3 — Normalized AST Specification.
 
-## Public current specification
+## Public current specification: v0.3
 
-**`spec/public/v0.2/`** — The normal public reading path. This directory is
-sufficient to understand the current non-semantic frontend language: lexical
-syntax, concrete syntax, diagnostics/recovery, and the Raw AST preservation
-surface.
+**`spec/public/v0.3/`** — The current active specification stage. v0.3
+specifies the Normalized AST. Specification-only; implementation is v0.4.
+
+| File | Authority | Role |
+|---|---|---|
+| `README.md` | Stage workspace index | Entry point for v0.3 Normalized AST Specification work. |
+| `normalized-ast-specification-v0.3.md` | v0.3 specification scaffold | Defines the problem space, non-semantic boundary, active design questions, and specification work items. Does not define the final node set. |
+
+## Frozen v0.2 frontend input authority
+
+**`spec/public/v0.2/`** — Frozen frontend input contract. v0.2 is closed but
+remains authoritative for the Raw AST input surface that v0.3 normalization
+consumes.
 
 | File | Authority | Role |
 |---|---|---|
@@ -88,11 +96,18 @@ not syntax specifications.
 
 ## Reading order
 
-### Normal public reading order
+### Current v0.3 specification work
 
-This path is sufficient to understand the current non-semantic frontend
-language: lexical syntax, concrete syntax, diagnostics/recovery, and the
-Raw AST preservation surface.
+Start here for current-stage v0.3 Normalized AST Specification:
+
+1. `public/v0.3/README.md` - v0.3 workspace index.
+2. `public/v0.3/normalized-ast-specification-v0.3.md` - Normalized AST specification scaffold.
+3. `../../contracts/v0.3-normalization-handoff-checklist.md` - v0.3 may-assume, must-not-assume, required inputs.
+4. `../../planning/open-questions.md` - Open v0.3 design questions (N-AST-1 through N-AST-8).
+
+### Frozen v0.2 frontend input
+
+Read these for the frozen Raw AST input surface:
 
 1. `spec/public/v0.2/lexical-syntax-v0.2.md` - Understand the public lexical syntax.
 2. `spec/public/v0.2/concrete-syntax-v0.2.md` - Understand the public concrete syntax.

@@ -3,16 +3,12 @@
 ## Purpose
 
 This skill defines how to work on the `lang` repository. The v0.1 Raw AST
-frontend is completed. v0.1.w is closed. The current active stage is
-`v0.2` — Raw AST Contract Freeze / Normalization Boundary Preparation.
+frontend is completed. v0.1.w is closed. v0.2 is closed. The current active
+stage is `v0.3` — Normalized AST Specification.
 
-In `v0.2`, the lexer/parser architecture, public frontend interfaces, Raw AST
-shape, dump formats, and golden-test expectations are frozen contract material.
-Work is documentation reconciliation, contract freezing, consistency repair,
-version/stage metadata alignment, and preparation of the boundary that v0.3
-Normalized AST Specification will consume. Additions must extend existing
-lexer/parser entry points and AST preservation categories; they must not
-replace the product/pipe/operator/binding/closure/navigation architecture.
+v0.3 specifies the Normalized AST, a desugared but non-semantic intermediate
+AST. v0.3 is specification-only. Normalized AST implementation (Raw AST →
+Normalized AST lowering) is v0.4.
 
 The only accepted outputs for implementation work are tokens, AST, and
 diagnostics.
@@ -40,16 +36,18 @@ Follow this workflow for every change:
 | 1 | `AGENTS.md` | Always, before any code change |
 | 2 | `README.md` | Repository orientation |
 | 3 | `spec/README.md` | Spec index and authority levels |
-| 4 | `spec/public/v0.2/lexical-syntax-v0.2.md` | Public lexical syntax |
-| 5 | `spec/public/v0.2/concrete-syntax-v0.2.md` | Public concrete syntax |
-| 6 | `spec/public/v0.2/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery |
-| 7 | `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST construct inventory |
+| 4 | `spec/public/v0.3/README.md` | v0.3 workspace index |
+| 5 | `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification scaffold |
+| 6 | `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff checklist |
+| 7 | `spec/planning/open-questions.md` | Open v0.3 design questions |
 | 8 | `spec/reference/glossary.md` | Terminology reference |
 
 ### Task-specific extended context
 
 | Task | Files to read |
 |---|---|
+| Current v0.3 Normalized AST specification | `spec/public/v0.3/README.md`, `spec/public/v0.3/normalized-ast-specification-v0.3.md`, `spec/contracts/v0.3-normalization-handoff-checklist.md` |
+| Frozen v0.2 frontend input | `spec/public/v0.2/lexical-syntax-v0.2.md`, `spec/public/v0.2/concrete-syntax-v0.2.md`, `spec/public/v0.2/diagnostics-recovery-v0.2.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` |
 | Parser implementation changes | `spec/implementation/v0.1/ast-construction-v0.1.md`, `spec/implementation/v0.1/implementation-status-v0.1.md` |
 | Diagnostic implementation changes | `spec/implementation/v0.1/diagnostics-v0.1.md` |
 | Operator syntax or operator-name repair | `spec/history/v0.1/operator-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
@@ -117,9 +115,9 @@ nodes just because a future built-in meta-function may understand a shape.
 
 Parse left to right. Do not go back to reinterpret meaning.
 
-## 2b. v0.2 contract freeze boundary
+## 2b. v0.2 contract freeze boundary (closed)
 
-Treat the following as frozen contract material:
+v0.2 is closed. The following remain frozen contract material:
 
 - lexer/parser skeleton
 - `lex` / `parse`
@@ -239,7 +237,7 @@ If a requested task requires any of the following, stop at AST preservation:
 
 ## 7a. Phase boundaries
 
-For v0.2 Raw AST contract freeze work:
+For v0.3 Normalized AST specification work:
 - Prefer documentation and contract alignment.
 - Do not restructure the lexer/parser skeleton.
 - Do not add syntax except under a hard-correctness-error exception. Richer

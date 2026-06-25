@@ -7,19 +7,11 @@ Resolved questions have been moved to `spec/history/v0.1/resolved-questions.md`.
 
 ---
 
-## Current-stage questions (v0.2)
+## Current-stage questions (v0.3)
 
-No current v0.2 open questions at this time. The v0.2 freeze boundary is defined
-in `spec/contracts/raw-ast-contract-freeze-v0.2.md`. Open questions will be added if
-ambiguities in the frozen contract are discovered during documentation
-reconciliation.
+These questions become active during v0.3 Normalized AST Specification.
 
-## Later-stage questions
-
-These questions become active when their stage is reached. They do not
-block the current stage.
-
-### v0.3–v0.5: Normalized AST
+### v0.3: Normalized AST
 
 #### N-AST-1. Exact Normalized AST node set
 
