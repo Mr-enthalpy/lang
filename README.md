@@ -28,6 +28,7 @@ parses, builds raw AST, emits diagnostics, and has golden tests.
 | `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
 | `spec/raw-ast-contract-v0.1.md` | Normative contract: Raw AST invariants for future normalization |
 | `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 Raw AST contract freeze boundary, allowed/forbidden work, v0.3 handoff |
+| `spec/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST surface inventory: construct-by-construct guarantees, v0.3 obligations |
 | `spec/resolved-questions.md` | Design decisions — resolved for v0.1 |
 | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
 | `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
@@ -235,6 +236,7 @@ a shape.
 │   ├── implementation-status-v0.1.md
 │   ├── raw-ast-contract-v0.1.md
 │   ├── raw-ast-contract-freeze-v0.2.md
+│   ├── raw-ast-frozen-surface-v0.2.md
 │   ├── ast-construction-v0.1.md
 │   ├── operator-design.md
 │   ├── entity-ref-design.md
@@ -304,15 +306,16 @@ none of them.
 2. `spec/implementation-status-v0.1.md` — Know what is currently implemented.
 3. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
 4. `spec/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff requirements.
-5. `spec/ast-construction-v0.1.md` — Implement the parser.
-6. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-7. `spec/entity-ref-design.md` — Future general EntityRef design.
-8. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-9. `spec/diagnostics-v0.1.md` — Understand error reporting.
-10. `spec/glossary.md` — Resolve terminology.
-11. `spec/roadmap.md` — Understand scope boundaries.
-12. `spec/open-questions.md` — Recognize known gaps.
-13. `spec/resolved-questions.md` — Understand resolved design decisions.
+5. `spec/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
+6. `spec/ast-construction-v0.1.md` — Implement the parser.
+7. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
+8. `spec/entity-ref-design.md` — Future general EntityRef design.
+9. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+10. `spec/diagnostics-v0.1.md` — Understand error reporting.
+11. `spec/glossary.md` — Resolve terminology.
+12. `spec/roadmap.md` — Understand scope boundaries.
+13. `spec/open-questions.md` — Recognize known gaps.
+14. `spec/resolved-questions.md` — Understand resolved design decisions.
 
 ## Expected future workspace shape
 

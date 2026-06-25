@@ -41,8 +41,8 @@ exception:
 
 - Lexer token categories: `Name`, `IntLiteral`, `FloatLiteral`, `StringLiteral`,
   `Symbol`, `Operator(OperatorSpelling)`, `Trivia`, `Invalid`, `Eof`
-- 31 operator spellings plus `BracketCall` contextual operator
-- 17 `Symbol` variants including `TripleEqual`
+- 32 lexer-produced operator spellings plus `BracketCall` contextual operator (33 total)
+- 19 `Symbol` variants including `TripleEqual`
 - Raw AST node categories documented in `ast-construction-v0.1.md`
 - `lex` / `parse` public API
 - Stable hand-written dump format for tokens, AST, and diagnostics

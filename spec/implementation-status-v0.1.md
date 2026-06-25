@@ -28,7 +28,7 @@ only records what it currently does.
 | Feature | Status | Implemented files | Spec authority | Notes |
 |---|---|---|---|---|
 | Weak lexer (Name / IntLiteral / StringLiteral / Symbol / Trivia / Invalid / Eof) | `implemented-syntax` | `token.rs`, `lexer.rs` | `ast-construction-v0.1.md` §2 | No keyword classification. Contextual names are ordinary `Name` tokens. |
-| Operator-aware lexer (31 operator spellings) | `implemented-syntax` | `token.rs` (OperatorSpelling), `lexer.rs` | `operator-design.md` | Maximal-munch. `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `<<`, `>>`, `&`, `|`, `&&`, `||`, `!`, `@`, `~`, `^`, `$`, `++`, `--`, `?`, `+=`, `-=`, `*=`, `/=`, `&=`, `|=`, `<<=`, `>>=` |
+| Operator-aware lexer (33 operator spellings, 32 lexer + BracketCall) | `implemented-syntax` | `token.rs` (OperatorSpelling), `lexer.rs` | `operator-design.md` | Maximal-munch. `+`, `-`, `*`, `/`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `<<`, `>>`, `&`, `|`, `&&`, `||`, `!`, `@`, `~`, `^`, `$`, `++`, `--`, `?`, `+=`, `-=`, `*=`, `/=`, `&=`, `|=`, `<<=`, `>>=`, plus contextual `[]` (BracketCall). |
 | `===` / TripleEqual token | `implemented-syntax` | `token.rs` (Symbol::TripleEqual), `lexer.rs` | `entity-alias-design.md` | Lexed before `==` and `=`. Structural delimiter, NOT an operator spelling. |
 | Binding slots (let, parameters, returns) | `implemented-syntax` | `let_stmt.rs`, `closure.rs`, `deduce.rs`, `canonical.rs` | `ast-construction-v0.1.md` §4, §11 | Optional `let`, per-slot deduce list, binding pattern, optional annotation, optional `with` where allowed, optional initializer by context. |
 | `guard` attrs | `removed-syntax` | `let_stmt.rs` | `ast-construction-v0.1.md` §4 | `guard` is ordinary `Name` unless future syntax reintroduces it. |

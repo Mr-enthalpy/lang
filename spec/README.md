@@ -13,6 +13,7 @@ frontend. Each document has a defined authority level.
 | `implementation-status-v0.1.md`    | Authoritative factual inventory                      | Records the current implementation status of every feature. Does not define parser rules — `ast-construction-v0.1.md` is normative.          |
 | `raw-ast-contract-v0.1.md`         | Normative contract for future normalization          | Defines Raw AST invariants that future normalization passes may rely on.                                                                     |
 | `raw-ast-contract-freeze-v0.2.md`  | Normative for v0.2 contract freeze                    | Defines v0.2 freeze boundary, allowed work, forbidden work, and handoff requirements for v0.3.                                                |
+| `raw-ast-frozen-surface-v0.2.md`   | Normative frozen surface inventory                    | Enumerates frozen Raw AST constructs with guarantees, non-semantic boundaries, v0.3 obligations, and forbidden assumptions.                    |
 | `diagnostics-v0.1.md`              | Normative for error reporting                         | Defines diagnostic categories, span policy, and recovery behavior.                                                                          |
 | `glossary.md`                      | Normative for terminology                             | Resolves naming ambiguity across all documents.                                                                                             |
 | `roadmap.md`                       | Authoritative for scope and planning; non-normative for parser behavior | Defines stage boundaries (v0.1–v0.11) and what must not leak between stages.                                                                 |
@@ -31,14 +32,15 @@ frontend. Each document has a defined authority level.
 2. `implementation-status-v0.1.md` - Know current implementation facts.
 3. `raw-ast-contract-v0.1.md` - Know Raw AST invariants for normalization.
 4. `raw-ast-contract-freeze-v0.2.md` - Know v0.2 freeze boundary and v0.3 handoff.
-5. `ast-construction-v0.1.md` - Implement the parser.
-6. `operator-design.md` - Understand operator syntax rules.
-7. `entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
-8. `entity-ref-design.md` - Understand future general EntityRef design.
-9. `diagnostics-v0.1.md` - Understand error reporting.
-10. `glossary.md` - Resolve terminology ambiguity.
-11. `roadmap.md` - Understand scope boundaries.
-12. `open-questions.md` - Recognize known gaps.
+5. `raw-ast-frozen-surface-v0.2.md` - Inspect the frozen Raw AST construct inventory.
+6. `ast-construction-v0.1.md` - Implement the parser.
+7. `operator-design.md` - Understand operator syntax rules.
+8. `entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
+9. `entity-ref-design.md` - Understand future general EntityRef design.
+10. `diagnostics-v0.1.md` - Understand error reporting.
+11. `glossary.md` - Resolve terminology ambiguity.
+12. `roadmap.md` - Understand scope boundaries.
+13. `open-questions.md` - Recognize known gaps.
 13. `resolved-questions.md` - Understand resolved design decisions.
 
 ## Spec priority
