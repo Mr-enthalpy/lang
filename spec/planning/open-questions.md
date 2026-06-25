@@ -246,6 +246,9 @@ when value/type canonical forms are designed.
 
 ### v0.6+: Pattern-space and extraction-chain semantics
 
+Future design note:
+`spec/future/static-pattern-spaces-and-extraction-chains.md`.
+
 #### How should pattern spaces be represented as static objects?
 
 **Status:** Open (active at v0.6+)

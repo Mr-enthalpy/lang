@@ -175,6 +175,9 @@ Do not implement pattern-space construction, structural subtraction,
 consumption checking, exhaustiveness checking, pattern-head resolution, or
 closed-control-pattern non-additivity during normalization.
 
+Detailed design note:
+`spec/future/static-pattern-spaces-and-extraction-chains.md`.
+
 #### v0.7 — Meta-function boundary specification
 
 Document compiler-provided meta-functions (`match`, `effect`, `sync`) that
