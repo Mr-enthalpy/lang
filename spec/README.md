@@ -103,7 +103,7 @@ Start here for current-stage v0.3 Normalized AST Specification:
 1. `public/v0.3/README.md` - v0.3 workspace index.
 2. `public/v0.3/normalized-ast-specification-v0.3.md` - Normalized AST specification scaffold.
 3. `contracts/v0.3-normalization-handoff-checklist.md` - v0.3 may-assume, must-not-assume, required inputs.
-4. `planning/open-questions.md` - Open v0.3 design questions (N-AST-1 through N-AST-8).
+4. `planning/open-questions.md` - Open v0.3 design questions (N-AST-1 through N-AST-9).
 
 ### Frozen v0.2 frontend input
 

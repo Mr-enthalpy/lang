@@ -32,7 +32,7 @@ for current-stage work:
 | `spec/public/v0.3/README.md` | v0.3 stage workspace index |
 | `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification scaffold and work items |
 | `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff: may-assume, must-not-assume, required inputs, open questions |
-| `spec/planning/open-questions.md` | Open design questions (N-AST-1 through N-AST-8) |
+| `spec/planning/open-questions.md` | Open design questions (N-AST-1 through N-AST-9) |
 
 ### Frozen v0.2 frontend input authority
 
