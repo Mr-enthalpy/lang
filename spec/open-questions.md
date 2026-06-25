@@ -9,49 +9,9 @@ Resolved questions have been moved to `spec/resolved-questions.md`.
 
 ## Current-stage questions (v0.1.w)
 
-Current-stage questions must be compatible with the Raw AST Stability Window.
-They may cover richer literal spelling or local mechanical whole-shape sugar
-recognition, but not parser architecture redesign, semantic analysis,
-normalization, name resolution, type checking, operator lookup, or alias target
-resolution.
-
-### 1. Float, scientific, and unit-adjacent numeric literals
-
-**Status:** Partially resolved — classic decimal `1.2` is decided; richer literal spelling remains open within `v0.1.w`
-
-**Resolution for `Digit+ "." Digit+` (e.g. `1.2`):**
-`1.2` is a **float literal** (`FloatLiteral` token and `AtomKind::FloatLiteral` node).
-
-Float literals are now lexer/Raw-AST primitives. `1.2` lexes as a single
-`FloatLiteral("1.2")` token, not as `IntLiteral · Dot · IntLiteral`.
-`1.2ms` tokenizes as `FloatLiteral("1.2") Name("ms")`.
-
-Numeric selectors (`obj.0`, `pack.1`, `uint8::1`) have been removed.
-Member selectors accept only `Name`; navigation components accept only
-`Name` and `OperatorName`. Use bracket form (`pack[0]`) for projection.
-
-**Resolved lexical behavior:**
-`1.2ms` tokenizes as `FloatLiteral("1.2") Name("ms")`.
-`1ms` tokenizes as `IntLiteral("1") Name("ms")`.
-
-**Still open:**
-- scientific notation, such as `1e3` and `1.2e-3`;
-- scientific notation adjacent to unit names, such as `1.2e3ms`, if defined
-  as lexical / Raw-AST-preserving syntax only;
-- radix notation;
-- numeric separators;
-- leading-dot and trailing-dot floats;
-- richer string literal spellings and escape syntax;
-- typed/unit-suffixed literal spelling only if it does not require semantic
-  interpretation.
-
-**Moved later:**
-- semantic interpretation of literal-name adjacency;
-- type-directed or unit-directed literal meaning.
-
-No `UnitLiteral` AST node exists.
-
----
+All v0.1 current-stage open questions are now closed. Richer literal spelling
+was resolved in the v0.1 literal spelling extension; see
+`spec/resolved-questions.md` §19.
 
 ## Later-stage questions
 

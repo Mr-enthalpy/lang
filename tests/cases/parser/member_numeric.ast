@@ -8,4 +8,4 @@ Program
               Name obj
           OperatorExpr
             Atom
-              IntLiteral 1
+              FloatLiteral .1

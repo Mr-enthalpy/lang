@@ -441,3 +441,37 @@ The v0.1 parser does not interpret the semantics of `export`, `public`, or
 other policy names. Whether a policy expression denotes visibility, package
 export, namespace mounting, re-export, or another concept belongs to later
 name-resolution / package / build-system phases.
+
+---
+
+## 19. Richer literal spelling (v0.1 literal spelling extension)
+
+**Status:** Resolved
+
+**Resolution:**
+v0.1 closes the literal spelling question by expanding numeric literal
+spellings in a C/C++-like direction: radix integers, scientific decimal floats,
+hexadecimal floats, leading/trailing-dot decimal floats where unambiguous, and
+single-quote digit separators.
+
+v0.1 does not adopt C/C++ literal suffix semantics, character/string separation,
+string prefix syntax, compiler escape decoding, raw string prefix syntax, adjacent
+string concatenation, unit literals, or user-defined literal suffixes.
+
+Literal-name adjacency is ordinary call/composition material. Unit names,
+encoding names, raw/wide/style names, and similar suffix-like words are parsed as
+ordinary names following a literal, not as part of literal semantics.
+
+Ranked quote-boundary strings are implemented: a string literal starts with
+`Backslash^k Quote` and closes at the earliest later occurrence of the same
+boundary sequence. Extra backslashes before the closing boundary belong to the
+string body. Backslashes have no escape semantics at lexer level.
+
+**Implementation status:**
+Lexer recognizes radix-integer spellings (`0b`/`0B`, `0o`/`0O`, `0x`/`0X`),
+single-quote digit separators, decimal float spellings (scientific notation,
+leading/trailing dot), and hexadecimal float spellings (`0x1p+4`).
+Ranked quote-boundary string parsing is implemented. `InvalidNumericLiteral`
+diagnostic is added for malformed numeric literals (invalid separator position,
+missing digits after radix prefix, empty hex float exponent). All new behavior
+is covered by lexer golden tests.

@@ -152,6 +152,12 @@ Normalization must **not** assume:
 ## Atom and suffix-sugar invariants
 
 - `AtomAst` preserves `Name`, `IntLiteral`, `FloatLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
+- `IntLiteral` / `FloatLiteral` token text preserves exact source spelling
+  including radix prefixes, digit separators, and exponent markers. No value
+  interpretation is performed.
+- `StringLiteral` token text preserves full source spelling including opening
+  backslash boundary, body, and closing backslash boundary. No escape decoding
+  or body normalization is performed.
 - `NavPath` atoms preserve source-order inner-to-outer navigation components.
 - `MemberSugar` preserves an object and a selector.
 - `DoubleDotSugar` preserves an object, a selector, and a `ProductExprAst`.

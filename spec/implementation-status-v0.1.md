@@ -46,6 +46,7 @@ only records what it currently does.
 | `[]` operator spelling | `implemented-syntax` | `token.rs`, `let_stmt.rs`, `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.7 | Contextual paired operator name (not a single lexer token). Bindable/aliasable/referable in operator-name positions (binder, alias binder, entity-ref innermost component). No semantics. |
 | Product form construction/extraction | `implemented-syntax` | `product.rs`, `let_stmt.rs`, `closure.rs`, `ast.rs` | `ast-construction-v0.1.md` §9, §11 | `(a, b)` is product construction in expression context and product extraction in binding / extraction context. Leading/doubled/trailing comma positions are explicit unit product elements. ArgPack and standalone `ExprKind::Unit` have been removed. |
 | `FloatLiteral` token and atom | `implemented-syntax` | `token.rs`, `lexer.rs`, `ast.rs`, `dump.rs` | `ast-construction-v0.1.md` §8.1 | Classic decimal `1.2` lexed as `FloatLiteral`. `1.2ms` splits as `FloatLiteral` + `Name`. |
+| Richer literal spelling (radix integers, digit separators, decimal/hex floats, ranked strings) | `implemented-syntax` | `lexer.rs`, `token.rs`, `diagnostic.rs` | `resolved-questions.md` §19 | Radix prefixes `0b`/`0B`, `0o`/`0O`, `0x`/`0X`; single-quote digit separators; scientific notation `1e3`/`1E3`; leading-dot `.5` and trailing-dot `1.` floats; hex floats `0x1p+4`/`0x1.8p+2`; ranked quote-boundary strings `\"...\"` / `\\"...\\"` / etc. `InvalidNumericLiteral` diagnostic. All source-preserving. |
 | Operator innermost navigation components (`+::int::std`) | `implemented-syntax` | `atom.rs`, `operator.rs` | `operator-design.md` | Valid only as innermost navigation component. Not valid after `.`, `..`, or as an outer navigation component. |
 | In-place closure (bare `{}`) | `implemented-syntax` | `closure.rs`, `ast.rs` | `ast-construction-v0.1.md` §10 | Bare `{ ... }` in atom position is an in-place closure (`Closure InPlace`). No capture clause, no parameters, no head clauses, and no implicit unit extraction input. |
 | Explicit headed closure (`FnHeadPrefix => { ... }`) | `implemented-syntax` | `closure.rs`, `ast.rs` | `ast-construction-v0.1.md` §10-11 | Headed closure must use `=>`; `FnHeadPrefix { ... }` without `=>` is rejected (`InvalidClosureHead`). Closure AST only; no materialization into callable objects. |
@@ -59,7 +60,7 @@ only records what it currently does.
 | Alias binding (`let binder === EntityRef`) | `implemented-syntax` | `let_stmt.rs`, `ast.rs`, `token.rs` | `ast-construction-v0.1.md` §16 + `entity-alias-design.md` | Raw AST preservation only. No alias semantics, lookup, target validation, or operator identity validation. EntityRef parsed only in alias-let RHS. Optional `policy` prefix preserved. |
 | EntityRef parser (alias RHS subset) | `implemented-syntax` | `let_stmt.rs` | `entity-ref-design.md` + `ast-construction-v0.1.md` §16 | Only inside `let binder === ...`. Not a general expression parser mode. |
 | Alias RHS boundary checking | `implemented-syntax` | `form.rs`, `let_stmt.rs` | `entity-alias-design.md` | Hard-only boundary: `;`, `}`, EOF. Newline promotion removed. Residual tokens before a hard boundary produce `UnexpectedAliasRhsExpression`. |
-| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 28 DiagnosticCode variants. 3 lexer, 17 parser (including 1 optional/not-guaranteed-emitted), 3 operator, 5 alias. |
+| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 29 DiagnosticCode variants. 4 lexer, 17 parser (including 1 optional/not-guaranteed-emitted), 3 operator, 5 alias. |
 | `InvalidAliasBinder` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Reserved; not currently emitted by parser. |
 | `UnusedClosureAst` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Optional; not guaranteed to be emitted in current parser. |
 | Golden tests | `implemented-syntax` | `tests/lexer_golden.rs`, `tests/parser_golden.rs`, `tests/diagnostics_golden.rs` | `ast-construction-v0.1.md` §15 | Covers lexer, parser/AST, and diagnostics. Stable hand-written dump format. |
@@ -72,6 +73,6 @@ workspace smoke tests).
 
 | Category | Count |
 |---|---|
-| Lexer golden cases | 17 |
+| Lexer golden cases | 25 |
 | Parser golden cases | 299 |
 | Diagnostic golden cases | 43 |

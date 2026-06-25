@@ -1,0 +1,5 @@
+StringLiteral "\\\"abc\"" @ 1:1 [0..6]
+Trivia.Whitespace "\n" @ 1:7 [6..7]
+StringLiteral "\\\\\"abc\\\"" @ 2:1 [7..15]
+Trivia.Whitespace "\n" @ 2:9 [15..16]
+Eof "" @ 3:1 [16..16]

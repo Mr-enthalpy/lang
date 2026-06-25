@@ -69,12 +69,25 @@ The parser consumes token classes produced by the lexer.
 Token ::=
     Name(text)
   | IntLiteral(text)
+  | FloatLiteral(text)
   | StringLiteral(text)
   | Symbol(sym)
+  | Operator(OperatorSpelling)
   | Trivia
   | Invalid
   | Eof
 ```
+
+`IntLiteral` text covers decimal, binary (`0b`/`0B`), octal (`0o`/`0O`),
+and hexadecimal (`0x`/`0X`) integer spellings with optional single-quote
+digit separators. `FloatLiteral` text covers decimal floats (scientific
+notation, leading/trailing dot) and hexadecimal floats (`0x1p+4`,
+`0x1.8p+2`, `0X1.FP-3`). `StringLiteral` text covers ranked
+quote-boundary string spellings (`"..."`, `\"...\"`, `\\"...\\"`, etc.).
+
+All literal tokens preserve exact source spelling. The lexer performs no
+escape decoding, value interpretation, or semantic suffix recognition.
+Literal-name adjacency is ordinary expression/call composition material.
 
 Symbols include at least:
 

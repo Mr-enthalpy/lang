@@ -8,4 +8,4 @@ Program
               FloatLiteral 1.2
           OperatorExpr
             Atom
-              IntLiteral 3
+              FloatLiteral .3

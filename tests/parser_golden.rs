@@ -49,7 +49,7 @@ fn member_int_base() {
 
 #[test]
 fn member_int_chain() {
-    assert_parser_case("member_int_chain", true);
+    assert_parser_case("member_int_chain", false);
 }
 
 #[test]
@@ -309,12 +309,12 @@ fn member_basic() {
 
 #[test]
 fn member_numeric() {
-    assert_parser_case("member_numeric", true);
+    assert_parser_case("member_numeric", false);
 }
 
 #[test]
 fn member_numeric2() {
-    assert_parser_case("member_numeric2", true);
+    assert_parser_case("member_numeric2", false);
 }
 
 #[test]
