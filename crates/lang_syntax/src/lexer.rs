@@ -120,12 +120,6 @@ impl<'src> Lexer<'src> {
         if self.starts_with("0x") || self.starts_with("0X") {
             self.advance_char();
             self.advance_char();
-            let has_digits = self.lex_radix_digits(|c| c.is_ascii_hexdigit());
-            if !has_digits {
-                self.emit_invalid_numeric("expected hexadecimal digits after `0x`");
-                self.push_token(TokenKind::IntLiteral, start);
-                return;
-            }
 
             if self.starts_with(".")
                 && self.source[self.byte + 1..]
@@ -135,6 +129,38 @@ impl<'src> Lexer<'src> {
             {
                 self.advance_char();
                 self.lex_radix_digits(|c| c.is_ascii_hexdigit());
+                if self.starts_with("p") || self.starts_with("P") {
+                    self.advance_char();
+                    if self.starts_with("+") || self.starts_with("-") {
+                        self.advance_char();
+                    }
+                    let has_exp = self.lex_radix_digits(|c| c.is_ascii_digit());
+                    if !has_exp {
+                        self.emit_invalid_numeric("expected decimal digits in hex float exponent");
+                    }
+                    self.push_token(TokenKind::FloatLiteral, start);
+                    return;
+                }
+                self.emit_invalid_numeric("expected hex float exponent after hex fraction");
+                self.push_token(TokenKind::FloatLiteral, start);
+                return;
+            }
+
+            let has_digits = self.lex_radix_digits(|c| c.is_ascii_hexdigit());
+            if !has_digits {
+                self.emit_invalid_numeric("expected hexadecimal digits after `0x`");
+                self.push_token(TokenKind::IntLiteral, start);
+                return;
+            }
+
+            if self.starts_with(".") {
+                let after_dot = self.source[self.byte + 1..].chars().next();
+                if after_dot.map_or(false, |c| c.is_ascii_hexdigit()) {
+                    self.advance_char();
+                    self.lex_radix_digits(|c| c.is_ascii_hexdigit());
+                } else if after_dot.map_or(false, |c| c == 'p' || c == 'P') {
+                    self.advance_char();
+                }
             }
 
             if self.starts_with("p") || self.starts_with("P") {
@@ -175,6 +201,26 @@ impl<'src> Lexer<'src> {
                 }
                 let is_ident =
                     after_dot.map_or(false, |c| matches!(c, 'a'..='z' | 'A'..='Z' | '_'));
+                if after_dot == Some('\'')
+                    && self.source[self.byte + 2..]
+                        .chars()
+                        .next()
+                        .map_or(false, |c| c.is_ascii_digit())
+                {
+                    self.advance_char();
+                    self.diagnostics.push(Diagnostic::new(
+                        DiagnosticCode::InvalidNumericLiteral,
+                        "invalid digit separator position",
+                        Span::at(self.byte, self.line, self.column),
+                    ));
+                    self.advance_char();
+                    self.lex_radix_digits(|c| c.is_ascii_digit());
+                    if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
+                        self.lex_decimal_exponent();
+                    }
+                    self.push_token(TokenKind::FloatLiteral, start);
+                    return;
+                }
                 if !is_ident {
                     self.advance_char();
                     if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
