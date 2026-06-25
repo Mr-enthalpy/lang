@@ -124,10 +124,16 @@ Valid separators:
 Invalid separator positions (produce `InvalidNumericLiteral` diagnostic
 and the separator is included in the token text):
 
-- at the start or end of a digit sequence (`'100`, `100'`)
-- immediately after a radix prefix (`0x'FF`)
+- at the end of a digit sequence (`100'`)
 - two consecutive separators (`1''000`)
+- immediately after a radix prefix (`0x'FF`)
 - adjacent to a decimal point or exponent marker (`1.'0`, `1e'3`)
+
+Separators that appear before any digits are not part of a numeric literal
+scan. At the beginning of source or token position, `'100` starts with an
+unrecognized apostrophe and produces an `InvalidToken` diagnostic, not
+`InvalidNumericLiteral`. `InvalidNumericLiteral` applies only to malformed
+separator positions inside a numeric literal scan.
 
 ### 6.3 Lexical boundary
 
@@ -188,9 +194,10 @@ A string literal begins with a boundary consisting of zero or more backslashes
 (`\`) followed by a double-quote character (`"`). Let `k` be the number of
 backslashes before the opening quote.
 
-The literal closes at the earliest later position where the same boundary
-sequence (`\^k "`) appears. Extra backslashes immediately before a non-matching
-closing boundary are part of the string body.
+A double-quote character closes the string when preceded by at least `k`
+consecutive backslashes. If more than `k` backslashes precede the closing
+quote, the extra backslashes are body text; the final `k` backslashes plus the
+quote form the closing boundary.
 
 ### 8.2 Examples by rank
 
@@ -291,34 +298,45 @@ delimit a DeduceList (`<...>`). These are parser-level decisions documented in
 
 ## 10. Operator spellings
 
-The lexer produces 32 operator spellings via maximal-munch (longest-match)
-tokenization. One additional contextual operator spelling exists:
+The lexer produces 30 `TokenKind::Operator` spellings via maximal-munch
+(longest-match) tokenization. Two additional operator-name spellings, `<` and
+`>`, are lexed as `Symbol::Less` / `Symbol::Greater` and may be reinterpreted
+by parser contexts. `[]` is a contextual paired operator spelling and is never
+produced by the lexer as a single token.
+
+Structural symbols `=>`, `->`, `|>`, `..`, `::`, and `===` are not operator
+spellings. They are `Symbol` tokens (see §9).
 
 | Category | Spellings |
 |---|---|
 | 3-char | `<<=`, `>>=` |
-| 2-char structural | `=>`, `->`, `\|>`, `..`, `::` |
 | 2-char increment/decrement | `++`, `--` |
 | 2-char equals-suffixed | `+=`, `-=`, `*=`, `/=`, `&=`, `\|=` |
 | 2-char logic | `&&`, `\|\|` |
 | 2-char comparison/equality | `<=`, `>=`, `==`, `!=` |
 | 2-char shift | `<<`, `>>` |
 | 1-char | `+`, `-`, `*`, `/`, `!`, `&`, `\|`, `@`, `~`, `^`, `$`, `?` |
+| Symbol-lexed, parser-reinterpreted | `<`, `>` |
 | Contextual paired bracket | `[]` |
 
-The 2-char structural forms (`=>`, `->`, `|>`, `..`, `::`) and `===` are
-emitted as `Symbol` tokens (see §9), not as operator tokens. They are listed
-here only for completeness of the maximal-munch priority order.
+### 10.1 Symbol-lexed operator names
 
-### 10.1 Contextual bracket-call operator
+### 10.1 Symbol-lexed operator names
 
-The spelling `[]` is recognized contextually as a paired operator name, not as
-a single lexer token. It is never produced by the lexer as a single
-`TokenKind::Operator`. The parser recognizes `[]` in operator-name positions
-(binder, alias binder, entity-ref innermost component) and as the operator
-identity of bracket-call sugar (`obj[args...]`).
+The spellings `<` and `>` are lexed as `Symbol::Less` and `Symbol::Greater`,
+not as operator tokens. The parser may reinterpret them as operator spellings
+in expression and operator contexts. In strong binding contexts they may
+delimit a DeduceList (`<...>`).
 
-### 10.2 Non-semantic operator boundary
+### 10.2 Contextual bracket-call operator
+
+The spelling `[]` is recognized contextually as a paired operator name. It is
+never produced by the lexer as a single `TokenKind::Operator`. The parser
+recognizes `[]` in operator-name positions (binder, alias binder, entity-ref
+innermost component) and as the operator identity of bracket-call sugar
+(`obj[args...]`).
+
+### 10.3 Non-semantic operator boundary
 
 Operator spellings are syntax-level names. They do not imply:
 

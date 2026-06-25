@@ -43,8 +43,7 @@ frontend. Each document has a defined authority level.
 12. `glossary.md` - Resolve terminology ambiguity.
 13. `roadmap.md` - Understand scope boundaries.
 14. `open-questions.md` - Recognize known gaps.
-14. `resolved-questions.md` - Understand resolved design decisions.
-13. `resolved-questions.md` - Understand resolved design decisions.
+15. `resolved-questions.md` - Understand resolved design decisions.
 
 ## Spec priority
 
