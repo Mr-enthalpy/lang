@@ -1,8 +1,8 @@
 # Agent Interpretation Guide v0.5
 
-> **Status:** Operational outline (v0.5-1). This guide is normative for
-> coding/documentation agents working on `lang`. Later v0.5 PRs may expand the
-> prose, but the rules below already apply.
+> **Status:** v0.5-2. This guide is normative for coding/documentation agents
+> working on `lang`. The call-binding semantics it references are now published
+> in `normalized-surface-semantics-v0.5.md` §3–§7 and §11.
 
 ## 1. Read This Before Editing Language Semantics
 
@@ -36,14 +36,29 @@ Do not add name resolution, type checking, operator lookup, or pattern-head reso
 
 ## 3. Call Binding Rules to Preserve
 
-- The core rule is `Product1 |> TargetExpr Product2 => (Product1, Product2) |> TargetExpr`.
+See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserve:
+
+- The core rule is `Product1 |> TargetExpr Product2 => (Product1, Product2) |> TargetExpr`
+  (conceptual: source-product continuation; dump label: `ProductMerge`).
 - A following Product is the **first source-product continuation** of an incoming
-  source Product, not an argument list of the target.
-- `f Product g` is a **legality repair** (`f (Product |> g)`), not a positive
-  local call sugar, and never overrides source-product continuation.
+  source Product, not an argument list of the target. Only the first following
+  Product merges; later material is residual.
+- `f Product g` is the **second legality repair** (`f |> ((Product) |> g)`; dump
+  label `SecondLegalityRepair`), not a positive local call sugar, and it never
+  overrides source-product continuation.
+- `P |> e` with no following Product is the **first legality repair** (dump label
+  `PipeFallback`), not the main skeleton.
 - `expr |> Product` is never the intended normalized result.
 - Operator / member / double-dot / bracket sugar lower into the same
   product-call skeleton with preserved provenance; they are not resolved.
+
+Quick continuation checklist:
+
+```text
+Incoming source Product (`P |>`) with a following Product?  -> continuation (ProductMerge), not an argument list.
+No incoming source Product, naked Product in target position, expr follows?  -> second legality repair (SecondLegalityRepair).
+Incoming source Product, no following Product?  -> first legality repair (PipeFallback).
+```
 
 ## 4. Value/Pattern Boundary Rules to Preserve
 
