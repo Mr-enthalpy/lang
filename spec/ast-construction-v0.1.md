@@ -938,6 +938,52 @@ Segment parsing does not directly execute function application.
 It records element sequence only. Product elements do not receive source,
 insert, or right-target roles in Raw AST.
 
+### 7.1.1 Pipe branch-name shorthand
+
+During `v0.1.w`, the exact incoming pipe-segment token shape:
+
+```text
+PipeTransition Name BraceBody
+```
+
+is accepted as a local mechanical sugar:
+
+```text
+|> name { ... }
+```
+
+It is accepted only as a mechanical shorthand for:
+
+```text
+|> (_ name) { ... }
+```
+
+The parser preserves the same Raw AST shape as the explicit form: an incoming
+segment containing a two-element product head (`_`, `name`) followed by an
+in-place closure body. No semantic validation, name resolution, matching,
+closure materialization, or lookup is performed.
+
+This is not a precedent for a family of branch-arm sugars. The shorthand is
+accepted only because the whole token shape is finite, local, explicit, and
+mechanically equivalent to the already supported explicit form.
+
+The shorthand does not generalize. The parser must not treat any of the
+following as this shorthand:
+
+```text
+|> name expr
+|> name
+|> name => ...
+|> name (...)
+|> name [...]
+|> name other { ... }
+|> a::b { ... }
+|> + { ... }
+|> (name) { ... }
+|> _ name { ... }
+|> name1 name2 { ... }
+```
+
 `OperatorExpr` is the ordinary-operator expression layer built from atoms.
 Ordinary operators bind more tightly than both whitespace auto-pipe and `|>`.
 

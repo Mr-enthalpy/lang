@@ -144,6 +144,21 @@ fn pipe_basic() {
 }
 
 #[test]
+fn pipe_branch_name_shorthand() {
+    assert_parser_case("pipe_branch_name_shorthand", false);
+}
+
+#[test]
+fn pipe_branch_name_explicit() {
+    assert_parser_case("pipe_branch_name_explicit", false);
+}
+
+#[test]
+fn pipe_branch_name_nav_not_shorthand() {
+    assert_parser_case("pipe_branch_name_nav_not_shorthand", false);
+}
+
+#[test]
 fn group_segment_start() {
     assert_parser_case("group_segment_start", false);
 }

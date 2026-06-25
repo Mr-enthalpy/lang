@@ -131,6 +131,15 @@ Allowed additive work in this window:
   categories without replacing the product/pipe/operator/binding/closure/
   navigation architecture
 
+Current `v0.1.w` sugar:
+
+- `|> name { ... }` is accepted only as a mechanical shorthand for
+  `|> (_ name) { ... }`.
+- This is not a precedent for a family of branch-arm sugars.
+- The shorthand is accepted only because the whole token shape is finite,
+  local, explicit, and mechanically equivalent to the already supported
+  explicit form.
+
 Forbidden in this window:
 
 - traditional call parsing, statement parsing, import/module/package syntax,

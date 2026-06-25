@@ -104,6 +104,13 @@ Normalization must **not** assume:
 - `SegmentAst` preserves ordered `SegmentElementAst` values and `has_incoming` (whether a prior segment exists via `|>`).
 - `SegmentElementAst` distinguishes `OperatorExpr` and `Product`.
 - Product forms do not receive source/insert/right-target roles. Later normalization may interpret product placement, but Raw AST does not assign call/application roles.
+- `|> name { ... }` is accepted only as a mechanical shorthand for
+  `|> (_ name) { ... }`. It preserves the same Raw AST shape as the explicit
+  form: an incoming segment with a two-element product head (`_`, `name`)
+  followed by an in-place closure body. This is not a precedent for a family of
+  branch-arm sugars. The shorthand is accepted only because the whole token
+  shape is finite, local, explicit, and mechanically equivalent to the already
+  supported explicit form.
 
 ## OperatorExpr invariants
 
