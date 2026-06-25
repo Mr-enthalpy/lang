@@ -1,0 +1,189 @@
+NormProgram origin=Source@1:1[0..189]
+  forms:
+    Form Expr
+      Closure kind=InPlace origin=Source@1:1[0..5]
+        head:
+          None
+        body:
+          NormBody origin=Source@1:1[0..5]
+            forms:
+              Form Expr
+                Name "x" origin=Source@1:3[2..3]
+    Form Expr
+      Closure kind=Explicit origin=Source@2:1[7..35]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@2:1[7..27]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@2:2[8..15]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@2:5[11..15]
+                    PatternName "type" origin=Source@2:5[11..15]
+            params:
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@2:11[17..23]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "val" origin=Source@2:11[17..20]
+                  annotation:
+                    AnnotationPattern origin=Generated(PatternNormalize)@2:16[22..23]
+                      HoleRef "T" origin=Source@2:16[22..23]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+        body:
+          NormBody origin=Source@2:22[28..35]
+            forms:
+              Form Expr
+                Name "val" origin=Source@2:24[30..33]
+    Form Expr
+      Closure kind=Explicit origin=Source@3:1[37..77]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@3:1[37..69]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@3:2[38..45]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@3:5[41..45]
+                    PatternName "type" origin=Source@3:5[41..45]
+            params:
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@3:11[47..65]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "val" origin=Source@3:11[47..50]
+                  annotation:
+                    AnnotationPattern origin=Generated(PatternNormalize)@3:16[52..65]
+                      PatternSequence origin=Generated(PatternNormalize)@3:16[52..65]
+                        elements:
+                          HoleRef "T" origin=Source@3:16[52..53]
+                          PatternNav origin=Source@3:18[54..65]
+                            components:
+                              Name "Option" origin=Source@3:18[54..60]
+                              Name "std" origin=Source@3:26[62..65]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+        body:
+          NormBody origin=Source@3:34[70..77]
+            forms:
+              Form Expr
+                Name "val" origin=Source@3:36[72..75]
+    Form Expr
+      Closure kind=Explicit origin=Source@4:1[79..106]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@4:1[79..100]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@4:2[80..81]
+                annotation:
+                  None
+              HoleDecl "U" origin=Generated(PatternNormalize)@4:5[83..84]
+                annotation:
+                  None
+            params:
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@4:8[86..90]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "x" origin=Source@4:8[86..87]
+                  annotation:
+                    AnnotationPattern origin=Generated(PatternNormalize)@4:11[89..90]
+                      HoleRef "T" origin=Source@4:11[89..90]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@4:14[92..96]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "y" origin=Source@4:14[92..93]
+                  annotation:
+                    AnnotationPattern origin=Generated(PatternNormalize)@4:17[95..96]
+                      HoleRef "U" origin=Source@4:17[95..96]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+        body:
+          NormBody origin=Source@4:23[101..106]
+            forms:
+              Form Expr
+                Name "x" origin=Source@4:25[103..104]
+    Form Expr
+      Closure kind=Explicit origin=Source@5:1[108..126]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@5:1[108..122]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@5:2[109..116]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@5:5[112..116]
+                    PatternName "type" origin=Source@5:5[112..116]
+            params:
+              None
+        body:
+          NormBody origin=Source@5:16[123..126]
+            forms:
+              (empty)
+    Form Expr
+      Closure kind=Explicit origin=Source@6:1[128..158]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@6:1[128..150]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@6:2[129..136]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@6:5[132..136]
+                    PatternName "type" origin=Source@6:5[132..136]
+            params:
+              Unit origin=Source@6:11[138..139]
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@6:13[140..146]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "val" origin=Source@6:13[140..143]
+                  annotation:
+                    AnnotationPattern origin=Generated(PatternNormalize)@6:18[145..146]
+                      HoleRef "T" origin=Source@6:18[145..146]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+        body:
+          NormBody origin=Source@6:24[151..158]
+            forms:
+              Form Expr
+                Name "val" origin=Source@6:26[153..156]
+    Form Expr
+      Closure kind=Explicit origin=Source@7:1[160..189]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@7:1[160..181]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@7:2[161..168]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@7:5[164..168]
+                    PatternName "type" origin=Source@7:5[164..168]
+            params:
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@7:11[170..176]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "val" origin=Source@7:11[170..173]
+                  annotation:
+                    AnnotationPattern origin=Generated(PatternNormalize)@7:16[175..176]
+                      HoleRef "T" origin=Source@7:16[175..176]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+              Unit origin=Source@7:17[176..177]
+        body:
+          NormBody origin=Source@7:23[182..189]
+            forms:
+              Form Expr
+                Name "val" origin=Source@7:25[184..187]

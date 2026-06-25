@@ -1,0 +1,8 @@
+let <T> (x,): T Pair::std = z;
+let <T> (,x): T Pair::std = z;
+let <T> (x,,y): T Pair::std = z;
+let <T> _ Pair::std = z;
+let <T> T Pair::std = z;
+let x with { A } = y;
+let x with { A, B } = y;
+let x with { } = y

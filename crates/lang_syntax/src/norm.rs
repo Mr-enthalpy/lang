@@ -418,6 +418,9 @@ fn normalize_alias_decl(alias: &LetAliasAst) -> NormDecl {
 }
 
 fn normalize_expr(expr: &ExprAst) -> NormExpr {
+    // Value-side entry point. This must never reinterpret expression material as
+    // extraction/pattern material; pattern contexts use the dedicated
+    // normalize_*_as_pattern path below.
     match &expr.kind {
         ExprKind::Pipe(pipe) => normalize_pipe(pipe),
         ExprKind::Product(product) => NormExpr::Product(normalize_product_expr(product, true)),
@@ -1209,6 +1212,8 @@ fn normalize_hole_decl(binder: &BinderDeclAst, inherited_holes: &[String]) -> No
 }
 
 fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> NormPattern {
+    // Extraction-side entry point. Binder/name/skeleton material stays in the
+    // NormPattern family and is not treated as value-side call target material.
     match pattern {
         BindingPatternAst::Binder(BinderNameAst::Text(name)) => NormPattern::Binder {
             name: name.text.clone(),
@@ -1258,6 +1263,8 @@ fn normalize_binding_annotation(
     annotation: &BindingAnnotationAst,
     holes: &[String],
 ) -> NormAnnotation {
+    // Annotation syntax is classifier/pattern material. It deliberately lowers
+    // to NormAnnotation { pattern: NormPattern } rather than NormExpr.
     match annotation {
         BindingAnnotationAst::Expr(expr) => normalize_annotation_expr(expr, holes),
         BindingAnnotationAst::Compound { left, right, span } => {
@@ -1301,6 +1308,8 @@ fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[String]) -> Norm
 }
 
 fn normalize_annotation_expr(expr: &ExprAst, holes: &[String]) -> NormAnnotation {
+    // Bridge from raw expression-shaped parser surface into pattern context.
+    // This is not value-to-pattern conversion for runtime values.
     NormAnnotation {
         pattern: normalize_expr_as_pattern(expr, holes),
         origin: NormOrigin::Generated {
@@ -1311,6 +1320,8 @@ fn normalize_annotation_expr(expr: &ExprAst, holes: &[String]) -> NormAnnotation
 }
 
 fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[String]) -> NormPattern {
+    // Pattern-side lowering for raw expression-shaped syntax in annotation or
+    // extraction contexts. Names become PatternName/HoleRef, not NormExpr::Name.
     match &expr.kind {
         ExprKind::Pipe(pipe) => normalize_pipe_as_pattern(pipe, holes),
         ExprKind::Product(product) => {
@@ -1339,6 +1350,8 @@ fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[String]) -> NormPattern {
 }
 
 fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[String]) -> NormPattern {
+    // Pipe-shaped raw syntax in pattern context is preserved as pattern
+    // sequence material. It does not participate in value-side call lowering.
     let mut elements = Vec::new();
     for segment in &pipe.segments {
         for element in &segment.elements {
@@ -1374,6 +1387,9 @@ fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[String]) -> NormPatter
 }
 
 fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) -> NormPattern {
+    // Operator-expression raw syntax in pattern context stays in NormPattern.
+    // Unsupported sugar is surfaced explicitly instead of silently becoming a
+    // value-side expression.
     match &expr.kind {
         OperatorExprKind::Atom(atom) => normalize_atom_as_pattern(atom, holes),
         OperatorExprKind::Product(product) => normalize_expr_as_pattern(
@@ -1399,6 +1415,9 @@ fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) 
 }
 
 fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[String]) -> NormPattern {
+    // Atom raw syntax in pattern context remains bounded extraction material:
+    // PatternName/PatternNav/HoleRef labels are intentionally distinct from
+    // value-side Name/Nav dumps.
     match &atom.kind {
         AtomKind::Name(name) if holes.iter().any(|hole| hole == &name.text) => {
             NormPattern::HoleRef {

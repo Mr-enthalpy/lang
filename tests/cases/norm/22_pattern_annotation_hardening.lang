@@ -1,0 +1,9 @@
+let <T> x: T = y;
+let <T> x: T Option::std = y;
+let <T: type> x: T = y;
+let <T: type> x: T Option::std = y;
+let <T, U> x: T U = y;
+let <T> (x, y): T Pair::std = z;
+let <T> x: U = y;
+let <T> x: U Option::std = y;
+let x: a + b = y

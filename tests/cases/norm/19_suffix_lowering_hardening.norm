@@ -1,0 +1,399 @@
+NormProgram origin=Source@1:1[0..162]
+  forms:
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@1:1[0..5]
+        source:
+          Product origin=Generated(BracketCallLowering)@1:1[0..5]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@1:1[0..3]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=1 origin=Source@1:4[3..5]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@2:1[7..14]
+        source:
+          Product origin=Generated(BracketCallLowering)@2:1[7..14]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@2:1[7..10]
+              ExprElem
+                Product origin=Source@2:5[11..13]
+                  elements:
+                    Unit origin=Source@2:5[11..13]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@2:4[10..14]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@3:1[16..24]
+        source:
+          Product origin=Generated(BracketCallLowering)@3:1[16..24]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@3:1[16..19]
+              ExprElem
+                Name "a" origin=Source@3:6[21..22]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@3:4[19..24]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@4:1[26..37]
+        source:
+          Product origin=Generated(BracketCallLowering)@4:1[26..37]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@4:1[26..29]
+              ExprElem
+                Product origin=Source@4:5[30..36]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@4:6[31..32]
+                    ExprElem
+                      Name "b" origin=Source@4:9[34..35]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=2 origin=Source@4:4[29..37]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@5:1[39..53]
+        source:
+          Product origin=Generated(BracketCallLowering)@5:1[39..53]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@5:1[39..42]
+              ExprElem
+                Name "a" origin=Source@5:5[43..44]
+              ExprElem
+                Product origin=Source@5:8[46..52]
+                  elements:
+                    ExprElem
+                      Name "b" origin=Source@5:9[47..48]
+                    ExprElem
+                      Name "c" origin=Source@5:12[50..51]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=3 origin=Source@5:4[42..53]
+    Form Expr
+      Call origin=Generated(MemberLowering)@6:1[55..64]
+        source:
+          Product origin=Generated(ProductLift)@6:1[55..58]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@6:1[55..58]
+        target:
+          Closure kind=Generated(MemberLowering) origin=Generated(MemberLowering)@6:1[55..64]
+            head:
+              ClosureHead origin=Generated(MemberLowering)@6:1[55..64]
+                deduce:
+                  HoleDecl "T" origin=Generated(MemberLowering)@6:1[55..64]
+                    annotation:
+                      AnnotationPattern origin=Generated(MemberLowering)@6:1[55..64]
+                        PatternName "type" origin=Generated(MemberLowering)@6:1[55..64]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(MemberLowering)@6:1[55..64]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(MemberLowering)@6:1[55..64]
+                      annotation:
+                        AnnotationPattern origin=Generated(MemberLowering)@6:1[55..64]
+                          HoleRef "T" origin=Generated(MemberLowering)@6:1[55..64]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(MemberLowering)@6:1[55..64]
+                forms:
+                  Form Expr
+                    Call origin=Generated(MemberLowering)@6:1[55..64]
+                      source:
+                        Product origin=Generated(MemberLowering)@6:1[55..64]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(MemberLowering)@6:1[55..64]
+                      target:
+                        Nav origin=Generated(MemberLowering)@6:1[55..64]
+                          components:
+                            Name "field" origin=Generated(MemberLowering)@6:1[55..64]
+                            Name "T" origin=Generated(MemberLowering)@6:1[55..64]
+    Form Expr
+      Call origin=Generated(MemberLowering)@7:1[66..77]
+        source:
+          Product origin=Generated(ProductLift)@7:2[67..70]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@7:2[67..70]
+        target:
+          Closure kind=Generated(MemberLowering) origin=Generated(MemberLowering)@7:1[66..77]
+            head:
+              ClosureHead origin=Generated(MemberLowering)@7:1[66..77]
+                deduce:
+                  HoleDecl "T" origin=Generated(MemberLowering)@7:1[66..77]
+                    annotation:
+                      AnnotationPattern origin=Generated(MemberLowering)@7:1[66..77]
+                        PatternName "type" origin=Generated(MemberLowering)@7:1[66..77]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(MemberLowering)@7:1[66..77]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(MemberLowering)@7:1[66..77]
+                      annotation:
+                        AnnotationPattern origin=Generated(MemberLowering)@7:1[66..77]
+                          HoleRef "T" origin=Generated(MemberLowering)@7:1[66..77]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(MemberLowering)@7:1[66..77]
+                forms:
+                  Form Expr
+                    Call origin=Generated(MemberLowering)@7:1[66..77]
+                      source:
+                        Product origin=Generated(MemberLowering)@7:1[66..77]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(MemberLowering)@7:1[66..77]
+                      target:
+                        Nav origin=Generated(MemberLowering)@7:1[66..77]
+                          components:
+                            Name "field" origin=Generated(MemberLowering)@7:1[66..77]
+                            Name "T" origin=Generated(MemberLowering)@7:1[66..77]
+    Form Expr
+      Call origin=Generated(DoubleDotLowering)@8:1[79..92]
+        source:
+          Product origin=Generated(ProductLift)@8:1[79..82]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@8:1[79..82]
+        target:
+          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@8:1[79..92]
+            head:
+              ClosureHead origin=Generated(DoubleDotLowering)@8:1[79..92]
+                deduce:
+                  HoleDecl "T" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                    annotation:
+                      AnnotationPattern origin=Generated(DoubleDotLowering)@8:1[79..92]
+                        PatternName "type" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@8:1[79..92]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(DoubleDotLowering)@8:1[79..92]
+                forms:
+                  Form Expr
+                    Call origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      source:
+                        Product origin=Generated(DoubleDotLowering)@8:1[79..92]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      target:
+                        Nav origin=Generated(DoubleDotLowering)@8:1[79..92]
+                          components:
+                            Name "method" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                            Name "T" origin=Generated(DoubleDotLowering)@8:1[79..92]
+    Form Expr
+      Call origin=Generated(DoubleDotLowering)@9:1[94..109]
+        source:
+          Product origin=Generated(ProductLift)@9:1[94..97]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@9:1[94..97]
+        target:
+          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@9:1[94..109]
+            head:
+              ClosureHead origin=Generated(DoubleDotLowering)@9:1[94..109]
+                deduce:
+                  HoleDecl "T" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                    annotation:
+                      AnnotationPattern origin=Generated(DoubleDotLowering)@9:1[94..109]
+                        PatternName "type" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@9:1[94..109]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@9:1[94..109]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(DoubleDotLowering)@9:1[94..109]
+                forms:
+                  Form Expr
+                    Call origin=Generated(DoubleDotLowering)@9:1[94..109]
+                      source:
+                        Product origin=Generated(DoubleDotLowering)@9:1[94..109]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                            ExprElem
+                              Product origin=Source@9:13[106..108]
+                                elements:
+                                  Unit origin=Source@9:13[106..108]
+                      target:
+                        Nav origin=Generated(DoubleDotLowering)@9:1[94..109]
+                          components:
+                            Name "method" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                            Name "T" origin=Generated(DoubleDotLowering)@9:1[94..109]
+    Form Expr
+      Call origin=Generated(DoubleDotLowering)@10:1[111..126]
+        source:
+          Product origin=Generated(ProductLift)@10:1[111..114]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@10:1[111..114]
+        target:
+          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@10:1[111..126]
+            head:
+              ClosureHead origin=Generated(DoubleDotLowering)@10:1[111..126]
+                deduce:
+                  HoleDecl "T" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                    annotation:
+                      AnnotationPattern origin=Generated(DoubleDotLowering)@10:1[111..126]
+                        PatternName "type" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@10:1[111..126]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@10:1[111..126]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(DoubleDotLowering)@10:1[111..126]
+                forms:
+                  Form Expr
+                    Call origin=Generated(DoubleDotLowering)@10:1[111..126]
+                      source:
+                        Product origin=Generated(DoubleDotLowering)@10:1[111..126]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                            ExprElem
+                              Name "a" origin=Source@10:13[123..124]
+                            Unit origin=Source@10:14[124..125]
+                      target:
+                        Nav origin=Generated(DoubleDotLowering)@10:1[111..126]
+                          components:
+                            Name "method" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                            Name "T" origin=Generated(DoubleDotLowering)@10:1[111..126]
+    Form Expr
+      Call origin=Generated(DoubleDotLowering)@11:1[128..143]
+        source:
+          Product origin=Generated(ProductLift)@11:1[128..131]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@11:1[128..131]
+        target:
+          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@11:1[128..143]
+            head:
+              ClosureHead origin=Generated(DoubleDotLowering)@11:1[128..143]
+                deduce:
+                  HoleDecl "T" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                    annotation:
+                      AnnotationPattern origin=Generated(DoubleDotLowering)@11:1[128..143]
+                        PatternName "type" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@11:1[128..143]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@11:1[128..143]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(DoubleDotLowering)@11:1[128..143]
+                forms:
+                  Form Expr
+                    Call origin=Generated(DoubleDotLowering)@11:1[128..143]
+                      source:
+                        Product origin=Generated(DoubleDotLowering)@11:1[128..143]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                            Unit origin=Source@11:13[140..141]
+                            ExprElem
+                              Name "a" origin=Source@11:14[141..142]
+                      target:
+                        Nav origin=Generated(DoubleDotLowering)@11:1[128..143]
+                          components:
+                            Name "method" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                            Name "T" origin=Generated(DoubleDotLowering)@11:1[128..143]
+    Form Expr
+      Call origin=Generated(DoubleDotLowering)@12:1[145..162]
+        source:
+          Product origin=Generated(ProductLift)@12:1[145..148]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@12:1[145..148]
+        target:
+          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@12:1[145..162]
+            head:
+              ClosureHead origin=Generated(DoubleDotLowering)@12:1[145..162]
+                deduce:
+                  HoleDecl "T" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                    annotation:
+                      AnnotationPattern origin=Generated(DoubleDotLowering)@12:1[145..162]
+                        PatternName "type" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@12:1[145..162]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@12:1[145..162]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(DoubleDotLowering)@12:1[145..162]
+                forms:
+                  Form Expr
+                    Call origin=Generated(DoubleDotLowering)@12:1[145..162]
+                      source:
+                        Product origin=Generated(DoubleDotLowering)@12:1[145..162]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                            ExprElem
+                              Name "a" origin=Source@12:13[157..158]
+                            Unit origin=Source@12:15[159..160]
+                            ExprElem
+                              Name "b" origin=Source@12:16[160..161]
+                      target:
+                        Nav origin=Generated(DoubleDotLowering)@12:1[145..162]
+                          components:
+                            Name "method" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                            Name "T" origin=Generated(DoubleDotLowering)@12:1[145..162]
