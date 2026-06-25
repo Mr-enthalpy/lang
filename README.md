@@ -40,14 +40,14 @@ references, but they are not the normal public entry point.
 
 | Category | Document | Purpose |
 |---|---|---|
-| Implementation | `spec/ast-construction-v0.1.md` | Normative AST construction rules — implement parser from this |
-| Implementation | `spec/diagnostics-v0.1.md` | Normative diagnostic categories, span policy, recovery (implementation-level) |
+| Implementation | `spec/ast-construction-v0.1.md` | AST construction rules — implementation-level backing reference |
+| Implementation | `spec/diagnostics-v0.1.md` | Diagnostic categories, span policy, recovery — implementation-level backing reference |
 | Implementation | `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
 | Contract / handoff | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
 | Contract / handoff | `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
-| Design / history | `spec/operator-design.md` | Normative operator syntax design and implementation boundaries |
+| Design / history | `spec/operator-design.md` | Operator syntax design and implementation boundaries — historical reference |
 | Design / history | `spec/resolved-questions.md` | Design decisions — resolved for v0.1 |
-| Design / history | `spec/frontend-v0.1.md` | Reader entry point — explains the pipeline and spec organization |
+| Design / history | `spec/frontend-v0.1.md` | Pipeline overview — historical reader entry point |
 
 ### Future design notes
 
@@ -339,7 +339,8 @@ Read these only when implementing, auditing, or repairing the frontend.
 4. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
 5. `spec/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff.
 6. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-7. `spec/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
+7. `spec/resolved-questions.md` — Understand resolved design decisions.
+8. `spec/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
 
 ### Future design and planning
 
@@ -349,7 +350,6 @@ Read these only when working on future design topics.
 2. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
 3. `spec/roadmap.md` — Understand scope boundaries.
 4. `spec/open-questions.md` — Recognize known gaps.
-5. `spec/resolved-questions.md` — Understand resolved design decisions.
 
 ## Expected future workspace shape
 
