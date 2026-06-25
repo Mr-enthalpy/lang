@@ -37,6 +37,38 @@ syntax, a general macro system, and major parser architecture rewrites.
 
 ---
 
+## v0.1.w pipe branch-name shorthand
+
+**Status:** Resolved
+
+**Resolution:**
+`|> name { ... }` is accepted only as a mechanical shorthand for
+`|> (_ name) { ... }`.
+
+This is not a precedent for a family of branch-arm sugars. The shorthand is
+accepted only because the local token shape is finite, local, explicit, and
+mechanically equivalent to the already supported explicit form.
+
+The shorthand recognizes only the local incoming segment prefix
+`|> name { ... }`. After that local rewrite, any following token sequence is
+parsed by ordinary existing pipe / segment / composition rules. Allowing
+`x |> name { y; } z` means only that the local prefix rewrites to
+`x |> (_ name) { y; } z`; the trailing `z` is handled by existing
+call-composition machinery and is not part of a larger branch-arm sugar.
+
+The shorthand is justified as a narrowly bounded repair for one
+otherwise-invalid local shape. Without it, `x |> name { y; }` would fall toward
+continuous right-call composition into a headless in-place closure, as if
+`(x name) { y; }`. A headless in-place closure does not mean "accept unit"; no
+extraction head means no extracted input, including no implicit unit input.
+
+The parser preserves the same Raw AST shape as the explicit form: an incoming
+pipe segment containing a two-element product head (`_`, `name`) followed by an
+in-place closure body. It performs no semantic validation, name resolution,
+matching, closure materialization, or lookup.
+
+---
+
 ## 1. Nested block-comment policy
 
 **Status:** Resolved

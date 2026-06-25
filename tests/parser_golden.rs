@@ -44,7 +44,6 @@ fn expr_name() {
 
 #[test]
 fn member_int_base() {
-    // `1.2` is member sugar `(IntLiteral 1).(NumericName 2)`, not a float.
     assert_parser_case("member_int_base", false);
 }
 
@@ -141,6 +140,26 @@ fn invalid_unexpected_symbol() {
 #[test]
 fn pipe_basic() {
     assert_parser_case("pipe_basic", false);
+}
+
+#[test]
+fn pipe_branch_name_shorthand() {
+    assert_parser_case("pipe_branch_name_shorthand", false);
+}
+
+#[test]
+fn pipe_branch_name_explicit() {
+    assert_parser_case("pipe_branch_name_explicit", false);
+}
+
+#[test]
+fn pipe_branch_name_trailing_segment_material() {
+    assert_parser_case("pipe_branch_name_trailing_segment_material", false);
+}
+
+#[test]
+fn pipe_branch_name_nav_not_shorthand() {
+    assert_parser_case("pipe_branch_name_nav_not_shorthand", false);
 }
 
 #[test]

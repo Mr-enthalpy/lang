@@ -938,6 +938,92 @@ Segment parsing does not directly execute function application.
 It records element sequence only. Product elements do not receive source,
 insert, or right-target roles in Raw AST.
 
+### 7.1.1 Pipe branch-name shorthand
+
+During `v0.1.w`, the exact local incoming pipe-segment prefix:
+
+```text
+PipeTransition Name BraceBody
+```
+
+is accepted as a local mechanical sugar:
+
+```text
+|> name { ... }
+```
+
+It is accepted only as a mechanical shorthand for:
+
+```text
+|> (_ name) { ... }
+```
+
+The parser preserves the same Raw AST shape as the explicit form: an incoming
+segment containing a two-element product head (`_`, `name`) followed by an
+in-place closure body. No semantic validation, name resolution, matching,
+closure materialization, or lookup is performed.
+
+The shorthand is justified as a narrowly bounded repair for one
+otherwise-invalid local shape. In the ordinary pipe / call-composition model,
+`x |> name` without a right product is the explicit pipe form of the whitespace
+right-call composition `x name`. If a brace body immediately follows and no
+shorthand applies, `x |> name { y; }` falls toward continuous right-call
+composition into a headless in-place closure, roughly:
+
+```text
+x |> name { y; }
+=> (x name) { y; }
+```
+
+That is not a valid language-model reading. A headless in-place closure is not
+a closure that implicitly accepts `unit`: no extraction head means no extracted
+input, including no implicit unit input. The shorthand repairs only this local
+bad shape by inserting the explicit branch head:
+
+```text
+x |> name { y; }
+=> x |> (_ name) { y; }
+```
+
+The first product-head element `_` is the supplied extraction hole /
+unit-side placeholder of the branch head. The second element `name` is the
+branch name.
+
+This is not a precedent for a family of branch-arm sugars. The shorthand is
+accepted only because the local token shape is finite, local, explicit, and
+mechanically equivalent to the already supported explicit form.
+
+The shorthand recognizes only the local incoming segment prefix
+`|> name { ... }`. After that local rewrite, any following token sequence is
+parsed by the ordinary existing pipe / segment / composition rules. For
+example:
+
+```text
+x |> name { y; } z
+=> x |> (_ name) { y; } z
+=> (x |> (_ name) { y; }) |> z
+```
+
+The trailing `z` is not part of a larger branch-arm sugar. It is handled by the
+existing call-composition machinery after the local prefix rewrite.
+
+The shorthand does not generalize. The parser must not treat any of the
+following as this shorthand:
+
+```text
+|> name expr
+|> name
+|> name => ...
+|> name (...)
+|> name [...]
+|> name other { ... }
+|> a::b { ... }
+|> + { ... }
+|> (name) { ... }
+|> _ name { ... }
+|> name1 name2 { ... }
+```
+
 `OperatorExpr` is the ordinary-operator expression layer built from atoms.
 Ordinary operators bind more tightly than both whitespace auto-pipe and `|>`.
 
@@ -1597,6 +1683,10 @@ InPlaceClosureAst ::= BodyBlock
 A bare `{ ... }` in atom position is an in-place closure. It has no capture
 clause, no parameter clause, no return clause, and no head clauses. It is the
 Raw AST representation of a control-flow-embedding closure block.
+
+Having no extraction head is distinct from having a unit extraction pattern.
+A headless in-place closure does not implicitly accept unit input; it has no
+extracted input, including no implicit unit input.
 
 `{ ... }` is not a normal block expression; it always produces
 `ClosureAst::InPlace`.

@@ -131,6 +131,23 @@ Allowed additive work in this window:
   categories without replacing the product/pipe/operator/binding/closure/
   navigation architecture
 
+Current `v0.1.w` sugar:
+
+- `|> name { ... }` is accepted only as a mechanical shorthand for
+  `|> (_ name) { ... }`.
+- This is not a precedent for a family of branch-arm sugars.
+- The shorthand is accepted only because the local token shape is finite,
+  local, explicit, and mechanically equivalent to the already supported
+  explicit form.
+- The shorthand recognizes only the local incoming segment prefix
+  `|> name { ... }`; after that local rewrite, any following token sequence is
+  parsed by ordinary existing pipe / segment / composition rules.
+- The shorthand is a narrow repair for one otherwise-invalid local shape:
+  without it, `x |> name { ... }` falls toward continuous right-call
+  composition into a headless in-place closure. A headless in-place closure
+  does not mean "accept unit"; no extraction head means no extracted input,
+  including no implicit unit input.
+
 Forbidden in this window:
 
 - traditional call parsing, statement parsing, import/module/package syntax,

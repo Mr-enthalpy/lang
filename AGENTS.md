@@ -83,6 +83,31 @@ Allowed additive work:
   categories without replacing the product/pipe/operator/binding/closure/
   navigation architecture
 
+The only currently accepted `v0.1.w` pipe-branch shorthand is:
+
+```text
+|> name { ... }
+```
+
+It is accepted only as a mechanical shorthand for:
+
+```text
+|> (_ name) { ... }
+```
+
+This is not a precedent for a family of branch-arm sugars. The shorthand is
+accepted only because the local token shape is finite, local, explicit, and
+mechanically equivalent to the already supported explicit form. It recognizes
+only the local incoming segment prefix `|> name { ... }`; after that local
+rewrite, any following token sequence is parsed by ordinary existing pipe /
+segment / composition rules.
+
+This shorthand is a narrow repair for one otherwise-invalid local shape:
+without it, `x |> name { ... }` falls toward continuous right-call composition
+into a headless in-place closure. A headless in-place closure does not mean
+"accept unit"; no extraction head means no extracted input, including no
+implicit unit input.
+
 Forbidden in `v0.1.w`:
 
 * semantic analysis, name resolution, type/kind checking, operator lookup,
