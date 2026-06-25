@@ -2,4 +2,7 @@ let = y;
 x |>;
 x::+;
 let A === ::B;
-let x with A = y
+let x with A = y;
+let x: { y } = z;
+<T: type>(, val: ) => { val };
+let x with { A,,B } = y

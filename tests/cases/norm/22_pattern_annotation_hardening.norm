@@ -1,4 +1,4 @@
-NormProgram origin=Source@1:1[0..228]
+NormProgram origin=Source@1:1[0..297]
   forms:
     Form Let
       Decl Let origin=Source@1:1[0..16]
@@ -199,3 +199,45 @@ NormProgram origin=Source@1:1[0..228]
             None
           initializer:
             Name "y" origin=Source@9:16[227..228]
+    Form Let
+      Decl Let origin=Source@10:1[230..250]
+        BindingSlot let=true origin=Generated(PatternNormalize)@10:5[234..250]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@10:5[234..235]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@10:8[237..246]
+              PatternUnsupported "member sugar in annotation pattern" origin=Generated(Unsupported)@10:8[237..246]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@10:20[249..250]
+    Form Let
+      Decl Let origin=Source@11:1[252..277]
+        BindingSlot let=true origin=Generated(PatternNormalize)@11:5[256..277]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@11:5[256..257]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@11:8[259..273]
+              PatternUnsupported "double-dot sugar in annotation pattern" origin=Generated(Unsupported)@11:8[259..273]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@11:25[276..277]
+    Form Let
+      Decl Let origin=Source@12:1[279..296]
+        BindingSlot let=true origin=Generated(PatternNormalize)@12:5[283..296]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@12:5[283..284]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@12:8[286..292]
+              PatternUnsupported "bracket-call sugar in annotation pattern" origin=Generated(Unsupported)@12:8[286..292]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@12:17[295..296]

@@ -1,0 +1,62 @@
+NormProgram origin=Source@1:1[0..81]
+  forms:
+    Form Expr
+      Call origin=Generated(Unsupported)@1:1[0..4]
+        source:
+          Product origin=Generated(ProductLift)@1:1[0..1]
+            elements:
+              ExprElem
+                Name "f" origin=Source@1:1[0..1]
+        target:
+          Unsupported "dangling product cannot be a call target" origin=Generated(Unsupported)@1:1[0..4]
+    Form Expr
+      Call origin=Generated(Unsupported)@2:1[6..12]
+        source:
+          Product origin=Generated(ProductLift)@2:1[6..7]
+            elements:
+              ExprElem
+                Name "f" origin=Source@2:1[6..7]
+        target:
+          Unsupported "dangling product cannot be a call target" origin=Generated(Unsupported)@2:1[6..12]
+    Form Let
+      Decl Let origin=Source@3:1[14..34]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[18..34]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@3:5[18..19]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@3:8[21..30]
+              PatternUnsupported "member sugar in annotation pattern" origin=Generated(Unsupported)@3:8[21..30]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@3:20[33..34]
+    Form Let
+      Decl Let origin=Source@4:1[36..61]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[40..61]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@4:5[40..41]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@4:8[43..57]
+              PatternUnsupported "double-dot sugar in annotation pattern" origin=Generated(Unsupported)@4:8[43..57]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@4:25[60..61]
+    Form Let
+      Decl Let origin=Source@5:1[63..80]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[67..80]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@5:5[67..68]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@5:8[70..76]
+              PatternUnsupported "bracket-call sugar in annotation pattern" origin=Generated(Unsupported)@5:8[70..76]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@5:17[79..80]
