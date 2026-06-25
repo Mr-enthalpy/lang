@@ -6,9 +6,10 @@ fn main() {
     match args.as_slice() {
         [_, command, path] if command == "tokens" => run_tokens(path),
         [_, command, path] if command == "ast" => run_ast(path),
+        [_, command, path] if command == "norm" => run_norm(path),
         [_, command, path] if command == "diag" => run_diag(path),
         [program, ..] => {
-            eprintln!("usage: {program} <tokens|ast|diag> <path>");
+            eprintln!("usage: {program} <tokens|ast|norm|diag> <path>");
             process::exit(2);
         }
         [] => unreachable!("argv always contains program name"),
@@ -40,6 +41,18 @@ fn run_ast(path: &str) {
     let source = read_source(path);
     let output = lang_syntax::parse(&source);
     print!("{}", lang_syntax::dump_ast(&output.program));
+
+    if !output.diagnostics.is_empty() {
+        eprint!("{}", lang_syntax::dump_diagnostics(&output.diagnostics));
+        process::exit(1);
+    }
+}
+
+fn run_norm(path: &str) {
+    let source = read_source(path);
+    let output = lang_syntax::parse(&source);
+    let normalized = lang_syntax::normalize_program(&output.program);
+    print!("{}", lang_syntax::dump_norm_program(&normalized));
 
     if !output.diagnostics.is_empty() {
         eprint!("{}", lang_syntax::dump_diagnostics(&output.diagnostics));

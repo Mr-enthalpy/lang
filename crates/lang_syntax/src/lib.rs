@@ -6,6 +6,7 @@ pub mod ast;
 pub mod diagnostic;
 pub mod dump;
 pub mod lexer;
+pub mod norm;
 pub mod parser;
 pub mod source;
 pub mod span;
@@ -25,6 +26,13 @@ pub use ast::{
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};
 pub use lexer::{lex, LexOutput};
+pub use norm::{
+    dump_norm_program, normalize_program, NormAliasBinder, NormAnnotation, NormBindingSlot,
+    NormCanonicalNameRole, NormClosure, NormClosureHead, NormClosureKind, NormDecl, NormEntityRef,
+    NormError, NormExpr, NormForm, NormHeadClause, NormHoleDecl, NormLiteralKind, NormNavComponent,
+    NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem, NormProduct, NormProductElem,
+    NormProgram, NormRule, NormSkeleton, NormSkeletonElem, NormWithClause,
+};
 pub use parser::{parse, ParseOutput};
 pub use source::normalize_source_text;
 pub use span::Span;

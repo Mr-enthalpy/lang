@@ -1,0 +1,1 @@
+<T: type>(val: T) => { val }

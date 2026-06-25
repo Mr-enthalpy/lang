@@ -1,0 +1,29 @@
+NormProgram origin=Source@1:1[0..28]
+  forms:
+    Form Expr
+      Closure kind=Explicit origin=Source@1:1[0..28]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@1:1[0..20]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@1:2[1..8]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@1:5[4..8]
+                    PatternName "type" origin=Source@1:5[4..8]
+            params:
+              BindingSlot let=false origin=Generated(PatternNormalize)@1:11[10..16]
+                deduce:
+                  None
+                value_pattern:
+                  Binder "val" origin=Source@1:11[10..13]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@1:16[15..16]
+                    HoleRef "T" origin=Source@1:16[15..16]
+                with_clause:
+                  None
+                initializer:
+                  None
+        body:
+          NormBody origin=Source@1:22[21..28]
+            forms:
+              Form Expr
+                Name "val" origin=Source@1:24[23..26]
