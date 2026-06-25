@@ -172,7 +172,7 @@ diagnostic rules, or golden snapshots.
 | Spec source | `ast-construction-v0.1.md` §7.3, §8.4a; `operator-design.md` |
 | Frozen guarantee | Operator sugar is preserved as Raw AST surface markers. Prefix-negative (`-x`) is the sole `Prefix` fixity shape and is not an overloadable operator declaration. Postfix and binary operators are preserved with `Postfix`/`Binary` fixity. Comparison, equality, and equals-suffixed chains are non-associative and produce `ChainedNonAssociativeOperator`. |
 | Non-semantic boundary | The parser does not lower operator sugar to ordinary calls. It does not perform operator lookup, type-directed resolution, overload resolution, or semantics assignment. |
-| v0.3 obligation | v0.3 must desugar all operator sugar to named operator calls. Prefix-negative must be rewritten to `()zero::(x |> type) - x`. |
+| v0.3 obligation | v0.3 must desugar all operator sugar to named operator calls. Prefix-negative must be normalized to typed-zero binary subtraction; exact normalized representation is specified in v0.3. |
 | Forbidden assumption | v0.3 must not treat `Prefix` fixity as an overloadable operator fixity. v0.3 must not resolve operator identities to declarations. |
 
 ## 14. Atom suffixes
@@ -241,7 +241,7 @@ diagnostic rules, or golden snapshots.
 | Raw construct family | AST / token shape | Implementation file(s) | Spec source | Frozen guarantee |
 |---|---|---|---|---|
 | Lexer diagnostics (4) | `DiagnosticCode::InvalidToken`, `UnclosedString`, `UnclosedComment`, `InvalidNumericLiteral` | `diagnostic.rs`, `lexer.rs` | `diagnostics-v0.1.md` §3.1 | Guaranteed: emitted when the lexer encounters invalid byte sequences, unclosed strings/comments, or malformed numeric literals. Every diagnostic carries a `Span`. |
-| Parser diagnostics (17) | `DiagnosticCode::UnexpectedToken`, `ExpectedName`, `ExpectedColon`, `ExpectedBindingAnnotation`, `ExpectedEqual`, `EmptyPipeSegment`, `ExpectedNameAfterDot`, `ExpectedNameAfterDoubleDot`, `ExpectedProductAfterDoubleDotName`, `UnclosedParen`, `UnclosedBracket`, `UnclosedBrace`, `InvalidDeduceList`, `InvalidCanonicalSkeleton`, `InvalidClosureHead`, `TopLevelComma`, `UnusedClosureAst` | `diagnostic.rs`, `parser/*.rs` | `diagnostics-v0.1.md` §3.2 | 15 guaranteed-emitted + 2 special: `UnusedClosureAst` is optional/not-guaranteed-emitted. |
+| Parser diagnostics (17) | `DiagnosticCode::UnexpectedToken`, `ExpectedName`, `ExpectedColon`, `ExpectedBindingAnnotation`, `ExpectedEqual`, `EmptyPipeSegment`, `ExpectedNameAfterDot`, `ExpectedNameAfterDoubleDot`, `ExpectedProductAfterDoubleDotName`, `UnclosedParen`, `UnclosedBracket`, `UnclosedBrace`, `InvalidDeduceList`, `InvalidCanonicalSkeleton`, `InvalidClosureHead`, `TopLevelComma`, `UnusedClosureAst` | `diagnostic.rs`, `parser/*.rs` | `diagnostics-v0.1.md` §3.2 | 16 guaranteed-emitted + 1 optional: `UnusedClosureAst` is optional/not-guaranteed-emitted. |
 | Operator diagnostics (3) | `DiagnosticCode::InvalidOperatorExpression`, `ChainedNonAssociativeOperator`, `InvalidNavComponent` | `diagnostic.rs`, `parser/operator.rs`, `parser/atom.rs` | `diagnostics-v0.1.md` §3.4 | Guaranteed: emitted for malformed operator expressions, non-associative chains, and invalid navigation components. |
 | Alias diagnostics (5) | `DiagnosticCode::ExpectedAliasTarget`, `InvalidAliasBinder`, `InvalidAliasPosition`, `InvalidEntityRef`, `UnexpectedAliasRhsExpression` | `diagnostic.rs`, `parser/let_stmt.rs`, `parser/form.rs` | `diagnostics-v0.1.md` §3.5 | 4 guaranteed-emitted + 1 reserved: `InvalidAliasBinder` is reserved and not currently emitted by the parser. |
 
@@ -250,7 +250,7 @@ diagnostic rules, or golden snapshots.
 | Frozen guarantee (general) | 29 `DiagnosticCode` variants. Every diagnostic carries a `DiagnosticCode`, `message`, and `Span`. The parser is error-tolerant: it inserts `ErrorAst` nodes alongside diagnostics and continues parsing. Three special statuses exist: (a) guaranteed emitted, (b) optional/not-guaranteed-emitted (`UnusedClosureAst`), (c) reserved/not-currently-emitted (`InvalidAliasBinder`). |
 | Non-semantic boundary | Diagnostics cover lexer and parser errors only. No type errors, kind errors, lifetime errors, or semantic warnings. |
 | v0.3 obligation | v0.3 must preserve or rewire diagnostic spans through normalization. `ErrorAst` nodes and `Diagnostic` entries carry sufficient information for rewiring. |
-| Forbidden assumption | v0.3 must not add or remove diagnostic codes. v0.3 must not assume optional diagnostics are guaranteed. v0.3 must not activate reserved diagnostics. |
+| Forbidden assumption | v0.3 must not mutate the frozen Raw AST diagnostic code set; any normalization-stage diagnostics require an explicit v0.3 diagnostic spec. v0.3 must not assume optional diagnostics are guaranteed. v0.3 must not activate reserved diagnostics. |
 
 ## 20. Dumps and golden snapshots
 
