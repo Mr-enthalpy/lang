@@ -60,9 +60,9 @@ A syntax frontend that:
 - 29 DiagnosticCode variants across lexer, parser, operator, and alias categories.
 
 For the authoritative factual inventory of v0.1 delivered features,
-see `spec/implementation-status-v0.1.md`. For the Raw AST contract
+see `spec/implementation/v0.1/implementation-status-v0.1.md`. For the Raw AST contract
 that future normalization passes may rely on, see
-`spec/raw-ast-contract-v0.1.md`.
+`spec/contracts/raw-ast-contract-v0.1.md`.
 
 ---
 
@@ -120,9 +120,9 @@ Forbidden v0.2 work:
 - Raw AST → Normalized AST implementation
 
 A parser or AST change is allowed only if there is a hard correctness error
-against the call-composition architecture (see `spec/raw-ast-contract-freeze-v0.2.md`).
+against the call-composition architecture (see `spec/contracts/raw-ast-contract-freeze-v0.2.md`).
 
-See `spec/raw-ast-contract-freeze-v0.2.md` for the full freeze boundary definition.
+See `spec/contracts/raw-ast-contract-freeze-v0.2.md` for the full freeze boundary definition.
 
 ---
 

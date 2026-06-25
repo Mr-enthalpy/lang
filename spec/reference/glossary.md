@@ -784,7 +784,7 @@ _See also: Normalized AST, Non-semantic lowering._
 
 ## Raw AST contract
 
-The documented invariants of v0.1 Raw AST (`spec/raw-ast-contract-v0.1.md`)
+The documented invariants of v0.1 Raw AST (`spec/contracts/raw-ast-contract-v0.1.md`)
 that future normalization passes may rely on. Defines what each AST node
 preserves and what normalization must not assume.
 

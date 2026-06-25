@@ -33,26 +33,31 @@ Follow this workflow for every change:
 
 ## 1. Which spec files to read first
 
+### Default public frontend context
+
 | Priority | File | When to read |
 |---|---|---|
 | 1 | `AGENTS.md` | Always, before any code change |
 | 2 | `README.md` | Repository orientation |
-| 3 | `spec/frontend-v0.1.md` | Pipeline understanding |
-| 4 | `spec/implementation-status-v0.1.md` | Current implementation inventory |
-| 5 | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for normalization |
-| 6 | `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
-| 7 | `spec/raw-ast-frozen-surface-v0.2.md` | v0.2 frozen Raw AST construct inventory |
-| 8 | `spec/lexical-syntax-v0.2.md` | Public lexical syntax specification |
-| 9 | `spec/concrete-syntax-v0.2.md` | Public concrete syntax specification |
-| 10 | `spec/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery specification |
-| 11 | `spec/ast-construction-v0.1.md` | Before any parser change |
-| 12 | `spec/operator-design.md` | Before any operator syntax change |
-| 13 | `spec/entity-ref-design.md` | Before any EntityRef or alias RHS change |
-| 14 | `spec/entity-alias-design.md` | Before any alias-binding change (parser preservation implemented, semantics future) |
-| 15 | `spec/diagnostics-v0.1.md` | Before any diagnostic change (implementation-level reference) |
-| 16 | `spec/glossary.md` | Terminology reference |
-| 17 | `spec/roadmap.md` | Scope boundary check |
-| 18 | `spec/open-questions.md` | Before touching uncertain areas |
+| 3 | `spec/README.md` | Spec index and authority levels |
+| 4 | `spec/public/v0.2/lexical-syntax-v0.2.md` | Public lexical syntax |
+| 5 | `spec/public/v0.2/concrete-syntax-v0.2.md` | Public concrete syntax |
+| 6 | `spec/public/v0.2/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery |
+| 7 | `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST construct inventory |
+| 8 | `spec/reference/glossary.md` | Terminology reference |
+
+### Task-specific extended context
+
+| Task | Files to read |
+|---|---|
+| Parser implementation changes | `spec/implementation/v0.1/ast-construction-v0.1.md`, `spec/implementation/v0.1/implementation-status-v0.1.md` |
+| Diagnostic implementation changes | `spec/implementation/v0.1/diagnostics-v0.1.md` |
+| Operator syntax or operator-name repair | `spec/history/v0.1/operator-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
+| Alias / EntityRef repair | `spec/future/entity-alias-design.md`, `spec/future/entity-ref-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
+| v0.3 handoff / normalization-boundary work | `spec/contracts/raw-ast-contract-v0.1.md`, `spec/contracts/raw-ast-contract-freeze-v0.2.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` |
+| Future build/package/namespace work | `spec/future/build-system-design.md`, `spec/future/package-manifest-v0.md`, `spec/future/namespace-assembly-v0.md` |
+| Resolving old open questions / design history | `spec/history/v0.1/resolved-questions.md`, `spec/planning/open-questions.md`, `spec/history/v0.1/frontend-v0.1.md` |
+| Forward-looking scope changes | `spec/planning/roadmap.md` |
 
 ## 1a. New-task PR branch gate
 
@@ -170,8 +175,8 @@ Do **not** use Rust `Debug` format for any dump output.
 
 ## 3a. Operator design awareness
 
-Before changing expression parsing, read both `spec/ast-construction-v0.1.md`
-and `spec/operator-design.md`.
+Before changing expression parsing, read both `spec/implementation/v0.1/ast-construction-v0.1.md`
+and `spec/history/v0.1/operator-design.md`.
 
 Operator expression parsing is implemented as raw AST sugar, and operator names
 are preserved in binder and innermost navigation-component positions. If the task is not
@@ -244,7 +249,7 @@ For v0.2 Raw AST contract freeze work:
 - Run `cargo test` after code, test, or snapshot changes.
 
 For Raw AST contract work:
-- Do not change parser behavior; document invariants in `spec/raw-ast-contract-v0.1.md`.
+- Do not change parser behavior; document invariants in `spec/contracts/raw-ast-contract-v0.1.md`.
 - Update the contract when parser changes affect AST shape.
 
 For Normalized AST work:
@@ -306,8 +311,8 @@ Default flow:
 
 ## 11. Spec update rules
 
-- When changing **parser behavior**: update `spec/ast-construction-v0.1.md`.
-- When changing **diagnostic behavior**: update `spec/diagnostics-v0.1.md`.
-- When adding **new terminology**: update `spec/glossary.md`.
-- When resolving an **open question**: update `spec/open-questions.md`.
+- When changing **parser behavior**: update `spec/implementation/v0.1/ast-construction-v0.1.md`.
+- When changing **diagnostic behavior**: update `spec/implementation/v0.1/diagnostics-v0.1.md`.
+- When adding **new terminology**: update `spec/reference/glossary.md`.
+- When resolving an **open question**: update `spec/planning/open-questions.md`.
 - Spec and code changes must be in the same commit.

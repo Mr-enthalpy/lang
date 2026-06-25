@@ -117,7 +117,7 @@ v0.3 Normalized AST Specification work may assume:
 
 - The frozen Raw AST surface documented above is the complete v0.2 input.
 - All Raw AST node variants exist and carry the fields documented in
-  `spec/raw-ast-contract-v0.1.md`.
+  `spec/contracts/raw-ast-contract-v0.1.md`.
 - Spans are valid and refer to the normalized (LF) source text.
 - `ErrorAst` nodes and `Diagnostic` entries carry sufficient information for
   diagnostic rewiring through normalization.

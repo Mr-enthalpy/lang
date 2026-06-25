@@ -127,9 +127,9 @@ The v0.1 frontend covers:
 - Diagnostic taxonomy covering lexer, parser, operator, and alias parsing
 - Golden test coverage for lexer, parser/AST, and diagnostics
 
-For the detailed, factual inventory see `spec/implementation-status-v0.1.md`.
+For the detailed, factual inventory see `spec/implementation/v0.1/implementation-status-v0.1.md`.
 
-For the current stage model see `spec/roadmap.md`.
+For the current stage model see `spec/planning/roadmap.md`.
 
 It does **not** yet cover:
 
@@ -153,4 +153,4 @@ SegmentElement := OperatorExpr | Product
 syntax remains AST sugar and does not imply lookup, type checking, evaluation,
 or lowering.
 
-See `spec/roadmap.md` for a detailed phase breakdown and current coverage.
+See `spec/planning/roadmap.md` for a detailed phase breakdown and current coverage.

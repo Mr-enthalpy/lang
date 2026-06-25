@@ -10,8 +10,8 @@ source text → normalized source text → token stream
 ```
 
 It does not define parsing, Raw AST construction, Normalized AST, or semantic
-interpretation. See `spec/ast-construction-v0.1.md` for the concrete parser
-syntax and `spec/raw-ast-frozen-surface-v0.2.md` for the frozen Raw AST
+interpretation. See `spec/implementation/v0.1/ast-construction-v0.1.md` for the concrete parser
+syntax and `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` for the frozen Raw AST
 construct inventory.
 
 ## 2. Source text normalization
@@ -67,7 +67,7 @@ because they look word-like to a human reader. Lexical classification as
 `Name` does not make the word a language construct.
 
 The parser may later recognize selected names structurally in strong contexts
-(see `spec/ast-construction-v0.1.md`). Outside those contexts the same names
+(see `spec/implementation/v0.1/ast-construction-v0.1.md`). Outside those contexts the same names
 remain ordinary expression atoms.
 
 ## 5. Names
@@ -304,7 +304,7 @@ comparison semantics.
 operator contexts the parser may reinterpret them as operator spellings. In
 strong binding contexts (`let`, closure head, parameter, return) they may
 delimit a DeduceList (`<...>`). These are parser-level decisions documented in
-`spec/ast-construction-v0.1.md`.
+`spec/implementation/v0.1/ast-construction-v0.1.md`.
 
 ## 10. Operator spellings
 
@@ -402,7 +402,7 @@ The following lexer diagnostics cover lexical-level error conditions:
 | `UnclosedComment` | Block comment never closed before EOF |
 | `InvalidNumericLiteral` | Malformed numeric literal (invalid separator position, missing radix digits, empty hex float exponent) |
 
-Parser-level diagnostics are documented in `spec/diagnostics-v0.1.md` and are
+Parser-level diagnostics are documented in `spec/implementation/v0.1/diagnostics-v0.1.md` and are
 outside the scope of this lexical specification.
 
 ## 13. End of file
@@ -436,12 +436,12 @@ semantic passes.
 
 | Document | Relationship |
 |---|---|
-| `spec/raw-ast-contract-freeze-v0.2.md` | Defines the v0.2 contract freeze boundary in which this lexical syntax is frozen. |
-| `spec/raw-ast-frozen-surface-v0.2.md` | Enumerates the frozen Raw AST constructs, including token categories and diagnostics. |
-| `spec/ast-construction-v0.1.md` | Defines parser behavior — the consumer of the token stream defined here. |
-| `spec/operator-design.md` | Detailed operator spelling design and implementation boundaries. |
-| `spec/diagnostics-v0.1.md` | Full diagnostic catalog including parser and alias diagnostics. |
-| `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
+| `spec/contracts/raw-ast-contract-freeze-v0.2.md` | Defines the v0.2 contract freeze boundary in which this lexical syntax is frozen. |
+| `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Enumerates the frozen Raw AST constructs, including token categories and diagnostics. |
+| `spec/implementation/v0.1/ast-construction-v0.1.md` | Defines parser behavior — the consumer of the token stream defined here. |
+| `spec/history/v0.1/operator-design.md` | Detailed operator spelling design and implementation boundaries. |
+| `spec/implementation/v0.1/diagnostics-v0.1.md` | Full diagnostic catalog including parser and alias diagnostics. |
+| `spec/implementation/v0.1/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
 
 This document is the primary public lexical syntax reference. It defines
 the current v0.2 lexical surface. `ast-construction-v0.1.md` defines parser

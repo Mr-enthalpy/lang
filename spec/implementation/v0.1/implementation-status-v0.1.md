@@ -19,8 +19,8 @@ change unless a hard correctness error is identified against the
 call-composition architecture.
 
 This document records what the current codebase implements. It is not
-normative for parser behavior — `spec/ast-construction-v0.1.md` and
-`spec/operator-design.md` define what the parser must do. This document
+normative for parser behavior — `spec/implementation/v0.1/ast-construction-v0.1.md` and
+`spec/history/v0.1/operator-design.md` define what the parser must do. This document
 only records what it currently does.
 
 ## Feature inventory

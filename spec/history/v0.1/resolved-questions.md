@@ -4,7 +4,7 @@ This document records design questions for the `lang` language that have been
 resolved in v0.1. They serve as a historical record and reference for the
 decisions made.
 
-Open and deferred questions remain in `spec/open-questions.md`.
+Open and deferred questions remain in `spec/planning/open-questions.md`.
 
 ---
 
@@ -212,7 +212,7 @@ committed cases: `let_with_empty_not_inplace`, `closure_inplace_empty`,
 The workspace is ready. `crates/lang_syntax`, `crates/lang_cli`, and `xtask`
 exist as valid workspace members. `cargo check --workspace` passes.
 
-Golden test counts are tracked in `spec/implementation-status-v0.1.md`.
+Golden test counts are tracked in `spec/implementation/v0.1/implementation-status-v0.1.md`.
 Remaining test coverage gaps are tracked as v0.1 implementation work, not as
 workspace-readiness uncertainty. This entry is closed.
 
@@ -328,7 +328,7 @@ produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
 EntityRef parsing is available inside alias-let RHS only. Alias-let dispatch
 correctly rejects extract-let, annotation, and `with` paths. `guard` is parsed
 as an ordinary simple-let binder name, not as an alias modifier. See
-`spec/implementation-status-v0.1.md` and `spec/entity-alias-design.md`.
+`spec/implementation/v0.1/implementation-status-v0.1.md` and `spec/future/entity-alias-design.md`.
 
 **What is not implemented:**
 - Target entity resolution (semantic lookup).

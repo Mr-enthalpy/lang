@@ -10,7 +10,7 @@ token stream → Raw AST + syntax diagnostics
 ```
 
 This document assumes the token categories defined in
-`spec/lexical-syntax-v0.2.md`. Token-level spelling rules (names, literals,
+`spec/public/v0.2/lexical-syntax-v0.2.md`. Token-level spelling rules (names, literals,
 symbols, operators, trivia, invalid material) are defined there.
 
 This document does not define:
@@ -365,7 +365,7 @@ The parser recognizes the following atom-level expression sources:
 | Closure | `AtomKind::Closure(ClosureAst)` |
 | Error | `AtomKind::Error(ErrorAst)` |
 
-See `spec/lexical-syntax-v0.2.md` for the lexical forms of names and
+See `spec/public/v0.2/lexical-syntax-v0.2.md` for the lexical forms of names and
 literals. The parser preserves exact source text from literal tokens and
 performs no value interpretation.
 
@@ -631,7 +631,7 @@ The parser is error-tolerant. When an error is detected:
 
 The complete diagnostic catalog (29 `DiagnosticCode` variants across lexer,
 parser, operator, and alias categories) is documented in
-`spec/diagnostics-v0.1.md`. The concrete syntax document names diagnostics
+`spec/implementation/v0.1/diagnostics-v0.1.md`. The concrete syntax document names diagnostics
 only when needed to define a syntax boundary.
 
 ## 25. Non-semantic concrete-syntax boundary
@@ -660,15 +660,15 @@ alias resolution, and evaluation behavior belong to later semantic passes.
 
 | Document | Relationship |
 |---|---|
-| `spec/lexical-syntax-v0.2.md` | Defines the token categories and lexical rules consumed by this syntax. |
-| `spec/raw-ast-contract-freeze-v0.2.md` | Defines the v0.2 freeze boundary in which this syntax is frozen. |
-| `spec/raw-ast-frozen-surface-v0.2.md` | Enumerates frozen Raw AST constructs and their guarantees. |
-| `spec/ast-construction-v0.1.md` | Detailed implementation-level parser construction spec. |
-| `spec/operator-design.md` | Detailed operator spelling design and implementation boundaries. |
-| `spec/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
-| `spec/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
-| `spec/diagnostics-v0.1.md` | Full diagnostic catalog including parser diagnostics. |
-| `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
+| `spec/public/v0.2/lexical-syntax-v0.2.md` | Defines the token categories and lexical rules consumed by this syntax. |
+| `spec/contracts/raw-ast-contract-freeze-v0.2.md` | Defines the v0.2 freeze boundary in which this syntax is frozen. |
+| `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Enumerates frozen Raw AST constructs and their guarantees. |
+| `spec/implementation/v0.1/ast-construction-v0.1.md` | Detailed implementation-level parser construction spec. |
+| `spec/history/v0.1/operator-design.md` | Detailed operator spelling design and implementation boundaries. |
+| `spec/future/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
+| `spec/future/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
+| `spec/implementation/v0.1/diagnostics-v0.1.md` | Full diagnostic catalog including parser diagnostics. |
+| `spec/implementation/v0.1/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
 
 This document is the primary public concrete syntax reference. It defines the
 current v0.2 parser surface. `lexical-syntax-v0.2.md` defines tokenization.
