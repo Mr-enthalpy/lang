@@ -87,13 +87,19 @@ Two let forms separated by a semicolon.
 
 ## 4. Form selection
 
-The parser recognizes four form categories at the Raw AST level:
+A form is a let path either when it starts with `Name("let")`, or when a
+leading expression is followed by a top-level `Name("let")`, which is
+recognized as a policy-prefixed let form. Alias-let is recognized inside that
+let path by a following `===` delimiter. Expression forms cover all other
+non-trivia token sequences.
+
+The parser produces four form categories at the Raw AST level:
 
 | Raw AST shape | Recognition rule |
 |---|---|
-| `FormAst::Let(LetAst)` | First non-trivia token is `Name("let")`, and the form does not match alias-let recognition. |
-| `FormAst::AliasLet(LetAliasAst)` | First non-trivia token is `Name("let")`, and alias recognition (`===` delimiter) succeeds. |
-| `FormAst::Expr(ExprAst)` | First non-trivia token is anything other than `Name("let")`. |
+| `FormAst::Let(LetAst)` | The form enters the let path and alias-let recognition does not match. |
+| `FormAst::AliasLet(LetAliasAst)` | The form enters the let path and alias recognition (`===` delimiter) succeeds. |
+| `FormAst::Expr(ExprAst)` | The first non-trivia token starts neither a let path nor a policy-prefixed let path. |
 | `FormAst::Error(ErrorAst)` | The form cannot be recovered to any valid structure. |
 
 The parser preserves these shapes as Raw AST. It does not classify forms as
@@ -299,12 +305,19 @@ token sequences remain ordinary segment material.
 x |> { ... }
 ```
 
-is the fully headless in-place closure case. It has no extraction head and is
-rejected with a diagnostic.
+is parsed as an incoming headless in-place closure segment element. It emits
+`InvalidClosureHead` because incoming pipe branch bodies require an explicit
+extraction head. The headless in-place closure is still preserved as a closure
+AST segment element with a diagnostic.
 
 ## 12. Product forms
 
 A parenthesized form with at least one top-level comma is a product form.
+In ordinary expression segment position, the presence of a top-level comma
+distinguishes product construction from grouping. In argument-product
+contexts such as double-dot payloads (`obj..m(args)`) and bracket-call
+payloads (`obj[args]`), the delimiter payload is parsed as a `ProductExprAst`
+even when no top-level comma appears.
 
 In expression context, it is product construction (`ProductExprAst`):
 
@@ -415,8 +428,9 @@ Operator parsing is segment-local and does not cross `|>` boundaries.
 The parser preserves three fixity shapes:
 
 - **Prefix** (`-x`): the sole prefix-negative shape. It is not an
-  overloadable operator declaration. Future normalization must rewrite it
-  to typed-zero binary subtraction.
+  overloadable operator declaration. Prefix-negative is preserved as Raw AST
+  sugar. Future normalization must desugar it non-semantically; the exact
+  normalized representation belongs to the v0.3 normalization specification.
 - **Postfix** (`obj!`, `obj?`): unary operator suffix. Postfix operators
   compose with the suffix chain (`obj!.field`).
 - **Binary** (`a + b`): two-operand operator sugar.
