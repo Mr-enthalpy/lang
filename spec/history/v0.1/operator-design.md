@@ -472,7 +472,7 @@ where the example's type names come from.
 
 ## Relationship To Entity Alias Binding
 
-`spec/entity-alias-design.md` documents lexical alias binding. Alias-let parser
+`spec/future/entity-alias-design.md` documents lexical alias binding. Alias-let parser
 preservation is implemented as Raw AST syntax:
 
 ```text

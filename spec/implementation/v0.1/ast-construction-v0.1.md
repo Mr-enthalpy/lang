@@ -1,4 +1,4 @@
-# File: spec/ast-construction-v0.1.md
+# File: spec/implementation/v0.1/ast-construction-v0.1.md
 
 # AST Construction Rules v0.1
 
@@ -1134,7 +1134,7 @@ a (b + c)
 ```
 
 Operator precedence remains segment-local inside the pipe/segment architecture.
-See `spec/operator-design.md` for the full precedence and associativity table.
+See `spec/history/v0.1/operator-design.md` for the full precedence and associativity table.
 
 ## 8. Atom construction
 
@@ -2181,7 +2181,7 @@ They remain names inside expression AST unless appearing in explicitly defined s
 ## 15. Representative golden coverage
 
 The golden test suite covers at least the following syntax areas.
-For the current full test count, see `spec/implementation-status-v0.1.md`.
+For the current full test count, see `spec/implementation/v0.1/implementation-status-v0.1.md`.
 
 ```text
 let t: type = int Option Vec

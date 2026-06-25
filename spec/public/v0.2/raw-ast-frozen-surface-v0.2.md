@@ -267,10 +267,10 @@ diagnostic rules, or golden snapshots.
 
 ## Cross-references
 
-- `spec/raw-ast-contract-v0.1.md` — Raw AST invariants for normalization
-- `spec/raw-ast-contract-freeze-v0.2.md` — v0.2 freeze boundary and allowed/forbidden work
-- `spec/ast-construction-v0.1.md` — normative syntax rules
-- `spec/operator-design.md` — normative operator design
-- `spec/diagnostics-v0.1.md` — normative diagnostic catalog
-- `spec/implementation-status-v0.1.md` — authoritative factual inventory
-- `spec/roadmap.md` — stage model and scope boundaries
+- `spec/contracts/raw-ast-contract-v0.1.md` — Raw AST invariants for normalization
+- `spec/contracts/raw-ast-contract-freeze-v0.2.md` — v0.2 freeze boundary and allowed/forbidden work
+- `spec/implementation/v0.1/ast-construction-v0.1.md` — normative syntax rules
+- `spec/history/v0.1/operator-design.md` — normative operator design
+- `spec/implementation/v0.1/diagnostics-v0.1.md` — normative diagnostic catalog
+- `spec/implementation/v0.1/implementation-status-v0.1.md` — authoritative factual inventory
+- `spec/planning/roadmap.md` — stage model and scope boundaries

@@ -3,14 +3,14 @@
 This document tracks open design questions for the `lang` language. Each entry
 specifies the stage at which the question becomes active.
 
-Resolved questions have been moved to `spec/resolved-questions.md`.
+Resolved questions have been moved to `spec/history/v0.1/resolved-questions.md`.
 
 ---
 
 ## Current-stage questions (v0.2)
 
 No current v0.2 open questions at this time. The v0.2 freeze boundary is defined
-in `spec/raw-ast-contract-freeze-v0.2.md`. Open questions will be added if
+in `spec/contracts/raw-ast-contract-freeze-v0.2.md`. Open questions will be added if
 ambiguities in the frozen contract are discovered during documentation
 reconciliation.
 

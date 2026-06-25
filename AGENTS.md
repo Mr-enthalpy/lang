@@ -7,11 +7,11 @@ For ordinary v0.2 documentation or frontend-surface tasks, read:
 ```text
 README.md
 spec/README.md
-spec/lexical-syntax-v0.2.md
-spec/concrete-syntax-v0.2.md
-spec/diagnostics-recovery-v0.2.md
-spec/raw-ast-frozen-surface-v0.2.md
-spec/glossary.md
+spec/public/v0.2/lexical-syntax-v0.2.md
+spec/public/v0.2/concrete-syntax-v0.2.md
+spec/public/v0.2/diagnostics-recovery-v0.2.md
+spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
+spec/reference/glossary.md
 ```
 
 Read older implementation/design documents only when the task specifically
@@ -20,53 +20,53 @@ historical decision repair, or future design work.
 
 Before parser implementation changes:
 ```text
-spec/ast-construction-v0.1.md
-spec/implementation-status-v0.1.md
+spec/implementation/v0.1/ast-construction-v0.1.md
+spec/implementation/v0.1/implementation-status-v0.1.md
 ```
 
 Before diagnostic implementation changes:
 ```text
-spec/diagnostics-v0.1.md
-spec/diagnostics-recovery-v0.2.md
+spec/implementation/v0.1/diagnostics-v0.1.md
+spec/public/v0.2/diagnostics-recovery-v0.2.md
 ```
 
 Before operator syntax or operator-name repair:
 ```text
-spec/operator-design.md
-spec/concrete-syntax-v0.2.md
+spec/history/v0.1/operator-design.md
+spec/public/v0.2/concrete-syntax-v0.2.md
 ```
 
 Before alias / EntityRef repair:
 ```text
-spec/entity-alias-design.md
-spec/entity-ref-design.md
-spec/concrete-syntax-v0.2.md
+spec/future/entity-alias-design.md
+spec/future/entity-ref-design.md
+spec/public/v0.2/concrete-syntax-v0.2.md
 ```
 
 Before v0.3 handoff or normalization-boundary work:
 ```text
-spec/raw-ast-contract-v0.1.md
-spec/raw-ast-contract-freeze-v0.2.md
-spec/raw-ast-frozen-surface-v0.2.md
+spec/contracts/raw-ast-contract-v0.1.md
+spec/contracts/raw-ast-contract-freeze-v0.2.md
+spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 ```
 
 Before build/package/namespace design:
 ```text
-spec/build-system-design.md
-spec/package-manifest-v0.md
-spec/namespace-assembly-v0.md
+spec/future/build-system-design.md
+spec/future/package-manifest-v0.md
+spec/future/namespace-assembly-v0.md
 ```
 
 Before resolving old open questions or understanding design history:
 ```text
-spec/resolved-questions.md
-spec/open-questions.md
-spec/frontend-v0.1.md
+spec/history/v0.1/resolved-questions.md
+spec/planning/open-questions.md
+spec/history/v0.1/frontend-v0.1.md
 ```
 
 Before making forward-looking scope changes:
 ```text
-spec/roadmap.md
+spec/planning/roadmap.md
 ```
 
 ## Scope
@@ -348,7 +348,7 @@ f(args)
 as a normal function call.
 
 Parenthesized top-level-comma product forms participate in the expression
-skeleton rules described in `spec/ast-construction-v0.1.md`.
+skeleton rules described in `spec/implementation/v0.1/ast-construction-v0.1.md`.
 
 ### Blocks and closures
 
@@ -501,27 +501,37 @@ Do:
 │   └── decisions/
 ├── spec/
 │   ├── README.md
-│   ├── frontend-v0.1.md
-│   ├── implementation-status-v0.1.md
-│   ├── raw-ast-contract-v0.1.md
-│   ├── raw-ast-contract-freeze-v0.2.md
-│   ├── raw-ast-frozen-surface-v0.2.md
-│   ├── lexical-syntax-v0.2.md
-│   ├── concrete-syntax-v0.2.md
-│   ├── diagnostics-recovery-v0.2.md
-│   ├── ast-construction-v0.1.md
-│   ├── operator-design.md
-│   ├── entity-ref-design.md
-│   ├── entity-alias-design.md
-│   ├── diagnostics-v0.1.md
-│   ├── roadmap.md
-│   ├── library-namespace-design-note.md
-│   ├── build-system-design.md
-│   ├── package-manifest-v0.md
-│   ├── namespace-assembly-v0.md
-│   ├── glossary.md
-│   ├── open-questions.md
-│   └── resolved-questions.md
+│   ├── public/
+│   │   └── v0.2/
+│   │       ├── lexical-syntax-v0.2.md
+│   │       ├── concrete-syntax-v0.2.md
+│   │       ├── diagnostics-recovery-v0.2.md
+│   │       └── raw-ast-frozen-surface-v0.2.md
+│   ├── reference/
+│   │   └── glossary.md
+│   ├── implementation/
+│   │   └── v0.1/
+│   │       ├── ast-construction-v0.1.md
+│   │       ├── diagnostics-v0.1.md
+│   │       └── implementation-status-v0.1.md
+│   ├── contracts/
+│   │   ├── raw-ast-contract-v0.1.md
+│   │   └── raw-ast-contract-freeze-v0.2.md
+│   ├── history/
+│   │   └── v0.1/
+│   │       ├── frontend-v0.1.md
+│   │       ├── operator-design.md
+│   │       └── resolved-questions.md
+│   ├── future/
+│   │   ├── entity-ref-design.md
+│   │   ├── entity-alias-design.md
+│   │   ├── library-namespace-design-note.md
+│   │   ├── build-system-design.md
+│   │   ├── package-manifest-v0.md
+│   │   └── namespace-assembly-v0.md
+│   └── planning/
+│       ├── roadmap.md
+│       └── open-questions.md
 ├── crates/
 │   ├── lang_syntax/
 │   │   ├── Cargo.toml
@@ -606,7 +616,7 @@ over aborting the parse.
 
 Every diagnostic must carry a span.
 
-Refer to `spec/diagnostics-v0.1.md` for the full diagnostic catalog.
+Refer to `spec/implementation/v0.1/diagnostics-v0.1.md` for the full diagnostic catalog.
 
 ## Tests
 
@@ -652,14 +662,14 @@ diagnostics/
 
 When changing parser behavior:
 
-1. Update `spec/ast-construction-v0.1.md`.
+1. Update `spec/implementation/v0.1/ast-construction-v0.1.md`.
 2. Update or add golden tests.
 3. Run `cargo fmt --all`.
 4. Run `cargo test`.
 
 When changing diagnostic behavior:
 
-1. Update `spec/diagnostics-v0.1.md`.
+1. Update `spec/implementation/v0.1/diagnostics-v0.1.md`.
 2. Update or add golden tests.
 3. Run `cargo fmt --all`.
 4. Run `cargo test`.
@@ -686,23 +696,23 @@ Default PR behavior:
 
 ## Spec awareness
 
-* `spec/lexical-syntax-v0.2.md` and `spec/concrete-syntax-v0.2.md` are the
+* `spec/public/v0.2/lexical-syntax-v0.2.md` and `spec/public/v0.2/concrete-syntax-v0.2.md` are the
   primary public syntax references. Consult them before understanding or
   documenting current lexical or parser behavior.
-* `spec/diagnostics-recovery-v0.2.md` is the primary public diagnostics and
+* `spec/public/v0.2/diagnostics-recovery-v0.2.md` is the primary public diagnostics and
   recovery reference for current behavior.
-* `spec/raw-ast-frozen-surface-v0.2.md` enumerates frozen constructs and their
+* `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` enumerates frozen constructs and their
   v0.3 obligations.
-* `spec/ast-construction-v0.1.md` remains the detailed parser-construction
+* `spec/implementation/v0.1/ast-construction-v0.1.md` remains the detailed parser-construction
   spec. Consult it before making parser implementation changes.
-* `spec/implementation-status-v0.1.md` records current implementation facts.
+* `spec/implementation/v0.1/implementation-status-v0.1.md` records current implementation facts.
   Consult it before changing parser behavior.
-* `spec/diagnostics-v0.1.md` is the implementation-level diagnostic catalog
+* `spec/implementation/v0.1/diagnostics-v0.1.md` is the implementation-level diagnostic catalog
   for current behavior.
-* `spec/roadmap.md` defines scope boundaries. If a change would cross a stage
+* `spec/planning/roadmap.md` defines scope boundaries. If a change would cross a stage
   boundary (e.g., implementing semantic analysis), stop and document the
   limitation instead.
-* `spec/open-questions.md` records unresolved design issues. Before implementing
+* `spec/planning/open-questions.md` records unresolved design issues. Before implementing
   behavior that touches an open question, check the file and update its status
-  if a decision is reached. Resolved items move to `spec/resolved-questions.md`.
-* `spec/glossary.md` enforces terminology. Use terms consistently.
+  if a decision is reached. Resolved items move to `spec/history/v0.1/resolved-questions.md`.
+* `spec/reference/glossary.md` enforces terminology. Use terms consistently.

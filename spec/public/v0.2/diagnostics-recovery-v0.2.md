@@ -12,9 +12,9 @@ parse(tokens)    → Raw AST + parser diagnostics + ErrorAst recovery nodes
 
 This document assumes:
 
-- lexical syntax from `spec/lexical-syntax-v0.2.md`
-- concrete syntax from `spec/concrete-syntax-v0.2.md`
-- Raw AST preservation from `spec/raw-ast-frozen-surface-v0.2.md`
+- lexical syntax from `spec/public/v0.2/lexical-syntax-v0.2.md`
+- concrete syntax from `spec/public/v0.2/concrete-syntax-v0.2.md`
+- Raw AST preservation from `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md`
 
 This document does not define:
 
@@ -458,16 +458,16 @@ and recovery. Semantic errors belong to later semantic passes.
 
 | Document | Relationship |
 |---|---|
-| `spec/lexical-syntax-v0.2.md` | Defines the token categories and lexical rules that produce lexical diagnostics. |
-| `spec/concrete-syntax-v0.2.md` | Defines the parser syntax accepted by the frontend and the grammar that may trigger parser diagnostics. |
-| `spec/raw-ast-contract-freeze-v0.2.md` | Defines the v0.2 freeze boundary for the diagnostic surface. |
-| `spec/raw-ast-frozen-surface-v0.2.md` | Enumerates the frozen Raw AST constructs including diagnostic codes and ErrorAst. |
-| `spec/diagnostics-v0.1.md` | Older detailed diagnostic catalog; remains the implementation-level reference. |
-| `spec/ast-construction-v0.1.md` | Detailed parser-construction spec. |
-| `spec/operator-design.md` | Operator syntax design and implementation boundaries. |
-| `spec/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
-| `spec/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
-| `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
+| `spec/public/v0.2/lexical-syntax-v0.2.md` | Defines the token categories and lexical rules that produce lexical diagnostics. |
+| `spec/public/v0.2/concrete-syntax-v0.2.md` | Defines the parser syntax accepted by the frontend and the grammar that may trigger parser diagnostics. |
+| `spec/contracts/raw-ast-contract-freeze-v0.2.md` | Defines the v0.2 freeze boundary for the diagnostic surface. |
+| `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Enumerates the frozen Raw AST constructs including diagnostic codes and ErrorAst. |
+| `spec/implementation/v0.1/diagnostics-v0.1.md` | Older detailed diagnostic catalog; remains the implementation-level reference. |
+| `spec/implementation/v0.1/ast-construction-v0.1.md` | Detailed parser-construction spec. |
+| `spec/history/v0.1/operator-design.md` | Operator syntax design and implementation boundaries. |
+| `spec/future/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
+| `spec/future/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
+| `spec/implementation/v0.1/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
 
 This document is the primary public diagnostics and recovery reference for
 v0.2. `lexical-syntax-v0.2.md` defines tokenization. `concrete-syntax-v0.2.md`

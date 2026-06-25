@@ -15,7 +15,7 @@ parser preservation. The remaining sections describe both the implemented
 syntax and the future semantic behavior.
 
 The right-hand side `EntityRef` syntax is defined separately in
-`spec/entity-ref-design.md`. This document describes how future alias binding
+`spec/future/entity-ref-design.md`. This document describes how future alias binding
 will use that syntax.
 
 ## Purpose
@@ -81,7 +81,7 @@ AliasBinder ::= Name | OperatorName
 EntityRef ::= EntityNavigation
 ```
 
-`EntityRef` is defined by `spec/entity-ref-design.md`. The full
+`EntityRef` is defined by `spec/future/entity-ref-design.md`. The full
 `EntityNavigation` grammar is not duplicated here; see that document for the complete definition,
 parser boundary, and raw-AST sketch.
 
@@ -187,7 +187,7 @@ spelling + fixity + arity
 ```
 
 Prefix negative `-x` is not an overloadable operator identity (see
-`spec/operator-design.md`). The `Prefix` fixity is a Raw AST surface marker
+`spec/history/v0.1/operator-design.md`). The `Prefix` fixity is a Raw AST surface marker
 reserved for the prefix-negative sugar and does not participate in operator
 alias identity. The `-` spelling in alias binder or target position refers
 exclusively to binary minus.
@@ -364,7 +364,7 @@ EntityRefAst {
 }
 ```
 
-The exact `EntityRefAst` shape is defined in `spec/entity-ref-design.md`.
+The exact `EntityRefAst` shape is defined in `spec/future/entity-ref-design.md`.
 
 These nodes are implemented in the current Rust `ast` module (Phase 4.4).
 

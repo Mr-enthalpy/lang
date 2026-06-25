@@ -23,49 +23,50 @@ parses, builds raw AST, emits diagnostics, and has golden tests.
 
 ### Public v0.2 frontend specification
 
-The normal public reading path for current lexical and syntactic behavior:
+The normal public reading path for current lexical and syntactic behavior
+is physically located at `spec/public/v0.2/`:
 
 | Document | Purpose |
 |---|---|
-| `spec/lexical-syntax-v0.2.md` | Public lexical syntax specification: source normalization, token categories, weak lexer, names, literals, symbols, operators, trivia |
-| `spec/concrete-syntax-v0.2.md` | Public concrete syntax specification: form boundaries, let/alias-let, binding slots, products, pipes, operators, closures, skeletons, deduce lists |
-| `spec/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery specification: lexical/parser diagnostic codes, trigger conditions, span policy, ErrorAst recovery, non-semantic boundaries |
-| `spec/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST surface inventory: construct-by-construct guarantees, v0.3 obligations |
-| `spec/glossary.md` | Terminology definitions and critical distinctions |
+| `spec/public/v0.2/lexical-syntax-v0.2.md` | Public lexical syntax specification: source normalization, token categories, weak lexer, names, literals, symbols, operators, trivia |
+| `spec/public/v0.2/concrete-syntax-v0.2.md` | Public concrete syntax specification: form boundaries, let/alias-let, binding slots, products, pipes, operators, closures, skeletons, deduce lists |
+| `spec/public/v0.2/diagnostics-recovery-v0.2.md` | Public diagnostics and recovery specification: lexical/parser diagnostic codes, trigger conditions, span policy, ErrorAst recovery, non-semantic boundaries |
+| `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Frozen Raw AST surface inventory: construct-by-construct guarantees, v0.3 obligations |
+| `spec/reference/glossary.md` | Terminology definitions and critical distinctions |
 
-Older v0.1 design and implementation documents remain available as backing
-references, but they are not the normal public entry point.
+Older v0.1 implementation, contract, historical, planning, and future-design
+documents remain present, but they are not part of the normal public reading path.
 
 ### Backing and historical references
 
-| Category | Document | Purpose |
-|---|---|---|
-| Implementation | `spec/ast-construction-v0.1.md` | AST construction rules — implementation-level backing reference |
-| Implementation | `spec/diagnostics-v0.1.md` | Diagnostic categories, span policy, recovery — implementation-level backing reference |
-| Implementation | `spec/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
-| Contract / handoff | `spec/raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
-| Contract / handoff | `spec/raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
-| Design / history | `spec/operator-design.md` | Operator syntax design and implementation boundaries — historical reference |
-| Design / history | `spec/resolved-questions.md` | Design decisions — resolved for v0.1 |
-| Design / history | `spec/frontend-v0.1.md` | Pipeline overview — historical reader entry point |
+| Category | Directory | Document | Purpose |
+|---|---|---|---|
+| Implementation | `spec/implementation/v0.1/` | `ast-construction-v0.1.md` | AST construction rules — implementation-level backing reference |
+| Implementation | `spec/implementation/v0.1/` | `diagnostics-v0.1.md` | Diagnostic categories, span policy, recovery — implementation-level backing reference |
+| Implementation | `spec/implementation/v0.1/` | `implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
+| Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
+| Contract / handoff | `spec/contracts/` | `raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
+| Design / history | `spec/history/v0.1/` | `operator-design.md` | Operator syntax design and implementation boundaries — historical reference |
+| Design / history | `spec/history/v0.1/` | `resolved-questions.md` | Design decisions — resolved for v0.1 |
+| Design / history | `spec/history/v0.1/` | `frontend-v0.1.md` | Pipeline overview — historical reader entry point |
 
 ### Future design notes
 
-| Document | Purpose |
-|---|---|
-| `spec/entity-ref-design.md` | General `EntityRef` design (future); alias-RHS subset implemented in Phase 4.4 |
-| `spec/entity-alias-design.md` | Lexical alias binding design (Phase 4.3); raw parser preservation implemented in Phase 4.4; future semantic meaning remains future work |
-| `spec/roadmap.md` | Stage model v0.1–v1.0 and scope boundaries |
-| `spec/open-questions.md` | Unresolved design questions and documentation debt |
+| Directory | Document | Purpose |
+|---|---|---|
+| `spec/future/` | `entity-ref-design.md` | General `EntityRef` design (future); alias-RHS subset implemented in Phase 4.4 |
+| `spec/future/` | `entity-alias-design.md` | Lexical alias binding design (Phase 4.3); raw parser preservation implemented in Phase 4.4; future semantic meaning remains future work |
+| `spec/planning/` | `roadmap.md` | Stage model v0.1–v1.0 and scope boundaries |
+| `spec/planning/` | `open-questions.md` | Unresolved design questions and documentation debt |
 
 ### Build / package / namespace (future notes)
 
-| Document | Purpose |
-|---|---|
-| `spec/library-namespace-design-note.md` | Non-normative future design note |
-| `spec/build-system-design.md` | Build/package/namespace assembly architecture (future) |
-| `spec/package-manifest-v0.md` | Provisional build-manifest design surface (future) |
-| `spec/namespace-assembly-v0.md` | Namespace assembly pipeline and phase split (future) |
+| Directory | Document | Purpose |
+|---|---|---|
+| `spec/future/` | `library-namespace-design-note.md` | Non-normative future design note |
+| `spec/future/` | `build-system-design.md` | Build/package/namespace assembly architecture (future) |
+| `spec/future/` | `package-manifest-v0.md` | Provisional build-manifest design surface (future) |
+| `spec/future/` | `namespace-assembly-v0.md` | Namespace assembly pipeline and phase split (future) |
 
 ### Operational
 
@@ -73,7 +74,7 @@ references, but they are not the normal public entry point.
 |---|---|
 | `AGENTS.md` | Agent instructions — read before making code changes |
 | `SKILL.md` | Operational workflow for frontend work |
-| `spec/README.md` | Spec index with authority levels |
+| `spec/README.md` | Spec directory index with authority levels |
 
 ## Two repository tracks
 
@@ -83,10 +84,11 @@ references, but they are not the normal public entry point.
 2. **Build/package/namespace assembly track** (documentation only for now):
    future build system, package manifest, and namespace assembly design.
 
-Start with `spec/lexical-syntax-v0.2.md` to understand the current lexical
-syntax, then `spec/concrete-syntax-v0.2.md` for parsed syntax and
-`spec/diagnostics-recovery-v0.2.md` for error behavior. Read
-`spec/raw-ast-frozen-surface-v0.2.md` for the frozen Raw AST inventory.
+Start with `spec/public/v0.2/lexical-syntax-v0.2.md` to understand the current
+lexical syntax, then `spec/public/v0.2/concrete-syntax-v0.2.md` for parsed
+syntax and `spec/public/v0.2/diagnostics-recovery-v0.2.md` for error behavior.
+Read `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` for the frozen Raw AST
+inventory.
 
 ## Design summary
 
@@ -244,27 +246,37 @@ a shape.
 │   └── decisions/
 ├── spec/
 │   ├── README.md
-│   ├── frontend-v0.1.md
-│   ├── implementation-status-v0.1.md
-│   ├── raw-ast-contract-v0.1.md
-│   ├── raw-ast-contract-freeze-v0.2.md
-│   ├── raw-ast-frozen-surface-v0.2.md
-│   ├── lexical-syntax-v0.2.md
-│   ├── concrete-syntax-v0.2.md
-│   ├── diagnostics-recovery-v0.2.md
-│   ├── ast-construction-v0.1.md
-│   ├── operator-design.md
-│   ├── entity-ref-design.md
-│   ├── entity-alias-design.md
-│   ├── diagnostics-v0.1.md
-│   ├── roadmap.md
-│   ├── library-namespace-design-note.md
-│   ├── build-system-design.md
-│   ├── package-manifest-v0.md
-│   ├── namespace-assembly-v0.md
-│   ├── glossary.md
-│   ├── open-questions.md
-│   └── resolved-questions.md
+│   ├── public/
+│   │   └── v0.2/
+│   │       ├── lexical-syntax-v0.2.md
+│   │       ├── concrete-syntax-v0.2.md
+│   │       ├── diagnostics-recovery-v0.2.md
+│   │       └── raw-ast-frozen-surface-v0.2.md
+│   ├── reference/
+│   │   └── glossary.md
+│   ├── implementation/
+│   │   └── v0.1/
+│   │       ├── ast-construction-v0.1.md
+│   │       ├── diagnostics-v0.1.md
+│   │       └── implementation-status-v0.1.md
+│   ├── contracts/
+│   │   ├── raw-ast-contract-v0.1.md
+│   │   └── raw-ast-contract-freeze-v0.2.md
+│   ├── history/
+│   │   └── v0.1/
+│   │       ├── frontend-v0.1.md
+│   │       ├── operator-design.md
+│   │       └── resolved-questions.md
+│   ├── future/
+│   │   ├── entity-ref-design.md
+│   │   ├── entity-alias-design.md
+│   │   ├── library-namespace-design-note.md
+│   │   ├── build-system-design.md
+│   │   ├── package-manifest-v0.md
+│   │   └── namespace-assembly-v0.md
+│   └── planning/
+│       ├── roadmap.md
+│       └── open-questions.md
 ├── crates/
 │   ├── lang_syntax/
 │   └── lang_cli/
@@ -304,7 +316,7 @@ lang diag path/to/file.lang
 ```
 
 The repository has golden coverage for lexer, parser/AST, and diagnostics.
-See `spec/implementation-status-v0.1.md` for the current test count.
+See `spec/implementation/v0.1/implementation-status-v0.1.md` for the current test count.
 
 ## Non-goals for v0.1/v0.2
 
@@ -323,33 +335,33 @@ This path is sufficient to understand the current non-semantic frontend
 language: lexical syntax, concrete syntax, Raw AST preservation surface,
 diagnostics, and recovery.
 
-1. `spec/lexical-syntax-v0.2.md` — Understand the public lexical syntax.
-2. `spec/concrete-syntax-v0.2.md` — Understand the public concrete syntax.
-3. `spec/diagnostics-recovery-v0.2.md` — Understand public diagnostics and recovery.
-4. `spec/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
-5. `spec/glossary.md` — Resolve terminology.
+1. `spec/public/v0.2/lexical-syntax-v0.2.md` — Understand the public lexical syntax.
+2. `spec/public/v0.2/concrete-syntax-v0.2.md` — Understand the public concrete syntax.
+3. `spec/public/v0.2/diagnostics-recovery-v0.2.md` — Understand public diagnostics and recovery.
+4. `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
+5. `spec/reference/glossary.md` — Resolve terminology.
 
 ### Extended implementer reading
 
 Read these only when implementing, auditing, or repairing the frontend.
 
-1. `spec/ast-construction-v0.1.md` — Implement the parser.
-2. `spec/diagnostics-v0.1.md` — Diagnostic catalog (implementation-level reference).
-3. `spec/implementation-status-v0.1.md` — Know current implementation facts.
-4. `spec/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
-5. `spec/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff.
-6. `spec/operator-design.md` — Understand operator syntax and lookup boundaries.
-7. `spec/resolved-questions.md` — Understand resolved design decisions.
-8. `spec/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
+1. `spec/implementation/v0.1/ast-construction-v0.1.md` — Implement the parser.
+2. `spec/implementation/v0.1/diagnostics-v0.1.md` — Diagnostic catalog (implementation-level reference).
+3. `spec/implementation/v0.1/implementation-status-v0.1.md` — Know current implementation facts.
+4. `spec/contracts/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
+5. `spec/contracts/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff.
+6. `spec/history/v0.1/operator-design.md` — Understand operator syntax and lookup boundaries.
+7. `spec/history/v0.1/resolved-questions.md` — Understand resolved design decisions.
+8. `spec/history/v0.1/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
 
 ### Future design and planning
 
 Read these only when working on future design topics.
 
-1. `spec/entity-ref-design.md` — Future general EntityRef design.
-2. `spec/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-3. `spec/roadmap.md` — Understand scope boundaries.
-4. `spec/open-questions.md` — Recognize known gaps.
+1. `spec/future/entity-ref-design.md` — Future general EntityRef design.
+2. `spec/future/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+3. `spec/planning/roadmap.md` — Understand scope boundaries.
+4. `spec/planning/open-questions.md` — Recognize known gaps.
 
 ## Expected future workspace shape
 
