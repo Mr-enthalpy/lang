@@ -1,0 +1,3 @@
+let A === B::C;
+policy_expr let A === B::C;
+let + === Add::std

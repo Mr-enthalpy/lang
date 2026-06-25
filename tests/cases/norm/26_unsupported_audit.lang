@@ -1,0 +1,5 @@
+f ();
+f (a,);
+let x: obj.field = y;
+let x: obj..method(a) = y;
+let x: obj[a] = y

@@ -1,0 +1,119 @@
+NormProgram origin=Source@1:1[0..127]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..7]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..7]
+          deduce:
+            None
+          value_pattern:
+            Pattern Error
+              Error "expected binding pattern after `let`" origin=Source@1:5[4..5]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@1:7[6..7]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@2:5[13..14]
+        source:
+          Product origin=Generated(ProductLift)@2:1[9..10]
+            elements:
+              ExprElem
+                Name "x" origin=Source@2:1[9..10]
+        target:
+          Expr Error
+            Error "empty pipe segment" origin=Source@2:5[13..14]
+    Form Expr
+      Nav origin=Source@3:1[15..19]
+        components:
+          Name "x" origin=Source@3:1[15..16]
+          NavComponent Error
+            Error "operator cannot be an outer navigation component" origin=Source@3:4[18..19]
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@4:1[21..33]
+        binder:
+          Name "A" origin=Source@4:5[25..26]
+        target:
+          EntityRef origin=Generated(AliasPreserve)@4:10[30..33]
+            components:
+              NavComponent Error
+                Error "expected entity reference" origin=Source@4:11[31..33]
+    Form Let
+      Decl Let origin=Source@5:1[36..52]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[40..52]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@5:5[40..41]
+          annotation:
+            None
+          with_clause:
+            WithClause explicit_empty=false origin=Source@5:7[42..48]
+              error:
+                Error "invalid with clause" origin=Source@5:7[42..48]
+          initializer:
+            Name "y" origin=Source@5:16[51..52]
+    Form Let
+      Decl Let origin=Source@6:1[54..62]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[58..62]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@6:5[58..59]
+          annotation:
+            AnnotationPattern origin=Source@6:8[61..62]
+              Pattern Error
+                Error "expected binding annotation" origin=Source@6:8[61..62]
+          with_clause:
+            None
+          initializer:
+            Expr Error
+              Error "expected `=` in let" origin=Source@6:8[61..62]
+    Form Expr
+      Name "z" origin=Source@6:16[69..70]
+    Form Expr
+      Closure kind=Explicit origin=Source@7:1[72..101]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@7:1[72..93]
+            deduce:
+              HoleDecl "T" origin=Generated(PatternNormalize)@7:2[73..80]
+                annotation:
+                  AnnotationPattern origin=Generated(PatternNormalize)@7:5[76..80]
+                    PatternName "type" origin=Source@7:5[76..80]
+            params:
+              Unit origin=Source@7:11[82..83]
+              BindingSlotElem
+                BindingSlot let=false origin=Generated(PatternNormalize)@7:13[84..90]
+                  deduce:
+                    None
+                  value_pattern:
+                    Binder "val" origin=Source@7:13[84..87]
+                  annotation:
+                    AnnotationPattern origin=Source@7:18[89..90]
+                      Pattern Error
+                        Error "expected binding annotation" origin=Source@7:18[89..90]
+                  with_clause:
+                    None
+                  initializer:
+                    None
+        body:
+          NormBody origin=Source@7:23[94..101]
+            forms:
+              Form Expr
+                Name "val" origin=Source@7:25[96..99]
+    Form Let
+      Decl Let origin=Source@8:1[103..126]
+        BindingSlot let=true origin=Generated(PatternNormalize)@8:5[107..126]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@8:5[107..108]
+          annotation:
+            None
+          with_clause:
+            WithClause explicit_empty=false origin=Source@8:7[109..122]
+              error:
+                Error "invalid with clause" origin=Source@8:7[109..119]
+          initializer:
+            Name "y" origin=Source@8:23[125..126]

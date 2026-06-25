@@ -1,0 +1,7 @@
+{ x };
+<T: type>(val: T) => { val };
+<T: type>(val: T Option::std) => { val };
+<T, U>(x: T, y: U) => { x };
+<T: type>() => { };
+<T: type>(, val: T) => { val };
+<T: type>(val: T,) => { val }

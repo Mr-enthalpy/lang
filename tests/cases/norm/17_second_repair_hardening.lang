@@ -1,0 +1,12 @@
+f (a) g;
+f (a, b) g;
+f () g;
+f (a,) g;
+f (,a) g;
+f (a,,b) g;
+f (a) g h;
+x |> f (a) g;
+x |> f () g;
+x |> f (a,) g;
+x |> f (,a) g;
+x |> f (a,,b) g

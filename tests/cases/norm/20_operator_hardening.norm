@@ -1,0 +1,211 @@
+NormProgram origin=Source@1:1[0..47]
+  forms:
+    Form Expr
+      Call origin=Generated(OperatorLowering)@1:1[0..5]
+        source:
+          Product origin=Generated(OperatorLowering)@1:1[0..5]
+            elements:
+              ExprElem
+                Name "a" origin=Source@1:1[0..1]
+              ExprElem
+                Name "b" origin=Source@1:5[4..5]
+        target:
+          OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@1:3[2..3]
+    Form Expr
+      Call origin=Generated(OperatorLowering)@2:1[7..16]
+        source:
+          Product origin=Generated(OperatorLowering)@2:1[7..16]
+            elements:
+              ExprElem
+                Call origin=Generated(OperatorLowering)@2:1[7..12]
+                  source:
+                    Product origin=Generated(OperatorLowering)@2:1[7..12]
+                      elements:
+                        ExprElem
+                          Name "a" origin=Source@2:1[7..8]
+                        ExprElem
+                          Name "b" origin=Source@2:5[11..12]
+                  target:
+                    OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@2:3[9..10]
+              ExprElem
+                Name "c" origin=Source@2:9[15..16]
+        target:
+          OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@2:7[13..14]
+    Form Expr
+      Call origin=Generated(OperatorLowering)@3:1[18..20]
+        source:
+          Product origin=Generated(ProductLift)@3:1[18..19]
+            elements:
+              ExprElem
+                Name "a" origin=Source@3:1[18..19]
+        target:
+          OperatorTarget spelling="!" fixity=Postfix arity=1 origin=Source@3:2[19..20]
+    Form Expr
+      Call origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+        source:
+          Product origin=Generated(ProductLift)@4:2[23..24]
+            elements:
+              ExprElem
+                Name "a" origin=Source@4:2[23..24]
+        target:
+          Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+            head:
+              ClosureHead origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                deduce:
+                  HoleDecl "T" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                    annotation:
+                      AnnotationPattern origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                        PatternName "type" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      annotation:
+                        AnnotationPattern origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                          HoleRef "T" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                forms:
+                  Form Expr
+                    Call origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      source:
+                        Product origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                          elements:
+                            ExprElem
+                              Nav origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                                components:
+                                  Name "zero" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                                  Name "T" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                            ExprElem
+                              Name "val" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      target:
+                        OperatorTarget spelling="-" fixity=Binary arity=2 origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@5:1[26..29]
+        source:
+          Product origin=Generated(ProductLift)@5:1[26..28]
+            elements:
+              ExprElem
+                Expr Error
+                  Error "unsupported prefix operator" origin=Source@5:1[26..28]
+        target:
+          Name "a" origin=Source@5:3[28..29]
+    Form Expr
+      Call origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+        source:
+          Product origin=Generated(ProductLift)@6:3[33..38]
+            elements:
+              ExprElem
+                Call origin=Generated(OperatorLowering)@6:3[33..38]
+                  source:
+                    Product origin=Generated(OperatorLowering)@6:3[33..38]
+                      elements:
+                        ExprElem
+                          Name "a" origin=Source@6:3[33..34]
+                        ExprElem
+                          Name "b" origin=Source@6:7[37..38]
+                  target:
+                    OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@6:5[35..36]
+        target:
+          Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+            head:
+              ClosureHead origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                deduce:
+                  HoleDecl "T" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                    annotation:
+                      AnnotationPattern origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                        PatternName "type" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      annotation:
+                        AnnotationPattern origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                          HoleRef "T" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                forms:
+                  Form Expr
+                    Call origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      source:
+                        Product origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                          elements:
+                            ExprElem
+                              Nav origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                                components:
+                                  Name "zero" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                                  Name "T" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                            ExprElem
+                              Name "val" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      target:
+                        OperatorTarget spelling="-" fixity=Binary arity=2 origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+    Form Expr
+      Call origin=Generated(OperatorLowering)@7:1[41..47]
+        source:
+          Product origin=Generated(OperatorLowering)@7:1[41..47]
+            elements:
+              ExprElem
+                Name "a" origin=Source@7:1[41..42]
+              ExprElem
+                Call origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                  source:
+                    Product origin=Generated(ProductLift)@7:6[46..47]
+                      elements:
+                        ExprElem
+                          Name "b" origin=Source@7:6[46..47]
+                  target:
+                    Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                      head:
+                        ClosureHead origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                          deduce:
+                            HoleDecl "T" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                              annotation:
+                                AnnotationPattern origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                  PatternName "type" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                          params:
+                            BindingSlotElem
+                              BindingSlot let=false origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                deduce:
+                                  None
+                                value_pattern:
+                                  Binder "val" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                annotation:
+                                  AnnotationPattern origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                    HoleRef "T" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      body:
+                        NormBody origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                          forms:
+                            Form Expr
+                              Call origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                source:
+                                  Product origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                    elements:
+                                      ExprElem
+                                        Nav origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                          components:
+                                            Name "zero" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                            Name "T" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                      ExprElem
+                                        Name "val" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                target:
+                                  OperatorTarget spelling="-" fixity=Binary arity=2 origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+        target:
+          OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@7:3[43..44]

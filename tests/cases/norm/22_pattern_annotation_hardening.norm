@@ -1,0 +1,243 @@
+NormProgram origin=Source@1:1[0..297]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..16]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..16]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@1:6[5..6]
+              annotation:
+                None
+          value_pattern:
+            Binder "x" origin=Source@1:9[8..9]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@1:12[11..12]
+              HoleRef "T" origin=Source@1:12[11..12]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@1:16[15..16]
+    Form Let
+      Decl Let origin=Source@2:1[18..46]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[22..46]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@2:6[23..24]
+              annotation:
+                None
+          value_pattern:
+            Binder "x" origin=Source@2:9[26..27]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@2:12[29..42]
+              PatternSequence origin=Generated(PatternNormalize)@2:12[29..42]
+                elements:
+                  HoleRef "T" origin=Source@2:12[29..30]
+                  PatternNav origin=Source@2:14[31..42]
+                    components:
+                      Name "Option" origin=Source@2:14[31..37]
+                      Name "std" origin=Source@2:22[39..42]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@2:28[45..46]
+    Form Let
+      Decl Let origin=Source@3:1[48..70]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[52..70]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@3:6[53..60]
+              annotation:
+                AnnotationPattern origin=Generated(PatternNormalize)@3:9[56..60]
+                  PatternName "type" origin=Source@3:9[56..60]
+          value_pattern:
+            Binder "x" origin=Source@3:15[62..63]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@3:18[65..66]
+              HoleRef "T" origin=Source@3:18[65..66]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@3:22[69..70]
+    Form Let
+      Decl Let origin=Source@4:1[72..106]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[76..106]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@4:6[77..84]
+              annotation:
+                AnnotationPattern origin=Generated(PatternNormalize)@4:9[80..84]
+                  PatternName "type" origin=Source@4:9[80..84]
+          value_pattern:
+            Binder "x" origin=Source@4:15[86..87]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@4:18[89..102]
+              PatternSequence origin=Generated(PatternNormalize)@4:18[89..102]
+                elements:
+                  HoleRef "T" origin=Source@4:18[89..90]
+                  PatternNav origin=Source@4:20[91..102]
+                    components:
+                      Name "Option" origin=Source@4:20[91..97]
+                      Name "std" origin=Source@4:28[99..102]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@4:34[105..106]
+    Form Let
+      Decl Let origin=Source@5:1[108..129]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[112..129]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@5:6[113..114]
+              annotation:
+                None
+            HoleDecl "U" origin=Generated(PatternNormalize)@5:9[116..117]
+              annotation:
+                None
+          value_pattern:
+            Binder "x" origin=Source@5:12[119..120]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@5:15[122..125]
+              PatternSequence origin=Generated(PatternNormalize)@5:15[122..125]
+                elements:
+                  HoleRef "T" origin=Source@5:15[122..123]
+                  HoleRef "U" origin=Source@5:17[124..125]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@5:21[128..129]
+    Form Let
+      Decl Let origin=Source@6:1[131..162]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[135..162]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@6:6[136..137]
+              annotation:
+                None
+          value_pattern:
+            PatternProduct origin=Generated(PatternNormalize)@6:9[139..145]
+              elements:
+                BindingSlotElem
+                  BindingSlot let=false origin=Generated(PatternNormalize)@6:10[140..141]
+                    deduce:
+                      None
+                    value_pattern:
+                      Binder "x" origin=Source@6:10[140..141]
+                    annotation:
+                      None
+                    with_clause:
+                      None
+                    initializer:
+                      None
+                BindingSlotElem
+                  BindingSlot let=false origin=Generated(PatternNormalize)@6:13[143..144]
+                    deduce:
+                      None
+                    value_pattern:
+                      Binder "y" origin=Source@6:13[143..144]
+                    annotation:
+                      None
+                    with_clause:
+                      None
+                    initializer:
+                      None
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@6:17[147..158]
+              PatternSequence origin=Generated(PatternNormalize)@6:17[147..158]
+                elements:
+                  HoleRef "T" origin=Source@6:17[147..148]
+                  PatternNav origin=Source@6:19[149..158]
+                    components:
+                      Name "Pair" origin=Source@6:19[149..153]
+                      Name "std" origin=Source@6:25[155..158]
+          with_clause:
+            None
+          initializer:
+            Name "z" origin=Source@6:31[161..162]
+    Form Let
+      Decl Let origin=Source@7:1[164..180]
+        BindingSlot let=true origin=Generated(PatternNormalize)@7:5[168..180]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@7:6[169..170]
+              annotation:
+                None
+          value_pattern:
+            Binder "x" origin=Source@7:9[172..173]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@7:12[175..176]
+              PatternName "U" origin=Source@7:12[175..176]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@7:16[179..180]
+    Form Let
+      Decl Let origin=Source@8:1[182..210]
+        BindingSlot let=true origin=Generated(PatternNormalize)@8:5[186..210]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@8:6[187..188]
+              annotation:
+                None
+          value_pattern:
+            Binder "x" origin=Source@8:9[190..191]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@8:12[193..206]
+              PatternSequence origin=Generated(PatternNormalize)@8:12[193..206]
+                elements:
+                  PatternName "U" origin=Source@8:12[193..194]
+                  PatternNav origin=Source@8:14[195..206]
+                    components:
+                      Name "Option" origin=Source@8:14[195..201]
+                      Name "std" origin=Source@8:22[203..206]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@8:28[209..210]
+    Form Let
+      Decl Let origin=Source@9:1[212..228]
+        BindingSlot let=true origin=Generated(PatternNormalize)@9:5[216..228]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@9:5[216..217]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@9:8[219..224]
+              PatternUnsupported "operator sugar in annotation pattern" origin=Generated(Unsupported)@9:8[219..224]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@9:16[227..228]
+    Form Let
+      Decl Let origin=Source@10:1[230..250]
+        BindingSlot let=true origin=Generated(PatternNormalize)@10:5[234..250]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@10:5[234..235]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@10:8[237..246]
+              PatternUnsupported "member sugar in annotation pattern" origin=Generated(Unsupported)@10:8[237..246]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@10:20[249..250]
+    Form Let
+      Decl Let origin=Source@11:1[252..277]
+        BindingSlot let=true origin=Generated(PatternNormalize)@11:5[256..277]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@11:5[256..257]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@11:8[259..273]
+              PatternUnsupported "double-dot sugar in annotation pattern" origin=Generated(Unsupported)@11:8[259..273]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@11:25[276..277]
+    Form Let
+      Decl Let origin=Source@12:1[279..296]
+        BindingSlot let=true origin=Generated(PatternNormalize)@12:5[283..296]
+          deduce:
+            None
+          value_pattern:
+            Binder "x" origin=Source@12:5[283..284]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@12:8[286..292]
+              PatternUnsupported "bracket-call sugar in annotation pattern" origin=Generated(Unsupported)@12:8[286..292]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@12:17[295..296]

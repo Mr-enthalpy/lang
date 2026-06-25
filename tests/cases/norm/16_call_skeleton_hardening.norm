@@ -1,0 +1,196 @@
+NormProgram origin=Source@1:1[0..148]
+  forms:
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@1:6[5..14]
+        source:
+          Product origin=Generated(ProductLift)@1:6[5..14]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@1:6[5..14]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@1:6[5..14]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@1:1[0..1]
+                        ExprElem
+                          Name "a" origin=Source@1:9[8..9]
+                  target:
+                    Name "f" origin=Source@1:6[5..6]
+        target:
+          Name "b" origin=Source@1:13[12..13]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@2:6[21..32]
+        source:
+          Product origin=Generated(ProductLift)@2:6[21..32]
+            elements:
+              ExprElem
+                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@2:6[21..32]
+                  source:
+                    Product origin=Generated(ProductLift)@2:6[21..32]
+                      elements:
+                        ExprElem
+                          Call origin=Derived(ProductMerge; source-product continuation)@2:6[21..32]
+                            source:
+                              Product origin=Derived(ProductMerge; merged source product with continuation product)@2:6[21..32]
+                                elements:
+                                  ExprElem
+                                    Name "P" origin=Source@2:1[16..17]
+                                  ExprElem
+                                    Name "a" origin=Source@2:9[24..25]
+                            target:
+                              Name "f" origin=Source@2:6[21..22]
+                  target:
+                    Name "g" origin=Source@2:12[27..28]
+        target:
+          Name "b" origin=Source@2:15[30..31]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@3:6[39..48]
+        source:
+          Product origin=Generated(ProductLift)@3:6[39..48]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@3:6[39..48]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@3:6[39..48]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@3:1[34..35]
+                        ExprElem
+                          Name "a" origin=Source@3:11[44..45]
+                  target:
+                    Call origin=Derived(PipeFallback; ordinary expression-chain growth)@3:6[39..48]
+                      source:
+                        Product origin=Generated(ProductLift)@3:6[39..40]
+                          elements:
+                            ExprElem
+                              Name "f" origin=Source@3:6[39..40]
+                      target:
+                        Name "h" origin=Source@3:8[41..42]
+        target:
+          Name "k" origin=Source@3:14[47..48]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@4:6[55..66]
+        source:
+          Product origin=Generated(ProductLift)@4:6[55..66]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@4:6[55..66]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@4:6[55..66]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@4:1[50..51]
+                        ExprElem
+                          Name "a" origin=Source@4:13[62..63]
+                  target:
+                    Call origin=Derived(PipeFallback; ordinary expression-chain growth)@4:7[56..59]
+                      source:
+                        Product origin=Generated(ProductLift)@4:7[56..57]
+                          elements:
+                            ExprElem
+                              Name "f" origin=Source@4:7[56..57]
+                      target:
+                        Name "h" origin=Source@4:9[58..59]
+        target:
+          Name "k" origin=Source@4:16[65..66]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@5:6[73..88]
+        source:
+          Product origin=Generated(ProductLift)@5:6[73..88]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@5:6[73..88]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@5:6[73..88]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@5:1[68..69]
+                        ExprElem
+                          Name "a" origin=Source@5:9[76..77]
+                        ExprElem
+                          Product origin=Source@5:12[79..85]
+                            elements:
+                              ExprElem
+                                Name "b" origin=Source@5:13[80..81]
+                              ExprElem
+                                Name "c" origin=Source@5:16[83..84]
+                  target:
+                    Name "f" origin=Source@5:6[73..74]
+        target:
+          Name "g" origin=Source@5:20[87..88]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@6:6[95..101]
+        source:
+          Product origin=Generated(ProductLift)@6:6[95..101]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@6:6[95..101]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@6:6[95..101]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@6:1[90..91]
+                        Unit origin=Source@6:8[97..99]
+                  target:
+                    Name "f" origin=Source@6:6[95..96]
+        target:
+          Name "g" origin=Source@6:11[100..101]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@7:6[108..116]
+        source:
+          Product origin=Generated(ProductLift)@7:6[108..116]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@7:6[108..116]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@7:6[108..116]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@7:1[103..104]
+                        ExprElem
+                          Name "a" origin=Source@7:9[111..112]
+                        Unit origin=Source@7:10[112..113]
+                  target:
+                    Name "f" origin=Source@7:6[108..109]
+        target:
+          Name "g" origin=Source@7:13[115..116]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@8:6[123..131]
+        source:
+          Product origin=Generated(ProductLift)@8:6[123..131]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@8:6[123..131]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@8:6[123..131]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@8:1[118..119]
+                        Unit origin=Source@8:9[126..127]
+                        ExprElem
+                          Name "a" origin=Source@8:10[127..128]
+                  target:
+                    Name "f" origin=Source@8:6[123..124]
+        target:
+          Name "g" origin=Source@8:13[130..131]
+    Form Expr
+      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@9:6[138..148]
+        source:
+          Product origin=Generated(ProductLift)@9:6[138..148]
+            elements:
+              ExprElem
+                Call origin=Derived(ProductMerge; source-product continuation)@9:6[138..148]
+                  source:
+                    Product origin=Derived(ProductMerge; merged source product with continuation product)@9:6[138..148]
+                      elements:
+                        ExprElem
+                          Name "P" origin=Source@9:1[133..134]
+                        ExprElem
+                          Name "a" origin=Source@9:9[141..142]
+                        Unit origin=Source@9:11[143..144]
+                        ExprElem
+                          Name "b" origin=Source@9:12[144..145]
+                  target:
+                    Name "f" origin=Source@9:6[138..139]
+        target:
+          Name "g" origin=Source@9:15[147..148]

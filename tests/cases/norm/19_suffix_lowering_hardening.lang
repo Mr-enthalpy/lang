@@ -1,0 +1,12 @@
+obj[];
+obj[()];
+obj[(a)];
+obj[(a, b)];
+obj[a, (b, c)];
+obj.field;
+(obj).field;
+obj..method();
+obj..method(());
+obj..method(a,);
+obj..method(,a);
+obj..method(a,,b)

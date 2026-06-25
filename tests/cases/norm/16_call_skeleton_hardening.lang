@@ -1,0 +1,9 @@
+P |> f (a) (b);
+P |> f (a) g (b);
+P |> f h (a) k;
+P |> (f h) (a) k;
+P |> f (a, (b, c)) g;
+P |> f () g;
+P |> f (a,) g;
+P |> f (,a) g;
+P |> f (a,,b) g

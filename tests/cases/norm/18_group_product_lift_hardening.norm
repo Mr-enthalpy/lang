@@ -1,0 +1,56 @@
+NormProgram origin=Source@1:1[0..61]
+  forms:
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@1:6[5..8]
+        source:
+          Product origin=Generated(ProductLift)@1:1[0..1]
+            elements:
+              ExprElem
+                Name "x" origin=Source@1:1[0..1]
+        target:
+          Name "f" origin=Source@1:7[6..7]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@2:8[17..18]
+        source:
+          Product origin=Generated(ProductLift)@2:2[11..12]
+            elements:
+              ExprElem
+                Name "x" origin=Source@2:2[11..12]
+        target:
+          Name "f" origin=Source@2:8[17..18]
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@3:10[29..30]
+        source:
+          Product origin=Generated(ProductLift)@3:3[22..23]
+            elements:
+              ExprElem
+                Name "x" origin=Source@3:3[22..23]
+        target:
+          Name "f" origin=Source@3:10[29..30]
+    Form Expr
+      Call origin=Derived(ProductMerge; source-product continuation)@4:6[37..44]
+        source:
+          Product origin=Derived(ProductMerge; merged source product with continuation product)@4:6[37..44]
+            elements:
+              ExprElem
+                Name "x" origin=Source@4:1[32..33]
+              ExprElem
+                Name "a" origin=Source@4:10[41..42]
+        target:
+          Name "f" origin=Source@4:6[37..38]
+    Form Expr
+      Call origin=Derived(ProductMerge; source-product continuation)@5:6[51..61]
+        source:
+          Product origin=Derived(ProductMerge; merged source product with continuation product)@5:6[51..61]
+            elements:
+              ExprElem
+                Name "x" origin=Source@5:1[46..47]
+              ExprElem
+                Product origin=Source@5:9[54..60]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@5:10[55..56]
+                    ExprElem
+                      Name "b" origin=Source@5:13[58..59]
+        target:
+          Name "f" origin=Source@5:6[51..52]
