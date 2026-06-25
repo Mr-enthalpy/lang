@@ -123,3 +123,43 @@ fn line_comment_with_block_delims() {
 fn unclosed_nested_block_comment() {
     assert_lexer_case("unclosed_nested_block_comment", true);
 }
+
+#[test]
+fn numeric_spellings() {
+    assert_lexer_case("numeric_spellings", false);
+}
+
+#[test]
+fn literal_name_adjacency() {
+    assert_lexer_case("literal_name_adjacency", false);
+}
+
+#[test]
+fn numeric_separator_invalid() {
+    assert_lexer_case("numeric_separator_invalid", true);
+}
+
+#[test]
+fn string_boundary_ranked() {
+    assert_lexer_case("string_boundary_ranked", false);
+}
+
+#[test]
+fn string_mismatched_rank() {
+    assert_lexer_case("string_mismatched_rank", true);
+}
+
+#[test]
+fn no_string_concat() {
+    assert_lexer_case("no_string_concat", false);
+}
+
+#[test]
+fn single_quote() {
+    assert_lexer_case("single_quote", true);
+}
+
+#[test]
+fn unclosed_ranked_string() {
+    assert_lexer_case("unclosed_ranked_string", true);
+}

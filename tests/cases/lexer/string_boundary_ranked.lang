@@ -1,0 +1,4 @@
+"abc"
+\"text may contain " without ending\"
+\\"text may contain " and \" without ending\\"
+\\\"text may contain " and \" and \\" without ending\\\"

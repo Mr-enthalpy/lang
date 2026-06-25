@@ -30,6 +30,7 @@ pub enum DiagnosticCode {
     InvalidAliasPosition,
     InvalidEntityRef,
     UnexpectedAliasRhsExpression,
+    InvalidNumericLiteral,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

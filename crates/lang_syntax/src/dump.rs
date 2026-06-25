@@ -792,6 +792,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidAliasPosition => "InvalidAliasPosition",
         DiagnosticCode::InvalidEntityRef => "InvalidEntityRef",
         DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
+        DiagnosticCode::InvalidNumericLiteral => "InvalidNumericLiteral",
     }
 }
 

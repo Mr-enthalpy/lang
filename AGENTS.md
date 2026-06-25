@@ -73,9 +73,9 @@ Stable:
 
 Allowed additive work:
 
-* richer literal spellings, such as scientific notation, radix notation,
-  numeric separators, richer string literal spellings, escape syntax, and
-  literal-adjacent unit spelling if defined as syntax only
+* richer literal spellings (completed): radix integers, scientific notation,
+  digit separators, hexadecimal floats, ranked quote-boundary strings;
+  literal-name adjacency as ordinary call/composition material
 * local, mechanical, whole-shape sugar recognition triggered by finite explicit
   token shapes, preserved as Raw AST, with no lookup, inference, semantic
   validation, heuristic reinterpretation, or parser-skeleton restructuring

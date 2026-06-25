@@ -70,6 +70,18 @@ spanning the failed region.
 - **Recovery**: Treat the comment as closed at EOF. Emit as `Trivia`.
 - **AST effect**: No AST effect. Comment is trivia.
 
+#### `InvalidNumericLiteral`
+
+- **Trigger**: A malformed numeric literal: invalid digit separator position
+  (right after radix prefix, adjacent to dot or exponent marker, doubled
+  separator, or trailing separator), missing digits after a radix prefix
+  (`0x`, `0b`, `0o`), or empty hex float exponent.
+- **Primary span**: The position of the invalid construct.
+- **Recovery**: The lexer emits the diagnostic and continues lexing,
+  preserving the invalid separator/digits in the token text. For missing
+  radix digits, the prefix is emitted as an `IntLiteral` token.
+- **AST effect**: The literal token is still produced with its source text.
+
 ### 3.2 Parser diagnostics
 
 #### `UnexpectedToken`

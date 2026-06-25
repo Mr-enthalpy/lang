@@ -124,7 +124,9 @@ Treat the following as stable by default:
 
 Allowed additive work in this window:
 
-- richer literal spellings that remain lexical / Raw-AST-preserving
+- richer literal spellings (completed): radix integers, scientific notation,
+  digit separators, hexadecimal floats, ranked quote-boundary strings;
+  literal-name adjacency as ordinary call/composition material
 - local, mechanical, whole-shape sugar recognition from finite explicit token
   shapes, with no semantic validation or lookup
 - additions that extend existing lexer/parser entry points and AST preservation

@@ -63,9 +63,9 @@ preservation for alias binding and alias-RHS EntityRef.
 
 `v0.1.w` is not a semantic stage and not a parser expansion stage. Future work
 in this window is limited to documentation alignment, contract stabilization,
-richer literal spelling, and local mechanical whole-shape sugar recognition.
-Allowed additions must extend existing lexer/parser entry points and AST
-preservation categories; they must not replace the product/pipe/operator/
+richer literal spelling (completed), and local mechanical whole-shape sugar
+recognition. Allowed additions must extend existing lexer/parser entry points
+and AST preservation categories; they must not replace the product/pipe/operator/
 binding/closure/navigation architecture.
 
 ### Lexer boundary

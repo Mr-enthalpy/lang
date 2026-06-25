@@ -1,0 +1,5 @@
+StringLiteral "\"hello\"" @ 1:1 [0..7]
+Trivia.Whitespace " " @ 1:8 [7..8]
+StringLiteral "\"world\"" @ 1:9 [8..15]
+Trivia.Whitespace "\n" @ 1:16 [15..16]
+Eof "" @ 2:1 [16..16]

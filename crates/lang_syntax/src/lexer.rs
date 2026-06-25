@@ -54,7 +54,9 @@ impl<'src> Lexer<'src> {
             self.lex_name();
         } else if self.peek_is_ascii_digit() {
             self.lex_numeric_literal();
-        } else if self.starts_with("\"") {
+        } else if self.has_leading_dot_float() {
+            self.lex_numeric_literal();
+        } else if self.has_ranked_string_start() {
             self.lex_string_literal();
         } else if self.peek_is_whitespace() {
             self.lex_whitespace();
@@ -83,20 +85,153 @@ impl<'src> Lexer<'src> {
     fn lex_numeric_literal(&mut self) {
         let start = self.mark();
 
-        while self.peek_is_ascii_digit() {
+        if self.starts_with(".") {
             self.advance_char();
+            self.lex_radix_digits(|c| c.is_ascii_digit());
+            if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
+                self.lex_decimal_exponent();
+            }
+            self.push_token(TokenKind::FloatLiteral, start);
+            return;
         }
+
+        if self.starts_with("0b") || self.starts_with("0B") {
+            self.advance_char();
+            self.advance_char();
+            let has_digits = self.lex_radix_digits(|c| matches!(c, '0'..='1'));
+            if !has_digits {
+                self.emit_invalid_numeric("expected binary digits after `0b`");
+            }
+            self.push_token(TokenKind::IntLiteral, start);
+            return;
+        }
+
+        if self.starts_with("0o") || self.starts_with("0O") {
+            self.advance_char();
+            self.advance_char();
+            let has_digits = self.lex_radix_digits(|c| matches!(c, '0'..='7'));
+            if !has_digits {
+                self.emit_invalid_numeric("expected octal digits after `0o`");
+            }
+            self.push_token(TokenKind::IntLiteral, start);
+            return;
+        }
+
+        if self.starts_with("0x") || self.starts_with("0X") {
+            self.advance_char();
+            self.advance_char();
+
+            if self.starts_with(".")
+                && self.source[self.byte + 1..]
+                    .chars()
+                    .next()
+                    .map_or(false, |c| c.is_ascii_hexdigit())
+            {
+                self.advance_char();
+                self.lex_radix_digits(|c| c.is_ascii_hexdigit());
+                if self.starts_with("p") || self.starts_with("P") {
+                    self.advance_char();
+                    if self.starts_with("+") || self.starts_with("-") {
+                        self.advance_char();
+                    }
+                    let has_exp = self.lex_radix_digits(|c| c.is_ascii_digit());
+                    if !has_exp {
+                        self.emit_invalid_numeric("expected decimal digits in hex float exponent");
+                    }
+                    self.push_token(TokenKind::FloatLiteral, start);
+                    return;
+                }
+                self.emit_invalid_numeric("expected hex float exponent after hex fraction");
+                self.push_token(TokenKind::FloatLiteral, start);
+                return;
+            }
+
+            let has_digits = self.lex_radix_digits(|c| c.is_ascii_hexdigit());
+            if !has_digits {
+                self.emit_invalid_numeric("expected hexadecimal digits after `0x`");
+                self.push_token(TokenKind::IntLiteral, start);
+                return;
+            }
+
+            if self.starts_with(".") {
+                let after_dot = self.source[self.byte + 1..].chars().next();
+                if after_dot.map_or(false, |c| c.is_ascii_hexdigit()) {
+                    self.advance_char();
+                    self.lex_radix_digits(|c| c.is_ascii_hexdigit());
+                } else if after_dot.map_or(false, |c| c == 'p' || c == 'P') {
+                    self.advance_char();
+                }
+            }
+
+            if self.starts_with("p") || self.starts_with("P") {
+                self.advance_char();
+                if self.starts_with("+") || self.starts_with("-") {
+                    self.advance_char();
+                }
+                let has_exp = self.lex_radix_digits(|c| c.is_ascii_digit());
+                if !has_exp {
+                    self.emit_invalid_numeric("expected decimal digits in hex float exponent");
+                }
+                self.push_token(TokenKind::FloatLiteral, start);
+                return;
+            }
+
+            self.push_token(TokenKind::IntLiteral, start);
+            return;
+        }
+
+        self.lex_radix_digits(|c| c.is_ascii_digit());
 
         if self.starts_with(".") {
             let after_dot = self.source[self.byte + 1..].chars().next();
             if after_dot.map_or(false, |c| c.is_ascii_digit()) {
                 self.advance_char();
-                while self.peek_is_ascii_digit() {
-                    self.advance_char();
+                self.lex_radix_digits(|c| c.is_ascii_digit());
+                if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
+                    self.lex_decimal_exponent();
                 }
                 self.push_token(TokenKind::FloatLiteral, start);
                 return;
+            } else if !after_dot.map_or(false, |c| c == '.') {
+                if self.is_exponent_after_dot() {
+                    self.advance_char();
+                    self.lex_decimal_exponent();
+                    self.push_token(TokenKind::FloatLiteral, start);
+                    return;
+                }
+                let is_ident =
+                    after_dot.map_or(false, |c| matches!(c, 'a'..='z' | 'A'..='Z' | '_'));
+                if after_dot == Some('\'')
+                    && self.source[self.byte + 2..]
+                        .chars()
+                        .next()
+                        .map_or(false, |c| c.is_ascii_digit())
+                {
+                    self.advance_char();
+                    self.emit_invalid_numeric("invalid digit separator position");
+                    self.advance_char();
+                    self.lex_radix_digits(|c| c.is_ascii_digit());
+                    if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
+                        self.lex_decimal_exponent();
+                    }
+                    self.push_token(TokenKind::FloatLiteral, start);
+                    return;
+                }
+                if !is_ident {
+                    self.advance_char();
+                    if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
+                        self.lex_decimal_exponent();
+                    }
+                    self.push_token(TokenKind::FloatLiteral, start);
+                    return;
+                }
             }
+        }
+
+        if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
+            self.lex_decimal_exponent();
+            self.push_token(TokenKind::FloatLiteral, start);
+            return;
         }
 
         self.push_token(TokenKind::IntLiteral, start);
@@ -104,42 +239,129 @@ impl<'src> Lexer<'src> {
 
     fn lex_string_literal(&mut self) {
         let start = self.mark();
-        self.advance_char();
-        let mut closed = false;
 
-        while let Some(ch) = self.peek_char() {
-            match ch {
-                '"' => {
+        let mut k: usize = 0;
+        while self.peek_char() == Some('\\') {
+            self.advance_char();
+            k += 1;
+        }
+        self.advance_char();
+
+        let mut consecutive_bs: usize = 0;
+
+        loop {
+            if self.is_eof() || matches!(self.peek_char(), Some('\n' | '\r')) {
+                let span = self.span_from(start);
+                self.diagnostics.push(Diagnostic::new(
+                    DiagnosticCode::UnclosedString,
+                    "unclosed string literal",
+                    span,
+                ));
+                self.push_token_with_span(TokenKind::StringLiteral, span);
+                return;
+            }
+
+            match self.peek_char() {
+                Some('\\') => {
                     self.advance_char();
-                    closed = true;
-                    break;
+                    consecutive_bs += 1;
                 }
-                '\n' | '\r' => break,
-                '\\' => {
-                    self.advance_char();
-                    match self.peek_char() {
-                        Some('\n' | '\r') | None => break,
-                        Some(_) => {
-                            self.advance_char();
-                        }
+                Some('"') => {
+                    if consecutive_bs >= k {
+                        self.advance_char();
+                        self.push_token(TokenKind::StringLiteral, start);
+                        return;
                     }
-                }
-                _ => {
                     self.advance_char();
+                    consecutive_bs = 0;
                 }
+                Some(_) => {
+                    self.advance_char();
+                    consecutive_bs = 0;
+                }
+                None => unreachable!(),
+            }
+        }
+    }
+
+    fn has_leading_dot_float(&self) -> bool {
+        self.starts_with(".")
+            && self.source[self.byte + 1..]
+                .chars()
+                .next()
+                .map_or(false, |c| c.is_ascii_digit())
+    }
+
+    fn is_exponent_after_dot(&self) -> bool {
+        let rest = &self.source[self.byte + 1..];
+        let first = match rest.chars().next() {
+            Some(c) if c == 'e' || c == 'E' => c,
+            _ => return false,
+        };
+        let after_e = &rest[first.len_utf8()..];
+        let mut chars = after_e.chars();
+        let mut next = chars.next();
+        if next.map_or(false, |c| c == '+' || c == '-') {
+            next = chars.next();
+        }
+        next.map_or(false, |c| c.is_ascii_digit())
+    }
+
+    fn has_ranked_string_start(&self) -> bool {
+        let rest = &self.source[self.byte..];
+        let bs_count = rest.chars().take_while(|&c| c == '\\').count();
+        rest.chars().nth(bs_count) == Some('"')
+    }
+
+    fn lex_radix_digits(&mut self, is_digit: fn(char) -> bool) -> bool {
+        let mut any = false;
+        let mut prev_was_digit = false;
+
+        loop {
+            let ch = self.peek_char();
+            match ch {
+                Some(c) if is_digit(c) => {
+                    self.advance_char();
+                    any = true;
+                    prev_was_digit = true;
+                }
+                Some('\'') => {
+                    let next = self.source[self.byte + 1..].chars().next();
+                    let next_is_digit = next.map_or(false, is_digit);
+                    if !prev_was_digit || !next_is_digit {
+                        self.emit_invalid_numeric("invalid digit separator position");
+                        self.advance_char();
+                        prev_was_digit = false;
+                        continue;
+                    }
+                    self.advance_char();
+                    prev_was_digit = false;
+                }
+                _ => break,
             }
         }
 
-        let span = self.span_from(start);
-        if !closed {
-            self.diagnostics.push(Diagnostic::new(
-                DiagnosticCode::UnclosedString,
-                "unclosed string literal",
-                span,
-            ));
-        }
+        any
+    }
 
-        self.push_token_with_span(TokenKind::StringLiteral, span);
+    fn lex_decimal_exponent(&mut self) {
+        self.advance_char();
+        if self.peek_char().map_or(false, |c| c == '+' || c == '-') {
+            self.advance_char();
+        }
+        let has_digits = self.lex_radix_digits(|c| c.is_ascii_digit());
+        if !has_digits {
+            self.emit_invalid_numeric("expected decimal digits in exponent");
+        }
+    }
+
+    fn emit_invalid_numeric(&mut self, message: &str) {
+        let span = Span::at(self.byte, self.line, self.column);
+        self.diagnostics.push(Diagnostic::new(
+            DiagnosticCode::InvalidNumericLiteral,
+            message,
+            span,
+        ));
     }
 
     fn lex_whitespace(&mut self) {
