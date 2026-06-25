@@ -234,8 +234,8 @@ If a requested task requires any of the following, stop at AST preservation:
 For v0.2 Raw AST contract freeze work:
 - Prefer documentation and contract alignment.
 - Do not restructure the lexer/parser skeleton.
-- Add syntax only for richer literal spellings or local mechanical whole-shape
-  sugar recognition.
+- Do not add syntax except under a hard-correctness-error exception. Richer
+  literal spelling and local mechanical sugar are completed v0.1.w additions.
 - Run `cargo fmt --all` after code or Rust doc-comment changes.
 - Run `cargo test` after code, test, or snapshot changes.
 

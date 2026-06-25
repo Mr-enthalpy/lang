@@ -20,6 +20,7 @@ frontend. Each document has a defined authority level.
 | `entity-alias-design.md`           | Implemented-design explanation                        | Documents lexical alias binding syntax (`let binder === EntityRef`). Phase 4.3 design; Phase 4.4 raw parser preservation implemented. Future semantic meaning remains future work. |
 | `library-namespace-design-note.md` | Non-normative future design note                      | Describes the intended library/namespace/import model. Not a v0.1 parser rule.                                                              |
 | `open-questions.md`                | Non-normative                                         | Tracks unresolved design questions and documentation debt.                                                                                 |
+| `resolved-questions.md`            | Authoritative for resolved decisions                  | Records design questions resolved in v0.1.                                                                                                  |
 | `build-system-design.md`           | Non-normative, future design                          | Formal design note for the build/package/namespace assembly architecture.                                                                   |
 | `package-manifest-v0.md`           | Non-normative, future design                          | Provisional build-manifest design surface.                                                                                                  |
 | `namespace-assembly-v0.md`         | Non-normative, future design                          | High-level namespace assembly pipeline and phase split.                                                                                     |
@@ -38,6 +39,7 @@ frontend. Each document has a defined authority level.
 10. `glossary.md` - Resolve terminology ambiguity.
 11. `roadmap.md` - Understand scope boundaries.
 12. `open-questions.md` - Recognize known gaps.
+13. `resolved-questions.md` - Understand resolved design decisions.
 
 ## Spec priority
 
