@@ -32,7 +32,7 @@ targets but frozen input contracts:
 
 ## Open v0.3 design questions
 
-- N-AST-1 through N-AST-8 documented in [`../../planning/open-questions.md`](../../planning/open-questions.md).
+- N-AST-1 through N-AST-9 documented in [`../../planning/open-questions.md`](../../planning/open-questions.md).
 
 ## Non-goals for v0.3
 
