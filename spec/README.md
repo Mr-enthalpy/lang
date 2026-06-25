@@ -49,6 +49,7 @@ ordinary syntax understanding.
 |---|---|---|
 | `raw-ast-contract-v0.1.md` | Normative contract for future normalization | Defines Raw AST invariants that future normalization passes may rely on. |
 | `raw-ast-contract-freeze-v0.2.md` | Normative for v0.2 contract freeze | Defines v0.2 freeze boundary, allowed work, forbidden work, and handoff requirements for v0.3. |
+| `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
 
 ## Historical design notes
 

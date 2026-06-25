@@ -46,6 +46,7 @@ documents remain present, but they are not part of the normal public reading pat
 | Implementation | `spec/implementation/v0.1/` | `implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
+| Contract / handoff | `spec/contracts/` | `v0.3-normalization-handoff-checklist.md` | v0.3 normalization handoff: may-assume, must-not-assume, required inputs, open v0.3 questions |
 | Design / history | `spec/history/v0.1/` | `operator-design.md` | Operator syntax design and implementation boundaries — historical reference |
 | Design / history | `spec/history/v0.1/` | `resolved-questions.md` | Design decisions — resolved for v0.1 |
 | Design / history | `spec/history/v0.1/` | `frontend-v0.1.md` | Pipeline overview — historical reader entry point |
