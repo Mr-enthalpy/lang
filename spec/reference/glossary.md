@@ -70,8 +70,7 @@ _See also: Token, Strong context._
 
 A parser state in which certain `Name` tokens or symbols are interpreted
 structurally. Examples: `let` at form start, the active head clauses
-`require`/`pre`/`post`/`lifetime pre`/`lifetime post` and the reserved-inactive
-`where` position in closure heads, `with` inside let bindings, `<>` in binding
+`require`/`pre`/`post`/`lifetime pre`/`lifetime post`, `with` inside let bindings, `<>` in binding
 contexts.
 
 Outside a strong context, these tokens retain their ordinary `Name` or `Symbol`

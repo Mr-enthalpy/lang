@@ -58,7 +58,7 @@ tokens at the lexer level:
 ```text
 return  else  match  drop  move  ref
 sync  effect  fn  type  meta  runtime  compile
-namespace  struct  guard  where  acquire
+namespace  struct  guard  acquire
 ```
 
 Any other source word matching the Name lexical shape is also lexed as `Name`.

@@ -137,7 +137,7 @@ It does **not** yet cover:
   type-directed lookup.
 - Compile-time `EntityRef` resolution.
 - Operator alias identity validation.
-- The reserved-inactive `where` closure clause, closure object materialization,
+- Closure object materialization,
   type/kind checking, name resolution, semantic analysis, lowering,
   interpretation, or code generation. (The `require`/`pre`/`post`/`lifetime
   pre`/`lifetime post` head clauses are parsed as raw AST shape only; their

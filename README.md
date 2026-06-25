@@ -118,7 +118,7 @@ Examples:
 - `let` at form start
 - `require`/`pre`/`post`/`lifetime pre`/`lifetime post` as active raw-AST
   closure-head clauses (one expression slot each, no semantic validation);
-  `where` reserved-inactive; `acquire` an ordinary name
+  `acquire` an ordinary name
 - `with` inside let bindings, only as `with { ... }`
 
 Outside their context, they remain ordinary names.
