@@ -345,7 +345,7 @@ Product.
 1. The left side of a normalized call is always a Product.
 2. Ordinary expressions and group expressions can be product-lifted when used as
    call sources.
-3. `()` corresponds to a unit Product / unit element, not an empty Product.
+3. `()` corresponds to a Product containing one Unit element, not an empty Product.
 4. `obj[]` lowers to `(obj) |> []`, not `(obj, ()) |> []`.
 5. Raw product unit positions are preserved.
 6. Product normalization must not recursively flatten nested Products.
@@ -423,6 +423,11 @@ single-evaluation rationale as member and double-dot lowering.
 Prefix negative is not an overloadable prefix operator. `zero::T` and `-` remain
 unresolved. Only the generated binary minus participates in later operator
 lookup.
+
+As in §7.11, this lowered form is normalized construction notation describing
+generated closure structure, not a re-parseable v0.2 source rendering. The
+generated closure is an explicit (headed) closure; a concrete `v0.2`-source
+rendering would require `=>` between head and body.
 
 > Documentation debt: this v0.3 form supersedes the provisional
 > `()zero::(x |> type) - x` sketch still written in
