@@ -208,11 +208,7 @@ impl<'src> Lexer<'src> {
                         .map_or(false, |c| c.is_ascii_digit())
                 {
                     self.advance_char();
-                    self.diagnostics.push(Diagnostic::new(
-                        DiagnosticCode::InvalidNumericLiteral,
-                        "invalid digit separator position",
-                        Span::at(self.byte, self.line, self.column),
-                    ));
+                    self.emit_invalid_numeric("invalid digit separator position");
                     self.advance_char();
                     self.lex_radix_digits(|c| c.is_ascii_digit());
                     if self.peek_char().map_or(false, |c| c == 'e' || c == 'E') {
