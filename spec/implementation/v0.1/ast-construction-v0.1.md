@@ -1781,9 +1781,11 @@ FnHeadPrefix ::=
     FnItemTraitClause?
     ReturnClause?
     HeadClause*
+```
+
 `HeadClause` covers the active head clauses `require`/`pre`/`post`/`lifetime
-pre`/`lifetime post` (see §11.8). `acquire` is no longer a reserved head-clause
-position; only `where` remains future reserved.
+pre`/`lifetime post` (see §11.7). `acquire` is no longer a reserved head-clause
+position.
 
 The order is fixed.
 
