@@ -99,8 +99,8 @@ Raw AST is surface-preserving and non-desugared. Normalized AST will be
 a future desugared, non-semantic AST that unifies calls, extraction, and
 declarations into simple pattern/call/declaration structures.
 
-Raw AST → Normalized AST lowering is allowed only after v0.2 is explicitly
-closed or an explicit normalization-stage task is opened.
+Raw AST → Normalized AST lowering is allowed only in an explicit v0.4
+implementation task.
 
 ## v0.2 contract freeze policy
 
@@ -139,7 +139,7 @@ Allowed v0.2 work:
 * narrowly scoped golden-test additions (frozen behavior not yet locked)
 * no parser behavior change unless a hard correctness error is identified
 
-Forbidden in v0.2:
+Forbidden in v0.2 (closed):
 
 * broad lexer/parser restructuring, new syntax families
 * traditional call syntax, import/package/module syntax
@@ -181,8 +181,8 @@ Do not implement:
 * code generation
 * IR/HIR/MIR or semantic lowering
 
-Raw AST → Normalized AST lowering is allowed only after `v0.2` is explicitly
-closed or an explicit normalization-stage task is opened.
+Raw AST → Normalized AST lowering is allowed only in an explicit v0.4
+implementation task.
 
 If a change requires any of the above, stop at syntax/AST representation and
 leave the semantic behavior as a documented future pass.

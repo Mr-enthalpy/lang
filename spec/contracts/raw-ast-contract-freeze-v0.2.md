@@ -16,8 +16,8 @@ design will consume.
 ```text
 v0.1   — Raw AST Frontend — completed
 v0.1.w — Raw AST Stability Window — closed
-v0.2   — Raw AST Contract Freeze / Normalization Boundary Preparation — current
-v0.3   — Normalized AST Specification — future, begins only after v0.2 freeze
+v0.2   — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
+v0.3   — Normalized AST Specification — current
 v0.4   — Raw AST → Normalized AST Prototype — future
 v0.5   — Normalized AST Stabilization — future
 v0.6+  — Later semantic design stages
