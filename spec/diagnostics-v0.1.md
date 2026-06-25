@@ -234,9 +234,11 @@ spanning the failed region.
   binder after `->`, missing return constraint after `:`, or a head clause
   keyword (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) immediately
   followed by a clause/body boundary with no expression — message `expected
-  expression after \`<keyword>\``). Also emitted when a closure element appears
-  in an incoming pipe segment before any product/extraction head, such as
-  `x |> { y; }` or `x |> () => { y; }`.
+  expression after \`<keyword>\``). Also emitted when an in-place closure body
+  appears in incoming pipe position without a segment-level product head, such
+  as `x |> { y; }` or `x |> a::b { y; }`. Explicit closures such as
+  `x |> () => { y; }` have product extraction heads and do not emit this
+  diagnostic.
 - **Primary span**: The failing clause or token.
 - **Recovery**: Depending on severity, either skip the malformed clause or
   fall back to parsing as a non-closure atom.

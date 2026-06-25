@@ -1001,13 +1001,18 @@ The first product-head element `_` is the supplied extraction hole /
 unit-side placeholder of the branch head. The second element `name` is the
 branch name.
 
-The invariant is structural over incoming segment elements. In an incoming
-pipe segment, a closure body must not be treated as accepting input unless a
-product/extraction head precedes it in the same segment. The diagnostic for
-`x |> { ... }` is the minimal fully headless case, but every closure variant in
-incoming branch position requires a product head unless it is produced by the
-exact `|> name { ... }` shorthand, which mechanically inserts that product
-head.
+A closure body in incoming pipe position requires a product/extraction head.
+The product head may be a segment-level product before an in-place closure
+body, the parameter product inside an explicit closure head, or the product
+mechanically inserted by the exact `|> name { ... }` shorthand. `x |> { ... }`
+is rejected because it is the fully headless in-place closure case. It has no
+product/extraction head at all.
+
+`x |> () => { ... }`, `x |> (a) => { ... }`, and
+`x |> [] () => { ... }` are ordinary explicit closures with product extraction
+heads. They preserve ordinary explicit closure Raw AST. `x |> () { ... }` and
+`x |> (a) { ... }` are product-head plus in-place-closure branch forms in
+incoming pipe position.
 
 This is not a precedent for a family of branch-arm sugars. The shorthand is
 accepted only because the local token shape is finite, local, explicit, and

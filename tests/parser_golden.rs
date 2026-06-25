@@ -173,6 +173,41 @@ fn pipe_branch_name_nav_not_shorthand() {
 }
 
 #[test]
+fn pipe_branch_operator_not_shorthand() {
+    assert_parser_case("pipe_branch_operator_not_shorthand", true);
+}
+
+#[test]
+fn pipe_branch_two_names_not_shorthand() {
+    assert_parser_case("pipe_branch_two_names_not_shorthand", true);
+}
+
+#[test]
+fn pipe_explicit_empty_closure() {
+    assert_parser_case("pipe_explicit_empty_closure", false);
+}
+
+#[test]
+fn pipe_explicit_param_closure() {
+    assert_parser_case("pipe_explicit_param_closure", false);
+}
+
+#[test]
+fn pipe_explicit_capture_closure() {
+    assert_parser_case("pipe_explicit_capture_closure", false);
+}
+
+#[test]
+fn pipe_product_empty_branch() {
+    assert_parser_case("pipe_product_empty_branch", false);
+}
+
+#[test]
+fn pipe_product_param_branch() {
+    assert_parser_case("pipe_product_param_branch", false);
+}
+
+#[test]
 fn group_segment_start() {
     assert_parser_case("group_segment_start", false);
 }

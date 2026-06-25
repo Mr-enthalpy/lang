@@ -151,31 +151,6 @@ fn pipe_headless_closure() {
 }
 
 #[test]
-fn pipe_explicit_empty_closure_no_head() {
-    assert_diagnostics_case("pipe_explicit_empty_closure_no_head");
-}
-
-#[test]
-fn pipe_explicit_param_closure_no_head() {
-    assert_diagnostics_case("pipe_explicit_param_closure_no_head");
-}
-
-#[test]
-fn pipe_explicit_capture_closure_no_head() {
-    assert_diagnostics_case("pipe_explicit_capture_closure_no_head");
-}
-
-#[test]
-fn pipe_invalid_empty_head_no_arrow() {
-    assert_diagnostics_case("pipe_invalid_empty_head_no_arrow");
-}
-
-#[test]
-fn pipe_invalid_param_head_no_arrow() {
-    assert_diagnostics_case("pipe_invalid_param_head_no_arrow");
-}
-
-#[test]
 fn top_level_comma_newline() {
     assert_diagnostics_case("top_level_comma_newline");
 }

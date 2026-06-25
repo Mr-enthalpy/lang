@@ -1,0 +1,2 @@
+error InvalidOperatorExpression "unsupported prefix operator `+`" @ 1:6 [5..6]
+error InvalidClosureHead "pipe branch body requires an explicit extraction head" @ 1:8 [7..13]

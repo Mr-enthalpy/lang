@@ -131,6 +131,13 @@ fn parse_segment(
                 elements.extend(branch_elements);
                 continue;
             }
+            if let Some(branch_elements) = try_parse_incoming_product_branch(parser) {
+                has_product_head = branch_elements
+                    .iter()
+                    .any(|element| matches!(element, SegmentElementAst::Product(_)));
+                elements.extend(branch_elements);
+                continue;
+            }
             if parser.cursor.at_symbol(Symbol::LBrace) {
                 let span = parser.cursor.current_span();
                 parser.error(
@@ -143,7 +150,9 @@ fn parse_segment(
         }
 
         if let Some(element) = parse_segment_element(parser, &mut stop) {
-            if allow_pipe_branch_sugar && !has_product_head && is_closure_segment_element(&element)
+            if allow_pipe_branch_sugar
+                && !has_product_head
+                && is_in_place_closure_segment_element(&element)
             {
                 if !current_headless_closure_diagnosed {
                     diagnose_unheaded_incoming_closure(parser, &element);
@@ -198,6 +207,26 @@ fn try_parse_pipe_branch_sugar(parser: &mut Parser<'_>) -> Option<Vec<SegmentEle
         return Some(elements);
     }
     try_parse_explicit_pipe_branch_head(parser)
+}
+
+fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<SegmentElementAst>> {
+    let start_index = parser.cursor.current_index();
+    let (_, open) = parser.cursor.peek_at_skip_trivia(start_index);
+    if !matches!(open.kind, TokenKind::Symbol(Symbol::LParen)) {
+        return None;
+    }
+
+    let (_, after_idx) = parser.cursor.classify_paren_at_segment_position();
+    let after_idx = after_idx?;
+    let (_, body_start) = parser.cursor.peek_at_skip_trivia(after_idx);
+    if !matches!(body_start.kind, TokenKind::Symbol(Symbol::LBrace)) {
+        return None;
+    }
+
+    parser.cursor.set_index(start_index);
+    let product = parse_product_expr(parser);
+    let closure = pipe_branch_body(parser);
+    Some(vec![SegmentElementAst::Product(product), closure])
 }
 
 fn try_parse_bare_name_pipe_branch_sugar(
@@ -368,24 +397,28 @@ fn empty_error_segment(parser: &Parser<'_>, message: &str, span: Span) -> Segmen
     }
 }
 
-fn is_closure_segment_element(element: &SegmentElementAst) -> bool {
+fn is_in_place_closure_segment_element(element: &SegmentElementAst) -> bool {
     match element {
-        SegmentElementAst::OperatorExpr(op_expr) => operator_expr_contains_closure(op_expr),
+        SegmentElementAst::OperatorExpr(op_expr) => {
+            operator_expr_contains_in_place_closure(op_expr)
+        }
         SegmentElementAst::Product(_) => false,
     }
 }
 
-fn operator_expr_contains_closure(op_expr: &OperatorExprAst) -> bool {
+fn operator_expr_contains_in_place_closure(op_expr: &OperatorExprAst) -> bool {
     match &op_expr.kind {
-        OperatorExprKind::Atom(atom) => matches!(atom.kind, AtomKind::Closure(_)),
+        OperatorExprKind::Atom(atom) => {
+            matches!(atom.kind, AtomKind::Closure(ClosureAst::InPlace(_)))
+        }
         OperatorExprKind::Product(_) => false,
         OperatorExprKind::OperatorSugar { args, .. } => {
-            args.iter().any(operator_expr_contains_closure)
+            args.iter().any(operator_expr_contains_in_place_closure)
         }
         OperatorExprKind::MemberSugar { object, .. }
         | OperatorExprKind::DoubleDotSugar { object, .. }
         | OperatorExprKind::BracketCallSugar { object, .. } => {
-            operator_expr_contains_closure(object)
+            operator_expr_contains_in_place_closure(object)
         }
         OperatorExprKind::NavPath { .. } | OperatorExprKind::Error(_) => false,
     }
