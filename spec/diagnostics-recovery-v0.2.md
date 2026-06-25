@@ -53,7 +53,7 @@ The current `DiagnosticCode` enum contains 29 variants. Each is listed below
 with its category, typical trigger, and stability status.
 
 | Code | Category | Typical trigger | Recovery | Status |
-|---|---|---|---|---|---|
+|---|---|---|---|---|
 | `InvalidToken` | Lexer | Unrecognized byte sequence | Emit `Invalid` token and continue | Guaranteed |
 | `UnclosedString` | Lexer | String literal reaches EOF or newline before closing boundary | Emit `StringLiteral` token spanning unterminated text; continue | Guaranteed |
 | `UnclosedComment` | Lexer | Block comment reaches EOF before `*/` | Treat comment as closed at EOF; emit trivia token | Guaranteed |
@@ -70,15 +70,15 @@ with its category, typical trigger, and stability status.
 | `UnclosedParen` | Parser | `(` without matching `)` by form boundary or EOF | Insert implicit `)` at boundary; preserve parsed content | Guaranteed |
 | `UnclosedBracket` | Parser | `[` without matching `]` by form boundary or EOF | Insert implicit `]` at boundary; preserve parsed content | Guaranteed |
 | `UnclosedBrace` | Parser | `{` without matching `}` in a delimiter-owned context | Insert implicit `}` at boundary; preserve parsed content | Guaranteed |
-| `InvalidDeduceList` | Parser | Malformed deduce list (missing name, trailing comma, unclosed, missing annotation) | Preserve parsed binders; insert `ErrorAst` | Guaranteed |
+| `InvalidDeduceList` | Parser | Malformed deduce list (missing name, trailing comma, unclosed, missing annotation) | Preserve parsed binders where possible; some malformed annotation positions produce an error expression, other cases recover without adding a dedicated `ErrorAst` | Guaranteed |
 | `InvalidCanonicalSkeleton` | Parser | Malformed canonical skeleton in extraction context | Skip to context boundary; insert `ErrorAst` | Guaranteed |
 | `InvalidClosureHead` | Parser | `FnHeadPrefix { ... }` without `=>`, headless pipe branch body, malformed head clause | Replace malformed clause with `ErrorAst`; preserve recoverable parts | Guaranteed |
 | `TopLevelComma` | Parser | Comma at top level of a form outside any product or group | Consume comma; no additional AST structure | Guaranteed |
-| `UnusedClosureAst` | Parser | Headed or explicit closure literal in a position where it cannot be consumed | Closure AST still produced | Optional / not-guaranteed-emitted |
+| `UnusedClosureAst` | Parser | Exists for optional / non-guaranteed closure-recovery reporting | Closure AST still produced; callers must not rely on this code being emitted | Optional / not-guaranteed-emitted |
 | `InvalidOperatorExpression` | Operator | Malformed or unsupported operator syntax (missing operand, unsupported prefix) | Best-effort operator expression node or `ErrorAst` | Guaranteed |
 | `ChainedNonAssociativeOperator` | Operator | Ungrouped chain of non-associative operators (`a < b < c`) | Best-effort operator sugar shape; continue | Guaranteed |
 | `InvalidNavComponent` | Operator | Invalid navigation component (operator as outer component, grouped expression as innermost) | Local error component; preserve outer components | Guaranteed |
-| `ExpectedAliasTarget` | Alias | After `===`, RHS is absent or cannot start EntityRef; also covers missing component after `::` when alias RHS reaches a hard boundary | Consume offending token; recover to form boundary | Guaranteed |
+| `ExpectedAliasTarget` | Alias | After `===`, RHS is absent or cannot start EntityRef; also covers missing component after `::` when alias RHS reaches a hard boundary | Recovery depends on detection point: at a hard boundary the parser inserts an error component without consuming the boundary; for a non-boundary invalid token it may consume the token and recover to the form boundary | Guaranteed |
 | `InvalidAliasBinder` | Alias | Binder token is neither `Name` nor operator-eligible | Reserved; not currently emitted by parser | Reserved / not-currently-emitted |
 | `InvalidAliasPosition` | Alias | Alias-shaped token sequence appears in non-form position | Emit diagnostic; recover to enclosing delimiter or form boundary | Guaranteed |
 | `InvalidEntityRef` | Alias | Malformed non-boundary EntityRef components (grouped innermost component, operator as outer component) | Preserve parsed segments; replace malformed continuation with error component | Guaranteed |
@@ -291,10 +291,9 @@ Capture clauses and body blocks use `UnclosedBracket`, `UnclosedBrace`, or
 
 ### `UnusedClosureAst` — optional
 
-This diagnostic code exists but is not guaranteed to be emitted by the
-current parser. A headed or explicit closure literal in a position where
-it cannot be consumed may trigger this diagnostic conditionally. The closure
-AST is still produced regardless.
+This diagnostic code exists for optional / non-guaranteed closure-recovery
+reporting. Callers must not rely on it being emitted. The closure AST is
+still produced regardless.
 
 Closure diagnostics do not perform closure materialization, capture mode
 validation, contract validation, or lifetime validation.
@@ -310,8 +309,10 @@ A deduce list (`<...>`) in a strong binding context is malformed:
 - missing annotation after `:` (`<x:>`)
 - unclosed list (missing `>`)
 
-The parser preserves whatever binders were already parsed and inserts an
-`ErrorAst`. Deduce-list diagnostics are syntactic only; they do not
+The parser preserves whatever binders were already parsed where possible.
+Some malformed annotation positions produce an error expression; other
+malformed deduce-list cases recover without adding a dedicated `ErrorAst`
+node. Deduce-list diagnostics are syntactic only; they do not
 validate generic parameters, templates, type variables, or type-level
 entities.
 
@@ -337,8 +338,11 @@ is performed.
 
 After `===` in an alias binding, the right-hand side is absent or the
 current token cannot start an `EntityRef`. Also covers a missing component
-after `::` when the alias RHS reaches a hard boundary. The parser consumes
-the offending token and recovers to the form boundary.
+after `::` when the alias RHS reaches a hard boundary. Recovery depends
+on where the missing alias target is detected: at a hard boundary the
+parser inserts an error component without consuming the boundary; for a
+non-boundary invalid token it may consume the token and recover to the
+form boundary.
 
 ### `InvalidAliasBinder` — reserved
 
