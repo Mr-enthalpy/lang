@@ -1,0 +1,2 @@
+let <T> x: T = y;
+let <T> z: T Option::std = y

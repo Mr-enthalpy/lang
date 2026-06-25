@@ -1,0 +1,94 @@
+NormProgram origin=Source@1:1[0..25]
+  forms:
+    Form Expr
+      Call origin=Generated(MemberLowering)@1:1[0..9]
+        source:
+          Product origin=Generated(ProductLift)@1:1[0..3]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@1:1[0..3]
+        target:
+          Closure kind=Generated(MemberLowering) origin=Generated(MemberLowering)@1:1[0..9]
+            head:
+              ClosureHead origin=Generated(MemberLowering)@1:1[0..9]
+                deduce:
+                  HoleDecl "T" origin=Generated(MemberLowering)@1:1[0..9]
+                    annotation:
+                      AnnotationPattern origin=Generated(MemberLowering)@1:1[0..9]
+                        PatternName "type" origin=Generated(MemberLowering)@1:1[0..9]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(MemberLowering)@1:1[0..9]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(MemberLowering)@1:1[0..9]
+                      annotation:
+                        AnnotationPattern origin=Generated(MemberLowering)@1:1[0..9]
+                          HoleRef "T" origin=Generated(MemberLowering)@1:1[0..9]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(MemberLowering)@1:1[0..9]
+                forms:
+                  Form Expr
+                    Call origin=Generated(MemberLowering)@1:1[0..9]
+                      source:
+                        Product origin=Generated(MemberLowering)@1:1[0..9]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(MemberLowering)@1:1[0..9]
+                      target:
+                        Nav origin=Generated(MemberLowering)@1:1[0..9]
+                          components:
+                            Name "field" origin=Generated(MemberLowering)@1:1[0..9]
+                            Name "T" origin=Generated(MemberLowering)@1:1[0..9]
+    Form Expr
+      Call origin=Generated(DoubleDotLowering)@2:1[11..25]
+        source:
+          Product origin=Generated(ProductLift)@2:1[11..14]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@2:1[11..14]
+        target:
+          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@2:1[11..25]
+            head:
+              ClosureHead origin=Generated(DoubleDotLowering)@2:1[11..25]
+                deduce:
+                  HoleDecl "T" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                    annotation:
+                      AnnotationPattern origin=Generated(DoubleDotLowering)@2:1[11..25]
+                        PatternName "type" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@2:1[11..25]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+            body:
+              NormBody origin=Generated(DoubleDotLowering)@2:1[11..25]
+                forms:
+                  Form Expr
+                    Call origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      source:
+                        Product origin=Generated(DoubleDotLowering)@2:1[11..25]
+                          elements:
+                            ExprElem
+                              Name "val" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                            ExprElem
+                              Name "a" origin=Source@2:13[23..24]
+                      target:
+                        Nav origin=Generated(DoubleDotLowering)@2:1[11..25]
+                          components:
+                            Name "method" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                            Name "T" origin=Generated(DoubleDotLowering)@2:1[11..25]

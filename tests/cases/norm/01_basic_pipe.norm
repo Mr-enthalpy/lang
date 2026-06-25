@@ -1,0 +1,11 @@
+NormProgram origin=Source@1:1[0..6]
+  forms:
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@1:6[5..6]
+        source:
+          Product origin=Generated(ProductLift)@1:1[0..1]
+            elements:
+              ExprElem
+                Name "x" origin=Source@1:1[0..1]
+        target:
+          Name "f" origin=Source@1:6[5..6]

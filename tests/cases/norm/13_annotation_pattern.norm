@@ -1,0 +1,40 @@
+NormProgram origin=Source@1:1[0..46]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..16]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..16]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@1:6[5..6]
+              annotation:
+                None
+          value_pattern:
+            Binder "x" origin=Source@1:9[8..9]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@1:12[11..12]
+              HoleRef "T" origin=Source@1:12[11..12]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@1:16[15..16]
+    Form Let
+      Decl Let origin=Source@2:1[18..46]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[22..46]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@2:6[23..24]
+              annotation:
+                None
+          value_pattern:
+            Binder "z" origin=Source@2:9[26..27]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@2:12[29..42]
+              PatternSequence origin=Generated(PatternNormalize)@2:12[29..42]
+                elements:
+                  HoleRef "T" origin=Source@2:12[29..30]
+                  PatternNav origin=Source@2:14[31..42]
+                    components:
+                      Name "Option" origin=Source@2:14[31..37]
+                      Name "std" origin=Source@2:22[39..42]
+          with_clause:
+            None
+          initializer:
+            Name "y" origin=Source@2:28[45..46]

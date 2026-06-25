@@ -1,0 +1,24 @@
+NormProgram origin=Source@1:1[0..16]
+  forms:
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@1:1[0..5]
+        source:
+          Product origin=Generated(BracketCallLowering)@1:1[0..5]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@1:1[0..3]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=1 origin=Source@1:4[3..5]
+    Form Expr
+      Call origin=Generated(BracketCallLowering)@2:1[7..16]
+        source:
+          Product origin=Generated(BracketCallLowering)@2:1[7..16]
+            elements:
+              ExprElem
+                Name "obj" origin=Source@2:1[7..10]
+              ExprElem
+                Name "a" origin=Source@2:5[11..12]
+              ExprElem
+                Name "b" origin=Source@2:8[14..15]
+        target:
+          OperatorTarget spelling="[]" fixity=BracketCall arity=3 origin=Source@2:4[10..16]

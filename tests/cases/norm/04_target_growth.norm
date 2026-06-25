@@ -1,0 +1,20 @@
+NormProgram origin=Source@1:1[0..12]
+  forms:
+    Form Expr
+      Call origin=Derived(ProductMerge; source-product continuation)@1:6[5..12]
+        source:
+          Product origin=Derived(ProductMerge; merged source product with continuation product)@1:6[5..12]
+            elements:
+              ExprElem
+                Name "x" origin=Source@1:1[0..1]
+              ExprElem
+                Name "a" origin=Source@1:11[10..11]
+        target:
+          Call origin=Derived(PipeFallback; ordinary expression-chain growth)@1:6[5..12]
+            source:
+              Product origin=Generated(ProductLift)@1:6[5..6]
+                elements:
+                  ExprElem
+                    Name "f" origin=Source@1:6[5..6]
+            target:
+              Name "h" origin=Source@1:8[7..8]

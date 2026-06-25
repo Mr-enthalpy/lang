@@ -1,0 +1,11 @@
+NormProgram origin=Source@1:1[0..14]
+  forms:
+    Form Alias
+      Decl Alias origin=Generated(AliasPreserve)@1:1[0..14]
+        binder:
+          Name "A" origin=Source@1:5[4..5]
+        target:
+          EntityRef origin=Generated(AliasPreserve)@1:10[9..14]
+            components:
+              Name "B" origin=Source@1:11[10..11]
+              Name "C" origin=Source@1:14[13..14]

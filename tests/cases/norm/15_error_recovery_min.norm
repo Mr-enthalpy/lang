@@ -1,0 +1,12 @@
+NormProgram origin=Source@1:1[0..4]
+  forms:
+    Form Expr
+      Call origin=Derived(PipeFallback; no following source product)@1:5[4..4]
+        source:
+          Product origin=Generated(ProductLift)@1:1[0..1]
+            elements:
+              ExprElem
+                Name "x" origin=Source@1:1[0..1]
+        target:
+          Expr Error
+            Error "empty pipe segment" origin=Source@1:5[4..4]
