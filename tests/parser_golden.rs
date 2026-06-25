@@ -153,6 +153,16 @@ fn pipe_branch_name_explicit() {
 }
 
 #[test]
+fn pipe_branch_underscore_shorthand() {
+    assert_parser_case("pipe_branch_underscore_shorthand", false);
+}
+
+#[test]
+fn pipe_branch_underscore_explicit() {
+    assert_parser_case("pipe_branch_underscore_explicit", false);
+}
+
+#[test]
 fn pipe_branch_name_trailing_segment_material() {
     assert_parser_case("pipe_branch_name_trailing_segment_material", false);
 }

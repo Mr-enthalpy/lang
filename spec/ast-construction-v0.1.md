@@ -963,6 +963,18 @@ segment containing a two-element product head (`_`, `name`) followed by an
 in-place closure body. No semantic validation, name resolution, matching,
 closure materialization, or lookup is performed.
 
+The branch-name token is any bare `Name` token in that exact local shape,
+including the text `_`. For example:
+
+```text
+x |> _ { y; }
+=> x |> (_ _) { y; }
+```
+
+At Raw AST level, both `_` occurrences are just preserved `Name` text. The
+parser does not give either occurrence wildcard semantics, unit semantics,
+ignored-binding semantics, or pattern semantics.
+
 The shorthand is justified as a narrowly bounded repair for one
 otherwise-invalid local shape. In the ordinary pipe / call-composition model,
 `x |> name` without a right product is the explicit pipe form of the whitespace
@@ -1001,11 +1013,13 @@ example:
 ```text
 x |> name { y; } z
 => x |> (_ name) { y; } z
-=> (x |> (_ name) { y; }) |> z
 ```
 
-The trailing `z` is not part of a larger branch-arm sugar. It is handled by the
-existing call-composition machinery after the local prefix rewrite.
+At Raw AST level, the trailing `z` remains ordinary segment material after the
+locally rewritten prefix. Any later interpretation as right-call composition
+or an additional normalized call belongs to a future normalization stage, not
+to the Raw AST parser. The trailing `z` is not part of a larger branch-arm
+sugar.
 
 The shorthand does not generalize. The parser must not treat any of the
 following as this shorthand:

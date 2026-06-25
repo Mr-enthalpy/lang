@@ -113,11 +113,19 @@ Normalization must **not** assume:
   supported explicit form. It recognizes only the local incoming segment prefix
   `|> name { ... }`; after that local rewrite, any following token sequence is
   parsed by ordinary existing pipe / segment / composition rules.
+- The branch-name token in `|> name { ... }` may have text `_` because `_` is
+  still a bare `Name` token in the exact local shape. `|> _ { ... }` is
+  preserved as `|> (_ _) { ... }` shape. No wildcard, unit, ignored-binding, or
+  pattern semantics are attached at Raw AST level.
 - The pipe branch-name shorthand is a narrow repair for one otherwise-invalid
   local shape. Without it, `x |> name { ... }` would fall toward continuous
   right-call composition into a headless in-place closure. A headless in-place
   closure does not mean "accept unit"; no extraction head means no extracted
   input, including no implicit unit input.
+- At Raw AST level, trailing material after the locally rewritten prefix
+  remains ordinary segment material. Any later interpretation as right-call
+  composition or an additional normalized call belongs to future normalization,
+  not to the Raw AST parser.
 
 ## OperatorExpr invariants
 

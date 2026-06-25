@@ -53,8 +53,16 @@ The shorthand recognizes only the local incoming segment prefix
 `|> name { ... }`. After that local rewrite, any following token sequence is
 parsed by ordinary existing pipe / segment / composition rules. Allowing
 `x |> name { y; } z` means only that the local prefix rewrites to
-`x |> (_ name) { y; } z`; the trailing `z` is handled by existing
-call-composition machinery and is not part of a larger branch-arm sugar.
+`x |> (_ name) { y; } z`. At Raw AST level, the trailing `z` remains ordinary
+segment material after the locally rewritten prefix. Any later interpretation
+as right-call composition or an additional normalized call belongs to a future
+normalization stage, not to the Raw AST parser. The trailing `z` is not part of
+a larger branch-arm sugar.
+
+The branch-name token may have text `_` because `_` is still a bare `Name`
+token in the exact local shape. `x |> _ { y; }` is mechanically read as
+`x |> (_ _) { y; }`. The parser does not attach wildcard, unit,
+ignored-binding, or pattern semantics to either `_` at Raw AST level.
 
 The shorthand is justified as a narrowly bounded repair for one
 otherwise-invalid local shape. Without it, `x |> name { y; }` would fall toward

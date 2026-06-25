@@ -126,6 +126,14 @@ fn parse_segment(
                 elements.extend(branch_elements);
                 continue;
             }
+            if parser.cursor.at_symbol(Symbol::LBrace) {
+                let span = parser.cursor.current_span();
+                parser.error(
+                    DiagnosticCode::InvalidClosureHead,
+                    "pipe branch body requires an explicit extraction head",
+                    span,
+                );
+            }
         }
 
         if let Some(element) = parse_segment_element(parser, &mut stop) {

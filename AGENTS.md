@@ -108,6 +108,13 @@ into a headless in-place closure. A headless in-place closure does not mean
 "accept unit"; no extraction head means no extracted input, including no
 implicit unit input.
 
+The branch-name token may have text `_` because `_` is still a bare `Name`
+token in this exact shape. `x |> _ { y; }` is mechanically read as
+`x |> (_ _) { y; }` with no wildcard, unit, ignored-binding, or pattern
+semantics at parser level. At Raw AST level, trailing material after the
+locally rewritten prefix remains ordinary segment material; any later
+right-call or normalized-call interpretation belongs to future normalization.
+
 Forbidden in `v0.1.w`:
 
 * semantic analysis, name resolution, type/kind checking, operator lookup,

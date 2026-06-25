@@ -146,6 +146,11 @@ fn empty_pipe_segment_newline() {
 }
 
 #[test]
+fn pipe_headless_closure() {
+    assert_diagnostics_case("pipe_headless_closure");
+}
+
+#[test]
 fn top_level_comma_newline() {
     assert_diagnostics_case("top_level_comma_newline");
 }
