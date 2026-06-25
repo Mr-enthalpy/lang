@@ -514,9 +514,9 @@ The parser preserves each clause as a `HeadClauseAst` with exactly one
 `ExprAst` slot. It performs no contract, lifetime, resource, type-level,
 rank-level, or predicate validation.
 
-`where` is a reserved-inactive closure-head position. It is not parsed as an
-active clause but is recognized as a reserved position during closure-head
-lookahead. `acquire` is an ordinary name (the earlier `acquire` direction is
+`where` is reserved by design notes but is not an active closure-head clause
+in the current parser. It should not be described as an implemented active
+clause. `acquire` is an ordinary name (the earlier `acquire` direction is
 replaced by the active `pre`/`post` head clauses).
 
 ## 19. Capture clauses
