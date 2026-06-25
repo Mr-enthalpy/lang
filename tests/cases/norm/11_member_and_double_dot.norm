@@ -17,18 +17,19 @@ NormProgram origin=Source@1:1[0..25]
                       AnnotationPattern origin=Generated(MemberLowering)@1:1[0..9]
                         PatternName "type" origin=Generated(MemberLowering)@1:1[0..9]
                 params:
-                  BindingSlot let=false origin=Generated(MemberLowering)@1:1[0..9]
-                    deduce:
-                      None
-                    value_pattern:
-                      Binder "val" origin=Generated(MemberLowering)@1:1[0..9]
-                    annotation:
-                      AnnotationPattern origin=Generated(MemberLowering)@1:1[0..9]
-                        HoleRef "T" origin=Generated(MemberLowering)@1:1[0..9]
-                    with_clause:
-                      None
-                    initializer:
-                      None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(MemberLowering)@1:1[0..9]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(MemberLowering)@1:1[0..9]
+                      annotation:
+                        AnnotationPattern origin=Generated(MemberLowering)@1:1[0..9]
+                          HoleRef "T" origin=Generated(MemberLowering)@1:1[0..9]
+                      with_clause:
+                        None
+                      initializer:
+                        None
             body:
               NormBody origin=Generated(MemberLowering)@1:1[0..9]
                 forms:
@@ -61,18 +62,19 @@ NormProgram origin=Source@1:1[0..25]
                       AnnotationPattern origin=Generated(DoubleDotLowering)@2:1[11..25]
                         PatternName "type" origin=Generated(DoubleDotLowering)@2:1[11..25]
                 params:
-                  BindingSlot let=false origin=Generated(DoubleDotLowering)@2:1[11..25]
-                    deduce:
-                      None
-                    value_pattern:
-                      Binder "val" origin=Generated(DoubleDotLowering)@2:1[11..25]
-                    annotation:
-                      AnnotationPattern origin=Generated(DoubleDotLowering)@2:1[11..25]
-                        HoleRef "T" origin=Generated(DoubleDotLowering)@2:1[11..25]
-                    with_clause:
-                      None
-                    initializer:
-                      None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "val" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      annotation:
+                        AnnotationPattern origin=Generated(DoubleDotLowering)@2:1[11..25]
+                          HoleRef "T" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      with_clause:
+                        None
+                      initializer:
+                        None
             body:
               NormBody origin=Generated(DoubleDotLowering)@2:1[11..25]
                 forms:

@@ -1,3 +1,9 @@
+//! v0.4 Normalized AST prototype.
+//!
+//! Value-side `NormExpr` and pattern-side `NormPattern` remain distinct. Raw
+//! expression-shaped syntax is normalized as pattern material only when the
+//! surrounding syntactic context is pattern, annotation, or extraction.
+
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
@@ -196,7 +202,7 @@ pub enum NormClosureKind {
 pub struct NormClosureHead {
     pub deduce: Vec<NormHoleDecl>,
     pub captures: Vec<NormExpr>,
-    pub params: Vec<NormBindingSlot>,
+    pub params: Vec<NormPatternElem>,
     pub fn_item_trait: Option<NormAnnotation>,
     pub returns: Option<NormBindingSlot>,
     pub clauses: Vec<NormHeadClause>,
@@ -1096,14 +1102,18 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
     }
 }
 
-fn normalize_param_clause(params: &ParamClauseAst, hole_names: &[String]) -> Vec<NormBindingSlot> {
+fn normalize_param_clause(params: &ParamClauseAst, hole_names: &[String]) -> Vec<NormPatternElem> {
     params
         .extract
         .elements
         .iter()
-        .filter_map(|element| match element {
-            ProductExtractElementAst::Slot(slot) => Some(normalize_binding_slot(slot, hole_names)),
-            ProductExtractElementAst::Unit { .. } => None,
+        .map(|element| match element {
+            ProductExtractElementAst::Slot(slot) => {
+                NormPatternElem::BindingSlot(normalize_binding_slot(slot, hole_names))
+            }
+            ProductExtractElementAst::Unit { span } => NormPatternElem::Unit {
+                origin: NormOrigin::Source(*span),
+            },
         })
         .collect()
 }
@@ -1576,7 +1586,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                 origin: NormOrigin::Generated { rule, span },
             }],
             captures: Vec::new(),
-            params: vec![NormBindingSlot {
+            params: vec![NormPatternElem::BindingSlot(NormBindingSlot {
                 policy: None,
                 has_let: false,
                 deduce: Vec::new(),
@@ -1594,7 +1604,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                 with_clause: None,
                 initializer: None,
                 origin: NormOrigin::Generated { rule, span },
-            }],
+            })],
             fn_item_trait: None,
             returns: None,
             clauses: Vec::new(),
@@ -1952,20 +1962,7 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 line(output, indent + 2, "(empty)");
             }
             for element in elements {
-                match element {
-                    NormPatternElem::Pattern(pattern) => dump_pattern(output, pattern, indent + 2),
-                    NormPatternElem::BindingSlot(slot) => {
-                        line(output, indent + 2, "BindingSlotElem");
-                        dump_binding_slot(output, slot, indent + 3);
-                    }
-                    NormPatternElem::Unit { origin } => {
-                        line(
-                            output,
-                            indent + 2,
-                            &format!("Unit {}", origin_inline(origin)),
-                        );
-                    }
-                }
+                dump_pattern_elem(output, element, indent + 2);
             }
         }
         NormPattern::Unit { origin } => {
@@ -2052,6 +2049,19 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 origin_inline(origin)
             ),
         ),
+    }
+}
+
+fn dump_pattern_elem(output: &mut String, element: &NormPatternElem, indent: usize) {
+    match element {
+        NormPatternElem::Pattern(pattern) => dump_pattern(output, pattern, indent),
+        NormPatternElem::BindingSlot(slot) => {
+            line(output, indent, "BindingSlotElem");
+            dump_binding_slot(output, slot, indent + 1);
+        }
+        NormPatternElem::Unit { origin } => {
+            line(output, indent, &format!("Unit {}", origin_inline(origin)));
+        }
     }
 }
 
@@ -2200,7 +2210,7 @@ fn dump_closure_head(output: &mut String, head: &NormClosureHead, indent: usize)
         line(output, indent + 2, "None");
     } else {
         for param in &head.params {
-            dump_binding_slot(output, param, indent + 2);
+            dump_pattern_elem(output, param, indent + 2);
         }
     }
     if let Some(annotation) = &head.fn_item_trait {
