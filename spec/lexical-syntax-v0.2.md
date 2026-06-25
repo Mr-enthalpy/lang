@@ -133,8 +133,8 @@ and the separator is included in the token text):
 
 Separators that appear before any digits are not part of a numeric literal
 scan. At the beginning of source or token position, `'100` starts with an
-unrecognized apostrophe and produces an `InvalidToken` diagnostic, not
-`InvalidNumericLiteral`. `InvalidNumericLiteral` applies only to malformed
+unrecognized apostrophe and, in the current lexer, produces an
+`InvalidToken` diagnostic, not `InvalidNumericLiteral`. `InvalidNumericLiteral` applies only to malformed
 separator positions inside a numeric literal scan.
 
 ### 6.3 Lexical boundary
@@ -203,6 +203,9 @@ quote, the extra backslashes are body text; the final `k` backslashes plus the
 quote form the closing boundary.
 
 ### 8.2 Examples by rank
+
+All examples are literal source text inside fenced code blocks; the displayed
+backslashes are source characters.
 
 `k = 0` — ordinary short string. Closes at the next bare `"`.
 
@@ -360,13 +363,14 @@ Trivia tokens carry spans but are skipped by the parser.
 
 ### 11.1 Whitespace
 
-Characters `' '`, `'\t'`, `'\r'`, and `'\n'` are whitespace tokens. A line
-break (`\n`) is trivia and is never promoted to a form separator.
+Source text normalization (§2) converts CR and CRLF to LF before tokenization.
+In the normalized source, whitespace tokens are `' '`, `'\t'`, and `'\n'`.
+A line break (`\n`) is trivia and is never promoted to a form separator.
 
 ### 11.2 Line comments
 
-A line comment starts with `//` and ends before the next line break (`\n`,
-`\r`) or end of file. Line comments do not nest. Inside a line comment, `/*`
+A line comment starts with `//` and ends before the next line break (`\n`)
+or end of file. Line comments do not nest. Inside a line comment, `/*`
 and `*/` have no special meaning.
 
 ### 11.3 Block comments
@@ -419,8 +423,10 @@ The lexer is a mechanical tokenizer. It does not perform:
 - layout-sensitive parsing
 - semantic validation
 
-These responsibilities belong to the parser, later normalization stages, or
-future semantic passes.
+Some structural recognition belongs to the parser; normalization handles
+non-semantic desugaring; name resolution, type inference, numeric evaluation,
+operator lookup, alias resolution, and evaluation behavior belong to later
+semantic passes.
 
 ## 15. Relationship to other documents
 
