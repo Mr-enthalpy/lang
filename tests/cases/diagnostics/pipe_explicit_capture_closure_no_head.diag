@@ -1,0 +1,1 @@
+error InvalidClosureHead "pipe branch body requires an explicit extraction head" @ 1:6 [5..20]

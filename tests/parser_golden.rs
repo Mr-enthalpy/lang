@@ -169,7 +169,7 @@ fn pipe_branch_name_trailing_segment_material() {
 
 #[test]
 fn pipe_branch_name_nav_not_shorthand() {
-    assert_parser_case("pipe_branch_name_nav_not_shorthand", false);
+    assert_parser_case("pipe_branch_name_nav_not_shorthand", true);
 }
 
 #[test]

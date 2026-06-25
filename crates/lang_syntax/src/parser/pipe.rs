@@ -115,6 +115,8 @@ fn parse_segment(
 ) -> SegmentAst {
     let start = parser.cursor.current_span();
     let mut elements = Vec::new();
+    let mut has_product_head = false;
+    let mut current_headless_closure_diagnosed = false;
 
     while !stop(parser) {
         if parser.cursor.at_eof() {
@@ -133,14 +135,26 @@ fn parse_segment(
                     "pipe branch body requires an explicit extraction head",
                     span,
                 );
+                current_headless_closure_diagnosed = true;
             }
         }
 
         if let Some(element) = parse_segment_element(parser, &mut stop) {
+            if allow_pipe_branch_sugar && !has_product_head && is_closure_segment_element(&element)
+            {
+                if !current_headless_closure_diagnosed {
+                    diagnose_unheaded_incoming_closure(parser, &element);
+                }
+                current_headless_closure_diagnosed = false;
+            }
+            if matches!(element, SegmentElementAst::Product(_)) {
+                has_product_head = true;
+            }
             elements.push(element);
         } else if stop(parser) {
             break;
         } else {
+            current_headless_closure_diagnosed = false;
             let token = parser.cursor.peek_non_trivia();
             if matches!(token.kind, TokenKind::Eof) {
                 break;
@@ -349,6 +363,37 @@ fn empty_error_segment(parser: &Parser<'_>, message: &str, span: Span) -> Segmen
         has_incoming: false,
         span,
     }
+}
+
+fn is_closure_segment_element(element: &SegmentElementAst) -> bool {
+    match element {
+        SegmentElementAst::OperatorExpr(op_expr) => operator_expr_contains_closure(op_expr),
+        SegmentElementAst::Product(_) => false,
+    }
+}
+
+fn operator_expr_contains_closure(op_expr: &OperatorExprAst) -> bool {
+    match &op_expr.kind {
+        OperatorExprKind::Atom(atom) => matches!(atom.kind, AtomKind::Closure(_)),
+        OperatorExprKind::Product(_) => false,
+        OperatorExprKind::OperatorSugar { args, .. } => {
+            args.iter().any(operator_expr_contains_closure)
+        }
+        OperatorExprKind::MemberSugar { object, .. }
+        | OperatorExprKind::DoubleDotSugar { object, .. }
+        | OperatorExprKind::BracketCallSugar { object, .. } => {
+            operator_expr_contains_closure(object)
+        }
+        OperatorExprKind::NavPath { .. } | OperatorExprKind::Error(_) => false,
+    }
+}
+
+fn diagnose_unheaded_incoming_closure(parser: &mut Parser<'_>, element: &SegmentElementAst) {
+    parser.error(
+        DiagnosticCode::InvalidClosureHead,
+        "pipe branch body requires an explicit extraction head",
+        element_span(element),
+    );
 }
 
 fn element_span(element: &SegmentElementAst) -> Span {

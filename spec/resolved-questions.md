@@ -70,6 +70,14 @@ continuous right-call composition into a headless in-place closure, as if
 `(x name) { y; }`. A headless in-place closure does not mean "accept unit"; no
 extraction head means no extracted input, including no implicit unit input.
 
+The incoming branch-head invariant is structural over segment elements. In an
+incoming pipe segment, a closure body must not be treated as accepting input
+unless a product/extraction head precedes it in the same segment. The
+diagnostic for `x |> { ... }` is the minimal fully headless case, but every
+closure variant in incoming branch position requires a product head unless it
+is produced by the exact `|> name { ... }` shorthand, which mechanically
+inserts that product head.
+
 The parser preserves the same Raw AST shape as the explicit form: an incoming
 pipe segment containing a two-element product head (`_`, `name`) followed by an
 in-place closure body. It performs no semantic validation, name resolution,
