@@ -6,17 +6,15 @@ This file records implementation facts. It does not override normative syntax
 rules in `ast-construction-v0.1.md`, `operator-design.md`, or
 `diagnostics-v0.1.md`.
 
-**Current stage:** v0.1 Raw AST Frontend completed; v0.1.w closed. Active
-stage is `v0.2` Raw AST Contract Freeze / Normalization Boundary Preparation.
+**Current stage:** Implementation baseline remains v0.1/v0.2 Raw AST frontend;
+current active design stage is v0.3 — Normalized AST Specification.
 
 The implementation listed here is the stable frontend baseline: lexer/parser
 skeleton, `lex` / `parse`, Raw AST categories, token/AST/diagnostic dumps,
-diagnostics infrastructure, and golden-test expectations are stable by default.
-Future work in `v0.2` is documentation reconciliation, contract freezing,
-consistency repair, version/stage metadata alignment, and preparation of the
-boundary that v0.3 Normalized AST Specification will consume. No parser behavior
-change unless a hard correctness error is identified against the
-call-composition architecture.
+diagnostics infrastructure, and golden-test expectations are frozen contract
+material from the completed v0.2 stage. The current active design stage is
+v0.3 — Normalized AST Specification. No parser behavior change unless a hard
+correctness error is identified against the call-composition architecture.
 
 This document records what the current codebase implements. It is not
 normative for parser behavior — `spec/implementation/v0.1/ast-construction-v0.1.md` and

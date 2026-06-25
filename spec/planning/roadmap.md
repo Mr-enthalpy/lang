@@ -77,7 +77,7 @@ completed the remaining Raw AST stability-window questions. During this window:
   was accepted as the only local mechanical whole-shape sugar.
 - The final current-stage open question was closed.
 
-`v0.1.w` is now complete. The project has entered v0.2.
+`v0.1.w` is now complete. The project then entered v0.2; v0.2 is now closed.
 
 ---
 
