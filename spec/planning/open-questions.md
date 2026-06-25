@@ -7,9 +7,14 @@ Resolved questions have been moved to `spec/history/v0.1/resolved-questions.md`.
 
 ---
 
-## Current-stage questions (v0.3)
+## Normalized AST questions (v0.3 baseline → v0.5)
 
-These questions become active during v0.3 Normalized AST Specification.
+These questions arose during v0.3 Normalized AST Specification.
+
+> v0.3 specification and v0.4 prototype/hardening have provided the current v0.5
+> baseline. Remaining questions about final Normalized AST stabilization are
+> handled under v0.5. Later pattern-space/extraction-chain questions remain
+> v0.6+.
 
 ### v0.3: Normalized AST
 
@@ -27,9 +32,9 @@ boundaries are clarified by the source-product continuation call skeleton in
 roles for v0.4 start are specified in §8 (unified binding-site structure,
 annotation-pattern wrapper, the minimal pattern-role family including
 `NormPattern::Skeleton`, no general symbolic builtin family, and family-local
-error variants). The exact concrete node set (single unified expression node vs
-distinct per-form nodes) and the final Rust enum/struct names still need final
-specification and remain v0.4 implementation work.
+error variants). v0.4 implemented a concrete Normalized AST node set. The final
+public wording and stabilization of the concrete Rust node set remain v0.5
+stabilization/documentation work.
 
 ---
 
@@ -59,9 +64,8 @@ and shows enough structure to verify source-product continuation / product
 merge, the two legality repairs, product/group lifting, operator lowering and
 provenance, member/double-dot/bracket-call lowering, closure body
 normalization, alias preservation, annotation-pattern / DeduceList structure,
-and error-recovery placement. The final CLI spelling (`lang norm <file>` vs
-`lang ast --normalized <file>`) and the exact dump format remain v0.4
-implementation details.
+and error-recovery placement. The exact public dump policy and documentation
+wording are stabilized under v0.5; the v0.4 implementation provided the baseline.
 
 ---
 
@@ -141,7 +145,7 @@ is:
 
 A single unified binding-site structure is reused for let slots, closure
 parameters, returns, and generated closure heads. Exact Rust enum/struct names
-remain v0.4 implementation work.
+remain v0.5 stabilization/documentation work.
 
 ---
 
