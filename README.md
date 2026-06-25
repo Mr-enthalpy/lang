@@ -363,6 +363,9 @@ Read these only when working on future design topics.
 3. `spec/planning/roadmap.md` — Understand scope boundaries.
 4. `spec/planning/open-questions.md` — Recognize known gaps.
 
+Other future design documents (build, package, namespace assembly, library namespace)
+are listed in the Documentation map above under Build / package / namespace (future notes).
+
 ## Expected future workspace shape
 
 Future stages may add crates under `crates/` such as:

@@ -93,36 +93,36 @@ This path is sufficient to understand the current non-semantic frontend
 language: lexical syntax, concrete syntax, diagnostics/recovery, and the
 Raw AST preservation surface.
 
-1. `public/v0.2/lexical-syntax-v0.2.md` - Understand the public lexical syntax.
-2. `public/v0.2/concrete-syntax-v0.2.md` - Understand the public concrete syntax.
-3. `public/v0.2/diagnostics-recovery-v0.2.md` - Understand public diagnostics and recovery.
-4. `public/v0.2/raw-ast-frozen-surface-v0.2.md` - Inspect the frozen Raw AST construct inventory.
-5. `../reference/glossary.md` - Resolve terminology ambiguity.
+1. `spec/public/v0.2/lexical-syntax-v0.2.md` - Understand the public lexical syntax.
+2. `spec/public/v0.2/concrete-syntax-v0.2.md` - Understand the public concrete syntax.
+3. `spec/public/v0.2/diagnostics-recovery-v0.2.md` - Understand public diagnostics and recovery.
+4. `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` - Inspect the frozen Raw AST construct inventory.
+5. `spec/reference/glossary.md` - Resolve terminology ambiguity.
 
 ### Extended implementer reading order
 
 Read these only when implementing, auditing, or repairing the frontend.
 
-1. `../implementation/v0.1/ast-construction-v0.1.md` - Implement the parser.
-2. `../implementation/v0.1/diagnostics-v0.1.md` - Diagnostic catalog (implementation-level reference).
-3. `../implementation/v0.1/implementation-status-v0.1.md` - Know current implementation facts.
-4. `../contracts/raw-ast-contract-v0.1.md` - Know Raw AST invariants for normalization.
-5. `../contracts/raw-ast-contract-freeze-v0.2.md` - Know v0.2 freeze boundary and v0.3 handoff.
-6. `../history/v0.1/operator-design.md` - Understand operator syntax rules.
-7. `../history/v0.1/resolved-questions.md` - Understand resolved design decisions.
+1. `spec/implementation/v0.1/ast-construction-v0.1.md` - Implement the parser.
+2. `spec/implementation/v0.1/diagnostics-v0.1.md` - Diagnostic catalog (implementation-level reference).
+3. `spec/implementation/v0.1/implementation-status-v0.1.md` - Know current implementation facts.
+4. `spec/contracts/raw-ast-contract-v0.1.md` - Know Raw AST invariants for normalization.
+5. `spec/contracts/raw-ast-contract-freeze-v0.2.md` - Know v0.2 freeze boundary and v0.3 handoff.
+6. `spec/history/v0.1/operator-design.md` - Understand operator syntax rules.
+7. `spec/history/v0.1/resolved-questions.md` - Understand resolved design decisions.
 
 ### Future-design reading order
 
 Read these only when working on future design topics.
 
-1. `../future/entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
-2. `../future/entity-ref-design.md` - Understand future general EntityRef design.
-3. `../future/library-namespace-design-note.md` - Understand library/namespace model.
-4. `../future/build-system-design.md` - Understand build/package architecture.
-5. `../future/package-manifest-v0.md` - Understand build-manifest surface.
-6. `../future/namespace-assembly-v0.md` - Understand namespace assembly pipeline.
-7. `../planning/roadmap.md` - Understand scope boundaries.
-8. `../planning/open-questions.md` - Recognize known gaps.
+1. `spec/future/entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
+2. `spec/future/entity-ref-design.md` - Understand future general EntityRef design.
+3. `spec/future/library-namespace-design-note.md` - Understand library/namespace model.
+4. `spec/future/build-system-design.md` - Understand build/package architecture.
+5. `spec/future/package-manifest-v0.md` - Understand build-manifest surface.
+6. `spec/future/namespace-assembly-v0.md` - Understand namespace assembly pipeline.
+7. `spec/planning/roadmap.md` - Understand scope boundaries.
+8. `spec/planning/open-questions.md` - Recognize known gaps.
 
 ## Spec priority
 
