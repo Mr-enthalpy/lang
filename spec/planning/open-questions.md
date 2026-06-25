@@ -244,6 +244,120 @@ when value/type canonical forms are designed.
 
 ---
 
+### v0.6+: Pattern-space and extraction-chain semantics
+
+#### How should pattern spaces be represented as static objects?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** Normalized AST preserves the value/pattern
+boundary but does not construct semantic pattern spaces.
+
+**Question:** What are the canonical pattern constructors that generate static
+pattern spaces? How are product patterns, sum patterns, canonical skeletons,
+and meta-function-produced pattern interfaces represented without turning the
+compiler into a general set-theoretic solver?
+
+---
+
+#### How should sum patterns and pattern combination be specified?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** Pattern-position operator-shaped syntax remains
+pattern material. No pattern-space reduction is performed.
+
+**Question:** How should canonical sum pattern syntax (`P1 | P2`) differ from
+meta-level pattern combination / reduction (`P + Q`)? Which combinations are
+constructible, deleted, or rejected by the relevant meta-level `operator+`?
+
+---
+
+#### How should extraction chains propagate residual pattern space?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** Pipe and closure structure are normalized without
+pattern-head resolution, extraction applicability checks, or exhaustiveness
+checking.
+
+**Question:** Given an extraction atom `A |> S { body }`, how should later
+phases mechanically decide whether `S` is an applicable subspace of `A`, how
+should `A - S` be represented, and how should extraction failure act as
+contextual residual propagation rather than a control-flow primitive?
+
+---
+
+#### How should the `Done` isolation layer work?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** Normalization does not insert, eliminate, or
+interpret `Done`.
+
+**Question:** Where is `Done` introduced for completed extraction-arm results,
+which boundaries eliminate it, and how can users explicitly re-enter or consume
+`Done`-wrapped material without allowing same-level extraction arms to
+implicitly inspect completed results?
+
+---
+
+#### How should binding and product extraction totality be checked?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** Binding and closure parameter extraction preserve
+pattern/product structure, including explicit unit positions, but perform no
+matching or totality checks.
+
+**Question:** In binding contexts where skip has no residual object to
+propagate, how should later phases check exact extraction, product-field
+completeness, explicit `_` discard, and hard structural product-pattern errors?
+
+---
+
+#### How should result consumption and void-only silent completion work?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** Normalization preserves expression and closure-body
+structure but does not check whether expression results are consumed.
+
+**Question:** At expression and body boundaries, which pattern spaces must be
+bound, passed, returned, explicitly discarded with `_`, or closed by a consumer?
+How is pure `void` distinguished from ordinary unit payload?
+
+---
+
+#### How should postfix `?` and conventional `match` closing be modeled?
+
+**Status:** Open (active at v0.6+)
+
+**Current v0.4 foundation:** `?` remains operator-shaped syntax / operator
+lowering material, and `match` remains an ordinary name unless later phases
+give a library convention meaning to a specific binding.
+
+**Question:** How should postfix `?` perform explicit value-to-pattern
+conversion, for example to a closed `if | else` control-pattern space? How can
+a conventional identity consumer such as `match` force explicit total
+consumption and one `Done`-elimination boundary without becoming a privileged
+parser or normalizer form?
+
+---
+
+#### How should closed control-pattern spaces avoid ambient extension?
+
+**Status:** Open (active at package/name-resolution stages)
+
+**Current v0.4 foundation:** Normalization performs no namespace/package
+ownership checks, no operator lookup, and no ADL-like forwarding.
+
+**Question:** How do package ownership, explicit lookup routing, and the absence
+of unrestricted ADL prevent downstream code from adding ambient candidates that
+make closed control-pattern residuals combine with unrelated pattern spaces?
+
+---
+
 ### v0.10+: Ownership and NLL
 
 #### How should the NLL CFG be structured?
