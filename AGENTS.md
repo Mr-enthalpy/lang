@@ -102,6 +102,12 @@ only the local incoming segment prefix `|> name { ... }`; after that local
 rewrite, any following token sequence is parsed by ordinary existing pipe /
 segment / composition rules.
 
+This shorthand is a narrow repair for one otherwise-invalid local shape:
+without it, `x |> name { ... }` falls toward continuous right-call composition
+into a headless in-place closure. A headless in-place closure does not mean
+"accept unit"; no extraction head means no extracted input, including no
+implicit unit input.
+
 Forbidden in `v0.1.w`:
 
 * semantic analysis, name resolution, type/kind checking, operator lookup,

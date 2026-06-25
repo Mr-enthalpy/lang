@@ -113,6 +113,11 @@ Normalization must **not** assume:
   supported explicit form. It recognizes only the local incoming segment prefix
   `|> name { ... }`; after that local rewrite, any following token sequence is
   parsed by ordinary existing pipe / segment / composition rules.
+- The pipe branch-name shorthand is a narrow repair for one otherwise-invalid
+  local shape. Without it, `x |> name { ... }` would fall toward continuous
+  right-call composition into a headless in-place closure. A headless in-place
+  closure does not mean "accept unit"; no extraction head means no extracted
+  input, including no implicit unit input.
 
 ## OperatorExpr invariants
 
@@ -139,6 +144,9 @@ Normalization must **not** assume:
 
 - `ClosureAst` distinguishes `InPlace` (bare `BodyBlock`, no head) and `Explicit` (`FnHeadPrefix => BodyBlock`).
 - A bare `{ ... }` in atom position is an `InPlaceClosureAst`, not a normal block expression. It has no capture clause, no parameter clause, no return clause, and no head clauses.
+- A headless in-place closure has no extracted input. It is not equivalent to a
+  closure with a unit extraction pattern and must not be treated as accepting
+  implicit unit input.
 - `ExplicitClosureAst` requires a non-optional `FnHeadPrefixAst` and a body. Headed closures without `=>` (e.g., `[](){}`) are syntax errors, not valid closure AST.
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries. Each `CaptureItemAst` holds a full `ExprAst`, not a name or token tree. The parser does not validate whether a capture expression is movable, borrowable, copyable, lifetime-safe, or admissible as a capture.

@@ -487,6 +487,9 @@ _See also: InPlaceClosureAST, ExplicitClosureAST, ClosureObject, Materialization
 A bare `{ ... }` in atom position that produces an in-place closure. It has no
 capture clause, no parameter clause, no return clause, and no head clauses. It
 is the Raw AST representation of a control-flow-embedding closure block.
+Having no extraction head is not the same as having a unit extraction pattern:
+a headless in-place closure accepts no extracted input, including no implicit
+unit input.
 
 _See also: ClosureAST, ExplicitClosureAST._
 

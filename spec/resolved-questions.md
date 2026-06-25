@@ -56,6 +56,12 @@ parsed by ordinary existing pipe / segment / composition rules. Allowing
 `x |> (_ name) { y; } z`; the trailing `z` is handled by existing
 call-composition machinery and is not part of a larger branch-arm sugar.
 
+The shorthand is justified as a narrowly bounded repair for one
+otherwise-invalid local shape. Without it, `x |> name { y; }` would fall toward
+continuous right-call composition into a headless in-place closure, as if
+`(x name) { y; }`. A headless in-place closure does not mean "accept unit"; no
+extraction head means no extracted input, including no implicit unit input.
+
 The parser preserves the same Raw AST shape as the explicit form: an incoming
 pipe segment containing a two-element product head (`_`, `name`) followed by an
 in-place closure body. It performs no semantic validation, name resolution,

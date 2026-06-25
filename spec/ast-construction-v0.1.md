@@ -963,6 +963,32 @@ segment containing a two-element product head (`_`, `name`) followed by an
 in-place closure body. No semantic validation, name resolution, matching,
 closure materialization, or lookup is performed.
 
+The shorthand is justified as a narrowly bounded repair for one
+otherwise-invalid local shape. In the ordinary pipe / call-composition model,
+`x |> name` without a right product is the explicit pipe form of the whitespace
+right-call composition `x name`. If a brace body immediately follows and no
+shorthand applies, `x |> name { y; }` falls toward continuous right-call
+composition into a headless in-place closure, roughly:
+
+```text
+x |> name { y; }
+=> (x name) { y; }
+```
+
+That is not a valid language-model reading. A headless in-place closure is not
+a closure that implicitly accepts `unit`: no extraction head means no extracted
+input, including no implicit unit input. The shorthand repairs only this local
+bad shape by inserting the explicit branch head:
+
+```text
+x |> name { y; }
+=> x |> (_ name) { y; }
+```
+
+The first product-head element `_` is the supplied extraction hole /
+unit-side placeholder of the branch head. The second element `name` is the
+branch name.
+
 This is not a precedent for a family of branch-arm sugars. The shorthand is
 accepted only because the local token shape is finite, local, explicit, and
 mechanically equivalent to the already supported explicit form.
@@ -1657,6 +1683,10 @@ InPlaceClosureAst ::= BodyBlock
 A bare `{ ... }` in atom position is an in-place closure. It has no capture
 clause, no parameter clause, no return clause, and no head clauses. It is the
 Raw AST representation of a control-flow-embedding closure block.
+
+Having no extraction head is distinct from having a unit extraction pattern.
+A headless in-place closure does not implicitly accept unit input; it has no
+extracted input, including no implicit unit input.
 
 `{ ... }` is not a normal block expression; it always produces
 `ClosureAst::InPlace`.
