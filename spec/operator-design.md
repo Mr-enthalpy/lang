@@ -5,6 +5,11 @@ implements expression-level operator syntax as raw AST sugar. Parser phase 4.1
 implements operator names in binder position and innermost navigation-component
 position.
 
+Status for `v0.1.w`: implemented operator parsing is part of the stable Raw AST
+frontend surface. Maintenance may clarify contract text or add narrow,
+mechanical syntax preservation, but it must not add operator lookup, semantic
+operator validation, type-directed lookup, or a replacement expression parser.
+
 Operators are surface syntax for specially shaped function invocation. They are
 not built-in arithmetic, comparison, mutation, assignment syntax, parser-level
 evaluation, overload-resolution syntax, ADL, or type-directed lookup syntax.
@@ -467,15 +472,15 @@ where the example's type names come from.
 
 ## Relationship To Entity Alias Binding
 
-`spec/entity-alias-design.md` documents future lexical alias binding (Phase 4.3
-design complete):
+`spec/entity-alias-design.md` documents lexical alias binding. Alias-let parser
+preservation is implemented as Raw AST syntax:
 
 ```text
 let binder === EntityRef
 ```
 
-Parser phase 4.1 supplies the operator-name syntax that future aliases need in
-binder and entity path-leaf positions:
+The parser supplies the operator-name syntax that aliases need in binder and
+entity-reference innermost-component positions:
 
 ```text
 let << === <<::xxx_bit
@@ -487,22 +492,22 @@ another namespace, but it cannot rename one operator spelling into another. The
 operator identity remains `spelling + fixity + arity`. The identity check is
 deferred to a future static validation or name-resolution-adjacent phase.
 
-Alias binding remains future design only. Phase 4.1 does not implement
-operator lookup, entity lookup, namespace resolution, import/package semantics,
-alias parsing, or alias validation.
+Alias parsing is implemented as Raw AST preservation only. The parser does not
+implement operator lookup, entity lookup, namespace resolution, import/package
+semantics, alias target validation, or alias semantics.
 
-## v0.1 Boundary
+## v0.1.w Boundary
 
-The current parser implements expression-level operator syntax preservation and
-operator-name preservation in binder/final-path-leaf positions. Do not
-implement in this phase:
+The current parser implements expression-level operator syntax preservation,
+operator-name preservation in binder and innermost navigation positions, and
+alias-let parser preservation. During `v0.1.w`, do not implement:
 
 - operator lookup;
-- entity alias binding (`let binder === EntityRef`);
+- alias target resolution or semantic alias validation;
 - operator lowering;
 - operator overload resolution;
 - ADL;
 - mutation semantics for equals-suffixed operator spellings.
 
-v0.1 remains a syntax frontend whose output is tokens, raw AST, and
-diagnostics.
+`v0.1.w` remains a syntax-preserving stability window whose output is tokens,
+raw AST, and diagnostics.

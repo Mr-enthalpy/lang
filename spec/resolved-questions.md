@@ -8,6 +8,35 @@ Open and deferred questions remain in `spec/open-questions.md`.
 
 ---
 
+## v0.1.w stabilization boundary
+
+**Status:** Resolved
+
+**Resolution:**
+The lexer/parser skeleton is stable. Future v0.1-line changes are limited to
+richer literal spelling and local mechanical whole-shape sugar recognition,
+unless a hard correctness error is found against the call-composition
+architecture.
+
+Allowed additions must extend existing lexer/parser entry points and AST
+preservation categories; they must not replace the product/pipe/operator/
+binding/closure/navigation architecture.
+
+The stable surface includes `lex`, `parse`, token dumps, AST dumps, diagnostic
+dumps, Raw AST node categories, diagnostics infrastructure, hard form
+boundaries, weak lexer behavior, product/product-extract architecture,
+pipe/segment/operator-expression architecture, closure AST preservation,
+inner-to-outer navigation, alias-let parser preservation, and the narrow
+`with { ... }` payload grammar.
+
+The following remain out of scope for `v0.1.w`: semantic analysis, name
+resolution, type/kind checking, operator lookup, alias target resolution,
+closure materialization, canonical matching, ownership/NLL/drop insertion,
+interpretation, code generation, import/package/module syntax, traditional call
+syntax, a general macro system, and major parser architecture rewrites.
+
+---
+
 ## 1. Nested block-comment policy
 
 **Status:** Resolved

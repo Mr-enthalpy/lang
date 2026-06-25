@@ -3,9 +3,16 @@
 ## Purpose
 
 This skill defines how to work on the `lang` repository. The v0.1 Raw AST
-frontend is completed. The Raw AST contract has been reopened for breaking
-guard/with/brace and inner-to-outer navigation corrections before Normalized
-AST specification (v0.3).
+frontend is completed. The current active stage is `v0.1.w` — the Raw AST
+Stability Window.
+
+In `v0.1.w`, the lexer/parser architecture, public frontend interfaces, Raw AST
+shape, dump formats, and golden-test expectations are stable by default. Future
+work is maintenance, documentation alignment, contract stabilization, richer
+literal spelling, and local mechanical whole-shape sugar recognition only.
+Additions must extend existing lexer/parser entry points and AST preservation
+categories; they must not replace the product/pipe/operator/binding/closure/
+navigation architecture.
 
 The only accepted outputs for implementation work are tokens, AST, and
 diagnostics.
@@ -101,6 +108,43 @@ nodes just because a future built-in meta-function may understand a shape.
 
 Parse left to right. Do not go back to reinterpret meaning.
 
+## 2b. v0.1.w stabilization boundary
+
+Treat the following as stable by default:
+
+- lexer/parser skeleton
+- `lex` / `parse`
+- token dump, AST dump, and diagnostic dump
+- Raw AST node categories already documented as v0.1 output
+- diagnostics infrastructure
+- hard form boundaries, weak lexer, product/product-extract architecture
+- pipe/segment/operator-expression architecture, closure AST preservation
+- inner-to-outer navigation, alias-let parser preservation
+- `with { ... }` narrow payload grammar
+
+Allowed additive work in this window:
+
+- richer literal spellings that remain lexical / Raw-AST-preserving
+- local, mechanical, whole-shape sugar recognition from finite explicit token
+  shapes, with no semantic validation or lookup
+- additions that extend existing lexer/parser entry points and AST preservation
+  categories without replacing the product/pipe/operator/binding/closure/
+  navigation architecture
+
+Forbidden in this window:
+
+- traditional call parsing, statement parsing, import/module/package syntax,
+  semantic analysis, name/type/kind/operator/alias resolution, canonical
+  matching, closure materialization, ownership/NLL/drop, interpretation,
+  code generation, a general macro system, or major parser architecture rewrite
+
+If a task implies large parser redesign, refuse or narrow it unless the user
+identifies a hard correctness error against the call-composition architecture.
+Hard correctness means the current architecture cannot represent the intended
+model, makes future normalization logically impossible, forces heuristic
+semantic backtracking, contradicts the core pipe/product/operator/call-binding
+architecture, or makes a documented invariant impossible to maintain.
+
 ## 3. Expected outputs
 
 | Phase | Output | Dump format |
@@ -145,9 +189,9 @@ Do not implement this as a traditional precedence parser.
 
 ## 5. Closure rules
 
-- Bare `{ ... }` in atom position is not closure AST and not a block expression.
+- Bare `{ ... }` in atom position is `ClosureAst::InPlace`, not a block expression.
 - `FnHead => { ... }` is explicit closure AST.
-- `FnHead { ... }` is inline closure AST.
+- `FnHead { ... }` without `=>` is invalid and is not reinterpreted.
 - A closure literal is AST first. It is not a callable object.
 
 ## 6. `<>` rules
@@ -178,9 +222,13 @@ If a requested task requires any of the following, stop at AST preservation:
 
 ## 7a. Phase boundaries
 
-For Raw AST work:
-- Edit parser, lexer, tests, and specs as usual.
-- Run `cargo fmt --all` and `cargo test` after changes.
+For v0.1.w Raw AST stability work:
+- Prefer documentation and contract alignment.
+- Do not restructure the lexer/parser skeleton.
+- Add syntax only for richer literal spellings or local mechanical whole-shape
+  sugar recognition.
+- Run `cargo fmt --all` after code or Rust doc-comment changes.
+- Run `cargo test` after code, test, or snapshot changes.
 
 For Raw AST contract work:
 - Do not change parser behavior; document invariants in `spec/raw-ast-contract-v0.1.md`.
@@ -200,11 +248,10 @@ Every syntax rule requires a golden test with:
 2. Test function in the corresponding `tests/*_golden.rs` file.
 3. Expected output snapshot.
 
-Minimum golden case groups (from `AGENTS.md`). Golden tests are added
-incrementally as parser phases are implemented; the case groups below are the
-full v0.1 target. The current test suite covers parser phase 1, phase 2
-binding-context syntax, phase 3 closure AST, and phase 3.1 closure/parser
-stabilization (see `spec/roadmap.md` for current coverage):
+Minimum golden case groups (from `AGENTS.md`). The v0.1 baseline has golden
+coverage for lexer, parser/AST, and diagnostics. During `v0.1.w`, update or add
+golden cases only for narrow documentation-aligned corrections, richer literal
+spellings, or local mechanical whole-shape sugar recognition:
 
 ```text
 lexer/        names, symbols, comments, invalid, operators

@@ -6,6 +6,19 @@ This file records implementation facts. It does not override normative syntax
 rules in `ast-construction-v0.1.md`, `operator-design.md`, or
 `diagnostics-v0.1.md`.
 
+**Current stage:** v0.1 Raw AST Frontend completed; active stage is `v0.1.w`
+Raw AST Stability Window.
+
+The implementation listed here is the stable frontend baseline: lexer/parser
+skeleton, `lex` / `parse`, Raw AST categories, token/AST/diagnostic dumps,
+diagnostics infrastructure, and golden-test expectations are stable by default.
+Future work in `v0.1.w` is documentation alignment, contract stabilization,
+richer literal spelling, and local mechanical whole-shape sugar recognition
+only, unless a hard correctness error is identified against the
+call-composition architecture. Additions must extend existing lexer/parser
+entry points and AST preservation categories; they must not replace the
+product/pipe/operator/binding/closure/navigation architecture.
+
 This document records what the current codebase implements. It is not
 normative for parser behavior — `spec/ast-construction-v0.1.md` and
 `spec/operator-design.md` define what the parser must do. This document
@@ -45,7 +58,7 @@ only records what it currently does.
 | Alias binding (`let binder === EntityRef`) | `implemented-syntax` | `let_stmt.rs`, `ast.rs`, `token.rs` | `ast-construction-v0.1.md` §16 + `entity-alias-design.md` | Raw AST preservation only. No alias semantics, lookup, target validation, or operator identity validation. EntityRef parsed only in alias-let RHS. Optional `policy` prefix preserved. |
 | EntityRef parser (alias RHS subset) | `implemented-syntax` | `let_stmt.rs` | `entity-ref-design.md` + `ast-construction-v0.1.md` §16 | Only inside `let binder === ...`. Not a general expression parser mode. |
 | Alias RHS boundary checking | `implemented-syntax` | `form.rs`, `let_stmt.rs` | `entity-alias-design.md` | Hard-only boundary: `;`, `}`, EOF. Newline promotion removed. Residual tokens before a hard boundary produce `UnexpectedAliasRhsExpression`. |
-| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 31 DiagnosticCode variants. 3 lexer, 18 parser, 3 operator, 4 alias, 2 optional/unreachable. |
+| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 28 DiagnosticCode variants. 3 lexer, 17 parser (including 1 optional/not-guaranteed-emitted), 3 operator, 5 alias. |
 | `InvalidAliasBinder` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Reserved; not currently emitted by parser. |
 | `UnusedClosureAst` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Optional; not guaranteed to be emitted in current parser. |
 | Golden tests | `implemented-syntax` | `tests/lexer_golden.rs`, `tests/parser_golden.rs`, `tests/diagnostics_golden.rs` | `ast-construction-v0.1.md` §15 | Covers lexer, parser/AST, and diagnostics. Stable hand-written dump format. |
