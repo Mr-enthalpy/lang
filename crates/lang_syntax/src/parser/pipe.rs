@@ -125,6 +125,9 @@ fn parse_segment(
 
         if allow_pipe_branch_sugar && elements.is_empty() {
             if let Some(branch_elements) = try_parse_pipe_branch_sugar(parser) {
+                has_product_head = branch_elements
+                    .iter()
+                    .any(|element| matches!(element, SegmentElementAst::Product(_)));
                 elements.extend(branch_elements);
                 continue;
             }
