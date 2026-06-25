@@ -278,7 +278,8 @@ a shape.
 │   │       └── implementation-status-v0.1.md
 │   ├── contracts/
 │   │   ├── raw-ast-contract-v0.1.md
-│   │   └── raw-ast-contract-freeze-v0.2.md
+│   │   ├── raw-ast-contract-freeze-v0.2.md
+│   │   └── v0.3-normalization-handoff-checklist.md
 │   ├── history/
 │   │   └── v0.1/
 │   │       ├── frontend-v0.1.md
