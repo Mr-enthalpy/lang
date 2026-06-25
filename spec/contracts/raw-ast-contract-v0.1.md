@@ -86,7 +86,7 @@ Normalization must **not** assume:
 - `CanonicalProductElementAst` is either `Skeleton(CanonicalSkeletonAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas in canonical product extraction are preserved as unit elements.
 - `CanonicalNameRole` distinguishes `Hole`, `NodeName`, and `Unknown`.
 - The `Hole` / `NodeName` distinction is a parse-time role marker. No semantic matching is performed.
-- `where` is a reserved closure-head position but is not parsed as an active clause. `acquire` is an ordinary name.
+- `acquire` is an ordinary name.
 - `FnHeadPrefixAst` carries `clauses: Vec<HeadClauseAst>` for the head clause tail (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`).
 - `HeadClauseAst` preserves the clause keyword (`Require`, `Pre`, `Post`, `LifetimePre`, `LifetimePost`, or `Error`) and exactly one `ExprAst` slot. The parser performs no contract, lifetime, resource, type-level, rank-level, or predicate validation on the clause expression.
 

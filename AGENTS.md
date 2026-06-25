@@ -311,8 +311,7 @@ Examples:
 * `let` at form start introduces a let binding.
 * `require`, `pre`, `post`, `lifetime pre`, and `lifetime post` are active
   closure-head clause names, parsed as raw `HeadClauseAst` shape (one expression
-  slot each, no semantic validation). `where` remains a reserved, inactive
-  closure-head clause name. `acquire` is an ordinary name (the earlier
+  slot each, no semantic validation). `acquire` is an ordinary name (the earlier
   `acquire` direction is replaced by `pre`/`post`).
 * `with` may be interpreted inside a let-binding context only as `with { ... }`.
 * `guard` is an ordinary `Name` unless future syntax reintroduces it explicitly.

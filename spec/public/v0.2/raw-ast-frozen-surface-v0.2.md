@@ -47,7 +47,7 @@ diagnostic rules, or golden snapshots.
 | AST / token shape | All lexer token categories (see §2) |
 | Implementation file(s) | `lexer.rs` |
 | Spec source | `AGENTS.md`; `ast-construction-v0.1.md` §2 |
-| Frozen guarantee | The lexer does not classify any name as a keyword. Semantic words (`return`, `else`, `match`, `drop`, `move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, `struct`, `guard`, `where`, `acquire`) are ordinary `Name` tokens. Parser contexts may recognize selected names structurally only where explicitly specified. |
+| Frozen guarantee | The lexer does not classify any name as a keyword. Semantic words (`return`, `else`, `match`, `drop`, `move`, `sync`, `effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, `struct`, `guard`, `acquire`) are ordinary `Name` tokens. Parser contexts may recognize selected names structurally only where explicitly specified. |
 | Non-semantic boundary | The lexer assigns no semantic roles. Semantic interpretation is exclusively a parser or later-stage responsibility. |
 | v0.3 obligation | v0.3 may receive the token stream with all names as `Name`. |
 | Forbidden assumption | v0.3 must not assume that any `Name` token has been pre-classified as a keyword, declaration, statement, or control-flow construct. |
@@ -205,7 +205,7 @@ diagnostic rules, or golden snapshots.
 | AST / token shape | `FnHeadPrefixAst { deduce: Option<DeduceListAst>, captures: Option<CaptureClauseAst>, params: Option<ParamClauseAst>, fn_item_trait: Option<ExprAst>, returns: Option<ReturnClauseAst>, clauses: Vec<HeadClauseAst>, span }` |
 | Implementation file(s) | `ast.rs`, `parser/closure.rs`, `parser/deduce.rs`, `parser/canonical.rs` |
 | Spec source | `ast-construction-v0.1.md` §11 |
-| Frozen guarantee | Fixed clause order: deduce list, capture clause, parameter clause, trait clause, return clause, head clause tail. `CaptureItemAst` stores full `ExprAst` (not name-only). `ParamClause` is one `ProductExtractAst`. `ReturnClause` is one `BindingSlotAst`. Active head clauses: `Require`, `Pre`, `Post`, `LifetimePre`, `LifetimePost` (each holds one `ExprAst`). `where` is reserved-inactive. `acquire` is an ordinary name. |
+| Frozen guarantee | Fixed clause order: deduce list, capture clause, parameter clause, trait clause, return clause, head clause tail. `CaptureItemAst` stores full `ExprAst` (not name-only). `ParamClause` is one `ProductExtractAst`. `ReturnClause` is one `BindingSlotAst`. Active head clauses: `Require`, `Pre`, `Post`, `LifetimePre`, `LifetimePost` (each holds one `ExprAst`). `acquire` is an ordinary name. |
 | Non-semantic boundary | The parser preserves clause shape but performs no capture validation (move/ref/copy), parameter type-checking, return-type checking, contract/lifetime/resource validation, or rank/type/predicate checking. |
 | v0.3 obligation | v0.3 must preserve clause order and shape through normalization. |
 | Forbidden assumption | v0.3 must not interpret head clauses as semantic contracts, lifetime conditions, resource conditions, type-level objects, rank-level objects, or predicates. |

@@ -497,8 +497,7 @@ let f: _: fn with {deps} = expr
 - A head-clause keyword (`require`, `pre`, `post`, `lifetime pre`,
   `lifetime post`) is also a stop, so `-> T require c => { ... }` parses `T`
   as the return binder and `require c` as a head clause.
-- `where` is a future reserved stop token; it is not an active Phase 3 parser
-  stop. `acquire` is an ordinary name and is not a stop.
+- `acquire` is an ordinary name and is not a stop.
 - `with { ... }` is rejected in return binding slots.
 
 ### 4.6 Binding annotation examples
@@ -1782,11 +1781,6 @@ FnHeadPrefix ::=
     FnItemTraitClause?
     ReturnClause?
     HeadClause*
-
-// Future reserved, not implemented:
-//   WhereClause?
-```
-
 `HeadClause` covers the active head clauses `require`/`pre`/`post`/`lifetime
 pre`/`lifetime post` (see §11.8). `acquire` is no longer a reserved head-clause
 position; only `where` remains future reserved.
@@ -1926,15 +1920,7 @@ Valid return binding-slot examples include:
 Return slots reject `with { ... }` in this phase. That restriction is
 contextual parser structure, not a semantic dependency check.
 
-### 11.7 Where clause (future reserved)
-
-> **Not implemented in Phase 3.1.** `where` is a reserved closure-head
-> position.
-> It remains an ordinary name outside a future where-parser state.
-> Concrete `where` syntax is deferred until a dedicated closure-clause parser
-> and logical-constraint grammar exist.
-
-### 11.8 Head clauses (`require` / `pre` / `post` / `lifetime pre` / `lifetime post`)
+### 11.7 Head clauses (`require` / `pre` / `post` / `lifetime pre` / `lifetime post`)
 
 The closure/function head may carry a tail of source-preserving clauses after
 the deduce, capture, parameter, fn-item-trait, and return clauses:
@@ -2011,8 +1997,7 @@ not imply semantic validation.
 
 `acquire` is no longer a reserved head-clause position; the earlier
 `acquire A` direction is replaced by the explicit `pre Expr` / `post Expr`
-clauses above. `acquire` is an ordinary name. `where` remains a reserved,
-inactive closure-head position (§11.7).
+clauses above. `acquire` is an ordinary name.
 
 ### 11.9 Closure / with / in-place body disambiguation
 
