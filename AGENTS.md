@@ -251,7 +251,7 @@ Use:
 
 * a hand-written lexer
 * a hand-written parser
-* golden/snapshot tests for tokens, AST, and diagnostics
+* golden/snapshot tests for tokens, AST, normalized AST, and diagnostics
 
 Do not introduce parser generators.
 

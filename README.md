@@ -61,7 +61,7 @@ publishes the public surface. The v0.3 specification is now historical:
 ### Frozen v0.2 frontend input authority
 
 The v0.2 public frontend specification set remains authoritative for the frozen
-Raw AST input surface. Read these for the input contract that v0.3 consumes:
+Raw AST input surface. Read these for the input contract the normalizer consumes:
 
 | Document | Purpose |
 |---|---|

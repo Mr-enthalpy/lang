@@ -170,6 +170,7 @@ architecture, or makes a documented invariant impossible to maintain.
 |---|---|---|
 | Lexer | `Vec<Token>` | Hand-written, stable, golden-testable |
 | Parser | `ProgramAst` | Hand-written, stable, golden-testable |
+| Normalizer | `NormProgram` (Normalized AST) | Hand-written, stable, golden-testable |
 | Diagnostics | `Vec<Diagnostic>` | Hand-written, stable, golden-testable |
 
 Do **not** use Rust `Debug` format for any dump output.
