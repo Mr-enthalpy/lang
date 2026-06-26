@@ -99,6 +99,12 @@ The full namespace graph may contain three kinds of nodes:
 - **Virtual namespace nodes**: synthesized by the namespace assembler,
   metaprogramming, or the resolver. Not tied to any physical source file.
 
+A navigable symbol's child name comes from exactly one source category —
+physical directory hierarchy, type-associated namespace (the companion space of
+a type object), or meta-instantiation virtual layer. See
+`spec/future/build-system-design.md` §7 and
+`spec/future/early-meta-functions-and-namespace-graph.md` §3.
+
 ## 8. Physical and virtual namespace layers
 
 The physical filesystem skeleton is a proper subset of the full namespace
@@ -130,14 +136,15 @@ checks.
 Access control (public, private, restricted visibility) is a namespace
 graph and resolver concern, not source-level syntax.
 
-## 13. Metaprogramming injection rule
+## 13. Namespace contribution and injection rule
 
-Parent-to-child metaprogramming injection means a parent or instantiated node
-may create declarations below its own node.
-
-It must not inject into parents, siblings, unrelated globals, or arbitrarily
-rewrite existing namespace content unless a later specification explicitly
-permits that.
+Ordinary source fragments may contribute only the direct children of their
+current namespace node; they must not inject into grandchildren or deeper
+descendants. Deeper structure is owned by the immediate direct child object. A
+closed meta-function instantiation may generate a parent-to-descendant virtual
+subtree as the exception. In all contexts, generated nodes must not inject into
+parents, siblings, or unrelated globals. See `spec/future/build-system-design.md`
+§9 and `spec/future/early-meta-functions-and-namespace-graph.md` §4.
 
 This is a future meta-function / metaprogramming capability. It is not v0.1
 and must not be assumed as general language semantics.
