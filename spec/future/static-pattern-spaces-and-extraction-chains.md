@@ -693,11 +693,17 @@ but `x` binds only the payload of `T some`. It cannot carry the `none` branch. T
 
 By default, binding extraction is total consumption of the current static pattern space. If future rules allow a broader binding pattern to be narrowed to the current space, that must be explicitly specified. It must not rely on general set-containment inference.
 
-## 12. Overload Candidate Filtering
+## 12. Overload Candidate Filtering and Resolution
 
-Extraction may also participate in overload candidate filtering. A candidate may have an extraction pattern. If that pattern is not applicable to the current call pattern space, the candidate is skipped.
+Extraction participates in overload candidate filtering and resolution. A candidate may carry an extraction pattern. If that pattern is not applicable to the current call pattern space, the candidate is skipped.
 
-This skip occurs during candidate filtering, not at runtime. It must be:
+### 12.1 Overload Set Construction
+
+An overload set is built from the symbols visible in the current namespace context, filtered by the current policy environment. `export` controls cross-package boundary visibility: only `export`-bearing symbols are visible to other packages for overload construction. Internal overload resolution (within the owning package) ignores `export`.
+
+Namespace-level symbol lookup produces the initial candidate set. This lookup is **per-policy-pass**, not merged: meta/compile symbol lookup and runtime symbol lookup are separate passes with separate overload sets. Meta passes resolve only `Meta`-bearing symbols; runtime passes resolve only `Runtime`-bearing symbols. They are not searched together in one overload set.
+
+All candidate filtering operations must be:
 
 ```text
 side-effect-free
@@ -706,9 +712,78 @@ independent of candidate-checking order
 globally non-observable
 ```
 
-Candidate filtering may participate in rules such as compile-before-runtime, concrete-before-abstract, and final uniqueness. If a unique candidate cannot be determined, the program is rejected.
+### 12.2 Overload Specificity: Extraction-Pattern Depth
+
+Overload specificity is **extraction-pattern specificity**. Candidates are not ordered by declaration sequence, source-file order, or an ad-hoc conversion-rank table. They are ordered by how deeply their extraction pattern penetrates the unified construction-expression tree.
+
+The unified construction-expression tree `E` is the canonical structural form of the call operand. Every node has a depth:
+
+```text
+depth(root) = 1
+depth(child) = depth(parent) + 1
+```
+
+A candidate overload pattern `P` is matched against `E`. **Every node explicitly written as a match or discard in `P`** — variable bindings, constructor matches, explicit `_` discards — contributes its depth to the specificity score:
+
+```text
+score(P, E) = Σ depth(n)
+              for every explicitly written match/discard node n
+              of P after matching P against E
+```
+
+A larger score means the candidate is more specific:
+
+```text
+P₁ more specific than P₂  iff  score(P₁, E) > score(P₂, E)
+```
+
+**Examples.** A generic built-in:
+
+```text
+ref(self, t: type)
+```
+
+matches only an abstract type parameter — contribution is small.
+
+A more specific candidate:
+
+```text
+ref(self, let <t: type> t ref: type) => delete
+```
+
+explicitly matches `t ref`, penetrating to the `ref` constructor layer. Its score is higher, so it outranks the generic `ref(self, t: type)`. Similarly:
+
+```text
+ref(self, let <t: type> t share: type) => delete
+```
+
+outranks the abstract `ref(self, t: type)`, so `ref(T share)` hits the delete overload first and does not fall through to the built-in.
+
+Explicitly writing a match or discard matters. Binding a variable, matching a constructor, or writing `_` all assert that the user knows and requires that structure. A pattern that operates only at an upper abstraction layer is less specific than one that penetrates deeper.
+
+### 12.3 Overload Resolution Ordering
+
+When multiple candidates survive initial filtering, they are ranked by a fixed multi-pass pipeline. Each pass eliminates candidates or orders them. The pipeline is:
+
+| Step | Operation | Outcome |
+|---|---|---|
+| 1 | **Policy filter** | Remove candidates whose policy prevents use in the current context. A `runtime`-only candidate is removed from a meta pass. |
+| 2 | **Pattern + type matching** | Remove candidates whose extraction pattern and type signature are structurally inapplicable to the call operand. |
+| 3 | **Body-entry policy partial order** | `compile` > `meta` > `runtime` within the body of the function. `compile`-body candidates are preferred because they operate on fully value-materialized arguments; `meta`-body candidates follow; `runtime`-body candidates last. |
+| 4 | **Concept legality** | Reject candidates whose concept constraints are violated by the call site. |
+| 5 | **Concept partial order** | A stable partial-order projection over concept relationships. More constrained concepts outrank less constrained ones. |
+| 6 | **Extraction-pattern specificity** | Depth-based scoring (§12.2). Larger total depth contribution → higher priority. Excludes candidates with equal maximal score. |
+| 7 | **First-order before instantiated** | A first-order candidate (no type-parameter instantiation needed) outranks a candidate that requires instantiation. |
+| 8 | **Lifetime pre-condition check** | Reject candidates failing `pre` / `lifetime pre` origin-path matching. This matching is structurally analogous to extraction scoring. |
+| 9 | **Uniqueness** | If zero candidates remain → error. If more than one candidate remains → ambiguity error. If exactly one → select it. |
 
 Because there is no unrestricted lookup, candidates do not appear from nowhere. ADL-like behavior only appears through explicit forwarding code.
+
+### 12.4 Relationship to Policy and Namespace
+
+Overload set construction is gated on policy-aware namespace lookup (§12.1). Meta-looking passes see only `Meta`-bearing candidates; runtime passes see `Runtime`-bearing candidates. This ensures that symbol lookup order does not leak between passes — a meta pass never accidentally resolves a runtime-only overload.
+
+`export` controls the cross-package visibility boundary for overload construction. Within a package, `export` is irrelevant to overload resolution. Across packages, only `export`-bearing symbols appear in the namespace-wide candidate pool. Full `export` access control is deferred to later phases; the overload resolution pipeline assumes the candidate set has already been filtered by namespace visibility.
 
 ## 13. The Status of `match`
 

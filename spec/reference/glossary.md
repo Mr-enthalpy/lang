@@ -268,6 +268,51 @@ _See also: OperatorName, Fixity, Arity._
 
 ---
 
+## Overload Candidate
+
+A same-named symbol in the current namespace context that may be selected for a
+given call. Overload candidates are drawn from the set of symbols visible under
+the current policy environment. The candidate set is constructed by namespace-
+level symbol lookup, filtered by policy, and then ranked by the overload
+resolution pipeline.
+
+_See also: OverloadSpecificity, OverloadResolutionPipeline, PolicyEnv._
+
+---
+
+## Overload Specificity
+
+The priority rule that determines which overload candidate is selected when
+multiple candidates survive initial filtering. In this design, overload
+specificity is **extraction-pattern specificity**: candidates are ranked by
+how deeply their extraction pattern penetrates the unified construction-
+expression tree of the call operand. A larger total depth score means a more
+specific candidate. Specificity does not depend on declaration order or an
+ad-hoc conversion-rank table.
+
+_See also: OverloadCandidate, OverloadResolutionPipeline,
+static-pattern-spaces-and-extraction-chains.md §12.2._
+
+---
+
+## Overload Resolution Pipeline
+
+The fixed multi-pass process that selects a unique overload candidate. The
+pipeline runs in order: policy filter → pattern + type matching → body-entry
+policy partial order → concept legality → concept partial order →
+extraction-pattern specificity → first-order priority → lifetime pre-condition
+check → uniqueness. If zero or more than one candidate survive the pipeline,
+the program is rejected.
+
+Overload resolution is deferred to v0.10+ and depends on the pattern-space
+and extraction-chain infrastructure defined in
+`spec/future/static-pattern-spaces-and-extraction-chains.md` §12. It is not
+implemented in v0.6–v0.8.
+
+_See also: OverloadCandidate, OverloadSpecificity, PolicyEnv, Concept._
+
+---
+
 ## PostfixOperator
 
 A unary operator suffix that composes with other atom suffixes. In the

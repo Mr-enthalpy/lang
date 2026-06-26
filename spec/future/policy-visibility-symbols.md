@@ -323,6 +323,37 @@ Later stages will implement policy inference, projection checking, compile /
 runtime / seal semantics, const / mut policy, effect policy, error / panic
 policy, and resource capability policy.
 
+### 12.1 Relationship to Overload Resolution
+
+Overload-set visibility is built on top of policy-filtered namespace symbol
+lookup. The overload candidate pool for a given call is the set of same-named
+symbols visible in the current namespace context, further filtered by the
+current policy environment.
+
+- **`export`** controls cross-package visibility for overload construction.
+  Symbols without `export` are not visible to other packages and do not appear
+  in external overload sets. Within the owning package, `export` is irrelevant
+  to overload resolution — internal overloads resolve all package-local symbols.
+
+- **Per-policy-pass lookup:** The canonical overload pipeline (see
+  `static-pattern-spaces-and-extraction-chains.md` §12.3) is built on per-
+  policy-pass candidate selection. Meta/compile symbol lookup and runtime symbol
+  lookup are **separate passes** with separate overload sets. A meta pass never
+  sees `Runtime`-only candidates; a runtime pass never sees `Meta`-only
+  candidates. This separation is enforced at the namespace graph lookup level,
+  not re-checked inside the overload pipeline.
+
+- **Policy-aware namespace traversal:** Because `resolve_from_internal` applies
+  policy filtering to every path component, namespace symbols that form
+  traversal containers must carry sufficient policy flags. The `meta+runtime`
+  default on all namespace symbols ensures that overload candidates in nested
+  namespaces are reachable under both meta and runtime environments.
+
+Full overload resolution specification is deferred to later phases (v0.10+);
+the overload resolution pipeline defined in
+`static-pattern-spaces-and-extraction-chains.md` §12 documents the intended
+design direction for how policies feed into overload candidate construction.
+
 ## 13. Explicit Non-Goals / Guardrails
 
 - Do not turn `policy`, `meta`, `compile`, `runtime`, `seal`, `const`, or `mut`
