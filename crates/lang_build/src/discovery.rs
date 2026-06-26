@@ -480,14 +480,9 @@ fn relative_sort_key(path: &Path) -> Vec<String> {
 /// **not** a cryptographic hash and **not** a future cache-validity proof. It is
 /// also not a semantic hash of normalized AST. It is recorded for physical
 /// identity/provenance only and is not used for cache invalidation yet.
+///
+/// The digest is delegated to the shared [`crate::fingerprint`] helper; the
+/// `fnv1a64:` prefix and output format are preserved exactly.
 fn content_fingerprint(bytes: &[u8]) -> String {
-    const OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-
-    let mut hash = OFFSET_BASIS;
-    for &byte in bytes {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(PRIME);
-    }
-    format!("fnv1a64:{hash:016x}")
+    format!("fnv1a64:{}", crate::fingerprint::fnv1a64_hex(bytes))
 }
