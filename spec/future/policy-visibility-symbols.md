@@ -303,15 +303,16 @@ v0.7 (Early Meta-Function Bootstrap):
   return-object-policy, but must not implement full meta / compile / seal
   projection.
   Implemented: `PolicyFlag` / `PolicySet` / `PolicyEnv` types; `PolicyEnv::Meta`
-  filtering in resolver and early-meta expansion; policy flags assigned to core
-  symbols (`export+meta` for meta-functions, `export+meta+runtime` for built-in
-  types and the core namespace symbol itself), source-contributed symbols (`runtime`
-  for values, `meta+runtime` for type-annotated declarations), and struct-generated
-  type objects (`meta+runtime`). Policy filtering is per-component — namespace
-  intermediaries must carry traversal-appropriate flags; for v0.7 this is satisfied
-  by the compiler-seeded `core` namespace symbol receiving `export+meta+runtime`.
-  Policy assignment to other namespace categories (declared, physical, dependency)
-  is deferred.
+  filtering in resolver and early-meta expansion; `ResolverCode` discriminator
+  for miss vs ambiguity; policy flags assigned to core symbols (`export+meta` for
+  meta-functions, `export+meta+runtime` for built-in types and the core namespace
+  symbol), all namespace symbols (`meta+runtime` for declared, physical,
+  dependency, type-projection, and generated namespaces), source-contributed
+  symbols (`runtime` for values, `meta+runtime` for type-annotated declarations),
+  and struct-generated type objects (`meta+runtime`). Policy filtering is per-
+  component — namespace intermediaries must carry traversal flags. `PolicyEnv::Runtime`
+  is not implemented; the `Runtime` flag is reserved for future runtime-lookup and
+  currently marks symbols excluded from meta passes.
 
 v0.8 (Type-to-Type Meta Construction Interpreter):
   Understand that meta body execution policy differs from function symbol policy

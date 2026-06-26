@@ -32,11 +32,13 @@ v0.7 introduces early policy-aware resolution with three policy flags:
 | Symbol source | Policy set |
 |---|---|
 | Core namespace symbol | `export + meta + runtime` |
+| Namespace symbols (declared, physical, dependency mount, generated) | `meta + runtime` |
 | Core meta-functions (`struct`, `assert`) | `export + meta` |
 | Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export + meta + runtime` |
 | Source-contributed ordinary value placeholders | `runtime` |
 | Source-contributed type-annotated placeholders (`: type`) | `meta + runtime` |
 | Struct-generated `TypeObject` | `meta + runtime` |
+| Projection namespace symbols (`ref`/`share` under a generated type) | `meta + runtime` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
 
 ### Policy-aware resolver

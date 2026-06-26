@@ -256,3 +256,42 @@ fn explicit_path_type_object_resolves_under_meta() {
         "should be core's uint8"
     );
 }
+
+#[test]
+fn meta_policy_can_traverse_physical_namespace_path_to_type() {
+    let project = TempProject::new("ns_traversal");
+    project.write("src/subns/main.lang", "let T: type = uint8");
+    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect("build world");
+    let context = world.package_context();
+
+    let symbol = world
+        .snapshot()
+        .capability()
+        .resolve_type_object_with_policy("T::subns", &context, PolicyEnv::Meta)
+        .expect("T::subns should resolve under Meta via physical namespace");
+    assert_eq!(symbol.kind, SymbolKind::Type);
+    assert_eq!(symbol.name, "T");
+}
+
+#[test]
+fn meta_policy_can_traverse_type_projection_namespace() {
+    let project = TempProject::new("ns_projection");
+    project.write("src/main.lang", "let S: type = (uint8 a) |> struct");
+    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect("build world");
+    let context = world.package_context();
+
+    let symbol = world
+        .snapshot()
+        .capability()
+        .resolve_with_policy(
+            &["ref".to_string(), "S".to_string()],
+            &context,
+            ResolveExpectation::NamespaceSubspace,
+            PolicyEnv::Meta,
+        )
+        .expect("ref::S projection namespace should resolve under Meta");
+    assert_eq!(symbol.kind, SymbolKind::Namespace);
+    assert_eq!(symbol.name, "ref");
+}

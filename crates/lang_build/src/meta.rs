@@ -216,7 +216,7 @@ fn insert_projection_namespace(
         Some(parent),
         provenance.clone(),
     ));
-    let namespace_symbol = SymbolObject::namespace(
+    let mut namespace_symbol = SymbolObject::namespace(
         symbol_id,
         name,
         node_id,
@@ -225,6 +225,7 @@ fn insert_projection_namespace(
         Some(parent),
         provenance,
     );
+    namespace_symbol.policy_metadata.policy_set = policy_set_meta_runtime();
     delta.insert_symbol(parent, namespace_symbol);
     insert_field_projection_layer(
         delta,

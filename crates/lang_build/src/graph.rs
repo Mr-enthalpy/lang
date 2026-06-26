@@ -807,7 +807,7 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             Some(parent),
             provenance.clone(),
         );
-        let symbol = SymbolObject::namespace(
+        let mut symbol = SymbolObject::namespace(
             symbol_id,
             key,
             node_id,
@@ -816,6 +816,7 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             Some(parent),
             provenance,
         );
+        symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
         delta.insert_node(node);
         delta.insert_symbol(parent, symbol);
         (node_id, delta)
@@ -906,7 +907,7 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance.clone(),
     );
-    let symbol = SymbolObject::namespace(
+    let mut symbol = SymbolObject::namespace(
         symbol_id,
         name,
         node_id,
@@ -915,6 +916,7 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance,
     );
+    symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
     delta.insert_node(node);
     delta.insert_symbol(parent, symbol);
     node_id
