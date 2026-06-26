@@ -637,8 +637,8 @@ origin=Derived(<Rule>; <summary>)
   origin: such a node's origin usually uses `Generated(Unsupported)` or another
   explicit rule label.
 
-Rule labels used by the call-binding and sugar-lowering examples in this
-document:
+Rule labels used by the call-binding, sugar-lowering, pattern, closure, and
+alias examples in this document:
 
 ```text
 Generated:
