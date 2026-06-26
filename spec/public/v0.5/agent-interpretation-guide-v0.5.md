@@ -43,7 +43,7 @@ See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserv
 - A following Product is the **first source-product continuation** of an incoming
   source Product, not an argument list of the target. Only the first following
   Product merges; later material is residual.
-- `f Product g` is the **second legality repair** (`f |> ((Product) |> g)`; dump
+- `f Product g` is the **second legality repair** (`f |> (Product |> g)`; dump
   label `SecondLegalityRepair`), not a positive local call sugar, and it never
   overrides source-product continuation.
 - `P |> e` with no following Product is the **first legality repair** (dump label

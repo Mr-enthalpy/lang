@@ -396,17 +396,21 @@ Every normalized node carries an origin in the dump:
 origin=Source
 origin=Generated(<Rule>)
 origin=Derived(<Rule>; <summary>)
-origin=Unsupported(...)
 ```
 
 - **Source nodes** come directly from source.
 - **Generated nodes** are introduced by a single named lowering rule.
 - **Derived nodes** combine multiple source/generated inputs, such as a product
   merge.
-- **Unsupported nodes** preserve unlowered or intentionally unsupported Raw AST
-  subshapes instead of silently erasing them.
+- **Unsupported nodes** are ordinary normalized nodes whose payload records an
+  unsupported Raw AST subshape (for example `Unsupported "..."` or
+  `PatternUnsupported "..."`). They are surfaced explicitly instead of being
+  silently erased. `Unsupported` is a node kind / rule label, not a separate
+  origin: such a node's origin usually uses `Generated(Unsupported)` or another
+  explicit rule label.
 
-Rule labels used by the current normalizer:
+Rule labels used by the call-binding and sugar-lowering examples in this
+document:
 
 ```text
 Generated:
@@ -416,14 +420,17 @@ Generated:
   MemberLowering
   DoubleDotLowering
   BracketCallLowering
+  Unsupported             (node surfaced explicitly; origin Generated(Unsupported))
 
 Derived:
   ProductMerge            (source-product continuation)
   PipeFallback            (first legality repair / ordinary expression-chain growth)
   SecondLegalityRepair    (second legality repair)
-
-Unsupported
 ```
+
+This is not the complete Normalized AST rule-label inventory; v0.5-3 expands the
+remaining pattern / alias / closure-facing labels (for example
+`PatternNormalize`).
 
 These labels appear verbatim in the normalized dump, so any example in this
 document can be cross-checked against `normalize_program` output and the golden
