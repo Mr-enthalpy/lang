@@ -11,16 +11,20 @@ Resolved questions have been moved to `spec/history/v0.1/resolved-questions.md`.
 
 These questions arose during v0.3 Normalized AST Specification.
 
-> v0.3 specification and v0.4 prototype/hardening have provided the current v0.5
-> baseline. Remaining questions about final Normalized AST stabilization are
-> handled under v0.5. Later pattern-space/extraction-chain questions remain
-> v0.6+.
+> The current normalized surface behavior is defined by
+> `spec/public/v0.5/normalized-surface-semantics-v0.5.md`. The `N-AST` entries
+> below are resolved by those public docs and are retained as the
+> resolution/audit trail; they no longer define current behavior. Remaining
+> Normalized AST items are implementation-shape cleanup (see "v0.5 stabilization
+> debt" below). Later pattern-space/extraction-chain questions remain v0.6+.
 
 ### v0.3: Normalized AST
 
 #### N-AST-1. Exact Normalized AST node set
 
-**Status:** Partially resolved for v0.4 start
+**Status:** Resolved by v0.5 public normalized surface semantics (structural roles); exact Rust naming is v0.5 stabilization debt.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §3–§11.
 
 **Question:** What are the exact Normalized AST node types? Candidates:
 normalized call, normalized pattern, normalized declaration. Should there
@@ -52,7 +56,9 @@ stabilization/documentation work.
 
 #### N-AST-3. Whether raw-to-normalized dumps should be golden-tested
 
-**Status:** Resolved for v0.4 start
+**Status:** Resolved by v0.5 public normalized surface semantics.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §11.
 
 **Question:** Should the normalization pass produce stable dump output that
 can be golden-tested alongside Raw AST dumps?
@@ -71,7 +77,9 @@ wording are stabilized under v0.5; the v0.4 implementation provided the baseline
 
 #### N-AST-4. How to represent symbolic builtins introduced by desugaring
 
-**Status:** Resolved for the v0.3 boundary
+**Status:** Resolved by v0.5 public normalized surface semantics.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §11.
 
 **Question:** Desugaring may introduce symbolic names (e.g., `operator::call`,
 `member::lookup`, `pattern::bind`). How should these be represented in
@@ -90,7 +98,9 @@ introduce semantic builtins if needed; v0.3 Normalized AST does not.
 
 #### N-AST-5. How to preserve source origins through desugaring
 
-**Status:** Partially resolved (v0.3 §7.15)
+**Status:** Resolved by v0.5 public normalized surface semantics (origin/visibility model); exact Rust source-map is v0.5 stabilization debt.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §11.
 
 **Question:** Desugaring creates new AST nodes that did not appear in source
 text. How should source spans and diagnostic attribution be preserved through
@@ -106,7 +116,9 @@ source-map representation is deferred to v0.4.
 
 #### N-AST-6. Whether right-target subsegments become nested call nodes
 
-**Status:** Resolved (v0.3 §7)
+**Status:** Resolved by v0.5 public normalized surface semantics.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §4–§5.
 
 **Question:** Right-target subsegments (`f (a) g`) are currently flat in Raw
 AST. Should normalization recursively nest them into explicit (sub-)call
@@ -123,7 +135,9 @@ positive local call sugar, and never overrides source-product continuation.
 
 #### N-AST-7. How to represent pattern normalization for let, params, returns, and canonical skeletons
 
-**Status:** Resolved for v0.4 start
+**Status:** Resolved by v0.5 public normalized surface semantics; exact Rust enum/struct names are v0.5 stabilization debt.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §8–§9.
 
 **Question:** Extraction contexts (let, params, returns) use canonical
 skeletons. How should normalization unify these into a single normalized
@@ -151,7 +165,9 @@ remain v0.5 stabilization/documentation work.
 
 #### N-AST-8. How to represent alias declarations before name resolution
 
-**Status:** Resolved for the v0.3 boundary
+**Status:** Resolved by v0.5 public normalized surface semantics.
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §10.
 
 **Question:** Alias bindings (`let binder === EntityRef`) reference compile-time
 entities that are not yet resolved. Should normalization preserve `EntityRefAst`
@@ -168,7 +184,9 @@ namespace resolution remain deferred to later phases.
 
 #### N-AST-9. Member / double-dot sugar lowering proposal — unresolved review concerns
 
-**Status:** Resolved (adopted into v0.3 §7)
+**Status:** Resolved by v0.5 public normalized surface semantics (adopted into v0.3 §7; published in v0.5).
+
+**Reference:** `spec/public/v0.5/normalized-surface-semantics-v0.5.md` §7, §11.
 
 **Context:** A proposed v0.3 lowering for member sugar, double-dot
 member-call sugar, and bare branch-name sugar was submitted:
@@ -232,6 +250,22 @@ frozen `raw-ast-frozen-surface-v0.2.md` §14 "member-access form" wording is lef
 byte-unchanged, and the mapping is recorded in v0.3 only. Hygiene of the
 generated `T`/`val` binders is covered by the §7.15 provenance requirement
 (tracked with N-AST-5).
+
+---
+
+### v0.5 stabilization debt
+
+The public v0.5 normalized surface semantics are published
+(`spec/public/v0.5/normalized-surface-semantics-v0.5.md`). The only residual
+Normalized-AST items are implementation-shape cleanup, not open
+public-semantics questions:
+
+- Final Rust enum/struct names for the normalized node set (N-AST-1) and the
+  pattern family (N-AST-7).
+- Final Rust origin / source-map representation (N-AST-5).
+
+These are tracked as stabilization/documentation debt; they do not change the
+published public behavior.
 
 ---
 

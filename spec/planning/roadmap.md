@@ -168,10 +168,13 @@ normalizer. `Done`, residual propagation, pattern-space subtraction, `operator+`
 meta-reduction, `match` closing, and pattern-head resolution are not current
 behavior.
 
-v0.5 proceeds in incremental PRs. The first PR (v0.5-1) establishes the
-documentation authority structure and the stage reset; later v0.5 PRs publish
-the normalized surface call-binding semantics, the agent interpretation guide,
-and the historical migration.
+v0.5 proceeded in incremental PRs. v0.5-1 established the documentation
+authority structure and the stage reset; v0.5-2 published the normalized
+call / product / pipe binding semantics; v0.5-3 published the value-side /
+pattern-side / annotation / alias boundary semantics; v0.5-4 closes the public
+documentation reset by moving route/design material toward history and
+finalizing the public documentation status. The public normalized surface
+semantics are published.
 
 The current public v0.5 documentation entry point is `spec/public/v0.5/`.
 

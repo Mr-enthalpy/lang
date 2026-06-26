@@ -1,9 +1,11 @@
 # Normalized Surface Semantics v0.5
 
-> **Status:** v0.5-2 publishes the call / product / pipe binding semantics
-> (§1–§7, §11–§13). The value-side / pattern-side, annotation, and alias
-> sections (§8–§10) remain concise placeholders for v0.5-3. Every example below
-> is cross-checked against the v0.4 normalized dumps in `tests/cases/norm/`.
+> **Status:** Published. The v0.5 public normalized surface semantics are
+> complete. §1–§7 define call / product / pipe binding; §8–§10 define
+> value-side / pattern-side / annotation / alias boundaries; §11 defines
+> origin / generated / derived / unsupported visibility; §12–§13 define the
+> non-goals and the v0.6+ future-boundary separation. Every example below is
+> cross-checked against the v0.4 normalized dumps in `tests/cases/norm/`.
 
 This document explains the current normalized surface behavior for both human
 readers and coding/documentation agents. Where a rule has an implementation

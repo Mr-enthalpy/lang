@@ -24,13 +24,14 @@ behavior, especially:
   layer;
 - what Normalized AST explicitly does **not** do.
 
-## Planned v0.5 public documents
+## v0.5 public documents
 
 - [`normalized-surface-semantics-v0.5.md`](normalized-surface-semantics-v0.5.md)
-  — the public, authoritative explanation of the normalized surface. The
-  call / product / pipe binding sections (§1–§7, §11–§13) were published in
-  v0.5-2; the value-side / pattern-side, annotation, and alias sections
-  (§8–§10) are published in v0.5-3.
+  — the public, authoritative explanation of the normalized surface (published).
+  §1–§7 define call / product / pipe binding; §8–§10 define value-side /
+  pattern-side / annotation / alias boundaries; §11 defines origin / generated /
+  derived / unsupported visibility; §12–§13 define non-goals and the v0.6+
+  future boundary.
 - [`agent-interpretation-guide-v0.5.md`](agent-interpretation-guide-v0.5.md)
   — operational, normative guidance for coding/documentation agents on how to
   interpret source without importing C / Rust / Python call assumptions.
