@@ -2,16 +2,24 @@
 
 ## Read these files first
 
-For ordinary v0.3 Normalized AST specification work, read:
+For current normalized surface / documentation work, read:
 
 ```text
 README.md
 spec/README.md
-spec/public/v0.3/README.md
-spec/public/v0.3/normalized-ast-specification-v0.3.md
-spec/contracts/v0.3-normalization-handoff-checklist.md
-spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
+spec/public/v0.5/README.md
+spec/public/v0.5/normalized-surface-semantics-v0.5.md
+spec/public/v0.5/agent-interpretation-guide-v0.5.md
+spec/contracts/v0.4-normalization-prototype-notes.md
 spec/planning/open-questions.md
+```
+
+For the v0.3 Normalized AST design baseline (historical), read:
+
+```text
+spec/history/v0.3/README.md
+spec/history/v0.3/normalized-ast-specification-v0.3.md
+spec/history/v0.3/normalized-ast-design-history-v0.3.md
 ```
 
 For frontend-syntax / Raw AST input questions, read the frozen v0.2 specs:
@@ -52,11 +60,12 @@ spec/future/entity-ref-design.md
 spec/public/v0.2/concrete-syntax-v0.2.md
 ```
 
-Before v0.3 handoff or normalization-boundary work:
+Before normalization-boundary work:
 ```text
 spec/contracts/raw-ast-contract-v0.1.md
 spec/contracts/raw-ast-contract-freeze-v0.2.md
 spec/contracts/v0.3-normalization-handoff-checklist.md
+spec/contracts/v0.4-normalization-prototype-notes.md
 spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 ```
 
@@ -70,6 +79,7 @@ spec/future/namespace-assembly-v0.md
 Before resolving old open questions or understanding design history:
 ```text
 spec/history/v0.1/resolved-questions.md
+spec/history/v0.3/normalized-ast-design-history-v0.3.md
 spec/planning/open-questions.md
 spec/history/v0.1/frontend-v0.1.md
 ```
@@ -81,26 +91,27 @@ spec/planning/roadmap.md
 
 ## Scope
 
-The v0.1 Raw AST Frontend is completed. v0.1.w is closed. v0.2 is closed.
-The current active stage is `v0.3` — Normalized AST Specification.
+The v0.1 Raw AST Frontend, v0.1.w, and v0.2 are completed/closed. v0.3
+(Normalized AST Specification) and v0.4 (Raw AST → Normalized AST
+prototype/hardening) are completed. The current active stage is `v0.5` —
+Normalized Surface Semantics Stabilization and Public Documentation Reset.
 
-`v0.3` specifies the Normalized AST, a desugared but non-semantic
-representation that unifies the Raw AST input surface into a regular
-structure suitable for later semantic passes. v0.3 is specification-only.
-Normalized AST implementation (Raw AST → Normalized AST lowering) is v0.4.
-
-The v0.1 output is:
+The current public surface is the v0.5 normalized surface
+(`spec/public/v0.5/normalized-surface-semantics-v0.5.md`). The pipeline is:
 
 ```text
-source text -> tokens -> Raw AST -> diagnostics
+source text -> tokens -> Raw AST -> Normalized AST   (+ diagnostics)
 ```
 
-Raw AST is surface-preserving and non-desugared. Normalized AST will be
-a future desugared, non-semantic AST that unifies calls, extraction, and
-declarations into simple pattern/call/declaration structures.
+Raw AST is surface-preserving and non-desugared. Normalized AST is a desugared,
+non-semantic AST that unifies calls, extraction, and declarations into simple
+pattern/call/declaration structures. It is not HIR, not type-checked, and not
+name-resolved.
 
-Raw AST → Normalized AST lowering is allowed only in an explicit v0.4
-implementation task.
+v0.5 is documentation and stabilization. Do not implement semantic passes (name
+resolution, type/kind checking, operator lookup, alias target resolution,
+pattern-head resolution, closure materialization, runtime evaluation, or code
+generation); those remain v0.6+ future work.
 
 ## v0.2 contract freeze policy
 
@@ -128,7 +139,7 @@ Completed v0.1.w additions (preserved in the frozen surface):
   literal-name adjacency as ordinary call/composition material
 * pipe branch-name shorthand `|> name { ... } ⇝ |> (_ name) { ... }`
 
-Allowed v0.2 work:
+Allowed work in the current documentation / stabilization stage:
 
 * documentation consistency repair
 * stale comment cleanup
@@ -139,7 +150,7 @@ Allowed v0.2 work:
 * narrowly scoped golden-test additions (frozen behavior not yet locked)
 * no parser behavior change unless a hard correctness error is identified
 
-Forbidden in v0.2 (closed):
+Forbidden:
 
 * broad lexer/parser restructuring, new syntax families
 * traditional call syntax, import/package/module syntax
@@ -147,7 +158,6 @@ Forbidden in v0.2 (closed):
 * semantic analysis, name resolution, type/kind checking, operator lookup,
   alias target resolution, closure materialization, canonical matching,
   ownership/NLL/drop, interpretation, code generation, HIR/MIR/codegen
-* Raw AST → Normalized AST implementation
 
 A hard correctness error is one of:
 
@@ -181,8 +191,8 @@ Do not implement:
 * code generation
 * IR/HIR/MIR or semantic lowering
 
-Raw AST → Normalized AST lowering is allowed only in an explicit v0.4
-implementation task.
+Raw AST → Normalized AST lowering is implemented (v0.4). Do not extend it with
+semantic behavior; semantic lowering remains future work.
 
 If a change requires any of the above, stop at syntax/AST representation and
 leave the semantic behavior as a documented future pass.
@@ -508,11 +518,15 @@ Do:
 ├── spec/
 │   ├── README.md
 │   ├── public/
-│   │   └── v0.2/
-│   │       ├── lexical-syntax-v0.2.md
-│   │       ├── concrete-syntax-v0.2.md
-│   │       ├── diagnostics-recovery-v0.2.md
-│   │       └── raw-ast-frozen-surface-v0.2.md
+│   │   ├── v0.2/
+│   │   │   ├── lexical-syntax-v0.2.md
+│   │   │   ├── concrete-syntax-v0.2.md
+│   │   │   ├── diagnostics-recovery-v0.2.md
+│   │   │   └── raw-ast-frozen-surface-v0.2.md
+│   │   └── v0.5/
+│   │       ├── README.md
+│   │       ├── normalized-surface-semantics-v0.5.md
+│   │       └── agent-interpretation-guide-v0.5.md
 │   ├── reference/
 │   │   └── glossary.md
 │   ├── implementation/
@@ -522,19 +536,29 @@ Do:
 │   │       └── implementation-status-v0.1.md
 │   ├── contracts/
 │   │   ├── raw-ast-contract-v0.1.md
-│   │   └── raw-ast-contract-freeze-v0.2.md
+│   │   ├── raw-ast-contract-freeze-v0.2.md
+│   │   ├── v0.3-normalization-handoff-checklist.md
+│   │   └── v0.4-normalization-prototype-notes.md
 │   ├── history/
-│   │   └── v0.1/
-│   │       ├── frontend-v0.1.md
-│   │       ├── operator-design.md
-│   │       └── resolved-questions.md
+│   │   ├── v0.1/
+│   │   │   ├── frontend-v0.1.md
+│   │   │   ├── frontend-design-summary.md
+│   │   │   ├── operator-design.md
+│   │   │   └── resolved-questions.md
+│   │   ├── v0.3/
+│   │   │   ├── README.md
+│   │   │   ├── normalized-ast-specification-v0.3.md
+│   │   │   └── normalized-ast-design-history-v0.3.md
+│   │   └── v0.4/
+│   │       └── README.md
 │   ├── future/
 │   │   ├── entity-ref-design.md
 │   │   ├── entity-alias-design.md
 │   │   ├── library-namespace-design-note.md
 │   │   ├── build-system-design.md
 │   │   ├── package-manifest-v0.md
-│   │   └── namespace-assembly-v0.md
+│   │   ├── namespace-assembly-v0.md
+│   │   └── static-pattern-spaces-and-extraction-chains.md
 │   └── planning/
 │       ├── roadmap.md
 │       └── open-questions.md
@@ -550,6 +574,7 @@ Do:
 │   │       ├── ast.rs
 │   │       ├── dump.rs
 │   │       ├── diagnostic.rs
+│   │       ├── norm.rs
 │   │       └── parser/
 │   │           ├── mod.rs
 │   │           ├── cursor.rs
@@ -571,10 +596,12 @@ Do:
     ├── lexer_golden.rs
     ├── parser_golden.rs
     ├── diagnostics_golden.rs
+    ├── normalized_golden.rs
     └── cases/
         ├── lexer/
         ├── parser/
-        └── diagnostics/
+        ├── diagnostics/
+        └── norm/
 ```
 
 ## AST policy
@@ -702,9 +729,12 @@ Default PR behavior:
 
 ## Spec awareness
 
+* `spec/public/v0.5/normalized-surface-semantics-v0.5.md` is the current public
+  normalized surface authority. Consult it before understanding or documenting
+  current language behavior.
 * `spec/public/v0.2/lexical-syntax-v0.2.md` and `spec/public/v0.2/concrete-syntax-v0.2.md` are the
-  primary public syntax references. Consult them before understanding or
-  documenting current lexical or parser behavior.
+  primary public syntax references for the frozen Raw AST input. Consult them
+  before understanding or documenting current lexical or parser behavior.
 * `spec/public/v0.2/diagnostics-recovery-v0.2.md` is the primary public diagnostics and
   recovery reference for current behavior.
 * `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` enumerates frozen constructs and their

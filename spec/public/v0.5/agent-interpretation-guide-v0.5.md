@@ -1,9 +1,9 @@
 # Agent Interpretation Guide v0.5
 
-> **Status:** v0.5-3. This guide is normative for coding/documentation agents
-> working on `lang`. The call-binding semantics are published in
-> `normalized-surface-semantics-v0.5.md` §3–§7; the value/pattern, annotation,
-> and alias boundaries in §8–§10; node origins in §11.
+> **Status:** Published — v0.5 public guide. This guide is normative for
+> coding/documentation agents working on `lang`. The call-binding semantics are
+> published in `normalized-surface-semantics-v0.5.md` §3–§7; the value/pattern,
+> annotation, and alias boundaries in §8–§10; node origins in §11.
 
 ## 1. Read This Before Editing Language Semantics
 
@@ -12,8 +12,8 @@ behavior, normalization, or documentation, read:
 
 - `spec/public/v0.5/normalized-surface-semantics-v0.5.md` — the normalized
   surface;
-- `spec/public/v0.3/normalized-ast-specification-v0.3.md` §7–§8 — the
-  source-product continuation skeleton and minimum normalized shape;
+- `spec/history/v0.3/normalized-ast-specification-v0.3.md` — the v0.3 design
+  baseline (historical route);
 - `spec/contracts/v0.4-normalization-prototype-notes.md` — the v0.4 boundary.
 
 If a change requires semantics (resolution, checking, lookup), stop at the

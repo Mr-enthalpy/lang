@@ -13,6 +13,9 @@ design will consume.
 
 ## v0.2 stage position
 
+This is the stage position recorded at the v0.2 freeze; the current active stage
+is now v0.5 (see `spec/public/v0.5/`).
+
 ```text
 v0.1   — Raw AST Frontend — completed
 v0.1.w — Raw AST Stability Window — closed
