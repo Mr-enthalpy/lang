@@ -325,6 +325,9 @@ policy, and resource capability policy.
 
 ### 12.1 Relationship to Overload Resolution
 
+> **Formal specification**: `spec/future/overload-resolution-design.md` §2–§3,
+> §5.4.
+
 Overload-set visibility is built on top of policy-filtered namespace symbol
 lookup. The overload candidate pool for a given call is the set of same-named
 symbols visible in the current namespace context, further filtered by the
@@ -351,8 +354,8 @@ current policy environment.
 
 Full overload resolution specification is deferred to later phases (v0.10+);
 the overload resolution pipeline defined in
-`static-pattern-spaces-and-extraction-chains.md` §12 documents the intended
-design direction for how policies feed into overload candidate construction.
+`spec/future/overload-resolution-design.md` documents the intended design
+direction for how policies feed into overload candidate construction.
 
 ## 13. Explicit Non-Goals / Guardrails
 

@@ -695,6 +695,11 @@ By default, binding extraction is total consumption of the current static patter
 
 ## 12. Overload Candidate Filtering and Resolution
 
+> **Formal specification**: `spec/future/overload-resolution-design.md`.
+> This section is a summary overview; the formal document defines the
+> lexicographic extraction-pattern specificity rule, the full 11-step
+> resolution pipeline with set notation (C0–C10), and the judgment form.
+
 Extraction participates in overload candidate filtering and resolution. A candidate may carry an extraction pattern. If that pattern is not applicable to the current call pattern space, the candidate is skipped.
 
 ### 12.1 Overload Set Construction
