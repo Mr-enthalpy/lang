@@ -94,12 +94,14 @@ impl NamespaceGraphSnapshot {
             .get(&parent)
             .and_then(|node| node.children.get(name))
             .ok_or_else(|| {
-                Diagnostic::hard_error(format!("unresolved symbol `{name}`"), None)
+                Diagnostic::hard_error(format!("resolver error: unresolved symbol `{name}`"), None)
                     .with_node_context(parent)
             })?;
         select_symbol_from_bucket(&self.symbols, bucket, name, expectation).ok_or_else(|| {
             Diagnostic::hard_error(
-                format!("unresolved symbol `{name}` for resolver expectation {expectation:?}"),
+                format!(
+                    "resolver error: unresolved symbol `{name}` for expectation {expectation:?}"
+                ),
                 None,
             )
             .with_node_context(parent)
@@ -456,13 +458,16 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
                 .unwrap_or_else(|| {
                     self.hard_error(
                         None,
-                        format!("unresolved symbol `{}`", source_order_path.join("::")),
+                        format!(
+                            "resolver error: unresolved symbol `{}`",
+                            source_order_path.join("::")
+                        ),
                     )
                 })),
             _ => Err(self.hard_error(
                 None,
                 format!(
-                    "conflicting symbol `{}` found across resolver search roots",
+                    "resolver error: conflicting symbol `{}` across resolver search roots",
                     source_order_path.join("::")
                 ),
             )),
@@ -797,9 +802,9 @@ fn select_symbol_from_bucket<'symbols>(
             match ids.as_slice() {
                 [id] => symbol(*id).map(Ok),
                 [] => None,
-                _ => Some(Err(Diagnostic::hard_error(
+                _ =>                 Some(Err(Diagnostic::hard_error(
                     format!(
-                        "ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
+                        "resolver error: ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
                     ),
                     None,
                 ))),
@@ -821,7 +826,7 @@ fn select_symbol_from_bucket<'symbols>(
                 [symbol] => Some(Ok(*symbol)),
                 [] => None,
                 _ => Some(Err(Diagnostic::hard_error(
-                    format!("ambiguous namespace-capable parent `{name}`"),
+                    format!("resolver error: ambiguous namespace-capable parent `{name}`"),
                     None,
                 ))),
             }

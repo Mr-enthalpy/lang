@@ -40,7 +40,7 @@ impl CompilationWorld {
     pub fn from_manifest(manifest: &BuildManifest) -> Result<Self, BuildError> {
         if !manifest.default_core_mount {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "missing mount: default core mount is required for v0.6 bootstrap",
+                "build manifest error: default core mount is required for v0.6 bootstrap",
                 Some(Provenance::new("build manifest")),
             )));
         }
@@ -222,7 +222,7 @@ impl CompilationWorld {
                 NormForm::Expr(_) => {}
                 NormForm::Error(error) => {
                     return Err(BuildError::single(Diagnostic::hard_error(
-                        "cannot harvest declaration from normalized error form",
+                        "source contribution error: cannot harvest declaration from normalized error form",
                         Some(Provenance::from_norm_origin(
                             "normalized error",
                             &error.origin,
@@ -250,7 +250,7 @@ impl CompilationWorld {
             | NormPattern::Sequence { .. }
             | NormPattern::Skeleton { .. } => {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "ordinary parent-to-descendant injection is rejected in file contribution context",
+                    "source contribution error: ordinary parent-to-descendant injection is rejected in file contribution context",
                     Some(Provenance::from_norm_origin(
                         "top-level declaration binder",
                         pattern_origin(&slot.value_pattern),
@@ -259,7 +259,7 @@ impl CompilationWorld {
             }
             _ => {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "unsupported top-level declaration binder in v0.6 vertical slice",
+                    "source contribution error: unsupported top-level declaration binder in v0.6 vertical slice",
                     Some(Provenance::from_norm_origin(
                         "top-level declaration binder",
                         pattern_origin(&slot.value_pattern),
@@ -337,7 +337,7 @@ impl CompilationWorld {
             NormAliasBinder::Name { name, .. } => name.clone(),
             _ => {
                 return Err(BuildError::single(Diagnostic::hard_error(
-                    "unsupported alias binder in v0.6 vertical slice",
+                    "source contribution error: unsupported alias binder in v0.6 vertical slice",
                     Some(Provenance::from_norm_origin("alias binder", origin)),
                 )));
             }
@@ -348,7 +348,7 @@ impl CompilationWorld {
             .map(|component| match component {
                 NormNavComponent::Name { name, .. } => Ok(name.clone()),
                 _ => Err(BuildError::single(Diagnostic::hard_error(
-                    "unsupported alias target in v0.6 vertical slice",
+                    "source contribution error: unsupported alias target in v0.6 vertical slice",
                     Some(Provenance::from_norm_origin("alias target", &target.origin)),
                 ))),
             })
@@ -398,7 +398,7 @@ fn install_dependency_mounts(
     for mount in mounts {
         if mount.mount_path.is_empty() {
             return Err(BuildError::single(Diagnostic::hard_error(
-                "missing mount: dependency mount path must not be empty",
+                "build manifest error: dependency mount path must not be empty",
                 Some(Provenance::new(format!(
                     "dependency mount from `{}`",
                     mount.from_package
@@ -417,7 +417,7 @@ fn install_dependency_mounts(
         {
             return Err(BuildError::single(Diagnostic::hard_error(
                 format!(
-                    "duplicate mount root `{}` is a hard error",
+                    "build manifest error: duplicate mount root `{}`",
                     mount.mount_path.join("::")
                 ),
                 Some(Provenance::new(format!(

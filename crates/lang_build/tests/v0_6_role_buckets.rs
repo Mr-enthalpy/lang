@@ -1,67 +1,10 @@
+mod support;
+use support::*;
+
 use lang_build::{
-    ChildLink, ChildNameRole, NamespaceGraphSnapshot, NamespaceNodeId, NamespaceNodeKind,
-    Provenance, ResolveExpectation, ResolverContext, SourceCategory, SymbolKind, SymbolObject,
-    SymbolPayload, TypeObject,
+    ChildLink, ChildNameRole, NamespaceGraphSnapshot, NamespaceNodeKind, Provenance,
+    ResolveExpectation, ResolverContext, SourceCategory, SymbolKind,
 };
-
-fn placeholder_symbol(
-    id: lang_build::SymbolId,
-    parent: NamespaceNodeId,
-    name: &str,
-    provenance: &str,
-) -> SymbolObject {
-    SymbolObject::placeholder(
-        id,
-        name,
-        SymbolKind::Placeholder,
-        SourceCategory::DeclaredSymbol,
-        Some(parent),
-        Provenance::new(provenance),
-    )
-}
-
-fn namespace_symbol(
-    id: lang_build::SymbolId,
-    parent: NamespaceNodeId,
-    name: &str,
-    node_id: NamespaceNodeId,
-    provenance: &str,
-) -> SymbolObject {
-    SymbolObject::namespace(
-        id,
-        name,
-        node_id,
-        NamespaceNodeKind::Virtual,
-        SourceCategory::DeclaredSymbol,
-        Some(parent),
-        Provenance::new(provenance),
-    )
-}
-
-/// Create a Type symbol with a type-associated namespace (namespace-capable).
-fn type_with_namespace(
-    type_id: lang_build::SymbolId,
-    name: &str,
-    parent: NamespaceNodeId,
-    type_namespace_id: NamespaceNodeId,
-    provenance: &str,
-) -> SymbolObject {
-    let mut symbol = placeholder_symbol(type_id, parent, name, provenance);
-    symbol.kind = SymbolKind::Type;
-    symbol.node_kind = Some(NamespaceNodeKind::Virtual);
-    symbol.payload = SymbolPayload::Type(TypeObject {
-        type_symbol_id: type_id,
-        fields: Vec::new(),
-        field_names: Vec::new(),
-        field_type_symbol_ids: Vec::new(),
-        type_associated_namespace: Some(type_namespace_id),
-        provenance: Provenance::new(provenance),
-        generation_origin: None,
-        layout_slot: None,
-        abi_slot: None,
-    });
-    symbol
-}
 
 #[test]
 fn same_parent_same_role_object_conflict() {
