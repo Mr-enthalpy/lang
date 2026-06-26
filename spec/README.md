@@ -129,10 +129,11 @@ syntax specifications.
 | `entity-ref-design.md` | Non-normative future design note | General `EntityRef` design (future). Alias-RHS `EntityRef` subset is implemented in Phase 4.4. |
 | `entity-alias-design.md` | Implemented-design explanation | Documents lexical alias binding syntax (`let binder === EntityRef`). Phase 4.3 design; Phase 4.4 raw parser preservation implemented. Future semantic meaning remains future work. |
 | `library-namespace-design-note.md` | Non-normative future design note | Describes the intended library/namespace/import model. |
-| `build-system-design.md` | Non-normative, future design | Formal design note for the build/package/namespace assembly architecture. |
+| `build-system-design.md` | Non-normative, future design | Formal design note for the build/package/namespace assembly architecture. Now the next post-v0.5 roadmap priority (v0.6 — Build / Namespace Graph Bootstrap). |
 | `package-manifest-v0.md` | Non-normative, future design | Provisional build-manifest design surface. |
 | `namespace-assembly-v0.md` | Non-normative, future design | High-level namespace assembly pipeline and phase split. |
-| `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.6+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
+| `early-meta-functions-and-namespace-graph.md` | Non-normative, future design (v0.6–v0.8) | Canonical direction for the build / namespace graph bootstrap, early meta-function lookup, and the type-to-type meta construction interpreter. |
+| `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.10+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
 
 ## Planning and debt
 
@@ -209,8 +210,9 @@ Read these only when working on future design topics.
 4. `spec/future/build-system-design.md` - Understand build/package architecture.
 5. `spec/future/package-manifest-v0.md` - Understand build-manifest surface.
 6. `spec/future/namespace-assembly-v0.md` - Understand namespace assembly pipeline.
-7. `spec/planning/roadmap.md` - Understand scope boundaries.
-8. `spec/planning/open-questions.md` - Recognize known gaps.
+7. `spec/future/early-meta-functions-and-namespace-graph.md` - Understand namespace graph capability layer, early meta, and the v0.6–v0.8 direction.
+8. `spec/planning/roadmap.md` - Understand scope boundaries.
+9. `spec/planning/open-questions.md` - Recognize known gaps.
 
 ## Spec priority
 

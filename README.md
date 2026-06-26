@@ -104,9 +104,10 @@ documents remain present, but they are not part of the normal public reading pat
 | Directory | Document | Purpose |
 |---|---|---|
 | `spec/future/` | `library-namespace-design-note.md` | Non-normative future design note |
-| `spec/future/` | `build-system-design.md` | Build/package/namespace assembly architecture (future) |
-| `spec/future/` | `package-manifest-v0.md` | Provisional build-manifest design surface (future) |
-| `spec/future/` | `namespace-assembly-v0.md` | Namespace assembly pipeline and phase split (future) |
+| `spec/future/` | `build-system-design.md` | Build/package/namespace assembly architecture — now the next post-v0.5 roadmap priority (v0.6) |
+| `spec/future/` | `package-manifest-v0.md` | Provisional build-manifest design surface |
+| `spec/future/` | `namespace-assembly-v0.md` | Namespace assembly pipeline and phase split |
+| `spec/future/` | `early-meta-functions-and-namespace-graph.md` | Namespace graph capability layer, early meta, and the v0.6–v0.8 direction |
 
 ### Operational
 
@@ -333,11 +334,11 @@ Future stages may add crates under `crates/` such as:
 crates/
   lang_syntax/
   lang_cli/
-  lang_typeck/       (v0.7+)
-  lang_nll/          (v0.8+)
+  lang_build/        (v0.6+)
+  lang_manifest/     (v0.6+)
+  lang_typeck/       (later)
+  lang_nll/          (later)
   lang_codegen/      (v1.0+)
-  lang_build/        (future: build/package track)
-  lang_manifest/     (future: manifest parser)
 ```
 
 No semantic crate should be added before its corresponding design stage.

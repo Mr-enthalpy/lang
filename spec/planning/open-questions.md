@@ -13,6 +13,10 @@ Resolved records live in history:
   review audit trail, and the documentation-reset debt log:
   `spec/history/v0.3/normalized-ast-design-history-v0.3.md`.
 
+The v0.6–v0.8 build / namespace graph / early meta direction is
+`spec/future/early-meta-functions-and-namespace-graph.md`. It is not an open
+design question; it is the next post-v0.5 roadmap track.
+
 ---
 
 ## v0.5 stabilization debt
@@ -31,11 +35,11 @@ published public behavior.
 
 ---
 
-### v0.6+: Canonical form specification
+### v0.9: Canonical form specification
 
 #### How should canonical value/type grammar be designed?
 
-**Status:** Open (active at v0.6)
+**Status:** Open (active at v0.9)
 
 **Current v0.1 foundation:**
 Canonical skeletons use the grammar defined in section 6 of
@@ -44,14 +48,14 @@ when value/type canonical forms are designed.
 
 ---
 
-### v0.6+: Pattern-space and extraction-chain semantics
+### v0.10+: Pattern-space and extraction-chain semantics
 
 Future design note:
 `spec/future/static-pattern-spaces-and-extraction-chains.md`.
 
 #### How should pattern spaces be represented as static objects?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** Normalized AST preserves the value/pattern
 boundary but does not construct semantic pattern spaces.
@@ -65,7 +69,7 @@ compiler into a general set-theoretic solver?
 
 #### How should sum patterns and pattern combination be specified?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** Pattern-position operator-shaped syntax remains
 pattern material. No pattern-space reduction is performed.
@@ -78,7 +82,7 @@ constructible, deleted, or rejected by the relevant meta-level `operator+`?
 
 #### How should extraction chains propagate residual pattern space?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** Pipe and closure structure are normalized without
 pattern-head resolution, extraction applicability checks, or exhaustiveness
@@ -93,7 +97,7 @@ contextual residual propagation rather than a control-flow primitive?
 
 #### How should the `Done` isolation layer work?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** Normalization does not insert, eliminate, or
 interpret `Done`.
@@ -107,7 +111,7 @@ implicitly inspect completed results?
 
 #### How should binding and product extraction totality be checked?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** Binding and closure parameter extraction preserve
 pattern/product structure, including explicit unit positions, but perform no
@@ -121,7 +125,7 @@ completeness, explicit `_` discard, and hard structural product-pattern errors?
 
 #### How should result consumption and void-only silent completion work?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** Normalization preserves expression and closure-body
 structure but does not check whether expression results are consumed.
@@ -134,7 +138,7 @@ How is pure `void` distinguished from ordinary unit payload?
 
 #### How should postfix `?` and conventional `match` closing be modeled?
 
-**Status:** Open (active at v0.6+)
+**Status:** Open (active at v0.10+)
 
 **Current v0.4 foundation:** `?` remains operator-shaped syntax / operator
 lowering material, and `match` remains an ordinary name unless later phases
@@ -161,11 +165,11 @@ make closed control-pattern residuals combine with unrelated pattern spaces?
 
 ---
 
-### v0.10+: Ownership and NLL
+### Later: Ownership and NLL
 
 #### How should the NLL CFG be structured?
 
-**Status:** Open (active at v0.10)
+**Status:** Open (active at later stages)
 
 **Current v0.1 foundation:**
 No CFG is built. The raw AST contains sufficient structure (form order,
@@ -174,11 +178,11 @@ construct a control-flow graph.
 
 ---
 
-### v0.11+: Control-flow and effect semantics
+### Later: Control-flow and effect semantics
 
 #### How should `return`, `else`, `match`, `effect`, `sync` be semanticized?
 
-**Status:** Open (active at v0.11)
+**Status:** Open (active at later stages)
 
 **Current v0.1 foundation:**
 These are ordinary `Name` tokens at the lexical and parser level. No special
