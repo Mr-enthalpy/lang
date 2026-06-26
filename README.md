@@ -28,7 +28,7 @@ Documentation pointers:
   `spec/contracts/v0.4-normalization-prototype-notes.md`
 
 - **Raw AST**: surface-preserving, non-desugared, parser output.
-- **Normalized AST**: future desugared AST that unifies calls, extraction,
+- **Normalized AST**: desugared, non-semantic AST that unifies calls, extraction,
   and declarations into simple pattern/call/declaration structures.
   Not HIR, not type-checked, not name-resolved.
 

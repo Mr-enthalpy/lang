@@ -91,8 +91,8 @@ repair, factual inventory checks, or archaeology.
 
 ## Contract and handoff documents
 
-**`spec/contracts/`** — Raw AST contract and v0.3 handoff boundary documents.
-Read these for normalization-boundary work and v0.3 preparation, not for
+**`spec/contracts/`** — Raw AST contracts, handoff documents, and normalization
+prototype boundary notes. Read these for implementation-boundary work, not for
 ordinary syntax understanding.
 
 | File | Authority | Role |
