@@ -74,6 +74,235 @@ reserved as a slot on `SymbolObject`, the context, and the capability layer, but
 full policy inference / projection / checking is deferred to later stages. v0.6–
 v0.8 only need the architectural placeholder, not an implementation.
 
+## Namespace Graph World Model Invariants
+
+v0.6 must model a compilation world, not a temporary file index.
+
+The namespace graph should be treated as a persistent, diagnosable,
+eventually serializable world object. The first implementation may keep it in
+memory, but the architecture must preserve the possibility of caching, diffing,
+provenance queries, IDE integration, and later graph freezing.
+
+Avoid language such as “scan files and build a map” unless explicitly framed as
+an implementation detail below the world model.
+
+Preferred terms:
+
+```text
+CompilationWorld
+NamespaceGraphSnapshot
+NamespaceDelta
+SymbolObject
+Provenance
+Diagnostic
+GraphPhase
+```
+
+### Snapshot + transaction delta discipline
+
+Namespace graph mutation must be transaction-shaped.
+
+Passes should not freely mutate the graph in place. They should produce deltas
+that are either installed atomically or rejected atomically.
+
+```text
+BaseGraph
+  + DeclaredSymbolDelta
+  -> DeclaredGraphSnapshot
+
+DeclaredGraphSnapshot
+  + MetaExpansionDelta
+  -> MetaExpandedGraphSnapshot
+```
+
+Deltas should carry: intended parent node; declared/generated symbols; aliases;
+provenance; diagnostics; policy metadata slots; cache-key fragments where
+applicable.
+
+Failure rule: failed delta installation installs nothing; diagnostics remain
+available; no half-generated namespace subtree is left behind. This is
+especially important for early meta-functions such as `struct`, because
+`assert` failure inside a meta-function must not leave a partial
+type-associated namespace.
+
+### Conflict policy: conflict is error
+
+The default v0.6 conflict policy is conservative: conflict is a hard error.
+
+Do not introduce merge semantics, overlay semantics, duplicate acceptance,
+overload-set merging, or identical-alias coalescing unless a later specification
+explicitly permits it.
+
+Default conflict rules:
+
+```text
+physical directory name vs type-associated namespace name: hard error
+physical directory name vs declared symbol name:          hard error
+two non-merge-declared symbols with the same name in
+  the same namespace:                                     hard error
+two type objects with the same name in the same
+  namespace:                                              hard error
+two aliases with the same name in the same namespace:     hard error
+generated symbol colliding with physical / declared /
+  generated symbol:                                       hard error
+core/prelude alias colliding with user declaration:       hard error unless a
+  later explicit shadowing rule is specified
+overload-set merging:                                     not a v0.6 default
+package overlay:                                          not a v0.6 default
+```
+
+If the implementation needs temporary permissiveness, it must be marked as an
+implementation limitation, not as language semantics.
+
+### Symbol identity is not a string path
+
+Resolver input may be a path-like navigation form, but resolver output must be a
+`SymbolObject`, not a string.
+
+v0.6 should reserve identity categories such as:
+
+```text
+PhysicalSymbolId
+DeclaredSymbolId
+VirtualSymbolId
+MetaInstanceSymbolId
+GeneratedChildSymbolId
+AliasSymbolId
+```
+
+The exact representation is future work, but the architecture must not collapse
+symbol identity into a raw namespace string.
+
+A `SymbolObject` should preserve slots for:
+
+```text
+id
+name
+kind
+source_category
+node_kind
+parent
+policy_metadata
+visibility_metadata
+provenance
+diagnostics
+generation_origin
+cache_key_fragment
+```
+
+Most of these may be placeholders in v0.6. The point is to avoid later
+retrofitting them into an underspecified map.
+
+### Core bootstrap boundary
+
+Core symbols may be compiler-seeded in the first implementation, but
+conceptually they must still enter the namespace graph as ordinary
+`SymbolObject`s.
+
+Allowed bootstrap magic:
+
+- compiler may ship or seed a built-in `core` package artifact;
+- build system may mount `core` by default;
+- `struct`, `assert`, `type`, `namespace`, `uint8`, `ref`, `share` may initially
+  have built-in payloads;
+- those symbols must still be installed into the namespace graph and resolved
+  through the resolver.
+
+Disallowed bootstrap shortcuts:
+
+- parser special-cases `struct`;
+- normalizer special-cases `struct`;
+- type checker searches raw string `"struct"` outside resolver;
+- early meta executor bypasses `SymbolObject`;
+- core symbols are globally visible through ambient installation state rather
+  than explicit graph mount.
+
+### Meta expansion is atomic
+
+`MetaExpansionResult` is transaction-like.
+
+It may contain:
+
+```text
+replacement_object
+namespace_delta
+diagnostics
+provenance
+cache_key_fragment
+```
+
+Atomicity rule: success installs the replacement and namespace delta as one unit;
+failure installs no generated symbols; diagnostics are retained; partial
+type-associated namespace construction is forbidden. This applies to `struct`
+and later type-to-type meta-functions.
+
+### Phase names and freeze points
+
+v0.6 does not need to implement all later phases, but it should reserve phase
+vocabulary for future seal / policy / cache behavior.
+
+Suggested phase names:
+
+```text
+BuildGraph
+ParsedFragments
+DeclaredGraph
+EarlyMetaExpandedGraph
+TypeCheckedGraph
+FrozenGraph
+SealGraph
+RuntimeArtifact
+```
+
+v0.6 likely reaches only the early graph phases. The purpose of naming later
+phases is to prevent future seal / policy designs from inventing a separate
+graph model.
+
+### No bypass rule
+
+Every future component that needs symbols must go through the shared namespace
+graph world model.
+
+This includes:
+
+```text
+resolver
+early meta-function lookup
+struct
+assert
+type checker
+policy checker
+seal stage
+IDE index
+cache layer
+diagnostics
+later HIR lowering
+```
+
+Do not let any component build its own parallel symbol table except as a derived
+cache with a clear invalidation relation to the canonical namespace graph
+snapshot.
+
+### v0.6 test philosophy
+
+When implementation begins, v0.6 tests should target invariants rather than
+feature demos.
+
+Test targets should include:
+
+- no source-level `import/use/include/module`;
+- file names do not contribute namespace segments;
+- directories contribute physical namespace skeleton;
+- source fragments contribute only direct children;
+- ordinary parent-to-descendant injection is rejected;
+- all name conflicts are hard errors by default;
+- resolver returns symbol objects, not strings;
+- core symbols resolve through namespace graph;
+- missing mount is a build/resolver error;
+- meta expansion delta is atomic;
+- failed `struct` expansion leaves no partial generated subtree;
+- policy metadata slots are preserved but unchecked.
+
 ## 3. Symbol source model
 
 A node in the full namespace graph may be a **physical** node, a **declared**

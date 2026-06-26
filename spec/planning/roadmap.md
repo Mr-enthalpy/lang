@@ -206,9 +206,13 @@ and `spec/future/package-manifest-v0.md`.
 
 #### v0.6 — Build / Namespace Graph Bootstrap
 
-**Goal**: a minimal working build system and namespace graph, so that names such
-as `struct`, `assert`, `type`, `namespace`, `uint8`, `ref`, `share` are not
-compiler-hardcoded names but symbol objects resolvable in the core namespace.
+**Goal**: a minimal working build system and a namespace graph world model.
+The namespace graph is a persistent, diagnosable, transactional world object,
+not a temporary file index. Every future phase (resolver, early meta, type
+checker, policy, seal, IDE, cache, HIR lowering) shares this model. Names such
+as `struct`, `assert`, `type`, `namespace`, `uint8`, `ref`, `share` enter as
+ordinary `SymbolObject`s resolvable through the graph, not as hardcoded compiler
+branches.
 
 Must cover:
 
@@ -232,6 +236,15 @@ Must cover:
 - policy metadata slots on symbols, contexts, and namespace graph nodes
   (architectural placeholder only; see
   `spec/future/policy-visibility-symbols.md`)
+- namespace graph is a persistent, diagnosable, transactional world model shared
+  by all future phases (not a temporary scan or file index)
+- conflict is a hard error by default; no merge / overlay / duplicate /
+  overload-set semantics or package overlay in v0.6
+- engineering invariants: snapshot + transaction delta discipline,
+  symbol-identity-as-object, core bootstrap boundary, meta-expansion atomicity,
+  phase-freeze vocabulary, no-bypass rule, invariant-targeted test philosophy
+  (see `spec/future/early-meta-functions-and-namespace-graph.md` §"Namespace
+  Graph World Model Invariants")
 
 Non-goals: full version solving; remote package retrieval; lockfile
 completeness; dynamic/static distribution distinction; full access-control
