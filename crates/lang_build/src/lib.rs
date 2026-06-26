@@ -3,8 +3,10 @@
 //! This crate intentionally sits after `lang_syntax`: it consumes parsed and
 //! normalized source fragments, but does not add parser or normalizer rules.
 
+pub mod build;
 pub mod core;
 pub mod discovery;
+pub mod fingerprint;
 pub mod graph;
 pub mod manifest;
 pub mod meta;
@@ -12,10 +14,17 @@ pub mod model;
 pub mod source;
 pub mod world;
 
+pub use build::{
+    BuildCache, BuildCacheStats, BuildResult, BuildSession, BuildWorkspace, CacheStatus,
+    DependencyBuildMetadata, ExplicitMountBuildMetadata, PackageBuildArtifact,
+    PackageBuildMetadata, PackageBuildSpec, SourceRootMetadata, SourceUnitBuildMetadata,
+    StaticDependencySpec, SyntheticSymbolBuildMetadata,
+};
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
     SourceRootRequest,
 };
+pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use graph::{
     BuildError, NamespaceGraphCapability, NamespaceGraphSnapshot, NamespaceInstallError,
     ResolveExpectation, ResolverContext,
