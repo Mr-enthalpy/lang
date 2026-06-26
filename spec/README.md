@@ -134,7 +134,7 @@ syntax specifications.
 | `package-manifest-v0.md` | Non-normative, future design | Provisional build-manifest design surface. |
 | `namespace-assembly-v0.md` | Non-normative, future design | High-level namespace assembly pipeline and phase split. |
 | `early-meta-functions-and-namespace-graph.md` | Non-normative design with partial implementation note (v0.6–v0.8) | Canonical direction for the build / namespace graph bootstrap, early meta-function lookup, and the type-to-type meta construction interpreter. Documents the narrow implemented v0.6 slice. |
-| `access-tree-and-field-projection.md` | Non-normative future design note | Records the role-aware field-function / `ref` / `share` projection model and type-value binding distinction for future access-tree work. No access-tree construction is implemented. |
+| `type-associated-function-objects-and-access-trees.md` | Non-normative future design note | Records the role-aware field-function / `ref` / `share` projection model, type-value binding distinction, and injection-place rules for future access-tree work. No access-tree construction is implemented. |
 | `policy-visibility-symbols.md` | Non-normative, future design (deferred beyond v0.8) | Policy as visibility symbols and capability strategy: trait model, partial-order, orthogonal dimensions, context-policy / import / binding rules, compile/runtime/meta/seal, const/mut motivation. Not implemented in v0.6–v0.8 except as metadata slots. |
 | `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.10+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
 
@@ -214,7 +214,7 @@ Read these only when working on future design topics.
 5. `spec/future/package-manifest-v0.md` - Understand build-manifest surface.
 6. `spec/future/namespace-assembly-v0.md` - Understand namespace assembly pipeline.
 7. `spec/future/early-meta-functions-and-namespace-graph.md` - Understand namespace graph capability layer, early meta, and the v0.6–v0.8 direction.
-8. `spec/future/access-tree-and-field-projection.md` - Understand future field-function / projection-space constraints.
+8. `spec/future/type-associated-function-objects-and-access-trees.md` - Understand future field-function / projection-space and injection-place constraints.
 8. `spec/planning/roadmap.md` - Understand scope boundaries.
 9. `spec/planning/open-questions.md` - Recognize known gaps.
 

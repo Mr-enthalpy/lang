@@ -453,17 +453,17 @@ namespace-subspace-role projection spaces, fields named `ref` or `share` are
 valid. Terminal `ref::T` or `share::T` may be ambiguous unless resolver callers
 provide an expected role.
 
-### 3.4 Type values, symbols, and aliasing
+### 3.4 Type values, symbol places, and aliasing
 
-Symbol identity, type value identity, and type value equality are distinct:
+Type-value evaluation, symbol/place identity, and namespace injection targets
+are distinct. A type/rank use evaluates by value:
 
 ```text
 let T: type = uint8
 ```
 
-means `T` is a new symbol whose value is the existing type value `uint8`.
-`T == uint8` holds by type-value equality, but `T` is not the same symbol as
-`uint8`.
+means `T` is a new symbol/place whose value is the existing type value `uint8`.
+`value(T) == value(uint8)` holds, but `place(T) != place(uint8)`.
 
 This mirrors ordinary value bindings:
 
@@ -474,21 +474,26 @@ let b = 1
 
 `a` and `b` are distinct symbols, while their values are equal.
 
+Namespace injection is not pure type-value evaluation. `let f::T = ...`
+targets `place(T)`, not `place(uint8)`. Type-value equality must not
+canonicalize injection targets.
+
 `=` and `===` are not interchangeable:
 
-| Form | Symbol effect | Type-value effect |
-| --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol `T` | `value(T) == value(uint8)` |
-| `let T === uint8` | Creates alias / forwarding symbol | No new ordinary type-value binding |
-| `let T: type = ... |> struct` | Creates new symbol `T` | `value(T)` is a fresh generated type value |
+| Form | Symbol effect | Type-value effect | Injection-place effect |
+| --- | --- | --- | --- |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `f::T` injects into `place(T)` if current-level and open |
+| `let T === uint8` | `T` forwards to symbol `uint8` | `value(T) == value(uint8)` | `f::T` attempts `place(uint8)` and is rejected because `uint8` is external stable |
+| `let T: type = ... |> struct` | Creates new symbol/place `T` | `value(T)` is a fresh generated type value | `f::T` injects into `place(T)` if open |
 
 Fresh generated type values own/provide their own type-associated namespace, so
 `let T: type = (uint8 a, uint8 b) |> struct` creates the fresh type value whose
 field functions are visible as `a::T`, `a::ref::T`, and `a::share::T`.
 
-By contrast, `let T: type = uint8` does not create a new independent
-type-associated namespace. Future namespace traversal through `T` should use
-the type-associated namespace of the type value bound to `T`.
+By contrast, `let T: type = uint8` does not create a fresh type value, but it
+may own a fresh current-level companion namespace place. Future namespace
+injection through `T` targets that place; future type/rank evaluation of `T`
+returns the existing type value `uint8`.
 
 Future generic/meta-generated types such as `(int)Vec::std` return stable type
 values. Therefore:
@@ -501,6 +506,9 @@ let B: type = (int)Vec::std
 means `A == B` by type-value equality while `A` and `B` remain distinct symbols
 unless one is declared via `===`. Canonical `TypeValueId` and full type-value
 equality are future work.
+
+See `spec/future/type-associated-function-objects-and-access-trees.md` for the
+full value/place/injection distinction and alias writability rule.
 
 ## 4. Namespace contribution rules
 

@@ -517,11 +517,12 @@ fn declared_type_placeholder_delta(
     name: &str,
     provenance: Provenance,
 ) -> NamespaceDelta {
-    // v0.6 placeholder only: long-term semantics for `let T: type = uint8`
-    // are an ordinary binding of a new symbol `T` to the existing type value
-    // `uint8`, not fresh type generation and not symbol aliasing. This
-    // placeholder preserves a Type payload until TypeValueId / type-value
-    // equality are designed.
+    // v0.6 placeholder: this represents a type-annotated declaration before
+    // type-value evaluation exists. Long-term, `let t: type = uint8` is an
+    // ordinary binding of symbol/place `t` to the existing type value `uint8`,
+    // not fresh type generation and not symbol aliasing. Namespace injection
+    // through `t` must target place(t), not place(uint8), once writable-place
+    // checking exists.
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();

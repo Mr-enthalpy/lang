@@ -506,6 +506,50 @@ fn ordinary_source_contribution_rejects_deep_and_pattern_binders() {
 }
 
 #[test]
+fn type_value_binding_placeholder_keeps_fresh_symbol_place_in_v0_6() {
+    let project = TempProject::new("type_value_binding_placeholder");
+    project.write("src/main.lang", "let t: type = uint8");
+
+    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect("type-annotated direct child binding is accepted");
+    let symbol = world
+        .resolve_with_expectation("t", ResolveExpectation::TypeObject)
+        .expect("resolve v0.6 placeholder type binding");
+    assert_eq!(symbol.name, "t");
+    assert_eq!(symbol.source_category, SourceCategory::DeclaredSymbol);
+    assert_eq!(symbol.parent, Some(world.package_root_node()));
+    let symbol_id = symbol.id;
+
+    // v0.6 placeholder behavior only: this is not final type-value semantics.
+    // Long-term, `let t: type = uint8` binds fresh symbol/place `t` to the
+    // existing type value `uint8`; injection through `t` targets place(t), not
+    // place(uint8).
+    let SymbolPayload::Type(type_object) = symbol.payload else {
+        panic!("expected placeholder Type payload");
+    };
+    assert_eq!(type_object.type_symbol_id, symbol_id);
+    assert!(type_object.type_associated_namespace.is_some());
+}
+
+#[test]
+fn alias_injection_writability_is_future_not_current_contribution_rule() {
+    let project = TempProject::new("alias_external_injection_future");
+    project.write("src/main.lang", "let t === uint8; let f::t = uint8");
+
+    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect_err("v0.6 rejects descendant contribution before alias-place writability");
+
+    // Future semantics must reject this because `t` forwards to the external
+    // stable built-in place(uint8), which is readable/aliasable but not writable
+    // from the current lexical level. The v0.6 vertical slice has no alias
+    // forwarding or writable-place checker yet, so the current diagnostic is
+    // the existing source-contribution boundary.
+    assert!(error.diagnostics.iter().any(|diagnostic| diagnostic
+        .message
+        .contains("ordinary parent-to-descendant injection")));
+}
+
+#[test]
 fn missing_core_mount_is_a_build_error() {
     let mut manifest = empty_app_manifest();
     manifest.default_core_mount = false;

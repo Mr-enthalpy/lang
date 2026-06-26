@@ -35,8 +35,19 @@ track:
   paths for field function objects.
 - `let T: type = uint8` is ordinary type-value binding: it creates a new symbol
   `T` whose type value equals `uint8`.
+- Type/rank use evaluates by type value, not by symbol name.
+- `let T: type = uint8` creates a fresh symbol/place whose type value equals
+  `uint8`.
+- `let f::T = ...` injects into `T` as a place, not into `uint8` as a value.
+- Injection is place update, analogous to `a = a + 1`, not value rewriting.
 - `let T === uint8` is symbol alias / forwarding, not ordinary type-value
   binding.
+- `let T === uint8` does not create a fresh writable place.
+- Injection through an alias is allowed only if the final forwarded target is a
+  current-level open writable object.
+- External stable values are readable / aliasable but not writable injection
+  targets.
+- Inner lexical symbols cannot be exposed as longer-lived injection targets.
 - Type values can be equal even when their binding symbols differ.
 - `struct` meta generation creates a fresh type value; ordinary `let` binding
   to an existing type value does not.
@@ -44,10 +55,16 @@ track:
 Still open after this correction:
 
 - Exact representation of `TypeValueId` and canonical type-value equality.
+- Exact representation of symbol/place identity.
 - Exact future lowering of generic/meta-generated type expressions such as
   `(int)Vec::std`.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
+- Exact future implementation of writable-place checking.
+- Exact future implementation of alias forwarding resolution.
+- How meta-function return values expose or hide injection places.
+- Interaction between graph freeze, seal phase, and injection-place mutability.
+- Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
   outside the object/subspace case handled here.
 - Exact form of future `unique trait`.
