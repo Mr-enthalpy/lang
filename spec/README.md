@@ -1,9 +1,9 @@
 # Specification Index
 
 This directory contains the specification documents for the `lang` language
-frontend and normalizer. Documents are organized by role rather than in a flat
-list. The current active stage is v0.5 — Normalized Surface Semantics
-Stabilization and Public Documentation Reset.
+frontend, normalizer, and build/namespace bootstrap. Documents are organized by
+role rather than in a flat list. The current active stage is v0.6 — Build /
+Namespace Graph Bootstrap, with a partial vertical slice in `crates/lang_build`.
 
 ## Documentation authority hierarchy
 
@@ -17,8 +17,9 @@ Documentation areas have distinct roles and authority levels:
 - **`spec/history/`** — Historical route, design discussion, alternatives,
   resolved disputes, and audit trail. History preserves why decisions were made,
   but does not define current behavior unless linked from public docs.
-- **`spec/future/`** — Later semantic design tracks. Future docs may motivate
-  current boundaries, but they do not define implemented v0.5 behavior.
+- **`spec/future/`** — Later semantic design tracks and v0.6+ design notes.
+  Some v0.6 notes now include implementation-status sections; future material
+  still must not be read as implemented behavior.
 - **`spec/planning/`** — Roadmap and open questions. Planning documents must not
   substitute for public language behavior.
 
@@ -31,12 +32,12 @@ If future docs describe later semantics, they must not be read as implemented
 behavior.
 ```
 
-## Public current specification: v0.5
+## Public normalized-surface specification: v0.5
 
-**`spec/public/v0.5/`** — The current active specification stage. v0.5 stabilizes
-the normalized surface semantics produced by the v0.4 normalizer and resets the
-public documentation structure. Specification and documentation only; it adds no
-semantic passes.
+**`spec/public/v0.5/`** — The completed public normalized-surface baseline.
+v0.5 stabilizes the normalized surface semantics produced by the v0.4
+normalizer and resets the public documentation structure. Specification and
+documentation only; it adds no semantic passes.
 
 | File | Authority | Role |
 |---|---|---|
@@ -129,10 +130,11 @@ syntax specifications.
 | `entity-ref-design.md` | Non-normative future design note | General `EntityRef` design (future). Alias-RHS `EntityRef` subset is implemented in Phase 4.4. |
 | `entity-alias-design.md` | Implemented-design explanation | Documents lexical alias binding syntax (`let binder === EntityRef`). Phase 4.3 design; Phase 4.4 raw parser preservation implemented. Future semantic meaning remains future work. |
 | `library-namespace-design-note.md` | Non-normative future design note | Describes the intended library/namespace/import model. |
-| `build-system-design.md` | Non-normative, future design | Formal design note for the build/package/namespace assembly architecture. Now the next post-v0.5 roadmap priority (v0.6 — Build / Namespace Graph Bootstrap). |
+| `build-system-design.md` | Non-normative design with partial implementation note | Formal design note for the build/package/namespace assembly architecture. The first v0.6 vertical slice is implemented in `crates/lang_build`. |
 | `package-manifest-v0.md` | Non-normative, future design | Provisional build-manifest design surface. |
 | `namespace-assembly-v0.md` | Non-normative, future design | High-level namespace assembly pipeline and phase split. |
-| `early-meta-functions-and-namespace-graph.md` | Non-normative, future design (v0.6–v0.8) | Canonical direction for the build / namespace graph bootstrap, early meta-function lookup, and the type-to-type meta construction interpreter. |
+| `early-meta-functions-and-namespace-graph.md` | Non-normative design with partial implementation note (v0.6–v0.8) | Canonical direction for the build / namespace graph bootstrap, early meta-function lookup, and the type-to-type meta construction interpreter. Documents the narrow implemented v0.6 slice. |
+| `type-associated-function-objects-and-access-trees.md` | Non-normative future design note | Records the role-aware field-function / `ref` / `share` projection model, type-value binding distinction, and injection-place rules for future access-tree work. No access-tree construction is implemented. |
 | `policy-visibility-symbols.md` | Non-normative, future design (deferred beyond v0.8) | Policy as visibility symbols and capability strategy: trait model, partial-order, orthogonal dimensions, context-policy / import / binding rules, compile/runtime/meta/seal, const/mut motivation. Not implemented in v0.6–v0.8 except as metadata slots. |
 | `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.10+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
 
@@ -156,14 +158,14 @@ Current reading order (summary):
 4. `spec/public/v0.2/*` for the frozen Raw AST input syntax
 5. `spec/contracts/*` only when doing implementation-boundary work
 6. `spec/history/*` for route / decisions / archaeology
-7. `spec/future/*` for v0.6+ semantic design
+7. `spec/future/*` for v0.6+ design and implementation-status notes
 
 `spec/history/v0.3/` holds the v0.3 Normalized AST design baseline (historical),
 not a current reading step. The detailed per-tier lists below expand this order.
 
 ### Current v0.5 public documentation
 
-Start here for the current active stage:
+Start here for the completed v0.5 public normalized-surface baseline:
 
 1. `public/v0.5/README.md` - v0.5 public documentation index.
 2. `public/v0.5/normalized-surface-semantics-v0.5.md` - normalized surface semantics (published).
@@ -212,6 +214,7 @@ Read these only when working on future design topics.
 5. `spec/future/package-manifest-v0.md` - Understand build-manifest surface.
 6. `spec/future/namespace-assembly-v0.md` - Understand namespace assembly pipeline.
 7. `spec/future/early-meta-functions-and-namespace-graph.md` - Understand namespace graph capability layer, early meta, and the v0.6–v0.8 direction.
+8. `spec/future/type-associated-function-objects-and-access-trees.md` - Understand future field-function / projection-space and injection-place constraints.
 8. `spec/planning/roadmap.md` - Understand scope boundaries.
 9. `spec/planning/open-questions.md` - Recognize known gaps.
 

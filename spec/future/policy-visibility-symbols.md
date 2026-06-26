@@ -20,6 +20,13 @@ The immediate, narrow objective for v0.6–v0.8 is:
   branches.
 - Prevent agents and implementations from inventing a full policy lattice ad-hoc.
 
+Current implementation note: `lang_build` reserves `PolicyMetadata` and
+`VisibilityMetadata` slots on `SymbolObject` and `NamespaceNode`, a
+current-policy slot on `ResolverContext`, and function/body/return policy slots
+on `MetaFunctionObject`. These slots are preserved through namespace deltas, but
+no policy lattice, projection rule, conformance checker, or policy-driven
+visibility filtering is implemented.
+
 Non-goals for v0.6–v0.8:
 
 - full policy lattice implementation

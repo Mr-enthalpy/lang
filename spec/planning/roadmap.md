@@ -14,8 +14,8 @@ v0.1.w — Raw AST Stability Window — closed
 v0.2   — Raw AST Contract Freeze / Public Frontend Syntax Specification — closed
 v0.3   — Normalized AST Specification — completed specification baseline
 v0.4   — Raw AST → Normalized AST Prototype / Hardening — completed
-v0.5   — Normalized Surface Semantics Stabilization and Public Documentation Reset — active
-v0.6   — Build / Namespace Graph Bootstrap — next
+v0.5   — Normalized Surface Semantics Stabilization and Public Documentation Reset — completed public baseline
+v0.6   — Build / Namespace Graph Bootstrap — started / partial vertical slice
 v0.7   — Early Meta-Function Bootstrap — future
 v0.8   — Type-to-Type Meta Construction Interpreter — future
 v0.9+  — Resumed semantic design (canonical forms, pattern spaces, meta with control flow, type/kind, closure materialization, NLL, semantic prototype, HIR, codegen) — future
@@ -202,7 +202,9 @@ Narrative:
 The canonical detailed direction for v0.6–v0.8 is
 `spec/future/early-meta-functions-and-namespace-graph.md`, building on
 `spec/future/build-system-design.md`, `spec/future/namespace-assembly-v0.md`,
-and `spec/future/package-manifest-v0.md`.
+and `spec/future/package-manifest-v0.md`. Future field-projection and
+injection-place constraints are recorded in
+`spec/future/type-associated-function-objects-and-access-trees.md`.
 
 #### v0.6 — Build / Namespace Graph Bootstrap
 
@@ -228,8 +230,9 @@ Must cover:
 - physical / declared / virtual `NamespaceNode` kind
 - resolver returning a `SymbolObject`, not a string path
 - provenance and diagnostic attachment
-- symbol-source-uniqueness rule (physical directory / type-associated namespace /
-  meta-instantiation virtual layer; exactly one source per symbol)
+- role-aware child-name buckets: object/function role and namespace-subspace
+  role; same-role conflicts are hard errors, while field functions may share
+  names with projection namespace subspaces such as `ref` / `share`
 - ordinary contribution restricted to direct children; deeper structure owned by
   the immediate direct child (no ordinary parent-to-descendant injection)
 - no source-level import/use/include/module
@@ -249,6 +252,21 @@ Must cover:
 Non-goals: full version solving; remote package retrieval; lockfile
 completeness; dynamic/static distribution distinction; full access-control
 lattice; full policy checking; full type checking; full meta-function execution.
+
+**Implementation status:** started. The `lang_build` crate implements the first
+v0.6 vertical slice: API-level `BuildManifest`, `CompilationWorld`,
+transactional `NamespaceGraphSnapshot` / `NamespaceDelta`, `NamespaceNode`,
+`SymbolObject`, resolver contexts with a default core mount, source-root
+collection, physical directory namespace skeletons, direct-child declaration
+harvesting, role-aware child buckets, expectation-aware resolver lookup, core
+bootstrap symbols, and invariant tests. It also includes a minimal early-meta
+closure for `core::struct` / `core::assert` lookup so the world model can prove
+generated type-associated namespaces are installed atomically. Fields named
+`ref` / `share` are accepted as object-role field functions that coexist with
+projection namespace subspaces. This does **not** complete v0.7 or v0.8: only
+the narrow `(uint8 a, uint8 b) |> struct` family is implemented, no full
+manifest parser, package manager, type checker, policy checker, type-value
+equality, access-tree construction, or general meta interpreter is present.
 
 #### v0.7 — Early Meta-Function Bootstrap
 
@@ -370,9 +388,10 @@ import/use/include/module syntax; source code refers directly to mounted
 namespace paths.
 
 This track was previously documented as a parallel side-track. As of the v0.6+
-re-sequencing it is the **next implementation stage**: v0.6 — Build / Namespace
+re-sequencing it is the active implementation stage: v0.6 — Build / Namespace
 Graph Bootstrap (see the v0.6 stage above and
-`spec/future/early-meta-functions-and-namespace-graph.md`).
+`spec/future/early-meta-functions-and-namespace-graph.md`). The current code is
+a partial vertical slice in `crates/lang_build`, not a complete build system.
 
 ### Scope discipline
 

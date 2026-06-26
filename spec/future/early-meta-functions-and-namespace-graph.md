@@ -1,7 +1,9 @@
 # Early Meta-Functions and the Namespace Graph
 
-**Status: Non-normative future design. This is the next post-v0.5 roadmap track
-(v0.6–v0.8). It is not implemented and is not a parser/normalizer rule.**
+**Status: Non-normative future design. This is the post-v0.5 roadmap track
+(v0.6–v0.8). A partial v0.6 vertical slice is implemented in `lang_build`;
+the remaining v0.6–v0.8 design is future work and is not a parser/normalizer
+rule.**
 
 This document is the canonical direction for the v0.6–v0.8 sequence:
 
@@ -15,6 +17,58 @@ It builds on, and does not replace, the build/package architecture in
 `spec/future/package-manifest-v0.md`. The later pattern-space / extraction-chain
 semantics remain a separate track in
 `spec/future/static-pattern-spaces-and-extraction-chains.md`.
+
+## Implemented vertical slice (v0.6 partial)
+
+The current implementation is intentionally small but uses the intended world
+model boundary:
+
+- `crates/lang_build` defines `CompilationWorld`, `NamespaceGraphSnapshot`,
+  `NamespaceDelta`, `NamespaceNode`, `SymbolObject`, `SymbolId`,
+  `NamespaceNodeId`, `SourceCategory`, `PolicyMetadata`,
+  `VisibilityMetadata`, `Provenance`, `Diagnostic`, `SyntaxObject`, and
+  `MetaExpansionResult`.
+- Graph mutation goes through clone-on-write `NamespaceDelta` installation.
+  Successful install applies the whole delta; conflicts reject the whole delta
+  and return diagnostics.
+- The API-level `BuildManifest` supports package name, source roots, namespace
+  root, dependency mount placeholders, and a default compiler-seeded core mount.
+  There is no manifest file parser yet.
+- Source collection builds physical namespace skeletons from directories.
+  Implementation file names remain source-fragment names only and do not
+  contribute namespace segments.
+- Core bootstrap installs `struct`, `assert`, `type`, `namespace`, `uint8`,
+  `ref`, and `share` as `SymbolObject`s in the namespace graph. `struct` and
+  `assert` are meta-function symbols; parser and normalizer do not special-case
+  either name.
+- Declaration harvesting supports the narrow top-level direct-child form needed
+  by the slice, especially `let T: type = ...`. Ordinary file contributions
+  that attempt parent-to-descendant injection are rejected.
+- Early meta lookup resolves the call target through the graph. The only
+  accepted source form is currently equivalent to
+  `(uint8 a, uint8 b) |> struct`; field types resolve through the same graph and
+  field binders are private `struct` checker material.
+- Resolver contexts distinguish current namespace lookup, explicit mounted paths
+  such as `uint8::core`, and short-name default mounts such as `uint8`.
+- Successful `struct` expansion produces a placeholder type object and a
+  generated type-associated namespace containing `a::T`, `a::ref::T`,
+  `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
+  symbols.
+- Namespace child lookup is role-aware. Object/function symbols and pure
+  namespace subspaces can share the same textual child name. Terminal lookup
+  without an expected role reports ambiguity when both roles are present.
+- Failed `struct` expansion returns hard diagnostics and leaves no partial
+  generated subtree. Duplicate fields, unknown field types, unit/trailing-unit
+  fields, and unsupported nested products are rejected. Fields named `ref` or
+  `share` are allowed because fields are unary function objects while
+  `ref` / `share` are namespace subspaces.
+- v0.6 still represents non-meta `let T: type = uint8` as a placeholder type
+  payload. That is an implementation placeholder only: the long-term semantics
+  are ordinary type-value binding, not fresh type generation and not symbol
+  aliasing.
+- Policy and visibility are metadata slots only. No policy checker, type
+  checker, resolver overlay, overload merging, package solver, lockfile, or
+  general meta interpreter is implemented.
 
 ## 1. Why these stages come first
 
@@ -136,20 +190,35 @@ explicitly permits it.
 Default conflict rules:
 
 ```text
-physical directory name vs type-associated namespace name: hard error
-physical directory name vs declared symbol name:          hard error
-two non-merge-declared symbols with the same name in
-  the same namespace:                                     hard error
-two type objects with the same name in the same
+same parent + same textual name + same child-name role:   hard error
+object with namespace_node + namespace subspace with the
+  same name in the same parent:                           hard error for now
+physical directory name vs namespace-capable declared
+  object with the same name:                              hard error
+two non-merge-declared object symbols with the same name
+  in the same namespace:                                  hard error
+two type object symbols with the same name in the same
   namespace:                                              hard error
-two aliases with the same name in the same namespace:     hard error
-generated symbol colliding with physical / declared /
-  generated symbol:                                       hard error
+two alias object symbols with the same name in the same
+  namespace:                                              hard error
+generated object symbol colliding with another object
+  symbol of the same name:                                hard error
 core/prelude alias colliding with user declaration:       hard error unless a
   later explicit shadowing rule is specified
 overload-set merging:                                     not a v0.6 default
 package overlay:                                          not a v0.6 default
 ```
+
+The allowed cross-role case is intentional:
+
+```text
+object/function child without namespace_node
++ namespace-subspace child with the same textual name
+= allowed
+```
+
+This is required for fields named `ref` or `share`: the field is an object
+symbol, while `ref` / `share` projection spaces are namespace subspaces.
 
 If the implementation needs temporary permissiveness, it must be marked as an
 implementation limitation, not as language semantics.
@@ -303,35 +372,55 @@ Test targets should include:
 - failed `struct` expansion leaves no partial generated subtree;
 - policy metadata slots are preserved but unchecked.
 
-## 3. Symbol source model
+## 3. Symbol source and child-role model
 
 A node in the full namespace graph may be a **physical** node, a **declared**
 node, or a **virtual** node (see `build-system-design.md` §7). On top of that
-node-kind model, the navigable symbols obey a **source uniqueness** rule.
+node-kind model, textual child names are partitioned by role.
 
-### 3.1 Symbol source uniqueness
+### 3.1 Role-aware child buckets
 
-A navigable namespace symbol's child name comes from **exactly one** source
-category, never two simultaneously:
+A namespace node's child table is conceptually:
 
-1. **physical directory hierarchy** — a directory level provided by source roots
-   / package roots / directory structure.
-2. **type-associated namespace** — the companion space of a type object.
-3. **meta-function instantiation virtual layer** — a node generated by a closed
-   meta instantiation.
+```text
+textual child name -> {
+  object/function role,
+  namespace-subspace role,
+}
+```
 
-For a symbol `f::ns`:
+The same textual name may appear once in each role. Same-role duplicates remain
+hard conflicts. An object that is itself namespace-capable, for example a type
+object with a type-associated namespace, may not currently share a textual name
+with a namespace subspace in the same parent because intermediate traversal
+would be ambiguous. This conservative rule can be revisited after resolver
+expectation APIs stabilize.
 
-- If `ns` is an ordinary (physical / merged) level, then `f` is **either** a
-  physical directory name **or** a type `f` (declared / merged across files
-  under `ns`) together with its type-associated namespace — **not both**.
-- If `ns` is itself a meta-instantiation virtual layer, then `f` is, and is only,
-  a purely virtual node generated by that meta process.
+Role assignment:
 
-The emphasis is the ordinary case: a physical name is either a physical
-directory level or a type's associated namespace.
+```text
+FieldFunction, MetaFunction, Alias, Placeholder -> object/function role
+Type                                           -> object/function role,
+                                                  namespace-capable through
+                                                  its type-associated namespace
+pure namespace symbols for physical/declared/
+virtual namespace nodes                       -> namespace-subspace role
+```
 
-### 3.2 Type-associated namespace
+Resolver terminal lookup must therefore be expectation-aware. `AnyUnique`
+lookup fails if both roles are present. `FieldFunction` selects the object role
+when it is a field function. `NamespaceSubspace` selects the namespace-subspace
+role. Intermediate path components are resolved as `NamespaceCapableParent`.
+
+### 3.2 Symbol source categories
+
+Child role is distinct from source category. A namespace subspace may come from
+physical directory hierarchy, declared namespace assembly, or a virtual
+meta-instantiation layer. An object may be declared, generated, aliased, or
+core-bootstrapped. Conflict policy applies to `(parent, textual name, role)`,
+then applies the conservative namespace-capable cross-role restriction above.
+
+### 3.3 Type-associated namespace
 
 A **type-associated namespace** is the namespace space associated with a type
 object. It holds the type's companion symbols, for example generated field
@@ -345,6 +434,81 @@ generated child namespace attached to the type node.
 
 What unifies the category is the **role** (companion space of a type object),
 not the origin of its members.
+
+For `struct`-generated fields, fields are unary function objects:
+
+```text
+field::T        : T       -> field
+field::ref::T   : T ref   -> field ref
+field::share::T : T share -> field share
+```
+
+`field::T` is value semantics (`T == T move`). Borrowed field access must begin
+from an explicit borrow form such as `val ref.field1` or
+`val share.field1`. Field access evaluation, borrow normalization, and
+access-tree construction are future work.
+
+Because fields are object-role function symbols and `ref` / `share` are
+namespace-subspace-role projection spaces, fields named `ref` or `share` are
+valid. Terminal `ref::T` or `share::T` may be ambiguous unless resolver callers
+provide an expected role.
+
+### 3.4 Type values, symbol places, and aliasing
+
+Type-value evaluation, symbol/place identity, and namespace injection targets
+are distinct. A type/rank use evaluates by value:
+
+```text
+let T: type = uint8
+```
+
+means `T` is a new symbol/place whose value is the existing type value `uint8`.
+`value(T) == value(uint8)` holds, but `place(T) != place(uint8)`.
+
+This mirrors ordinary value bindings:
+
+```text
+let a = 1
+let b = 1
+```
+
+`a` and `b` are distinct symbols, while their values are equal.
+
+Namespace injection is not pure type-value evaluation. `let f::T = ...`
+targets `place(T)`, not `place(uint8)`. Type-value equality must not
+canonicalize injection targets.
+
+`=` and `===` are not interchangeable:
+
+| Form | Symbol effect | Type-value effect | Injection-place effect |
+| --- | --- | --- | --- |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `f::T` injects into `place(T)` if current-level and open |
+| `let T === uint8` | `T` forwards to symbol `uint8` | `value(T) == value(uint8)` | `f::T` attempts `place(uint8)` and is rejected because `uint8` is external stable |
+| `let T: type = ... |> struct` | Creates new symbol/place `T` | `value(T)` is a fresh generated type value | `f::T` injects into `place(T)` if open |
+
+Fresh generated type values own/provide their own type-associated namespace, so
+`let T: type = (uint8 a, uint8 b) |> struct` creates the fresh type value whose
+field functions are visible as `a::T`, `a::ref::T`, and `a::share::T`.
+
+By contrast, `let T: type = uint8` does not create a fresh type value, but it
+may own a fresh current-level companion namespace place. Future namespace
+injection through `T` targets that place; future type/rank evaluation of `T`
+returns the existing type value `uint8`.
+
+Future generic/meta-generated types such as `(int)Vec::std` return stable type
+values. Therefore:
+
+```text
+let A: type = (int)Vec::std
+let B: type = (int)Vec::std
+```
+
+means `A == B` by type-value equality while `A` and `B` remain distinct symbols
+unless one is declared via `===`. Canonical `TypeValueId` and full type-value
+equality are future work.
+
+See `spec/future/type-associated-function-objects-and-access-trees.md` for the
+full value/place/injection distinction and alias writability rule.
 
 ## 4. Namespace contribution rules
 
@@ -497,7 +661,7 @@ directories; implementation file as source fragment (file name does not
 contribute a namespace segment); declared symbol harvesting; SymbolObject model;
 physical / declared / virtual `NamespaceNode` kind; resolver returning a
 `SymbolObject`, not a string path; provenance and diagnostic attachment; the
-symbol-source-uniqueness rule (§3) and the ordinary direct-child contribution /
+role-aware child-name model (§3) and the ordinary direct-child contribution /
 local-construction rules (§4); no source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
 (architectural placeholder only — see `spec/future/policy-visibility-symbols.md`).
