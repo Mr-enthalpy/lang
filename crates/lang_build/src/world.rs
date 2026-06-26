@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
 use lang_syntax::{
     norm::NormNavComponent, NormAliasBinder, NormAnnotation, NormDecl, NormForm, NormOrigin,
@@ -10,10 +7,11 @@ use lang_syntax::{
 
 use crate::{
     core::install_core_bootstrap,
+    discovery::{DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport},
     graph::{
         namespace_symbol, BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext,
     },
-    manifest::{BuildManifest, NamespaceMount, SourceRoot},
+    manifest::{BuildManifest, NamespaceMount},
     meta::try_expand_early_meta_initializer,
     model::{
         Diagnostic, DiagnosticSeverity, NamespaceDelta, NamespaceNode, NamespaceNodeId,
@@ -60,9 +58,17 @@ impl CompilationWorld {
             diagnostics: Vec::new(),
         };
 
-        for source_root in &manifest.source_roots {
-            world.collect_source_root(source_root)?;
+        // Physical source discovery is the explicit input layer below namespace
+        // assembly. If discovery produced any hard diagnostic we must not
+        // continue into partial namespace assembly.
+        let report = SourceDiscoveryConfig::from_source_roots(&manifest.source_roots).discover();
+        if report.has_hard_errors() {
+            return Err(BuildError {
+                diagnostics: report.diagnostics,
+            });
         }
+        world.diagnostics.extend(report.diagnostics.iter().cloned());
+        world.consume_discovery(&report)?;
 
         Ok(world)
     }
@@ -121,67 +127,54 @@ impl CompilationWorld {
         )
     }
 
-    fn collect_source_root(&mut self, source_root: &SourceRoot) -> Result<(), BuildError> {
-        let root_namespace =
-            ensure_declared_namespace_path(&mut self.snapshot, &source_root.namespace_root)?;
-        let directories = collect_directories(&source_root.path)?;
+    /// Feed discovered physical source units into namespace assembly and
+    /// declaration harvesting.
+    ///
+    /// Only directories containing discovered `.lang` source units contribute
+    /// physical namespace nodes. Empty directories are ignored by v0.6 source
+    /// discovery and do not create "empty namespace existence". If explicit
+    /// empty-namespace nodes are ever required (e.g. package manifests or
+    /// explicit namespace declarations) that must be a separate semantic
+    /// decision, not a side effect of physical scanning.
+    fn consume_discovery(&mut self, report: &SourceDiscoveryReport) -> Result<(), BuildError> {
+        for unit in &report.units {
+            let root = report
+                .roots
+                .iter()
+                .find(|root| root.root_index == unit.source_root_index)
+                .ok_or_else(|| {
+                    BuildError::single(Diagnostic::hard_error(
+                        "source discovery error: discovered unit references unknown source root",
+                        Some(unit.provenance.clone()),
+                    ))
+                })?;
 
-        for directory in directories {
-            let relative_components = relative_components(&source_root.path, &directory)?;
-            let directory_namespace = ensure_physical_namespace_path(
+            let root_namespace =
+                ensure_declared_namespace_path(&mut self.snapshot, &root.namespace_root)?;
+            let directory = unit
+                .canonical_path
+                .parent()
+                .unwrap_or(unit.canonical_path.as_path());
+            let unit_namespace = ensure_physical_namespace_path(
                 &mut self.snapshot,
                 root_namespace,
-                &relative_components,
-                &directory,
+                &unit.namespace_dir,
+                directory,
             )?;
-            self.collect_source_files_in_directory(&directory, directory_namespace)?;
+            self.consume_source_unit(unit, unit_namespace)?;
         }
 
         Ok(())
     }
 
-    fn collect_source_files_in_directory(
+    fn consume_source_unit(
         &mut self,
-        directory: &Path,
+        unit: &DiscoveredSourceUnit,
         namespace: NamespaceNodeId,
     ) -> Result<(), BuildError> {
-        let mut files = fs::read_dir(directory)
-            .map_err(|error| {
-                BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "failed to read source directory `{}`: {error}",
-                        directory.display()
-                    ),
-                    Some(Provenance::file("source directory", directory)),
-                ))
-            })?
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-            .filter(|path| path.is_file() && path.extension().is_some_and(|ext| ext == "lang"))
-            .collect::<Vec<_>>();
-        files.sort();
-
-        for file in files {
-            self.collect_source_file(file, namespace)?;
-        }
-
-        Ok(())
-    }
-
-    fn collect_source_file(
-        &mut self,
-        file: PathBuf,
-        namespace: NamespaceNodeId,
-    ) -> Result<(), BuildError> {
-        let source = fs::read_to_string(&file).map_err(|error| {
-            BuildError::single(Diagnostic::hard_error(
-                format!("failed to read source file `{}`: {error}", file.display()),
-                Some(Provenance::file("source file", &file)),
-            ))
-        })?;
-        let parsed = lang_syntax::parse(&source);
+        let parsed = lang_syntax::parse(&unit.content);
         let normalized = lang_syntax::normalize_program(&parsed.program);
-        let provenance = Provenance::file("source fragment", &file);
+        let provenance = unit.provenance.clone();
         let diagnostics = parsed
             .diagnostics
             .iter()
@@ -198,9 +191,9 @@ impl CompilationWorld {
             .collect::<Vec<_>>();
         self.diagnostics.extend(diagnostics.clone());
 
-        self.harvest_program(namespace, &normalized, &file)?;
+        self.harvest_program(namespace, &normalized, &unit.canonical_path)?;
         self.source_fragments.push(SourceFragment {
-            path: file,
+            path: unit.canonical_path.clone(),
             namespace,
             normalized,
             diagnostics,
@@ -579,60 +572,6 @@ fn declared_type_placeholder_delta(
     });
     delta.insert_symbol(parent, symbol);
     delta
-}
-
-fn collect_directories(root: &Path) -> Result<Vec<PathBuf>, BuildError> {
-    let mut directories = Vec::new();
-    collect_directories_rec(root, &mut directories)?;
-    directories.sort();
-    Ok(directories)
-}
-
-fn collect_directories_rec(path: &Path, directories: &mut Vec<PathBuf>) -> Result<(), BuildError> {
-    if !path.is_dir() {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            format!("source root `{}` is not a directory", path.display()),
-            Some(Provenance::file("source root", path)),
-        )));
-    }
-    directories.push(path.to_path_buf());
-    let mut children = fs::read_dir(path)
-        .map_err(|error| {
-            BuildError::single(Diagnostic::hard_error(
-                format!(
-                    "failed to read source directory `{}`: {error}",
-                    path.display()
-                ),
-                Some(Provenance::file("source directory", path)),
-            ))
-        })?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.is_dir())
-        .collect::<Vec<_>>();
-    children.sort();
-    for child in children {
-        collect_directories_rec(&child, directories)?;
-    }
-    Ok(())
-}
-
-fn relative_components(root: &Path, directory: &Path) -> Result<Vec<String>, BuildError> {
-    let relative = directory.strip_prefix(root).map_err(|error| {
-        BuildError::single(Diagnostic::hard_error(
-            format!(
-                "failed to compute source-root relative path `{}` from `{}`: {error}",
-                directory.display(),
-                root.display()
-            ),
-            Some(Provenance::file("source directory", directory)),
-        ))
-    })?;
-    Ok(relative
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy().to_string())
-        .filter(|component| !component.is_empty())
-        .collect())
 }
 
 fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
