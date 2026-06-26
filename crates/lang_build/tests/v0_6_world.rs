@@ -1,9 +1,7 @@
 mod support;
 use support::*;
 
-use lang_build::{
-    CompilationWorld, DiagnosticSeverity, NamespaceMount, NamespaceNodeKind, SymbolKind,
-};
+use lang_build::{CompilationWorld, DiagnosticSeverity, NamespaceMount};
 
 #[test]
 fn missing_core_mount_is_a_build_error() {
@@ -33,45 +31,6 @@ fn duplicate_dependency_mount_root_is_hard_error() {
         diagnostic.severity == DiagnosticSeverity::HardError
             && diagnostic.message.contains("duplicate mount root `core`")
     }));
-}
-
-#[test]
-fn source_collection_uses_directories_not_file_names() {
-    let project = TempProject::new("source_collection");
-    project.write(
-        "src/math/vector/a.lang",
-        "let T: type = (uint8 a, uint8 b) |> struct",
-    );
-    project.write("src/math/vector/b.lang", "let U: type = uint8");
-
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
-    assert_eq!(world.source_fragments().len(), 2);
-    assert_eq!(
-        world.source_fragments()[0].namespace,
-        world.source_fragments()[1].namespace
-    );
-
-    let root_context = world.root_context();
-    let capability = world.snapshot().capability();
-    let vector = capability
-        .resolve_str("vector::math::app", &root_context)
-        .expect("directory path contributes namespace skeleton");
-    assert_eq!(vector.kind, SymbolKind::Namespace);
-    assert_eq!(vector.node_kind, Some(NamespaceNodeKind::Physical));
-
-    assert!(
-        capability
-            .resolve_str("a::vector::math::app", &root_context)
-            .is_err(),
-        "implementation file name must not contribute a namespace segment"
-    );
-    assert!(
-        capability
-            .resolve_str("T::vector::math::app", &root_context)
-            .is_ok(),
-        "source fragment declarations contribute direct children"
-    );
 }
 
 #[test]

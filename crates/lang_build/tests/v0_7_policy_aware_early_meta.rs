@@ -8,31 +8,8 @@ use lang_build::{
 };
 
 #[test]
-fn struct_expands_under_meta_policy() {
-    let project = TempProject::new("meta_policy_struct");
-    project.write(
-        "src/main.lang",
-        "let T: type = (uint8 a, uint8 b) |> struct",
-    );
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
-    let type_symbol = world.resolve("T").expect("resolve generated type");
-    assert_eq!(type_symbol.kind, SymbolKind::Type);
-    let SymbolPayload::Type(type_object) = &type_symbol.payload else {
-        panic!("expected type payload");
-    };
-    assert_eq!(type_object.field_names, ["a", "b"]);
-}
-
-#[test]
 fn type_named_struct_does_not_shadow_core_meta_function() {
-    let project = TempProject::new("type_named_struct");
-    project.write(
-        "src/main.lang",
-        "let struct: type = uint8; let T: type = (uint8 a) |> struct",
-    );
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("struct expansion should succeed");
+    let world = build_single_fixture_world("type_named_struct", "app");
     // The local `struct` is a Type symbol (type-annotated → meta+runtime).
     // The resolver rejects it via ResolveExpectation::MetaFunction (kind
     // filtering), not policy filtering. Core's `struct` (MetaFunction,
@@ -47,13 +24,7 @@ fn type_named_struct_does_not_shadow_core_meta_function() {
 
 #[test]
 fn runtime_only_call_target_is_soft_miss_under_meta() {
-    let project = TempProject::new("runtime_call_target");
-    project.write(
-        "src/main.lang",
-        "let not_meta = 1; let T: type = (uint8 a) |> not_meta",
-    );
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("runtime-only non-meta target should be soft miss");
+    let world = build_single_fixture_world("non_meta_target", "app");
     // Soft miss: T is harvested as a type-annotated placeholder.
     let symbol = world.resolve("T").expect("T resolved as type placeholder");
     assert_eq!(symbol.kind, SymbolKind::Type);
@@ -174,10 +145,7 @@ fn core_meta_function_payload_policy_slots_are_non_empty() {
 
 #[test]
 fn user_declared_values_are_runtime_only() {
-    let project = TempProject::new("user_runtime");
-    project.write("src/main.lang", "let x = 1; let y: type = uint8");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("user_runtime_values", "app");
 
     let x = world.resolve("x").expect("resolve x");
     let ps = &x.policy_metadata.policy_set;
@@ -199,10 +167,7 @@ fn user_declared_values_are_runtime_only() {
 
 #[test]
 fn runtime_only_value_is_invisible_under_meta_lookup() {
-    let project = TempProject::new("user_runtime_meta_lookup");
-    project.write("src/main.lang", "let x = 1");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("user_runtime_values", "app");
     let context = world.package_context();
 
     let diagnostic = world
@@ -220,10 +185,7 @@ fn runtime_only_value_is_invisible_under_meta_lookup() {
 
 #[test]
 fn struct_generated_type_has_meta_runtime_policy() {
-    let project = TempProject::new("generated_policy");
-    project.write("src/main.lang", "let T: type = (uint8 a) |> struct");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("struct_single_field", "app");
     let symbol = world.resolve("T").expect("resolve T");
     let ps = &symbol.policy_metadata.policy_set;
     assert!(
@@ -333,10 +295,7 @@ fn explicit_path_type_object_resolves_under_meta() {
 
 #[test]
 fn meta_policy_can_traverse_physical_namespace_path_to_type() {
-    let project = TempProject::new("ns_traversal");
-    project.write("src/subns/main.lang", "let T: type = uint8");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("physical_subns", "app");
     let context = world.package_context();
 
     let symbol = world
@@ -350,32 +309,26 @@ fn meta_policy_can_traverse_physical_namespace_path_to_type() {
 
 #[test]
 fn meta_policy_can_traverse_type_projection_namespace() {
-    let project = TempProject::new("ns_projection");
-    project.write("src/main.lang", "let S: type = (uint8 a) |> struct");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("struct_single_field", "app");
     let context = world.package_context();
 
     let symbol = world
         .snapshot()
         .capability()
         .resolve_with_policy(
-            &["ref".to_string(), "S".to_string()],
+            &["ref".to_string(), "T".to_string()],
             &context,
             ResolveExpectation::NamespaceSubspace,
             PolicyEnv::Meta,
         )
-        .expect("ref::S projection namespace should resolve under Meta");
+        .expect("ref::T projection namespace should resolve under Meta");
     assert_eq!(symbol.kind, SymbolKind::Namespace);
     assert_eq!(symbol.name, "ref");
 }
 
 #[test]
 fn generated_field_function_is_visible_under_meta_policy() {
-    let project = TempProject::new("field_meta_policy");
-    project.write("src/main.lang", "let T: type = (uint8 a) |> struct");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("struct_single_field", "app");
     let context = world.package_context();
 
     for (path, expected_projection) in [

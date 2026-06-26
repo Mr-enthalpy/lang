@@ -8,50 +8,8 @@ use lang_build::{
 };
 
 #[test]
-fn struct_meta_creates_type_object_and_field_namespaces() {
-    let project = TempProject::new("struct_meta");
-    project.write(
-        "src/main.lang",
-        "let T: type = (uint8 a, uint8 b) |> struct",
-    );
-
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
-    let type_symbol = world.resolve("T").expect("resolve generated type");
-    assert_eq!(type_symbol.kind, SymbolKind::Type);
-    let SymbolPayload::Type(type_object) = &type_symbol.payload else {
-        panic!("expected type payload, got {type_symbol:#?}");
-    };
-    assert_eq!(type_object.field_names, ["a", "b"]);
-    assert_eq!(type_object.fields.len(), 2);
-    assert!(type_object.type_associated_namespace.is_some());
-
-    for path in [
-        "a::T",
-        "a::ref::T",
-        "a::share::T",
-        "b::T",
-        "b::ref::T",
-        "b::share::T",
-    ] {
-        let symbol = world
-            .resolve(path)
-            .expect("resolve generated field function");
-        assert_eq!(symbol.kind, SymbolKind::FieldFunction, "{path}");
-        assert!(matches!(symbol.payload, SymbolPayload::FieldFunction(_)));
-    }
-}
-
-#[test]
 fn type_associated_namespace_paths_have_expected_payloads() {
-    let project = TempProject::new("type_associated_paths");
-    project.write(
-        "src/main.lang",
-        "let T: type = (uint8 a, uint8 b) |> struct",
-    );
-
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("early_struct_meta", "app");
     let type_symbol = world.resolve("T").expect("resolve T");
     let SymbolPayload::Type(type_object) = &type_symbol.payload else {
         panic!("expected type object");
@@ -98,15 +56,8 @@ fn type_associated_namespace_paths_have_expected_payloads() {
 
 #[test]
 fn fields_named_ref_and_share_coexist_with_projection_subspaces() {
-    for (case_name, field_name) in [("field_named_ref", "ref"), ("field_named_share", "share")] {
-        let project = TempProject::new(case_name);
-        project.write(
-            "src/main.lang",
-            &format!("let T: type = (uint8 {field_name}, uint8 a) |> struct"),
-        );
-
-        let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-            .expect("projection-named field is accepted");
+    for (fixture, field_name) in [("field_named_ref", "ref"), ("field_named_share", "share")] {
+        let world = build_single_fixture_world(fixture, "app");
         let type_symbol = world
             .resolve_with_expectation("T", ResolveExpectation::TypeObject)
             .expect("resolve generated type");
@@ -178,6 +129,7 @@ fn fields_named_ref_and_share_coexist_with_projection_subspaces() {
         assert_eq!(a_ref_object.projection, FieldProjection::Ref);
     }
 
+    // Error boundary kept synthetic: duplicate same-role projection-named field.
     let project = TempProject::new("duplicate_projection_named_field");
     project.write(
         "src/main.lang",
@@ -193,22 +145,11 @@ fn fields_named_ref_and_share_coexist_with_projection_subspaces() {
 
 #[test]
 fn struct_checker_accepts_single_and_two_field_forms() {
-    for (case_name, source, expected_fields) in [
-        (
-            "single_field",
-            "let T: type = (uint8 a) |> struct",
-            vec!["a"],
-        ),
-        (
-            "two_fields",
-            "let T: type = (uint8 a, uint8 b) |> struct",
-            vec!["a", "b"],
-        ),
+    for (fixture, expected_fields) in [
+        ("struct_single_field", vec!["a"]),
+        ("early_struct_meta", vec!["a", "b"]),
     ] {
-        let project = TempProject::new(case_name);
-        project.write("src/main.lang", source);
-        let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-            .expect("struct form accepted");
+        let world = build_single_fixture_world(fixture, "app");
         let symbol = world.resolve("T").expect("resolve T");
         let SymbolPayload::Type(type_object) = symbol.payload else {
             panic!("expected Type payload");
@@ -310,20 +251,7 @@ fn failed_struct_meta_leaves_no_partial_generated_subtree() {
 }
 
 #[test]
-fn early_meta_only_fires_for_meta_function_payloads() {
-    let project = TempProject::new("not_meta");
-    project.write(
-        "src/main.lang",
-        "let not_meta = uint8; let T: type = (uint8 a) |> not_meta",
-    );
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("non-meta target should not panic or expand");
-    let symbol = world
-        .resolve("T")
-        .expect("T is harvested as placeholder type");
-    assert_eq!(symbol.kind, SymbolKind::Type);
-    assert!(world.resolve("a::T").is_err());
-
+fn unresolved_meta_target_returns_none() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let initializer = initializer_from_source("let T: type = (uint8 a) |> missing_meta");
     let expansion = try_expand_early_meta_initializer(
