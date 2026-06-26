@@ -144,7 +144,7 @@ materialization.
 
 ---
 
-### v0.5 — Normalized Surface Semantics Stabilization and Public Documentation Reset — active
+### v0.5 — Normalized Surface Semantics Stabilization and Public Documentation Reset — completed
 
 **Goal**: Turn the v0.4 prototype/hardening result into a stable public
 documentation structure and stabilize the normalized surface semantics that are

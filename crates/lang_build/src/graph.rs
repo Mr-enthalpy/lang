@@ -94,12 +94,14 @@ impl NamespaceGraphSnapshot {
             .get(&parent)
             .and_then(|node| node.children.get(name))
             .ok_or_else(|| {
-                Diagnostic::hard_error(format!("unresolved symbol `{name}`"), None)
+                Diagnostic::hard_error(format!("resolver error: unresolved symbol `{name}`"), None)
                     .with_node_context(parent)
             })?;
         select_symbol_from_bucket(&self.symbols, bucket, name, expectation).ok_or_else(|| {
             Diagnostic::hard_error(
-                format!("unresolved symbol `{name}` for resolver expectation {expectation:?}"),
+                format!(
+                    "resolver error: unresolved symbol `{name}` for expectation {expectation:?}"
+                ),
                 None,
             )
             .with_node_context(parent)
@@ -372,6 +374,17 @@ pub struct NamespaceGraphCapability<'snapshot> {
 }
 
 impl<'snapshot> NamespaceGraphCapability<'snapshot> {
+    /// Resolve a namespace path to a globally unique symbol under the current
+    /// resolver context.
+    ///
+    /// Uses [`ResolveExpectation::AnyUnique`] — the terminal component must be
+    /// unique across both object and namespace-subspace roles. If both roles
+    /// exist for the same name the lookup fails with an ambiguity diagnostic.
+    ///
+    /// Most semantic passes should use [`resolve_with_expectation`] or one of
+    /// the typed helpers (`resolve_type_object`, `resolve_meta_function`, …)
+    /// instead of plain `resolve`, because plain `resolve` rejects role
+    /// coexistence that may be semantically valid.
     pub fn resolve(
         &self,
         source_order_path: &[String],
@@ -380,6 +393,23 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         self.resolve_with_expectation(source_order_path, context, ResolveExpectation::AnyUnique)
     }
 
+    /// Resolve a namespace path with an explicit terminal role expectation.
+    ///
+    /// The `terminal_expectation` discriminates which child-name role the
+    /// final path component must satisfy:
+    ///
+    /// | Expectation | Resolves |
+    /// |---|---|
+    /// | `AnyUnique` | Terminal must be unique across both roles (ambiguity otherwise) |
+    /// | `Object` | Terminal in the object/function role |
+    /// | `NamespaceSubspace` | Terminal in the namespace-subspace role |
+    /// | `NamespaceCapableParent` | Terminal must be a namespace-capable symbol (object with `namespace_node` or namespace-subspace) |
+    /// | `TypeObject` | Terminal with kind `Type` |
+    /// | `MetaFunction` | Terminal with kind `MetaFunction` |
+    /// | `FieldFunction` | Terminal with kind `FieldFunction` |
+    ///
+    /// Intermediate path components always resolve as
+    /// `NamespaceCapableParent` regardless of the terminal expectation.
     pub fn resolve_with_expectation(
         &self,
         source_order_path: &[String],
@@ -428,19 +458,27 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
                 .unwrap_or_else(|| {
                     self.hard_error(
                         None,
-                        format!("unresolved symbol `{}`", source_order_path.join("::")),
+                        format!(
+                            "resolver error: unresolved symbol `{}`",
+                            source_order_path.join("::")
+                        ),
                     )
                 })),
             _ => Err(self.hard_error(
                 None,
                 format!(
-                    "conflicting symbol `{}` found across resolver search roots",
+                    "resolver error: conflicting symbol `{}` across resolver search roots",
                     source_order_path.join("::")
                 ),
             )),
         }
     }
 
+    /// String convenience wrapper around [`resolve`](Self::resolve).
+    ///
+    /// Splits `source_order_path` on `::`, trims each component, and delegates
+    /// to [`resolve`](Self::resolve). The terminal component must be globally
+    /// unique; see [`resolve`](Self::resolve) for details.
     pub fn resolve_str(
         &self,
         source_order_path: &str,
@@ -449,6 +487,11 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         self.resolve_str_with_expectation(source_order_path, context, ResolveExpectation::AnyUnique)
     }
 
+    /// String convenience wrapper around
+    /// [`resolve_with_expectation`](Self::resolve_with_expectation).
+    ///
+    /// Splits `source_order_path` on `::`, trims each component, and delegates
+    /// to [`resolve_with_expectation`](Self::resolve_with_expectation).
     pub fn resolve_str_with_expectation(
         &self,
         source_order_path: &str,
@@ -462,6 +505,66 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>();
         self.resolve_with_expectation(&components, context, terminal_expectation)
+    }
+
+    /// Resolve a terminal symbol whose kind is `Type`.
+    ///
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::TypeObject)`.
+    pub fn resolve_type_object(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_expectation(
+            source_order_path,
+            context,
+            ResolveExpectation::TypeObject,
+        )
+    }
+
+    /// Resolve a terminal symbol whose kind is `MetaFunction`.
+    ///
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::MetaFunction)`.
+    pub fn resolve_meta_function(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_expectation(
+            source_order_path,
+            context,
+            ResolveExpectation::MetaFunction,
+        )
+    }
+
+    /// Resolve a terminal symbol whose kind is `FieldFunction`.
+    ///
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::FieldFunction)`.
+    pub fn resolve_field_function(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_expectation(
+            source_order_path,
+            context,
+            ResolveExpectation::FieldFunction,
+        )
+    }
+
+    /// Resolve a terminal symbol in the namespace-subspace role.
+    ///
+    /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::NamespaceSubspace)`.
+    pub fn resolve_namespace_subspace(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_expectation(
+            source_order_path,
+            context,
+            ResolveExpectation::NamespaceSubspace,
+        )
     }
 
     fn resolve_from(
@@ -699,9 +802,9 @@ fn select_symbol_from_bucket<'symbols>(
             match ids.as_slice() {
                 [id] => symbol(*id).map(Ok),
                 [] => None,
-                _ => Some(Err(Diagnostic::hard_error(
+                _ =>                 Some(Err(Diagnostic::hard_error(
                     format!(
-                        "ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
+                        "resolver error: ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
                     ),
                     None,
                 ))),
@@ -723,7 +826,7 @@ fn select_symbol_from_bucket<'symbols>(
                 [symbol] => Some(Ok(*symbol)),
                 [] => None,
                 _ => Some(Err(Diagnostic::hard_error(
-                    format!("ambiguous namespace-capable parent `{name}`"),
+                    format!("resolver error: ambiguous namespace-capable parent `{name}`"),
                     None,
                 ))),
             }
