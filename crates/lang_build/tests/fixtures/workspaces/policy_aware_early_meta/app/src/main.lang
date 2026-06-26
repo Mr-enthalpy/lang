@@ -1,0 +1,2 @@
+let not_meta = 1;
+let T: type = (uint8 a) |> struct

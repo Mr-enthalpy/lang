@@ -1,0 +1,2 @@
+let struct: type = uint8;
+let T: type = (uint8 a) |> struct

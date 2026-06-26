@@ -1,0 +1,1 @@
+let User: type = (uint8 id, uint16 age) |> struct
