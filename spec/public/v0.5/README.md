@@ -2,9 +2,11 @@
 
 ## Stage status
 
-v0.5 is the current active stage. It stabilizes the normalized surface semantics
-that the v0.4 normalizer already produces, and resets the public documentation
-structure so that current language behavior is explained in one place.
+v0.5 is the completed normalized surface baseline. It stabilizes the normalized
+surface semantics that the v0.4 normalizer already produces, and resets the
+public documentation structure so that current language behavior is explained
+in one place. The current active stage is v0.6 — Build / Namespace Graph
+Bootstrap.
 
 v0.5 is still **non-semantic** in the later-compiler sense. It does not implement
 type checking, name resolution, operator lookup, pattern-head resolution, HIR,

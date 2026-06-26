@@ -520,6 +520,13 @@ fn type_value_binding_placeholder_keeps_fresh_symbol_place_in_v0_6() {
     assert_eq!(symbol.parent, Some(world.package_root_node()));
     let symbol_id = symbol.id;
 
+    // GUARD: This test must NOT be read as final fresh nominal type generation.
+    // The placeholder `TypeObject` exists only because type-value evaluation,
+    // TypeValueId, and writable-place checking are not yet implemented.
+    // When those features land, this test must be replaced with a proper
+    // type-value binding test (fresh symbol/place `t` bound to existing type
+    // value `uint8`, place(t) != place(uint8)).
+    //
     // v0.6 placeholder behavior only: this is not final type-value semantics.
     // Long-term, `let t: type = uint8` binds fresh symbol/place `t` to the
     // existing type value `uint8`; injection through `t` targets place(t), not

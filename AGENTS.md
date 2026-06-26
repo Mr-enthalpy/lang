@@ -93,8 +93,10 @@ spec/planning/roadmap.md
 
 The v0.1 Raw AST Frontend, v0.1.w, and v0.2 are completed/closed. v0.3
 (Normalized AST Specification) and v0.4 (Raw AST → Normalized AST
-prototype/hardening) are completed. The current active stage is `v0.5` —
-Normalized Surface Semantics Stabilization and Public Documentation Reset.
+prototype/hardening) are completed. v0.5 (Normalized Surface Semantics
+Stabilization and Public Documentation Reset) is completed. The current active
+stage is `v0.6` — Build / Namespace Graph Bootstrap, started as a partial
+vertical slice in `crates/lang_build`.
 
 The current public surface is the v0.5 normalized surface
 (`spec/public/v0.5/normalized-surface-semantics-v0.5.md`). The pipeline is:
