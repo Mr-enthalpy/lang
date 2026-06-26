@@ -1,8 +1,9 @@
 # Agent Interpretation Guide v0.5
 
-> **Status:** v0.5-2. This guide is normative for coding/documentation agents
-> working on `lang`. The call-binding semantics it references are now published
-> in `normalized-surface-semantics-v0.5.md` §3–§7 and §11.
+> **Status:** v0.5-3. This guide is normative for coding/documentation agents
+> working on `lang`. The call-binding semantics are published in
+> `normalized-surface-semantics-v0.5.md` §3–§7; the value/pattern, annotation,
+> and alias boundaries in §8–§10; node origins in §11.
 
 ## 1. Read This Before Editing Language Semantics
 
@@ -62,14 +63,36 @@ Incoming source Product, no following Product?  -> first legality repair (PipeFa
 
 ## 4. Value/Pattern Boundary Rules to Preserve
 
+See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preserve:
+
 - Value-side material stays `NormExpr`; pattern-side material stays `NormPattern`.
+  The same source name dumps as `Name` in value position but `PatternName` in
+  annotation position.
 - A value enters pattern space only through an explicit bridge; a pattern exposes
   values only through explicit extraction, binding, passing, or returning.
 - Annotations are annotation-pattern (classifier) material, not runtime
-  expressions; DeduceList holes may appear inside annotation patterns.
-- Alias right-hand sides stay unresolved `EntityRef`.
+  expressions. Inside an `AnnotationPattern`: a DeduceList-declared name →
+  `HoleRef`; an undeclared name → `PatternName`; navigation → `PatternNav`; a
+  multi-term annotation → `PatternSequence`.
+- DeduceList is a binding-site hole binder list (`HoleDecl`); its holes may appear
+  as `HoleRef` inside annotation patterns.
+- Alias right-hand sides stay unresolved `EntityRef` (dump label `AliasPreserve`),
+  never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to
   ordinary value/function lookup.
+- Construction and extraction may be isomorphic; call and extraction are not.
+
+Quick pattern-context lowering checklist:
+
+```text
+Value-side source? Use NormExpr.
+Binding / annotation / extraction position? Use NormPattern.
+DeduceList-declared name inside annotation? HoleRef.
+Undeclared annotation name? PatternName, not NormExpr::Name.
+Annotation nav? PatternNav, not value-side Nav.
+Alias RHS? EntityRef, not NormExpr.
+Expression-like sugar in annotation/pattern context? Keep pattern-side or surface PatternUnsupported; do not lower as value call.
+```
 
 ## 5. What Normalization Must Not Do
 
