@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use lang_syntax::{
+use lang_syntax::norm::{
     NormBindingSlot, NormClosure, NormClosureKind, NormDecl, NormExpr, NormForm, NormNavComponent,
     NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem, NormProduct, NormProductElem,
     NormProgram, NormRule,
@@ -159,18 +159,26 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule) {
         Some(NormPattern::Name { name, .. }) if name == "type"
     ));
 
-    match head.params.as_slice() {
-        [NormPatternElem::BindingSlot(slot)] => {
-            assert!(matches!(
-                &slot.value_pattern,
-                NormPattern::Binder { name, .. } if name == "val"
-            ));
-            assert!(matches!(
-                slot.annotation.as_ref().map(|annotation| &annotation.pattern),
-                Some(NormPattern::HoleRef { name, .. }) if name == "T"
-            ));
-        }
-        other => panic!("expected one generated receiver param, got {other:#?}"),
+    assert_eq!(
+        head.params.len(),
+        1,
+        "expected one generated receiver param, got {:#?}",
+        head.params
+    );
+    if let NormPatternElem::BindingSlot(slot) = &head.params[0] {
+        assert!(matches!(
+            &slot.value_pattern,
+            NormPattern::Binder { name, .. } if name == "val"
+        ));
+        assert!(matches!(
+            slot.annotation.as_ref().map(|annotation| &annotation.pattern),
+            Some(NormPattern::HoleRef { name, .. }) if name == "T"
+        ));
+    } else {
+        panic!(
+            "expected generated receiver binding slot, got {:#?}",
+            head.params[0]
+        );
     }
 }
 

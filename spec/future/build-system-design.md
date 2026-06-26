@@ -2,9 +2,10 @@
 
 **Status: Non-normative future design. Not a v0.1 parser rule.**
 
-> This design is now the next post-v0.5 roadmap priority: v0.6 — Build /
-> Namespace Graph Bootstrap. The v0.6–v0.8 direction (NamespaceGraph Capability
-> Layer, early meta-functions, type-to-type meta construction) is detailed in
+> This design is now the active v0.6 track: Build / Namespace Graph Bootstrap.
+> The first vertical slice is implemented in `crates/lang_build`. The broader
+> v0.6–v0.8 direction (NamespaceGraph Capability Layer, early meta-functions,
+> type-to-type meta construction) is detailed in
 > `spec/future/early-meta-functions-and-namespace-graph.md`.
 
 The build system produces a **namespace graph world model** — a persistent,
@@ -15,6 +16,29 @@ govern this model (transaction discipline, conflict policy, symbol identity,
 no-bypass, phase vocabulary, test philosophy), see
 `spec/future/early-meta-functions-and-namespace-graph.md`
 §"Namespace Graph World Model Invariants".
+
+## Implementation note (v0.6 partial)
+
+`crates/lang_build` now contains the first implementation slice of this design.
+The public Rust API names currently match the design vocabulary:
+`BuildManifest`, `CompilationWorld`, `NamespaceGraphSnapshot`,
+`NamespaceDelta`, `NamespaceNode`, `SymbolObject`, `SourceCategory`,
+`PolicyMetadata`, `VisibilityMetadata`, `Provenance`, `Diagnostic`,
+`SyntaxObject`, and `MetaExpansionResult`.
+
+The implemented manifest surface is API-level only: tests construct
+`BuildManifest` values directly. The source collector mounts a package source
+root under a namespace root, installs the compiler-seeded core package as a
+default mount, supports synthetic dependency mount placeholders for explicit
+mounted-path resolver tests, scans directories as physical namespace skeleton,
+treats `.lang` files as source fragments under their directory namespace,
+parses and normalizes those fragments with `lang_syntax`, and harvests only
+direct top-level declarations needed by the vertical slice.
+
+The implementation remains narrower than this design. It does not implement a
+manifest file parser, dependency solving, remote package retrieval, lockfile
+validation, overlays, access-control checking, source-level import syntax, or a
+complete build CLI.
 
 ## 1. Scope
 

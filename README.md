@@ -4,10 +4,11 @@
 
 **Current status:** v0.1 Raw AST Frontend completed; v0.1.w Raw AST Stability
 Window closed; v0.2 Raw AST Contract Freeze / Public Frontend Syntax
-Specification closed.
+Specification closed; v0.3/v0.4 normalized AST milestones completed; v0.5
+public normalized-surface documentation baseline completed.
 
-Current active stage: v0.5 — Normalized Surface Semantics Stabilization and
-Public Documentation Reset.
+Current active stage: v0.6 — Build / Namespace Graph Bootstrap, started as a
+partial vertical slice in `crates/lang_build`.
 
 v0.3 is the completed Normalized AST specification baseline.
 v0.4 is the completed Raw AST -> Normalized AST prototype / hardening checkpoint.
@@ -17,7 +18,10 @@ The Raw AST frontend surface (lexer, parser, AST, diagnostics, golden tests)
 is frozen contract material. The v0.4 normalizer lowers Raw AST into a
 desugared, non-semantic Normalized AST with a stable dump and golden tests.
 v0.5 stabilizes the normalized surface semantics and resets the public
-documentation structure; it adds no semantic passes.
+documentation structure; it adds no semantic passes. v0.6 begins the
+post-normalization world model: source roots, core bootstrap, namespace graph
+snapshots/deltas, resolver objects, and the first narrow early-`struct` meta
+slice.
 
 Documentation pointers:
 
@@ -36,8 +40,7 @@ Documentation pointers:
 
 ### Current v0.5 public documentation
 
-The current active stage is v0.5. Read these for current normalized surface
-behavior:
+Read these for the completed public normalized surface behavior:
 
 | Document | Purpose |
 |---|---|
@@ -104,7 +107,7 @@ documents remain present, but they are not part of the normal public reading pat
 | Directory | Document | Purpose |
 |---|---|---|
 | `spec/future/` | `library-namespace-design-note.md` | Non-normative future design note |
-| `spec/future/` | `build-system-design.md` | Build/package/namespace assembly architecture — now the next post-v0.5 roadmap priority (v0.6) |
+| `spec/future/` | `build-system-design.md` | Build/package/namespace assembly architecture — active v0.6 partial implementation in `crates/lang_build` |
 | `spec/future/` | `package-manifest-v0.md` | Provisional build-manifest design surface |
 | `spec/future/` | `namespace-assembly-v0.md` | Namespace assembly pipeline and phase split |
 | `spec/future/` | `early-meta-functions-and-namespace-graph.md` | Namespace graph capability layer, early meta, and the v0.6–v0.8 direction |
@@ -119,13 +122,16 @@ documents remain present, but they are not part of the normal public reading pat
 
 ## Two repository tracks
 
-1. **Frontend track** (active): v0.5 Normalized Surface Semantics Stabilization
-   and Public Documentation Reset. v0.1/v0.1.w/v0.2 completed; v0.3 completed
-   the Normalized AST specification baseline; v0.4 completed the Raw AST ->
-   Normalized AST prototype/hardening checkpoint.
+1. **Frontend track** (completed baseline): v0.5 Normalized Surface Semantics
+   Stabilization and Public Documentation Reset. v0.1/v0.1.w/v0.2 completed;
+   v0.3 completed the Normalized AST specification baseline; v0.4 completed the
+   Raw AST -> Normalized AST prototype/hardening checkpoint.
 
-2. **Build/package/namespace assembly track** (documentation only for now):
-   future build system, package manifest, and namespace assembly design.
+2. **Build/package/namespace assembly track** (active v0.6 partial
+   implementation): `lang_build` implements the first namespace graph world
+   model and early `struct` meta vertical slice. Full package management,
+   manifest parsing, type checking, policy checking, and general meta execution
+   remain future work.
 
 Start with `spec/public/v0.5/README.md` for current v0.5 public documentation.
 Read `spec/history/v0.3/` for the v0.3 Normalized AST design baseline
@@ -218,6 +224,7 @@ frozen `spec/public/v0.2/` syntax specs.
 │       └── open-questions.md
 ├── crates/
 │   ├── lang_syntax/
+│   ├── lang_build/
 │   └── lang_cli/
 └── tests/
     ├── lexer_golden.rs
@@ -275,7 +282,7 @@ non-semantic Normalized AST for these future passes, but performs none of them.
 
 ### Current v0.5 public documentation
 
-Start here for the current active stage:
+Start here for the completed v0.5 public normalized surface baseline:
 
 1. `spec/public/v0.5/README.md` — v0.5 public documentation index.
 2. `spec/public/v0.5/normalized-surface-semantics-v0.5.md` — normalized surface semantics (published).
@@ -333,8 +340,8 @@ Future stages may add crates under `crates/` such as:
 ```text
 crates/
   lang_syntax/
+  lang_build/        (v0.6 partial)
   lang_cli/
-  lang_build/        (v0.6+)
   lang_manifest/     (v0.6+)
   lang_typeck/       (later)
   lang_nll/          (later)

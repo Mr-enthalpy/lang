@@ -1,7 +1,9 @@
 # Early Meta-Functions and the Namespace Graph
 
-**Status: Non-normative future design. This is the next post-v0.5 roadmap track
-(v0.6–v0.8). It is not implemented and is not a parser/normalizer rule.**
+**Status: Non-normative future design. This is the post-v0.5 roadmap track
+(v0.6–v0.8). A partial v0.6 vertical slice is implemented in `lang_build`;
+the remaining v0.6–v0.8 design is future work and is not a parser/normalizer
+rule.**
 
 This document is the canonical direction for the v0.6–v0.8 sequence:
 
@@ -15,6 +17,52 @@ It builds on, and does not replace, the build/package architecture in
 `spec/future/package-manifest-v0.md`. The later pattern-space / extraction-chain
 semantics remain a separate track in
 `spec/future/static-pattern-spaces-and-extraction-chains.md`.
+
+## Implemented vertical slice (v0.6 partial)
+
+The current implementation is intentionally small but uses the intended world
+model boundary:
+
+- `crates/lang_build` defines `CompilationWorld`, `NamespaceGraphSnapshot`,
+  `NamespaceDelta`, `NamespaceNode`, `SymbolObject`, `SymbolId`,
+  `NamespaceNodeId`, `SourceCategory`, `PolicyMetadata`,
+  `VisibilityMetadata`, `Provenance`, `Diagnostic`, `SyntaxObject`, and
+  `MetaExpansionResult`.
+- Graph mutation goes through clone-on-write `NamespaceDelta` installation.
+  Successful install applies the whole delta; conflicts reject the whole delta
+  and return diagnostics.
+- The API-level `BuildManifest` supports package name, source roots, namespace
+  root, dependency mount placeholders, and a default compiler-seeded core mount.
+  There is no manifest file parser yet.
+- Source collection builds physical namespace skeletons from directories.
+  Implementation file names remain source-fragment names only and do not
+  contribute namespace segments.
+- Core bootstrap installs `struct`, `assert`, `type`, `namespace`, `uint8`,
+  `ref`, and `share` as `SymbolObject`s in the namespace graph. `struct` and
+  `assert` are meta-function symbols; parser and normalizer do not special-case
+  either name.
+- Declaration harvesting supports the narrow top-level direct-child form needed
+  by the slice, especially `let T: type = ...`. Ordinary file contributions
+  that attempt parent-to-descendant injection are rejected.
+- Early meta lookup resolves the call target through the graph. The only
+  accepted source form is currently equivalent to
+  `(uint8 a, uint8 b) |> struct`; field types resolve through the same graph and
+  field binders are private `struct` checker material.
+- Resolver contexts distinguish current namespace lookup, explicit mounted paths
+  such as `uint8::core`, and short-name default mounts such as `uint8`.
+- Successful `struct` expansion produces a placeholder type object and a
+  generated type-associated namespace containing `a::T`, `a::ref::T`,
+  `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
+  symbols.
+- Failed `struct` expansion returns hard diagnostics and leaves no partial
+  generated subtree. Duplicate fields, unknown field types, unit/trailing-unit
+  fields, unsupported nested products, and field names colliding with the v0.6
+  projection namespaces `ref` / `share` are rejected. TODO: user field names
+  that collide with projection subspaces require later semantic disambiguation
+  design.
+- Policy and visibility are metadata slots only. No policy checker, type
+  checker, resolver overlay, overload merging, package solver, lockfile, or
+  general meta interpreter is implemented.
 
 ## 1. Why these stages come first
 
