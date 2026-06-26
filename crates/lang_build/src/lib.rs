@@ -22,8 +22,8 @@ pub use model::{
     policy_set_runtime, ChildBucket, ChildLink, ChildNameRole, CoreMetaFunction, Diagnostic,
     DiagnosticSeverity, FieldObject, FieldProjection, MetaFunctionObject, NamespaceDelta,
     NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata,
-    PolicySet, Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-    SyntaxObject, SyntaxObjectKind, TypeField, TypeObject, VisibilityMetadata,
+    PolicySet, Provenance, ResolverCode, SourceCategory, SymbolId, SymbolKind, SymbolObject,
+    SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject, VisibilityMetadata,
 };
 pub use source::SourceFragment;
 pub use world::CompilationWorld;

@@ -7,8 +7,8 @@ use crate::{
     model::{
         CoreMetaFunction, Diagnostic, FieldObject, FieldProjection, MetaFunctionObject,
         NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
-        SourceCategory, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind,
-        TypeField, TypeObject,
+        ResolverCode, SourceCategory, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject,
+        SyntaxObjectKind, TypeField, TypeObject,
     },
     policy_set_meta_runtime,
 };
@@ -45,7 +45,12 @@ pub fn try_expand_early_meta_initializer(
         PolicyEnv::Meta,
     ) {
         Ok(symbol) => symbol,
-        Err(_) => return Ok(None),
+        Err(diagnostic) => match diagnostic.code {
+            Some(ResolverCode::Unresolved) | None => return Ok(None),
+            Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => {
+                return Err(BuildError::single(diagnostic))
+            }
+        },
     };
 
     let SymbolPayload::MetaFunction(meta_function) = &target_symbol.payload else {

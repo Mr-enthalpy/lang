@@ -248,6 +248,18 @@ pub enum DiagnosticSeverity {
     HardError,
 }
 
+/// Resolver diagnostic discriminator for callers that need to distinguish
+/// genuine miss from ambiguity/conflict.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ResolverCode {
+    /// Symbol genuinely not found, or filtered out by policy.
+    Unresolved,
+    /// Role ambiguity within a single namespace node.
+    Ambiguous,
+    /// Cross-root conflict — same symbol found in multiple search roots.
+    Conflict,
+}
+
 /// Build/namespace diagnostic with optional provenance and graph context.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
@@ -256,6 +268,7 @@ pub struct Diagnostic {
     pub provenance: Option<Provenance>,
     pub symbol_context: Option<SymbolId>,
     pub node_context: Option<NamespaceNodeId>,
+    pub code: Option<ResolverCode>,
 }
 
 impl Diagnostic {
@@ -270,6 +283,7 @@ impl Diagnostic {
             provenance,
             symbol_context: None,
             node_context: None,
+            code: None,
         }
     }
 
@@ -288,6 +302,11 @@ impl Diagnostic {
 
     pub fn with_symbol_context(mut self, symbol: SymbolId) -> Self {
         self.symbol_context = Some(symbol);
+        self
+    }
+
+    pub fn with_code(mut self, code: ResolverCode) -> Self {
+        self.code = Some(code);
         self
     }
 }

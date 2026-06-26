@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceDelta,
     NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata,
-    Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+    Provenance, ResolverCode, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
 };
 
 /// Immutable namespace graph world snapshot.
@@ -96,6 +96,7 @@ impl NamespaceGraphSnapshot {
             .ok_or_else(|| {
                 Diagnostic::hard_error(format!("resolver error: unresolved symbol `{name}`"), None)
                     .with_node_context(parent)
+                    .with_code(ResolverCode::Unresolved)
             })?;
         select_symbol_from_bucket(&self.symbols, bucket, name, expectation).ok_or_else(|| {
             Diagnostic::hard_error(
@@ -105,6 +106,7 @@ impl NamespaceGraphSnapshot {
                 None,
             )
             .with_node_context(parent)
+            .with_code(ResolverCode::Unresolved)
         })?
     }
 
@@ -449,7 +451,9 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         policy_env: Option<PolicyEnv>,
     ) -> Result<SymbolObject, Diagnostic> {
         if source_order_path.is_empty() {
-            return Err(self.hard_error(None, "unresolved empty namespace path"));
+            return Err(self
+                .hard_error(None, "unresolved empty namespace path")
+                .with_code(ResolverCode::Unresolved));
         }
 
         let mut hits = Vec::new();
@@ -497,7 +501,7 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             [symbol] => Ok(symbol.clone()),
             [] => Err(errors
                 .into_iter()
-                .find(|diagnostic| diagnostic.message.contains("ambiguous"))
+                .find(|diagnostic| diagnostic.code == Some(ResolverCode::Ambiguous))
                 .unwrap_or_else(|| {
                     self.hard_error(
                         None,
@@ -506,14 +510,17 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
                             source_order_path.join("::")
                         ),
                     )
+                    .with_code(ResolverCode::Unresolved)
                 })),
-            _ => Err(self.hard_error(
-                None,
-                format!(
-                    "resolver error: conflicting symbol `{}` across resolver search roots",
-                    source_order_path.join("::")
-                ),
-            )),
+            _ => Err(self
+                .hard_error(
+                    None,
+                    format!(
+                        "resolver error: conflicting symbol `{}` across resolver search roots",
+                        source_order_path.join("::")
+                    ),
+                )
+                .with_code(ResolverCode::Conflict)),
         }
     }
 
@@ -693,10 +700,12 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             )?;
 
             if !self.symbol_satisfies_policy(&symbol, policy_env) {
-                return Err(self.hard_error(
-                    None,
-                    format!("resolver error: unresolved symbol `{component}`"),
-                ));
+                return Err(self
+                    .hard_error(
+                        None,
+                        format!("resolver error: unresolved symbol `{component}`"),
+                    )
+                    .with_code(ResolverCode::Unresolved));
             }
 
             current_symbol = Some(symbol.clone());
@@ -711,7 +720,10 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             }
         }
 
-        current_symbol.ok_or_else(|| self.hard_error(None, "unresolved empty namespace path"))
+        current_symbol.ok_or_else(|| {
+            self.hard_error(None, "unresolved empty namespace path")
+                .with_code(ResolverCode::Unresolved)
+        })
     }
 
     fn symbol_satisfies_policy(
@@ -926,12 +938,13 @@ fn select_symbol_from_bucket<'symbols>(
             match ids.as_slice() {
                 [id] => symbol(*id).map(Ok),
                 [] => None,
-                _ =>                 Some(Err(Diagnostic::hard_error(
+                _ => Some(Err(Diagnostic::hard_error(
                     format!(
                         "resolver error: ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
                     ),
                     None,
-                ))),
+                )
+                .with_code(ResolverCode::Ambiguous))),
             }
         }
         ResolveExpectation::Object => bucket.object.and_then(symbol).map(Ok),
@@ -952,7 +965,8 @@ fn select_symbol_from_bucket<'symbols>(
                 _ => Some(Err(Diagnostic::hard_error(
                     format!("resolver error: ambiguous namespace-capable parent `{name}`"),
                     None,
-                ))),
+                )
+                .with_code(ResolverCode::Ambiguous))),
             }
         }
         ResolveExpectation::TypeObject => bucket
