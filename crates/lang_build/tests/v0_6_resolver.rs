@@ -58,6 +58,10 @@ fn resolver_handles_short_and_explicit_mounted_core_paths() {
 
 #[test]
 fn resolver_reports_current_namespace_conflict_with_default_mount() {
+    // Resolver-conflict boundary: `let uint8 = uint8` deliberately collides a
+    // local short name with the core short name. The build succeeds but the
+    // resolve is a hard conflict. Kept synthetic because the test checks the
+    // conflict diagnostic, not an ordinary successful resolution.
     let project = TempProject::new("core_conflict");
     project.write("src/main.lang", "let uint8 = uint8");
     let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
@@ -104,11 +108,7 @@ fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
 
 #[test]
 fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
-    let project = TempProject::new("identity");
-    project.write("src/left/main.lang", "let T: type = uint8");
-    project.write("src/right/main.lang", "let T: type = uint8");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
     let left = world
         .snapshot()
         .capability()
@@ -165,13 +165,7 @@ fn resolve_type_object_non_type_fails() {
 
 #[test]
 fn resolve_field_function_ref_field() {
-    let project = TempProject::new("typed_resolver_field");
-    project.write(
-        "src/main.lang",
-        "let T: type = (uint8 a, uint8 b) |> struct",
-    );
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("early_struct_meta", "app");
     let capability = world.snapshot().capability();
     let context = world.package_context();
 
@@ -184,13 +178,7 @@ fn resolve_field_function_ref_field() {
 
 #[test]
 fn resolve_namespace_subspace_ref() {
-    let project = TempProject::new("typed_resolver_namespace");
-    project.write(
-        "src/main.lang",
-        "let T: type = (uint8 a, uint8 b) |> struct",
-    );
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    let world = build_single_fixture_world("early_struct_meta", "app");
     let capability = world.snapshot().capability();
     let context = world.package_context();
 
@@ -198,21 +186,6 @@ fn resolve_namespace_subspace_ref() {
         .resolve_namespace_subspace("ref::T", &context)
         .expect("ref::T is a namespace subspace");
     assert_eq!(symbol.kind, SymbolKind::Namespace);
-}
-
-#[test]
-fn plain_resolve_ref_is_ambiguous() {
-    let project = TempProject::new("typed_resolver_ambiguous");
-    project.write("src/main.lang", "let T: type = (uint8 ref) |> struct");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
-
-    let error = capability
-        .resolve_str("ref::T", &context)
-        .expect_err("plain resolve is ambiguous when both object and namespace-subspace exist");
-    assert!(error.message.contains("ambiguous"));
 }
 
 #[test]

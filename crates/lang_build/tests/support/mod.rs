@@ -14,6 +14,12 @@ use lang_build::{
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
+/// Temporary on-disk source tree for boundary-only tests.
+///
+/// `TempProject` is boundary-only. Ordinary successful build/discovery/early-meta
+/// tests must use committed fixtures under `tests/fixtures/workspaces/`. Use
+/// `TempProject` only for mutation/cache-invalidation, invalid-filesystem,
+/// invalid-bytes, malformed-source, or graph/model boundary tests.
 pub struct TempProject {
     root: PathBuf,
 }
@@ -34,6 +40,8 @@ impl TempProject {
         &self.root
     }
 
+    /// Writes a temp source file for boundary/mutation tests only. Do not use for
+    /// ordinary build success-path tests; use committed fixtures.
     pub fn write(&self, relative: &str, source: &str) {
         let path = self.root.join(relative);
         fs::create_dir_all(path.parent().expect("fixture parent")).expect("create fixture dirs");

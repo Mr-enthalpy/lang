@@ -78,6 +78,9 @@ fn policy_metadata_slots_are_preserved_without_policy_checking() {
 
 #[test]
 fn representative_diagnostics_contain_useful_text_and_provenance() {
+    // Diagnostic/provenance boundary: kept synthetic because each source is an
+    // intentional conflict or rejected contribution and the test checks the
+    // diagnostic text and provenance, not an ordinary successful build.
     let project = TempProject::new("diagnostic_conflict");
     project.write("src/T/placeholder.lang", "");
     project.write("src/main.lang", "let T: type = uint8");

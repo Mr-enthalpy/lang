@@ -47,6 +47,8 @@ fn uint8_resolves_under_meta_policy() {
 
 #[test]
 fn runtime_only_value_not_usable_as_struct_field_type() {
+    // Malformed-source boundary: a runtime-only value used as a struct field type
+    // is an intentional error; the test checks the rejection diagnostic.
     let project = TempProject::new("runtime_field_type");
     project.write(
         "src/main.lang",

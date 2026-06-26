@@ -160,6 +160,8 @@ fn struct_checker_accepts_single_and_two_field_forms() {
 
 #[test]
 fn struct_checker_rejects_non_type_nested_unit_and_target_errors() {
+    // Malformed-source boundary: each source is intentionally invalid struct
+    // input and the test checks the rejection diagnostic, not a build success.
     for (case_name, source, expected) in [
         (
             "non_type_field",
@@ -204,6 +206,8 @@ fn struct_checker_rejects_non_type_nested_unit_and_target_errors() {
 
 #[test]
 fn unknown_and_invalid_struct_inputs_are_hard_errors() {
+    // Malformed-source boundary: unknown field type and invalid struct syntax are
+    // intentional errors; the test checks the rejection diagnostics.
     let project = TempProject::new("struct_errors");
     project.write("src/unknown.lang", "let T: type = (Nope a) |> struct");
     let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
