@@ -10,7 +10,9 @@ use lang_syntax::{
 
 use crate::{
     core::install_core_bootstrap,
-    graph::{namespace_symbol, BuildError, NamespaceGraphSnapshot, ResolverContext},
+    graph::{
+        namespace_symbol, BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext,
+    },
     manifest::{BuildManifest, NamespaceMount, SourceRoot},
     meta::try_expand_early_meta_initializer,
     model::{
@@ -104,6 +106,18 @@ impl CompilationWorld {
         self.snapshot
             .capability()
             .resolve_str(source_order_path, &self.package_context())
+    }
+
+    pub fn resolve_with_expectation(
+        &self,
+        source_order_path: &str,
+        expectation: ResolveExpectation,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.snapshot.capability().resolve_str_with_expectation(
+            source_order_path,
+            &self.package_context(),
+            expectation,
+        )
     }
 
     fn collect_source_root(&mut self, source_root: &SourceRoot) -> Result<(), BuildError> {
@@ -394,9 +408,10 @@ fn install_dependency_mounts(
 
         if snapshot
             .capability()
-            .resolve(
+            .resolve_with_expectation(
                 &mount.mount_path,
                 &ResolverContext::new(snapshot.root_node()),
+                ResolveExpectation::NamespaceSubspace,
             )
             .is_ok()
         {
@@ -467,15 +482,11 @@ fn ensure_namespace_path(
 ) -> Result<NamespaceNodeId, BuildError> {
     let mut current = root;
     for component in components {
-        if let Some(existing) = snapshot.child_symbol(current, component) {
-            if existing.kind != SymbolKind::Namespace {
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "conflicting symbol `{component}` blocks namespace skeleton contribution"
-                    ),
-                    Some(existing.provenance.clone()),
-                )));
-            }
+        if let Ok(existing) = snapshot.child_symbol_with_expectation(
+            current,
+            component,
+            ResolveExpectation::NamespaceSubspace,
+        ) {
             current = existing.namespace_node().ok_or_else(|| {
                 BuildError::single(Diagnostic::hard_error(
                     format!("namespace symbol `{component}` has no namespace node"),
@@ -506,6 +517,11 @@ fn declared_type_placeholder_delta(
     name: &str,
     provenance: Provenance,
 ) -> NamespaceDelta {
+    // v0.6 placeholder only: long-term semantics for `let T: type = uint8`
+    // are an ordinary binding of a new symbol `T` to the existing type value
+    // `uint8`, not fresh type generation and not symbol aliasing. This
+    // placeholder preserves a Type payload until TypeValueId / type-value
+    // equality are designed.
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();

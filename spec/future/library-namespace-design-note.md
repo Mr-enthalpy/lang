@@ -99,9 +99,9 @@ The full namespace graph may contain three kinds of nodes:
 - **Virtual namespace nodes**: synthesized by the namespace assembler,
   metaprogramming, or the resolver. Not tied to any physical source file.
 
-A navigable symbol's child name comes from exactly one source category —
-physical directory hierarchy, type-associated namespace (the companion space of
-a type object), or meta-instantiation virtual layer. See
+A navigable child name is role-aware: object/function symbols and pure
+namespace subspaces may share the same textual name when resolver callers
+provide an expected role. Same-role duplicates remain hard conflicts. See
 `spec/future/build-system-design.md` §7 and
 `spec/future/early-meta-functions-and-namespace-graph.md` §3.
 

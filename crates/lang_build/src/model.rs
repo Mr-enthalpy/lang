@@ -72,6 +72,40 @@ pub enum SymbolKind {
     Placeholder,
 }
 
+/// Role used when a textual child name is installed under a namespace node.
+///
+/// Object/function symbols and pure namespace subspaces may intentionally share
+/// the same textual name. Resolver callers must provide an expectation when
+/// that terminal name is ambiguous.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ChildNameRole {
+    Object,
+    NamespaceSubspace,
+}
+
+/// Role-aware child slot for a single textual name.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ChildBucket {
+    pub object: Option<SymbolId>,
+    pub namespace_subspace: Option<SymbolId>,
+}
+
+impl ChildBucket {
+    pub fn get(&self, role: ChildNameRole) -> Option<SymbolId> {
+        match role {
+            ChildNameRole::Object => self.object,
+            ChildNameRole::NamespaceSubspace => self.namespace_subspace,
+        }
+    }
+
+    pub fn set(&mut self, role: ChildNameRole, symbol: SymbolId) {
+        match role {
+            ChildNameRole::Object => self.object = Some(symbol),
+            ChildNameRole::NamespaceSubspace => self.namespace_subspace = Some(symbol),
+        }
+    }
+}
+
 /// Reserved policy metadata slot.
 ///
 /// v0.6 preserves this data but does not interpret it.
@@ -189,7 +223,7 @@ pub struct NamespaceNode {
     pub kind: NamespaceNodeKind,
     pub source_category: SourceCategory,
     pub parent: Option<NamespaceNodeId>,
-    pub children: BTreeMap<String, SymbolId>,
+    pub children: BTreeMap<String, ChildBucket>,
     pub policy_metadata: PolicyMetadata,
     pub visibility_metadata: VisibilityMetadata,
     pub provenance: Provenance,
@@ -298,6 +332,17 @@ impl SymbolObject {
             SymbolPayload::Namespace { node } => Some(*node),
             SymbolPayload::Type(type_object) => type_object.type_associated_namespace,
             _ => None,
+        }
+    }
+
+    pub fn child_name_role(&self) -> ChildNameRole {
+        match self.kind {
+            SymbolKind::Namespace => ChildNameRole::NamespaceSubspace,
+            SymbolKind::Type
+            | SymbolKind::MetaFunction
+            | SymbolKind::FieldFunction
+            | SymbolKind::Alias
+            | SymbolKind::Placeholder => ChildNameRole::Object,
         }
     }
 
@@ -435,6 +480,7 @@ impl NamespaceDelta {
             parent,
             name: symbol.name.clone(),
             symbol: symbol.id,
+            role: symbol.child_name_role(),
             provenance: symbol.provenance.clone(),
         });
         self.symbols.insert(symbol.id, symbol);
@@ -451,6 +497,7 @@ pub struct ChildLink {
     pub parent: NamespaceNodeId,
     pub name: String,
     pub symbol: SymbolId,
+    pub role: ChildNameRole,
     pub provenance: Provenance,
 }
 

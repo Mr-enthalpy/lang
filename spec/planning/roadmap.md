@@ -228,8 +228,9 @@ Must cover:
 - physical / declared / virtual `NamespaceNode` kind
 - resolver returning a `SymbolObject`, not a string path
 - provenance and diagnostic attachment
-- symbol-source-uniqueness rule (physical directory / type-associated namespace /
-  meta-instantiation virtual layer; exactly one source per symbol)
+- role-aware child-name buckets: object/function role and namespace-subspace
+  role; same-role conflicts are hard errors, while field functions may share
+  names with projection namespace subspaces such as `ref` / `share`
 - ordinary contribution restricted to direct children; deeper structure owned by
   the immediate direct child (no ordinary parent-to-descendant injection)
 - no source-level import/use/include/module
@@ -255,13 +256,15 @@ v0.6 vertical slice: API-level `BuildManifest`, `CompilationWorld`,
 transactional `NamespaceGraphSnapshot` / `NamespaceDelta`, `NamespaceNode`,
 `SymbolObject`, resolver contexts with a default core mount, source-root
 collection, physical directory namespace skeletons, direct-child declaration
-harvesting, core bootstrap symbols, and invariant tests. It also includes a
-minimal early-meta closure for `core::struct` / `core::assert` lookup so the
-world model can prove generated type-associated namespaces are installed
-atomically. This does **not** complete v0.7 or v0.8: only the narrow
-`(uint8 a, uint8 b) |> struct` form is implemented, no full manifest parser,
-package manager, type checker, policy checker, or general meta interpreter is
-present.
+harvesting, role-aware child buckets, expectation-aware resolver lookup, core
+bootstrap symbols, and invariant tests. It also includes a minimal early-meta
+closure for `core::struct` / `core::assert` lookup so the world model can prove
+generated type-associated namespaces are installed atomically. Fields named
+`ref` / `share` are accepted as object-role field functions that coexist with
+projection namespace subspaces. This does **not** complete v0.7 or v0.8: only
+the narrow `(uint8 a, uint8 b) |> struct` family is implemented, no full
+manifest parser, package manager, type checker, policy checker, type-value
+equality, access-tree construction, or general meta interpreter is present.
 
 #### v0.7 — Early Meta-Function Bootstrap
 

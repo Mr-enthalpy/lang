@@ -111,6 +111,7 @@ documents remain present, but they are not part of the normal public reading pat
 | `spec/future/` | `package-manifest-v0.md` | Provisional build-manifest design surface |
 | `spec/future/` | `namespace-assembly-v0.md` | Namespace assembly pipeline and phase split |
 | `spec/future/` | `early-meta-functions-and-namespace-graph.md` | Namespace graph capability layer, early meta, and the v0.6–v0.8 direction |
+| `spec/future/` | `access-tree-and-field-projection.md` | Future field projection / access-tree note; records role-aware `ref` / `share` semantics without implementing access-tree construction |
 
 ### Operational
 
@@ -218,6 +219,8 @@ frozen `spec/public/v0.2/` syntax specs.
 │   │   ├── build-system-design.md
 │   │   ├── package-manifest-v0.md
 │   │   ├── namespace-assembly-v0.md
+│   │   ├── early-meta-functions-and-namespace-graph.md
+│   │   ├── access-tree-and-field-projection.md
 │   │   └── static-pattern-spaces-and-extraction-chains.md
 │   └── planning/
 │       ├── roadmap.md

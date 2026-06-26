@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
-    ChildLink, Diagnostic, DiagnosticSeverity, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-    NamespaceNodeKind, PolicyMetadata, Provenance, SourceCategory, SymbolId, SymbolKind,
-    SymbolObject, SymbolPayload,
+    ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceDelta,
+    NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyMetadata, Provenance, SourceCategory,
+    SymbolId, SymbolKind, SymbolObject, SymbolPayload,
 };
 
 /// Immutable namespace graph world snapshot.
@@ -79,10 +79,31 @@ impl NamespaceGraphSnapshot {
     }
 
     pub fn child_symbol(&self, parent: NamespaceNodeId, name: &str) -> Option<&SymbolObject> {
-        self.nodes
+        self.child_symbol_with_expectation(parent, name, ResolveExpectation::AnyUnique)
+            .ok()
+    }
+
+    pub fn child_symbol_with_expectation(
+        &self,
+        parent: NamespaceNodeId,
+        name: &str,
+        expectation: ResolveExpectation,
+    ) -> Result<&SymbolObject, Diagnostic> {
+        let bucket = self
+            .nodes
             .get(&parent)
             .and_then(|node| node.children.get(name))
-            .and_then(|symbol| self.symbols.get(symbol))
+            .ok_or_else(|| {
+                Diagnostic::hard_error(format!("unresolved symbol `{name}`"), None)
+                    .with_node_context(parent)
+            })?;
+        select_symbol_from_bucket(&self.symbols, bucket, name, expectation).ok_or_else(|| {
+            Diagnostic::hard_error(
+                format!("unresolved symbol `{name}` for resolver expectation {expectation:?}"),
+                None,
+            )
+            .with_node_context(parent)
+        })?
     }
 
     pub fn install_delta(
@@ -105,7 +126,11 @@ impl NamespaceGraphSnapshot {
                 .nodes
                 .get_mut(&link.parent)
                 .expect("delta validation ensures parent exists");
-            parent.children.insert(link.name, link.symbol);
+            parent
+                .children
+                .entry(link.name)
+                .or_default()
+                .set(link.role, link.symbol);
         }
         next.diagnostics.extend(delta.diagnostics);
         next.next_node_id = next_node_id;
@@ -124,6 +149,7 @@ impl NamespaceGraphSnapshot {
 
         let mut diagnostics = Vec::new();
         let mut pending_links = BTreeSet::new();
+        let mut pending_buckets: BTreeMap<(NamespaceNodeId, String), ChildBucket> = BTreeMap::new();
 
         for id in delta.nodes.keys() {
             if self.nodes.contains_key(id) {
@@ -153,6 +179,7 @@ impl NamespaceGraphSnapshot {
             parent,
             name,
             symbol,
+            role,
             provenance,
         } in &delta.child_links
         {
@@ -178,30 +205,90 @@ impl NamespaceGraphSnapshot {
                 ));
             }
 
+            let linked_symbol = self
+                .symbols
+                .get(symbol)
+                .or_else(|| delta.symbols.get(symbol));
+
             if let Some(parent_node) = self.nodes.get(parent) {
-                if let Some(existing_symbol) = parent_node.children.get(name) {
+                if let Some(existing_symbol) = parent_node
+                    .children
+                    .get(name)
+                    .and_then(|bucket| bucket.get(*role))
+                {
                     diagnostics.push(
                         Diagnostic::hard_error(
-                            format!("delta install conflict: symbol `{name}` already exists"),
+                            format!(
+                                "delta install conflict: symbol `{name}` already exists for role {role:?}"
+                            ),
                             Some(provenance.clone()),
                         )
                         .with_node_context(*parent)
-                        .with_symbol_context(*existing_symbol),
+                        .with_symbol_context(existing_symbol),
                     );
+                }
+
+                if let (Some(bucket), Some(symbol_object)) =
+                    (parent_node.children.get(name), linked_symbol)
+                {
+                    let opposite = match role {
+                        ChildNameRole::Object => bucket.namespace_subspace,
+                        ChildNameRole::NamespaceSubspace => bucket.object,
+                    };
+                    if cross_role_namespace_capable_conflict(
+                        *role,
+                        symbol_object,
+                        opposite.and_then(|id| self.symbols.get(&id)),
+                    ) {
+                        diagnostics.push(
+                            Diagnostic::hard_error(
+                                format!(
+                                    "delta install conflict: namespace-capable symbol `{name}` conflicts with existing cross-role child"
+                                ),
+                                Some(provenance.clone()),
+                            )
+                            .with_node_context(*parent)
+                            .with_symbol_context(symbol_object.id),
+                        );
+                    }
                 }
             }
 
-            if !pending_links.insert((*parent, name.clone())) {
+            if !pending_links.insert((*parent, name.clone(), *role)) {
                 diagnostics.push(
                     Diagnostic::hard_error(
                         format!(
-                            "delta install conflict: duplicate symbol `{name}` in same namespace"
+                            "delta install conflict: duplicate symbol `{name}` in same namespace for role {role:?}"
                         ),
                         Some(provenance.clone()),
                     )
                     .with_node_context(*parent),
                 );
             }
+
+            let pending_bucket = pending_buckets.entry((*parent, name.clone())).or_default();
+            if let Some(symbol_object) = linked_symbol {
+                let opposite = match role {
+                    ChildNameRole::Object => pending_bucket.namespace_subspace,
+                    ChildNameRole::NamespaceSubspace => pending_bucket.object,
+                };
+                let opposite_symbol = opposite
+                    .and_then(|id| self.symbols.get(&id))
+                    .or_else(|| opposite.and_then(|id| delta.symbols.get(&id)));
+                if cross_role_namespace_capable_conflict(*role, symbol_object, opposite_symbol) {
+                    diagnostics.push(
+                        Diagnostic::hard_error(
+                            format!(
+                                "delta install conflict: namespace-capable symbol `{name}` conflicts with pending cross-role child"
+                            ),
+                            Some(provenance.clone()),
+                        )
+                        .with_node_context(*parent)
+                        .with_symbol_context(symbol_object.id),
+                    );
+                }
+            }
+            pending_bucket.set(*role, *symbol);
         }
 
         if diagnostics.is_empty() {
@@ -267,6 +354,18 @@ impl ResolverContext {
     }
 }
 
+/// Expected result shape for resolver lookup.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ResolveExpectation {
+    AnyUnique,
+    Object,
+    NamespaceSubspace,
+    NamespaceCapableParent,
+    TypeObject,
+    MetaFunction,
+    FieldFunction,
+}
+
 /// Shared capability API for graph reads and delta construction.
 pub struct NamespaceGraphCapability<'snapshot> {
     pub(crate) snapshot: &'snapshot NamespaceGraphSnapshot,
@@ -278,25 +377,42 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         source_order_path: &[String],
         context: &ResolverContext,
     ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_with_expectation(source_order_path, context, ResolveExpectation::AnyUnique)
+    }
+
+    pub fn resolve_with_expectation(
+        &self,
+        source_order_path: &[String],
+        context: &ResolverContext,
+        terminal_expectation: ResolveExpectation,
+    ) -> Result<SymbolObject, Diagnostic> {
         if source_order_path.is_empty() {
             return Err(self.hard_error(None, "unresolved empty namespace path"));
         }
 
         let mut hits = Vec::new();
-        if let Ok(symbol) = self.resolve_from(source_order_path, context.current_namespace) {
-            hits.push(symbol);
+        let mut errors = Vec::new();
+        match self.resolve_from(
+            source_order_path,
+            context.current_namespace,
+            terminal_expectation,
+        ) {
+            Ok(symbol) => hits.push(symbol),
+            Err(diagnostic) => errors.push(diagnostic),
         }
 
         for mount_root in &context.explicit_mount_roots {
-            if let Ok(symbol) = self.resolve_from(source_order_path, *mount_root) {
-                hits.push(symbol);
+            match self.resolve_from(source_order_path, *mount_root, terminal_expectation) {
+                Ok(symbol) => hits.push(symbol),
+                Err(diagnostic) => errors.push(diagnostic),
             }
         }
 
         if source_order_path.len() == 1 {
             for mount in &context.default_mounts {
-                if let Ok(symbol) = self.resolve_from(source_order_path, *mount) {
-                    hits.push(symbol);
+                match self.resolve_from(source_order_path, *mount, terminal_expectation) {
+                    Ok(symbol) => hits.push(symbol),
+                    Err(diagnostic) => errors.push(diagnostic),
                 }
             }
         }
@@ -306,10 +422,15 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
 
         match hits.as_slice() {
             [symbol] => Ok(symbol.clone()),
-            [] => Err(self.hard_error(
-                None,
-                format!("unresolved symbol `{}`", source_order_path.join("::")),
-            )),
+            [] => Err(errors
+                .into_iter()
+                .find(|diagnostic| diagnostic.message.contains("ambiguous"))
+                .unwrap_or_else(|| {
+                    self.hard_error(
+                        None,
+                        format!("unresolved symbol `{}`", source_order_path.join("::")),
+                    )
+                })),
             _ => Err(self.hard_error(
                 None,
                 format!(
@@ -325,29 +446,45 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         source_order_path: &str,
         context: &ResolverContext,
     ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_expectation(source_order_path, context, ResolveExpectation::AnyUnique)
+    }
+
+    pub fn resolve_str_with_expectation(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+        terminal_expectation: ResolveExpectation,
+    ) -> Result<SymbolObject, Diagnostic> {
         let components = source_order_path
             .split("::")
             .filter(|component| !component.is_empty())
             .map(str::trim)
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>();
-        self.resolve(&components, context)
+        self.resolve_with_expectation(&components, context, terminal_expectation)
     }
 
     fn resolve_from(
         &self,
         source_order_path: &[String],
         start: NamespaceNodeId,
+        terminal_expectation: ResolveExpectation,
     ) -> Result<SymbolObject, Diagnostic> {
         let mut current_node = start;
         let mut current_symbol = None;
 
         let component_count = source_order_path.len();
         for (resolved_count, component) in source_order_path.iter().rev().enumerate() {
-            let symbol = self
-                .snapshot
-                .child_symbol(current_node, component)
-                .ok_or_else(|| self.hard_error(None, format!("unresolved symbol `{component}`")))?;
+            let expectation = if resolved_count + 1 == component_count {
+                terminal_expectation
+            } else {
+                ResolveExpectation::NamespaceCapableParent
+            };
+            let symbol = self.snapshot.child_symbol_with_expectation(
+                current_node,
+                component,
+                expectation,
+            )?;
             current_symbol = Some(symbol.clone());
 
             if resolved_count + 1 != component_count {
@@ -542,4 +679,80 @@ pub(crate) fn namespace_symbol(
     delta.insert_node(node);
     delta.insert_symbol(parent, symbol);
     node_id
+}
+
+fn select_symbol_from_bucket<'symbols>(
+    symbols: &'symbols BTreeMap<SymbolId, SymbolObject>,
+    bucket: &ChildBucket,
+    name: &str,
+    expectation: ResolveExpectation,
+) -> Option<Result<&'symbols SymbolObject, Diagnostic>> {
+    let symbol = |id: SymbolId| symbols.get(&id);
+    match expectation {
+        ResolveExpectation::AnyUnique => {
+            let mut ids = [bucket.object, bucket.namespace_subspace]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+            ids.sort();
+            ids.dedup();
+            match ids.as_slice() {
+                [id] => symbol(*id).map(Ok),
+                [] => None,
+                _ => Some(Err(Diagnostic::hard_error(
+                    format!(
+                        "ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
+                    ),
+                    None,
+                ))),
+            }
+        }
+        ResolveExpectation::Object => bucket.object.and_then(symbol).map(Ok),
+        ResolveExpectation::NamespaceSubspace => bucket.namespace_subspace.and_then(symbol).map(Ok),
+        ResolveExpectation::NamespaceCapableParent => {
+            let mut candidates = Vec::new();
+            if let Some(namespace_symbol) = bucket.namespace_subspace.and_then(symbol) {
+                candidates.push(namespace_symbol);
+            }
+            if let Some(object_symbol) = bucket.object.and_then(symbol) {
+                if object_symbol.namespace_node().is_some() {
+                    candidates.push(object_symbol);
+                }
+            }
+            match candidates.as_slice() {
+                [symbol] => Some(Ok(*symbol)),
+                [] => None,
+                _ => Some(Err(Diagnostic::hard_error(
+                    format!("ambiguous namespace-capable parent `{name}`"),
+                    None,
+                ))),
+            }
+        }
+        ResolveExpectation::TypeObject => bucket
+            .object
+            .and_then(symbol)
+            .and_then(|symbol| (symbol.kind == SymbolKind::Type).then_some(Ok(symbol))),
+        ResolveExpectation::MetaFunction => bucket
+            .object
+            .and_then(symbol)
+            .and_then(|symbol| (symbol.kind == SymbolKind::MetaFunction).then_some(Ok(symbol))),
+        ResolveExpectation::FieldFunction => bucket
+            .object
+            .and_then(symbol)
+            .and_then(|symbol| (symbol.kind == SymbolKind::FieldFunction).then_some(Ok(symbol))),
+    }
+}
+
+fn cross_role_namespace_capable_conflict(
+    role: ChildNameRole,
+    symbol: &SymbolObject,
+    opposite: Option<&SymbolObject>,
+) -> bool {
+    let Some(opposite) = opposite else {
+        return false;
+    };
+    match role {
+        ChildNameRole::Object => symbol.namespace_node().is_some(),
+        ChildNameRole::NamespaceSubspace => opposite.namespace_node().is_some(),
+    }
 }

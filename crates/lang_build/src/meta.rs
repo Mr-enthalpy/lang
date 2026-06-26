@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
 use crate::{
-    graph::{BuildError, NamespaceGraphSnapshot, ResolverContext},
+    graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
     model::{
         CoreMetaFunction, Diagnostic, FieldObject, FieldProjection, MetaFunctionObject,
         NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
@@ -38,7 +38,11 @@ pub fn try_expand_early_meta_initializer(
         None => return Ok(None),
     };
 
-    let target_symbol = match snapshot.capability().resolve(&target_path, context) {
+    let target_symbol = match snapshot.capability().resolve_with_expectation(
+        &target_path,
+        context,
+        ResolveExpectation::MetaFunction,
+    ) {
         Ok(symbol) => symbol,
         Err(_) => return Ok(None),
     };
@@ -289,14 +293,6 @@ fn parse_struct_fields(
                             format!("duplicate struct field `{}`", field.name),
                             Some(field.provenance),
                         ));
-                    } else if matches!(field.name.as_str(), "ref" | "share") {
-                        diagnostics.push(Diagnostic::hard_error(
-                        format!(
-                            "invalid struct syntax: field name `{}` conflicts with v0.6 projection namespace; TODO: projection-name disambiguation requires later semantic design",
-                            field.name
-                        ),
-                        Some(field.provenance),
-                    ));
                     } else {
                         fields.push(field);
                     }
@@ -396,8 +392,21 @@ fn parse_field_expr(
     })?;
     let type_symbol = snapshot
         .capability()
-        .resolve(&type_path, context)
+        .resolve_with_expectation(&type_path, context, ResolveExpectation::TypeObject)
         .map_err(|_| {
+            if let Ok(non_type_symbol) = snapshot.capability().resolve_with_expectation(
+                &type_path,
+                context,
+                ResolveExpectation::Object,
+            ) {
+                return Diagnostic::hard_error(
+                    format!(
+                        "unknown struct field type `{}`: resolved symbol is not a type",
+                        type_path.join("::")
+                    ),
+                    Some(non_type_symbol.provenance),
+                );
+            }
             Diagnostic::hard_error(
                 format!("unknown struct field type `{}`", type_path.join("::")),
                 Some(Provenance::from_norm_origin(

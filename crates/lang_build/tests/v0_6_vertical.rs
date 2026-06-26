@@ -6,10 +6,10 @@ use std::{
 };
 
 use lang_build::{
-    meta::try_expand_early_meta_initializer, BuildManifest, ChildLink, CompilationWorld,
-    DiagnosticSeverity, FieldProjection, NamespaceGraphSnapshot, NamespaceMount, NamespaceNodeId,
-    NamespaceNodeKind, Provenance, ResolverContext, SourceCategory, SymbolKind, SymbolObject,
-    SymbolPayload,
+    meta::try_expand_early_meta_initializer, BuildManifest, ChildLink, ChildNameRole,
+    CompilationWorld, DiagnosticSeverity, FieldProjection, NamespaceGraphSnapshot, NamespaceMount,
+    NamespaceNodeId, NamespaceNodeKind, Provenance, ResolveExpectation, ResolverContext,
+    SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -318,23 +318,124 @@ fn type_associated_namespace_paths_have_expected_payloads() {
     );
     assert_eq!(value_field_object.projection, FieldProjection::Value);
 
-    let ref_namespace = world.resolve("ref::T").expect("resolve ref namespace");
+    let ref_namespace = world
+        .resolve_with_expectation("ref::T", ResolveExpectation::NamespaceSubspace)
+        .expect("resolve ref namespace");
     assert_eq!(ref_namespace.kind, SymbolKind::Namespace);
     assert_eq!(ref_namespace.parent, Some(type_namespace));
 
-    let ref_field = world.resolve("a::ref::T").expect("resolve ref field");
+    let ref_field = world
+        .resolve_with_expectation("a::ref::T", ResolveExpectation::FieldFunction)
+        .expect("resolve ref field");
     let SymbolPayload::FieldFunction(ref_field_object) = &ref_field.payload else {
         panic!("expected ref field payload");
     };
     assert_eq!(ref_field_object.owner_type_symbol_id, type_symbol.id);
     assert_eq!(ref_field_object.projection, FieldProjection::Ref);
 
-    let share_field = world.resolve("a::share::T").expect("resolve share field");
+    let share_field = world
+        .resolve_with_expectation("a::share::T", ResolveExpectation::FieldFunction)
+        .expect("resolve share field");
     let SymbolPayload::FieldFunction(share_field_object) = &share_field.payload else {
         panic!("expected share field payload");
     };
     assert_eq!(share_field_object.owner_type_symbol_id, type_symbol.id);
     assert_eq!(share_field_object.projection, FieldProjection::Share);
+}
+
+#[test]
+fn fields_named_ref_and_share_coexist_with_projection_subspaces() {
+    for (case_name, field_name) in [("field_named_ref", "ref"), ("field_named_share", "share")] {
+        let project = TempProject::new(case_name);
+        project.write(
+            "src/main.lang",
+            &format!("let T: type = (uint8 {field_name}, uint8 a) |> struct"),
+        );
+
+        let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+            .expect("projection-named field is accepted");
+        let type_symbol = world
+            .resolve_with_expectation("T", ResolveExpectation::TypeObject)
+            .expect("resolve generated type");
+        let SymbolPayload::Type(type_object) = &type_symbol.payload else {
+            panic!("expected type object");
+        };
+        assert!(type_object
+            .field_names
+            .iter()
+            .any(|name| name == field_name));
+
+        let value_field = world
+            .resolve_with_expectation(
+                &format!("{field_name}::T"),
+                ResolveExpectation::FieldFunction,
+            )
+            .expect("resolve field function sharing projection name");
+        let SymbolPayload::FieldFunction(value_field_object) = &value_field.payload else {
+            panic!("expected value field payload");
+        };
+        assert_eq!(value_field_object.field_name, field_name);
+        assert_eq!(value_field_object.projection, FieldProjection::Value);
+
+        let projection_namespace = world
+            .resolve_with_expectation(
+                &format!("{field_name}::T"),
+                ResolveExpectation::NamespaceSubspace,
+            )
+            .expect("resolve projection namespace sharing field name");
+        assert_eq!(projection_namespace.kind, SymbolKind::Namespace);
+
+        let ambiguous = world.resolve(&format!("{field_name}::T")).expect_err(
+            "terminal AnyUnique lookup is ambiguous across field object and projection namespace",
+        );
+        assert!(ambiguous.message.contains("ambiguous"));
+
+        let ref_projection = world
+            .resolve_with_expectation(
+                &format!("{field_name}::ref::T"),
+                ResolveExpectation::FieldFunction,
+            )
+            .expect("resolve ref projection field");
+        let SymbolPayload::FieldFunction(ref_projection_object) = &ref_projection.payload else {
+            panic!("expected ref projection field payload");
+        };
+        assert_eq!(ref_projection_object.field_name, field_name);
+        assert_eq!(ref_projection_object.projection, FieldProjection::Ref);
+
+        let share_projection = world
+            .resolve_with_expectation(
+                &format!("{field_name}::share::T"),
+                ResolveExpectation::FieldFunction,
+            )
+            .expect("resolve share projection field");
+        let SymbolPayload::FieldFunction(share_projection_object) = &share_projection.payload
+        else {
+            panic!("expected share projection field payload");
+        };
+        assert_eq!(share_projection_object.field_name, field_name);
+        assert_eq!(share_projection_object.projection, FieldProjection::Share);
+
+        let a_ref = world
+            .resolve_with_expectation("a::ref::T", ResolveExpectation::FieldFunction)
+            .expect("intermediate ref resolves through namespace subspace");
+        let SymbolPayload::FieldFunction(a_ref_object) = &a_ref.payload else {
+            panic!("expected ordinary ref projection field payload");
+        };
+        assert_eq!(a_ref_object.field_name, "a");
+        assert_eq!(a_ref_object.projection, FieldProjection::Ref);
+    }
+
+    let project = TempProject::new("duplicate_projection_named_field");
+    project.write(
+        "src/main.lang",
+        "let T: type = (uint8 ref, uint8 ref) |> struct",
+    );
+    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect_err("duplicate same-role field rejected");
+    assert!(error
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains("duplicate struct field `ref`")));
 }
 
 #[test]
@@ -555,12 +656,14 @@ fn delta_with_missing_parent_or_duplicate_link_installs_nothing() {
         parent: root,
         name: "dup".to_string(),
         symbol: symbol_id,
+        role: ChildNameRole::Object,
         provenance: Provenance::new("first duplicate link"),
     });
     duplicate_link.child_links.push(ChildLink {
         parent: root,
         name: "dup".to_string(),
         symbol: symbol_id,
+        role: ChildNameRole::Object,
         provenance: Provenance::new("second duplicate link"),
     });
     let error = snapshot
@@ -763,7 +866,7 @@ fn struct_checker_accepts_single_and_two_field_forms() {
 }
 
 #[test]
-fn struct_checker_rejects_non_type_nested_unit_target_and_projection_collisions() {
+fn struct_checker_rejects_non_type_nested_unit_and_target_errors() {
     for (case_name, source, expected) in [
         (
             "non_type_field",
@@ -784,16 +887,6 @@ fn struct_checker_rejects_non_type_nested_unit_target_and_projection_collisions(
             "target_not_name",
             "let T: type = (uint8 (a, b)) |> struct",
             "expected a field binder name",
-        ),
-        (
-            "field_ref",
-            "let T: type = (uint8 ref) |> struct",
-            "conflicts with v0.6 projection namespace",
-        ),
-        (
-            "field_share",
-            "let T: type = (uint8 share) |> struct",
-            "conflicts with v0.6 projection namespace",
         ),
         (
             "operator_private_syntax",
