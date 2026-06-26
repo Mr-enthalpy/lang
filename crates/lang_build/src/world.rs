@@ -20,6 +20,7 @@ use crate::{
         NamespaceNodeKind, Provenance, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
         TypeObject,
     },
+    policy_set_meta_runtime, policy_set_runtime,
     source::SourceFragment,
 };
 
@@ -294,7 +295,7 @@ impl CompilationWorld {
             }
         }
 
-        let delta = if is_type_annotation(slot.annotation.as_ref()) {
+        let mut delta = if is_type_annotation(slot.annotation.as_ref()) {
             declared_type_placeholder_delta(
                 &self.snapshot,
                 namespace,
@@ -304,12 +305,24 @@ impl CompilationWorld {
         } else {
             self.snapshot.capability().declare(
                 namespace,
-                binder_name,
+                binder_name.clone(),
                 SymbolKind::Placeholder,
                 SourceCategory::DeclaredSymbol,
                 Provenance::file("declared source symbol", file),
             )
         };
+        {
+            let policy_set = if is_type_annotation(slot.annotation.as_ref()) {
+                policy_set_meta_runtime()
+            } else {
+                policy_set_runtime()
+            };
+            for symbol in delta.symbols.values_mut() {
+                if symbol.name == binder_name {
+                    symbol.policy_metadata.policy_set = policy_set.clone();
+                }
+            }
+        }
         self.snapshot = self
             .snapshot
             .install_delta(delta)
@@ -363,12 +376,17 @@ impl CompilationWorld {
             .capability()
             .resolve(&target_path, &context)
             .map_err(BuildError::single)?;
-        let delta = self.snapshot.capability().alias(
+        let mut delta = self.snapshot.capability().alias(
             namespace,
-            name,
+            name.clone(),
             target_symbol.id,
             Provenance::from_norm_origin("alias declaration", origin),
         );
+        for symbol in delta.symbols.values_mut() {
+            if symbol.name == name {
+                symbol.policy_metadata.policy_set = policy_set_runtime();
+            }
+        }
         self.snapshot = self
             .snapshot
             .install_delta(delta)

@@ -2,8 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::model::{
     ChildBucket, ChildLink, ChildNameRole, Diagnostic, DiagnosticSeverity, NamespaceDelta,
-    NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyMetadata, Provenance, SourceCategory,
-    SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+    NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata,
+    Provenance, ResolverCode, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
 };
 
 /// Immutable namespace graph world snapshot.
@@ -96,6 +96,7 @@ impl NamespaceGraphSnapshot {
             .ok_or_else(|| {
                 Diagnostic::hard_error(format!("resolver error: unresolved symbol `{name}`"), None)
                     .with_node_context(parent)
+                    .with_code(ResolverCode::Unresolved)
             })?;
         select_symbol_from_bucket(&self.symbols, bucket, name, expectation).ok_or_else(|| {
             Diagnostic::hard_error(
@@ -105,6 +106,7 @@ impl NamespaceGraphSnapshot {
                 None,
             )
             .with_node_context(parent)
+            .with_code(ResolverCode::Unresolved)
         })?
     }
 
@@ -416,23 +418,63 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         context: &ResolverContext,
         terminal_expectation: ResolveExpectation,
     ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_search_roots(source_order_path, context, terminal_expectation, None)
+    }
+
+    /// Resolve a namespace path with an explicit terminal role expectation and
+    /// policy environment filter.
+    ///
+    /// Symbols that do not satisfy `policy_env` are treated as if they do not
+    /// exist in the search root. Policy filtering happens before cross-root
+    /// conflict reporting.
+    pub fn resolve_with_policy(
+        &self,
+        source_order_path: &[String],
+        context: &ResolverContext,
+        terminal_expectation: ResolveExpectation,
+        policy_env: PolicyEnv,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_search_roots(
+            source_order_path,
+            context,
+            terminal_expectation,
+            Some(policy_env),
+        )
+    }
+
+    /// Shared internal search-root loop with optional policy filtering.
+    fn resolve_search_roots(
+        &self,
+        source_order_path: &[String],
+        context: &ResolverContext,
+        terminal_expectation: ResolveExpectation,
+        policy_env: Option<PolicyEnv>,
+    ) -> Result<SymbolObject, Diagnostic> {
         if source_order_path.is_empty() {
-            return Err(self.hard_error(None, "unresolved empty namespace path"));
+            return Err(self
+                .hard_error(None, "unresolved empty namespace path")
+                .with_code(ResolverCode::Unresolved));
         }
 
         let mut hits = Vec::new();
         let mut errors = Vec::new();
-        match self.resolve_from(
+        match self.resolve_from_internal(
             source_order_path,
             context.current_namespace,
             terminal_expectation,
+            policy_env,
         ) {
             Ok(symbol) => hits.push(symbol),
             Err(diagnostic) => errors.push(diagnostic),
         }
 
         for mount_root in &context.explicit_mount_roots {
-            match self.resolve_from(source_order_path, *mount_root, terminal_expectation) {
+            match self.resolve_from_internal(
+                source_order_path,
+                *mount_root,
+                terminal_expectation,
+                policy_env,
+            ) {
                 Ok(symbol) => hits.push(symbol),
                 Err(diagnostic) => errors.push(diagnostic),
             }
@@ -440,7 +482,12 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
 
         if source_order_path.len() == 1 {
             for mount in &context.default_mounts {
-                match self.resolve_from(source_order_path, *mount, terminal_expectation) {
+                match self.resolve_from_internal(
+                    source_order_path,
+                    *mount,
+                    terminal_expectation,
+                    policy_env,
+                ) {
                     Ok(symbol) => hits.push(symbol),
                     Err(diagnostic) => errors.push(diagnostic),
                 }
@@ -454,7 +501,7 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             [symbol] => Ok(symbol.clone()),
             [] => Err(errors
                 .into_iter()
-                .find(|diagnostic| diagnostic.message.contains("ambiguous"))
+                .find(|diagnostic| diagnostic.code == Some(ResolverCode::Ambiguous))
                 .unwrap_or_else(|| {
                     self.hard_error(
                         None,
@@ -463,14 +510,17 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
                             source_order_path.join("::")
                         ),
                     )
+                    .with_code(ResolverCode::Unresolved)
                 })),
-            _ => Err(self.hard_error(
-                None,
-                format!(
-                    "resolver error: conflicting symbol `{}` across resolver search roots",
-                    source_order_path.join("::")
-                ),
-            )),
+            _ => Err(self
+                .hard_error(
+                    None,
+                    format!(
+                        "resolver error: conflicting symbol `{}` across resolver search roots",
+                        source_order_path.join("::")
+                    ),
+                )
+                .with_code(ResolverCode::Conflict)),
         }
     }
 
@@ -507,6 +557,24 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         self.resolve_with_expectation(&components, context, terminal_expectation)
     }
 
+    /// String convenience wrapper around
+    /// [`resolve_with_policy`](Self::resolve_with_policy).
+    pub fn resolve_str_with_policy(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+        terminal_expectation: ResolveExpectation,
+        policy_env: PolicyEnv,
+    ) -> Result<SymbolObject, Diagnostic> {
+        let components = source_order_path
+            .split("::")
+            .filter(|component| !component.is_empty())
+            .map(str::trim)
+            .map(ToOwned::to_owned)
+            .collect::<Vec<_>>();
+        self.resolve_with_policy(&components, context, terminal_expectation, policy_env)
+    }
+
     /// Resolve a terminal symbol whose kind is `Type`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::TypeObject)`.
@@ -522,6 +590,21 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         )
     }
 
+    /// Policy-aware variant of [`resolve_type_object`](Self::resolve_type_object).
+    pub fn resolve_type_object_with_policy(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+        policy_env: PolicyEnv,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_policy(
+            source_order_path,
+            context,
+            ResolveExpectation::TypeObject,
+            policy_env,
+        )
+    }
+
     /// Resolve a terminal symbol whose kind is `MetaFunction`.
     ///
     /// Shortcut for `resolve_str_with_expectation(…, ResolveExpectation::MetaFunction)`.
@@ -534,6 +617,21 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             source_order_path,
             context,
             ResolveExpectation::MetaFunction,
+        )
+    }
+
+    /// Policy-aware variant of [`resolve_meta_function`](Self::resolve_meta_function).
+    pub fn resolve_meta_function_with_policy(
+        &self,
+        source_order_path: &str,
+        context: &ResolverContext,
+        policy_env: PolicyEnv,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_str_with_policy(
+            source_order_path,
+            context,
+            ResolveExpectation::MetaFunction,
+            policy_env,
         )
     }
 
@@ -567,11 +665,23 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         )
     }
 
+    #[allow(dead_code)]
     fn resolve_from(
         &self,
         source_order_path: &[String],
         start: NamespaceNodeId,
         terminal_expectation: ResolveExpectation,
+    ) -> Result<SymbolObject, Diagnostic> {
+        self.resolve_from_internal(source_order_path, start, terminal_expectation, None)
+    }
+
+    /// Internal path-resolution with optional policy filtering at each step.
+    fn resolve_from_internal(
+        &self,
+        source_order_path: &[String],
+        start: NamespaceNodeId,
+        terminal_expectation: ResolveExpectation,
+        policy_env: Option<PolicyEnv>,
     ) -> Result<SymbolObject, Diagnostic> {
         let mut current_node = start;
         let mut current_symbol = None;
@@ -588,6 +698,16 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
                 component,
                 expectation,
             )?;
+
+            if !self.symbol_satisfies_policy(&symbol, policy_env) {
+                return Err(self
+                    .hard_error(
+                        None,
+                        format!("resolver error: unresolved symbol `{component}`"),
+                    )
+                    .with_code(ResolverCode::Unresolved));
+            }
+
             current_symbol = Some(symbol.clone());
 
             if resolved_count + 1 != component_count {
@@ -600,7 +720,23 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             }
         }
 
-        current_symbol.ok_or_else(|| self.hard_error(None, "unresolved empty namespace path"))
+        current_symbol.ok_or_else(|| {
+            self.hard_error(None, "unresolved empty namespace path")
+                .with_code(ResolverCode::Unresolved)
+        })
+    }
+
+    fn symbol_satisfies_policy(
+        &self,
+        symbol: &SymbolObject,
+        policy_env: Option<PolicyEnv>,
+    ) -> bool {
+        match policy_env {
+            None => true,
+            Some(env) => match env {
+                PolicyEnv::Meta => symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta),
+            },
+        }
     }
 
     pub fn declare(
@@ -671,7 +807,7 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             Some(parent),
             provenance.clone(),
         );
-        let symbol = SymbolObject::namespace(
+        let mut symbol = SymbolObject::namespace(
             symbol_id,
             key,
             node_id,
@@ -680,6 +816,7 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             Some(parent),
             provenance,
         );
+        symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
         delta.insert_node(node);
         delta.insert_symbol(parent, symbol);
         (node_id, delta)
@@ -770,7 +907,7 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance.clone(),
     );
-    let symbol = SymbolObject::namespace(
+    let mut symbol = SymbolObject::namespace(
         symbol_id,
         name,
         node_id,
@@ -779,6 +916,7 @@ pub(crate) fn namespace_symbol(
         Some(parent),
         provenance,
     );
+    symbol.policy_metadata.policy_set = crate::policy_set_meta_runtime();
     delta.insert_node(node);
     delta.insert_symbol(parent, symbol);
     node_id
@@ -802,12 +940,13 @@ fn select_symbol_from_bucket<'symbols>(
             match ids.as_slice() {
                 [id] => symbol(*id).map(Ok),
                 [] => None,
-                _ =>                 Some(Err(Diagnostic::hard_error(
+                _ => Some(Err(Diagnostic::hard_error(
                     format!(
                         "resolver error: ambiguous terminal symbol `{name}` across object and namespace-subspace roles"
                     ),
                     None,
-                ))),
+                )
+                .with_code(ResolverCode::Ambiguous))),
             }
         }
         ResolveExpectation::Object => bucket.object.and_then(symbol).map(Ok),
@@ -828,7 +967,8 @@ fn select_symbol_from_bucket<'symbols>(
                 _ => Some(Err(Diagnostic::hard_error(
                     format!("resolver error: ambiguous namespace-capable parent `{name}`"),
                     None,
-                ))),
+                )
+                .with_code(ResolverCode::Ambiguous))),
             }
         }
         ResolveExpectation::TypeObject => bucket

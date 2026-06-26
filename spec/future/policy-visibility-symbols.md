@@ -1,7 +1,11 @@
 # Policy as Visibility Symbols and Capability Strategy
 
-**Status: Non-normative future design. Not implemented in v0.6–v0.8 except as
-metadata slots and architectural placeholders.**
+**Status: Non-normative future design. v0.6 reserved metadata slots and
+architectural placeholders. v0.7 adds `PolicyFlag` / `PolicySet` / `PolicyEnv`
+types, assigns policy flags to core and user-declared symbols, and implements
+`PolicyEnv::Meta` filtering in the resolver and early-meta expansion. Full
+policy lattice, projection, conformance checking, and additional policy
+environments remain future work.**
 
 ## 1. Scope
 
@@ -298,6 +302,17 @@ v0.7 (Early Meta-Function Bootstrap):
   Expose meta-function policy fields and reserve body-entry-policy /
   return-object-policy, but must not implement full meta / compile / seal
   projection.
+  Implemented: `PolicyFlag` / `PolicySet` / `PolicyEnv` types; `PolicyEnv::Meta`
+  filtering in resolver and early-meta expansion; `ResolverCode` discriminator
+  for miss vs ambiguity; policy flags assigned to core symbols (`export+meta` for
+  meta-functions, `export+meta+runtime` for built-in types and the core namespace
+  symbol), all namespace symbols (`meta+runtime` for declared, physical,
+  dependency, type-projection, and generated namespaces), source-contributed
+  symbols (`runtime` for values, `meta+runtime` for type-annotated declarations),
+  and struct-generated type objects (`meta+runtime`). Policy filtering is per-
+  component — namespace intermediaries must carry traversal flags. `PolicyEnv::Runtime`
+  is not implemented; the `Runtime` flag is reserved for future runtime-lookup and
+  currently marks symbols excluded from meta passes.
 
 v0.8 (Type-to-Type Meta Construction Interpreter):
   Understand that meta body execution policy differs from function symbol policy
