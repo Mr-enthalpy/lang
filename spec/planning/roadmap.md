@@ -229,6 +229,9 @@ Must cover:
 - ordinary contribution restricted to direct children; deeper structure owned by
   the immediate direct child (no ordinary parent-to-descendant injection)
 - no source-level import/use/include/module
+- policy metadata slots on symbols, contexts, and namespace graph nodes
+  (architectural placeholder only; see
+  `spec/future/policy-visibility-symbols.md`)
 
 Non-goals: full version solving; remote package retrieval; lockfile
 completeness; dynamic/static distribution distinction; full access-control
@@ -256,6 +259,9 @@ Must cover:
   sibling / global namespace
 - `struct` consumes AST by a private checker; failure is a meta hard error, not
   a parser / normalizer error
+- policy fields on meta-function objects — entry-policy / return-object-policy
+  slots reserved (architectural placeholder; see
+  `spec/future/policy-visibility-symbols.md`)
 
 Non-goals: general compile-time value execution; value-to-value meta-functions;
 arbitrary control flow in meta bodies; full generic system; full pattern-space
@@ -285,6 +291,9 @@ Must cover:
   function name + arguments, not internal temporary names
 - generated declarations installed only under a legal parent / instance node
 - first-class generic classes such as `Vec(T)`, `Option(T)`, `Pair(A, B)`
+- awareness that meta body execution policy differs from function symbol policy
+  and return-object policy; implement only the minimum checks needed to avoid
+  misrepresenting meta-functions as runtime functions
 
 Non-goals: value-to-type control flow; value-to-value compile-time world;
 unrestricted compile-time IO; runtime execution; full borrow/lifetime checking;
@@ -325,6 +334,9 @@ The following remain deferred and are not numbered precisely here:
 - closure materialization model (ClosureAST → ClosureObject; capture rules)
 - ownership / NLL / drop / lifetime design (including any future semantics for
   `with { ... }`)
+- full policy inference, projection checking, compile / runtime / seal semantics,
+  const / mut policy, effect / error / panic policy, and resource capability
+  policy (see `spec/future/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes
 - HIR
 - code generation

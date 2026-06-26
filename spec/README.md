@@ -133,6 +133,7 @@ syntax specifications.
 | `package-manifest-v0.md` | Non-normative, future design | Provisional build-manifest design surface. |
 | `namespace-assembly-v0.md` | Non-normative, future design | High-level namespace assembly pipeline and phase split. |
 | `early-meta-functions-and-namespace-graph.md` | Non-normative, future design (v0.6–v0.8) | Canonical direction for the build / namespace graph bootstrap, early meta-function lookup, and the type-to-type meta construction interpreter. |
+| `policy-visibility-symbols.md` | Non-normative, future design (deferred beyond v0.8) | Policy as visibility symbols and capability strategy: trait model, partial-order, orthogonal dimensions, context-policy / import / binding rules, compile/runtime/meta/seal, const/mut motivation. Not implemented in v0.6–v0.8 except as metadata slots. |
 | `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.10+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
 
 ## Planning and debt

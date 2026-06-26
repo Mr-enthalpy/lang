@@ -69,6 +69,11 @@ provenance / diagnostics. Source code navigates names; the resolver answers with
 objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
 
+Policy metadata (see `spec/future/policy-visibility-symbols.md`) should be
+reserved as a slot on `SymbolObject`, the context, and the capability layer, but
+full policy inference / projection / checking is deferred to later stages. v0.6–
+v0.8 only need the architectural placeholder, not an implementation.
+
 ## 3. Symbol source model
 
 A node in the full namespace graph may be a **physical** node, a **declared**
@@ -264,7 +269,9 @@ contribute a namespace segment); declared symbol harvesting; SymbolObject model;
 physical / declared / virtual `NamespaceNode` kind; resolver returning a
 `SymbolObject`, not a string path; provenance and diagnostic attachment; the
 symbol-source-uniqueness rule (§3) and the ordinary direct-child contribution /
-local-construction rules (§4); no source-level import/use/include/module.
+local-construction rules (§4); no source-level import/use/include/module;
+policy metadata slots on symbols, contexts, and namespace graph nodes
+(architectural placeholder only — see `spec/future/policy-visibility-symbols.md`).
 
 Non-goals: full version solving; remote package retrieval; lockfile
 completeness; dynamic/static distribution distinction; full access-control
@@ -275,7 +282,10 @@ lattice; full policy checking; full type checking; full meta-function execution.
 Must cover: early meta-function lookup from the namespace graph; closed
 `SyntaxObject` passing; `assert`; `struct` as the first real core-namespace
 meta-function object; meta call replacement; `MetaExpansionResult`
-(replacement / namespace delta / diagnostics / provenance); the parent-to-child
+(replacement / namespace delta / diagnostics / provenance); policy fields on
+meta-function objects — entry-policy / return-object-policy slots (reserved, no
+full projection — see `spec/future/policy-visibility-symbols.md`); the
+parent-to-child
 injection rule, with parent-to-descendant generation only as the closed meta
 exception (§4); generated child namespace installation; no arbitrary rewrite of
 parent / sibling / global namespace; `struct` consumes AST by a private checker,
