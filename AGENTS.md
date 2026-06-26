@@ -147,7 +147,7 @@ Allowed work in the current documentation / stabilization stage:
 * Raw AST contract freeze checklist
 * diagnostic / golden-test inventory synchronization
 * correction of spec/code mismatches where implementation is settled truth
-* narrowly scoped golden-test additions (frozen behavior not yet locked)
+* narrowly scoped golden-test additions that document existing behavior without changing it
 * no parser behavior change unless a hard correctness error is identified
 
 Forbidden:
