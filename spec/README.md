@@ -41,8 +41,8 @@ semantic passes.
 | File | Authority | Role |
 |---|---|---|
 | `README.md` | Stage workspace index | Entry point for v0.5 public documentation. |
-| `normalized-surface-semantics-v0.5.md` | Authoritative outline (filled by later v0.5 PRs) | Public explanation of the normalized surface: source-product continuation and call binding, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
-| `agent-interpretation-guide-v0.5.md` | Operational outline (filled by later v0.5 PRs) | Normative guidance for coding/documentation agents: how to interpret source without importing conventional call assumptions. |
+| `normalized-surface-semantics-v0.5.md` | Published; authoritative for current normalized surface behavior | Public explanation of the normalized surface: source-product continuation and call binding, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
+| `agent-interpretation-guide-v0.5.md` | Published; normative for agents | Normative guidance for coding/documentation agents: how to interpret source without importing conventional call assumptions. |
 
 ## Normalized AST specification baseline: v0.3 — completed
 
@@ -91,8 +91,8 @@ repair, factual inventory checks, or archaeology.
 
 ## Contract and handoff documents
 
-**`spec/contracts/`** — Raw AST contract and v0.3 handoff boundary documents.
-Read these for normalization-boundary work and v0.3 preparation, not for
+**`spec/contracts/`** — Raw AST contracts, handoff documents, and normalization
+prototype boundary notes. Read these for implementation-boundary work, not for
 ordinary syntax understanding.
 
 | File | Authority | Role |
@@ -112,6 +112,16 @@ These remain available but are not the normal public entry point.
 | `frontend-v0.1.md` | Non-normative overview | Historical reader entry point. Describes the v0.1 pipeline, document division, and the boundaries between tokens, AST, and diagnostics. |
 | `operator-design.md` | Normative for operator syntax design | Defines operator identity, spellings, fixity, precedence, associativity, AST sugar shape, lookup boundaries, and implementation boundary. Historical reference. |
 | `resolved-questions.md` | Authoritative for resolved decisions | Records design questions resolved in v0.1. |
+
+**`spec/history/v0.3/`** and **`spec/history/v0.4/`** — Route and resolved-design
+summaries for the Normalized AST specification (v0.3) and the Raw AST →
+Normalized AST prototype/hardening (v0.4). They point back to the completed
+baseline and contract documents and do not define current behavior.
+
+| File | Authority | Role |
+|---|---|---|
+| `history/v0.3/README.md` | Non-normative historical summary | v0.3 Normalized AST specification route and resolved design boundary; points to the v0.3 baseline spec, the handoff checklist, and the N-AST resolution trail. |
+| `history/v0.4/README.md` | Non-normative historical summary | v0.4 Raw AST → Normalized AST prototype/hardening route, `Unsupported`-audit and value/pattern hardening decisions; points to the v0.4 prototype notes and golden tests. |
 
 ## Future design notes
 
@@ -140,12 +150,25 @@ not syntax specifications.
 
 ## Reading order
 
+Current reading order (summary):
+
+1. `spec/public/v0.5/README.md`
+2. `spec/public/v0.5/normalized-surface-semantics-v0.5.md`
+3. `spec/public/v0.5/agent-interpretation-guide-v0.5.md`
+4. `spec/public/v0.2/*` for the frozen Raw AST input syntax
+5. `spec/contracts/*` only when doing implementation-boundary work
+6. `spec/history/*` for route / decisions / archaeology
+7. `spec/future/*` for v0.6+ semantic design
+
+`spec/public/v0.3/` is a completed baseline reference, not a current reading
+step. The detailed per-tier lists below expand this order.
+
 ### Current v0.5 public documentation
 
 Start here for the current active stage:
 
 1. `public/v0.5/README.md` - v0.5 public documentation index.
-2. `public/v0.5/normalized-surface-semantics-v0.5.md` - normalized surface semantics (authoritative outline).
+2. `public/v0.5/normalized-surface-semantics-v0.5.md` - normalized surface semantics (published).
 3. `public/v0.5/agent-interpretation-guide-v0.5.md` - how agents should interpret source.
 4. `contracts/v0.4-normalization-prototype-notes.md` - the v0.4 normalization boundary.
 
