@@ -23,7 +23,7 @@ Documentation pointers:
 
 - Current public documentation: `spec/public/v0.5/`
 - Frozen Raw AST input surface: `spec/public/v0.2/`
-- Completed Normalized AST specification baseline: `spec/public/v0.3/`
+- Normalized AST specification baseline (historical): `spec/history/v0.3/`
 - Completed Raw AST -> Normalized AST prototype/hardening notes:
   `spec/contracts/v0.4-normalization-prototype-notes.md`
 
@@ -46,23 +46,22 @@ behavior:
 | `spec/public/v0.5/agent-interpretation-guide-v0.5.md` | How agents should interpret source without conventional call assumptions |
 | `spec/contracts/v0.4-normalization-prototype-notes.md` | The v0.4 normalization boundary |
 
-### v0.3 Normalized AST specification baseline (completed)
+### v0.3 Normalized AST design history
 
-v0.3 is the completed Normalized AST specification baseline (historical /
-completed; not the current active stage). For the current active stage, see
-`spec/public/v0.5/`. The v0.3 baseline documents:
+v0.3 was the Normalized AST specification stage; v0.4 implemented it and v0.5
+publishes the public surface. The v0.3 specification is now historical:
 
 | Document | Purpose |
 |---|---|
-| `spec/public/v0.3/README.md` | v0.3 stage workspace index |
-| `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification baseline (§7 call skeleton, §8 minimum shape) |
-| `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff: may-assume, must-not-assume, required inputs, open questions |
-| `spec/planning/open-questions.md` | Normalized AST questions (N-AST-1..9), resolved by v0.5 public docs; remaining future / stabilization questions |
+| `spec/history/v0.3/README.md` | v0.3 design-history index |
+| `spec/history/v0.3/normalized-ast-specification-v0.3.md` | v0.3 Normalized AST specification baseline (§7 call skeleton, §8 minimum shape) |
+| `spec/history/v0.3/normalized-ast-design-history-v0.3.md` | N-AST design questions, resolutions, audit trail, reset-debt log |
+| `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff snapshot (may-assume, must-not-assume, required inputs) |
 
 ### Frozen v0.2 frontend input authority
 
 The v0.2 public frontend specification set remains authoritative for the frozen
-Raw AST input surface. Read these for the input contract that v0.3 consumes:
+Raw AST input surface. Read these for the input contract the normalizer consumes:
 
 | Document | Purpose |
 |---|---|
@@ -128,155 +127,36 @@ documents remain present, but they are not part of the normal public reading pat
    future build system, package manifest, and namespace assembly design.
 
 Start with `spec/public/v0.5/README.md` for current v0.5 public documentation.
-Read `spec/public/v0.3/README.md` only for the completed Normalized AST
-specification baseline.
+Read `spec/history/v0.3/` for the v0.3 Normalized AST design baseline
+(historical).
 Read `spec/public/v0.2/lexical-syntax-v0.2.md` when you need the frozen Raw AST
 input contract. Read `spec/public/v0.2/concrete-syntax-v0.2.md` for parsed
 syntax and `spec/public/v0.2/diagnostics-recovery-v0.2.md` for error behavior.
 
-## Design summary
+## Language surface
 
-The language frontend is built around several early decisions.
+`lang` is currently specified by its **normalized surface** (v0.5):
 
-### 1. Weak lexer
+- **Current public surface** — `spec/public/v0.5/`. The published normalized
+  surface semantics: how source is read and lowered into Normalized AST
+  (call / product / pipe binding, value/pattern boundaries, sugar lowering,
+  origin / `Unsupported` visibility, and non-goals).
+- **Frozen input layer** — `spec/public/v0.2/`. The Raw AST frontend
+  (lexer / parser / diagnostics) is the frozen input syntax the normalizer
+  consumes.
+- **Implemented lowering layer** — the v0.4 normalizer lowers Raw AST into a
+  desugared, non-semantic Normalized AST; its boundary is recorded in
+  `spec/contracts/v0.4-normalization-prototype-notes.md`.
 
-The lexer does not assign semantic roles to ordinary names.
+The pipeline is `source text -> tokens -> Raw AST -> Normalized AST`, plus
+diagnostics. Nothing in the current surface resolves names, checks types, looks
+up operators, materializes closures, evaluates, or generates code; it is
+structural only, and it is not HIR.
 
-Names such as:
-
-```text
-return else match drop move sync effect fn type meta runtime compile
-```
-
-are ordinary `Name` tokens.
-
-Semantic strength does not imply lexical keyword status.
-
-### 2. Contextual parser
-
-Some names can act as structure delimiters only in strong parser contexts.
-
-Examples:
-
-- `let` at form start
-- `require`/`pre`/`post`/`lifetime pre`/`lifetime post` as active raw-AST
-  closure-head clauses (one expression slot each, no semantic validation);
-  `acquire` an ordinary name
-- `with` inside let bindings, only as `with { ... }`
-
-Outside their context, they remain ordinary names.
-
-### 2a. Inner-to-outer navigation
-
-Navigation order is inner-to-outer. The leftmost component is the innermost
-selected symbol, and the rightmost component is the outermost scope component.
-Raw AST preserves source-order navigation components and performs no lookup.
-
-Examples:
-
-```text
-x::T::std
-+::int::std
-xxx::(int Vec::std)
-```
-
-Parenthesized right-side scope expressions after `::` are preserved as grouped
-navigation components. Without parentheses, `::` consumes only one immediate
-valid navigation component.
-
-### 3. No traditional call syntax
-
-The language does not use traditional:
-
-```text
-f(args)
-```
-
-as a general call form.
-
-Parenthesized top-level-comma forms are product forms. In expression context
-they are product construction; in binding / extraction context they are product
-extraction.
-
-### 4. `|>` as expression skeleton
-
-Expression construction is not based on a traditional C-like
-operator-precedence table.
-
-The expression frontend is organized around `|>` as the outer skeleton:
-
-```text
-top-level |> segmentation
-  -> per-segment atom folding
-  -> per-segment operator sugar
-  -> per-segment automatic pipe
-  -> product form preservation
-```
-
-The current parser preserves a segment-local `OperatorExpr` layer:
-
-```text
-SegmentElement := OperatorExpr | Product
-```
-
-Ordinary operators bind tighter than whitespace auto-pipe and `|>`, but they
-remain AST sugar.
-
-Operator syntax is AST sugar only: no lookup, type checking, evaluation,
-mutation semantics, or lowering is performed by the parser. Operator parsing is
-local to one pipe segment and does not cross `|>` boundaries.
-
-### 5. Closure literals produce AST first
-
-A closure literal initially produces closure AST, not a callable object.
-
-Examples:
-
-```text
-() => {}
-```
-
-Bare `{ ... }` in atom position produces `ClosureAst::InPlace`. It is not a
-normal block expression and has no closure head. Braces also delimit explicit
-closure bodies after `FnHeadPrefix =>`.
-
-Compiler meta-functions may directly consume closure AST.
-
-### 6. `<>` declares holes
-
-`<...>` has exactly one special use:
-
-```text
-declare names that act as holes in following syntax
-```
-
-It is only recognized in binding contexts.
-
-It is not generic-call syntax, template syntax, or meta-function syntax.
-Individual `<`, `>`, `<=`, and `>=` spellings are documented as planned
-operator names in expression/operator contexts.
-
-### 7. Declarations enter through `let`
-
-All user-visible declarations use `let`. There is no dedicated parser syntax for
-function, type, or namespace declarations.
-
-`fn`, `type`, and `namespace` are ordinary `Name` tokens, not lexer keywords.
-v0.1 parses and preserves declaration annotations but does not check their
-semantic validity.
-
-Bare declaration annotations are preserved exactly as written. Rank annotations
-require the explicit `type_object_annotation : rank_annotation` form.
-
-### 8. Parser owns shape, semantics owns meaning
-
-The parser constructs and preserves raw AST shape. It does not decide what an
-AST fragment semantically represents. Future semantic or meta-function passes
-may interpret preserved shapes.
-
-Parse left to right. Do not go back to reinterpret meaning. v0.1 must not add
-special AST nodes just because a future built-in meta-function may understand
-a shape.
+The early Raw AST frontend design decisions (weak lexer, contextual parser,
+`|>` skeleton, `<>` holes, `let`-only declarations, parser-owns-shape) are
+historical context: see `spec/history/v0.1/frontend-design-summary.md` and the
+frozen `spec/public/v0.2/` syntax specs.
 
 ## Workspace layout
 
@@ -291,14 +171,15 @@ a shape.
 ├── spec/
 │   ├── README.md
 │   ├── public/
-│   │   ├── v0.3/
-│   │   │   ├── README.md
-│   │   │   └── normalized-ast-specification-v0.3.md
-│   │   └── v0.2/
-│   │       ├── lexical-syntax-v0.2.md
-│   │       ├── concrete-syntax-v0.2.md
-│   │       ├── diagnostics-recovery-v0.2.md
-│   │       └── raw-ast-frozen-surface-v0.2.md
+│   │   ├── v0.2/
+│   │   │   ├── lexical-syntax-v0.2.md
+│   │   │   ├── concrete-syntax-v0.2.md
+│   │   │   ├── diagnostics-recovery-v0.2.md
+│   │   │   └── raw-ast-frozen-surface-v0.2.md
+│   │   └── v0.5/
+│   │       ├── README.md
+│   │       ├── normalized-surface-semantics-v0.5.md
+│   │       └── agent-interpretation-guide-v0.5.md
 │   ├── reference/
 │   │   └── glossary.md
 │   ├── implementation/
@@ -309,19 +190,28 @@ a shape.
 │   ├── contracts/
 │   │   ├── raw-ast-contract-v0.1.md
 │   │   ├── raw-ast-contract-freeze-v0.2.md
-│   │   └── v0.3-normalization-handoff-checklist.md
+│   │   ├── v0.3-normalization-handoff-checklist.md
+│   │   └── v0.4-normalization-prototype-notes.md
 │   ├── history/
-│   │   └── v0.1/
-│   │       ├── frontend-v0.1.md
-│   │       ├── operator-design.md
-│   │       └── resolved-questions.md
+│   │   ├── v0.1/
+│   │   │   ├── frontend-v0.1.md
+│   │   │   ├── frontend-design-summary.md
+│   │   │   ├── operator-design.md
+│   │   │   └── resolved-questions.md
+│   │   ├── v0.3/
+│   │   │   ├── README.md
+│   │   │   ├── normalized-ast-specification-v0.3.md
+│   │   │   └── normalized-ast-design-history-v0.3.md
+│   │   └── v0.4/
+│   │       └── README.md
 │   ├── future/
 │   │   ├── entity-ref-design.md
 │   │   ├── entity-alias-design.md
 │   │   ├── library-namespace-design-note.md
 │   │   ├── build-system-design.md
 │   │   ├── package-manifest-v0.md
-│   │   └── namespace-assembly-v0.md
+│   │   ├── namespace-assembly-v0.md
+│   │   └── static-pattern-spaces-and-extraction-chains.md
 │   └── planning/
 │       ├── roadmap.md
 │       └── open-questions.md
@@ -332,10 +222,12 @@ a shape.
     ├── lexer_golden.rs
     ├── parser_golden.rs
     ├── diagnostics_golden.rs
+    ├── normalized_golden.rs
     └── cases/
         ├── lexer/
         ├── parser/
-        └── diagnostics/
+        ├── diagnostics/
+        └── norm/
 ```
 
 ## Build
@@ -360,20 +252,23 @@ The `lang_cli` crate exposes:
 ```bash
 lang tokens path/to/file.lang
 lang ast path/to/file.lang
+lang norm path/to/file.lang
 lang diag path/to/file.lang
 ```
 
-The repository has golden coverage for lexer, parser/AST, and diagnostics.
+The repository has golden coverage for lexer, parser/AST, diagnostics, and
+normalized AST (`tests/normalized_golden.rs`, `tests/cases/norm/`).
 See `spec/implementation/v0.1/implementation-status-v0.1.md` for the current test count.
 
-## Non-goals for v0.1/v0.2
+## Non-goals (current)
 
-v0.1 does not implement type checking, kind checking, name resolution,
-operator lookup, alias resolution, closure materialization, NLL/drop
-insertion, interpretation, code generation, or IR/HIR/MIR lowering.
+The current frontend and normalizer do not implement type checking, kind
+checking, name resolution, operator lookup, alias resolution, closure
+materialization, NLL/drop insertion, interpretation, code generation, or
+IR/HIR/MIR lowering.
 
-The parser preserves raw AST shape for these future passes but performs
-none of them.
+The frontend preserves Raw AST shape and the normalizer preserves a desugared,
+non-semantic Normalized AST for these future passes, but performs none of them.
 
 ## How to read the spec
 
@@ -386,14 +281,14 @@ Start here for the current active stage:
 3. `spec/public/v0.5/agent-interpretation-guide-v0.5.md` — how agents should interpret source.
 4. `spec/contracts/v0.4-normalization-prototype-notes.md` — the v0.4 normalization boundary.
 
-### v0.3 Normalized AST specification baseline (completed)
+### v0.3 Normalized AST design history
 
-Read these for the completed Normalized AST specification baseline:
+Read these for the v0.3 Normalized AST design baseline (historical):
 
-1. `spec/public/v0.3/README.md` — v0.3 workspace index.
-2. `spec/public/v0.3/normalized-ast-specification-v0.3.md` — Normalized AST specification (incl. §7 call skeleton, §8 minimum shape).
-3. `spec/contracts/v0.3-normalization-handoff-checklist.md` — v0.3 may-assume, must-not-assume, required inputs.
-4. `spec/planning/open-questions.md` — Normalized AST design questions (N-AST-1 through N-AST-9).
+1. `spec/history/v0.3/README.md` — v0.3 design-history index.
+2. `spec/history/v0.3/normalized-ast-specification-v0.3.md` — v0.3 Normalized AST specification (incl. §7 call skeleton, §8 minimum shape).
+3. `spec/history/v0.3/normalized-ast-design-history-v0.3.md` — N-AST design questions, resolutions, and audit trail.
+4. `spec/contracts/v0.3-normalization-handoff-checklist.md` — v0.3 handoff snapshot.
 
 ### Frozen v0.2 frontend input
 

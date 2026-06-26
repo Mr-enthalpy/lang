@@ -3,15 +3,18 @@
 ## Purpose
 
 This skill defines how to work on the `lang` repository. The v0.1 Raw AST
-frontend is completed. v0.1.w is closed. v0.2 is closed. The current active
-stage is `v0.3` — Normalized AST Specification.
+frontend, v0.1.w, and v0.2 are completed/closed. v0.3 (Normalized AST
+Specification) and v0.4 (Raw AST → Normalized AST prototype/hardening) are
+completed. The current active stage is `v0.5` — Normalized Surface Semantics
+Stabilization and Public Documentation Reset.
 
-v0.3 specifies the Normalized AST, a desugared but non-semantic intermediate
-AST. v0.3 is specification-only. Normalized AST implementation (Raw AST →
-Normalized AST lowering) is v0.4.
+The current public surface is the v0.5 normalized surface
+(`spec/public/v0.5/normalized-surface-semantics-v0.5.md`). Normalized AST is a
+desugared, non-semantic AST; it is not HIR, not type-checked, and not
+name-resolved.
 
-The only accepted outputs for implementation work are tokens, AST, and
-diagnostics.
+The dumpable outputs are tokens, AST, normalized AST, and diagnostics
+(`lang tokens|ast|norm|diag <path>`).
 
 ## Workflow
 
@@ -36,17 +39,18 @@ Follow this workflow for every change:
 | 1 | `AGENTS.md` | Always, before any code change |
 | 2 | `README.md` | Repository orientation |
 | 3 | `spec/README.md` | Spec index and authority levels |
-| 4 | `spec/public/v0.3/README.md` | v0.3 workspace index |
-| 5 | `spec/public/v0.3/normalized-ast-specification-v0.3.md` | Normalized AST specification scaffold |
-| 6 | `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff checklist |
-| 7 | `spec/planning/open-questions.md` | Open v0.3 design questions |
+| 4 | `spec/public/v0.5/README.md` | v0.5 public documentation index |
+| 5 | `spec/public/v0.5/normalized-surface-semantics-v0.5.md` | Current normalized surface semantics |
+| 6 | `spec/public/v0.5/agent-interpretation-guide-v0.5.md` | How to interpret source |
+| 7 | `spec/contracts/v0.4-normalization-prototype-notes.md` | The v0.4 normalization boundary |
 | 8 | `spec/reference/glossary.md` | Terminology reference |
 
 ### Task-specific extended context
 
 | Task | Files to read |
 |---|---|
-| Current v0.3 Normalized AST specification | `spec/public/v0.3/README.md`, `spec/public/v0.3/normalized-ast-specification-v0.3.md`, `spec/contracts/v0.3-normalization-handoff-checklist.md` |
+| Current normalized surface (v0.5) | `spec/public/v0.5/normalized-surface-semantics-v0.5.md`, `spec/public/v0.5/agent-interpretation-guide-v0.5.md`, `spec/contracts/v0.4-normalization-prototype-notes.md` |
+| v0.3 Normalized AST design history | `spec/history/v0.3/README.md`, `spec/history/v0.3/normalized-ast-specification-v0.3.md`, `spec/history/v0.3/normalized-ast-design-history-v0.3.md` |
 | Frozen v0.2 frontend input | `spec/public/v0.2/lexical-syntax-v0.2.md`, `spec/public/v0.2/concrete-syntax-v0.2.md`, `spec/public/v0.2/diagnostics-recovery-v0.2.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` |
 | Parser implementation changes | `spec/implementation/v0.1/ast-construction-v0.1.md`, `spec/implementation/v0.1/implementation-status-v0.1.md` |
 | Diagnostic implementation changes | `spec/implementation/v0.1/diagnostics-v0.1.md` |
@@ -142,7 +146,7 @@ Allowed v0.2 work:
 - version/stage metadata alignment
 - contract freeze checklist, diagnostic/golden-test inventory sync
 - correction of spec/code mismatches where implementation is settled truth
-- narrowly scoped golden-test additions (frozen behavior not yet locked)
+- narrowly scoped golden-test additions that document existing behavior without changing it
 - no parser behavior change unless a hard correctness error is identified
 
 Forbidden in v0.2:
@@ -166,6 +170,7 @@ architecture, or makes a documented invariant impossible to maintain.
 |---|---|---|
 | Lexer | `Vec<Token>` | Hand-written, stable, golden-testable |
 | Parser | `ProgramAst` | Hand-written, stable, golden-testable |
+| Normalizer | `NormProgram` (Normalized AST) | Hand-written, stable, golden-testable |
 | Diagnostics | `Vec<Diagnostic>` | Hand-written, stable, golden-testable |
 
 Do **not** use Rust `Debug` format for any dump output.
@@ -237,9 +242,9 @@ If a requested task requires any of the following, stop at AST preservation:
 
 ## 7a. Phase boundaries
 
-For v0.3 Normalized AST specification work:
+For current v0.5 documentation / stabilization work:
 - Prefer documentation and contract alignment.
-- Do not restructure the lexer/parser skeleton.
+- Do not restructure the lexer/parser skeleton or the normalizer.
 - Do not add syntax except under a hard-correctness-error exception. Richer
   literal spelling and local mechanical sugar are completed v0.1.w additions.
 - Run `cargo fmt --all` after code or Rust doc-comment changes.
@@ -249,9 +254,10 @@ For Raw AST contract work:
 - Do not change parser behavior; document invariants in `spec/contracts/raw-ast-contract-v0.1.md`.
 - Update the contract when parser changes affect AST shape.
 
-For Normalized AST work:
-- First update or create Normalized AST specs before implementing code.
-- Normalized AST may desugar syntax but must not resolve names, infer types,
+For Normalized AST changes:
+- The Raw AST → Normalized AST lowering is implemented (v0.4); its boundary is
+  recorded in `spec/contracts/v0.4-normalization-prototype-notes.md`.
+- Normalized AST desugars syntax but must not resolve names, infer types,
   evaluate canonical forms, materialize closures, or insert drops.
 - Do not call Normalized AST "HIR".
 
@@ -263,10 +269,11 @@ Every syntax rule requires a golden test with:
 2. Test function in the corresponding `tests/*_golden.rs` file.
 3. Expected output snapshot.
 
-Minimum golden case groups (from `AGENTS.md`). The v0.1 baseline has golden
-coverage for lexer, parser/AST, and diagnostics. During `v0.2`, update or add
-golden cases only for narrow documentation-aligned corrections, richer literal
-spellings, or local mechanical whole-shape sugar recognition:
+Minimum golden case groups (from `AGENTS.md`). The repository has golden
+coverage for lexer, parser/AST, diagnostics, and normalized AST
+(`tests/normalized_golden.rs`, `tests/cases/norm/`). In the current
+documentation / stabilization stage, update or add golden cases only for narrow
+documentation-aligned corrections:
 
 ```text
 lexer/        names, symbols, comments, invalid, operators

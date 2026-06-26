@@ -44,22 +44,10 @@ semantic passes.
 | `normalized-surface-semantics-v0.5.md` | Published; authoritative for current normalized surface behavior | Public explanation of the normalized surface: source-product continuation and call binding, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
 | `agent-interpretation-guide-v0.5.md` | Published; normative for agents | Normative guidance for coding/documentation agents: how to interpret source without importing conventional call assumptions. |
 
-## Normalized AST specification baseline: v0.3 — completed
-
-**`spec/public/v0.3/`** — The completed Normalized AST specification baseline.
-v0.3 specified the Normalized AST shape; v0.4 implemented and hardened the Raw
-AST → Normalized AST lowering. v0.3 is a baseline reference, not the current
-active stage.
-
-| File | Authority | Role |
-|---|---|---|
-| `README.md` | Stage workspace index (completed baseline) | Entry point for the v0.3 Normalized AST specification. |
-| `normalized-ast-specification-v0.3.md` | v0.3 specification baseline | Defines the problem space, the non-semantic boundary, the source-product continuation call skeleton (§7), and the minimum Normalized AST shape for v0.4 (§8). |
-
 ## Frozen v0.2 frontend input authority
 
 **`spec/public/v0.2/`** — Frozen frontend input contract. v0.2 is closed but
-remains authoritative for the Raw AST input surface that v0.3 normalization
+remains authoritative for the Raw AST input surface that the normalizer
 consumes.
 
 | File | Authority | Role |
@@ -110,18 +98,26 @@ These remain available but are not the normal public entry point.
 | File | Authority | Role |
 |---|---|---|
 | `frontend-v0.1.md` | Non-normative overview | Historical reader entry point. Describes the v0.1 pipeline, document division, and the boundaries between tokens, AST, and diagnostics. |
+| `frontend-design-summary.md` | Non-normative overview | Early Raw AST frontend design decisions (weak lexer, contextual parser, `|>` skeleton, `<>` holes, `let`-only declarations, parser-owns-shape). |
 | `operator-design.md` | Normative for operator syntax design | Defines operator identity, spellings, fixity, precedence, associativity, AST sugar shape, lookup boundaries, and implementation boundary. Historical reference. |
 | `resolved-questions.md` | Authoritative for resolved decisions | Records design questions resolved in v0.1. |
 
-**`spec/history/v0.3/`** and **`spec/history/v0.4/`** — Route and resolved-design
-summaries for the Normalized AST specification (v0.3) and the Raw AST →
-Normalized AST prototype/hardening (v0.4). They point back to the completed
-baseline and contract documents and do not define current behavior.
+**`spec/history/v0.3/`** — The v0.3 Normalized AST specification design history.
+The v0.3 specification baseline was relocated here; the current public surface is
+v0.5.
 
 | File | Authority | Role |
 |---|---|---|
-| `history/v0.3/README.md` | Non-normative historical summary | v0.3 Normalized AST specification route and resolved design boundary; points to the v0.3 baseline spec, the handoff checklist, and the N-AST resolution trail. |
-| `history/v0.4/README.md` | Non-normative historical summary | v0.4 Raw AST → Normalized AST prototype/hardening route, `Unsupported`-audit and value/pattern hardening decisions; points to the v0.4 prototype notes and golden tests. |
+| `README.md` | Non-normative historical index | v0.3 design-history entry point. |
+| `normalized-ast-specification-v0.3.md` | Historical specification baseline | The v0.3 Normalized AST specification (§7 call skeleton, §8 minimum shape). Relocated from `spec/public/`. |
+| `normalized-ast-design-history-v0.3.md` | Non-normative historical record | The `N-AST-1..9` design questions, resolutions, the N-AST-9 review audit trail, and the documentation-reset debt log. |
+
+**`spec/history/v0.4/`** — The v0.4 Raw AST → Normalized AST prototype/hardening
+route and decisions.
+
+| File | Authority | Role |
+|---|---|---|
+| `README.md` | Non-normative historical summary | v0.4 prototype/hardening route, `Unsupported`-audit and value/pattern hardening decisions; points to the v0.4 prototype notes and golden tests. |
 
 ## Future design notes
 
@@ -146,7 +142,7 @@ not syntax specifications.
 | File | Authority | Role |
 |---|---|---|
 | `roadmap.md` | Authoritative for scope and planning; non-normative for parser behavior | Defines stage boundaries (v0.1–v0.11) and what must not leak between stages. |
-| `open-questions.md` | Non-normative | Tracks unresolved design questions and documentation debt. |
+| `open-questions.md` | Non-normative | Tracks unresolved, forward-looking design questions (v0.5 stabilization debt and v0.6+). |
 
 ## Reading order
 
@@ -160,8 +156,8 @@ Current reading order (summary):
 6. `spec/history/*` for route / decisions / archaeology
 7. `spec/future/*` for v0.6+ semantic design
 
-`spec/public/v0.3/` is a completed baseline reference, not a current reading
-step. The detailed per-tier lists below expand this order.
+`spec/history/v0.3/` holds the v0.3 Normalized AST design baseline (historical),
+not a current reading step. The detailed per-tier lists below expand this order.
 
 ### Current v0.5 public documentation
 
@@ -172,14 +168,14 @@ Start here for the current active stage:
 3. `public/v0.5/agent-interpretation-guide-v0.5.md` - how agents should interpret source.
 4. `contracts/v0.4-normalization-prototype-notes.md` - the v0.4 normalization boundary.
 
-### v0.3 Normalized AST specification baseline (completed)
+### v0.3 Normalized AST design history
 
-Read these for the completed Normalized AST specification baseline:
+Read these for the v0.3 Normalized AST design baseline (historical):
 
-1. `public/v0.3/README.md` - v0.3 workspace index.
-2. `public/v0.3/normalized-ast-specification-v0.3.md` - Normalized AST specification (incl. §7 call skeleton, §8 minimum shape).
-3. `contracts/v0.3-normalization-handoff-checklist.md` - v0.3 may-assume, must-not-assume, required inputs.
-4. `planning/open-questions.md` - Normalized AST design questions (N-AST-1 through N-AST-9).
+1. `history/v0.3/README.md` - v0.3 design-history index.
+2. `history/v0.3/normalized-ast-specification-v0.3.md` - v0.3 Normalized AST specification (incl. §7 call skeleton, §8 minimum shape).
+3. `history/v0.3/normalized-ast-design-history-v0.3.md` - N-AST design questions, resolutions, audit trail.
+4. `contracts/v0.3-normalization-handoff-checklist.md` - v0.3 handoff snapshot.
 
 ### Frozen v0.2 frontend input
 
