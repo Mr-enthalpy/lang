@@ -7,6 +7,15 @@
 > Layer, early meta-functions, type-to-type meta construction) is detailed in
 > `spec/future/early-meta-functions-and-namespace-graph.md`.
 
+The build system produces a **namespace graph world model** — a persistent,
+diagnosable, eventually transactional object shared by all future phases
+(resolver, early meta, type checker, policy, seal, IDE, cache). It is not a
+temporary file index or a one-shot scan. For the engineering invariants that
+govern this model (transaction discipline, conflict policy, symbol identity,
+no-bypass, phase vocabulary, test philosophy), see
+`spec/future/early-meta-functions-and-namespace-graph.md`
+§"Namespace Graph World Model Invariants".
+
 ## 1. Scope
 
 This document records the intended future direction for libraries, imports,
