@@ -28,9 +28,9 @@ behavior, especially:
 
 - [`normalized-surface-semantics-v0.5.md`](normalized-surface-semantics-v0.5.md)
   — the public, authoritative explanation of the normalized surface. The
-  call / product / pipe binding sections (§1–§7, §11–§13) are published in
+  call / product / pipe binding sections (§1–§7, §11–§13) were published in
   v0.5-2; the value-side / pattern-side, annotation, and alias sections
-  (§8–§10) are filled in v0.5-3.
+  (§8–§10) are published in v0.5-3.
 - [`agent-interpretation-guide-v0.5.md`](agent-interpretation-guide-v0.5.md)
   — operational, normative guidance for coding/documentation agents on how to
   interpret source without importing C / Rust / Python call assumptions.

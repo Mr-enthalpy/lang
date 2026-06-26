@@ -368,25 +368,253 @@ No field lookup, method lookup, method dispatch, type checking, or overload reso
 
 ## 8. Value-Side vs Pattern-Side Material
 
-_(Placeholder for v0.5-3.)_ Value-side material remains `NormExpr` and
-pattern-side material remains `NormPattern`. A value enters pattern space only
-through an explicit bridge; a pattern exposes values only through explicit
-extraction. Pattern-side names are not ordinary call targets. Backing:
-`spec/contracts/v0.4-normalization-prototype-notes.md`.
+Value and pattern are different kinds of material and do not implicitly convert.
+
+```text
+A value does not implicitly become a pattern.
+A pattern does not implicitly become a value.
+```
+
+A value enters pattern space only through an explicit bridge in a later phase
+(for example postfix `?` or another explicit value-to-pattern operation; that
+operation's semantics are v0.6+ and are not defined here). A pattern exposes
+values only through explicit extraction, binding, passing, or returning.
+
+What each side is:
+
+```text
+A Value is the object being processed.
+A Pattern is the structural / extraction-side material used to decompose,
+classify, or bind material.
+```
+
+At the normalized layer, whether a value can be expanded, whether a field
+exists, or whether an extractor applies is not decided.
+
+Separation in the normalized tree:
+
+```text
+Value-side material remains NormExpr.
+Pattern-side material remains NormPattern.
+```
+
+Expression-shaped syntax may appear in a binding, annotation, or extraction
+context. When it does, it normalizes into pattern-side material:
+
+```text
+Raw syntax may look expression-shaped, but if it occurs in a pattern,
+annotation, or extraction context, it normalizes into NormPattern-side material,
+not NormExpr.
+```
+
+The dump labels make this visible. The same source name is a different node on
+each side:
+
+```text
+value position:       Name "P"          (NormExpr)
+annotation position:  PatternName "P"   (NormPattern)
+```
+
+Pattern-side names are bounded pattern material, not ordinary call targets:
+
+```text
+Pattern-side names are unresolved pattern material.
+They are not ordinary call targets.
+They must not fall back to ordinary value/function lookup.
+```
+
+This applies to annotation patterns, binding patterns, extraction skeletons, and
+future pattern-head positions.
+
+### Construction/extraction vs call/extraction
+
+```text
+Construction and extraction may be isomorphic.
+Call and extraction are not isomorphic.
+```
+
+A call returns a value. Extraction operates on the returned value's structure,
+not on the call target or call history. For example, in expression position:
+
+```text
+((a P1), b P2)
+```
+
+`P1` and `P2` are value-side expression-chain / target material; they are not
+pattern names. Even if `a P1` returns a value that is later extractable,
+extraction sees the returned value's structure, not `P1` as a pattern head.
+
+Contrast with annotation / pattern position:
+
+```text
+T Option::std
+```
+
+Here `T` and `Option::std` are pattern-side material (see §9), not value-side
+call material.
+
+The normalizer does not perform pattern-head resolution, extraction
+applicability checks, exhaustiveness checking, or residual propagation. Those
+are v0.6+ (see §13).
 
 ## 9. Annotation Patterns and DeduceList Holes
 
-_(Placeholder for v0.5-3.)_ Annotations are annotation-pattern (classifier)
-material, not ordinary runtime expressions; DeduceList is a binding-site hole
-binder list whose holes may appear inside annotation patterns. Backing:
-`spec/public/v0.3/normalized-ast-specification-v0.3.md` §8.2–§8.5.
+### DeduceList is a binding-site hole binder list
+
+```text
+DeduceList is not the annotation pattern itself.
+DeduceList is not the value/extraction pattern itself.
+DeduceList is a binding-site hole binder list.
+```
+
+A DeduceList (`<...>`) may occur on let binding slots, closure heads, parameter
+slots, and other binding-site structures. A hole it declares may appear inside
+the annotation pattern of the same binding site.
+
+```text
+Conceptual rule: binding-site / pattern normalization
+Dump label:      PatternNormalize
+```
+
+Each declared hole is a `HoleDecl` in the binding site's `deduce` list; a use of
+that hole inside an annotation is a `HoleRef`:
+
+```text
+HoleDecl   declares a hole in a DeduceList (e.g. `<T>` -> HoleDecl "T")
+HoleRef    references a declared hole inside a pattern (e.g. annotation `T` -> HoleRef "T")
+```
+
+A `HoleDecl` may itself carry an annotation pattern (e.g. `<T: type>` declares
+`T` with annotation `PatternName "type"`).
+
+### Annotation is pattern-side / classifier-pattern material
+
+```text
+Annotation is not an ordinary runtime expression.
+Annotation is not call syntax.
+Annotation is normalized through a pattern-side path (AnnotationPattern).
+```
+
+Inside an `AnnotationPattern`, names and navigation normalize to pattern-side
+nodes by these rules:
+
+```text
+A name declared by the binding-site DeduceList   -> HoleRef
+A name not declared by the DeduceList            -> PatternName (not NormExpr::Name)
+Navigation (e.g. Option::std)                    -> PatternNav (not value-side Nav)
+A sequence of annotation terms                   -> PatternSequence of the above
+```
+
+Examples (verified against `tests/cases/norm/`):
+
+```text
+let <T> x: T = y
+  deduce:      HoleDecl "T"
+  value:       Binder "x"
+  annotation:  AnnotationPattern( HoleRef "T" )
+  initializer: Name "y"            // value-side NormExpr
+
+let <T> z: T Option::std = y
+  annotation:  AnnotationPattern( PatternSequence[ HoleRef "T", PatternNav["Option","std"] ] )
+
+let <T> x: U = y
+  annotation:  AnnotationPattern( PatternName "U" )      // U undeclared -> PatternName
+
+let <T> x: U Option::std = y
+  annotation:  AnnotationPattern( PatternSequence[ PatternName "U", PatternNav["Option","std"] ] )
+```
+
+Closure head example (head dump label `ClosureNormalize`):
+
+```text
+<T: type>(val: T) => { val }
+
+Closure kind=Explicit
+  head: ClosureHead
+    deduce:
+      HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )
+    params:
+      BindingSlot "val" with annotation AnnotationPattern( HoleRef "T" )
+  body: NormBody          // recursively normalized as forms/expressions
+```
+
+`type` and `T` here are not runtime expressions.
+
+### Extraction skeletons and product extraction
+
+Binding patterns may be product extraction or canonical skeletons; both remain
+pattern-side structures preserved for later checking:
+
+```text
+(x, y)        -> PatternProduct[ Binder "x", Binder "y" ]
+(x,)          -> PatternProduct[ Binder "x", Unit ]
+(,x)          -> PatternProduct[ Unit, Binder "x" ]
+(x,,y)        -> PatternProduct[ Binder "x", Unit, Binder "y" ]
+_ Pair::std   -> PatternSkeleton( SkeletonWildcard, SkeletonNav["Pair","std"] )
+T Pair::std   -> PatternSkeleton( SkeletonName "T" role=Hole, SkeletonNav["Pair","std"] )
+```
+
+```text
+Product extraction shape and explicit Unit positions are preserved.
+No totality check, pattern matching, extraction applicability check,
+exhaustiveness check, or residual propagation occurs at normalization.
+```
+
+There is no type checking, kind checking, or hole-validity checking beyond local
+DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and
+whether `T Option::std` is a legal type pattern is not decided.
 
 ## 10. Alias Preservation
 
-_(Placeholder for v0.5-3.)_ Alias declarations are preserved as unresolved
-declarations with an `EntityRef` right-hand side; no target resolution, scope
-semantics, or operator alias identity validation occurs at the normalized layer.
-Backing: `spec/public/v0.3/normalized-ast-specification-v0.3.md` §7.13, §8.8.
+```text
+Alias-let is declaration-side material, not expression-side call material.
+```
+
+The shape:
+
+```text
+let binder === EntityRef
+```
+
+normalizes as an unresolved alias declaration.
+
+```text
+Conceptual rule: alias preservation
+Dump label:      AliasPreserve
+```
+
+The right-hand side remains an `EntityRef`. It is **not**:
+
+```text
+NormExpr
+Product
+PipeExpr
+runtime equality
+runtime assignment
+import
+operator call
+```
+
+Examples (verified against `tests/cases/norm/`):
+
+```text
+let A === B::C
+  Decl Alias
+    binder: Name "A"
+    target: EntityRef[ "B", "C" ]
+
+let + === Add::std
+  Decl Alias
+    binder: Operator "+"
+    target: EntityRef[ "Add", "std" ]
+```
+
+The binder may be a `Name` or an `Operator`, and an optional policy prefix is
+preserved. No alias target resolution, scope semantics, namespace resolution,
+operator-alias identity validation, or runtime behavior occurs at the normalized
+layer. (A hypothetical target such as `operators::plus` would be preserved the
+same way; only forms covered by the parser / normalizer / golden tests are used
+as primary examples here.)
 
 ## 11. Origin, Generated Nodes, Derived Nodes, and Unsupported
 
@@ -420,6 +648,9 @@ Generated:
   MemberLowering
   DoubleDotLowering
   BracketCallLowering
+  PatternNormalize        (binding-site / annotation / extraction-pattern normalization; §9)
+  ClosureNormalize        (closure head normalization; §9)
+  AliasPreserve           (alias declaration + EntityRef preservation; §10)
   Unsupported             (node surfaced explicitly; origin Generated(Unsupported))
 
 Derived:
@@ -428,9 +659,17 @@ Derived:
   SecondLegalityRepair    (second legality repair)
 ```
 
-This is not the complete Normalized AST rule-label inventory; v0.5-3 expands the
-remaining pattern / alias / closure-facing labels (for example
-`PatternNormalize`).
+Pattern-side material surfaces failures explicitly rather than crossing the
+value/pattern boundary: a `PatternUnsupported` node in an annotation or pattern
+context (origin `Generated(Unsupported)`) records a boundary-preserving failure
+to lower expression-like sugar as pattern material. For example,
+`let x: obj.field = y` normalizes the annotation to
+`PatternUnsupported "member sugar in annotation pattern"` rather than a
+value-side member call (see §9).
+
+This list is not guaranteed to be the complete Normalized AST rule-label
+inventory, but it now covers the call-binding, sugar-lowering, and
+value / pattern / alias material documented in this version.
 
 These labels appear verbatim in the normalized dump, so any example in this
 document can be cross-checked against `normalize_program` output and the golden
