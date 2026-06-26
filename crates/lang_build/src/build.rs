@@ -35,7 +35,7 @@ use crate::discovery::SourceDiscoveryConfig;
 use crate::fingerprint::Fnv1a64;
 use crate::graph::BuildError;
 use crate::manifest::{BuildManifest, NamespaceMount, SourceRoot};
-use crate::model::{Diagnostic, Provenance};
+use crate::model::{Diagnostic, Provenance, SymbolKind};
 use crate::world::CompilationWorld;
 
 /// Cache format version salt. Bumping this invalidates all cache keys without
@@ -110,6 +110,7 @@ pub struct PackageBuildMetadata {
     pub source_roots: Vec<SourceRootMetadata>,
     pub source_units: Vec<SourceUnitBuildMetadata>,
     pub dependencies: Vec<DependencyBuildMetadata>,
+    pub explicit_mounts: Vec<ExplicitMountBuildMetadata>,
     pub cache_key: String,
     pub cache_status: CacheStatus,
     pub diagnostic_count: usize,
@@ -138,6 +139,29 @@ pub struct DependencyBuildMetadata {
     pub package_name: String,
     pub mount_path: Vec<String>,
     pub dependency_fingerprint: String,
+}
+
+/// Build metadata describing an explicit (API-level) dependency mount.
+///
+/// Explicit mounts affect the built `CompilationWorld` and therefore the package
+/// fingerprint / cache key. This summary records exactly what was folded into the
+/// key so the cache key source is explainable from metadata.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExplicitMountBuildMetadata {
+    pub from_package: String,
+    pub mount_path: Vec<String>,
+    pub synthetic_symbols: Vec<SyntheticSymbolBuildMetadata>,
+}
+
+/// Build metadata for a synthetic symbol carried by an explicit dependency mount.
+///
+/// `kind` is a stable string tag (see `symbol_kind_fingerprint_tag`), not the
+/// `SymbolKind` enum's internal/`Debug` shape, so build metadata does not leak
+/// the model representation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SyntheticSymbolBuildMetadata {
+    pub name: String,
+    pub kind: String,
 }
 
 /// Result of building a whole workspace.
@@ -313,6 +337,22 @@ impl BuildSession {
                 .collect(),
             source_units,
             dependencies,
+            explicit_mounts: spec
+                .dependency_mounts
+                .iter()
+                .map(|mount| ExplicitMountBuildMetadata {
+                    from_package: mount.from_package.clone(),
+                    mount_path: mount.mount_path.clone(),
+                    synthetic_symbols: mount
+                        .synthetic_symbols
+                        .iter()
+                        .map(|symbol| SyntheticSymbolBuildMetadata {
+                            name: symbol.name.clone(),
+                            kind: symbol_kind_fingerprint_tag(symbol.kind).to_string(),
+                        })
+                        .collect(),
+                })
+                .collect(),
             cache_key: cache_key.clone(),
             cache_status: CacheStatus::Miss,
             diagnostic_count,
@@ -391,7 +431,37 @@ fn compute_package_fingerprint(
         hasher.write_str_field(&dependency.dependency_fingerprint);
     }
 
+    // Explicit dependency mounts affect the built world, so they must affect the
+    // package fingerprint / cache key. Folded in declared order (not sorted): a
+    // reorder is conservatively treated as a different build input. The synthetic
+    // symbol kind is folded as a stable string tag, never `Debug` output.
+    hasher.write_str_field("dependency_mounts");
+    hasher.write_field(&(spec.dependency_mounts.len() as u64).to_le_bytes());
+    for mount in &spec.dependency_mounts {
+        hasher.write_str_field(&mount.from_package);
+        hasher.write_str_field(&mount.mount_path.join("::"));
+        hasher.write_field(&(mount.synthetic_symbols.len() as u64).to_le_bytes());
+        for symbol in &mount.synthetic_symbols {
+            hasher.write_str_field(&symbol.name);
+            hasher.write_str_field(symbol_kind_fingerprint_tag(symbol.kind));
+        }
+    }
+
     hasher.finish_hex()
+}
+
+/// Stable string tag for a [`SymbolKind`], used in fingerprints and build
+/// metadata. This is intentionally decoupled from the enum's `Debug`/`Display`
+/// shape so neither fingerprints nor metadata depend on the model representation.
+fn symbol_kind_fingerprint_tag(kind: SymbolKind) -> &'static str {
+    match kind {
+        SymbolKind::Namespace => "namespace",
+        SymbolKind::Type => "type",
+        SymbolKind::MetaFunction => "meta_function",
+        SymbolKind::FieldFunction => "field_function",
+        SymbolKind::Alias => "alias",
+        SymbolKind::Placeholder => "placeholder",
+    }
 }
 
 fn compute_cache_key(fingerprint: &str) -> String {
@@ -438,7 +508,25 @@ fn validate_workspace(workspace: &BuildWorkspace) -> Result<(), BuildError> {
             )));
         }
 
+        // Mount-path conflicts are detected at the build-graph layer, before
+        // CompilationWorld::from_manifest, across both explicit dependency mounts
+        // and static dependency mounts (and the cross-conflict between them).
         let mut seen_mount_paths: BTreeSet<&[String]> = BTreeSet::new();
+        for mount in &package.dependency_mounts {
+            if mount.mount_path.is_empty() {
+                diagnostics.push(build_graph_error(format!(
+                    "{BUILD_GRAPH_ERROR_PREFIX} package `{}` explicit dependency mount `{}` has an empty mount path",
+                    package.name, mount.from_package
+                )));
+            } else if !seen_mount_paths.insert(mount.mount_path.as_slice()) {
+                diagnostics.push(build_graph_error(format!(
+                    "{BUILD_GRAPH_ERROR_PREFIX} package `{}` has duplicate dependency mount path `{}`",
+                    package.name,
+                    mount.mount_path.join("::")
+                )));
+            }
+        }
+
         for dependency in &package.dependencies {
             if dependency.package.is_empty() {
                 diagnostics.push(build_graph_error(format!(

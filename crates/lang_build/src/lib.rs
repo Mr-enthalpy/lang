@@ -16,8 +16,9 @@ pub mod world;
 
 pub use build::{
     BuildCache, BuildCacheStats, BuildResult, BuildSession, BuildWorkspace, CacheStatus,
-    DependencyBuildMetadata, PackageBuildArtifact, PackageBuildMetadata, PackageBuildSpec,
-    SourceRootMetadata, SourceUnitBuildMetadata, StaticDependencySpec,
+    DependencyBuildMetadata, ExplicitMountBuildMetadata, PackageBuildArtifact,
+    PackageBuildMetadata, PackageBuildSpec, SourceRootMetadata, SourceUnitBuildMetadata,
+    StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,

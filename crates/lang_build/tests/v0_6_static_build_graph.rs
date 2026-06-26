@@ -4,8 +4,8 @@ use support::*;
 use std::path::PathBuf;
 
 use lang_build::{
-    BuildResult, BuildSession, BuildWorkspace, CacheStatus, PackageBuildArtifact, PackageBuildSpec,
-    ResolveExpectation, SourceRoot, StaticDependencySpec,
+    BuildResult, BuildSession, BuildWorkspace, CacheStatus, NamespaceMount, PackageBuildArtifact,
+    PackageBuildSpec, ResolveExpectation, SourceRoot, StaticDependencySpec, SymbolKind,
 };
 
 fn package_spec(name: &str, src_root: PathBuf) -> PackageBuildSpec {
@@ -317,5 +317,105 @@ fn dependency_mount_marker_exists_but_symbols_are_not_imported() {
             .resolve_str("DepType::dep", &root_context)
             .is_err(),
         "dependency symbols must not be auto-imported in this PR"
+    );
+}
+
+// Changing an explicit dependency mount (its synthetic symbols) must change the
+// fingerprint / cache key and rebuild, even when source and static dependencies
+// are unchanged. This guards against a stale cache hit returning the old world.
+#[test]
+fn explicit_mount_change_invalidates_cache_and_rebuilds_world() {
+    let project = TempProject::new("static_mount_cache");
+    project.write("app/src/main.lang", "let T: type = uint8");
+
+    let workspace_with_symbol = |symbol_name: &str| {
+        let mut app = package_spec("app", project.path().join("app/src"));
+        app.dependency_mounts.push(
+            NamespaceMount::synthetic_root("dep", vec!["dep".to_string()])
+                .with_symbol(symbol_name, SymbolKind::Placeholder),
+        );
+        BuildWorkspace {
+            packages: vec![app],
+        }
+    };
+
+    let mut session = BuildSession::new();
+
+    let first = session
+        .build_workspace(&workspace_with_symbol("A"))
+        .expect("first build");
+    let first_app = &first.artifacts[0];
+    assert_eq!(first_app.metadata.cache_status, CacheStatus::Miss);
+    let first_fingerprint = first_app.fingerprint.clone();
+    let first_cache_key = first_app.metadata.cache_key.clone();
+    {
+        let capability = first_app.world.snapshot().capability();
+        let root_context = first_app.world.root_context();
+        assert!(capability.resolve_str("A::dep", &root_context).is_ok());
+        assert!(capability.resolve_str("B::dep", &root_context).is_err());
+    }
+    // Metadata explains the cache key source.
+    assert_eq!(first_app.metadata.explicit_mounts.len(), 1);
+    assert_eq!(
+        first_app.metadata.explicit_mounts[0].synthetic_symbols[0].name,
+        "A"
+    );
+
+    let second = session
+        .build_workspace(&workspace_with_symbol("B"))
+        .expect("second build");
+    let second_app = &second.artifacts[0];
+    assert_eq!(
+        second_app.metadata.cache_status,
+        CacheStatus::Miss,
+        "changing an explicit mount must not be served from the stale cache"
+    );
+    assert_ne!(second_app.fingerprint, first_fingerprint);
+    assert_ne!(second_app.metadata.cache_key, first_cache_key);
+    {
+        let capability = second_app.world.snapshot().capability();
+        let root_context = second_app.world.root_context();
+        assert!(
+            capability.resolve_str("B::dep", &root_context).is_ok(),
+            "rebuilt world must reflect the new synthetic symbol"
+        );
+        assert!(
+            capability.resolve_str("A::dep", &root_context).is_err(),
+            "rebuilt world must not return the stale synthetic symbol"
+        );
+    }
+}
+
+// Guard: an explicit synthetic mount and a static dependency sharing the same
+// mount path must fail at build-graph validation, not later at
+// CompilationWorld::from_manifest.
+#[test]
+fn explicit_mount_and_dependency_sharing_mount_path_fail_at_validation() {
+    let project = TempProject::new("static_mount_conflict");
+    project.write("dep/src/lib.lang", "let DepType: type = uint8");
+    project.write("app/src/main.lang", "let T: type = uint8");
+
+    let dep = package_spec("dep", project.path().join("dep/src"));
+    let mut app = package_spec("app", project.path().join("app/src"));
+    app.dependency_mounts.push(NamespaceMount::synthetic_root(
+        "dep",
+        vec!["dep".to_string()],
+    ));
+    app.dependencies.push(dependency("dep", &["dep"]));
+    let workspace = BuildWorkspace {
+        packages: vec![dep, app],
+    };
+
+    let mut session = BuildSession::new();
+    let error = session
+        .build_workspace(&workspace)
+        .expect_err("mount path conflict must fail validation");
+    assert!(error.diagnostics.iter().any(|diagnostic| diagnostic
+        .message
+        .contains("duplicate dependency mount path")));
+    assert_eq!(
+        session.cache_stats().misses,
+        0,
+        "validation must fail before any package is built"
     );
 }
