@@ -2,9 +2,10 @@ use crate::{
     graph::{namespace_symbol, BuildError, NamespaceGraphSnapshot},
     model::{
         CoreMetaFunction, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, PolicyMetadata, Provenance, SourceCategory, SymbolKind, SymbolObject,
-        SymbolPayload, TypeObject,
+        NamespaceNodeKind, PolicyMetadata, PolicySet, Provenance, SourceCategory, SymbolKind,
+        SymbolObject, SymbolPayload, TypeObject,
     },
+    policy_set_export_meta, policy_set_export_meta_runtime,
 };
 
 pub const CORE_NAMESPACE: &str = "core";
@@ -29,6 +30,7 @@ pub fn install_core_bootstrap(
         "struct",
         CoreMetaFunction::Struct,
         Provenance::new("core meta-function `struct`"),
+        policy_set_export_meta(),
     );
     insert_meta_function(
         &mut delta,
@@ -36,6 +38,7 @@ pub fn install_core_bootstrap(
         "assert",
         CoreMetaFunction::Assert,
         Provenance::new("core meta-function `assert`"),
+        policy_set_export_meta(),
     );
 
     for name in [
@@ -53,6 +56,7 @@ pub fn install_core_bootstrap(
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
+            policy_set_export_meta_runtime(),
         );
     }
 
@@ -68,6 +72,7 @@ fn insert_meta_function(
     name: &str,
     primitive: CoreMetaFunction,
     provenance: Provenance,
+    policy_set: PolicySet,
 ) {
     let symbol_id = delta.allocate_symbol_id();
     let mut symbol = SymbolObject::placeholder(
@@ -78,6 +83,7 @@ fn insert_meta_function(
         Some(parent),
         provenance,
     );
+    symbol.policy_metadata.policy_set = policy_set;
     symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
         function_symbol_id: symbol_id,
         primitive,
@@ -93,6 +99,7 @@ pub(crate) fn insert_core_type(
     parent: NamespaceNodeId,
     name: &str,
     provenance: Provenance,
+    policy_set: PolicySet,
 ) {
     let symbol_id = delta.allocate_symbol_id();
     let associated_node = delta.allocate_node_id();
@@ -113,6 +120,7 @@ pub(crate) fn insert_core_type(
         Some(parent),
         provenance.clone(),
     );
+    symbol.policy_metadata.policy_set = policy_set;
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::Type(TypeObject {
         type_symbol_id: symbol_id,

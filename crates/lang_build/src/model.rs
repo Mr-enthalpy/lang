@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, fmt, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    path::PathBuf,
+};
 
 use lang_syntax::{NormOrigin, NormProduct, Span};
 
@@ -106,12 +110,85 @@ impl ChildBucket {
     }
 }
 
+/// Early policy flag for v0.7 policy-aware resolution.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PolicyFlag {
+    Export,
+    Meta,
+    Runtime,
+}
+
+/// Set of policy flags carried by a symbol.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PolicySet {
+    pub flags: BTreeSet<PolicyFlag>,
+}
+
+impl PolicySet {
+    pub fn new() -> Self {
+        Self {
+            flags: BTreeSet::new(),
+        }
+    }
+
+    pub fn contains(&self, flag: PolicyFlag) -> bool {
+        self.flags.contains(&flag)
+    }
+
+    pub fn insert(&mut self, flag: PolicyFlag) {
+        self.flags.insert(flag);
+    }
+}
+
+/// Policy environment for resolver queries.
+///
+/// Only `Meta` is needed for v0.7. Additional variants will be added as the
+/// policy lattice expands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PolicyEnv {
+    Meta,
+}
+
+// ---------------------------------------------------------------------------
+// Policy-set helper constructors
+// ---------------------------------------------------------------------------
+
+pub fn policy_set_export_meta() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Export);
+    set.insert(PolicyFlag::Meta);
+    set
+}
+
+pub fn policy_set_export_meta_runtime() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Export);
+    set.insert(PolicyFlag::Meta);
+    set.insert(PolicyFlag::Runtime);
+    set
+}
+
+pub fn policy_set_runtime() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Runtime);
+    set
+}
+
+pub fn policy_set_meta_runtime() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Meta);
+    set.insert(PolicyFlag::Runtime);
+    set
+}
+
 /// Reserved policy metadata slot.
 ///
 /// v0.6 preserves this data but does not interpret it.
+/// v0.7 adds `policy_set` for early policy-aware resolution.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PolicyMetadata {
     pub slots: BTreeMap<String, String>,
+    pub policy_set: PolicySet,
 }
 
 /// Reserved visibility metadata slot.

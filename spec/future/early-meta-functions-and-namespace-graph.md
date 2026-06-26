@@ -18,6 +18,48 @@ It builds on, and does not replace, the build/package architecture in
 semantics remain a separate track in
 `spec/future/static-pattern-spaces-and-extraction-chains.md`.
 
+## v0.7 implementation additions
+
+v0.7 introduces early policy-aware resolution with three policy flags:
+
+- `PolicyFlag::Export`, `PolicyFlag::Meta`, `PolicyFlag::Runtime`
+- `PolicySet` — bit-set of flags carried on `PolicyMetadata.policy_set`
+- `PolicyEnv::Meta` — resolver query environment; only symbols carrying the
+  `Meta` flag are visible under this environment
+
+### Policy flag assignment
+
+| Symbol source | Policy set |
+|---|---|
+| Core meta-functions (`struct`, `assert`) | `export + meta` |
+| Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export + meta + runtime` |
+| Source-contributed ordinary value placeholders | `runtime` |
+| Source-contributed type-annotated placeholders (`: type`) | `meta + runtime` |
+| Struct-generated `TypeObject` | `meta + runtime` |
+| Alias symbols | `runtime` (not transparent for early meta yet) |
+
+### Policy-aware resolver
+
+New methods on `NamespaceGraphCapability`:
+
+- `resolve_with_policy(…, PolicyEnv)` — filters per-component and terminal
+  results; a symbol that does not satisfy the policy environment is treated as
+  not found in that search root.
+- `resolve_str_with_policy(…, PolicyEnv)`
+- `resolve_type_object_with_policy(…, PolicyEnv)`
+- `resolve_meta_function_with_policy(…, PolicyEnv)`
+
+Policy filtering happens **before** cross-root conflict reporting. A
+runtime-only local `uint8` does not block discovery of
+`export+meta+runtime` `core::uint8`.
+
+### Early meta expansion uses PolicyEnv::Meta
+
+- `try_expand_early_meta_initializer` resolves the call target via
+  `resolve_meta_function_with_policy(…, PolicyEnv::Meta)`.
+- `parse_field_expr` resolves field type names via
+  `resolve_type_object_with_policy(…, PolicyEnv::Meta)`.
+
 ## Implemented vertical slice (v0.6 partial)
 
 The current implementation is intentionally small but uses the intended world

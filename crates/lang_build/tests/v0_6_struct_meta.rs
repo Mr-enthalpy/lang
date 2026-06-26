@@ -223,7 +223,7 @@ fn struct_checker_rejects_non_type_nested_unit_and_target_errors() {
         (
             "non_type_field",
             "let not_type = uint8; let T: type = (not_type a) |> struct",
-            "resolved symbol is not a type",
+            "unknown struct field type",
         ),
         (
             "nested_product",
@@ -343,17 +343,19 @@ fn meta_function_kind_without_payload_is_hard_error() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.snapshot().empty_delta();
     let bad_meta = delta.allocate_symbol_id();
-    delta.insert_symbol(
-        world.package_root_node(),
-        lang_build::SymbolObject::placeholder(
-            bad_meta,
-            "bad_meta",
-            SymbolKind::MetaFunction,
-            SourceCategory::DeclaredSymbol,
-            Some(world.package_root_node()),
-            Provenance::new("bad meta without payload"),
-        ),
+    let mut bad_symbol = lang_build::SymbolObject::placeholder(
+        bad_meta,
+        "bad_meta",
+        SymbolKind::MetaFunction,
+        SourceCategory::DeclaredSymbol,
+        Some(world.package_root_node()),
+        Provenance::new("bad meta without payload"),
     );
+    bad_symbol
+        .policy_metadata
+        .policy_set
+        .insert(lang_build::PolicyFlag::Meta);
+    delta.insert_symbol(world.package_root_node(), bad_symbol);
     let snapshot = world
         .snapshot()
         .install_delta(delta)

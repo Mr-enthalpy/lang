@@ -6,10 +6,11 @@ use crate::{
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
     model::{
         CoreMetaFunction, Diagnostic, FieldObject, FieldProjection, MetaFunctionObject,
-        NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, Provenance,
+        NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
         SourceCategory, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind,
         TypeField, TypeObject,
     },
+    policy_set_meta_runtime,
 };
 
 /// Result of a successful early meta expansion.
@@ -38,10 +39,10 @@ pub fn try_expand_early_meta_initializer(
         None => return Ok(None),
     };
 
-    let target_symbol = match snapshot.capability().resolve_with_expectation(
-        &target_path,
+    let target_symbol = match snapshot.capability().resolve_meta_function_with_policy(
+        &target_path.join("::"),
         context,
-        ResolveExpectation::MetaFunction,
+        PolicyEnv::Meta,
     ) {
         Ok(symbol) => symbol,
         Err(_) => return Ok(None),
@@ -132,6 +133,7 @@ fn expand_struct_meta(
         Some(parent_namespace),
         declaration_provenance.clone(),
     );
+    type_object.policy_metadata.policy_set = policy_set_meta_runtime();
     type_object.node_kind = Some(NamespaceNodeKind::Virtual);
     type_object.generation_origin = Some("core::struct early meta expansion".to_string());
     type_object.cache_key_fragment = Some(format!("struct:{binding_name}:{}", fields.len()));
@@ -390,25 +392,27 @@ fn parse_field_expr(
             )),
         )
     })?;
+    let type_path_str = type_path.join("::");
     let type_symbol = snapshot
         .capability()
-        .resolve_with_expectation(&type_path, context, ResolveExpectation::TypeObject)
+        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::Meta)
         .map_err(|_| {
-            if let Ok(non_type_symbol) = snapshot.capability().resolve_with_expectation(
+            if let Ok(non_type_symbol) = snapshot.capability().resolve_with_policy(
                 &type_path,
                 context,
                 ResolveExpectation::Object,
+                PolicyEnv::Meta,
             ) {
                 return Diagnostic::hard_error(
                     format!(
                         "unknown struct field type `{}`: resolved symbol is not a type",
-                        type_path.join("::")
+                        type_path_str
                     ),
                     Some(non_type_symbol.provenance),
                 );
             }
             Diagnostic::hard_error(
-                format!("unknown struct field type `{}`", type_path.join("::")),
+                format!("unknown struct field type `{}`", type_path_str),
                 Some(Provenance::from_norm_origin(
                     "struct field type",
                     expr_origin(type_expr),
