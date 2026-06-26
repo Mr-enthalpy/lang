@@ -305,8 +305,13 @@ v0.7 (Early Meta-Function Bootstrap):
   Implemented: `PolicyFlag` / `PolicySet` / `PolicyEnv` types; `PolicyEnv::Meta`
   filtering in resolver and early-meta expansion; policy flags assigned to core
   symbols (`export+meta` for meta-functions, `export+meta+runtime` for built-in
-  types), source-contributed symbols (`runtime` for values, `meta+runtime` for
-  type-annotated declarations), and struct-generated type objects (`meta+runtime`).
+  types and the core namespace symbol itself), source-contributed symbols (`runtime`
+  for values, `meta+runtime` for type-annotated declarations), and struct-generated
+  type objects (`meta+runtime`). Policy filtering is per-component — namespace
+  intermediaries must carry traversal-appropriate flags; for v0.7 this is satisfied
+  by the compiler-seeded `core` namespace symbol receiving `export+meta+runtime`.
+  Policy assignment to other namespace categories (declared, physical, dependency)
+  is deferred.
 
 v0.8 (Type-to-Type Meta Construction Interpreter):
   Understand that meta body execution policy differs from function symbol policy

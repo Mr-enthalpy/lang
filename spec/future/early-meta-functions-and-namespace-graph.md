@@ -31,6 +31,7 @@ v0.7 introduces early policy-aware resolution with three policy flags:
 
 | Symbol source | Policy set |
 |---|---|
+| Core namespace symbol | `export + meta + runtime` |
 | Core meta-functions (`struct`, `assert`) | `export + meta` |
 | Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export + meta + runtime` |
 | Source-contributed ordinary value placeholders | `runtime` |
@@ -52,6 +53,14 @@ New methods on `NamespaceGraphCapability`:
 Policy filtering happens **before** cross-root conflict reporting. A
 runtime-only local `uint8` does not block discovery of
 `export+meta+runtime` `core::uint8`.
+
+Policy filtering is **per-component**: every path component (including
+namespace intermediaries like `core`) is checked against the policy
+environment. Namespace symbols that must be traversed under a policy
+environment therefore carry appropriate traversal policy flags. For v0.7,
+the compiler-seeded `core` namespace symbol is assigned
+`export + meta + runtime` so that explicit paths such as `struct::core`
+and `uint8::core` resolve correctly under `PolicyEnv::Meta`.
 
 ### Early meta expansion uses PolicyEnv::Meta
 

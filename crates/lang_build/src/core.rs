@@ -24,6 +24,12 @@ pub fn install_core_bootstrap(
         core_provenance,
     );
 
+    for symbol in delta.symbols.values_mut() {
+        if symbol.kind == SymbolKind::Namespace && symbol.name == CORE_NAMESPACE {
+            symbol.policy_metadata.policy_set = policy_set_export_meta_runtime();
+        }
+    }
+
     insert_meta_function(
         &mut delta,
         core_node,

@@ -2,7 +2,9 @@ mod support;
 use support::*;
 
 use lang_build::{
-    CompilationWorld, PolicyEnv, PolicyFlag, ResolveExpectation, SymbolKind, SymbolPayload,
+    policy_set_runtime, CompilationWorld, CoreMetaFunction, MetaFunctionObject, PolicyEnv,
+    PolicyFlag, PolicyMetadata, Provenance, ResolveExpectation, SourceCategory, SymbolKind,
+    SymbolObject, SymbolPayload,
 };
 
 #[test]
@@ -23,16 +25,18 @@ fn struct_expands_under_meta_policy() {
 }
 
 #[test]
-fn runtime_only_local_struct_does_not_shadow_core_meta() {
-    let project = TempProject::new("runtime_struct_no_shadow");
+fn type_named_struct_does_not_shadow_core_meta_function() {
+    let project = TempProject::new("type_named_struct");
     project.write(
         "src/main.lang",
         "let struct: type = uint8; let T: type = (uint8 a) |> struct",
     );
     let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
         .expect("struct expansion should succeed");
-    // Under PolicyEnv::Meta, the runtime-only local `struct` is filtered out;
-    // core's `struct` (export+meta) is found and expansion proceeds.
+    // The local `struct` is a Type symbol (type-annotated → meta+runtime).
+    // The resolver rejects it via ResolveExpectation::MetaFunction (kind
+    // filtering), not policy filtering. Core's `struct` (MetaFunction,
+    // export+meta) is then found through the default core mount.
     let type_symbol = world.resolve("T").expect("resolve generated type");
     assert_eq!(type_symbol.kind, SymbolKind::Type);
     let SymbolPayload::Type(type_object) = &type_symbol.payload else {
@@ -167,5 +171,88 @@ fn struct_generated_type_has_meta_runtime_policy() {
     assert!(
         ps.contains(PolicyFlag::Runtime),
         "generated T should have Runtime"
+    );
+}
+
+#[test]
+fn runtime_only_meta_function_is_filtered_under_meta_policy() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+    let mut delta = world.snapshot().empty_delta();
+
+    let local_struct_id = delta.allocate_symbol_id();
+    let mut local_struct = SymbolObject::placeholder(
+        local_struct_id,
+        "struct",
+        SymbolKind::MetaFunction,
+        SourceCategory::DeclaredSymbol,
+        Some(world.package_root_node()),
+        Provenance::new("local runtime-only struct"),
+    );
+    local_struct.policy_metadata.policy_set = policy_set_runtime();
+    local_struct.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+        function_symbol_id: local_struct_id,
+        primitive: CoreMetaFunction::Assert,
+        function_policy: PolicyMetadata::default(),
+        body_entry_policy: PolicyMetadata::default(),
+        return_object_policy: PolicyMetadata::default(),
+    });
+    delta.insert_symbol(world.package_root_node(), local_struct);
+
+    let snapshot = world
+        .snapshot()
+        .install_delta(delta)
+        .expect("install delta");
+    let context = world.package_context();
+
+    let result = snapshot.capability().resolve_meta_function_with_policy(
+        "struct",
+        &context,
+        PolicyEnv::Meta,
+    );
+    assert!(
+        result.is_ok(),
+        "core struct should resolve under Meta despite local runtime-only struct"
+    );
+    let symbol = result.unwrap();
+    assert_eq!(symbol.name, "struct");
+    assert!(
+        symbol.provenance.description.contains("core"),
+        "should resolve to core's struct, not the local runtime-only one"
+    );
+}
+
+#[test]
+fn explicit_path_meta_function_resolves_under_meta() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+    let context = world.root_context();
+
+    let symbol = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("struct::core", &context, PolicyEnv::Meta)
+        .expect("struct::core should resolve under Meta with root context");
+    assert_eq!(symbol.kind, SymbolKind::MetaFunction);
+    assert_eq!(symbol.name, "struct");
+    assert!(
+        symbol.provenance.description.contains("core"),
+        "should be core's struct"
+    );
+}
+
+#[test]
+fn explicit_path_type_object_resolves_under_meta() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+    let context = world.root_context();
+
+    let symbol = world
+        .snapshot()
+        .capability()
+        .resolve_type_object_with_policy("uint8::core", &context, PolicyEnv::Meta)
+        .expect("uint8::core should resolve under Meta with root context");
+    assert_eq!(symbol.kind, SymbolKind::Type);
+    assert_eq!(symbol.name, "uint8");
+    assert!(
+        symbol.provenance.description.contains("core"),
+        "should be core's uint8"
     );
 }
