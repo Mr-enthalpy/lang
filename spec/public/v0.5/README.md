@@ -27,9 +27,10 @@ behavior, especially:
 ## Planned v0.5 public documents
 
 - [`normalized-surface-semantics-v0.5.md`](normalized-surface-semantics-v0.5.md)
-  — the public, authoritative explanation of the normalized surface. This PR
-  (v0.5-1) establishes its authoritative outline; later v0.5 PRs (v0.5-2 /
-  v0.5-3) fill in the full call-binding semantics and examples.
+  — the public, authoritative explanation of the normalized surface. The
+  call / product / pipe binding sections (§1–§7, §11–§13) are published in
+  v0.5-2; the value-side / pattern-side, annotation, and alias sections
+  (§8–§10) are filled in v0.5-3.
 - [`agent-interpretation-guide-v0.5.md`](agent-interpretation-guide-v0.5.md)
   — operational, normative guidance for coding/documentation agents on how to
   interpret source without importing C / Rust / Python call assumptions.
