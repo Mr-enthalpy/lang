@@ -4,6 +4,7 @@
 //! normalized source fragments, but does not add parser or normalizer rules.
 
 pub mod core;
+pub mod discovery;
 pub mod graph;
 pub mod manifest;
 pub mod meta;
@@ -11,6 +12,10 @@ pub mod model;
 pub mod source;
 pub mod world;
 
+pub use discovery::{
+    DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
+    SourceRootRequest,
+};
 pub use graph::{
     BuildError, NamespaceGraphCapability, NamespaceGraphSnapshot, NamespaceInstallError,
     ResolveExpectation, ResolverContext,

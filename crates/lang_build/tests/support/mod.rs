@@ -38,6 +38,12 @@ impl TempProject {
         fs::create_dir_all(path.parent().expect("fixture parent")).expect("create fixture dirs");
         fs::write(path, source).expect("write fixture");
     }
+
+    pub fn write_bytes(&self, relative: &str, bytes: &[u8]) {
+        let path = self.root.join(relative);
+        fs::create_dir_all(path.parent().expect("fixture parent")).expect("create fixture dirs");
+        fs::write(path, bytes).expect("write fixture bytes");
+    }
 }
 
 impl Drop for TempProject {
