@@ -140,13 +140,26 @@ impl PolicySet {
     }
 }
 
-/// Policy environment for resolver queries.
+/// Resolver lookup visibility environment.
 ///
-/// Only `Meta` is needed for v0.7. Additional variants will be added as the
-/// policy lattice expands.
+/// This controls whether a symbol is visible to a resolver query. It does not
+/// grant permission to enter or evaluate a callable body.
+///
+/// Only `Meta` lookup visibility is needed for v0.7-prep. Additional resolver
+/// environments will be added as the policy lattice and lookup passes expand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyEnv {
     Meta,
+}
+
+/// Callable body execution environment.
+///
+/// This is distinct from [`PolicyEnv`]: a resolver may see a callable symbol
+/// whose body cannot be entered in the current execution environment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionEnv {
+    Meta,
+    Runtime,
 }
 
 // ---------------------------------------------------------------------------
@@ -174,11 +187,35 @@ pub fn policy_set_runtime() -> PolicySet {
     set
 }
 
+pub fn policy_set_meta() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Meta);
+    set
+}
+
 pub fn policy_set_meta_runtime() -> PolicySet {
     let mut set = PolicySet::new();
     set.insert(PolicyFlag::Meta);
     set.insert(PolicyFlag::Runtime);
     set
+}
+
+pub fn policy_metadata(policy_set: PolicySet) -> PolicyMetadata {
+    PolicyMetadata {
+        slots: BTreeMap::new(),
+        policy_set,
+    }
+}
+
+pub fn callable_body_allows_execution(callable_policy: &PolicyMetadata, env: ExecutionEnv) -> bool {
+    policy_set_allows_execution(&callable_policy.policy_set, env)
+}
+
+pub fn policy_set_allows_execution(policy_set: &PolicySet, env: ExecutionEnv) -> bool {
+    match env {
+        ExecutionEnv::Meta => policy_set.contains(PolicyFlag::Meta),
+        ExecutionEnv::Runtime => policy_set.contains(PolicyFlag::Runtime),
+    }
 }
 
 /// Reserved policy metadata slot.
@@ -484,6 +521,18 @@ pub struct TypeField {
     pub provenance: Provenance,
 }
 
+/// Policy metadata carried by callable payloads.
+///
+/// `body_entry_policy` controls whether a callable body may be entered in an
+/// execution environment. `return_object_policy` records the policy of the
+/// object produced by the callable. Neither field controls resolver visibility;
+/// that remains `SymbolObject.policy_metadata`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CallablePolicyMetadata {
+    pub body_entry_policy: PolicyMetadata,
+    pub return_object_policy: PolicyMetadata,
+}
+
 /// Placeholder field-function payload generated under a type namespace.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldObject {
@@ -491,6 +540,7 @@ pub struct FieldObject {
     pub field_name: String,
     pub field_type_symbol_id: SymbolId,
     pub projection: FieldProjection,
+    pub callable_policy: CallablePolicyMetadata,
     pub provenance: Provenance,
 }
 

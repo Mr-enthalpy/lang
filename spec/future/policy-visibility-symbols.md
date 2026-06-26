@@ -27,9 +27,12 @@ The immediate, narrow objective for v0.6–v0.8 is:
 Current implementation note: `lang_build` reserves `PolicyMetadata` and
 `VisibilityMetadata` slots on `SymbolObject` and `NamespaceNode`, a
 current-policy slot on `ResolverContext`, and function/body/return policy slots
-on `MetaFunctionObject`. These slots are preserved through namespace deltas.
-v0.7-prep implements only `PolicyEnv::Meta` filtering; full policy checking
-(policy lattice, projection rule, conformance checker) remains deferred.
+on `MetaFunctionObject`. Generated `FieldObject` payloads also carry callable
+body-entry and return-object policy slots. These slots are preserved through
+namespace deltas. v0.7-prep implements only `PolicyEnv::Meta` resolver
+visibility filtering. This is not full policy checking: policy lattice,
+projection rules, conformance checking, and callable execution checking remain
+deferred.
 
 Non-goals for v0.6–v0.8:
 
@@ -92,6 +95,76 @@ function trait annotation:
   from the `{ ... }` body.
 - The return slot `meta + runtime let r: type` annotates the returned object
   `r`'s own policy.
+
+## 3.1 Symbol visibility policy vs callable execution policy
+
+The policy model has separate judgments for lookup visibility and callable
+execution. A symbol may be visible to a resolver query without granting
+permission to enter its function body.
+
+```text
+Symbol visibility judgment:
+
+  Γ; LookupEnv ⊢ path ⇓ symbol
+
+Callable execution judgment:
+
+  Γ; ExecutionEnv ⊢ call(symbol, args) ⇓ value
+```
+
+The symbol policy on `SymbolObject.policy_metadata.policy_set` controls whether
+the resolver can see a symbol in a lookup environment. In v0.7-prep, the only
+implemented policy-aware lookup environment is `PolicyEnv::Meta`, which admits
+symbols carrying `Meta`.
+
+The body-entry policy on a callable payload controls whether a callable body may
+be entered in an execution environment. The return-object policy records the
+policy of the object produced by that callable. These policies are not resolver
+visibility filters.
+
+Therefore:
+
+```text
+symbol visible under PolicyEnv::Meta
+  ⇒ the meta pass may resolve the symbol, inspect its object, use it for
+     checking, and build a residual runtime call.
+
+callable body_entry_policy contains Meta
+  ⇒ the meta pass may enter/evaluate the callable body.
+```
+
+The following inference is invalid:
+
+```text
+symbol visible under PolicyEnv::Meta
+⇒ callable executable under meta
+```
+
+Generated field functions are the key v0.7-prep example:
+
+```text
+meta + runtime let field::ref::T =
+  (self, object: T ref): runtime -> runtime let r: field_type ref => { ... }
+```
+
+This records three distinct planes:
+
+```text
+field::ref::T symbol policy:
+  meta + runtime
+
+field::ref::T function body entry policy:
+  runtime
+
+field::ref::T return object policy:
+  runtime
+```
+
+The compiler can resolve and inspect `field::ref::T` during meta/type-checking
+phases because the symbol itself is visible under `PolicyEnv::Meta`. It must not
+execute the field function body while acting in a meta execution environment,
+because the body-entry policy is runtime-only. This is ordinary compiler
+reasoning over symbol objects, not reflection.
 
 ## 4. Context Policy and Import Rule
 
@@ -303,17 +376,19 @@ v0.7 (Early Meta-Function Bootstrap):
   return-object-policy, but must not implement full meta / compile / seal
   projection.
   Implemented: `PolicyFlag` / `PolicySet` / `PolicyEnv` types; `PolicyEnv::Meta`
-  filtering in resolver and early-meta expansion; `ResolverCode` discriminator
-  for miss vs ambiguity; policy flags assigned to core symbols (`export+meta` for
-  meta-functions, `export+meta+runtime` for built-in types and the core namespace
-  symbol), all namespace symbols (`meta+runtime` for declared, physical,
-  dependency, type-projection, and generated namespaces), source-contributed
-  symbols (`runtime` for values, `meta+runtime` for type-annotated declarations),
-  and struct-generated type objects and generated field functions
-  (`meta+runtime`). Policy filtering is per-
-  component — namespace intermediaries must carry traversal flags. `PolicyEnv::Runtime`
-  is not implemented; the `Runtime` flag is reserved for future runtime-lookup and
-  currently marks symbols excluded from meta passes.
+  lookup-visibility filtering in resolver and early-meta expansion;
+  `ResolverCode` discriminator for miss vs ambiguity; policy flags assigned to
+  core symbols (`export+meta` for meta-functions, `export+meta+runtime` for
+  built-in types and the core namespace symbol), all namespace symbols
+  (`meta+runtime` for declared, physical, dependency, type-projection, and
+  generated namespaces), source-contributed symbols (`runtime` for values,
+  `meta+runtime` for type-annotated declarations), and struct-generated type
+  objects and generated field-function symbols (`meta+runtime`). Generated field
+  function payloads carry runtime-only body-entry and return-object policies.
+  Policy filtering is per-component — namespace intermediaries must carry
+  traversal flags. `PolicyEnv::Runtime` is not implemented; the `Runtime` flag is
+  reserved for future runtime lookup. Runtime-only symbols are excluded from
+  `PolicyEnv::Meta` lookup.
 
 v0.8 (Type-to-Type Meta Construction Interpreter):
   Understand that meta body execution policy differs from function symbol policy

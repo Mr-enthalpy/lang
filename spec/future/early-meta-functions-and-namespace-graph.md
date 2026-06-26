@@ -24,8 +24,9 @@ v0.7 introduces early policy-aware resolution with three policy flags:
 
 - `PolicyFlag::Export`, `PolicyFlag::Meta`, `PolicyFlag::Runtime`
 - `PolicySet` — bit-set of flags carried on `PolicyMetadata.policy_set`
-- `PolicyEnv::Meta` — resolver query environment; only symbols carrying the
-  `Meta` flag are visible under this environment
+- `PolicyEnv::Meta` — resolver lookup visibility environment; only symbols
+  carrying the `Meta` flag are visible to this lookup query. This does not grant
+  permission to enter or evaluate a callable body.
 
 ### Policy flag assignment
 
@@ -39,7 +40,18 @@ v0.7 introduces early policy-aware resolution with three policy flags:
 | Source-contributed type-annotated placeholders (`: type`) | `meta + runtime` |
 | Struct-generated `TypeObject` | `meta + runtime` |
 | Projection namespace symbols (`ref`/`share` under a generated type) | `meta + runtime` |
+| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `meta + runtime` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
+
+Generated `struct` expansion currently assigns these policy planes:
+
+| Generated object | Policy plane |
+|---|---|
+| Generated `TypeObject` | symbol policy = `meta + runtime` |
+| Projection namespace `ref` / `share` | symbol policy = `meta + runtime` |
+| Generated field function | symbol policy = `meta + runtime` |
+| Generated field function | body entry policy = `runtime` |
+| Generated field function | return object policy = `runtime` |
 
 ### Policy-aware resolver
 
@@ -63,6 +75,11 @@ environment therefore carry appropriate traversal policy flags. For v0.7,
 the compiler-seeded `core` namespace symbol is assigned
 `export + meta + runtime` so that explicit paths such as `struct::core`
 and `uint8::core` resolve correctly under `PolicyEnv::Meta`.
+
+`PolicyEnv::Meta` is lookup visibility, not meta execution permission. Meta
+lookup may resolve runtime-callable symbols whose symbol policy includes `Meta`.
+A meta evaluator may only execute a callable if the callable body-entry policy
+admits `Meta`.
 
 ### Early meta expansion uses PolicyEnv::Meta
 
@@ -106,7 +123,9 @@ model boundary:
 - Successful `struct` expansion produces a placeholder type object and a
   generated type-associated namespace containing `a::T`, `a::ref::T`,
   `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
-  symbols.
+  symbols. These field-function symbols are visible under `PolicyEnv::Meta`
+  because their symbol policy is `meta + runtime`, but their callable
+  body-entry and return-object policies are runtime-only.
 - Namespace child lookup is role-aware. Object/function symbols and pure
   namespace subspaces can share the same textual child name. Terminal lookup
   without an expected role reports ambiguity when both roles are present.
@@ -423,7 +442,8 @@ Test targets should include:
 - missing mount is a build/resolver error;
 - meta expansion delta is atomic;
 - failed `struct` expansion leaves no partial generated subtree;
-- policy metadata slots are preserved but unchecked.
+- minimal `PolicyEnv::Meta` resolver visibility filtering is implemented, while
+  full policy checking and callable execution checking remain deferred.
 
 ## 3. Symbol source and child-role model
 
@@ -495,6 +515,12 @@ field::T        : T       -> field
 field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
 ```
+
+Their symbol policy is `meta + runtime`, so the compiler can resolve and inspect
+them during meta/type-checking phases and can construct residual runtime calls
+that reference them. Their callable body-entry policy is `runtime`, and their
+return-object policy is `runtime`; meta lookup visibility does not permit a meta
+evaluator to enter their bodies.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form such as `val ref.field1` or
@@ -717,7 +743,8 @@ physical / declared / virtual `NamespaceNode` kind; resolver returning a
 role-aware child-name model (§3) and the ordinary direct-child contribution /
 local-construction rules (§4); no source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
-(architectural placeholder only — see `spec/future/policy-visibility-symbols.md`).
+with minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
+checking remains future work (see `spec/future/policy-visibility-symbols.md`).
 
 Non-goals: full version solving; remote package retrieval; lockfile
 completeness; dynamic/static distribution distinction; full access-control
@@ -729,13 +756,13 @@ Must cover: early meta-function lookup from the namespace graph; closed
 `SyntaxObject` passing; `assert`; `struct` as the first real core-namespace
 meta-function object; meta call replacement; `MetaExpansionResult`
 (replacement / namespace delta / diagnostics / provenance); policy fields on
-meta-function objects — entry-policy / return-object-policy slots (reserved, no
-full projection — see `spec/future/policy-visibility-symbols.md`); the
-parent-to-child
-injection rule, with parent-to-descendant generation only as the closed meta
-exception (§4); generated child namespace installation; no arbitrary rewrite of
-parent / sibling / global namespace; `struct` consumes AST by a private checker,
-failure is a meta hard error.
+callable objects — distinct symbol visibility, body-entry, and return-object
+policy planes (no full projection or execution checker — see
+`spec/future/policy-visibility-symbols.md`); the parent-to-child injection rule,
+with parent-to-descendant generation only as the closed meta exception (§4);
+generated child namespace installation; no arbitrary rewrite of parent /
+sibling / global namespace; `struct` consumes AST by a private checker, failure
+is a meta hard error.
 
 Non-goals: general compile-time value execution; value-to-value meta-functions;
 arbitrary control flow in meta bodies; full generic system; full pattern-space

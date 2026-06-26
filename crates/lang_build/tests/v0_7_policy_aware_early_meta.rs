@@ -2,9 +2,9 @@ mod support;
 use support::*;
 
 use lang_build::{
-    policy_set_runtime, CompilationWorld, CoreMetaFunction, MetaFunctionObject, PolicyEnv,
-    PolicyFlag, PolicyMetadata, Provenance, ResolveExpectation, SourceCategory, SymbolKind,
-    SymbolObject, SymbolPayload,
+    callable_body_allows_execution, policy_set_runtime, CompilationWorld, CoreMetaFunction,
+    ExecutionEnv, MetaFunctionObject, PolicyEnv, PolicyFlag, PolicyMetadata, Provenance,
+    ResolveExpectation, ResolverCode, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
 };
 
 #[test]
@@ -128,6 +128,51 @@ fn core_symbols_have_expected_policy_flags() {
 }
 
 #[test]
+fn core_meta_function_payload_policy_slots_are_non_empty() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+
+    for (name, primitive, return_has_runtime) in [
+        ("struct", CoreMetaFunction::Struct, true),
+        ("assert", CoreMetaFunction::Assert, false),
+    ] {
+        let symbol = world.resolve(name).expect("resolve core meta-function");
+        let symbol_policy = &symbol.policy_metadata.policy_set;
+        assert!(symbol_policy.contains(PolicyFlag::Export));
+        assert!(symbol_policy.contains(PolicyFlag::Meta));
+        assert!(!symbol_policy.contains(PolicyFlag::Runtime));
+
+        let SymbolPayload::MetaFunction(meta_function) = &symbol.payload else {
+            panic!("expected {name} meta-function payload");
+        };
+        assert_eq!(meta_function.primitive, primitive);
+
+        let function_policy = &meta_function.function_policy.policy_set;
+        assert!(function_policy.contains(PolicyFlag::Export));
+        assert!(function_policy.contains(PolicyFlag::Meta));
+        assert!(!function_policy.contains(PolicyFlag::Runtime));
+
+        let body_policy = &meta_function.body_entry_policy.policy_set;
+        assert!(body_policy.contains(PolicyFlag::Meta));
+        assert!(!body_policy.contains(PolicyFlag::Runtime));
+        assert!(callable_body_allows_execution(
+            &meta_function.body_entry_policy,
+            ExecutionEnv::Meta
+        ));
+        assert!(!callable_body_allows_execution(
+            &meta_function.body_entry_policy,
+            ExecutionEnv::Runtime
+        ));
+
+        let return_policy = &meta_function.return_object_policy.policy_set;
+        assert!(return_policy.contains(PolicyFlag::Meta));
+        assert_eq!(
+            return_policy.contains(PolicyFlag::Runtime),
+            return_has_runtime
+        );
+    }
+}
+
+#[test]
 fn user_declared_values_are_runtime_only() {
     let project = TempProject::new("user_runtime");
     project.write("src/main.lang", "let x = 1; let y: type = uint8");
@@ -153,6 +198,27 @@ fn user_declared_values_are_runtime_only() {
 }
 
 #[test]
+fn runtime_only_value_is_invisible_under_meta_lookup() {
+    let project = TempProject::new("user_runtime_meta_lookup");
+    project.write("src/main.lang", "let x = 1");
+    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect("build world");
+    let context = world.package_context();
+
+    let diagnostic = world
+        .snapshot()
+        .capability()
+        .resolve_with_policy(
+            &["x".to_string()],
+            &context,
+            ResolveExpectation::Object,
+            PolicyEnv::Meta,
+        )
+        .expect_err("runtime-only value should be filtered out under Meta lookup");
+    assert_eq!(diagnostic.code, Some(ResolverCode::Unresolved));
+}
+
+#[test]
 fn struct_generated_type_has_meta_runtime_policy() {
     let project = TempProject::new("generated_policy");
     project.write("src/main.lang", "let T: type = (uint8 a) |> struct");
@@ -172,6 +238,14 @@ fn struct_generated_type_has_meta_runtime_policy() {
         ps.contains(PolicyFlag::Runtime),
         "generated T should have Runtime"
     );
+
+    let context = world.package_context();
+    let meta_resolved = world
+        .snapshot()
+        .capability()
+        .resolve_type_object_with_policy("T", &context, PolicyEnv::Meta)
+        .expect("generated T should resolve under Meta lookup");
+    assert_eq!(meta_resolved.kind, SymbolKind::Type);
 }
 
 #[test]
@@ -304,30 +378,79 @@ fn generated_field_function_is_visible_under_meta_policy() {
         .expect("build world");
     let context = world.package_context();
 
-    let symbol = world
-        .snapshot()
-        .capability()
-        .resolve_with_policy(
-            &["a".to_string(), "T".to_string()],
-            &context,
-            ResolveExpectation::FieldFunction,
-            PolicyEnv::Meta,
-        )
-        .expect("a::T field function should resolve under Meta (meta+runtime)");
-    assert_eq!(symbol.kind, SymbolKind::FieldFunction);
-    assert_eq!(symbol.name, "a");
+    for (path, expected_projection) in [
+        (
+            vec!["a".to_string(), "T".to_string()],
+            lang_build::FieldProjection::Value,
+        ),
+        (
+            vec!["a".to_string(), "ref".to_string(), "T".to_string()],
+            lang_build::FieldProjection::Ref,
+        ),
+        (
+            vec!["a".to_string(), "share".to_string(), "T".to_string()],
+            lang_build::FieldProjection::Share,
+        ),
+    ] {
+        let symbol = world
+            .snapshot()
+            .capability()
+            .resolve_with_policy(
+                &path,
+                &context,
+                ResolveExpectation::FieldFunction,
+                PolicyEnv::Meta,
+            )
+            .expect("field function should resolve under Meta lookup");
+        assert_eq!(symbol.kind, SymbolKind::FieldFunction);
+        assert_eq!(symbol.name, "a");
 
-    let ps = &symbol.policy_metadata.policy_set;
-    assert!(
-        !ps.contains(PolicyFlag::Export),
-        "field function should not have Export"
-    );
-    assert!(
-        ps.contains(PolicyFlag::Meta),
-        "field function should have Meta"
-    );
-    assert!(
-        ps.contains(PolicyFlag::Runtime),
-        "field function should have Runtime"
-    );
+        let ps = &symbol.policy_metadata.policy_set;
+        assert!(
+            !ps.contains(PolicyFlag::Export),
+            "field function should not have Export"
+        );
+        assert!(
+            ps.contains(PolicyFlag::Meta),
+            "field function should have Meta"
+        );
+        assert!(
+            ps.contains(PolicyFlag::Runtime),
+            "field function should have Runtime"
+        );
+
+        let SymbolPayload::FieldFunction(field_object) = &symbol.payload else {
+            panic!("expected field-function payload");
+        };
+        assert_eq!(field_object.projection, expected_projection);
+
+        let body_policy = &field_object.callable_policy.body_entry_policy;
+        assert!(
+            body_policy.policy_set.contains(PolicyFlag::Runtime),
+            "field body should have Runtime"
+        );
+        assert!(
+            !body_policy.policy_set.contains(PolicyFlag::Meta),
+            "field body should not have Meta"
+        );
+
+        let return_policy = &field_object.callable_policy.return_object_policy;
+        assert!(
+            return_policy.policy_set.contains(PolicyFlag::Runtime),
+            "field return object should have Runtime"
+        );
+        assert!(
+            !return_policy.policy_set.contains(PolicyFlag::Meta),
+            "field return object should not have Meta"
+        );
+
+        assert!(
+            !callable_body_allows_execution(body_policy, ExecutionEnv::Meta),
+            "Meta lookup visibility must not imply Meta body execution"
+        );
+        assert!(
+            callable_body_allows_execution(body_policy, ExecutionEnv::Runtime),
+            "field body should allow Runtime execution"
+        );
+    }
 }
