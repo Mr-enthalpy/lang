@@ -84,16 +84,25 @@ track:
   `PolicySet` / `PolicyEnv::Meta`, with per-component `Meta` filtering applied
   in the resolver (`resolve_with_policy`) and in early-meta expansion. Core,
   namespace, source-contributed, struct-generated type, and generated
-  field-function symbols carry explicit policy flags; field functions are
-  `meta+runtime` so the meta phase may reflect them directly.
+  field-function symbols carry explicit policy flags.
+- `PolicyEnv::Meta` is lookup visibility, not callable body execution
+  permission.
+- Generated field functions are `meta+runtime` visible symbols but runtime-entry
+  callables.
 
 Still open after this correction:
 
-- `PolicyEnv::Runtime` (runtime-lookup pass). The `Runtime` flag is reserved
-  but no runtime policy environment is implemented.
-- Full policy lattice, projection, and conformance checking.
+- `PolicyEnv::Runtime` resolver mode. The `Runtime` flag is reserved but no
+  runtime lookup pass is implemented.
+- Full policy lattice.
+- Policy projection checking and conformance checking.
+- Ordinary function object policy model.
 - Alias forwarding resolution under policy filtering.
-- Overload candidate buckets / per-policy-pass overload set construction.
+- Overload buckets and per-policy-pass overload set construction.
+- Call execution checker.
+- Type checker.
+- Runtime residual call construction.
+- IR/HIR lowering.
 
 ---
 

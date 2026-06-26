@@ -2,10 +2,11 @@ use crate::{
     graph::{namespace_symbol, BuildError, NamespaceGraphSnapshot},
     model::{
         CoreMetaFunction, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, PolicyMetadata, PolicySet, Provenance, SourceCategory, SymbolKind,
-        SymbolObject, SymbolPayload, TypeObject,
+        NamespaceNodeKind, PolicySet, Provenance, SourceCategory, SymbolKind, SymbolObject,
+        SymbolPayload, TypeObject,
     },
-    policy_set_export_meta, policy_set_export_meta_runtime,
+    policy_metadata, policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
+    policy_set_meta_runtime,
 };
 
 pub const CORE_NAMESPACE: &str = "core";
@@ -81,6 +82,10 @@ fn insert_meta_function(
     policy_set: PolicySet,
 ) {
     let symbol_id = delta.allocate_symbol_id();
+    let return_policy = match primitive {
+        CoreMetaFunction::Struct => policy_set_meta_runtime(),
+        CoreMetaFunction::Assert => policy_set_meta(),
+    };
     let mut symbol = SymbolObject::placeholder(
         symbol_id,
         name,
@@ -93,9 +98,9 @@ fn insert_meta_function(
     symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
         function_symbol_id: symbol_id,
         primitive,
-        function_policy: PolicyMetadata::default(),
-        body_entry_policy: PolicyMetadata::default(),
-        return_object_policy: PolicyMetadata::default(),
+        function_policy: policy_metadata(symbol.policy_metadata.policy_set.clone()),
+        body_entry_policy: policy_metadata(policy_set_meta()),
+        return_object_policy: policy_metadata(return_policy),
     });
     delta.insert_symbol(parent, symbol);
 }

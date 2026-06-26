@@ -5,12 +5,12 @@ use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, Nor
 use crate::{
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
     model::{
-        CoreMetaFunction, Diagnostic, FieldObject, FieldProjection, MetaFunctionObject,
-        NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PolicyEnv, Provenance,
-        ResolverCode, SourceCategory, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject,
-        SyntaxObjectKind, TypeField, TypeObject,
+        CallablePolicyMetadata, CoreMetaFunction, Diagnostic, FieldObject, FieldProjection,
+        MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
+        PolicyEnv, Provenance, ResolverCode, SourceCategory, SymbolKind, SymbolObject,
+        SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
     },
-    policy_set_meta_runtime,
+    policy_metadata, policy_set_meta_runtime, policy_set_runtime,
 };
 
 /// Result of a successful early meta expansion.
@@ -270,6 +270,10 @@ fn insert_field_projection_layer(
             field_name: field.name.clone(),
             field_type_symbol_id: field.type_symbol_id,
             projection,
+            callable_policy: CallablePolicyMetadata {
+                body_entry_policy: policy_metadata(policy_set_runtime()),
+                return_object_policy: policy_metadata(policy_set_runtime()),
+            },
             provenance,
         });
         delta.insert_symbol(parent, symbol);

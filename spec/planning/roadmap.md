@@ -236,9 +236,9 @@ Must cover:
 - ordinary contribution restricted to direct children; deeper structure owned by
   the immediate direct child (no ordinary parent-to-descendant injection)
 - no source-level import/use/include/module
-- policy metadata slots on symbols, contexts, and namespace graph nodes
-  (architectural placeholder only; see
-  `spec/future/policy-visibility-symbols.md`)
+- policy metadata slots on symbols, contexts, and namespace graph nodes,
+  including minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
+  checking remains future work (see `spec/future/policy-visibility-symbols.md`)
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -261,12 +261,16 @@ collection, physical directory namespace skeletons, direct-child declaration
 harvesting, role-aware child buckets, expectation-aware resolver lookup, core
 bootstrap symbols, and invariant tests. It also includes a minimal early-meta
 closure for `core::struct` / `core::assert` lookup so the world model can prove
-generated type-associated namespaces are installed atomically. Fields named
-`ref` / `share` are accepted as object-role field functions that coexist with
-projection namespace subspaces. This does **not** complete v0.7 or v0.8: only
-the narrow `(uint8 a, uint8 b) |> struct` family is implemented, no full
-manifest parser, package manager, type checker, policy checker, type-value
-equality, access-tree construction, or general meta interpreter is present.
+generated type-associated namespaces are installed atomically. v0.7-prep has
+implemented minimal policy-aware early-meta lookup and callable policy-plane
+clarification: `PolicyEnv::Meta` is resolver visibility, not callable execution
+permission, and generated field functions are `meta+runtime` visible symbols
+with runtime-only bodies. Fields named `ref` / `share` are accepted as
+object-role field functions that coexist with projection namespace subspaces.
+This does **not** complete v0.7 or v0.8: only the narrow
+`(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
+package manager, type checker, policy checker, type-value equality, access-tree
+construction, or general meta interpreter is present.
 
 #### v0.7 — Early Meta-Function Bootstrap
 
@@ -290,8 +294,9 @@ Must cover:
   sibling / global namespace
 - `struct` consumes AST by a private checker; failure is a meta hard error, not
   a parser / normalizer error
-- policy fields on meta-function objects — entry-policy / return-object-policy
-  slots reserved (architectural placeholder; see
+- policy fields on callable objects — symbol visibility policy, body-entry
+  policy, and return-object policy represented distinctly; full projection and
+  execution checking remain future work (see
   `spec/future/policy-visibility-symbols.md`)
 
 Non-goals: general compile-time value execution; value-to-value meta-functions;
