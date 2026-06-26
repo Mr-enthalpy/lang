@@ -295,3 +295,39 @@ fn meta_policy_can_traverse_type_projection_namespace() {
     assert_eq!(symbol.kind, SymbolKind::Namespace);
     assert_eq!(symbol.name, "ref");
 }
+
+#[test]
+fn generated_field_function_is_visible_under_meta_policy() {
+    let project = TempProject::new("field_meta_policy");
+    project.write("src/main.lang", "let T: type = (uint8 a) |> struct");
+    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
+        .expect("build world");
+    let context = world.package_context();
+
+    let symbol = world
+        .snapshot()
+        .capability()
+        .resolve_with_policy(
+            &["a".to_string(), "T".to_string()],
+            &context,
+            ResolveExpectation::FieldFunction,
+            PolicyEnv::Meta,
+        )
+        .expect("a::T field function should resolve under Meta (meta+runtime)");
+    assert_eq!(symbol.kind, SymbolKind::FieldFunction);
+    assert_eq!(symbol.name, "a");
+
+    let ps = &symbol.policy_metadata.policy_set;
+    assert!(
+        !ps.contains(PolicyFlag::Export),
+        "field function should not have Export"
+    );
+    assert!(
+        ps.contains(PolicyFlag::Meta),
+        "field function should have Meta"
+    );
+    assert!(
+        ps.contains(PolicyFlag::Runtime),
+        "field function should have Runtime"
+    );
+}

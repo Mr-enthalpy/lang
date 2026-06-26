@@ -75,6 +75,28 @@ Still open after this correction:
 
 ---
 
+## v0.7-prep policy correction record
+
+The following point is resolved for the v0.7-prep policy-aware early-meta
+track:
+
+- Minimal policy-aware early meta lookup is implemented: `PolicyFlag` /
+  `PolicySet` / `PolicyEnv::Meta`, with per-component `Meta` filtering applied
+  in the resolver (`resolve_with_policy`) and in early-meta expansion. Core,
+  namespace, source-contributed, struct-generated type, and generated
+  field-function symbols carry explicit policy flags; field functions are
+  `meta+runtime` so the meta phase may reflect them directly.
+
+Still open after this correction:
+
+- `PolicyEnv::Runtime` (runtime-lookup pass). The `Runtime` flag is reserved
+  but no runtime policy environment is implemented.
+- Full policy lattice, projection, and conformance checking.
+- Alias forwarding resolution under policy filtering.
+- Overload candidate buckets / per-policy-pass overload set construction.
+
+---
+
 ## v0.5 stabilization debt
 
 The public v0.5 normalized surface semantics are published

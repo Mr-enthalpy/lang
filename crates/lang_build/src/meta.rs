@@ -258,6 +258,7 @@ fn insert_field_projection_layer(
             Some(parent),
             provenance.clone(),
         );
+        symbol.policy_metadata.policy_set = policy_set_meta_runtime();
         symbol.generation_origin = Some("core::struct field projection".to_string());
         symbol.cache_key_fragment = Some(format!(
             "field:{}:{}:{projection:?}",

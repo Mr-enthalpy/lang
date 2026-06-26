@@ -27,9 +27,9 @@ The immediate, narrow objective for v0.6–v0.8 is:
 Current implementation note: `lang_build` reserves `PolicyMetadata` and
 `VisibilityMetadata` slots on `SymbolObject` and `NamespaceNode`, a
 current-policy slot on `ResolverContext`, and function/body/return policy slots
-on `MetaFunctionObject`. These slots are preserved through namespace deltas, but
-no policy lattice, projection rule, conformance checker, or policy-driven
-visibility filtering is implemented.
+on `MetaFunctionObject`. These slots are preserved through namespace deltas.
+v0.7-prep implements only `PolicyEnv::Meta` filtering; full policy checking
+(policy lattice, projection rule, conformance checker) remains deferred.
 
 Non-goals for v0.6–v0.8:
 
@@ -309,7 +309,8 @@ v0.7 (Early Meta-Function Bootstrap):
   symbol), all namespace symbols (`meta+runtime` for declared, physical,
   dependency, type-projection, and generated namespaces), source-contributed
   symbols (`runtime` for values, `meta+runtime` for type-annotated declarations),
-  and struct-generated type objects (`meta+runtime`). Policy filtering is per-
+  and struct-generated type objects and generated field functions
+  (`meta+runtime`). Policy filtering is per-
   component — namespace intermediaries must carry traversal flags. `PolicyEnv::Runtime`
   is not implemented; the `Runtime` flag is reserved for future runtime-lookup and
   currently marks symbols excluded from meta passes.
