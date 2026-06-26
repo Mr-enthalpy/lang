@@ -1,7 +1,7 @@
 mod support;
 use support::*;
 
-use lang_build::{CompilationWorld, SourceDiscoveryConfig, SymbolKind};
+use lang_build::{CompilationWorld, SourceDiscoveryConfig, SourceRoot, SymbolKind};
 
 // A. Discovers `.lang` files from a real source root, through both the direct
 // discovery layer and the full `from_manifest` pipeline.
@@ -231,5 +231,35 @@ fn file_name_is_fragment_identity_only() {
     assert!(
         capability.resolve_str("T::foo::app", &context).is_err(),
         "the file stem must not introduce a namespace segment"
+    );
+}
+
+// Duplicate physical identity: configuring the same source root path twice
+// surfaces the same canonical `.lang` file more than once. This is rejected as a
+// hard diagnostic rather than silently duplicated or de-duplicated. Platform
+// independent (no symlinks).
+#[test]
+fn duplicate_physical_source_identity_is_a_hard_diagnostic() {
+    let project = TempProject::new("discovery_duplicate_identity");
+    project.write("src/main.lang", "let T: type = uint8");
+    let src = project.path().join("src");
+
+    let mut manifest = empty_app_manifest();
+    manifest.source_roots.push(SourceRoot {
+        path: src.clone(),
+        namespace_root: vec!["app".to_string()],
+    });
+    manifest.source_roots.push(SourceRoot {
+        path: src,
+        namespace_root: vec!["app".to_string()],
+    });
+
+    let report = SourceDiscoveryConfig::from_source_roots(&manifest.source_roots).discover();
+    assert!(report.has_hard_errors());
+    assert!(
+        report.diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("duplicate physical source identity")),
+        "expected a duplicate physical source identity diagnostic: {report:#?}"
     );
 }

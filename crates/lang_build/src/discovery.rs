@@ -247,10 +247,20 @@ fn walk_directory(
     };
 
     // Collect then sort locally so recursion is deterministic even before the
-    // final global sort in `discover`.
+    // final global sort in `discover`. Per-entry read errors are surfaced as
+    // hard diagnostics rather than silently dropped.
     let mut children: Vec<PathBuf> = Vec::new();
-    for entry in entries.flatten() {
-        children.push(entry.path());
+    for entry in entries {
+        match entry {
+            Ok(entry) => children.push(entry.path()),
+            Err(error) => diagnostics.push(Diagnostic::hard_error(
+                format!(
+                    "{DISCOVERY_ERROR_PREFIX} failed to read source directory entry in `{}`: {error}",
+                    directory.display()
+                ),
+                Some(Provenance::file("source directory", directory)),
+            )),
+        }
     }
     children.sort();
 
