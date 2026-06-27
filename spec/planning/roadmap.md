@@ -370,6 +370,10 @@ first-order type predicates and policy-aware invocation, so they are future work
 after the meta invocation model; see
 `spec/future/mechanical-return-normalization-and-error-policy.md`.
 
+Future first-order lowering also needs explicit call-mode insertion
+(`normal` / `tco` / `loop`) for recursion-based repetition, since the language
+has no loop core; see `spec/future/call-modes-recursion-and-tail-lowering.md`.
+
 The v0.4 normalizer only preserves the Normalized AST boundaries these phases
 need: value-side material remains `NormExpr`, pattern-side material remains
 `NormPattern`, annotations remain annotation patterns, branch names in extraction

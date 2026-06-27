@@ -77,6 +77,11 @@ invocation and policy-aware `Error` handler lookup, but it is not part of the
 current early-meta slice; see
 `spec/future/mechanical-return-normalization-and-error-policy.md`.
 
+Future formal meta object invocation should likewise share the `normal` / `tco` /
+`loop` call-mode vocabulary; meta functions have no loop core and express
+repetition by recursion. The current `struct` / `verify` slice does not implement
+call modes; see `spec/future/call-modes-recursion-and-tail-lowering.md`.
+
 ### Policy flag assignment
 
 | Symbol source | Policy set |
