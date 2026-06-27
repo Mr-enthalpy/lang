@@ -17,6 +17,12 @@ A recurring invariant across this block: **default strategies (`in`, default
 error propagation, automatic call-mode selection) exist only before lowering /
 meta invocation. The final IR receives only fully decided actions.**
 
+For v0.8-adjacent type-to-type meta construction work, read
+`spec/contracts/v0.8-meta-construction-agent-constraints.md` first. Its
+non-value argument boundary applies here: type objects, rank objects, namespace
+objects, meta objects, and pattern objects are not value arguments and must not
+receive automatic pass insertion.
+
 ## Not in scope
 
 Backend / machine ABI, machine stack layout, and the final IR instruction

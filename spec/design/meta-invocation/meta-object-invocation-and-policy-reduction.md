@@ -413,6 +413,14 @@ compatibility are prerequisites for real overload selection. This document
 defines the invocation frame only; it does not define the pattern system or the
 type-value system.
 
+For v0.8-adjacent type-to-type meta construction, argument shape means the
+contract-shaped route through `ProductObject` / `ArgProductShape`, not
+callee-specific parsing of raw normalized product material. Canonical meta
+instance keys must be computed only after product canonicalization and
+first-order `TypeValueId` argument compatibility are established. The detailed
+construction guardrails live in
+`spec/contracts/v0.8-meta-construction-agent-constraints.md`.
+
 ```text
 Planned companion documents:
 - `pattern-normalization-and-first-order-overload.md`
@@ -477,16 +485,19 @@ and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
-2. Introduce normalized pattern / argument-shape objects.
+2. Introduce ProductObject / ArgProductShape and normalized pattern /
+   argument-shape objects.
 3. Introduce first-order TypeValueId and callable signature objects.
-4. Introduce candidate-set construction for meta invocation.
-5. Move `struct` and `verify` dispatch behind the common invocation engine.
-6. Add partial versus strict meta reduction modes.
-7. Add guarded/short-circuit invocation strategy objects.
-8. Only after this, introduce runtime lookup over residual expressions.
+4. Introduce canonical meta instance keys for type-to-type meta construction.
+5. Introduce candidate-set construction for meta invocation.
+6. Move `struct` and `verify` dispatch behind the common invocation engine.
+7. Add partial versus strict meta reduction modes.
+8. Add guarded/short-circuit invocation strategy objects.
+9. Only after this, introduce runtime lookup over residual expressions.
 ```
 
 Runtime lookup is deliberately listed last. It must not be pulled earlier than
-the pattern, type-value, and meta-invocation milestones: residuals are only
-well-formed once the invocation engine that produces them exists, and runtime
-lookup is the consumer of those residuals, not a parallel mechanism.
+the product/argument-shape, pattern, type-value, canonical-key, and
+meta-invocation milestones: residuals are only well-formed once the invocation
+engine that produces them exists, and runtime lookup is the consumer of those
+residuals, not a parallel mechanism.

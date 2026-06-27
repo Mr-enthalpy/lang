@@ -785,8 +785,24 @@ a **type-object construction interpreter**.
   result has a globally consistent symbol identity.
 - **Installation** — generated declarations are installed only under a legal
   parent / instance node (per §4).
-- **First-class generic classes** such as `Vec(T)`, `Option(T)`, `Pair(A, B)` are
+- **First-class generic classes** such as `(T)Vec`, `(T)Option`, `(A, B)Pair` are
   expressible in this type-to-type form.
+
+Before ordinary generic type-style meta-functions are implemented, the
+construction contract in
+`spec/contracts/v0.8-meta-construction-agent-constraints.md` must be absorbed.
+Do not expand the bespoke `struct` path for `(T)Vec`, `(T)Option`, `(A, B)Pair`,
+or other type-to-type meta construction. New work must follow the shared route:
+
+```text
+resolve callee
+  -> ProductObject / ArgProductShape
+  -> RawArgShape / ParameterShape
+  -> TypeValueId compatibility
+  -> policy body-entry check
+  -> MetaReductionResult / MetaExpansionResult
+  -> NamespaceDelta atomic install
+```
 
 ## 7. Stage scope (must cover / non-goals)
 
@@ -834,7 +850,7 @@ creating symbols through the capability layer; `===` as alias / forwarding;
 explicit return object slot; `r = t` (generated) vs `r === t` (forwarded);
 generative meta identity (function symbol + canonical args + build/config
 fingerprint); symbol shielding; installation under a legal parent / instance
-node; first-class `Vec(T)` / `Option(T)` / `Pair(A, B)`.
+node; first-class `(T)Vec` / `(T)Option` / `(A, B)Pair`.
 
 Non-goals: value-to-type control flow; value-to-value compile-time world;
 unrestricted compile-time IO; runtime execution; full borrow/lifetime checking;

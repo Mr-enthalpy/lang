@@ -87,6 +87,83 @@ candidate-preparation subset that the formal meta invocation engine needs in
 order to choose a callable at meta time. Full runtime overload resolution
 remains a later, broader design.
 
+### 2.1 Product semantic normalization bridge
+
+`RawArgShape` formation consumes `ArgProductShape`; it must not read raw
+Normalized AST product structure directly. The bridge from normalized product
+material into argument-shape formation is:
+
+```text
+NormProduct
+  -> ProductObject
+  -> FlattenedProductObject
+  -> ArgProductShape
+  -> RawArgShape
+```
+
+Product semantic normalization is not surface normalization. It produces a
+semantic product object used by candidate preparation and future meta
+invocation:
+
+```text
+flatten crosses Product nodes.
+flatten does not cross Expression nodes.
+order is preserved.
+Unit is preserved.
+provenance is preserved.
+```
+
+Formal skeleton:
+
+```text
+NF_P(P) = ordered sequence of product atoms
+
+NF_P((x1, x2, ..., xn))
+  = concat(NF_item(x1), NF_item(x2), ..., NF_item(xn))
+
+NF_item(Product p) = NF_P(p)
+NF_item(Expression e) = [e]
+NF_item(Unit) = [Unit]
+```
+
+Examples:
+
+```text
+((P, e), e)   -> (P, e, e)
+((e, e), e)   -> (e, e, e)
+((e, P), e)   -> (e, P, e)
+(e, (P, e))   -> (e, P, e)
+
+((a, b), c)         -> (a, b, c)
+(a, (b, c))         -> (a, b, c)
+((a |> f), (b, c))  -> (a |> f, b, c)
+((a, b) |> f, c)    -> ((a, b) |> f, c)
+```
+
+Forbidden:
+
+```text
+((a, b) |> f, c) -> (a, b, f, c)
+```
+
+The reason is that `(a, b) |> f` is an Expression barrier. Candidate
+preparation may normalize a call's own source product, but it must not flatten
+from an outer product context through an expression/call node.
+
+`Unit` positions remain in the product object:
+
+```text
+((a,), b) -> (a, Unit, b)
+((), a)   -> (Unit, a)
+```
+
+Only a future explicit parameter expectation / extraction rule may consume
+`Unit`; product semantic normalization itself does not delete it.
+
+This layer prohibits callee-specific AST argument parsing, special handling of
+`(T)Vec` / `(T)Option` / `(A, B)Pair`, flattening through Expression nodes, and
+dropping `Unit` during product normalization.
+
 ## 3. PatternObject
 
 A `PatternObject` is the normalized, object-ized form of a pattern-position

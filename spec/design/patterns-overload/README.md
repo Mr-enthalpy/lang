@@ -8,6 +8,8 @@ matcher, type checker, or overload resolver.**
 Pattern normalization and the candidate model that feeds invocation:
 
 - `PatternObject` and occurrence roles (binder / type / path / literal / discard)
+- `ProductObject` / `ArgProductShape` as the bridge from normalized products to
+  argument-shape formation
 - `RawArgShape` and `ParameterShape`
 - first-order type-value candidate adaptation, applicability, specificity
 - the full overload-resolution vision
@@ -24,6 +26,19 @@ This block distinguishes two layers explicitly:
 
 Runtime overload resolution implementation, full pattern-space algebra, and
 match/exhaustiveness checking.
+
+## Product semantic normalization bridge
+
+Product semantic normalization is not surface normalization. Before
+`RawArgShape` formation, a normalized product must pass through:
+
+```text
+NormProduct -> ProductObject -> FlattenedProductObject -> ArgProductShape -> RawArgShape
+```
+
+The bridge flattens exposed Product nodes, does not cross Expression nodes,
+preserves order, preserves `Unit`, and preserves provenance. This is an input to
+candidate preparation, not runtime overload resolution.
 
 ## Documents
 

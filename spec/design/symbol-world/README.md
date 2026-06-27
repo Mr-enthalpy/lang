@@ -40,6 +40,13 @@ policy checker (referenced from the other blocks).
 Read `early-meta-functions-and-namespace-graph.md` first for the bootstrap, then
 the type-value/place/alias and field-function documents.
 
+For v0.8-adjacent work that touches `TypeValueId`, `PlaceId`, `AliasChain`,
+generated meta instances, injection-place checking, or the current `struct`
+vertical slice, read
+`spec/contracts/v0.8-meta-construction-agent-constraints.md` first. That
+contract makes these objects implementation preconditions for generic
+type-style meta construction, not optional future commentary.
+
 ## Dependencies
 
 Builds on `build-package/` (roots, mounts, provenance). Provides `TypeValueId`

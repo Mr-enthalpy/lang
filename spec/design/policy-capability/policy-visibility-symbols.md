@@ -397,7 +397,10 @@ v0.7 (Early Meta-Function Bootstrap):
 v0.8 (Type-to-Type Meta Construction Interpreter):
   Understand that meta body execution policy differs from function symbol policy
   and return-object policy. Implement only the minimum checks needed to avoid
-  misrepresenting meta-functions as runtime functions.
+  misrepresenting meta-functions as runtime functions. Every v0.8 type-to-type
+  meta constructor plan must carry all three planes explicitly: symbol
+  visibility, body-entry, and return-object policy. The cross-block construction
+  gate is `spec/contracts/v0.8-meta-construction-agent-constraints.md`.
 
 Later stages will implement policy inference, projection checking, compile /
 runtime / seal semantics, const / mut policy, effect policy, error / panic

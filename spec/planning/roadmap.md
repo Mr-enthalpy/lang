@@ -214,7 +214,9 @@ The active design route (documented under `spec/design/`) is:
 
 ```text
 package/manifest identity
+  -> namespace graph / SymbolObject
   -> TypeValueId / PlaceId / AliasChain
+  -> ProductObject / ArgProductShape
   -> pattern normalization + first-order candidate shapes
   -> formal meta object invocation
   -> mechanical lowering family
@@ -371,10 +373,20 @@ Must cover:
 - symbol shielding: the externally visible result name is determined by the meta
   function name + arguments, not internal temporary names
 - generated declarations installed only under a legal parent / instance node
-- first-class generic classes such as `Vec(T)`, `Option(T)`, `Pair(A, B)`
+- first-class generic classes such as `(T)Vec`, `(T)Option`, `(A, B)Pair`
 - awareness that meta body execution policy differs from function symbol policy
   and return-object policy; implement only the minimum checks needed to avoid
   misrepresenting meta-functions as runtime functions
+
+Before implementing ordinary generic type-style meta-functions, the v0.8
+construction contract must be absorbed:
+`spec/contracts/v0.8-meta-construction-agent-constraints.md`. The following are
+preconditions, not optional local conveniences: `ProductObject` /
+`ArgProductShape`, `TypeValueId` / `PlaceId` / `AliasChain`, policy-aware
+lookup with distinct symbol visibility / body-entry / return-object planes,
+canonical meta instance key, and `NamespaceDelta` atomic install. This does not
+make a full generic system, full overload resolution, or full type checker a
+v0.8 requirement.
 
 Non-goals: value-to-type control flow; value-to-value compile-time world;
 unrestricted compile-time IO; runtime execution; full borrow/lifetime checking;
