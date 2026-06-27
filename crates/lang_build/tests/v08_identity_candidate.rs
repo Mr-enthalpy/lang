@@ -95,6 +95,8 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         candidate.arg_product_shape.raw_args[0].value_class,
         RawArgValueClass::UnknownExpression
     ));
+    // Candidate-prep must not insert pass actions before value/type/rank/meta/
+    // pattern classification; UnknownExpression may become a value later.
     assert!(!candidate.arg_product_shape.raw_args[0].receives_automatic_pass_action());
     assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::Meta);
     assert_eq!(

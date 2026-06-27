@@ -156,6 +156,14 @@ impl RawArgShape {
         }
     }
 
+    /// Returns true only after this argument has been positively classified as
+    /// a value argument.
+    ///
+    /// `UnknownExpression` returns false at the v0.8 candidate-prep placeholder
+    /// boundary because mechanical pass insertion is not allowed before
+    /// value/type/rank/meta/pattern classification. This is not a final
+    /// semantic claim that ordinary expressions never receive automatic pass
+    /// actions after later classification.
     pub fn receives_automatic_pass_action(&self) -> bool {
         matches!(self.value_class, RawArgValueClass::Value)
     }
