@@ -1,0 +1,3 @@
+let T: type = uint8;
+
+verify unknown_operation T;

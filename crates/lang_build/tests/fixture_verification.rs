@@ -5,6 +5,9 @@ use lang_build::{BuildSession, BuildWorkspace};
 
 const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("vertical_slice", "app"),
+    ("core_verify_namespace", "app"),
+    ("resolver_core_paths", "app"),
+    ("verify_runtime_shadow", "app"),
     ("early_struct_meta", "app"),
     ("struct_single_field", "app"),
     ("field_named_ref", "app"),
@@ -37,6 +40,13 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "app",
         "source verification error:",
     ),
+    ("verify_meta_conflict", "app", "source verification error:"),
+    (
+        "verify_unknown_operation",
+        "app",
+        "unknown verification operation",
+    ),
+    ("verify_malformed_arity", "app", "expects 2 argument(s)"),
     ("struct_duplicate_field", "app", "duplicate struct field"),
     ("struct_non_type_field", "app", "unknown struct field type"),
     ("struct_nested_product", "app", "invalid struct syntax"),

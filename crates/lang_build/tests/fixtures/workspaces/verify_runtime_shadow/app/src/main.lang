@@ -1,0 +1,7 @@
+let verify = 1;
+let T: type = uint8;
+
+verify kind T type;
+verify policy verify::app runtime;
+verify not_policy verify::app meta;
+verify kind verify::core namespace;

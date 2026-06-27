@@ -462,7 +462,9 @@ impl SymbolObject {
 
     pub fn namespace_node(&self) -> Option<NamespaceNodeId> {
         match &self.payload {
-            SymbolPayload::Namespace { node } => Some(*node),
+            SymbolPayload::Namespace { node } | SymbolPayload::VerificationNamespace { node } => {
+                Some(*node)
+            }
             SymbolPayload::Type(type_object) => type_object.type_associated_namespace,
             _ => None,
         }
@@ -492,6 +494,7 @@ impl SymbolObject {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SymbolPayload {
     Namespace { node: NamespaceNodeId },
+    VerificationNamespace { node: NamespaceNodeId },
     Type(TypeObject),
     MetaFunction(MetaFunctionObject),
     FieldFunction(FieldObject),
@@ -567,6 +570,29 @@ pub struct MetaFunctionObject {
 pub enum CoreMetaFunction {
     Struct,
     Assert,
+    Verify(VerificationPrimitive),
+}
+
+/// Core source-verification primitive resolved through the namespace graph.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VerificationPrimitive {
+    Exists,
+    NotExists,
+    ResolvesAs,
+    NotResolves,
+    Kind,
+    NamespaceKind,
+    FieldNames,
+    HasField,
+    FieldProjection,
+    FieldOwner,
+    FieldType,
+    Policy,
+    NotPolicy,
+    BodyEntryPolicy,
+    NotBodyEntryPolicy,
+    ReturnPolicy,
+    NotReturnPolicy,
 }
 
 /// Transactional graph mutation.

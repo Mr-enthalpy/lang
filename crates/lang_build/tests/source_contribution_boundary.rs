@@ -8,6 +8,7 @@ fn type_value_binding_placeholder_keeps_fresh_symbol_place_until_type_values_exi
     // Compiler-internal placeholder invariant: source verification can observe
     // that `T` is a type, but not the temporary TypeObject payload used until
     // TypeValueId and writable-place checking exist.
+    // Missing capability: verify.type_payload_identity.
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let symbol = world
         .resolve_with_expectation("T", ResolveExpectation::TypeObject)

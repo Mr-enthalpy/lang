@@ -3,12 +3,12 @@ use lang_syntax::{NormExpr, NormForm, NormNavComponent, NormOrigin, NormProductE
 use crate::{
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
     model::{
-        Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind, PolicyFlag, Provenance,
-        SymbolKind, SymbolObject, SymbolPayload,
+        CoreMetaFunction, Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind,
+        PolicyEnv, PolicyFlag, Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload,
+        VerificationPrimitive,
     },
 };
 
-const VERIFY_ENTRY: &str = "verify";
 const VERIFY_ERROR_PREFIX: &str = "source verification error:";
 
 pub fn evaluate_source_verifications(
@@ -24,11 +24,16 @@ pub fn evaluate_source_verifications(
         let NormForm::Expr(expr) = form else {
             continue;
         };
-        let Some(invocation) = VerificationInvocation::from_expr(expr) else {
+        let Some(invocation) = VerificationInvocation::from_expr(snapshot, context, expr) else {
             continue;
         };
-        if let Err(diagnostic) = invocation.evaluate(snapshot, context) {
-            diagnostics.push(diagnostic);
+        match invocation {
+            Ok(invocation) => {
+                if let Err(diagnostic) = invocation.evaluate(snapshot, context) {
+                    diagnostics.push(diagnostic);
+                }
+            }
+            Err(diagnostic) => diagnostics.push(diagnostic),
         }
     }
     Ok(diagnostics)
@@ -36,37 +41,120 @@ pub fn evaluate_source_verifications(
 
 #[derive(Clone, Debug)]
 struct VerificationInvocation {
-    operation: String,
+    primitive: VerificationPrimitive,
+    operation_label: String,
     args: Vec<VerificationArg>,
     origin: NormOrigin,
 }
 
 impl VerificationInvocation {
-    fn from_expr(expr: &NormExpr) -> Option<Self> {
+    fn from_expr(
+        snapshot: &NamespaceGraphSnapshot,
+        context: &ResolverContext,
+        expr: &NormExpr,
+    ) -> Option<Result<Self, Diagnostic>> {
         let mut terms = Vec::new();
         flatten_call_chain(expr, &mut terms);
-        if terms.len() < 2 {
-            return None;
-        }
-        if !matches!(terms.first(), Some(VerificationArg::Name(name, _)) if name == VERIFY_ENTRY) {
+        if terms.is_empty() {
             return None;
         }
 
-        let (operation, origin) = match terms.get(1)? {
-            VerificationArg::Name(name, origin) => (name.clone(), origin.clone()),
-            _ => {
-                return Some(Self {
-                    operation: "<invalid>".to_string(),
-                    args: terms.into_iter().skip(1).collect(),
-                    origin: expr_origin(expr).clone(),
-                })
+        let entry_path = terms.first()?.as_path()?;
+        let entry_symbol = match snapshot.capability().resolve_with_policy(
+            &entry_path.components,
+            context,
+            ResolveExpectation::AnyUnique,
+            PolicyEnv::Meta,
+        ) {
+            Ok(symbol) => symbol,
+            Err(diagnostic) => match diagnostic.code {
+                Some(ResolverCode::Unresolved) | None => return None,
+                Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => {
+                    return Some(Err(source_verification_error(
+                        expr_origin(expr),
+                        format!(
+                            "could not resolve verification entry `{}`: {}",
+                            entry_path.source_order_display(),
+                            diagnostic.message
+                        ),
+                    )));
+                }
+            },
+        };
+
+        let SymbolPayload::VerificationNamespace { node } = entry_symbol.payload else {
+            return None;
+        };
+
+        if terms.len() < 2 {
+            return Some(Err(source_verification_error(
+                expr_origin(expr),
+                format!(
+                    "verification entry `{}` requires an operation",
+                    entry_path.source_order_display()
+                ),
+            )));
+        }
+
+        let operation_path = match terms.get(1).and_then(VerificationArg::as_path) {
+            Some(path) => path,
+            None => {
+                return Some(Err(source_verification_error(
+                    expr_origin(expr),
+                    "verification operation must be a name/path",
+                )));
             }
         };
-        Some(Self {
-            operation,
+        let operation_origin = terms
+            .get(1)
+            .map(VerificationArg::origin)
+            .unwrap_or_else(|| expr_origin(expr))
+            .clone();
+        let operation_context = ResolverContext::new(node);
+        let operation_symbol = match snapshot.capability().resolve_with_policy(
+            &operation_path.components,
+            &operation_context,
+            ResolveExpectation::MetaFunction,
+            PolicyEnv::Meta,
+        ) {
+            Ok(symbol) => symbol,
+            Err(diagnostic) => {
+                return Some(Err(source_verification_error(
+                    &operation_origin,
+                    format!(
+                        "unknown verification operation `{}`: {}",
+                        operation_path.source_order_display(),
+                        diagnostic.message
+                    ),
+                )));
+            }
+        };
+
+        let SymbolPayload::MetaFunction(meta_function) = &operation_symbol.payload else {
+            return Some(Err(source_verification_error(
+                &operation_origin,
+                format!(
+                    "verification operation `{}` has no meta-function payload",
+                    operation_path.source_order_display()
+                ),
+            )));
+        };
+        let CoreMetaFunction::Verify(primitive) = meta_function.primitive else {
+            return Some(Err(source_verification_error(
+                &operation_origin,
+                format!(
+                    "`{}` is not a verification operation",
+                    operation_path.source_order_display()
+                ),
+            )));
+        };
+
+        Some(Ok(Self {
+            primitive,
+            operation_label: operation_symbol.name,
             args: terms.into_iter().skip(2).collect(),
-            origin,
-        })
+            origin: operation_origin,
+        }))
     }
 
     fn evaluate(
@@ -74,39 +162,42 @@ impl VerificationInvocation {
         snapshot: &NamespaceGraphSnapshot,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
-        match self.operation.as_str() {
-            "exists" => self.expect_exists(snapshot, context, true),
-            "not_exists" => self.expect_exists(snapshot, context, false),
-            "resolves_as" => self.expect_kind(snapshot, context),
-            "not_resolves" => self.expect_not_resolves(snapshot, context),
-            "kind" => self.expect_kind(snapshot, context),
-            "namespace_kind" => self.expect_namespace_kind(snapshot, context),
-            "field_names" => self.expect_field_names(snapshot, context),
-            "has_field" => self.expect_has_field(snapshot, context),
-            "field_projection" => self.expect_field_projection(snapshot, context),
-            "field_owner" => self.expect_field_owner(snapshot, context),
-            "field_type" => self.expect_field_type(snapshot, context),
-            "policy" => self.expect_policy(snapshot, context, PolicyCheck::Present),
-            "not_policy" => self.expect_policy(snapshot, context, PolicyCheck::Absent),
-            "body_entry_policy" => {
+        match self.primitive {
+            VerificationPrimitive::Exists => self.expect_exists(snapshot, context, true),
+            VerificationPrimitive::NotExists => self.expect_exists(snapshot, context, false),
+            VerificationPrimitive::ResolvesAs | VerificationPrimitive::Kind => {
+                self.expect_kind(snapshot, context)
+            }
+            VerificationPrimitive::NotResolves => self.expect_not_resolves(snapshot, context),
+            VerificationPrimitive::NamespaceKind => self.expect_namespace_kind(snapshot, context),
+            VerificationPrimitive::FieldNames => self.expect_field_names(snapshot, context),
+            VerificationPrimitive::HasField => self.expect_has_field(snapshot, context),
+            VerificationPrimitive::FieldProjection => {
+                self.expect_field_projection(snapshot, context)
+            }
+            VerificationPrimitive::FieldOwner => self.expect_field_owner(snapshot, context),
+            VerificationPrimitive::FieldType => self.expect_field_type(snapshot, context),
+            VerificationPrimitive::Policy => {
+                self.expect_policy(snapshot, context, PolicyCheck::Present)
+            }
+            VerificationPrimitive::NotPolicy => {
+                self.expect_policy(snapshot, context, PolicyCheck::Absent)
+            }
+            VerificationPrimitive::BodyEntryPolicy => {
                 self.expect_callable_policy(snapshot, context, CallablePolicyPlane::BodyEntry, true)
             }
-            "not_body_entry_policy" => self.expect_callable_policy(
+            VerificationPrimitive::NotBodyEntryPolicy => self.expect_callable_policy(
                 snapshot,
                 context,
                 CallablePolicyPlane::BodyEntry,
                 false,
             ),
-            "return_policy" => {
+            VerificationPrimitive::ReturnPolicy => {
                 self.expect_callable_policy(snapshot, context, CallablePolicyPlane::Return, true)
             }
-            "not_return_policy" => {
+            VerificationPrimitive::NotReturnPolicy => {
                 self.expect_callable_policy(snapshot, context, CallablePolicyPlane::Return, false)
             }
-            _ => Err(self.error(format!(
-                "unknown verification operation `{}`",
-                self.operation
-            ))),
         }
     }
 
@@ -478,7 +569,7 @@ impl VerificationInvocation {
         } else {
             Err(self.error(format!(
                 "`verify {}` expects {expected} argument(s), got {}",
-                self.operation,
+                self.operation_label,
                 self.args.len()
             )))
         }
@@ -490,7 +581,7 @@ impl VerificationInvocation {
         } else {
             Err(self.error(format!(
                 "`verify {}` expects at least {expected} argument(s), got {}",
-                self.operation,
+                self.operation_label,
                 self.args.len()
             )))
         }
@@ -503,7 +594,7 @@ impl VerificationInvocation {
             .ok_or_else(|| {
                 self.error(format!(
                     "`verify {}` argument {} must be a name/path",
-                    self.operation,
+                    self.operation_label,
                     index + 1
                 ))
             })
@@ -516,7 +607,7 @@ impl VerificationInvocation {
             .ok_or_else(|| {
                 self.error(format!(
                     "`verify {}` argument {} must be a name",
-                    self.operation,
+                    self.operation_label,
                     index + 1
                 ))
             })
@@ -548,7 +639,7 @@ impl VerificationInvocation {
         Diagnostic::hard_error(
             format!("{VERIFY_ERROR_PREFIX} {}", message.into()),
             Some(Provenance::from_norm_origin(
-                format!("verify {}", self.operation),
+                format!("verify {}", self.operation_label),
                 &self.origin,
             )),
         )
@@ -558,7 +649,7 @@ impl VerificationInvocation {
 #[derive(Clone, Debug)]
 enum VerificationArg {
     Name(String, NormOrigin),
-    Path(SourcePath),
+    Path(SourcePath, NormOrigin),
     Unsupported,
 }
 
@@ -567,10 +658,9 @@ impl VerificationArg {
         match expr {
             NormExpr::Name { text, origin } => Self::Name(text.clone(), origin.clone()),
             NormExpr::Nav { components, origin } => {
-                let _ = origin;
                 let path = components_to_path(components);
                 match path {
-                    Some(path) => Self::Path(path),
+                    Some(path) => Self::Path(path, origin.clone()),
                     None => Self::Unsupported,
                 }
             }
@@ -590,10 +680,26 @@ impl VerificationArg {
             Self::Name(name, _) => Some(SourcePath {
                 components: vec![name.clone()],
             }),
-            Self::Path(path) => Some(path.clone()),
+            Self::Path(path, _) => Some(path.clone()),
             _ => None,
         }
     }
+
+    fn origin(&self) -> &NormOrigin {
+        match self {
+            Self::Name(_, origin) | Self::Path(_, origin) => origin,
+            Self::Unsupported => {
+                panic!("unsupported verification argument has no source origin")
+            }
+        }
+    }
+}
+
+fn source_verification_error(origin: &NormOrigin, message: impl Into<String>) -> Diagnostic {
+    Diagnostic::hard_error(
+        format!("{VERIFY_ERROR_PREFIX} {}", message.into()),
+        Some(Provenance::from_norm_origin("source verification", origin)),
+    )
 }
 
 #[derive(Clone, Debug)]
@@ -787,6 +893,75 @@ fn field_projection_label(projection: FieldProjection) -> &'static str {
         FieldProjection::Value => "value",
         FieldProjection::Ref => "ref",
         FieldProjection::Share => "share",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        graph::{NamespaceGraphSnapshot, ResolverContext},
+        model::{MetaFunctionObject, NamespaceNode, SourceCategory},
+        policy_metadata, policy_set_meta, policy_set_runtime,
+    };
+
+    #[test]
+    fn runtime_only_verification_operation_is_not_meta_visible() {
+        let snapshot = NamespaceGraphSnapshot::new();
+        let root = snapshot.root_node();
+        let mut delta = snapshot.empty_delta();
+        let verify_node = delta.allocate_node_id();
+        let verify_symbol = delta.allocate_symbol_id();
+        delta.insert_node(NamespaceNode::new(
+            verify_node,
+            "verify",
+            NamespaceNodeKind::Declared,
+            SourceCategory::CoreBootstrap,
+            Some(root),
+            Provenance::new("test verify namespace"),
+        ));
+        let mut verify = SymbolObject::namespace(
+            verify_symbol,
+            "verify",
+            verify_node,
+            NamespaceNodeKind::Declared,
+            SourceCategory::CoreBootstrap,
+            Some(root),
+            Provenance::new("test verify namespace"),
+        );
+        verify.policy_metadata.policy_set = policy_set_meta();
+        verify.payload = SymbolPayload::VerificationNamespace { node: verify_node };
+        delta.insert_symbol(root, verify);
+
+        let operation_id = delta.allocate_symbol_id();
+        let mut operation = SymbolObject::placeholder(
+            operation_id,
+            "exists",
+            SymbolKind::MetaFunction,
+            SourceCategory::CoreBootstrap,
+            Some(verify_node),
+            Provenance::new("runtime-only verify operation"),
+        );
+        operation.policy_metadata.policy_set = policy_set_runtime();
+        operation.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+            function_symbol_id: operation_id,
+            primitive: CoreMetaFunction::Verify(VerificationPrimitive::Exists),
+            function_policy: policy_metadata(policy_set_runtime()),
+            body_entry_policy: policy_metadata(policy_set_runtime()),
+            return_object_policy: policy_metadata(policy_set_runtime()),
+        });
+        delta.insert_symbol(verify_node, operation);
+
+        let snapshot = snapshot.install_delta(delta).expect("install test graph");
+        let parsed = lang_syntax::parse("verify exists T;");
+        let program = lang_syntax::normalize_program(&parsed.program);
+        let diagnostics =
+            evaluate_source_verifications(&snapshot, root, &program, &ResolverContext::new(root))
+                .expect("verification evaluation");
+
+        assert!(diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("source verification error: unknown verification operation")));
     }
 }
 
