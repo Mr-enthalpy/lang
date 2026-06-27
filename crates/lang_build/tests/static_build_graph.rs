@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use lang_build::{
     BuildResult, BuildSession, BuildWorkspace, CacheStatus, NamespaceMount, PackageBuildArtifact,
-    PackageBuildSpec, ResolveExpectation, SourceRoot, StaticDependencySpec, SymbolKind,
+    PackageBuildSpec, SourceRoot, StaticDependencySpec, SymbolKind,
 };
 
 fn package_spec(name: &str, src_root: PathBuf) -> PackageBuildSpec {
@@ -71,8 +71,9 @@ fn cache_hit_on_repeated_build() {
     assert_eq!(stats.hits, 1);
 }
 
-// C. Cache miss when source content changes. Starts from a committed fixture
-// copied to a temp directory, then mutates the copy (mutation/cache test).
+// C. Cache miss when source content changes. The mutation copies a committed
+// fixture variant into the temp workspace. No source program is constructed in
+// Rust.
 #[test]
 fn cache_miss_when_source_content_changes() {
     let temp = copy_fixture_workspace_to_temp("single_package_type_binding", "cache_miss");
@@ -87,7 +88,12 @@ fn cache_miss_when_source_content_changes() {
         .content_hash
         .clone();
 
-    temp.write_boundary_source("app/src/main.lang", "let U: type = uint8");
+    replace_temp_file_from_fixture(
+        &temp,
+        "app/src/main.lang",
+        "single_package_type_binding_changed",
+        "app/src/main.lang",
+    );
     let second = session.build_workspace(&workspace).expect("second build");
 
     assert_eq!(second.artifacts[0].metadata.cache_status, CacheStatus::Miss);
@@ -198,8 +204,9 @@ fn self_dependency_is_a_hard_error() {
         .any(|diagnostic| diagnostic.message.contains("cannot depend on itself")));
 }
 
-// I. Dependency fingerprint participates in the dependent cache key. Starts from
-// a committed fixture copied to temp, then mutates the dependency (mutation test).
+// I. Dependency fingerprint participates in the dependent cache key. The
+// mutation copies a committed fixture variant into the temp workspace. No source
+// program is constructed in Rust.
 #[test]
 fn dependency_fingerprint_participates_in_dependent_cache_key() {
     let temp = copy_fixture_workspace_to_temp("dependency_mount_no_import", "dep_fp");
@@ -216,10 +223,11 @@ fn dependency_fingerprint_participates_in_dependent_cache_key() {
     let app_fingerprint_1 = artifact_named(&first, "app").fingerprint.clone();
     let app_cache_key_1 = artifact_named(&first, "app").metadata.cache_key.clone();
 
-    // Change only the dependency's source.
-    temp.write_boundary_source(
+    replace_temp_file_from_fixture(
+        &temp,
         "dep/src/lib.lang",
-        "let DepType: type = (uint8 a) |> struct",
+        "dependency_mount_no_import_dep_changed",
+        "dep/src/lib.lang",
     );
     let second = session.build_workspace(&workspace).expect("second build");
     let dep_fingerprint_2 = artifact_named(&second, "dep").fingerprint.clone();
@@ -234,39 +242,6 @@ fn dependency_fingerprint_participates_in_dependent_cache_key() {
     assert_ne!(
         app_cache_key_1, app_cache_key_2,
         "a dependency source change must invalidate the dependent cache key"
-    );
-}
-
-// J. Dependency mount namespace marker exists, but dependency symbols are not
-// auto-imported. This locks the non-goal for this PR.
-#[test]
-fn dependency_mount_marker_exists_but_symbols_are_not_imported() {
-    let workspace = dependency_mount_no_import_fixture();
-
-    let mut session = BuildSession::new();
-    let result = session
-        .build_workspace(&workspace)
-        .expect("build workspace");
-
-    let app_artifact = artifact_named(&result, "app");
-    let capability = app_artifact.world.snapshot().capability();
-    let root_context = app_artifact.world.root_context();
-
-    assert!(
-        capability
-            .resolve_str_with_expectation(
-                "dep",
-                &root_context,
-                ResolveExpectation::NamespaceSubspace
-            )
-            .is_ok(),
-        "dependency mount namespace marker must exist"
-    );
-    assert!(
-        capability
-            .resolve_str("DepType::dep", &root_context)
-            .is_err(),
-        "dependency symbols must not be auto-imported in this PR"
     );
 }
 
@@ -296,12 +271,6 @@ fn explicit_mount_change_invalidates_cache_and_rebuilds_world() {
     assert_eq!(first_app.metadata.cache_status, CacheStatus::Miss);
     let first_fingerprint = first_app.fingerprint.clone();
     let first_cache_key = first_app.metadata.cache_key.clone();
-    {
-        let capability = first_app.world.snapshot().capability();
-        let root_context = first_app.world.root_context();
-        assert!(capability.resolve_str("A::dep", &root_context).is_ok());
-        assert!(capability.resolve_str("B::dep", &root_context).is_err());
-    }
     assert_eq!(first_app.metadata.explicit_mounts.len(), 1);
     assert_eq!(
         first_app.metadata.explicit_mounts[0].synthetic_symbols[0].name,
@@ -319,6 +288,10 @@ fn explicit_mount_change_invalidates_cache_and_rebuilds_world() {
     );
     assert_ne!(second_app.fingerprint, first_fingerprint);
     assert_ne!(second_app.metadata.cache_key, first_cache_key);
+    assert_eq!(
+        second_app.metadata.explicit_mounts[0].synthetic_symbols[0].name,
+        "B"
+    );
     {
         let capability = second_app.world.snapshot().capability();
         let root_context = second_app.world.root_context();

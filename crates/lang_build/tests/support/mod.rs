@@ -14,12 +14,12 @@ use lang_build::{
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
-/// Temporary on-disk source tree for boundary-only tests.
+/// Temporary on-disk tree for boundary-only tests.
 ///
 /// `TempProject` is boundary-only. Ordinary successful build/discovery/early-meta
 /// tests must use committed fixtures under `tests/fixtures/workspaces/`. Use
-/// `TempProject` only for mutation/cache-invalidation, invalid-filesystem,
-/// invalid-bytes, malformed-source, or graph/model boundary tests.
+/// `TempProject` only for mutation/cache-invalidation via copied committed
+/// fixtures, invalid-filesystem, invalid-bytes, or graph/model boundary tests.
 pub struct TempProject {
     root: PathBuf,
 }
@@ -38,15 +38,6 @@ impl TempProject {
 
     pub fn path(&self) -> &Path {
         &self.root
-    }
-
-    /// Writes a temp source file for boundary/mutation tests only. Do not use for
-    /// ordinary build success-path or static malformed-source tests; use committed
-    /// fixtures under `tests/fixtures/workspaces/`.
-    pub fn write_boundary_source(&self, relative: &str, source: &str) {
-        let path = self.root.join(relative);
-        fs::create_dir_all(path.parent().expect("fixture parent")).expect("create fixture dirs");
-        fs::write(path, source).expect("write fixture");
     }
 
     pub fn write_bytes(&self, relative: &str, bytes: &[u8]) {
@@ -144,7 +135,14 @@ pub fn static_dependency_chain_fixture() -> BuildWorkspace {
 }
 
 pub fn dependency_mount_no_import_fixture() -> BuildWorkspace {
-    let workspace = "dependency_mount_no_import";
+    dependency_mount_fixture("dependency_mount_no_import")
+}
+
+pub fn dependency_mount_no_import_dep_changed_fixture() -> BuildWorkspace {
+    dependency_mount_fixture("dependency_mount_no_import_dep_changed")
+}
+
+fn dependency_mount_fixture(workspace: &str) -> BuildWorkspace {
     let dep = fixture_package_spec(workspace, "dep");
     let mut app = fixture_package_spec(workspace, "app");
     app.dependencies.push(StaticDependencySpec {
@@ -192,6 +190,23 @@ pub fn copy_fixture_workspace_to_temp(fixture: &str, temp_name: &str) -> TempPro
     let temp = TempProject::new(temp_name);
     copy_dir_recursive(&fixture_workspace_path(fixture), temp.path());
     temp
+}
+
+/// Replace one file in a temp workspace with committed fixture bytes.
+///
+/// Mutation/cache tests use this to copy fixture variants into a temp workspace.
+/// The helper does not parse or interpret source contents; no source program is
+/// constructed in Rust.
+pub fn replace_temp_file_from_fixture(
+    temp: &TempProject,
+    target_relative: &str,
+    fixture: &str,
+    fixture_relative: &str,
+) {
+    let src = fixture_workspace_path(fixture).join(fixture_relative);
+    let target = temp.path().join(target_relative);
+    fs::create_dir_all(target.parent().expect("target parent")).expect("create target parent");
+    fs::copy(src, target).expect("copy fixture variant file");
 }
 
 fn copy_dir_recursive(src: &Path, dst: &Path) {

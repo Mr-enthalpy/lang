@@ -26,10 +26,16 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("non_lang_files_ignored", "app"),
 ];
 
-const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[(
-    "dependency_mount_no_import",
-    dependency_mount_no_import_fixture,
-)];
+const PASS_WORKSPACE_FIXTURES: &[(&str, fn() -> BuildWorkspace)] = &[
+    (
+        "dependency_mount_no_import",
+        dependency_mount_no_import_fixture,
+    ),
+    (
+        "dependency_mount_no_import_dep_changed",
+        dependency_mount_no_import_dep_changed_fixture,
+    ),
+];
 
 // Temporary runner metadata, not semantic verification: these fixtures fail
 // before source verification can run, so the runner checks only the expected

@@ -1,6 +1,8 @@
 mod support;
 use support::*;
 
+use std::fs;
+
 use lang_build::{CompilationWorld, SourceDiscoveryConfig, SourceRoot};
 
 // A. Discovers `.lang` files from a committed fixture source root, through both
@@ -94,7 +96,7 @@ fn missing_source_root_is_a_build_error() {
 #[test]
 fn source_root_that_is_a_file_is_a_build_error() {
     let project = TempProject::new("discovery_root_is_file");
-    project.write_boundary_source("rootfile", "not a directory");
+    fs::write(project.path().join("rootfile"), "not a directory").expect("write root file");
     let manifest = boundary_app_manifest(&project.path().join("rootfile"));
 
     let error = CompilationWorld::from_manifest(&manifest).expect_err("source root is a file");
@@ -140,14 +142,16 @@ fn duplicate_declarations_conflict_at_graph_level_not_discovery() {
         .any(|diagnostic| diagnostic.message.contains("conflict")));
 }
 
-// Duplicate physical identity: configuring the same source root path twice
-// surfaces the same canonical `.lang` file more than once. Kept synthetic because
-// it tests invalid source-root configuration, not language source structure.
+// Duplicate physical identity: configuring the same committed fixture source
+// root path twice surfaces the same canonical `.lang` file more than once. This
+// tests invalid source-root configuration, not language source construction.
 #[test]
 fn duplicate_physical_source_identity_is_a_hard_diagnostic() {
-    let project = TempProject::new("discovery_duplicate_identity");
-    project.write_boundary_source("src/main.lang", "let T: type = uint8");
-    let src = project.path().join("src");
+    let temp = copy_fixture_workspace_to_temp(
+        "single_package_type_binding",
+        "discovery_duplicate_identity",
+    );
+    let src = temp.path().join("app/src");
 
     let mut manifest = empty_app_manifest();
     manifest.source_roots.push(SourceRoot {
