@@ -1,1 +1,6 @@
-let T: type = uint8
+let T: type = uint8;
+
+verify kind T type;
+verify kind T::left::app type;
+verify kind T::right::app type;
+verify namespace_kind left::app physical;

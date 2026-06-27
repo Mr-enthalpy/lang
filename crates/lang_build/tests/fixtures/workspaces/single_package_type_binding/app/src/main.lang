@@ -1,1 +1,6 @@
-let T: type = uint8
+let T: type = uint8;
+
+verify kind T type;
+verify kind T::app type;
+verify not_exists main;
+verify not_exists T::main::app;

@@ -28,6 +28,42 @@ v0.7 introduces early policy-aware resolution with three policy flags:
   carrying the `Meta` flag are visible to this lookup query. This does not grant
   permission to enter or evaluate a callable body.
 
+### Source verification forms
+
+`lang_build` also contains a source-driven fixture verification loop. `verify`
+is bootstrapped as a core meta-visible verification namespace/object, with
+verification operations installed below it as core meta-function symbols.
+Ordinary normalized expressions are treated as verification forms only after the
+verification entry and operation resolve through the namespace graph under
+`PolicyEnv::Meta`. They do not install symbols, produce runtime objects, or add
+parser syntax.
+
+The current fixture spelling is a compact expression-chain form such as:
+
+```text
+verify exists T;
+verify kind T type;
+verify field_names T a b;
+verify kind a::T field_function;
+verify policy a::T meta;
+verify not_policy a::T export;
+verify body_entry_policy a::T runtime;
+verify not_body_entry_policy a::T meta;
+```
+
+Verification failures are hard build diagnostics with the stable prefix:
+
+```text
+source verification error:
+```
+
+The operation dispatch is based on the resolved core symbol payload/primitive,
+not on a Rust-side fixture-only string table. This verifier is a test/fixture
+observation layer for namespace graph, resolver, early-meta, field-function, and
+policy facts. It is not a general meta interpreter, full policy checker, type
+checker, macro system, runtime lowering step, or user-facing import/export
+mechanism.
+
 ### Policy flag assignment
 
 | Symbol source | Policy set |
@@ -35,6 +71,7 @@ v0.7 introduces early policy-aware resolution with three policy flags:
 | Core namespace symbol | `export + meta + runtime` |
 | Namespace symbols (declared, physical, dependency mount, generated) | `meta + runtime` |
 | Core meta-functions (`struct`, `assert`) | `export + meta` |
+| Core verification namespace and operations (`verify`, `verify::exists`, …) | `export + meta` |
 | Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export + meta + runtime` |
 | Source-contributed ordinary value placeholders | `runtime` |
 | Source-contributed type-annotated placeholders (`: type`) | `meta + runtime` |

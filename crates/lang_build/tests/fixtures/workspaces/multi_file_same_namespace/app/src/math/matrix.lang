@@ -1,1 +1,6 @@
-let Mat: type = uint8
+let Mat: type = uint8;
+
+verify kind Mat type;
+verify kind Vec::math::app type;
+verify kind Mat::math::app type;
+verify namespace_kind math::app physical;

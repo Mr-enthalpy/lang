@@ -1,9 +1,9 @@
 mod support;
 use support::*;
 
-use lang_build::{
-    CompilationWorld, NamespaceNodeKind, SourceDiscoveryConfig, SourceRoot, SymbolKind,
-};
+use std::fs;
+
+use lang_build::{CompilationWorld, SourceDiscoveryConfig, SourceRoot};
 
 // A. Discovers `.lang` files from a committed fixture source root, through both
 // the direct discovery layer and the full `from_manifest` pipeline.
@@ -24,64 +24,6 @@ fn discovers_lang_files_from_real_source_root() {
 
     let world = CompilationWorld::from_manifest(&manifest).expect("build world");
     assert_eq!(world.source_fragments().len(), 2);
-}
-
-// B. Directory path contributes namespace; the file name does not. Intermediate
-// directory components become physical namespace nodes.
-#[test]
-fn directory_contributes_namespace_file_name_does_not() {
-    let world =
-        CompilationWorld::from_manifest(&fixture_manifest("nested_physical_namespace", "app"))
-            .expect("build world");
-
-    let capability = world.snapshot().capability();
-    let context = world.root_context();
-
-    // Physical directories `a` and `b` contribute namespace segments; `T` is a
-    // direct child of `b` (reversed inner-to-outer resolver path order).
-    assert!(
-        capability.resolve_str("T::b::a::app", &context).is_ok(),
-        "directory components contribute the physical namespace path"
-    );
-
-    // The intermediate directory component is a real physical namespace node.
-    let intermediate = capability
-        .resolve_str("b::a::app", &context)
-        .expect("intermediate physical namespace resolves");
-    assert_eq!(intermediate.kind, SymbolKind::Namespace);
-    assert_eq!(intermediate.node_kind, Some(NamespaceNodeKind::Physical));
-
-    // The file stem `foo` is fragment identity only, never a namespace segment.
-    assert!(
-        capability
-            .resolve_str("T::foo::b::a::app", &context)
-            .is_err(),
-        "file name must not contribute a namespace segment"
-    );
-    assert!(
-        capability.resolve_str("foo::b::a::app", &context).is_err(),
-        "no `foo` namespace exists unless a real `foo/` directory exists"
-    );
-}
-
-// C. Multiple files in the same namespace directory are allowed.
-#[test]
-fn multiple_files_in_same_namespace_directory_are_allowed() {
-    let world =
-        CompilationWorld::from_manifest(&fixture_manifest("multi_file_same_namespace", "app"))
-            .expect("build world");
-
-    assert_eq!(world.source_fragments().len(), 2);
-    assert_eq!(
-        world.source_fragments()[0].namespace,
-        world.source_fragments()[1].namespace,
-        "both fragments attach to the same physical namespace node"
-    );
-
-    let capability = world.snapshot().capability();
-    let context = world.root_context();
-    assert!(capability.resolve_str("Vec::math::app", &context).is_ok());
-    assert!(capability.resolve_str("Mat::math::app", &context).is_ok());
 }
 
 // D. Deterministic traversal: a fixture whose files are not in lexical order on
@@ -154,7 +96,7 @@ fn missing_source_root_is_a_build_error() {
 #[test]
 fn source_root_that_is_a_file_is_a_build_error() {
     let project = TempProject::new("discovery_root_is_file");
-    project.write_boundary_source("rootfile", "not a directory");
+    fs::write(project.path().join("rootfile"), "not a directory").expect("write root file");
     let manifest = boundary_app_manifest(&project.path().join("rootfile"));
 
     let error = CompilationWorld::from_manifest(&manifest).expect_err("source root is a file");
@@ -200,43 +142,16 @@ fn duplicate_declarations_conflict_at_graph_level_not_discovery() {
         .any(|diagnostic| diagnostic.message.contains("conflict")));
 }
 
-// J. File name is fragment identity only: a top-level file declaration lands
-// under the package root, not under a namespace named after the file stem.
-#[test]
-fn file_name_is_fragment_identity_only() {
-    let world =
-        CompilationWorld::from_manifest(&fixture_manifest("single_package_type_binding", "app"))
-            .expect("build world");
-
-    let symbol = world
-        .resolve("T")
-        .expect("`T` resolves under the package root");
-    assert_eq!(symbol.name, "T");
-    assert_eq!(symbol.kind, SymbolKind::Type);
-    assert_eq!(symbol.parent, Some(world.package_root_node()));
-
-    assert!(
-        world.resolve("main").is_err(),
-        "the file stem `main` must not exist as a namespace"
-    );
-
-    let capability = world.snapshot().capability();
-    let context = world.root_context();
-    assert!(capability.resolve_str("T::app", &context).is_ok());
-    assert!(
-        capability.resolve_str("T::main::app", &context).is_err(),
-        "the file stem must not introduce a namespace segment"
-    );
-}
-
-// Duplicate physical identity: configuring the same source root path twice
-// surfaces the same canonical `.lang` file more than once. Kept synthetic because
-// it tests invalid source-root configuration, not language source structure.
+// Duplicate physical identity: configuring the same committed fixture source
+// root path twice surfaces the same canonical `.lang` file more than once. This
+// tests invalid source-root configuration, not language source construction.
 #[test]
 fn duplicate_physical_source_identity_is_a_hard_diagnostic() {
-    let project = TempProject::new("discovery_duplicate_identity");
-    project.write_boundary_source("src/main.lang", "let T: type = uint8");
-    let src = project.path().join("src");
+    let temp = copy_fixture_workspace_to_temp(
+        "single_package_type_binding",
+        "discovery_duplicate_identity",
+    );
+    let src = temp.path().join("app/src");
 
     let mut manifest = empty_app_manifest();
     manifest.source_roots.push(SourceRoot {

@@ -2,40 +2,15 @@ mod support;
 use support::*;
 
 use lang_build::{
-    ChildLink, ChildNameRole, CompilationWorld, DiagnosticSeverity, NamespaceGraphSnapshot,
-    NamespaceMount, NamespaceNodeKind, Provenance, ResolverContext, SourceCategory, SymbolKind,
-    SymbolPayload,
+    ChildLink, ChildNameRole, CompilationWorld, NamespaceGraphSnapshot, NamespaceMount,
+    NamespaceNodeKind, Provenance, ResolverContext, SourceCategory, SymbolKind,
 };
 
 #[test]
-fn core_bootstrap_installs_resolvable_symbol_objects() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let context = world.package_context();
-    let capability = world.snapshot().capability();
-
-    for name in ["struct", "assert", "uint8"] {
-        let symbol = capability
-            .resolve_str(name, &context)
-            .expect("resolve core symbol through default mount");
-        assert_eq!(symbol.name, name);
-        assert!(symbol.id.as_u64() > 0);
-    }
-
-    let struct_symbol = capability.resolve_str("struct", &context).unwrap();
-    assert_eq!(struct_symbol.kind, SymbolKind::MetaFunction);
-    assert!(matches!(
-        struct_symbol.payload,
-        SymbolPayload::MetaFunction(_)
-    ));
-
-    let full_path = capability
-        .resolve_str("struct::core", &world.root_context())
-        .expect("resolve core path through graph");
-    assert_eq!(full_path.id, struct_symbol.id);
-}
-
-#[test]
-fn resolver_handles_short_and_explicit_mounted_core_paths() {
+fn short_and_explicit_core_paths_share_symbol_identity() {
+    // Compiler-internal resolver invariant: source verification observes both
+    // paths and kinds; this checks resolver identity preservation.
+    // Missing capability: verify.same_symbol_identity.
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let context = world.package_context();
     let capability = world.snapshot().capability();
@@ -43,31 +18,15 @@ fn resolver_handles_short_and_explicit_mounted_core_paths() {
     let uint8_short = capability.resolve_str("uint8", &context).unwrap();
     let uint8_explicit = capability.resolve_str("uint8::core", &context).unwrap();
     assert_eq!(uint8_short.id, uint8_explicit.id);
-    assert_eq!(uint8_explicit.kind, SymbolKind::Type);
 
     let struct_short = capability.resolve_str("struct", &context).unwrap();
     let struct_explicit = capability.resolve_str("struct::core", &context).unwrap();
     assert_eq!(struct_short.id, struct_explicit.id);
-    assert_eq!(struct_explicit.kind, SymbolKind::MetaFunction);
 
     let diagnostic = capability
         .resolve_str("Missing::core", &context)
         .expect_err("explicit mounted path should fail when target is absent");
     assert!(diagnostic.message.contains("Missing::core"));
-}
-
-#[test]
-fn resolver_reports_current_namespace_conflict_with_default_mount() {
-    // Committed fixture: `let uint8 = uint8` deliberately collides a local short
-    // name with the core short name. The build succeeds; the short-name resolve
-    // is a hard conflict.
-    let world = build_single_fixture_world("resolver_core_conflict", "app");
-
-    let diagnostic = world
-        .resolve("uint8")
-        .expect_err("local short name colliding with core short name is a hard conflict");
-    assert!(diagnostic.message.contains("conflicting symbol `uint8`"));
-    assert_eq!(diagnostic.severity, DiagnosticSeverity::HardError);
 }
 
 #[test]
@@ -104,6 +63,9 @@ fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
 
 #[test]
 fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
+    // Compiler-internal invariant: source verification observes both paths;
+    // SymbolId identity and diagnostic labels are graph internals.
+    // Missing capability: verify.distinct_symbol_identity.
     let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
     let left = world
         .snapshot()
@@ -122,66 +84,27 @@ fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
 }
 
 #[test]
-fn resolve_type_object_uint8() {
+fn typed_resolver_helpers_select_expected_kind() {
+    // API-specific: source verification covers ordinary core symbol facts; this
+    // checks typed resolver helper behavior.
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let capability = world.snapshot().capability();
     let context = world.package_context();
 
-    let symbol = capability
+    let type_symbol = capability
         .resolve_type_object("uint8", &context)
         .expect("uint8 is a type object");
-    assert_eq!(symbol.kind, SymbolKind::Type);
-    assert_eq!(symbol.name, "uint8");
-}
+    assert_eq!(type_symbol.kind, SymbolKind::Type);
 
-#[test]
-fn resolve_meta_function_struct() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
-
-    let symbol = capability
+    let meta_symbol = capability
         .resolve_meta_function("struct", &context)
         .expect("struct is a meta function");
-    assert_eq!(symbol.kind, SymbolKind::MetaFunction);
-    assert_eq!(symbol.name, "struct");
-}
-
-#[test]
-fn resolve_type_object_non_type_fails() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
+    assert_eq!(meta_symbol.kind, SymbolKind::MetaFunction);
 
     let error = capability
         .resolve_type_object("struct", &context)
         .expect_err("struct is a MetaFunction, not a Type");
     assert!(error.message.contains("resolver error"));
-}
-
-#[test]
-fn resolve_field_function_ref_field() {
-    let world = build_single_fixture_world("early_struct_meta", "app");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
-
-    let symbol = capability
-        .resolve_field_function("a::T", &context)
-        .expect("a::T is a field function");
-    assert_eq!(symbol.kind, SymbolKind::FieldFunction);
-    assert!(matches!(symbol.payload, SymbolPayload::FieldFunction(_)));
-}
-
-#[test]
-fn resolve_namespace_subspace_ref() {
-    let world = build_single_fixture_world("early_struct_meta", "app");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
-
-    let symbol = capability
-        .resolve_namespace_subspace("ref::T", &context)
-        .expect("ref::T is a namespace subspace");
-    assert_eq!(symbol.kind, SymbolKind::Namespace);
 }
 
 #[test]

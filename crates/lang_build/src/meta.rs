@@ -89,6 +89,10 @@ pub fn try_expand_early_meta_initializer(
             "meta hard error: direct source-level `assert` expansion is not implemented in v0.6",
             Some(provenance),
         ))),
+        CoreMetaFunction::Verify(_) => Err(BuildError::single(Diagnostic::hard_error(
+            "meta hard error: source verification operations cannot be used as initializers",
+            Some(provenance),
+        ))),
     }
 }
 

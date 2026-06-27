@@ -1,2 +1,20 @@
 let not_meta = 1;
-let T: type = (uint8 a) |> struct
+let T: type = (uint8 a) |> struct;
+
+verify kind not_meta placeholder;
+verify policy not_meta runtime;
+verify not_policy not_meta meta;
+verify not_policy not_meta export;
+verify kind T type;
+verify field_names T a;
+verify policy T meta;
+verify policy T runtime;
+verify not_policy T export;
+verify kind a::T field_function;
+verify policy a::T meta;
+verify policy a::T runtime;
+verify not_policy a::T export;
+verify body_entry_policy a::T runtime;
+verify not_body_entry_policy a::T meta;
+verify return_policy a::T runtime;
+verify not_return_policy a::T meta;

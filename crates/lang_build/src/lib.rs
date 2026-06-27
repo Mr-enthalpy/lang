@@ -12,6 +12,7 @@ pub mod manifest;
 pub mod meta;
 pub mod model;
 pub mod source;
+pub mod verify;
 pub mod world;
 
 pub use build::{
@@ -39,7 +40,8 @@ pub use model::{
     FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
     NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet, Provenance, ResolverCode,
     SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject,
-    SyntaxObjectKind, TypeField, TypeObject, VisibilityMetadata,
+    SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive, VisibilityMetadata,
 };
 pub use source::SourceFragment;
+pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;
