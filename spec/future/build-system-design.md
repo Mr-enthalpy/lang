@@ -101,16 +101,180 @@ The source language does not control these through import statements.
 
 ## 4. Package layer versus language namespace layer
 
-There are two layers.
+There are three layers, and they must not be collapsed into one another:
+
+```text
+package/build layer
+namespace graph layer
+source language layer
+```
 
 The **package/build layer** contains: package identity, library/application
 distinction, source roots, dependency graph, version selection, namespace
 mounts, access policy, distribution form, build cache, entry point.
 
-The **language namespace layer** contains: `ns1::ns2::symbol`.
+The **namespace graph layer** contains: namespace nodes, symbol objects, mount
+projections, core/default mounts, dependency mount markers, physical namespace
+skeletons, generated virtual namespaces, symbol provenance, and policy /
+visibility metadata.
+
+The **source language layer** contains only namespace paths such as
+`ns1::ns2::symbol`.
 
 The package/build layer projects physical and virtual library contents into the
-namespace graph. The language layer only sees the resulting namespace graph.
+namespace graph. The source language layer only sees the resulting namespace
+graph; it never sees packages, files, dependency resolution, caches, or
+distribution forms directly.
+
+### 4.1 Three semantic layers
+
+The three layers carry distinct objects and distinct responsibilities.
+
+The package/build layer owns build facts:
+
+```text
+PackageId
+PackageKind
+PackageRoot
+PackageManifestObject
+SourceRootObject
+DependencyEdge
+MountPath
+ExportSurface
+Feature/Config set
+Build/cache fingerprint
+Distribution form
+Entry point metadata
+```
+
+These are not defined by ordinary `.lang` source files. Today they may be
+constructed through the Rust build API; in the future they are provided by a
+manifest.
+
+The namespace graph layer owns resolvable, diagnosable, cacheable objects:
+
+```text
+namespace nodes
+symbol objects
+mount projections
+core/default mounts
+dependency mount markers
+physical namespace skeletons
+generated virtual namespaces
+symbol provenance
+policy/visibility metadata
+```
+
+The source language layer writes only paths:
+
+```text
+Vec::std
+main::app
+foo::bar::mylib
+```
+
+It does not write, and there is no plan for, source-level import machinery:
+
+```text
+import std
+use std::Vec
+mod foo
+include "x.lang"
+package mylib
+```
+
+The package/build layer projects build facts into the namespace graph; the
+source language then resolves names only through that graph.
+
+### 4.2 Build system as a semantic projection layer
+
+The build system is not a temporary file scanner and not an external package
+manager bolted onto the language. It is the producer of the namespace graph
+world model. Its output is the semantic structure every later phase (resolver,
+early meta, type checker, policy, cache, IDE) shares.
+
+```text
+Package/build facts are not directly visible to source code, but they determine
+which namespace roots exist, which candidates are visible, which exports cross a
+package boundary, and which provenance/fingerprint belongs to generated symbols.
+```
+
+Package/manifest facts therefore must be normalized into semantically
+referenceable build objects, not parsed at the CLI layer and discarded.
+
+### 4.3 Package identity and candidate identity
+
+Formal meta object invocation needs stable candidate identity. A candidate
+callable is not identified by name and argument shape alone. Its stable identity
+needs, at least:
+
+```text
+symbol path inside namespace graph
+package identity
+mount path
+source/generation provenance
+policy/export metadata
+manifest/config fingerprint
+```
+
+This identity participates in:
+
+```text
+diagnostics
+cache invalidation
+candidate comparison
+cross-package visibility
+incremental rebuild
+future interface/binary distribution
+```
+
+This is a future design direction. None of these identity structures is claimed
+to be implemented; the point is that `PackageId` and mount/provenance facts must
+be available as semantic objects, because a path string alone cannot distinguish
+two candidates that differ by package, mount, configuration, or provenance.
+
+### 4.4 Internal versus external lookup boundary
+
+A package boundary changes what a lookup may see:
+
+```text
+internal lookup  -> may see package-local symbols, including non-exported ones
+external lookup  -> may only see symbols admitted by the export surface
+```
+
+Internal lookup within a package may resolve symbols that are not exported.
+External lookup across a package boundary is restricted to the export surface.
+The export surface is package/build metadata projected into the namespace graph
+as a visibility boundary.
+
+This is not a source-level import/use mechanism. Source does not import
+packages. The manifest/mount table decides which namespace roots exist; the
+export surface decides which symbols are visible across a package boundary. Both
+are projections, not source clauses.
+
+### 4.5 Core and dependency mounts
+
+The package/build layer injects namespace roots into the graph in several forms:
+
+```text
+core/default mount        -> the compiler-seeded core package root
+explicit dependency mount -> a declared dependency's namespace root
+synthetic mount marker    -> an API/test placeholder root
+future real package mount -> a manifest-provided dependency root
+```
+
+These are all ways the package/build layer contributes a root to the namespace
+graph. The current implementation uses API-level / placeholder mounts; a future
+manifest provides a formal mount table. The source language sees the resulting
+roots, not the mount mechanism.
+
+### 4.6 Generated namespace provenance
+
+Meta-generated namespace nodes and symbols must also carry provenance back to
+their originating package, root, manifest, and fingerprint. Without that
+provenance, later meta object invocation, diagnostics, and caching cannot
+explain where a candidate came from or when it must be invalidated. A generated
+candidate is a build product, and its build origin is part of its identity.
 
 ## 5. Library, application, and distribution form
 

@@ -861,3 +861,8 @@ semantics.
 - Library/namespace overview: `library-namespace-design-note.md`.
 - Later pattern-space / extraction-chain semantics (v0.10+):
   `static-pattern-spaces-and-extraction-chains.md`.
+
+Future formal meta object invocation depends on the package/manifest layer for
+stable package identity, mount provenance, export-surface boundaries, and
+cache/fingerprint participation. Those build-layer facts are documented in
+`build-system-design.md` and `package-manifest-v0.md`.

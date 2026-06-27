@@ -206,6 +206,10 @@ and `spec/future/package-manifest-v0.md`. Future field-projection and
 injection-place constraints are recorded in
 `spec/future/type-associated-function-objects-and-access-trees.md`.
 
+Before formal meta object invocation can become stable, package/manifest records
+must provide package identity, mount identity, export-surface boundaries, and
+candidate provenance.
+
 #### v0.6 — Build / Namespace Graph Bootstrap
 
 **Goal**: a minimal working build system and a namespace graph world model.
