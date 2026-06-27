@@ -12,11 +12,11 @@ This document is the canonical direction for the v0.6–v0.8 sequence:
 - v0.8 — Type-to-Type Meta Construction Interpreter
 
 It builds on, and does not replace, the build/package architecture in
-`spec/future/build-system-design.md`, the assembly pipeline in
-`spec/future/namespace-assembly-v0.md`, and the manifest surface in
-`spec/future/package-manifest-v0.md`. The later pattern-space / extraction-chain
+`spec/design/build-package/build-system-design.md`, the assembly pipeline in
+`spec/design/build-package/namespace-assembly-v0.md`, and the manifest surface in
+`spec/design/build-package/package-manifest-v0.md`. The later pattern-space / extraction-chain
 semantics remain a separate track in
-`spec/future/static-pattern-spaces-and-extraction-chains.md`.
+`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
 This document records the **current** build / namespace graph / early-meta
 bootstrap track (v0.6–v0.8) and its narrow implemented slice. The **future**
@@ -24,7 +24,7 @@ unified invocation semantics — one policy-governed callable-invocation model
 covering ordinary functions, meta functions, verification, control predicates,
 operators, and type constructors, together with partial/strict meta reduction
 and residualization — are specified in
-`spec/future/meta-object-invocation-and-policy-reduction.md`.
+`spec/design/meta-invocation/meta-object-invocation-and-policy-reduction.md`.
 
 ## v0.7 implementation additions
 
@@ -75,12 +75,12 @@ mechanism.
 Future automatic return normalization will likewise use the formal meta
 invocation and policy-aware `Error` handler lookup, but it is not part of the
 current early-meta slice; see
-`spec/future/mechanical-return-normalization-and-error-policy.md`.
+`spec/design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md`.
 
 Future formal meta object invocation should likewise share the `normal` / `tco` /
 `loop` call-mode vocabulary; meta functions have no loop core and express
 repetition by recursion. The current `struct` / `verify` slice does not implement
-call modes; see `spec/future/call-modes-recursion-and-tail-lowering.md`.
+call modes; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-lowering.md`.
 
 ### Policy flag assignment
 
@@ -250,7 +250,7 @@ provenance / diagnostics. Source code navigates names; the resolver answers with
 objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
 
-Policy metadata (see `spec/future/policy-visibility-symbols.md`) should be
+Policy metadata (see `spec/design/policy-capability/policy-visibility-symbols.md`) should be
 reserved as a slot on `SymbolObject`, the context, and the capability layer, but
 full policy inference / projection / checking is deferred to later stages. v0.6–
 v0.8 only need the architectural placeholder, not an implementation.
@@ -641,11 +641,11 @@ means `A == B` by type-value equality while `A` and `B` remain distinct symbols
 unless one is declared via `===`. Canonical `TypeValueId` and full type-value
 equality are future work.
 
-See `spec/future/type-associated-function-objects-and-access-trees.md` for the
+See `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md` for the
 field-function and access-tree implications. The intended final distinction
 between type values, symbol places, alias forwarding, and writable injection
 targets is documented in
-`spec/future/type-values-places-and-alias-forwarding.md`.
+`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
 
 ## 4. Namespace contribution rules
 
@@ -802,7 +802,7 @@ role-aware child-name model (§3) and the ordinary direct-child contribution /
 local-construction rules (§4); no source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
 with minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
-checking remains future work (see `spec/future/policy-visibility-symbols.md`).
+checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`).
 
 Non-goals: full version solving; remote package retrieval; lockfile
 completeness; dynamic/static distribution distinction; full access-control
@@ -816,7 +816,7 @@ meta-function object; meta call replacement; `MetaExpansionResult`
 (replacement / namespace delta / diagnostics / provenance); policy fields on
 callable objects — distinct symbol visibility, body-entry, and return-object
 policy planes (no full projection or execution checker — see
-`spec/future/policy-visibility-symbols.md`); the parent-to-child injection rule,
+`spec/design/policy-capability/policy-visibility-symbols.md`); the parent-to-child injection rule,
 with parent-to-descendant generation only as the closed meta exception (§4);
 generated child namespace installation; no arbitrary rewrite of parent /
 sibling / global namespace; `struct` consumes AST by a private checker, failure

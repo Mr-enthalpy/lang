@@ -2,7 +2,7 @@
 
 **Status: Non-normative future design note. This is not a v0.1 parser rule.**
 
-See also `spec/future/build-system-design.md` for the current build-system
+See also `spec/design/build-package/build-system-design.md` for the current build-system
 architecture document.
 
 ## 1. No source-level import/include/module syntax
@@ -102,8 +102,8 @@ The full namespace graph may contain three kinds of nodes:
 A navigable child name is role-aware: object/function symbols and pure
 namespace subspaces may share the same textual name when resolver callers
 provide an expected role. Same-role duplicates remain hard conflicts. See
-`spec/future/build-system-design.md` §7 and
-`spec/future/early-meta-functions-and-namespace-graph.md` §3.
+`spec/design/build-package/build-system-design.md` §7 and
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §3.
 
 ## 8. Physical and virtual namespace layers
 
@@ -143,8 +143,8 @@ current namespace node; they must not inject into grandchildren or deeper
 descendants. Deeper structure is owned by the immediate direct child object. A
 closed meta-function instantiation may generate a parent-to-descendant virtual
 subtree as the exception. In all contexts, generated nodes must not inject into
-parents, siblings, or unrelated globals. See `spec/future/build-system-design.md`
-§9 and `spec/future/early-meta-functions-and-namespace-graph.md` §4.
+parents, siblings, or unrelated globals. See `spec/design/build-package/build-system-design.md`
+§9 and `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4.
 
 This is a future meta-function / metaprogramming capability. It is not v0.1
 and must not be assumed as general language semantics.

@@ -17,7 +17,7 @@ semantic: to make build facts available as referenceable objects.
 
 The canonical layering (package/build layer → namespace graph layer → source
 language layer) and the projection model are described in
-`spec/future/build-system-design.md`. This document focuses on what the manifest
+`spec/design/build-package/build-system-design.md`. This document focuses on what the manifest
 records and why each record matters semantically.
 
 ## 2. Manifest records

@@ -7,7 +7,7 @@ canonical type-value equality is implemented.**
 This note records the v0.6 namespace-graph implications for field-access and
 access-tree work. The canonical type-value / place / alias-forwarding /
 writable-place semantics are specified in
-`spec/future/type-values-places-and-alias-forwarding.md`; this note only keeps a
+`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`; this note only keeps a
 short summary and the field/access-tree specifics that build on that
 distinction.
 
@@ -36,7 +36,7 @@ Automatic `ref` / `share` argument passing constructs a borrow object and moves
 the borrow handle. Moving a borrow handle keeps the same parent/origin and does
 not deepen the access tree, so access-tree depth does not grow through argument
 passing. The mechanical pass-insertion semantics are specified in
-`spec/future/mechanical-argument-passing-and-move-fixed-point.md`.
+`spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
 ## Role-Aware Namespace Lookup
 
@@ -81,7 +81,7 @@ The consequences that field/access-tree work must preserve:
 This is only a summary. For the canonical `TypeValueId` / `PlaceId` /
 alias-forwarding distinction — including the value/place judgments, the
 `AliasChain` model, writable-place checking, and the namespace injection
-pipeline — see `spec/future/type-values-places-and-alias-forwarding.md`.
+pipeline — see `spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
 
 ## v0.6 Implementation Note
 
@@ -89,7 +89,7 @@ The current `lang_build` slice still represents some `let t: type = uint8` cases
 using placeholder `TypeObject` payloads, because `TypeValueId` and writable-place
 checking do not exist yet. This is a v0.6 placeholder, not the final semantics;
 the intended model is documented in
-`spec/future/type-values-places-and-alias-forwarding.md`.
+`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
 
 ## Non-Goals
 

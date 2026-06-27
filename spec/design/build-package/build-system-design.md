@@ -6,7 +6,7 @@
 > The first vertical slice is implemented in `crates/lang_build`. The broader
 > v0.6–v0.8 direction (NamespaceGraph Capability Layer, early meta-functions,
 > type-to-type meta construction) is detailed in
-> `spec/future/early-meta-functions-and-namespace-graph.md`.
+> `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`.
 
 The build system produces a **namespace graph world model** — a persistent,
 diagnosable, eventually transactional object shared by all future phases
@@ -14,7 +14,7 @@ diagnosable, eventually transactional object shared by all future phases
 temporary file index or a one-shot scan. For the engineering invariants that
 govern this model (transaction discipline, conflict policy, symbol identity,
 no-bypass, phase vocabulary, test philosophy), see
-`spec/future/early-meta-functions-and-namespace-graph.md`
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`
 §"Namespace Graph World Model Invariants".
 
 ## Implementation note (v0.6 partial)
@@ -358,7 +358,7 @@ not by origin: its members may be declared, generated, or virtual. For a
 the type node. It is therefore not equivalent to the "declared namespace
 objects" node kind alone.
 
-See `spec/future/early-meta-functions-and-namespace-graph.md` §3 for the full
+See `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §3 for the full
 model.
 
 ## 8. Example: physical and virtual namespace layers
@@ -379,7 +379,7 @@ continue into virtual namespace nodes.
 
 Declarations enter the namespace graph under a depth and context restriction.
 The detailed model (rationale, diagnostic, examples) is in
-`spec/future/early-meta-functions-and-namespace-graph.md` §4.
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4.
 
 **No ordinary parent-to-descendant injection. Only ordinary
 parent-to-direct-child contribution is allowed.**

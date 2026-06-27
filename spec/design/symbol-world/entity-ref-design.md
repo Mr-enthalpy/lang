@@ -24,7 +24,7 @@ expression parser mode.
 runtime expression and is not evaluated by the parser.
 
 Alias binding (Phase 4.3 design; Phase 4.4 alias-RHS EntityRef implemented,
-`spec/future/entity-alias-design.md`) uses it on the
+`spec/design/symbol-world/entity-alias-design.md`) uses it on the
 right-hand side:
 
 ```text
@@ -116,7 +116,7 @@ EntityComponent ::= Name | OperatorName
 This does not implement operator lookup. It does not check that the operator
 exists. It does not validate operator identity. Operator alias identity
 validation belongs to a later alias-binding phase or semantic/static validation
-phase (see `spec/future/entity-alias-design.md` Phase 4.3 design).
+phase (see `spec/design/symbol-world/entity-alias-design.md` Phase 4.3 design).
 
 The current `<` operator-binder ambiguity documented in
 `spec/history/v0.1/operator-design.md` concerns `let` binder syntax. It does not by itself
@@ -174,7 +174,7 @@ The parser boundary is syntax preservation only.
 ## Alias-Binding RHS Restriction
 
 For future alias binding (Phase 4.3 design complete, see
-`spec/future/entity-alias-design.md`):
+`spec/design/symbol-world/entity-alias-design.md`):
 
 ```text
 let binder === EntityRef

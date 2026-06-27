@@ -165,7 +165,7 @@ resolution, HIR, closure materialization, runtime evaluation, or code
 generation.
 
 Future pattern-space and extraction-chain semantics (see
-`spec/future/static-pattern-spaces-and-extraction-chains.md`) motivate the
+`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`) motivate the
 current normalized boundaries, but they are **not** implemented by the v0.5
 normalizer. `Done`, residual propagation, pattern-space subtraction, `operator+`
 meta-reduction, `match` closing, and pattern-head resolution are not current
@@ -200,15 +200,45 @@ Narrative:
   the semantic prototype, HIR, and codegen.
 
 The canonical detailed direction for v0.6–v0.8 is
-`spec/future/early-meta-functions-and-namespace-graph.md`, building on
-`spec/future/build-system-design.md`, `spec/future/namespace-assembly-v0.md`,
-and `spec/future/package-manifest-v0.md`. Future field-projection and
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`, building on
+`spec/design/build-package/build-system-design.md`, `spec/design/build-package/namespace-assembly-v0.md`,
+and `spec/design/build-package/package-manifest-v0.md`. Future field-projection and
 injection-place constraints are recorded in
-`spec/future/type-associated-function-objects-and-access-trees.md`.
+`spec/design/symbol-world/type-associated-function-objects-and-access-trees.md`.
 
 Before formal meta object invocation can become stable, package/manifest records
 must provide package identity, mount identity, export-surface boundaries, and
 candidate provenance.
+
+The active design route (documented under `spec/design/`) is:
+
+```text
+package/manifest identity
+  -> TypeValueId / PlaceId / AliasChain
+  -> pattern normalization + first-order candidate shapes
+  -> formal meta object invocation
+  -> mechanical lowering family
+  -> later runtime lookup
+  -> first-order type check
+```
+
+Two distinctions matter for sequencing:
+
+- Pattern/overload work is split. The earlier `pattern normalization +
+  first-order type candidate adaptation` subset serves the formal meta object
+  invocation model and comes before it. The later, fuller runtime overload
+  resolution remains further out and is not required for meta invocation.
+- Runtime lookup and first-order type checking are deliberately later than the
+  pattern / type-value / meta-invocation work; they consume its results rather
+  than re-deriving them.
+
+The mechanical lowering family (see `spec/design/mechanical-lowering/`) includes:
+
+```text
+automatic argument passing
+automatic return normalization / error policy
+call mode insertion: normal / tco / loop
+```
 
 #### v0.6 — Build / Namespace Graph Bootstrap
 
@@ -242,7 +272,7 @@ Must cover:
 - no source-level import/use/include/module
 - policy metadata slots on symbols, contexts, and namespace graph nodes,
   including minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
-  checking remains future work (see `spec/future/policy-visibility-symbols.md`)
+  checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -250,7 +280,7 @@ Must cover:
 - engineering invariants: snapshot + transaction delta discipline,
   symbol-identity-as-object, core bootstrap boundary, meta-expansion atomicity,
   phase-freeze vocabulary, no-bypass rule, invariant-targeted test philosophy
-  (see `spec/future/early-meta-functions-and-namespace-graph.md` §"Namespace
+  (see `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §"Namespace
   Graph World Model Invariants")
 
 Non-goals: full version solving; remote package retrieval; lockfile
@@ -301,7 +331,7 @@ Must cover:
 - policy fields on callable objects — symbol visibility policy, body-entry
   policy, and return-object policy represented distinctly; full projection and
   execution checking remain future work (see
-  `spec/future/policy-visibility-symbols.md`)
+  `spec/design/policy-capability/policy-visibility-symbols.md`)
 
 Non-goals: general compile-time value execution; value-to-value meta-functions;
 arbitrary control flow in meta bodies; full generic system; full pattern-space
@@ -339,7 +369,7 @@ Non-goals: value-to-type control flow; value-to-value compile-time world;
 unrestricted compile-time IO; runtime execution; full borrow/lifetime checking;
 full pattern-space subtraction / exhaustiveness; complete operator overload
 semantics (the overload resolution pipeline is specified in
-`spec/future/overload-resolution-design.md`; overload resolution is gated on
+`spec/design/patterns-overload/overload-resolution-design.md`; overload resolution is gated on
 v0.10+ pattern-space infrastructure).
 
 #### v0.9 — Canonical form specification
@@ -363,23 +393,23 @@ resolution is not implemented before this phase.
 
 Before formal meta object invocation can select callables, an earlier pattern
 normalization and first-order type-value candidate-preparation layer is needed;
-see `spec/future/pattern-normalization-and-first-order-overload.md`.
+see `spec/design/patterns-overload/pattern-normalization-and-first-order-overload.md`.
 
 Automatic return normalization and `noerror` / `Error`-handler semantics require
 first-order type predicates and policy-aware invocation, so they are future work
 after the meta invocation model; see
-`spec/future/mechanical-return-normalization-and-error-policy.md`.
+`spec/design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md`.
 
 Future first-order lowering also needs explicit call-mode insertion
 (`normal` / `tco` / `loop`) for recursion-based repetition, since the language
-has no loop core; see `spec/future/call-modes-recursion-and-tail-lowering.md`.
+has no loop core; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-lowering.md`.
 
 The v0.4 normalizer only preserves the Normalized AST boundaries these phases
 need: value-side material remains `NormExpr`, pattern-side material remains
 `NormPattern`, annotations remain annotation patterns, branch names in extraction
 position remain pattern material, and operator names remain unresolved structural
 targets. Detailed design note:
-`spec/future/static-pattern-spaces-and-extraction-chains.md`.
+`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
 #### v0.11+ — Value-to-type meta-functions with control flow
 
@@ -397,7 +427,7 @@ The following remain deferred and are not numbered precisely here:
   `with { ... }`)
 - full policy inference, projection checking, compile / runtime / seal semantics,
   const / mut policy, effect / error / panic policy, and resource capability
-  policy (see `spec/future/policy-visibility-symbols.md`)
+  policy (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes
 - HIR
 - code generation
@@ -420,7 +450,7 @@ namespace paths.
 This track was previously documented as a parallel side-track. As of the v0.6+
 re-sequencing it is the active implementation stage: v0.6 — Build / Namespace
 Graph Bootstrap (see the v0.6 stage above and
-`spec/future/early-meta-functions-and-namespace-graph.md`). The current code is
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`). The current code is
 a partial vertical slice in `crates/lang_build`, not a complete build system.
 
 ### Scope discipline

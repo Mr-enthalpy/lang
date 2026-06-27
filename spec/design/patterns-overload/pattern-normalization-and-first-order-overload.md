@@ -185,7 +185,7 @@ differ.
 
 This document does **not** fully specify symbol identity, places, or injection
 targets; the canonical `TypeValueId` / `PlaceId` / `SymbolId` distinction is
-defined in `spec/future/type-values-places-and-alias-forwarding.md`. Here it is
+defined in `spec/design/symbol-world/type-values-places-and-alias-forwarding.md`. Here it is
 enough to state the comparison rule: candidate matching uses type value, not
 source name.
 
@@ -232,7 +232,7 @@ The `pass expectation` on a `ParameterShape` and the `explicit pass mode` /
 argument-passing layer, which inserts a concrete pass action (move/ref/share/copy)
 after or within candidate adaptation. Pass matching is separate from type
 matching: pass mode is not part of `TypeValueId`. See
-`spec/future/mechanical-argument-passing-and-move-fixed-point.md`.
+`spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
 ## 7. Applicability judgment
 

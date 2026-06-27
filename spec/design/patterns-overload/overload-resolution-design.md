@@ -3,7 +3,7 @@
 **Status: Non-normative future design. Not implemented in v0.6–v0.8.**
 Overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure defined in
-`spec/future/static-pattern-spaces-and-extraction-chains.md`. The v0.7-prep
+`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`. The v0.7-prep
 work (`PolicyFlag`, `PolicySet`, `PolicyEnv::Meta`) provides the self-policy
 filtering layer (step C2) that future overload resolution will invoke; all
 other steps are design specification only.

@@ -123,7 +123,7 @@ insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 - Stage/implementation constraints → `spec/contracts/`.
 - Implementation inventory/status → `spec/implementation/`.
 - Route, discussion, alternatives, audit trail → `spec/history/`.
-- Later semantic design (v0.6+) → `spec/future/`.
+- Later semantic design (v0.6+) → `spec/design/`.
 - Roadmap and open questions → `spec/planning/`.
 
 If public docs and history conflict, public docs define current behavior. Future

@@ -198,7 +198,7 @@ without rearrangement.
 
 This document does not restate the full automatic argument-passing design; see
 the future mechanical argument passing document,
-`spec/future/mechanical-argument-passing-and-move-fixed-point.md`.
+`spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
 ## 7. Relation to meta functions
 

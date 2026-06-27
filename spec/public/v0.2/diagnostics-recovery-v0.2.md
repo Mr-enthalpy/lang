@@ -465,8 +465,8 @@ and recovery. Semantic errors belong to later semantic passes.
 | `spec/implementation/v0.1/diagnostics-v0.1.md` | Older detailed diagnostic catalog; remains the implementation-level reference. |
 | `spec/implementation/v0.1/ast-construction-v0.1.md` | Detailed parser-construction spec. |
 | `spec/history/v0.1/operator-design.md` | Operator syntax design and implementation boundaries. |
-| `spec/future/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
-| `spec/future/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
+| `spec/design/symbol-world/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
+| `spec/design/symbol-world/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
 | `spec/implementation/v0.1/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
 
 This document is the primary public diagnostics and recovery reference for

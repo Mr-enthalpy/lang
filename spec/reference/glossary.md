@@ -277,7 +277,7 @@ level symbol lookup, filtered by policy, and then ranked by the overload
 resolution pipeline.
 
 _See also: OverloadSpecificity, OverloadResolutionPipeline, PolicyEnv,
-`spec/future/overload-resolution-design.md`._
+`spec/design/patterns-overload/overload-resolution-design.md`._
 
 ---
 
@@ -292,7 +292,7 @@ specific candidate. Specificity does not depend on declaration order or an
 ad-hoc conversion-rank table.
 
 _See also: OverloadCandidate, OverloadResolutionPipeline,
-`spec/future/overload-resolution-design.md` §4._
+`spec/design/patterns-overload/overload-resolution-design.md` §4._
 
 ---
 
@@ -307,7 +307,7 @@ the program is rejected.
 
 Overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure. The formal specification is in
-`spec/future/overload-resolution-design.md` §5.
+`spec/design/patterns-overload/overload-resolution-design.md` §5.
 
 _See also: OverloadCandidate, OverloadSpecificity, PolicyEnv, Concept._
 

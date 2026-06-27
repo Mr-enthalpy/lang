@@ -55,8 +55,8 @@ spec/public/v0.2/concrete-syntax-v0.2.md
 
 Before alias / EntityRef repair:
 ```text
-spec/future/entity-alias-design.md
-spec/future/entity-ref-design.md
+spec/design/symbol-world/entity-alias-design.md
+spec/design/symbol-world/entity-ref-design.md
 spec/public/v0.2/concrete-syntax-v0.2.md
 ```
 
@@ -71,9 +71,9 @@ spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 
 Before build/package/namespace design:
 ```text
-spec/future/build-system-design.md
-spec/future/package-manifest-v0.md
-spec/future/namespace-assembly-v0.md
+spec/design/build-package/build-system-design.md
+spec/design/build-package/package-manifest-v0.md
+spec/design/build-package/namespace-assembly-v0.md
 ```
 
 Before resolving old open questions or understanding design history:
