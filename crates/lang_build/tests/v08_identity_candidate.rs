@@ -5,11 +5,11 @@ use support::*;
 use lang_build::{
     policy_metadata, policy_set_meta_runtime, policy_set_runtime, prepare_meta_callable_candidate,
     AliasChain, AliasQueryDisposition, AliasQueryMode, CallablePolicyMetadata,
-    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-    CompilationWorld, ExecutionEnv, FieldObject, FieldProjection, NamespaceGraphSnapshot,
-    NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag, Provenance,
-    RawArgValueClass, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-    TypeValueBindingPlaceholder, TypeValueId,
+    CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
+    CandidatePreparationContext, CompilationWorld, ExecutionEnv, FieldObject, FieldProjection,
+    NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv,
+    PolicyFlag, Provenance, RawArgValueClass, SourceCategory, SymbolId, SymbolKind, SymbolObject,
+    SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
 };
 use lang_syntax::{NormExpr, NormOrigin, NormProduct, NormProductElem, Span};
 
@@ -75,6 +75,12 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         CandidatePreparationContext {
             symbol_visibility: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder {
+                package_identity_fragment: Some("package:app".to_string()),
+                mount_identity_fragment: Some("mount:core".to_string()),
+                build_config_fingerprint_fragment: Some("build:debug-test".to_string()),
+                policy_export_fingerprint_fragment: Some("policy:export-meta".to_string()),
+            },
             provenance: Provenance::new("v0.8 candidate preparation"),
         },
     );
@@ -113,6 +119,34 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         candidate.canonical_key_seed.argument_type_values,
         vec![None]
     );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .package_identity_fragment
+            .as_deref(),
+        Some("package:app")
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .mount_identity_fragment
+            .as_deref(),
+        Some("mount:core")
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .build_config_fingerprint_fragment
+            .as_deref(),
+        Some("build:debug-test")
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .policy_export_fingerprint_fragment
+            .as_deref(),
+        Some("policy:export-meta")
+    );
 }
 
 #[test]
@@ -125,6 +159,7 @@ fn symbol_visibility_does_not_imply_body_entry_or_return_object_policy() {
         CandidatePreparationContext {
             symbol_visibility: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("meta-visible runtime-body field function"),
         },
     );

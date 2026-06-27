@@ -59,6 +59,11 @@ pub struct FlattenedProductObject {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FlattenedProductInvariant {
+    /// Contract marker for v0.8 product semantic normalization.
+    ///
+    /// `ProductAtom` intentionally has no Product variant, so this is not a
+    /// separate runtime proof. It records the no-direct-Product-atom invariant
+    /// at the object boundary consumed by `ArgProductShape`.
     pub no_direct_product_atom_remains: bool,
 }
 
@@ -324,7 +329,16 @@ impl ParameterShape {
 pub struct CandidatePreparationContext {
     pub symbol_visibility: PolicyEnv,
     pub demanded_execution: ExecutionEnv,
+    pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CandidateBuildIdentityPlaceholder {
+    pub package_identity_fragment: Option<String>,
+    pub mount_identity_fragment: Option<String>,
+    pub build_config_fingerprint_fragment: Option<String>,
+    pub policy_export_fingerprint_fragment: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -364,6 +378,10 @@ pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,
     pub argument_arity: usize,
     pub argument_type_values: Vec<Option<TypeValueId>>,
+    pub package_identity_fragment: Option<String>,
+    pub mount_identity_fragment: Option<String>,
+    pub build_config_fingerprint_fragment: Option<String>,
+    pub policy_export_fingerprint_fragment: Option<String>,
     pub provenance: Provenance,
 }
 
@@ -415,6 +433,16 @@ pub fn prepare_meta_callable_candidate(
             .iter()
             .map(|raw_arg| raw_arg.known_first_order_type_value)
             .collect(),
+        package_identity_fragment: context.build_identity.package_identity_fragment.clone(),
+        mount_identity_fragment: context.build_identity.mount_identity_fragment.clone(),
+        build_config_fingerprint_fragment: context
+            .build_identity
+            .build_config_fingerprint_fragment
+            .clone(),
+        policy_export_fingerprint_fragment: context
+            .build_identity
+            .policy_export_fingerprint_fragment
+            .clone(),
         provenance: context.provenance.clone(),
     };
     let candidate = PreparedCallableCandidate {
