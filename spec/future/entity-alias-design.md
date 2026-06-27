@@ -18,6 +18,13 @@ The right-hand side `EntityRef` syntax is defined separately in
 `spec/future/entity-ref-design.md`. This document describes how future alias binding
 will use that syntax.
 
+This document records the surface/parser alias syntax and the future surface
+lookup/shadowing rules. The *semantic* alias forwarding model — value/place
+forwarding, the `AliasChain`, and its writable-place effect — is documented in
+`spec/future/type-values-places-and-alias-forwarding.md`. The two are
+complementary: this file owns the surface form; that file owns the forwarding
+semantics.
+
 ## Purpose
 
 The language will eventually support a declaration form:

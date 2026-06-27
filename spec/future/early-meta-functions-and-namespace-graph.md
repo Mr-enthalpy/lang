@@ -632,7 +632,10 @@ unless one is declared via `===`. Canonical `TypeValueId` and full type-value
 equality are future work.
 
 See `spec/future/type-associated-function-objects-and-access-trees.md` for the
-full value/place/injection distinction and alias writability rule.
+field-function and access-tree implications. The intended final distinction
+between type values, symbol places, alias forwarding, and writable injection
+targets is documented in
+`spec/future/type-values-places-and-alias-forwarding.md`.
 
 ## 4. Namespace contribution rules
 

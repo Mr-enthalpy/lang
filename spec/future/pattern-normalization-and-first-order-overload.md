@@ -184,8 +184,10 @@ identity. Two bindings can share a type value even though their binding symbols
 differ.
 
 This document does **not** fully specify symbol identity, places, or injection
-targets; those belong to companion/later documents. Here it is enough to state
-the comparison rule: candidate matching uses type value, not source name.
+targets; the canonical `TypeValueId` / `PlaceId` / `SymbolId` distinction is
+defined in `spec/future/type-values-places-and-alias-forwarding.md`. Here it is
+enough to state the comparison rule: candidate matching uses type value, not
+source name.
 
 Pass mode is explicitly **not** part of `TypeValueId`. A construct such as
 `T move` does not introduce a new type, and `move` / `copy` / `ref` / `share`
@@ -340,6 +342,9 @@ them for its definitions.
   pattern-space / extraction-chain semantics. The pattern normalization layer
   here is an earlier candidate-shape layer and is a different layer from that
   pattern-space design.
+- `type-values-places-and-alias-forwarding.md` — the canonical `TypeValueId` /
+  `PlaceId` / `SymbolId` distinction that first-order type matching here relies
+  on. First-order type matching uses `TypeValueId`; that document defines what
+  type-value, place, and symbol identity mean.
 - `type-associated-function-objects-and-access-trees.md` — background for
-  type-associated function objects and the type-value / place distinction that
-  this document references but does not fully specify.
+  type-associated function objects, field functions, and access-tree work.
