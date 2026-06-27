@@ -8,6 +8,14 @@ work (`PolicyFlag`, `PolicySet`, `PolicyEnv::Meta`) provides the self-policy
 filtering layer (step C2) that future overload resolution will invoke; all
 other steps are design specification only.
 
+This document remains the broader overload-resolution design. The earlier
+pattern/type candidate-preparation subset used by future meta object invocation
+is documented in `pattern-normalization-and-first-order-overload.md`. That
+subset is the narrower candidate model — argument/parameter shapes, applicability,
+and a constrained specificity ordering — that the meta invocation engine needs;
+it is **not** equivalent to full runtime overload resolution, which this document
+continues to specify.
+
 ---
 
 ## 1. Scope
@@ -469,6 +477,7 @@ declaration-order fallback
 | Document | Relationship |
 |---|---|
 | `static-pattern-spaces-and-extraction-chains.md` §12 | Summary overview of overload resolution; this document is the formal specification |
+| `pattern-normalization-and-first-order-overload.md` | Earlier, narrower candidate-preparation subset (pattern normalization + first-order type-value candidate model) feeding meta object invocation; not full runtime overload resolution |
 | `policy-visibility-symbols.md` §12.1 | Policy-filtered namespace lookup feeds overload set construction |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph provides the `RawChildren` (C0) layer |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |

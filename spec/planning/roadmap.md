@@ -357,6 +357,10 @@ requires construction-expression-tree depth scoring, which in turn requires
 canonical pattern-space construction and extraction-chain matching. Overload
 resolution is not implemented before this phase.
 
+Before formal meta object invocation can select callables, an earlier pattern
+normalization and first-order type-value candidate-preparation layer is needed;
+see `spec/future/pattern-normalization-and-first-order-overload.md`.
+
 The v0.4 normalizer only preserves the Normalized AST boundaries these phases
 need: value-side material remains `NormExpr`, pattern-side material remains
 `NormPattern`, annotations remain annotation patterns, branch names in extraction
