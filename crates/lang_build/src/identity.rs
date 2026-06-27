@@ -4,6 +4,9 @@
 //! and `AliasChain` as object-boundary placeholders. It does **not** implement
 //! full alias resolution or type-value tracking.
 //!
+//! `AliasQueryRequest` / `AliasQueryResult` are resolver-facing placeholders.
+//! They are **not** complete alias resolution.
+//!
 //! The current implementation boundary lives in `lang_build::identity`,
 //! `lang_build::product_shape`, and `lang_build::meta_candidate`. These are
 //! substrate boundaries, not full implementations of the future systems.
@@ -95,6 +98,29 @@ impl AliasChain {
 
     pub fn creates_fresh_writable_place(&self) -> bool {
         false
+    }
+
+    /// Resolver-facing query entry point.
+    ///
+    /// If `request.source_symbol` does not match `self.source_symbol`, returns a
+    /// conservative placeholder result (all terminal fields `None`, boundary
+    /// `Unknown`, cycle `NotChecked`). Source-symbol mismatch resolution is
+    /// future resolver work.
+    ///
+    /// This does **not** perform full alias resolution, does **not** create
+    /// writable places, and does **not** mark cycle detection as complete.
+    pub fn query(&self, request: &AliasQueryRequest) -> AliasQueryResult {
+        if request.source_symbol != self.source_symbol {
+            return AliasQueryResult {
+                disposition: self.query_disposition(request.mode),
+                final_symbol: None,
+                final_value: None,
+                final_place: None,
+                writable_boundary: AliasWritableBoundary::Unknown,
+                cycle_detection_state: AliasCycleDetectionState::NotChecked,
+            };
+        }
+        AliasQueryResult::from_chain(self, request.mode)
     }
 }
 

@@ -10,10 +10,13 @@ mod support;
 use support::*;
 
 use lang_build::{
-    prepare_meta_callable_candidate, AliasChain, AliasQueryDisposition, AliasQueryMode,
-    CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CanonicalArgAtomKind, ExecutionEnv, ParameterShape, PolicyEnv,
-    ProductMaterialRole, Provenance, SymbolId,
+    prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input, AliasChain,
+    AliasCycleDetectionState, AliasQueryDisposition, AliasQueryMode, AliasQueryRequest,
+    AliasWritableBoundary, ArgProductShape, CandidateBuildIdentityPlaceholder,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FlattenedProductInvariant,
+    FlattenedProductObject, NonValueArgKind, ParameterShape, PolicyEnv, ProductAtom,
+    ProductMaterialRole, Provenance, RawArgShape, RawArgValueClass, SymbolId, TypeValueId,
 };
 
 /// Unit positions must remain in the canonical argument material and not be
@@ -163,4 +166,275 @@ fn product_shape_does_not_cross_expression_barrier() {
         3,
         "non-barrier product ((a, b), c) must flatten to three atoms"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Object-boundary placeholder tests: widened canonical atom kinds, RawArgShape
+// refinement, canonical material + refinement linkage, alias query surface.
+// These are NOT source semantic tests; classification is constructed directly.
+// ---------------------------------------------------------------------------
+
+/// Object-boundary test: `CanonicalArgAtomKind` must distinguish all future
+/// non-value atom kinds so that later type/rank/meta/pattern classifiers can
+/// write into canonical material without structural rework.
+#[test]
+fn canonical_arg_material_distinguishes_future_non_value_atom_kinds_object_boundary() {
+    let shape = build_mixed_classification_shape();
+    let material = lang_build::CanonicalArgProductShapeMaterial::from_arg_product_shape(&shape);
+
+    assert_eq!(material.arity, 9);
+    assert_eq!(
+        material.atom_kinds,
+        vec![
+            CanonicalArgAtomKind::ExpressionBarrier,
+            CanonicalArgAtomKind::ResolvedValue,
+            CanonicalArgAtomKind::TypeObject,
+            CanonicalArgAtomKind::RankObject,
+            CanonicalArgAtomKind::NamespaceObject,
+            CanonicalArgAtomKind::MetaObject,
+            CanonicalArgAtomKind::PatternObject,
+            CanonicalArgAtomKind::ProductUnit,
+            CanonicalArgAtomKind::Unsupported,
+        ],
+        "every future non-value atom kind must have a distinct CanonicalArgAtomKind variant"
+    );
+}
+
+/// Object-boundary test: RawArgShape refinement preserves provenance and the
+/// automatic-pass-action boundary.
+#[test]
+fn raw_arg_shape_refinement_preserves_provenance_and_pass_boundary_object_boundary() {
+    let arg = RawArgShape::from_product_atom(
+        3,
+        &ProductAtom::Unit {
+            provenance: provenance("u"),
+        },
+    );
+    // Override value_class to UnknownExpression to simulate an unresolved slot.
+    let arg = arg.with_value_class(RawArgValueClass::UnknownExpression);
+
+    assert!(!arg.receives_automatic_pass_action());
+    assert_eq!(arg.is_value(), None);
+
+    let refined = arg.clone().as_non_value(NonValueArgKind::TypeObject);
+    assert_eq!(
+        refined.index, 3,
+        "index must be preserved through refinement"
+    );
+    assert_eq!(
+        refined.provenance.description, arg.provenance.description,
+        "provenance must be preserved through refinement"
+    );
+    assert_eq!(refined.is_value(), Some(false));
+    assert!(
+        !refined.receives_automatic_pass_action(),
+        "NonValue(TypeObject) must not receive automatic pass action"
+    );
+
+    let value = arg.clone().as_resolved_value();
+    assert_eq!(value.index, 3);
+    assert_eq!(value.provenance.description, arg.provenance.description);
+    assert_eq!(value.is_value(), Some(true));
+    assert!(
+        value.receives_automatic_pass_action(),
+        "Value must receive automatic pass action after positive classification"
+    );
+
+    let with_tv = value.with_known_first_order_type_value(TypeValueId(5));
+    assert_eq!(with_tv.known_first_order_type_value, Some(TypeValueId(5)));
+    assert_eq!(with_tv.index, 3);
+    assert_eq!(with_tv.provenance.description, arg.provenance.description);
+}
+
+/// Object-boundary test: canonical material must reflect refined RawArgShape
+/// value classes, not collapse everything to ExpressionBarrier.
+#[test]
+fn canonical_material_reflects_refined_raw_arg_kinds_object_boundary() {
+    let shape = build_mixed_classification_shape();
+    let material = lang_build::CanonicalArgProductShapeMaterial::from_arg_product_shape(&shape);
+
+    let kinds: Vec<CanonicalArgAtomKind> = material.atom_kinds;
+    assert_eq!(
+        kinds[1],
+        CanonicalArgAtomKind::ResolvedValue,
+        "refined Value must become ResolvedValue"
+    );
+    assert_eq!(
+        kinds[2],
+        CanonicalArgAtomKind::TypeObject,
+        "refined NonValue(TypeObject) must become TypeObject"
+    );
+    assert_eq!(
+        kinds[5],
+        CanonicalArgAtomKind::MetaObject,
+        "refined NonValue(MetaObject) must become MetaObject"
+    );
+    assert_eq!(
+        kinds[7],
+        CanonicalArgAtomKind::ProductUnit,
+        "refined NonValue(ProductUnit) must become ProductUnit"
+    );
+    assert_eq!(
+        kinds[8],
+        CanonicalArgAtomKind::Unsupported,
+        "refined Unsupported must become Unsupported"
+    );
+}
+
+/// Object-boundary test: `AliasChain::query` accepts a request and returns
+/// a placeholder result without performing full alias resolution.
+#[test]
+fn alias_query_request_drives_placeholder_result_object_boundary() {
+    let chain = AliasChain::new(
+        SymbolId(10),
+        SymbolId(20),
+        Provenance::new("alias query request test"),
+    );
+
+    for mode in [
+        AliasQueryMode::TypeValueEvaluation,
+        AliasQueryMode::CallableLookup,
+        AliasQueryMode::InjectionPlaceTarget,
+    ] {
+        let request = AliasQueryRequest::new(mode, SymbolId(10), Provenance::new("test request"));
+        let result = chain.query(&request);
+        assert_eq!(result.disposition, chain.query_disposition(mode));
+        assert_eq!(
+            result.final_place, None,
+            "placeholder result must not resolve final place"
+        );
+        assert_eq!(
+            result.writable_boundary,
+            AliasWritableBoundary::Unknown,
+            "placeholder result must leave writable boundary unknown"
+        );
+        assert_eq!(
+            result.cycle_detection_state,
+            AliasCycleDetectionState::NotChecked,
+            "placeholder result must leave cycle detection unchecked"
+        );
+    }
+
+    assert!(
+        !chain.creates_fresh_writable_place(),
+        "alias chain must not claim to create a fresh writable place at object boundary"
+    );
+
+    // Source-symbol mismatch: conservative placeholder.
+    let request = AliasQueryRequest::new(
+        AliasQueryMode::TypeValueEvaluation,
+        SymbolId(99),
+        Provenance::new("mismatched source symbol"),
+    );
+    let result = chain.query(&request);
+    assert_eq!(result.final_symbol, None);
+    assert_eq!(result.final_value, None);
+    assert_eq!(result.final_place, None);
+}
+
+/// Forbidden-collapse: `CandidatePrepResult` from the input wrapper must still
+/// defer (not execute) for runtime-only body-entry policy.
+#[test]
+fn candidate_preparation_input_wrapper_still_does_not_execute_invocation() {
+    let world = v08_candidate_world();
+    let field_symbol = world
+        .snapshot()
+        .capability()
+        .resolve_field_function("field::ref::T", &world.package_context())
+        .expect("generated ref field function resolves through namespace graph");
+
+    let site = v08_candidate_call_site();
+    let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+
+    let input = CandidatePreparationInput::new(
+        field_symbol,
+        arg_shape,
+        ParameterShape::exact_arity(1, Provenance::new("wrapper invocation test")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("forbidden: wrapper must not execute"),
+        },
+    );
+
+    let result = prepare_meta_callable_candidate_from_input(input);
+    match &result {
+        CandidatePrepResult::Deferred { reason, .. } => {
+            assert_eq!(
+                *reason,
+                CandidatePrepDeferredReason::BodyEntryPolicyMismatch
+            );
+        }
+        CandidatePrepResult::ApplicablePlaceholder(_) => {
+            panic!("wrapper must not execute meta invocation on runtime-only body")
+        }
+        CandidatePrepResult::Diagnostic(_) => {
+            panic!("wrapper must not diagnose when body-entry policy mismatch should defer")
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers for object-boundary classification tests
+// ---------------------------------------------------------------------------
+
+fn provenance(desc: &str) -> Provenance {
+    Provenance::new(desc)
+}
+
+fn build_mixed_classification_shape() -> ArgProductShape {
+    let raw_args = vec![
+        raw_arg(0, RawArgValueClass::UnknownExpression),
+        raw_arg(1, RawArgValueClass::Value),
+        raw_arg(2, RawArgValueClass::NonValue(NonValueArgKind::TypeObject)),
+        raw_arg(3, RawArgValueClass::NonValue(NonValueArgKind::RankObject)),
+        raw_arg(
+            4,
+            RawArgValueClass::NonValue(NonValueArgKind::NamespaceObject),
+        ),
+        raw_arg(5, RawArgValueClass::NonValue(NonValueArgKind::MetaObject)),
+        raw_arg(
+            6,
+            RawArgValueClass::NonValue(NonValueArgKind::PatternObject),
+        ),
+        raw_arg(7, RawArgValueClass::NonValue(NonValueArgKind::ProductUnit)),
+        raw_arg(
+            8,
+            RawArgValueClass::Unsupported {
+                summary: "unsupported test material".to_string(),
+            },
+        ),
+    ];
+    let arity = raw_args.len();
+    let provenance = Provenance::new("object-boundary mixed classification shape");
+    // atoms are not inspected here; fill with Units
+    let mut atoms = Vec::with_capacity(arity);
+    for _ in 0..arity {
+        atoms.push(ProductAtom::Unit {
+            provenance: provenance.clone(),
+        });
+    }
+    ArgProductShape {
+        flattened: FlattenedProductObject {
+            atoms,
+            provenance: provenance.clone(),
+            invariant: FlattenedProductInvariant {
+                no_direct_product_atom_remains: true,
+            },
+        },
+        arity,
+        raw_args,
+        provenance,
+    }
+}
+
+fn raw_arg(index: usize, value_class: RawArgValueClass) -> RawArgShape {
+    RawArgShape {
+        index,
+        value_class,
+        explicit_pass_mode: None,
+        known_first_order_type_value: None,
+        provenance: Provenance::new("object-boundary placeholder"),
+    }
 }
