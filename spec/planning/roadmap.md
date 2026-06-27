@@ -365,6 +365,11 @@ Before formal meta object invocation can select callables, an earlier pattern
 normalization and first-order type-value candidate-preparation layer is needed;
 see `spec/future/pattern-normalization-and-first-order-overload.md`.
 
+Automatic return normalization and `noerror` / `Error`-handler semantics require
+first-order type predicates and policy-aware invocation, so they are future work
+after the meta invocation model; see
+`spec/future/mechanical-return-normalization-and-error-policy.md`.
+
 The v0.4 normalizer only preserves the Normalized AST boundaries these phases
 need: value-side material remains `NormExpr`, pattern-side material remains
 `NormPattern`, annotations remain annotation patterns, branch names in extraction

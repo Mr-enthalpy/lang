@@ -72,6 +72,11 @@ policy facts. It is not a general meta interpreter, full policy checker, type
 checker, macro system, runtime lowering step, or user-facing import/export
 mechanism.
 
+Future automatic return normalization will likewise use the formal meta
+invocation and policy-aware `Error` handler lookup, but it is not part of the
+current early-meta slice; see
+`spec/future/mechanical-return-normalization-and-error-policy.md`.
+
 ### Policy flag assignment
 
 | Symbol source | Policy set |
