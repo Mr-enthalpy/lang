@@ -136,7 +136,6 @@ behavior. Start at `spec/design/README.md`; each block has its own `README.md`.
 | `spec/design/meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation, and control-like callables instead of `if constexpr` syntax. |
 | `spec/design/policy-capability/` | Symbol-visibility / body-entry / return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. |
 | `spec/design/mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes with no loop core. |
-| `spec/design/decisions/` | Accepted architecture decision records (ADRs) constraining design direction. They do not override current `spec/public/` behavior. |
 
 ## Planning and debt
 
@@ -213,9 +212,8 @@ build-package -> symbol-world -> patterns-overload -> meta-invocation
   -> mechanical-lowering -> later runtime lookup / type check
 ```
 
-Then read within each block as needed; accepted ADRs are in
-`spec/design/decisions/`. Scope boundaries are in `spec/planning/roadmap.md`,
-and known gaps in `spec/planning/open-questions.md`.
+Then read within each block as needed. Scope boundaries are in
+`spec/planning/roadmap.md`, and known gaps in `spec/planning/open-questions.md`.
 
 ## Spec priority
 

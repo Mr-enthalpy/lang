@@ -106,7 +106,6 @@ behavior). Start at `spec/design/README.md`.
 | `spec/design/meta-invocation/` | Policy-governed meta object invocation, partial/strict reduction, guarded invocation |
 | `spec/design/policy-capability/` | Visibility / body-entry / return-object policy, meta/runtime filtering, future error policy |
 | `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
-| `spec/design/decisions/` | Accepted ADRs constraining design direction |
 
 | Directory | Document | Purpose |
 |---|---|---|

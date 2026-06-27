@@ -15,8 +15,8 @@ behavior.
   document appear to conflict, the public document wins for current behavior.
 - These design documents constrain the intended direction. They are not a
   promise that the described semantics are implemented.
-- Accepted decisions (ADRs) live in `spec/design/decisions/` and constrain
-  direction, but they do not override `spec/public/`.
+- Accepted ADR constraints have been absorbed into the relevant design blocks;
+  they constrain direction but do not override `spec/public/`.
 
 ## Active semantic route
 
@@ -52,7 +52,6 @@ pattern/type-value/meta-invocation work.
 | `meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation; control-like callables instead of an `if constexpr` / `if` syntax split. | Defining symbol-world, patterns-overload, or policy-capability internals (it references them). |
 | `policy-capability/` | Symbol-visibility policy, callable body-entry policy, return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. | Mechanical return normalization (that lives in `mechanical-lowering/` and only references policy planes here). |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |
-| `decisions/` | Accepted architecture decision records (ADRs) constraining design direction. | Defining current public behavior. |
 
 ## Implementation status
 
@@ -71,6 +70,5 @@ pattern/type-value/meta-invocation work.
 1. Read this file for the route and block responsibilities.
 2. Read the block `README.md` for any block you are working in.
 3. Follow the active route when a topic spans blocks.
-4. Consult `spec/design/decisions/` for the accepted ADRs.
-5. Scope boundaries: `spec/planning/roadmap.md`. Known gaps:
+4. Scope boundaries: `spec/planning/roadmap.md`. Known gaps:
    `spec/planning/open-questions.md`.

@@ -298,6 +298,10 @@ branch without that branch contaminating the meta reduction of the taken path.
 Guarded invocation, not a privileged `if constexpr`, is what gives the language
 compile-time branch selection.
 
+The same rule applies to match-like control forms: a `match`-like consumer is
+an ordinary meta-callable over pattern spaces / extraction results, not a
+parser-level privileged node.
+
 ## 6. Residual runtime expressions
 
 A residual is the expression that remains after all admissible meta reduction
@@ -357,6 +361,13 @@ Parser and normalizer should not special-case names like `struct`, `verify`, `co
 or future predicate operators. They should preserve normalized structure. Later graph
 lookup and policy-governed invocation decide what those names do.
 ```
+
+Two consequences follow. Closure-like source material remains syntax /
+normalized material until a later semantic / meta-invocation step explicitly
+materializes it as an object; the candidate pipeline does not assume a
+pre-materialized callable. And surface call syntax is not a traditional
+`f(args)` grammar: meta invocation consumes normalized expression / product /
+call-chain material, not a parser-produced call node.
 
 ## 8. Relation to existing early-meta slice
 

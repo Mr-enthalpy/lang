@@ -23,6 +23,15 @@ Language expression semantics, type values, pattern/overload, and meta
 invocation. This block produces the graph that later blocks resolve names in;
 it does not define what those names mean.
 
+## Repository placement
+
+Repository placement is not semantic identity. The build-package track remains
+in this repository while the manifest schema, namespace graph model,
+declaration-index, and crate public API are unstable; this does not collapse
+parser/frontend and build/package responsibilities, and build-package code must
+not leak semantic-resolver responsibilities into the frontend. A future split
+into a separate repository remains possible only after those APIs stabilize.
+
 ## Documents
 
 - `build-system-design.md` — the package/build layer and namespace-graph projection.

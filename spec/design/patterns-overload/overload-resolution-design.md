@@ -97,6 +97,12 @@ Visible(C, External) = { c ∈ C | export(c) }
 The overload set is always built from the visible child set, never from raw
 graph children directly.
 
+Candidate construction is closed over the namespace-graph view selected for the
+query: it performs no ADL-like expansion and no external scope search, external
+users cannot retroactively add candidates to an already-visible namespace node,
+and meta-generated injection occurs only through explicit parent-to-child
+namespace-delta boundaries.
+
 ### 2.3 Candidate set notation
 
 ```text
