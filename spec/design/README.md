@@ -1,13 +1,18 @@
-# Design Blocks
+# Design Fusion Staging Area
 
-**Status: Non-normative design / future design. Nothing in `spec/design/` defines
-current user-facing language behavior. Current behavior lives in `spec/public/`.**
+**Status: Transitional design-fusion staging area. Nothing in this directory
+defines current user-facing behavior, and this directory is not intended to be
+the long-term home for these documents. Current behavior lives in
+`spec/public/`. Stage contracts live in `spec/contracts/`. Route and open-scope
+decisions live in `spec/planning/`. Superseded design history and ADR material
+live in `spec/history/`.**
 
-This directory is the entry point for the language's forward-looking design,
-reorganized from the former flat `spec/future/` bucket into design blocks. Some
-blocks carry partial-implementation notes (a narrow v0.6/v0.7 slice exists in
-`crates/lang_build`), but design material here must not be read as implemented
-behavior.
+`spec/design/` is a temporary sorting/staging area, not a long-term authority
+tier. The design blocks exist to regroup, fuse, de-duplicate, and split the old
+flat `spec/future/` pile; they are not the final documentation layer. As the
+symbol / pattern / meta-invocation world stabilizes, each block's material
+should migrate into `spec/public/`, `spec/contracts/`, `spec/planning/`, and
+`spec/history/`, after which `spec/design/` is shrunk or removed.
 
 ## Authority
 
@@ -18,9 +23,9 @@ behavior.
 - Accepted ADR constraints have been absorbed into the relevant design blocks;
   they constrain direction but do not override `spec/public/`.
 
-## Active semantic route
+## Current staging route
 
-The blocks are ordered along the intended build-out route:
+The current staging route (not a permanent design reading order) is:
 
 ```text
 package/manifest identity
@@ -52,6 +57,17 @@ pattern/type-value/meta-invocation work.
 | `meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation; control-like callables instead of an `if constexpr` / `if` syntax split. | Defining symbol-world, patterns-overload, or policy-capability internals (it references them). |
 | `policy-capability/` | Symbol-visibility policy, callable body-entry policy, return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. | Mechanical return normalization (that lives in `mechanical-lowering/` and only references policy planes here). |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |
+
+## Eventual absorption targets
+
+| Staging block | Eventual destination |
+|---|---|
+| build-package/ | `spec/contracts/` for build/namespace invariants; `spec/planning/` for package/manifest roadmap; `spec/public/` only after a manifest/package surface is user-facing. |
+| symbol-world/ | `spec/contracts/` for namespace graph / delta / resolver invariants; `spec/public/` for stable symbol/type/place behavior once implemented; `spec/history/` for superseded bootstrap notes. |
+| patterns-overload/ | `spec/public/` for stable pattern/overload semantics; `spec/contracts/` for normalized-pattern handoff obligations; `spec/planning/` for runtime overload/type-check staging; `spec/history/` for obsolete extraction-chain alternatives. |
+| meta-invocation/ | `spec/public/` once meta invocation is a user-facing semantic model; `spec/contracts/` for evaluator/residualization obligations; `spec/planning/` for runtime lookup/type-check sequencing. |
+| policy-capability/ | `spec/public/` for stable policy semantics; `spec/contracts/` for policy metadata/checker boundaries; `spec/planning/` for deferred lattice/effect/error work. |
+| mechanical-lowering/ | `spec/contracts/` for lowering obligations and IR handoff invariants; `spec/public/` only for stable source-visible effects such as move/noerror/call-mode semantics; `spec/history/` for rejected loop/if-constexpr alternatives. |
 
 ## Implementation status
 

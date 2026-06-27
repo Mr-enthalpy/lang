@@ -240,6 +240,17 @@ automatic return normalization / error policy
 call mode insertion: normal / tco / loop
 ```
 
+### Documentation fusion note
+
+`spec/design/` is a temporary staging area introduced to break up the former
+flat `spec/future/` pile. It is not intended to become the permanent home of
+the symbol / pattern / meta-invocation semantics. As those semantics stabilize:
+
+- user-visible stable behavior moves to `spec/public/`;
+- implementation-stage obligations and handoff invariants move to `spec/contracts/`;
+- sequencing, deferrals, and open scope remain in `spec/planning/`;
+- superseded alternatives and absorbed ADR material move to `spec/history/`.
+
 #### v0.6 — Build / Namespace Graph Bootstrap
 
 **Goal**: a minimal working build system and a namespace graph world model.

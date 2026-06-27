@@ -17,11 +17,11 @@ Documentation areas have distinct roles and authority levels:
 - **`spec/history/`** — Historical route, design discussion, alternatives,
   resolved disputes, and audit trail. History preserves why decisions were made,
   but does not define current behavior unless linked from public docs.
-- **`spec/design/`** — Forward-looking design blocks (build-package, symbol-world,
-  patterns-overload, meta-invocation, policy-capability, mechanical-lowering, and
-  decisions). Non-normative design / future design; some blocks carry
-  partial-implementation notes, but design material must not be read as
-  implemented behavior. Entry point: `spec/design/README.md`.
+- **`spec/design/`** — Transitional design-fusion staging area. It temporarily
+  groups forward-looking design material while it is being fused into
+  `spec/public/`, `spec/contracts/`, `spec/planning/`, and `spec/history/`.
+  It is not a long-term authority tier and must not be read as implemented
+  behavior. Entry point: `spec/design/README.md`.
 - **`spec/planning/`** — Roadmap and open questions. Planning documents must not
   substitute for public language behavior.
 
@@ -33,6 +33,10 @@ current behavior.
 If future docs describe later semantics, they must not be read as implemented
 behavior.
 ```
+
+If `spec/design/` conflicts with public docs, contracts, or stage planning,
+the stable tier wins for its own role. `spec/design/` records material still
+awaiting absorption.
 
 ## Public normalized-surface specification: v0.5
 
@@ -122,11 +126,14 @@ route and decisions.
 |---|---|---|
 | `README.md` | Non-normative historical summary | v0.4 prototype/hardening route, `Unsupported`-audit and value/pattern hardening decisions; points to the v0.4 prototype notes and golden tests. |
 
-## Design blocks
+## Transitional design-fusion staging
 
-**`spec/design/`** — Forward-looking design blocks. These are non-normative
-design / future design, not current syntax specifications and not public
-behavior. Start at `spec/design/README.md`; each block has its own `README.md`.
+**`spec/design/`** is a transitional staging area, not a long-term authority
+tier. These blocks are temporary staging buckets. They exist to avoid a flat
+`future/` pile while the symbol / pattern / meta-invocation world is still being
+fused. They should shrink as material is promoted into public specs, converted
+into contracts, moved into planning, or archived into history. Start at
+`spec/design/README.md`.
 
 | Block | Role |
 |---|---|
@@ -157,7 +164,8 @@ Current reading order (summary):
 4. `spec/public/v0.2/*` for the frozen Raw AST input syntax
 5. `spec/contracts/*` only when doing implementation-boundary work
 6. `spec/history/*` for route / decisions / archaeology
-7. `spec/design/*` for the forward-looking design blocks (start at `spec/design/README.md`)
+7. `spec/design/README.md` only when working on unstable design-fusion material
+   that has not yet been absorbed into public/contracts/planning/history
 
 `spec/history/v0.3/` holds the v0.3 Normalized AST design baseline (historical),
 not a current reading step. The detailed per-tier lists below expand this order.
