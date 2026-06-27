@@ -1,10 +1,20 @@
 //! Product / argument-shape boundary from the v0.8 construction contract.
 //!
-//! This module provides the normalized product object, flattened product atoms,
-//! argument product shape, and raw argument classification. It is the
-//! construction-substrate mechanical layer — it does **not** implement
-//! overload resolution, pattern matching, semantic pass insertion, or a
-//! full pattern engine. Those remain v0.9+ future work.
+//! This module is the product/argument-shape boundary between normalized surface
+//! syntax and later candidate preparation.
+//!
+//! It is **not** the full pattern engine, **not** overload resolution, **not**
+//! runtime ABI lowering, and **not** mechanical argument passing.
+//!
+//! Its job is to preserve and normalize product structure:
+//! - exposed Product nodes flatten in order;
+//! - Expression nodes are opaque barriers;
+//! - Unit is preserved;
+//! - provenance is preserved.
+//!
+//! The current implementation boundary lives in `lang_build::product_shape`,
+//! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
+//! boundaries, not full implementations of the future systems.
 
 use lang_syntax::{NormError, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
@@ -44,11 +54,19 @@ impl ProductObject {
     }
 }
 
+/// Future policy/candidate-prep role marker.
+///
+/// This enum distinguishes the context in which a product object is constructed.
+/// It does **not** encode type-check results or runtime ABI decisions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProductMaterialRole {
+    /// Source side of a normalized call.
     SourceProduct,
+    /// Candidate-preparation input (argument product).
     CallableArgumentProduct,
+    /// Type-to-type meta construction input.
     MetaConstructionArgumentProduct,
+    /// Temporary boundary only.
     Placeholder,
 }
 

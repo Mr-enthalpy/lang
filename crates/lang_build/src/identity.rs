@@ -1,3 +1,13 @@
+//! Placeholder identity types for the v0.8 construction contract.
+//!
+//! This module provides `TypeValueId`, `PlaceId`, `TypeValueBindingPlaceholder`,
+//! and `AliasChain` as object-boundary placeholders. It does **not** implement
+//! full alias resolution or type-value tracking.
+//!
+//! The current implementation boundary lives in `lang_build::identity`,
+//! `lang_build::product_shape`, and `lang_build::meta_candidate`. These are
+//! substrate boundaries, not full implementations of the future systems.
+
 use crate::model::{Provenance, SymbolId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -46,6 +56,9 @@ impl TypeValueBindingPlaceholder {
 pub struct AliasChain {
     pub source_symbol: SymbolId,
     pub forwarded_target: SymbolId,
+    /// When `cycle_detection_state` is `NotChecked`, `final_symbol` may only
+    /// be the direct forwarded target placeholder. It must **not** be
+    /// interpreted as a fully resolved final alias target.
     pub final_symbol: Option<SymbolId>,
     pub final_value: Option<TypeValueId>,
     pub final_place: Option<PlaceId>,
@@ -113,4 +126,53 @@ pub enum AliasCycleDetectionState {
     Visiting,
     Acyclic,
     CycleDetected,
+}
+
+/// Resolver-facing query surface for alias chain resolution.
+///
+/// Three query modes replace bare enum dispatch: type-value evaluation,
+/// callable lookup, and injection-place target resolution.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AliasQueryRequest {
+    pub mode: AliasQueryMode,
+    pub source_symbol: SymbolId,
+    pub provenance: Provenance,
+}
+
+impl AliasQueryRequest {
+    pub fn new(mode: AliasQueryMode, source_symbol: SymbolId, provenance: Provenance) -> Self {
+        Self {
+            mode,
+            source_symbol,
+            provenance,
+        }
+    }
+}
+
+/// Result of an alias chain query.
+///
+/// Contains a resolved disposition, optional terminal symbol/value/place, and
+/// metadata about write boundaries and cycle detection. This is a placeholder
+/// result object — the final resolver does not yet consume it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AliasQueryResult {
+    pub disposition: AliasQueryDisposition,
+    pub final_symbol: Option<SymbolId>,
+    pub final_value: Option<TypeValueId>,
+    pub final_place: Option<PlaceId>,
+    pub writable_boundary: AliasWritableBoundary,
+    pub cycle_detection_state: AliasCycleDetectionState,
+}
+
+impl AliasQueryResult {
+    pub fn from_chain(chain: &AliasChain, mode: AliasQueryMode) -> Self {
+        Self {
+            disposition: chain.query_disposition(mode),
+            final_symbol: chain.final_symbol,
+            final_value: chain.final_value,
+            final_place: chain.final_place,
+            writable_boundary: chain.writable_boundary,
+            cycle_detection_state: chain.cycle_detection_state,
+        }
+    }
 }

@@ -1,17 +1,15 @@
 mod support;
 
-use std::fs;
-
 use support::*;
 
 use lang_build::{
     prepare_meta_callable_candidate, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CompilationWorld, ExecutionEnv, NamespaceGraphSnapshot,
-    NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag, Provenance,
-    RawArgValueClass, SourceCategory, SymbolId, TypeValueBindingPlaceholder, TypeValueId,
+    CandidatePreparationContext, ExecutionEnv, FieldProjection, NamespaceGraphSnapshot,
+    NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag,
+    ProductMaterialRole, Provenance, RawArgValueClass, SourceCategory, SymbolId, SymbolPayload,
+    TypeValueBindingPlaceholder, TypeValueId,
 };
-use lang_syntax::{NormDecl, NormExpr, NormForm, NormProduct};
 
 #[test]
 fn type_value_binding_placeholder_object_boundary_keeps_symbol_place_and_type_value_distinct() {
@@ -59,7 +57,7 @@ fn alias_chain_placeholder_object_boundary_distinguishes_query_modes() {
 }
 
 #[test]
-fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_source_fixture() {
+fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_build_fixture() {
     let world = v08_candidate_world();
     let callee = world
         .snapshot()
@@ -67,7 +65,8 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_so
         .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
         .expect("core struct resolves through namespace graph as SymbolObject");
 
-    let arg_shape = candidate_fixture_arg_shape();
+    let site = v08_candidate_call_site();
+    let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let result = prepare_meta_callable_candidate(
         &callee,
         arg_shape,
@@ -81,7 +80,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_so
                 build_config_fingerprint_fragment: Some("build:fixture".to_string()),
                 policy_export_fingerprint_fragment: Some("policy:export-meta".to_string()),
             },
-            provenance: Provenance::new("v0.8 source-fixture candidate preparation"),
+            provenance: Provenance::new("v0.8 build-fixture candidate preparation"),
         },
     );
 
@@ -90,6 +89,27 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_so
     };
     assert_eq!(candidate.callee_symbol_id, callee.id);
     assert_eq!(candidate.arg_product_shape.arity, 1);
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .arity,
+        1
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .unit_positions,
+        Vec::<usize>::new()
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .known_type_values,
+        vec![None]
+    );
     assert_eq!(candidate.arg_product_shape.raw_args[0].is_value(), None);
     assert!(matches!(
         candidate.arg_product_shape.raw_args[0].value_class,
@@ -172,22 +192,42 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_so
 }
 
 #[test]
-fn generated_field_function_from_source_fixture_keeps_policy_planes_separate() {
+fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
     let world = v08_candidate_world();
     let field_symbol = world
         .snapshot()
         .capability()
         .resolve_field_function("field::ref::T", &world.package_context())
         .expect("generated ref field function resolves through namespace graph");
+
+    let SymbolPayload::FieldFunction(field_obj) = &field_symbol.payload else {
+        panic!("expected FieldFunction payload for generated field symbol");
+    };
+    assert_eq!(
+        field_obj.field_name, "field",
+        "generated field function name must match the source fixture field name"
+    );
+    assert_eq!(
+        field_obj.projection,
+        FieldProjection::Ref,
+        "generated field projection must match the source fixture field declaration"
+    );
+    assert!(
+        field_obj.owner_type_symbol_id != SymbolId(0),
+        "owner type must be a valid SymbolId from the struct-generated type"
+    );
+
+    let site = v08_candidate_call_site();
+    let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let result = prepare_meta_callable_candidate(
         &field_symbol,
-        candidate_fixture_arg_shape(),
+        arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("field parameter placeholder")),
         CandidatePreparationContext {
             lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
-            provenance: Provenance::new("source-fixture generated field function"),
+            provenance: Provenance::new("build-fixture generated field function"),
         },
     );
 
@@ -214,17 +254,23 @@ fn generated_field_function_from_source_fixture_keeps_policy_planes_separate() {
         .return_object_policy
         .policy_set
         .contains(PolicyFlag::Meta));
+    assert_ne!(
+        candidate.policy_planes.symbol_visibility_policy, candidate.policy_planes.body_entry_policy,
+        "symbol visibility policy must not equal body-entry policy"
+    );
+    assert_ne!(
+        candidate.policy_planes.symbol_visibility_policy,
+        candidate.policy_planes.return_object_policy,
+        "symbol visibility policy must not equal return-object policy"
+    );
 }
 
 #[test]
 fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixture() {
-    let product =
-        product_fixture_call_source("product_unit_preservation.lang", "v08 canonical product");
-    let arg_shape = lang_build::ProductObject::from_norm_product(
-        product,
-        lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
-    )
-    .to_arg_product_shape();
+    let shape = fixture_arg_product_shape(
+        "product_unit_preservation.lang",
+        ProductMaterialRole::MetaConstructionArgumentProduct,
+    );
     let world = v08_candidate_world();
     let callee = world
         .snapshot()
@@ -234,7 +280,7 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixt
 
     let CandidatePrepResult::ApplicablePlaceholder(candidate) = prepare_meta_callable_candidate(
         &callee,
-        arg_shape,
+        shape,
         ParameterShape::exact_arity(3, Provenance::new("unit-sensitive parameter placeholder")),
         CandidatePreparationContext {
             lookup_env: PolicyEnv::Meta,
@@ -257,6 +303,22 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixt
         candidate.canonical_key_seed.unit_positions,
         vec![1],
         "canonical argument product material must not collapse to arity + type values only"
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .unit_positions,
+        vec![1],
+        "canonical arg product shape material preserves Unit position"
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .arity,
+        3,
+        "canonical arg product shape material preserves arity"
     );
 }
 
@@ -309,51 +371,4 @@ fn namespace_delta_atomicity_object_boundary_rejects_partial_generated_subtree()
         snapshot.symbol(generated_field).is_none(),
         "NamespaceDelta atomicity rejects generated children with the failed type"
     );
-}
-
-fn v08_candidate_world() -> CompilationWorld {
-    build_single_fixture_world("v08_candidate", "app")
-}
-
-fn candidate_fixture_arg_shape() -> lang_build::ArgProductShape {
-    lang_build::ProductObject::from_norm_product(
-        candidate_fixture_call_source(),
-        lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
-    )
-    .to_arg_product_shape()
-}
-
-fn candidate_fixture_call_source() -> NormProduct {
-    let path = fixture_source_root("v08_candidate", "app").join("main.lang");
-    let source = fs::read_to_string(path).expect("read v0.8 candidate fixture");
-    let parsed = lang_syntax::parse(&source);
-    assert!(
-        parsed.diagnostics.is_empty(),
-        "unexpected parse diagnostics:\n{}",
-        lang_syntax::dump_diagnostics(&parsed.diagnostics)
-    );
-    let normalized = lang_syntax::normalize_program(&parsed.program);
-    match normalized.forms.as_slice() {
-        [NormForm::Let(NormDecl::Let { slot, .. })] => match slot.initializer.as_deref() {
-            Some(NormExpr::Call { source, .. }) => source.clone(),
-            other => panic!("expected candidate fixture initializer call, got {other:#?}"),
-        },
-        other => panic!("expected one let declaration in candidate fixture, got {other:#?}"),
-    }
-}
-
-fn product_fixture_call_source(name: &str, provenance: &str) -> NormProduct {
-    let path = fixture_root().join("v08").join(name);
-    let source = fs::read_to_string(path).expect("read v0.8 product fixture");
-    let parsed = lang_syntax::parse(&source);
-    assert!(
-        parsed.diagnostics.is_empty(),
-        "unexpected parse diagnostics:\n{}",
-        lang_syntax::dump_diagnostics(&parsed.diagnostics)
-    );
-    let normalized = lang_syntax::normalize_program(&parsed.program);
-    match normalized.forms.as_slice() {
-        [NormForm::Expr(NormExpr::Call { source, .. })] => source.clone(),
-        other => panic!("expected one normalized call expression for {provenance}, got {other:#?}"),
-    }
 }

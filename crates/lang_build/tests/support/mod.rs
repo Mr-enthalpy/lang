@@ -9,8 +9,8 @@ use std::{
 
 use lang_build::{
     BuildError, BuildManifest, BuildSession, BuildWorkspace, CompilationWorld, NamespaceNodeId,
-    PackageBuildSpec, Provenance, SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind,
-    SymbolObject, SymbolPayload, TypeObject,
+    NormalizedCallSite, PackageBuildSpec, ProductMaterialRole, Provenance, SourceCategory,
+    SourceRoot, StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
@@ -295,4 +295,108 @@ pub fn initializer_from_source(source: &str) -> NormExpr {
         }
         other => panic!("expected one let declaration, got {other:#?}"),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Normalized fixture analysis helpers
+//
+// These helpers read committed fixture files, parse and normalize them, then
+// extract call sites and argument product shapes. They are the single point
+// through which product-shape and candidate-preparation tests reach normalized
+// source material. Tests should not manually match `NormForm` / `NormExpr`
+// when these helpers provide the needed data.
+// ---------------------------------------------------------------------------
+
+/// Parse a committed fixture file and return the single normalized expression.
+///
+/// Panics if the fixture does not parse without diagnostics, or if the
+/// normalized program is not exactly one expression form.
+pub fn parse_and_normalize_fixture_expr(path: PathBuf) -> NormExpr {
+    let source = fs::read_to_string(&path).unwrap_or_else(|e| {
+        panic!("read fixture {}: {e}", path.display());
+    });
+    let parsed = lang_syntax::parse(&source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "unexpected parse diagnostics:\n{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
+    );
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    match normalized.forms.as_slice() {
+        [NormForm::Expr(expr)] => expr.clone(),
+        other => panic!(
+            "expected one normalized expression in `{}`, got {other:#?}",
+            path.display()
+        ),
+    }
+}
+
+/// Parse a committed fixture file and return the initializer of the single
+/// let declaration.
+///
+/// Panics if the fixture does not parse without diagnostics, or if the
+/// normalized program is not exactly one let form with an initializer.
+pub fn parse_and_normalize_fixture_let_initializer(path: PathBuf) -> NormExpr {
+    let source = fs::read_to_string(&path).unwrap_or_else(|e| {
+        panic!("read fixture {}: {e}", path.display());
+    });
+    let parsed = lang_syntax::parse(&source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "unexpected parse diagnostics:\n{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
+    );
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    match normalized.forms.as_slice() {
+        [NormForm::Let(NormDecl::Let { slot, .. })] => {
+            slot.initializer.as_deref().expect("initializer").clone()
+        }
+        other => panic!(
+            "expected one let declaration in `{}`, got {other:#?}",
+            path.display()
+        ),
+    }
+}
+
+/// Convenience path to the v0.8 product fixture directory.
+pub fn v08_fixture_path(name: &str) -> PathBuf {
+    fixture_root().join("v08").join(name)
+}
+
+/// Extract a `NormalizedCallSite` from a committed v0.8 product fixture.
+///
+/// The fixture is expected to normalize to a single call expression.
+pub fn fixture_call_site(name: &str) -> NormalizedCallSite {
+    let expr = parse_and_normalize_fixture_expr(v08_fixture_path(name));
+    lang_build::extract_single_call_site(&expr)
+        .unwrap_or_else(|diagnostic| panic!("fixture `{name}` is not a call: {diagnostic:?}"))
+}
+
+/// Produce an `ArgProductShape` from a committed v0.8 product fixture.
+///
+/// The fixture is expected to normalize to a single call expression.
+/// The call site source product is wrapped in a `ProductObject` with the
+/// given role and shaped.
+pub fn fixture_arg_product_shape(
+    name: &str,
+    role: ProductMaterialRole,
+) -> lang_build::ArgProductShape {
+    let site = fixture_call_site(name);
+    site.to_arg_product_shape(role)
+}
+
+/// Build the v0.8 candidate fixture world (`v08_candidate` / `app`).
+pub fn v08_candidate_world() -> CompilationWorld {
+    build_single_fixture_world("v08_candidate", "app")
+}
+
+/// Extract the single `NormalizedCallSite` from the v0.8 candidate fixture's
+/// let initializer (`let T: type = (<product>) |> struct`).
+pub fn v08_candidate_call_site() -> NormalizedCallSite {
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_candidate", "app").join("main.lang"),
+    );
+    lang_build::extract_single_call_site(&expr).unwrap_or_else(|diagnostic| {
+        panic!("v08 candidate initializer is not a call: {diagnostic:?}")
+    })
 }
