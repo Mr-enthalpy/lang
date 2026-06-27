@@ -12,6 +12,7 @@ pub mod manifest;
 pub mod meta;
 pub mod model;
 pub mod source;
+pub mod v08;
 pub mod verify;
 pub mod world;
 
@@ -43,5 +44,14 @@ pub use model::{
     SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive, VisibilityMetadata,
 };
 pub use source::SourceFragment;
+pub use v08::{
+    prepare_meta_callable_candidate, AliasChain, AliasCycleDetectionState, AliasQueryDisposition,
+    AliasQueryMode, AliasWritableBoundary, ArgProductShape, CallableCandidateKind,
+    CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes, CandidatePrepDeferredReason,
+    CandidatePrepResult, CandidatePreparationContext, CanonicalMetaInstanceKeySeed,
+    ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject, NonValueArgKind,
+    ParameterShape, PlaceId, PreparedCallableCandidate, ProductAtom, ProductMaterialRole,
+    ProductObject, RawArgShape, RawArgValueClass, TypeValueBindingPlaceholder, TypeValueId,
+};
 pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;
