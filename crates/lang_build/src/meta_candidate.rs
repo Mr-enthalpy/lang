@@ -10,6 +10,10 @@
 //! - Candidate preparation does **not** parse source.
 //! - The resolver does **not** flatten products.
 //!
+//! `CandidatePreparationInput` is the preferred pipeline carrier. It is not
+//! formal invocation. `CanonicalArgProductShapeMaterial` records structural
+//! input material. It is not final hash.
+//!
 //! The current implementation boundary lives in `lang_build::product_shape`,
 //! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
 //! boundaries, not full implementations of the future systems.
@@ -194,13 +198,28 @@ impl CanonicalArgProductShapeMaterial {
             atom_kinds: shape
                 .raw_args
                 .iter()
-                .map(|raw_arg| match raw_arg.value_class {
+                .map(|raw_arg| match &raw_arg.value_class {
                     RawArgValueClass::UnknownExpression => CanonicalArgAtomKind::ExpressionBarrier,
+                    RawArgValueClass::Value => CanonicalArgAtomKind::ResolvedValue,
+                    RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => {
+                        CanonicalArgAtomKind::TypeObject
+                    }
+                    RawArgValueClass::NonValue(NonValueArgKind::RankObject) => {
+                        CanonicalArgAtomKind::RankObject
+                    }
+                    RawArgValueClass::NonValue(NonValueArgKind::NamespaceObject) => {
+                        CanonicalArgAtomKind::NamespaceObject
+                    }
+                    RawArgValueClass::NonValue(NonValueArgKind::MetaObject) => {
+                        CanonicalArgAtomKind::MetaObject
+                    }
+                    RawArgValueClass::NonValue(NonValueArgKind::PatternObject) => {
+                        CanonicalArgAtomKind::PatternObject
+                    }
                     RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => {
                         CanonicalArgAtomKind::ProductUnit
                     }
                     RawArgValueClass::Unsupported { .. } => CanonicalArgAtomKind::Unsupported,
-                    _ => CanonicalArgAtomKind::ExpressionBarrier,
                 })
                 .collect(),
             known_type_values: shape
@@ -214,13 +233,29 @@ impl CanonicalArgProductShapeMaterial {
 
 /// Structural kind of an argument atom at the canonical key boundary.
 ///
-/// Records whether an argument position carries an Expression barrier,
-/// a Product Unit, or unsupported material. This is structural classification
-/// only — it does **not** encode type values or resolve lookup.
+/// Records whether an argument position carries an Expression barrier, a
+/// positively classified value, a specific non-value object kind, a Product
+/// Unit, or unsupported material. This is structural classification only —
+/// it does **not** encode type values, resolve lookup, or decide semantics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CanonicalArgAtomKind {
+    /// Opaque Expression barrier — target not yet resolved.
     ExpressionBarrier,
+    /// Positively classified as a value argument.
+    ResolvedValue,
+    /// Classified as a type object argument.
+    TypeObject,
+    /// Classified as a rank object argument.
+    RankObject,
+    /// Classified as a namespace object argument.
+    NamespaceObject,
+    /// Classified as a meta object argument.
+    MetaObject,
+    /// Classified as a pattern object argument.
+    PatternObject,
+    /// Product Unit (non-value structural position).
     ProductUnit,
+    /// Unsupported or unclassifiable material.
     Unsupported,
 }
 
@@ -348,6 +383,19 @@ pub fn prepare_meta_callable_candidate(
     }
 
     CandidatePrepResult::ApplicablePlaceholder(Box::new(candidate))
+}
+
+/// Wrapper that accepts a `CandidatePreparationInput` and delegates to the
+/// existing `prepare_meta_callable_candidate` logic.
+///
+/// This is the preferred pipeline entry point. Future stages should construct
+/// a `CandidatePreparationInput` rather than assembling scattered parameters.
+/// It does **not** execute meta functions or install `NamespaceDelta`.
+pub fn prepare_meta_callable_candidate_from_input(
+    input: CandidatePreparationInput,
+) -> CandidatePrepResult {
+    let (callee, arg_product_shape, parameter_shape, context) = input.into_parts();
+    prepare_meta_callable_candidate(&callee, arg_product_shape, parameter_shape, context)
 }
 
 fn callable_policy_from_symbol(

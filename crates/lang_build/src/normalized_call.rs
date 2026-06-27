@@ -26,9 +26,15 @@ pub struct NormalizedCallSite {
 }
 
 impl NormalizedCallSite {
+    /// Expose the `ProductObject` boundary before jumping to `ArgProductShape`.
+    /// Makes the pipeline chain `call-site → ProductObject → ArgProductShape`
+    /// explicitly visible in caller code.
+    pub fn source_product_object(&self, role: ProductMaterialRole) -> ProductObject {
+        ProductObject::from_norm_product(self.source_product.clone(), role)
+    }
+
     pub fn to_arg_product_shape(&self, role: ProductMaterialRole) -> ArgProductShape {
-        let product = ProductObject::from_norm_product(self.source_product.clone(), role);
-        product.to_arg_product_shape()
+        self.source_product_object(role).to_arg_product_shape()
     }
 }
 

@@ -41,11 +41,11 @@ pub use identity::{
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::MetaExpansionResult;
 pub use meta_candidate::{
-    prepare_meta_callable_candidate, CallableCandidateKind, CandidateBuildIdentityPlaceholder,
-    CandidatePolicyPlanes, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind,
-    CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed, ParameterShape,
-    PreparedCallableCandidate,
+    prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
+    CallableCandidateKind, CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CandidatePreparationInput, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
+    CanonicalMetaInstanceKeySeed, ParameterShape, PreparedCallableCandidate,
 };
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,

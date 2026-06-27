@@ -12,6 +12,9 @@
 //! - Unit is preserved;
 //! - provenance is preserved.
 //!
+//! `RawArgShape` refinement API is placeholder classification support. It is
+//! **not** type checking.
+//!
 //! The current implementation boundary lives in `lang_build::product_shape`,
 //! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
 //! boundaries, not full implementations of the future systems.
@@ -186,6 +189,44 @@ impl RawArgShape {
     /// actions after later classification.
     pub fn receives_automatic_pass_action(&self) -> bool {
         matches!(self.value_class, RawArgValueClass::Value)
+    }
+
+    /// Controlled refinement: replace the value class while preserving index,
+    /// provenance, and existing type-value / pass-mode fields.
+    ///
+    /// This is placeholder classification support, **not** type checking.
+    pub fn with_value_class(self, value_class: RawArgValueClass) -> Self {
+        Self {
+            value_class,
+            ..self
+        }
+    }
+
+    /// Controlled refinement: set a known first-order type value.
+    pub fn with_known_first_order_type_value(self, type_value: TypeValueId) -> Self {
+        Self {
+            known_first_order_type_value: Some(type_value),
+            ..self
+        }
+    }
+
+    /// Refine an `UnknownExpression` into a positively classified value.
+    ///
+    /// After this call, `receives_automatic_pass_action()` returns `true`.
+    /// This is an object-boundary placeholder operation — it does **not**
+    /// represent completed semantic value typing.
+    pub fn as_resolved_value(self) -> Self {
+        self.with_value_class(RawArgValueClass::Value)
+    }
+
+    /// Refine an `UnknownExpression` into a non-value with the given kind.
+    ///
+    /// After this call, `is_value()` returns `Some(false)` and
+    /// `receives_automatic_pass_action()` remains `false`.
+    /// This is an object-boundary placeholder operation — it does **not**
+    /// represent completed semantic non-value classification.
+    pub fn as_non_value(self, kind: NonValueArgKind) -> Self {
+        self.with_value_class(RawArgValueClass::NonValue(kind))
     }
 }
 

@@ -3,9 +3,10 @@ mod support;
 use support::*;
 
 use lang_build::{
-    prepare_meta_callable_candidate, AliasChain, AliasQueryDisposition, AliasQueryMode,
-    CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, ExecutionEnv, FieldProjection, NamespaceGraphSnapshot,
+    prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input, AliasChain,
+    AliasQueryDisposition, AliasQueryMode, CandidateBuildIdentityPlaceholder,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CandidatePreparationInput, ExecutionEnv, FieldProjection, NamespaceGraphSnapshot,
     NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag,
     ProductMaterialRole, Provenance, RawArgValueClass, SourceCategory, SymbolId, SymbolPayload,
     TypeValueBindingPlaceholder, TypeValueId,
@@ -371,4 +372,36 @@ fn namespace_delta_atomicity_object_boundary_rejects_partial_generated_subtree()
         snapshot.symbol(generated_field).is_none(),
         "NamespaceDelta atomicity rejects generated children with the failed type"
     );
+}
+
+#[test]
+fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
+    let world = v08_candidate_world();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .expect("core struct resolves through namespace graph as SymbolObject");
+
+    let site = v08_candidate_call_site();
+    let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        arg_shape,
+        ParameterShape::exact_arity(1, Provenance::new("pipeline entry test")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("CandidatePreparationInput pipeline entry"),
+        },
+    );
+
+    let result = prepare_meta_callable_candidate_from_input(input);
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = result else {
+        panic!("CandidatePreparationInput pipeline should yield ApplicablePlaceholder");
+    };
+    assert_eq!(candidate.callee_name, "struct");
+    assert_eq!(candidate.arg_product_shape.arity, 1);
 }

@@ -91,6 +91,23 @@ fn unit_positions_and_raw_arg_non_value_boundary_are_preserved_from_source_fixtu
     );
 }
 
+#[test]
+fn normalized_call_site_exposes_product_object_before_arg_shape_from_source_fixture() {
+    let site = fixture_call_site("product_unit_preservation.lang");
+    let product_obj = site.source_product_object(ProductMaterialRole::SourceProduct);
+    assert_eq!(
+        product_obj.material_role,
+        ProductMaterialRole::SourceProduct
+    );
+    assert!(product_obj.provenance.description.contains("ProductObject"));
+    let shape = product_obj.to_arg_product_shape();
+    assert_eq!(shape.arity, 3);
+    assert!(matches!(
+        shape.raw_args[1].value_class,
+        RawArgValueClass::NonValue(NonValueArgKind::ProductUnit)
+    ));
+}
+
 fn atom_labels(atoms: &[ProductAtom]) -> Vec<String> {
     atoms
         .iter()
