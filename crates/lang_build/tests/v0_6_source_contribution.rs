@@ -1,9 +1,7 @@
 mod support;
 use support::*;
 
-use lang_build::{
-    CompilationWorld, DiagnosticSeverity, ResolveExpectation, SourceCategory, SymbolPayload,
-};
+use lang_build::{DiagnosticSeverity, ResolveExpectation, SourceCategory, SymbolPayload};
 
 #[test]
 fn source_level_import_use_include_module_remain_ordinary_expressions() {
@@ -22,15 +20,9 @@ fn source_level_import_use_include_module_remain_ordinary_expressions() {
 
 #[test]
 fn conflict_is_hard_error_and_blocks_installation() {
-    // Namespace-graph conflict boundary: a physical directory `T` collides with a
-    // declared symbol `T`. Kept synthetic because the test checks the conflict
-    // diagnostic, not an ordinary successful build.
-    let project = TempProject::new("conflict");
-    project.write("src/T/placeholder.lang", "");
-    project.write("src/main.lang", "let T: type = uint8");
-
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("physical directory and declared symbol must conflict");
+    // Committed fixture that intentionally fails: a physical directory `T`
+    // collides with a declared symbol `T`.
+    let error = build_fixture_error("source_conflict_physical_dir_symbol", "app");
     assert!(error.diagnostics.iter().any(|diagnostic| {
         diagnostic.severity == DiagnosticSeverity::HardError
             && diagnostic.message.contains("conflict")
@@ -39,13 +31,9 @@ fn conflict_is_hard_error_and_blocks_installation() {
 
 #[test]
 fn ordinary_parent_to_descendant_injection_is_rejected() {
-    // Rejected-contribution boundary: `let a::T = uint8` is intentionally an
-    // unsupported descendant injection; the test checks the rejection diagnostic.
-    let project = TempProject::new("descendant_injection");
-    project.write("src/main.lang", "let a::T = uint8");
-
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("ordinary file contribution cannot inject descendants");
+    // Committed fixture that intentionally fails: `let a::T = uint8` is an
+    // unsupported descendant injection.
+    let error = build_fixture_error("descendant_injection", "app");
     assert!(error.diagnostics.iter().any(|diagnostic| diagnostic
         .message
         .contains("ordinary parent-to-descendant injection")));
@@ -53,37 +41,30 @@ fn ordinary_parent_to_descendant_injection_is_rejected() {
 
 #[test]
 fn ordinary_source_contribution_rejects_deep_and_pattern_binders() {
-    // Rejected-contribution boundary: each source intentionally uses an
-    // unsupported top-level binder and the test checks the error diagnostic. The
-    // ordinary direct-child success path is covered by the committed
+    // Committed fixtures that intentionally fail: each uses an unsupported
+    // top-level binder. The ordinary direct-child success path is covered by the
     // `single_package_type_binding` fixture.
-    for (case_name, source, expected) in [
+    for (fixture, expected) in [
         (
-            "deep_descendant",
-            "let a::b::T = uint8",
+            "deep_descendant_injection",
             "ordinary parent-to-descendant injection",
         ),
         (
-            "product_binder",
-            "let (a, b) = uint8",
+            "product_binder_rejected",
             "unsupported top-level declaration binder",
         ),
         (
-            "discard_binder",
-            "let _ = uint8",
+            "discard_binder_rejected",
             "ordinary parent-to-descendant injection",
         ),
     ] {
-        let project = TempProject::new(case_name);
-        project.write("src/main.lang", source);
-        let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-            .expect_err("unsupported contribution should fail");
+        let error = build_fixture_error(fixture, "app");
         assert!(
             error
                 .diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains(expected)),
-            "missing expected diagnostic {expected:?}: {:#?}",
+            "missing expected diagnostic {expected:?} for `{fixture}`: {:#?}",
             error.diagnostics
         );
     }
@@ -120,13 +101,9 @@ fn type_value_binding_placeholder_keeps_fresh_symbol_place_in_v0_6() {
 
 #[test]
 fn alias_injection_writability_is_future_not_current_contribution_rule() {
-    // Rejected-contribution boundary: descendant injection through an alias is
-    // intentionally rejected in v0.6; the test checks the rejection diagnostic.
-    let project = TempProject::new("alias_external_injection_future");
-    project.write("src/main.lang", "let t === uint8; let f::t = uint8");
-
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("v0.6 rejects descendant contribution before alias-place writability");
+    // Committed fixture that intentionally fails: descendant injection through an
+    // alias is rejected in v0.6.
+    let error = build_fixture_error("alias_external_injection_future", "app");
 
     // Future semantics must reject this because `t` forwards to the external
     // stable built-in place(uint8), which is readable/aliasable but not writable
@@ -140,12 +117,9 @@ fn alias_injection_writability_is_future_not_current_contribution_rule() {
 
 #[test]
 fn diagnostic_source_contribution_prefix() {
-    // Error-diagnostic boundary: checks the stable `source contribution error:`
-    // prefix on a rejected contribution.
-    let project = TempProject::new("diag_sc_prefix");
-    project.write("src/main.lang", "let a::T = uint8");
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("descendant injection");
+    // Committed fixture that intentionally fails: checks the stable
+    // `source contribution error:` prefix on a rejected contribution.
+    let error = build_fixture_error("diagnostic_source_contribution_prefix", "app");
     assert!(
         error
             .diagnostics

@@ -58,14 +58,10 @@ fn resolver_handles_short_and_explicit_mounted_core_paths() {
 
 #[test]
 fn resolver_reports_current_namespace_conflict_with_default_mount() {
-    // Resolver-conflict boundary: `let uint8 = uint8` deliberately collides a
-    // local short name with the core short name. The build succeeds but the
-    // resolve is a hard conflict. Kept synthetic because the test checks the
-    // conflict diagnostic, not an ordinary successful resolution.
-    let project = TempProject::new("core_conflict");
-    project.write("src/main.lang", "let uint8 = uint8");
-    let world = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect("build world");
+    // Committed fixture: `let uint8 = uint8` deliberately collides a local short
+    // name with the core short name. The build succeeds; the short-name resolve
+    // is a hard conflict.
+    let world = build_single_fixture_world("resolver_core_conflict", "app");
 
     let diagnostic = world
         .resolve("uint8")

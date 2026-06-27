@@ -88,7 +88,7 @@ fn cache_miss_when_source_content_changes() {
         .content_hash
         .clone();
 
-    temp.write("app/src/main.lang", "let U: type = uint8");
+    temp.write_boundary_source("app/src/main.lang", "let U: type = uint8");
     let second = session.build_workspace(&workspace).expect("second build");
 
     assert_eq!(second.artifacts[0].metadata.cache_status, CacheStatus::Miss);
@@ -218,7 +218,7 @@ fn dependency_fingerprint_participates_in_dependent_cache_key() {
     let app_cache_key_1 = artifact_named(&first, "app").metadata.cache_key.clone();
 
     // Change only the dependency's source.
-    temp.write(
+    temp.write_boundary_source(
         "dep/src/lib.lang",
         "let DepType: type = (uint8 a) |> struct",
     );
