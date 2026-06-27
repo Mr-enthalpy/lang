@@ -13,6 +13,7 @@ pub mod manifest;
 pub mod meta;
 pub mod meta_candidate;
 pub mod model;
+pub mod normalized_call;
 pub mod product_shape;
 pub mod source;
 pub mod verify;
@@ -34,15 +35,16 @@ pub use graph::{
     ResolveExpectation, ResolverContext,
 };
 pub use identity::{
-    AliasChain, AliasCycleDetectionState, AliasQueryDisposition, AliasQueryMode,
-    AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
+    AliasChain, AliasCycleDetectionState, AliasQueryDisposition, AliasQueryMode, AliasQueryRequest,
+    AliasQueryResult, AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::MetaExpansionResult;
 pub use meta_candidate::{
     prepare_meta_callable_candidate, CallableCandidateKind, CandidateBuildIdentityPlaceholder,
     CandidatePolicyPlanes, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CanonicalMetaInstanceKeySeed, ParameterShape,
+    CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind,
+    CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed, ParameterShape,
     PreparedCallableCandidate,
 };
 pub use model::{
@@ -55,6 +57,7 @@ pub use model::{
     SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject,
     SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive, VisibilityMetadata,
 };
+pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,

@@ -1,3 +1,19 @@
+//! Candidate preparation boundary before formal meta invocation.
+//!
+//! This module holds the candidate-preparation pipeline that sits between
+//! product/argument shaping and formal meta invocation. It checks arity and
+//! body-entry policy compatibility but does **not** execute meta functions,
+//! resolve overloads, or perform type inference.
+//!
+//! Three-segment separation:
+//! - `ProductObject` does **not** resolve the call target.
+//! - Candidate preparation does **not** parse source.
+//! - The resolver does **not** flatten products.
+//!
+//! The current implementation boundary lives in `lang_build::product_shape`,
+//! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
+//! boundaries, not full implementations of the future systems.
+
 use crate::{
     callable_body_allows_execution,
     identity::TypeValueId,
@@ -44,6 +60,52 @@ pub struct CandidateBuildIdentityPlaceholder {
     pub mount_identity_fragment: Option<String>,
     pub build_config_fingerprint_fragment: Option<String>,
     pub policy_export_fingerprint_fragment: Option<String>,
+}
+
+/// Aggregated input for candidate preparation.
+///
+/// The callee must already be graph-resolved; the arg product shape must already
+/// be extracted from a normalized call site. This struct exists to make the
+/// pipeline pass explicit data between stages without letting each stage invent
+/// its own partial extraction.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CandidatePreparationInput {
+    pub callee: SymbolObject,
+    pub arg_product_shape: ArgProductShape,
+    pub parameter_shape: ParameterShape,
+    pub context: CandidatePreparationContext,
+}
+
+impl CandidatePreparationInput {
+    pub fn new(
+        callee: SymbolObject,
+        arg_product_shape: ArgProductShape,
+        parameter_shape: ParameterShape,
+        context: CandidatePreparationContext,
+    ) -> Self {
+        Self {
+            callee,
+            arg_product_shape,
+            parameter_shape,
+            context,
+        }
+    }
+
+    pub fn into_parts(
+        self,
+    ) -> (
+        SymbolObject,
+        ArgProductShape,
+        ParameterShape,
+        CandidatePreparationContext,
+    ) {
+        (
+            self.callee,
+            self.arg_product_shape,
+            self.parameter_shape,
+            self.context,
+        )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -93,6 +155,7 @@ pub enum CallableCandidateKind {
 pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,
     pub argument_product_shape_fingerprint_fragment: Option<String>,
+    pub argument_product_shape_material: CanonicalArgProductShapeMaterial,
     pub unit_positions: Vec<usize>,
     pub argument_arity: usize,
     pub argument_type_values: Vec<Option<TypeValueId>>,
@@ -101,6 +164,64 @@ pub struct CanonicalMetaInstanceKeySeed {
     pub build_config_fingerprint_fragment: Option<String>,
     pub policy_export_fingerprint_fragment: Option<String>,
     pub provenance: Provenance,
+}
+
+/// Fingerprint input material for the canonical meta instance key.
+///
+/// Captures the structural argument product shape at candidate-preparation
+/// time. Contains **no** source text, **no** normalized dump, and **no**
+/// hash. This is input material only — the final key derivation is future work.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CanonicalArgProductShapeMaterial {
+    pub arity: usize,
+    pub unit_positions: Vec<usize>,
+    pub atom_kinds: Vec<CanonicalArgAtomKind>,
+    pub known_type_values: Vec<Option<TypeValueId>>,
+}
+
+impl CanonicalArgProductShapeMaterial {
+    pub fn from_arg_product_shape(shape: &ArgProductShape) -> Self {
+        Self {
+            arity: shape.arity,
+            unit_positions: shape
+                .raw_args
+                .iter()
+                .filter_map(|raw_arg| match raw_arg.value_class {
+                    RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => Some(raw_arg.index),
+                    _ => None,
+                })
+                .collect(),
+            atom_kinds: shape
+                .raw_args
+                .iter()
+                .map(|raw_arg| match raw_arg.value_class {
+                    RawArgValueClass::UnknownExpression => CanonicalArgAtomKind::ExpressionBarrier,
+                    RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => {
+                        CanonicalArgAtomKind::ProductUnit
+                    }
+                    RawArgValueClass::Unsupported { .. } => CanonicalArgAtomKind::Unsupported,
+                    _ => CanonicalArgAtomKind::ExpressionBarrier,
+                })
+                .collect(),
+            known_type_values: shape
+                .raw_args
+                .iter()
+                .map(|raw_arg| raw_arg.known_first_order_type_value)
+                .collect(),
+        }
+    }
+}
+
+/// Structural kind of an argument atom at the canonical key boundary.
+///
+/// Records whether an argument position carries an Expression barrier,
+/// a Product Unit, or unsupported material. This is structural classification
+/// only — it does **not** encode type values or resolve lookup.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CanonicalArgAtomKind {
+    ExpressionBarrier,
+    ProductUnit,
+    Unsupported,
 }
 
 /// Candidate preparation result before formal meta invocation.
@@ -165,6 +286,9 @@ pub fn prepare_meta_callable_candidate(
     let canonical_key_seed = CanonicalMetaInstanceKeySeed {
         callee_function_symbol_id: callee.id,
         argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial::from_arg_product_shape(
+            &arg_product_shape,
+        ),
         unit_positions,
         argument_arity: arg_product_shape.arity,
         argument_type_values: arg_product_shape

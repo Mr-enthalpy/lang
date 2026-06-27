@@ -1,24 +1,36 @@
-use std::{fs, path::PathBuf};
+mod support;
+
+use support::*;
 
 use lang_build::{
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgValueClass,
 };
-use lang_syntax::{NormExpr, NormForm, NormProduct};
+use lang_syntax::NormExpr;
 
 #[test]
 fn exposed_product_nodes_flatten_left_to_right_from_source_fixture() {
-    let flattened = flatten_fixture_call_source("product_exposed_left.lang");
-    assert_eq!(atom_labels(&flattened.atoms), ["a", "b", "c"]);
-    assert!(flattened.invariant.no_direct_product_atom_remains);
+    let shape = fixture_arg_product_shape(
+        "product_exposed_left.lang",
+        ProductMaterialRole::CallableArgumentProduct,
+    );
+    assert_eq!(atom_labels(&shape.flattened.atoms), ["a", "b", "c"]);
+    assert!(shape.flattened.invariant.no_direct_product_atom_remains);
 
-    let flattened = flatten_fixture_call_source("product_exposed_right.lang");
-    assert_eq!(atom_labels(&flattened.atoms), ["a", "b", "c"]);
+    let shape = fixture_arg_product_shape(
+        "product_exposed_right.lang",
+        ProductMaterialRole::CallableArgumentProduct,
+    );
+    assert_eq!(atom_labels(&shape.flattened.atoms), ["a", "b", "c"]);
 }
 
 #[test]
 fn expression_barrier_blocks_product_flattening_from_source_fixture() {
-    let source = fixture_call_source("product_expression_barrier.lang");
-    let flattened = flatten(source);
+    let site = fixture_call_site("product_expression_barrier.lang");
+    let product = ProductObject::from_norm_product(
+        site.source_product.clone(),
+        ProductMaterialRole::CallableArgumentProduct,
+    );
+    let flattened = product.flatten();
     assert_eq!(atom_labels(&flattened.atoms), ["Call", "c"]);
 
     let ProductAtom::Expression {
@@ -36,64 +48,47 @@ fn expression_barrier_blocks_product_flattening_from_source_fixture() {
 }
 
 #[test]
-fn unit_positions_and_raw_arg_non_value_boundary_are_preserved_from_source_fixture() {
-    let product = fixture_call_source("product_unit_preservation.lang");
-    let flattened = flatten(product.clone());
-    assert_eq!(atom_labels(&flattened.atoms), ["a", "Unit", "b"]);
-    assert!(flattened.atoms[1].provenance().span.is_some());
+fn nested_call_source_local_flatten_and_expression_barrier_are_not_contradictory() {
+    let shape_left = fixture_arg_product_shape(
+        "product_exposed_left.lang",
+        ProductMaterialRole::CallableArgumentProduct,
+    );
+    assert_eq!(
+        atom_labels(&shape_left.flattened.atoms),
+        ["a", "b", "c"],
+        "((a, b), c) |> f: inner product flattens into the call source"
+    );
 
-    let arg_shape = ProductObject::from_norm_product(
-        product,
+    let shape_barrier = fixture_arg_product_shape(
+        "product_expression_barrier.lang",
+        ProductMaterialRole::CallableArgumentProduct,
+    );
+    assert_eq!(
+        atom_labels(&shape_barrier.flattened.atoms),
+        ["Call", "c"],
+        "((a, b) |> f, c) |> g: inner call is an Expression barrier, outer sees Call + c"
+    );
+}
+
+#[test]
+fn unit_positions_and_raw_arg_non_value_boundary_are_preserved_from_source_fixture() {
+    let shape = fixture_arg_product_shape(
+        "product_unit_preservation.lang",
         ProductMaterialRole::MetaConstructionArgumentProduct,
-    )
-    .to_arg_product_shape();
-    assert_eq!(arg_shape.arity, 3);
+    );
+    assert_eq!(atom_labels(&shape.flattened.atoms), ["a", "Unit", "b"]);
+    assert!(shape.flattened.atoms[1].provenance().span.is_some());
+
+    assert_eq!(shape.arity, 3);
     assert!(matches!(
-        arg_shape.raw_args[1].value_class,
+        shape.raw_args[1].value_class,
         RawArgValueClass::NonValue(NonValueArgKind::ProductUnit)
     ));
-    assert_eq!(arg_shape.raw_args[1].is_value(), Some(false));
+    assert_eq!(shape.raw_args[1].is_value(), Some(false));
     assert!(
-        !arg_shape.raw_args[1].receives_automatic_pass_action(),
+        !shape.raw_args[1].receives_automatic_pass_action(),
         "ProductUnit does not receive automatic pass action at candidate-prep boundary"
     );
-}
-
-fn flatten_fixture_call_source(name: &str) -> lang_build::FlattenedProductObject {
-    flatten(fixture_call_source(name))
-}
-
-fn flatten(product: NormProduct) -> lang_build::FlattenedProductObject {
-    ProductObject::from_norm_product(product, ProductMaterialRole::CallableArgumentProduct)
-        .flatten()
-}
-
-fn fixture_call_source(name: &str) -> NormProduct {
-    match fixture_expr(name) {
-        NormExpr::Call { source, .. } => source,
-        other => panic!("expected fixture `{name}` to normalize to a call, got {other:#?}"),
-    }
-}
-
-fn fixture_expr(name: &str) -> NormExpr {
-    let source = fs::read_to_string(fixture_path(name)).expect("read v0.8 product fixture");
-    let parsed = lang_syntax::parse(&source);
-    assert!(
-        parsed.diagnostics.is_empty(),
-        "unexpected parse diagnostics for {name}:\n{}",
-        lang_syntax::dump_diagnostics(&parsed.diagnostics)
-    );
-    let normalized = lang_syntax::normalize_program(&parsed.program);
-    match normalized.forms.as_slice() {
-        [NormForm::Expr(expr)] => expr.clone(),
-        other => panic!("expected one normalized expression in `{name}`, got {other:#?}"),
-    }
-}
-
-fn fixture_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/v08")
-        .join(name)
 }
 
 fn atom_labels(atoms: &[ProductAtom]) -> Vec<String> {
