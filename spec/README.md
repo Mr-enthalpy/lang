@@ -236,6 +236,6 @@ Documents under `spec/implementation/`, `spec/contracts/`, `spec/history/`,
 archaeology, future design, and scope management. They are not the normal
 public entry point.
 
-If public docs conflict with history/future/planning documents, treat that as
+If public docs conflict with history/design/planning documents, treat that as
 documentation debt; do not use older or future documents to reinterpret current
 behavior.

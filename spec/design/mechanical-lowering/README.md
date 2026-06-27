@@ -30,6 +30,10 @@ format.
   `Error` handler lookup, and `noerror`.
 - `call-modes-recursion-and-tail-lowering.md` — `normal` / `tco` / `loop`.
 
+## Reading order
+
+Read in order: argument passing, then return normalization, then call modes.
+
 ## Dependencies
 
 Consumes `RawArgShape` / `ParameterShape` from `patterns-overload/`, the `Error`

@@ -34,6 +34,12 @@ match/exhaustiveness checking.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   extraction-chain semantics.
 
+## Reading order
+
+Read `pattern-normalization-and-first-order-overload.md` first (the earlier
+candidate-preparation subset), then the broader overload and pattern-space
+documents.
+
 ## Dependencies
 
 Uses `TypeValueId` from `symbol-world/`. Produces the applicable candidate set

@@ -25,6 +25,10 @@ defined here; do not move it into this block.
 
 - `policy-visibility-symbols.md` — the overall policy model.
 
+## Reading order
+
+Read `policy-visibility-symbols.md`.
+
 ## Dependencies
 
 Provides the policy planes used by `symbol-world/` lookup, `meta-invocation/`

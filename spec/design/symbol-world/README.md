@@ -35,6 +35,11 @@ policy checker (referenced from the other blocks).
 - `entity-alias-design.md` — surface `let binder === EntityRef` syntax and its
   future semantic forwarding meaning.
 
+## Reading order
+
+Read `early-meta-functions-and-namespace-graph.md` first for the bootstrap, then
+the type-value/place/alias and field-function documents.
+
 ## Dependencies
 
 Builds on `build-package/` (roots, mounts, provenance). Provides `TypeValueId`

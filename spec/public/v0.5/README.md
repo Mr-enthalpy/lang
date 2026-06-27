@@ -50,7 +50,7 @@ The v0.4 normalization boundary that v0.5 stabilizes is recorded in
 ## Future boundary
 
 Later pattern-space and extraction-chain semantics
-([`../../future/static-pattern-spaces-and-extraction-chains.md`](../../future/static-pattern-spaces-and-extraction-chains.md))
+([`../../design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`](../../design/patterns-overload/static-pattern-spaces-and-extraction-chains.md))
 motivate the current normalized boundaries but are **not** implemented by the
 v0.5 normalizer. `Done`, residual propagation, pattern-space subtraction,
 `operator+` meta-reduction, `match` closing, and pattern-head resolution are not

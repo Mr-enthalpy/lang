@@ -24,6 +24,10 @@ applicable candidate set; it does not specify how that set is built.
 
 - `meta-object-invocation-and-policy-reduction.md` — the formal invocation model.
 
+## Reading order
+
+Read `meta-object-invocation-and-policy-reduction.md`.
+
 ## Dependencies
 
 References `symbol-world/` (lookup), `patterns-overload/` (candidate

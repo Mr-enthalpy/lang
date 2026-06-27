@@ -39,6 +39,10 @@ into a separate repository remains possible only after those APIs stabilize.
 - `namespace-assembly-v0.md` — assembly pipeline and phase split.
 - `library-namespace-design-note.md` — library/namespace/no-import model.
 
+## Reading order
+
+Read in the listed order, starting with `build-system-design.md`.
+
 ## Dependencies
 
 Feeds `symbol-world/` (namespace roots, mounts, provenance) and ultimately

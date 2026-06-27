@@ -95,8 +95,9 @@ documents remain present, but they are not part of the normal public reading pat
 
 ### Design blocks
 
-Forward-looking design lives under `spec/design/` (non-normative; not current
-behavior). Start at `spec/design/README.md`.
+Forward-looking design material is staged under `spec/design/` (a transitional
+design-fusion staging area; non-normative, not current behavior). Start at
+`spec/design/README.md`.
 
 | Block | Purpose |
 |---|---|
@@ -173,8 +174,6 @@ frozen `spec/public/v0.2/` syntax specs.
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── docs/
-│   └── decisions/
 ├── spec/
 │   ├── README.md
 │   ├── public/
@@ -211,16 +210,14 @@ frozen `spec/public/v0.2/` syntax specs.
 │   │   │   └── normalized-ast-design-history-v0.3.md
 │   │   └── v0.4/
 │   │       └── README.md
-│   ├── future/
-│   │   ├── entity-ref-design.md
-│   │   ├── entity-alias-design.md
-│   │   ├── library-namespace-design-note.md
-│   │   ├── build-system-design.md
-│   │   ├── package-manifest-v0.md
-│   │   ├── namespace-assembly-v0.md
-│   │   ├── early-meta-functions-and-namespace-graph.md
-│   │   ├── type-associated-function-objects-and-access-trees.md
-│   │   └── static-pattern-spaces-and-extraction-chains.md
+│   ├── design/
+│   │   ├── README.md
+│   │   ├── build-package/
+│   │   ├── symbol-world/
+│   │   ├── patterns-overload/
+│   │   ├── meta-invocation/
+│   │   ├── policy-capability/
+│   │   └── mechanical-lowering/
 │   └── planning/
 │       ├── roadmap.md
 │       └── open-questions.md
