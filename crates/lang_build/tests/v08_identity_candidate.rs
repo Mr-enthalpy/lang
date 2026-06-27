@@ -73,7 +73,7 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("single type constructor parameter")),
         CandidatePreparationContext {
-            symbol_visibility: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
             build_identity: CandidateBuildIdentityPlaceholder {
                 package_identity_fragment: Some("package:app".to_string()),
@@ -96,7 +96,16 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         RawArgValueClass::UnknownExpression
     ));
     assert!(!candidate.arg_product_shape.raw_args[0].receives_automatic_pass_action());
-    assert_eq!(candidate.policy_planes.symbol_visibility, PolicyEnv::Meta);
+    assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::Meta);
+    assert_eq!(
+        candidate.policy_planes.symbol_visibility_policy,
+        callee.policy_metadata
+    );
+    assert!(candidate
+        .policy_planes
+        .symbol_visibility_policy
+        .policy_set
+        .contains(PolicyFlag::Meta));
     assert!(candidate
         .policy_planes
         .body_entry_allows_demanded_execution());
@@ -115,6 +124,16 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         callee.id
     );
     assert_eq!(candidate.canonical_key_seed.argument_arity, 1);
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_fingerprint_fragment,
+        None
+    );
+    assert_eq!(
+        candidate.canonical_key_seed.unit_positions,
+        Vec::<usize>::new()
+    );
     assert_eq!(
         candidate.canonical_key_seed.argument_type_values,
         vec![None]
@@ -157,7 +176,7 @@ fn symbol_visibility_does_not_imply_body_entry_or_return_object_policy() {
         one_expression_arg_shape(),
         ParameterShape::exact_arity(1, Provenance::new("field parameter placeholder")),
         CandidatePreparationContext {
-            symbol_visibility: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("meta-visible runtime-body field function"),
@@ -168,7 +187,12 @@ fn symbol_visibility_does_not_imply_body_entry_or_return_object_policy() {
         panic!("runtime-only body-entry must defer instead of becoming meta-executable");
     };
     assert_eq!(reason, CandidatePrepDeferredReason::BodyEntryPolicyMismatch);
-    assert_eq!(candidate.policy_planes.symbol_visibility, PolicyEnv::Meta);
+    assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::Meta);
+    assert!(candidate
+        .policy_planes
+        .symbol_visibility_policy
+        .policy_set
+        .contains(PolicyFlag::Meta));
     assert!(!candidate
         .policy_planes
         .body_entry_allows_demanded_execution());
@@ -182,6 +206,58 @@ fn symbol_visibility_does_not_imply_body_entry_or_return_object_policy() {
         .return_object_policy
         .policy_set
         .contains(PolicyFlag::Meta));
+}
+
+#[test]
+fn canonical_key_seed_reserves_canonical_argument_product_slots() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .expect("core struct resolves through namespace graph as SymbolObject");
+    let product = NormProduct {
+        elements: vec![
+            NormProductElem::Expr(NormExpr::Name {
+                text: "T".to_string(),
+                origin: origin(1),
+            }),
+            NormProductElem::Unit { origin: origin(2) },
+        ],
+        origin: origin(3),
+    };
+    let arg_shape = lang_build::ProductObject::from_norm_product(
+        product,
+        lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
+    )
+    .to_arg_product_shape();
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prepare_meta_callable_candidate(
+        &callee,
+        arg_shape,
+        ParameterShape::exact_arity(2, Provenance::new("unit-sensitive parameter placeholder")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("unit-sensitive canonical key seed"),
+        },
+    ) else {
+        panic!("candidate should reach applicable placeholder");
+    };
+
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_fingerprint_fragment,
+        None,
+        "fingerprint computation is intentionally deferred, but the slot must exist"
+    );
+    assert_eq!(
+        candidate.canonical_key_seed.unit_positions,
+        vec![1],
+        "canonical argument product material must not collapse to arity + type values only"
+    );
 }
 
 #[test]

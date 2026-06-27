@@ -327,7 +327,7 @@ impl ParameterShape {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePreparationContext {
-    pub symbol_visibility: PolicyEnv,
+    pub lookup_env: PolicyEnv,
     pub demanded_execution: ExecutionEnv,
     pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
@@ -343,7 +343,8 @@ pub struct CandidateBuildIdentityPlaceholder {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
-    pub symbol_visibility: PolicyEnv,
+    pub lookup_env: PolicyEnv,
+    pub symbol_visibility_policy: PolicyMetadata,
     pub demanded_execution: ExecutionEnv,
     pub body_entry_policy: PolicyMetadata,
     pub return_object_policy: PolicyMetadata,
@@ -376,6 +377,8 @@ pub enum CallableCandidateKind {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,
+    pub argument_product_shape_fingerprint_fragment: Option<String>,
+    pub unit_positions: Vec<usize>,
     pub argument_arity: usize,
     pub argument_type_values: Vec<Option<TypeValueId>>,
     pub package_identity_fragment: Option<String>,
@@ -420,13 +423,24 @@ pub fn prepare_meta_callable_candidate(
     };
 
     let policy_planes = CandidatePolicyPlanes {
-        symbol_visibility: context.symbol_visibility,
+        lookup_env: context.lookup_env,
+        symbol_visibility_policy: callee.policy_metadata.clone(),
         demanded_execution: context.demanded_execution,
         body_entry_policy,
         return_object_policy,
     };
+    let unit_positions = arg_product_shape
+        .raw_args
+        .iter()
+        .filter_map(|raw_arg| match raw_arg.value_class {
+            RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => Some(raw_arg.index),
+            _ => None,
+        })
+        .collect();
     let canonical_key_seed = CanonicalMetaInstanceKeySeed {
         callee_function_symbol_id: callee.id,
+        argument_product_shape_fingerprint_fragment: None,
+        unit_positions,
         argument_arity: arg_product_shape.arity,
         argument_type_values: arg_product_shape
             .raw_args
