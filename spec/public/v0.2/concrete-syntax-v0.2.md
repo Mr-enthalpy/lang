@@ -664,8 +664,8 @@ alias resolution, and evaluation behavior belong to later semantic passes.
 | `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` | Enumerates frozen Raw AST constructs and their guarantees. |
 | `spec/implementation/v0.1/ast-construction-v0.1.md` | Detailed implementation-level parser construction spec. |
 | `spec/history/v0.1/operator-design.md` | Detailed operator spelling design and implementation boundaries. |
-| `spec/future/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
-| `spec/future/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
+| `spec/design/symbol-world/entity-alias-design.md` | Alias binding design (parser preservation implemented). |
+| `spec/design/symbol-world/entity-ref-design.md` | Future general EntityRef design (alias-RHS subset implemented). |
 | `spec/implementation/v0.1/diagnostics-v0.1.md` | Full diagnostic catalog including parser diagnostics. |
 | `spec/implementation/v0.1/implementation-status-v0.1.md` | Authoritative factual inventory of current implementation. |
 

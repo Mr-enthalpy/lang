@@ -31,6 +31,7 @@ Do not interpret `obj.field` as field lookup.
 Do not interpret `obj..f(args)` as method dispatch.
 Do not interpret annotation patterns as runtime expressions.
 Do not resolve pattern-side names through ordinary function lookup.
+Do not treat semantic-looking names (`return`, `else`, `match`, `drop`, `move`) as keywords; they are ordinary `Name` tokens until a later semantic/meta pass interprets them.
 Do not turn Normalized AST into HIR.
 Do not add name resolution, type checking, operator lookup, or pattern-head resolution to normalization.
 ```
@@ -123,7 +124,7 @@ insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 - Stage/implementation constraints → `spec/contracts/`.
 - Implementation inventory/status → `spec/implementation/`.
 - Route, discussion, alternatives, audit trail → `spec/history/`.
-- Later semantic design (v0.6+) → `spec/future/`.
+- Later semantic design (v0.6+) → `spec/design/`.
 - Roadmap and open questions → `spec/planning/`.
 
 If public docs and history conflict, public docs define current behavior. Future

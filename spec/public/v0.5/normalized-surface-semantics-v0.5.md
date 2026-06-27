@@ -695,7 +695,7 @@ Backing: `spec/contracts/v0.4-normalization-prototype-notes.md`.
 ## 13. Relation to v0.6+ Future Semantics
 
 Later pattern-space and extraction-chain semantics
-(`spec/future/static-pattern-spaces-and-extraction-chains.md`) motivate the
+(`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`) motivate the
 value-side / pattern-side boundaries, but they are **not** current normalized
 call-binding behavior. `Done`, residual propagation, pattern-space subtraction,
 `operator+` meta-reduction, `match` closing, exhaustiveness, and pattern-head

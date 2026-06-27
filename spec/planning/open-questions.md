@@ -14,7 +14,7 @@ Resolved records live in history:
   `spec/history/v0.3/normalized-ast-design-history-v0.3.md`.
 
 The v0.6–v0.8 build / namespace graph / early meta direction is
-`spec/future/early-meta-functions-and-namespace-graph.md`. It is not an open
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`. It is not an open
 design question; it is the next post-v0.5 roadmap track.
 
 ---
@@ -138,7 +138,7 @@ when value/type canonical forms are designed.
 ### v0.10+: Pattern-space and extraction-chain semantics
 
 Future design note:
-`spec/future/static-pattern-spaces-and-extraction-chains.md`.
+`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
 #### How should pattern spaces be represented as static objects?
 

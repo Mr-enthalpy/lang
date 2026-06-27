@@ -15,8 +15,15 @@ parser preservation. The remaining sections describe both the implemented
 syntax and the future semantic behavior.
 
 The right-hand side `EntityRef` syntax is defined separately in
-`spec/future/entity-ref-design.md`. This document describes how future alias binding
+`spec/design/symbol-world/entity-ref-design.md`. This document describes how future alias binding
 will use that syntax.
+
+This document records the surface/parser alias syntax and the future surface
+lookup/shadowing rules. The *semantic* alias forwarding model — value/place
+forwarding, the `AliasChain`, and its writable-place effect — is documented in
+`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`. The two are
+complementary: this file owns the surface form; that file owns the forwarding
+semantics.
 
 ## Purpose
 
@@ -81,7 +88,7 @@ AliasBinder ::= Name | OperatorName
 EntityRef ::= EntityNavigation
 ```
 
-`EntityRef` is defined by `spec/future/entity-ref-design.md`. The full
+`EntityRef` is defined by `spec/design/symbol-world/entity-ref-design.md`. The full
 `EntityNavigation` grammar is not duplicated here; see that document for the complete definition,
 parser boundary, and raw-AST sketch.
 
@@ -364,7 +371,7 @@ EntityRefAst {
 }
 ```
 
-The exact `EntityRefAst` shape is defined in `spec/future/entity-ref-design.md`.
+The exact `EntityRefAst` shape is defined in `spec/design/symbol-world/entity-ref-design.md`.
 
 These nodes are implemented in the current Rust `ast` module (Phase 4.4).
 

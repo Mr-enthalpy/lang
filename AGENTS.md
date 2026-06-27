@@ -55,8 +55,8 @@ spec/public/v0.2/concrete-syntax-v0.2.md
 
 Before alias / EntityRef repair:
 ```text
-spec/future/entity-alias-design.md
-spec/future/entity-ref-design.md
+spec/design/symbol-world/entity-alias-design.md
+spec/design/symbol-world/entity-ref-design.md
 spec/public/v0.2/concrete-syntax-v0.2.md
 ```
 
@@ -71,9 +71,9 @@ spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 
 Before build/package/namespace design:
 ```text
-spec/future/build-system-design.md
-spec/future/package-manifest-v0.md
-spec/future/namespace-assembly-v0.md
+spec/design/build-package/build-system-design.md
+spec/design/build-package/package-manifest-v0.md
+spec/design/build-package/namespace-assembly-v0.md
 ```
 
 Before resolving old open questions or understanding design history:
@@ -515,8 +515,6 @@ Do:
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── docs/
-│   └── decisions/
 ├── spec/
 │   ├── README.md
 │   ├── public/
@@ -553,14 +551,14 @@ Do:
 │   │   │   └── normalized-ast-design-history-v0.3.md
 │   │   └── v0.4/
 │   │       └── README.md
-│   ├── future/
-│   │   ├── entity-ref-design.md
-│   │   ├── entity-alias-design.md
-│   │   ├── library-namespace-design-note.md
-│   │   ├── build-system-design.md
-│   │   ├── package-manifest-v0.md
-│   │   ├── namespace-assembly-v0.md
-│   │   └── static-pattern-spaces-and-extraction-chains.md
+│   ├── design/
+│   │   ├── README.md
+│   │   ├── build-package/
+│   │   ├── symbol-world/
+│   │   ├── patterns-overload/
+│   │   ├── meta-invocation/
+│   │   ├── policy-capability/
+│   │   └── mechanical-lowering/
 │   └── planning/
 │       ├── roadmap.md
 │       └── open-questions.md

@@ -17,9 +17,11 @@ Documentation areas have distinct roles and authority levels:
 - **`spec/history/`** — Historical route, design discussion, alternatives,
   resolved disputes, and audit trail. History preserves why decisions were made,
   but does not define current behavior unless linked from public docs.
-- **`spec/future/`** — Later semantic design tracks and v0.6+ design notes.
-  Some v0.6 notes now include implementation-status sections; future material
-  still must not be read as implemented behavior.
+- **`spec/design/`** — Transitional design-fusion staging area. It temporarily
+  groups forward-looking design material while it is being fused into
+  `spec/public/`, `spec/contracts/`, `spec/planning/`, and `spec/history/`.
+  It is not a long-term authority tier and must not be read as implemented
+  behavior. Entry point: `spec/design/README.md`.
 - **`spec/planning/`** — Roadmap and open questions. Planning documents must not
   substitute for public language behavior.
 
@@ -31,6 +33,10 @@ current behavior.
 If future docs describe later semantics, they must not be read as implemented
 behavior.
 ```
+
+If `spec/design/` conflicts with public docs, contracts, or stage planning,
+the stable tier wins for its own role. `spec/design/` records material still
+awaiting absorption.
 
 ## Public normalized-surface specification: v0.5
 
@@ -120,24 +126,23 @@ route and decisions.
 |---|---|---|
 | `README.md` | Non-normative historical summary | v0.4 prototype/hardening route, `Unsupported`-audit and value/pattern hardening decisions; points to the v0.4 prototype notes and golden tests. |
 
-## Future design notes
+## Transitional design-fusion staging
 
-**`spec/future/`** — Forward-looking design notes. These are not current
-syntax specifications.
+**`spec/design/`** is a transitional staging area, not a long-term authority
+tier. These blocks are temporary staging buckets. They exist to avoid a flat
+`future/` pile while the symbol / pattern / meta-invocation world is still being
+fused. They should shrink as material is promoted into public specs, converted
+into contracts, moved into planning, or archived into history. Start at
+`spec/design/README.md`.
 
-| File | Authority | Role |
-|---|---|---|
-| `entity-ref-design.md` | Non-normative future design note | General `EntityRef` design (future). Alias-RHS `EntityRef` subset is implemented in Phase 4.4. |
-| `entity-alias-design.md` | Implemented-design explanation | Documents lexical alias binding syntax (`let binder === EntityRef`). Phase 4.3 design; Phase 4.4 raw parser preservation implemented. Future semantic meaning remains future work. |
-| `library-namespace-design-note.md` | Non-normative future design note | Describes the intended library/namespace/import model. |
-| `build-system-design.md` | Non-normative design with partial implementation note | Formal design note for the build/package/namespace assembly architecture. The first v0.6 vertical slice is implemented in `crates/lang_build`. |
-| `package-manifest-v0.md` | Non-normative, future design | Provisional build-manifest design surface. |
-| `namespace-assembly-v0.md` | Non-normative, future design | High-level namespace assembly pipeline and phase split. |
-| `early-meta-functions-and-namespace-graph.md` | Non-normative design with partial implementation note (v0.6–v0.8) | Canonical direction for the build / namespace graph bootstrap, early meta-function lookup, and the type-to-type meta construction interpreter. Documents the narrow implemented v0.6 slice. |
-| `type-associated-function-objects-and-access-trees.md` | Non-normative future design note | Records the role-aware field-function / `ref` / `share` projection model, type-value binding distinction, and injection-place rules for future access-tree work. No access-tree construction is implemented. |
-| `policy-visibility-symbols.md` | Non-normative, future design (deferred beyond v0.8) | Policy as visibility symbols and capability strategy: trait model, partial-order, orthogonal dimensions, context-policy / import / binding rules, compile/runtime/meta/seal, const/mut motivation. Not implemented in v0.6–v0.8 except as metadata slots. |
-| `meta-object-invocation-and-policy-reduction.md` | Non-normative, future design | Formal future model for policy-governed meta object invocation, partial/strict meta reduction, guarded invocation, and residualization. Not implemented as a full engine. |
-| `static-pattern-spaces-and-extraction-chains.md` | Non-normative, future design (v0.10+) | Later semantic design for pattern spaces, sum/product patterns, extraction chains, residual propagation, the `Done` isolation layer, `operator+` meta-reduction, postfix `?`, and `match` as a closing consumer. Motivates current normalized boundaries but is **not** implemented by the v0.5 normalizer. |
+| Block | Role |
+|---|---|
+| `spec/design/build-package/` | Package/build layer: manifest records, namespace-graph projection, mount paths, export surface, package identity, dependency edges, source roots, cache/fingerprint/provenance. |
+| `spec/design/symbol-world/` | Namespace graph world model: `SymbolId` / `PlaceId` / `TypeValueId`, alias forwarding, writable-place, field functions, `ref`/`share` projection namespaces, type-associated function objects, injection targets, and the early-meta / namespace-graph bootstrap. |
+| `spec/design/patterns-overload/` | Pattern normalization, occurrence roles, argument/parameter shapes, first-order type-value candidate adaptation, applicability, specificity, the full overload-resolution vision, static pattern spaces, and extraction chains. |
+| `spec/design/meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation, and control-like callables instead of `if constexpr` syntax. |
+| `spec/design/policy-capability/` | Symbol-visibility / body-entry / return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. |
+| `spec/design/mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes with no loop core. |
 
 ## Planning and debt
 
@@ -159,7 +164,8 @@ Current reading order (summary):
 4. `spec/public/v0.2/*` for the frozen Raw AST input syntax
 5. `spec/contracts/*` only when doing implementation-boundary work
 6. `spec/history/*` for route / decisions / archaeology
-7. `spec/future/*` for v0.6+ design and implementation-status notes
+7. `spec/design/README.md` only when working on unstable design-fusion material
+   that has not yet been absorbed into public/contracts/planning/history
 
 `spec/history/v0.3/` holds the v0.3 Normalized AST design baseline (historical),
 not a current reading step. The detailed per-tier lists below expand this order.
@@ -204,20 +210,18 @@ Read these only when implementing, auditing, or repairing the frontend.
 6. `spec/history/v0.1/operator-design.md` - Understand operator syntax rules.
 7. `spec/history/v0.1/resolved-questions.md` - Understand resolved design decisions.
 
-### Future-design reading order
+### Design-block reading order
 
-Read these only when working on future design topics.
+Read these only when working on forward-looking design topics. Start at
+`spec/design/README.md`, which gives the active semantic route across blocks:
 
-1. `spec/future/entity-alias-design.md` - Understand alias binding syntax (implemented) and future semantics.
-2. `spec/future/entity-ref-design.md` - Understand future general EntityRef design.
-3. `spec/future/library-namespace-design-note.md` - Understand library/namespace model.
-4. `spec/future/build-system-design.md` - Understand build/package architecture.
-5. `spec/future/package-manifest-v0.md` - Understand build-manifest surface.
-6. `spec/future/namespace-assembly-v0.md` - Understand namespace assembly pipeline.
-7. `spec/future/early-meta-functions-and-namespace-graph.md` - Understand namespace graph capability layer, early meta, and the v0.6–v0.8 direction.
-8. `spec/future/type-associated-function-objects-and-access-trees.md` - Understand future field-function / projection-space and injection-place constraints.
-8. `spec/planning/roadmap.md` - Understand scope boundaries.
-9. `spec/planning/open-questions.md` - Recognize known gaps.
+```text
+build-package -> symbol-world -> patterns-overload -> meta-invocation
+  -> mechanical-lowering -> later runtime lookup / type check
+```
+
+Then read within each block as needed. Scope boundaries are in
+`spec/planning/roadmap.md`, and known gaps in `spec/planning/open-questions.md`.
 
 ## Spec priority
 
@@ -228,10 +232,10 @@ authoritative.
 The implementation and golden snapshots remain the factual behavior source.
 
 Documents under `spec/implementation/`, `spec/contracts/`, `spec/history/`,
-`spec/future/`, and `spec/planning/` remain available for backing reference,
+`spec/design/`, and `spec/planning/` remain available for backing reference,
 archaeology, future design, and scope management. They are not the normal
 public entry point.
 
-If public docs conflict with history/future/planning documents, treat that as
+If public docs conflict with history/design/planning documents, treat that as
 documentation debt; do not use older or future documents to reinterpret current
 behavior.

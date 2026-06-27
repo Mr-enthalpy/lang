@@ -55,9 +55,9 @@ Follow this workflow for every change:
 | Parser implementation changes | `spec/implementation/v0.1/ast-construction-v0.1.md`, `spec/implementation/v0.1/implementation-status-v0.1.md` |
 | Diagnostic implementation changes | `spec/implementation/v0.1/diagnostics-v0.1.md` |
 | Operator syntax or operator-name repair | `spec/history/v0.1/operator-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
-| Alias / EntityRef repair | `spec/future/entity-alias-design.md`, `spec/future/entity-ref-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
+| Alias / EntityRef repair | `spec/design/symbol-world/entity-alias-design.md`, `spec/design/symbol-world/entity-ref-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
 | v0.3 handoff / normalization-boundary work | `spec/contracts/raw-ast-contract-v0.1.md`, `spec/contracts/raw-ast-contract-freeze-v0.2.md`, `spec/contracts/v0.3-normalization-handoff-checklist.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` |
-| Future build/package/namespace work | `spec/future/build-system-design.md`, `spec/future/package-manifest-v0.md`, `spec/future/namespace-assembly-v0.md` |
+| Future build/package/namespace work | `spec/design/build-package/build-system-design.md`, `spec/design/build-package/package-manifest-v0.md`, `spec/design/build-package/namespace-assembly-v0.md` |
 | Resolving old open questions / design history | `spec/history/v0.1/resolved-questions.md`, `spec/planning/open-questions.md`, `spec/history/v0.1/frontend-v0.1.md` |
 | Forward-looking scope changes | `spec/planning/roadmap.md` |
 

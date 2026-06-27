@@ -3,10 +3,18 @@
 **Status: Non-normative future design. Not implemented in v0.6–v0.8.**
 Overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure defined in
-`spec/future/static-pattern-spaces-and-extraction-chains.md`. The v0.7-prep
+`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`. The v0.7-prep
 work (`PolicyFlag`, `PolicySet`, `PolicyEnv::Meta`) provides the self-policy
 filtering layer (step C2) that future overload resolution will invoke; all
 other steps are design specification only.
+
+This document remains the broader overload-resolution design. The earlier
+pattern/type candidate-preparation subset used by future meta object invocation
+is documented in `pattern-normalization-and-first-order-overload.md`. That
+subset is the narrower candidate model — argument/parameter shapes, applicability,
+and a constrained specificity ordering — that the meta invocation engine needs;
+it is **not** equivalent to full runtime overload resolution, which this document
+continues to specify.
 
 ---
 
@@ -88,6 +96,12 @@ Visible(C, External) = { c ∈ C | export(c) }
 
 The overload set is always built from the visible child set, never from raw
 graph children directly.
+
+Candidate construction is closed over the namespace-graph view selected for the
+query: it performs no ADL-like expansion and no external scope search, external
+users cannot retroactively add candidates to an already-visible namespace node,
+and meta-generated injection occurs only through explicit parent-to-child
+namespace-delta boundaries.
 
 ### 2.3 Candidate set notation
 
@@ -469,6 +483,9 @@ declaration-order fallback
 | Document | Relationship |
 |---|---|
 | `static-pattern-spaces-and-extraction-chains.md` §12 | Summary overview of overload resolution; this document is the formal specification |
+| `pattern-normalization-and-first-order-overload.md` | Earlier, narrower candidate-preparation subset (pattern normalization + first-order type-value candidate model) feeding meta object invocation; not full runtime overload resolution |
+| `mechanical-argument-passing-and-move-fixed-point.md` | Pass-mode adaptation (move/ref/share/copy/in) is separate from type/rank compatibility; `move` does not create a new type value |
+| `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
 | `policy-visibility-symbols.md` §12.1 | Policy-filtered namespace lookup feeds overload set construction |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph provides the `RawChildren` (C0) layer |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |

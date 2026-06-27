@@ -328,7 +328,7 @@ produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
 EntityRef parsing is available inside alias-let RHS only. Alias-let dispatch
 correctly rejects extract-let, annotation, and `with` paths. `guard` is parsed
 as an ordinary simple-let binder name, not as an alias modifier. See
-`spec/implementation/v0.1/implementation-status-v0.1.md` and `spec/future/entity-alias-design.md`.
+`spec/implementation/v0.1/implementation-status-v0.1.md` and `spec/design/symbol-world/entity-alias-design.md`.
 
 **What is not implemented:**
 - Target entity resolution (semantic lookup).

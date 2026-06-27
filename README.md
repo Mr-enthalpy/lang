@@ -93,25 +93,25 @@ documents remain present, but they are not part of the normal public reading pat
 | Design / history | `spec/history/v0.3/` | `README.md` | v0.3 Normalized AST specification route and resolved design boundary — historical summary pointing to the v0.3 baseline |
 | Design / history | `spec/history/v0.4/` | `README.md` | v0.4 Raw AST → Normalized AST prototype/hardening route and decisions — historical summary pointing to the v0.4 prototype notes |
 
-### Future design notes
+### Design blocks
+
+Forward-looking design material is staged under `spec/design/` (a transitional
+design-fusion staging area; non-normative, not current behavior). Start at
+`spec/design/README.md`.
+
+| Block | Purpose |
+|---|---|
+| `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, export surface, provenance |
+| `spec/design/symbol-world/` | Namespace graph world model, SymbolId/PlaceId/TypeValueId, alias forwarding, field functions, early-meta bootstrap |
+| `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
+| `spec/design/meta-invocation/` | Policy-governed meta object invocation, partial/strict reduction, guarded invocation |
+| `spec/design/policy-capability/` | Visibility / body-entry / return-object policy, meta/runtime filtering, future error policy |
+| `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
 
 | Directory | Document | Purpose |
 |---|---|---|
-| `spec/future/` | `entity-ref-design.md` | General `EntityRef` design (future); alias-RHS subset implemented in Phase 4.4 |
-| `spec/future/` | `entity-alias-design.md` | Lexical alias binding design (Phase 4.3); raw parser preservation implemented in Phase 4.4; future semantic meaning remains future work |
 | `spec/planning/` | `roadmap.md` | Stage model v0.1–v1.0 and scope boundaries |
 | `spec/planning/` | `open-questions.md` | Unresolved design questions and documentation debt |
-
-### Build / package / namespace (future notes)
-
-| Directory | Document | Purpose |
-|---|---|---|
-| `spec/future/` | `library-namespace-design-note.md` | Non-normative future design note |
-| `spec/future/` | `build-system-design.md` | Build/package/namespace assembly architecture — active v0.6 partial implementation in `crates/lang_build` |
-| `spec/future/` | `package-manifest-v0.md` | Provisional build-manifest design surface |
-| `spec/future/` | `namespace-assembly-v0.md` | Namespace assembly pipeline and phase split |
-| `spec/future/` | `early-meta-functions-and-namespace-graph.md` | Namespace graph capability layer, early meta, and the v0.6–v0.8 direction |
-| `spec/future/` | `type-associated-function-objects-and-access-trees.md` | Future field projection / access-tree note; records role-aware `ref` / `share`, type-value binding, and injection-place semantics without implementing access-tree construction |
 
 ### Operational
 
@@ -174,8 +174,6 @@ frozen `spec/public/v0.2/` syntax specs.
 ├── README.md
 ├── SKILL.md
 ├── Cargo.toml
-├── docs/
-│   └── decisions/
 ├── spec/
 │   ├── README.md
 │   ├── public/
@@ -212,16 +210,14 @@ frozen `spec/public/v0.2/` syntax specs.
 │   │   │   └── normalized-ast-design-history-v0.3.md
 │   │   └── v0.4/
 │   │       └── README.md
-│   ├── future/
-│   │   ├── entity-ref-design.md
-│   │   ├── entity-alias-design.md
-│   │   ├── library-namespace-design-note.md
-│   │   ├── build-system-design.md
-│   │   ├── package-manifest-v0.md
-│   │   ├── namespace-assembly-v0.md
-│   │   ├── early-meta-functions-and-namespace-graph.md
-│   │   ├── type-associated-function-objects-and-access-trees.md
-│   │   └── static-pattern-spaces-and-extraction-chains.md
+│   ├── design/
+│   │   ├── README.md
+│   │   ├── build-package/
+│   │   ├── symbol-world/
+│   │   ├── patterns-overload/
+│   │   ├── meta-invocation/
+│   │   ├── policy-capability/
+│   │   └── mechanical-lowering/
 │   └── planning/
 │       ├── roadmap.md
 │       └── open-questions.md
@@ -328,8 +324,8 @@ Read these only when implementing, auditing, or repairing the frontend.
 
 Read these only when working on future design topics.
 
-1. `spec/future/entity-ref-design.md` — Future general EntityRef design.
-2. `spec/future/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+1. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
+2. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
 3. `spec/planning/roadmap.md` — Understand scope boundaries.
 4. `spec/planning/open-questions.md` — Recognize known gaps.
 

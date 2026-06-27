@@ -403,9 +403,14 @@ Later stages will implement policy inference, projection checking, compile /
 runtime / seal semantics, const / mut policy, effect policy, error / panic
 policy, and resource capability policy.
 
+The future mechanical return-normalization and noerror/Error-handler design is
+described separately in `mechanical-return-normalization-and-error-policy.md`.
+That design still depends on future policy checking and is not implemented by
+the current v0.7-prep policy metadata.
+
 ### 12.1 Relationship to Overload Resolution
 
-> **Formal specification**: `spec/future/overload-resolution-design.md` §2–§3,
+> **Formal specification**: `spec/design/patterns-overload/overload-resolution-design.md` §2–§3,
 > §5.4.
 
 Overload-set visibility is built on top of policy-filtered namespace symbol
@@ -434,7 +439,7 @@ current policy environment.
 
 Full overload resolution specification is deferred to later phases (v0.10+);
 the overload resolution pipeline defined in
-`spec/future/overload-resolution-design.md` documents the intended design
+`spec/design/patterns-overload/overload-resolution-design.md` documents the intended design
 direction for how policies feed into overload candidate construction.
 
 ## 13. Explicit Non-Goals / Guardrails
