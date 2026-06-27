@@ -96,6 +96,7 @@ ordinary syntax understanding.
 | `raw-ast-contract-freeze-v0.2.md` | Normative for v0.2 contract freeze | Defines v0.2 freeze boundary, allowed work, forbidden work, and handoff requirements for v0.3. |
 | `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
 | `v0.4-normalization-prototype-notes.md` | Normative for the v0.4 normalization boundary | Records what the v0.4 Raw AST → Normalized AST prototype/hardening delivered and the boundary it must not cross (value/pattern separation, annotation patterns, unresolved operator/alias targets, `Unsupported` visibility, no pattern-space/semantic behavior). |
+| `v0.8-meta-construction-agent-constraints.md` | Draft construction contract for v0.8-adjacent work; not current public behavior | Cross-block agent guardrails for type-to-type meta construction, requiring no-bypass namespace graph use, `ProductObject` / `ArgProductShape`, `SymbolObject`, `TypeValueId` / `PlaceId` / `AliasChain`, policy planes, canonical meta instance keys, and `NamespaceDelta` atomicity. |
 
 ## Historical design notes
 
