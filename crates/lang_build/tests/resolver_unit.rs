@@ -2,9 +2,8 @@ mod support;
 use support::*;
 
 use lang_build::{
-    ChildLink, ChildNameRole, CompilationWorld, DiagnosticSeverity, NamespaceGraphSnapshot,
-    NamespaceMount, NamespaceNodeKind, Provenance, ResolverContext, SourceCategory, SymbolKind,
-    SymbolPayload,
+    ChildLink, ChildNameRole, CompilationWorld, NamespaceGraphSnapshot, NamespaceMount,
+    NamespaceNodeKind, Provenance, ResolverContext, SourceCategory, SymbolKind, SymbolPayload,
 };
 
 #[test]
@@ -57,20 +56,6 @@ fn resolver_handles_short_and_explicit_mounted_core_paths() {
 }
 
 #[test]
-fn resolver_reports_current_namespace_conflict_with_default_mount() {
-    // Committed fixture: `let uint8 = uint8` deliberately collides a local short
-    // name with the core short name. The build succeeds; the short-name resolve
-    // is a hard conflict.
-    let world = build_single_fixture_world("resolver_core_conflict", "app");
-
-    let diagnostic = world
-        .resolve("uint8")
-        .expect_err("local short name colliding with core short name is a hard conflict");
-    assert!(diagnostic.message.contains("conflicting symbol `uint8`"));
-    assert_eq!(diagnostic.severity, DiagnosticSeverity::HardError);
-}
-
-#[test]
 fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
     let mut manifest = empty_app_manifest();
     manifest.dependency_mounts.push(
@@ -104,6 +89,8 @@ fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
 
 #[test]
 fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
+    // Compiler-internal invariant: source verification observes both paths;
+    // SymbolId identity and diagnostic labels are graph internals.
     let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
     let left = world
         .snapshot()
@@ -157,31 +144,6 @@ fn resolve_type_object_non_type_fails() {
         .resolve_type_object("struct", &context)
         .expect_err("struct is a MetaFunction, not a Type");
     assert!(error.message.contains("resolver error"));
-}
-
-#[test]
-fn resolve_field_function_ref_field() {
-    let world = build_single_fixture_world("early_struct_meta", "app");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
-
-    let symbol = capability
-        .resolve_field_function("a::T", &context)
-        .expect("a::T is a field function");
-    assert_eq!(symbol.kind, SymbolKind::FieldFunction);
-    assert!(matches!(symbol.payload, SymbolPayload::FieldFunction(_)));
-}
-
-#[test]
-fn resolve_namespace_subspace_ref() {
-    let world = build_single_fixture_world("early_struct_meta", "app");
-    let capability = world.snapshot().capability();
-    let context = world.package_context();
-
-    let symbol = capability
-        .resolve_namespace_subspace("ref::T", &context)
-        .expect("ref::T is a namespace subspace");
-    assert_eq!(symbol.kind, SymbolKind::Namespace);
 }
 
 #[test]

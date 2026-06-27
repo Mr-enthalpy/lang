@@ -1,2 +1,8 @@
 let struct: type = uint8;
-let T: type = (uint8 a) |> struct
+let T: type = (uint8 a) |> struct;
+
+verify kind struct type;
+verify kind struct::core meta_function;
+verify kind T type;
+verify field_names T a;
+verify kind a::T field_function;

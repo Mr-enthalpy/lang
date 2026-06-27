@@ -1,1 +1,23 @@
-let User: type = (uint8 id, uint16 age) |> struct
+let User: type = (uint8 id, uint16 age) |> struct;
+
+verify exists User;
+verify kind User type;
+verify field_names User id age;
+verify has_field User id;
+verify has_field User age;
+verify kind id::User field_function;
+verify kind id::ref::User field_function;
+verify kind id::share::User field_function;
+verify field_projection id::User value;
+verify field_projection id::ref::User ref;
+verify field_projection id::share::User share;
+verify field_owner id::User User;
+verify field_type id::User uint8;
+verify field_type age::User uint16;
+verify policy id::User meta;
+verify policy id::User runtime;
+verify not_policy id::User export;
+verify body_entry_policy id::User runtime;
+verify not_body_entry_policy id::User meta;
+verify return_policy id::User runtime;
+verify not_return_policy id::User meta;

@@ -1,1 +1,13 @@
-let T: type = (uint8 share, uint8 a) |> struct
+let T: type = (uint8 share, uint8 a) |> struct;
+
+verify kind T type;
+verify field_names T share a;
+verify kind share::T field_function;
+verify kind share::T namespace;
+verify field_projection share::T value;
+verify kind share::ref::T field_function;
+verify kind share::share::T field_function;
+verify field_projection share::ref::T ref;
+verify field_projection share::share::T share;
+verify kind a::share::T field_function;
+verify field_projection a::share::T share;

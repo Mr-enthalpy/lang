@@ -12,6 +12,7 @@ pub mod manifest;
 pub mod meta;
 pub mod model;
 pub mod source;
+pub mod verify;
 pub mod world;
 
 pub use build::{
@@ -42,4 +43,5 @@ pub use model::{
     SyntaxObjectKind, TypeField, TypeObject, VisibilityMetadata,
 };
 pub use source::SourceFragment;
+pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;

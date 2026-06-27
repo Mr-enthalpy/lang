@@ -28,6 +28,38 @@ v0.7 introduces early policy-aware resolution with three policy flags:
   carrying the `Meta` flag are visible to this lookup query. This does not grant
   permission to enter or evaluate a callable body.
 
+### Source verification forms
+
+`lang_build` also contains a source-driven fixture verification loop. Ordinary
+normalized expression forms beginning with `verify` are evaluated after source
+discovery, declaration harvesting, namespace graph assembly, and early meta
+expansion for the package have completed. They do not install symbols, produce
+runtime objects, or add parser syntax.
+
+The current fixture spelling is a compact expression-chain form such as:
+
+```text
+verify exists T;
+verify kind T type;
+verify field_names T a b;
+verify kind a::T field_function;
+verify policy a::T meta;
+verify not_policy a::T export;
+verify body_entry_policy a::T runtime;
+verify not_body_entry_policy a::T meta;
+```
+
+Verification failures are hard build diagnostics with the stable prefix:
+
+```text
+source verification error:
+```
+
+This verifier is a test/fixture observation layer for namespace graph, resolver,
+early-meta, field-function, and policy facts. It is not a general meta
+interpreter, full policy checker, type checker, macro system, runtime lowering
+step, or user-facing import/export mechanism.
+
 ### Policy flag assignment
 
 | Symbol source | Policy set |

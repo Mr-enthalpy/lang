@@ -1,1 +1,7 @@
-let uint8 = uint8
+let uint8 = uint8;
+
+verify not_resolves uint8;
+verify kind uint8::app placeholder;
+verify policy uint8::app runtime;
+verify not_policy uint8::app meta;
+verify kind uint8::core type;

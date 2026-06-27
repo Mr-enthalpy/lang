@@ -20,6 +20,7 @@ use crate::{
     },
     policy_set_meta_runtime, policy_set_runtime,
     source::SourceFragment,
+    verify::evaluate_source_verifications as evaluate_verify_forms,
 };
 
 /// Build/namespace world object for the v0.6 vertical slice.
@@ -164,6 +165,8 @@ impl CompilationWorld {
             self.consume_source_unit(unit, unit_namespace)?;
         }
 
+        self.evaluate_source_verifications()?;
+
         Ok(())
     }
 
@@ -201,6 +204,30 @@ impl CompilationWorld {
         });
 
         Ok(())
+    }
+
+    fn evaluate_source_verifications(&mut self) -> Result<(), BuildError> {
+        let mut diagnostics = Vec::new();
+        for fragment in &self.source_fragments {
+            let context = ResolverContext::with_mounts(
+                fragment.namespace,
+                vec![self.snapshot.root_node()],
+                vec![self.core_node],
+            );
+            diagnostics.extend(evaluate_verify_forms(
+                &self.snapshot,
+                fragment.namespace,
+                &fragment.normalized,
+                &context,
+            )?);
+        }
+
+        if diagnostics.is_empty() {
+            Ok(())
+        } else {
+            self.diagnostics.extend(diagnostics.clone());
+            Err(BuildError { diagnostics })
+        }
     }
 
     fn harvest_program(

@@ -1,1 +1,6 @@
-let T: type = uint8
+let T: type = uint8;
+
+verify kind T type;
+verify kind dep namespace;
+verify namespace_kind dep declared;
+verify not_exists DepType::dep;

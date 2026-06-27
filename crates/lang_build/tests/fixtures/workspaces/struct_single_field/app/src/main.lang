@@ -1,1 +1,20 @@
-let T: type = (uint8 a) |> struct
+let T: type = (uint8 a) |> struct;
+
+verify kind T type;
+verify field_names T a;
+verify kind a::T field_function;
+verify kind a::ref::T field_function;
+verify kind a::share::T field_function;
+verify field_projection a::T value;
+verify field_projection a::ref::T ref;
+verify field_projection a::share::T share;
+verify policy T meta;
+verify policy T runtime;
+verify not_policy T export;
+verify policy a::T meta;
+verify policy a::T runtime;
+verify not_policy a::T export;
+verify body_entry_policy a::T runtime;
+verify not_body_entry_policy a::T meta;
+verify return_policy a::T runtime;
+verify not_return_policy a::T meta;

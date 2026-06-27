@@ -48,7 +48,6 @@ fn builds_single_package_through_build_session() {
     assert_eq!(result.artifacts.len(), 1);
     let artifact = &result.artifacts[0];
     assert_eq!(artifact.package_name, "app");
-    assert!(artifact.world.resolve("T").is_ok());
     assert_eq!(artifact.metadata.source_units.len(), 1);
     assert_eq!(artifact.metadata.cache_status, CacheStatus::Miss);
 }

@@ -17,9 +17,9 @@ fn ordinary_tests_do_not_construct_temp_source() {
     const ALLOWED: &[&str] = &[
         // Invalid-filesystem configuration boundaries: missing root, root-is-file,
         // non-UTF-8 bytes, and duplicate-configured source root.
-        "v0_6_source_discovery.rs",
+        "source_discovery_boundary.rs",
         // Mutation / cache-invalidation after copying a committed fixture to temp.
-        "v0_6_static_build_graph.rs",
+        "static_build_graph.rs",
     ];
 
     let tests_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");

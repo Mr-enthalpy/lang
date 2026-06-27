@@ -1,2 +1,11 @@
 let x = 1;
-let y: type = uint8
+let y: type = uint8;
+
+verify kind x placeholder;
+verify policy x runtime;
+verify not_policy x meta;
+verify not_policy x export;
+verify kind y type;
+verify policy y meta;
+verify policy y runtime;
+verify not_policy y export;

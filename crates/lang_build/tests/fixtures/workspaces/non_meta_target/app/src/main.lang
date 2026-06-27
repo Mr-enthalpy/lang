@@ -1,2 +1,8 @@
 let not_meta = 1;
-let T: type = (uint8 a) |> not_meta
+let T: type = (uint8 a) |> not_meta;
+
+verify kind not_meta placeholder;
+verify policy not_meta runtime;
+verify not_policy not_meta meta;
+verify kind T type;
+verify not_exists a::T;
