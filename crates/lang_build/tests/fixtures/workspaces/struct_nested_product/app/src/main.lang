@@ -1,0 +1,1 @@
+let T: type = ((uint8 a, uint8 b), uint8 c) |> struct

@@ -47,13 +47,9 @@ fn uint8_resolves_under_meta_policy() {
 
 #[test]
 fn runtime_only_value_not_usable_as_struct_field_type() {
-    let project = TempProject::new("runtime_field_type");
-    project.write(
-        "src/main.lang",
-        "let MyType = 1; let T: type = (MyType a) |> struct",
-    );
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("runtime-only value should not resolve as field type under Meta policy");
+    // Committed fixture that intentionally fails: a runtime-only value used as a
+    // struct field type.
+    let error = build_fixture_error("runtime_value_as_struct_field_type", "app");
     assert!(
         error
             .diagnostics

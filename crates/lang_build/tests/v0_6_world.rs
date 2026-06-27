@@ -78,11 +78,8 @@ fn policy_metadata_slots_are_preserved_without_policy_checking() {
 
 #[test]
 fn representative_diagnostics_contain_useful_text_and_provenance() {
-    let project = TempProject::new("diagnostic_conflict");
-    project.write("src/T/placeholder.lang", "");
-    project.write("src/main.lang", "let T: type = uint8");
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("conflict");
+    // Physical-directory vs declared-symbol conflict: useful message + provenance.
+    let error = build_fixture_error("diagnostic_conflict", "app");
     assert!(error.diagnostics.iter().any(|diagnostic| {
         diagnostic.message.contains("conflict")
             && diagnostic.provenance.as_ref().is_some_and(|provenance| {
@@ -98,10 +95,8 @@ fn representative_diagnostics_contain_useful_text_and_provenance() {
         .expect_err("unresolved explicit path");
     assert!(unresolved.message.contains("Nope::core"));
 
-    let project = TempProject::new("diagnostic_descendant");
-    project.write("src/main.lang", "let a::T = uint8");
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("descendant injection");
+    // Descendant-injection rejection: message + provenance span.
+    let error = build_fixture_error("diagnostic_descendant", "app");
     assert!(error.diagnostics.iter().any(|diagnostic| {
         diagnostic.message.contains("parent-to-descendant")
             && diagnostic

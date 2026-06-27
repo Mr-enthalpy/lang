@@ -136,7 +136,7 @@ fn non_lang_files_are_ignored() {
 fn missing_source_root_is_a_build_error() {
     let project = TempProject::new("discovery_missing_root");
     let missing = project.path().join("does_not_exist");
-    let manifest = app_manifest(&missing);
+    let manifest = boundary_app_manifest(&missing);
 
     let report = SourceDiscoveryConfig::from_source_roots(&manifest.source_roots).discover();
     assert!(report.has_hard_errors());
@@ -154,8 +154,8 @@ fn missing_source_root_is_a_build_error() {
 #[test]
 fn source_root_that_is_a_file_is_a_build_error() {
     let project = TempProject::new("discovery_root_is_file");
-    project.write("rootfile", "not a directory");
-    let manifest = app_manifest(&project.path().join("rootfile"));
+    project.write_boundary_source("rootfile", "not a directory");
+    let manifest = boundary_app_manifest(&project.path().join("rootfile"));
 
     let error = CompilationWorld::from_manifest(&manifest).expect_err("source root is a file");
     assert!(error
@@ -170,7 +170,7 @@ fn source_root_that_is_a_file_is_a_build_error() {
 fn non_utf8_lang_file_is_a_build_error() {
     let project = TempProject::new("discovery_non_utf8");
     project.write_bytes("src/main.lang", &[0xff, 0xfe, 0x00, 0x9f]);
-    let manifest = app_manifest(&project.path().join("src"));
+    let manifest = boundary_app_manifest(&project.path().join("src"));
 
     let error = CompilationWorld::from_manifest(&manifest).expect_err("non-UTF-8 source file");
     assert!(error
@@ -235,7 +235,7 @@ fn file_name_is_fragment_identity_only() {
 #[test]
 fn duplicate_physical_source_identity_is_a_hard_diagnostic() {
     let project = TempProject::new("discovery_duplicate_identity");
-    project.write("src/main.lang", "let T: type = uint8");
+    project.write_boundary_source("src/main.lang", "let T: type = uint8");
     let src = project.path().join("src");
 
     let mut manifest = empty_app_manifest();

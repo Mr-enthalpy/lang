@@ -129,14 +129,9 @@ fn fields_named_ref_and_share_coexist_with_projection_subspaces() {
         assert_eq!(a_ref_object.projection, FieldProjection::Ref);
     }
 
-    // Error boundary kept synthetic: duplicate same-role projection-named field.
-    let project = TempProject::new("duplicate_projection_named_field");
-    project.write(
-        "src/main.lang",
-        "let T: type = (uint8 ref, uint8 ref) |> struct",
-    );
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("duplicate same-role field rejected");
+    // Committed fixture that intentionally fails: duplicate same-role
+    // projection-named field.
+    let error = build_fixture_error("struct_duplicate_field", "app");
     assert!(error
         .diagnostics
         .iter()
@@ -160,43 +155,22 @@ fn struct_checker_accepts_single_and_two_field_forms() {
 
 #[test]
 fn struct_checker_rejects_non_type_nested_unit_and_target_errors() {
-    for (case_name, source, expected) in [
-        (
-            "non_type_field",
-            "let not_type = uint8; let T: type = (not_type a) |> struct",
-            "unknown struct field type",
-        ),
-        (
-            "nested_product",
-            "let T: type = ((uint8 a, uint8 b), uint8 c) |> struct",
-            "invalid struct syntax",
-        ),
-        (
-            "unit_field",
-            "let T: type = (uint8 a,) |> struct",
-            "unit field or trailing unit",
-        ),
-        (
-            "target_not_name",
-            "let T: type = (uint8 (a, b)) |> struct",
-            "expected a field binder name",
-        ),
-        (
-            "operator_private_syntax",
-            "let T: type = (uint8 a * uint8 b + uint8 c) |> struct",
-            "invalid struct syntax",
-        ),
+    // Committed fixtures that intentionally fail: each holds invalid struct input
+    // and the test checks the rejection diagnostic.
+    for (fixture, expected) in [
+        ("struct_non_type_field", "unknown struct field type"),
+        ("struct_nested_product", "invalid struct syntax"),
+        ("struct_unit_field", "unit field or trailing unit"),
+        ("struct_target_not_name", "expected a field binder name"),
+        ("struct_operator_private_syntax", "invalid struct syntax"),
     ] {
-        let project = TempProject::new(case_name);
-        project.write("src/main.lang", source);
-        let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-            .expect_err("invalid struct input rejected");
+        let error = build_fixture_error(fixture, "app");
         assert!(
             error
                 .diagnostics
                 .iter()
                 .any(|diagnostic| diagnostic.message.contains(expected)),
-            "missing {expected:?} in {:#?}",
+            "missing {expected:?} for `{fixture}` in {:#?}",
             error.diagnostics
         );
     }
@@ -204,19 +178,15 @@ fn struct_checker_rejects_non_type_nested_unit_and_target_errors() {
 
 #[test]
 fn unknown_and_invalid_struct_inputs_are_hard_errors() {
-    let project = TempProject::new("struct_errors");
-    project.write("src/unknown.lang", "let T: type = (Nope a) |> struct");
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("unknown field type");
+    // Committed fixtures that intentionally fail: unknown field type and invalid
+    // struct syntax.
+    let error = build_fixture_error("struct_unknown_field_type", "app");
     assert!(error
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.message.contains("unknown struct field type")));
 
-    let project = TempProject::new("struct_invalid");
-    project.write("src/invalid.lang", "let T: type = (uint8) |> struct");
-    let error = CompilationWorld::from_manifest(&app_manifest(&project.path().join("src")))
-        .expect_err("invalid field syntax");
+    let error = build_fixture_error("struct_invalid_field_syntax", "app");
     assert!(error
         .diagnostics
         .iter()

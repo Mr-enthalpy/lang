@@ -8,12 +8,18 @@ use std::{
 };
 
 use lang_build::{
-    BuildManifest, BuildSession, BuildWorkspace, CompilationWorld, NamespaceNodeId,
+    BuildError, BuildManifest, BuildSession, BuildWorkspace, CompilationWorld, NamespaceNodeId,
     PackageBuildSpec, Provenance, SourceCategory, SourceRoot, StaticDependencySpec, SymbolKind,
     SymbolObject, SymbolPayload, TypeObject,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
 
+/// Temporary on-disk source tree for boundary-only tests.
+///
+/// `TempProject` is boundary-only. Ordinary successful build/discovery/early-meta
+/// tests must use committed fixtures under `tests/fixtures/workspaces/`. Use
+/// `TempProject` only for mutation/cache-invalidation, invalid-filesystem,
+/// invalid-bytes, malformed-source, or graph/model boundary tests.
 pub struct TempProject {
     root: PathBuf,
 }
@@ -34,7 +40,10 @@ impl TempProject {
         &self.root
     }
 
-    pub fn write(&self, relative: &str, source: &str) {
+    /// Writes a temp source file for boundary/mutation tests only. Do not use for
+    /// ordinary build success-path or static malformed-source tests; use committed
+    /// fixtures under `tests/fixtures/workspaces/`.
+    pub fn write_boundary_source(&self, relative: &str, source: &str) {
         let path = self.root.join(relative);
         fs::create_dir_all(path.parent().expect("fixture parent")).expect("create fixture dirs");
         fs::write(path, source).expect("write fixture");
@@ -53,7 +62,11 @@ impl Drop for TempProject {
     }
 }
 
-pub fn app_manifest(source_root: &Path) -> BuildManifest {
+/// Boundary-only manifest pointing at a temp source root. Use only for
+/// invalid-filesystem boundary tests (missing root / root-is-file / non-UTF-8).
+/// Ordinary and static malformed-source tests must use committed fixtures via
+/// `fixture_manifest` / `build_fixture_error`.
+pub fn boundary_app_manifest(source_root: &Path) -> BuildManifest {
     BuildManifest::single_source_root("app", vec!["app".to_string()], source_root)
 }
 
@@ -162,6 +175,15 @@ pub fn build_single_fixture_world(workspace: &str, package: &str) -> Compilation
         .next()
         .expect("one fixture artifact")
         .world
+}
+
+/// Build a single-package committed fixture workspace that is expected to FAIL,
+/// returning the resulting `BuildError`. Used by malformed-source /
+/// diagnostic-boundary fixture tests whose source trees intentionally do not
+/// build.
+pub fn build_fixture_error(workspace: &str, package: &str) -> BuildError {
+    CompilationWorld::from_manifest(&fixture_manifest(workspace, package))
+        .expect_err("fixture workspace should fail to build")
 }
 
 /// Copy a committed fixture workspace into a fresh temp directory so mutation /

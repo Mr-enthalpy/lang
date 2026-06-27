@@ -1,0 +1,1 @@
+let MyType = 1; let T: type = (MyType a) |> struct
