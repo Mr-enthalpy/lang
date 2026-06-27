@@ -8,11 +8,13 @@ pub mod core;
 pub mod discovery;
 pub mod fingerprint;
 pub mod graph;
+pub mod identity;
 pub mod manifest;
 pub mod meta;
+pub mod meta_candidate;
 pub mod model;
+pub mod product_shape;
 pub mod source;
-pub mod v08;
 pub mod verify;
 pub mod world;
 
@@ -31,8 +33,18 @@ pub use graph::{
     BuildError, NamespaceGraphCapability, NamespaceGraphSnapshot, NamespaceInstallError,
     ResolveExpectation, ResolverContext,
 };
+pub use identity::{
+    AliasChain, AliasCycleDetectionState, AliasQueryDisposition, AliasQueryMode,
+    AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
+};
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::MetaExpansionResult;
+pub use meta_candidate::{
+    prepare_meta_callable_candidate, CallableCandidateKind, CandidateBuildIdentityPlaceholder,
+    CandidatePolicyPlanes, CandidatePrepDeferredReason, CandidatePrepResult,
+    CandidatePreparationContext, CanonicalMetaInstanceKeySeed, ParameterShape,
+    PreparedCallableCandidate,
+};
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
     policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
@@ -43,15 +55,11 @@ pub use model::{
     SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject,
     SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive, VisibilityMetadata,
 };
-pub use source::SourceFragment;
-pub use v08::{
-    prepare_meta_callable_candidate, AliasChain, AliasCycleDetectionState, AliasQueryDisposition,
-    AliasQueryMode, AliasWritableBoundary, ArgProductShape, CallableCandidateKind,
-    CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes, CandidatePrepDeferredReason,
-    CandidatePrepResult, CandidatePreparationContext, CanonicalMetaInstanceKeySeed,
-    ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject, NonValueArgKind,
-    ParameterShape, PlaceId, PreparedCallableCandidate, ProductAtom, ProductMaterialRole,
-    ProductObject, RawArgShape, RawArgValueClass, TypeValueBindingPlaceholder, TypeValueId,
+pub use product_shape::{
+    ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
+    NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,
+    RawArgValueClass,
 };
+pub use source::SourceFragment;
 pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;

@@ -1,25 +1,25 @@
 mod support;
 
+use std::fs;
+
 use support::*;
 
 use lang_build::{
-    policy_metadata, policy_set_meta_runtime, policy_set_runtime, prepare_meta_callable_candidate,
-    AliasChain, AliasQueryDisposition, AliasQueryMode, CallablePolicyMetadata,
+    prepare_meta_callable_candidate, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CompilationWorld, ExecutionEnv, FieldObject, FieldProjection,
-    NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv,
-    PolicyFlag, Provenance, RawArgValueClass, SourceCategory, SymbolId, SymbolKind, SymbolObject,
-    SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
+    CandidatePreparationContext, CompilationWorld, ExecutionEnv, NamespaceGraphSnapshot,
+    NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag, Provenance,
+    RawArgValueClass, SourceCategory, SymbolId, TypeValueBindingPlaceholder, TypeValueId,
 };
-use lang_syntax::{NormExpr, NormOrigin, NormProduct, NormProductElem, Span};
+use lang_syntax::{NormDecl, NormExpr, NormForm, NormProduct};
 
 #[test]
-fn type_value_binding_keeps_symbol_place_and_type_value_distinct() {
+fn type_value_binding_placeholder_object_boundary_keeps_symbol_place_and_type_value_distinct() {
     let binding = TypeValueBindingPlaceholder::new(
         SymbolId(1),
         PlaceId(10),
         TypeValueId(20),
-        Provenance::new("let T: type = uint8 placeholder"),
+        Provenance::new("type-value binding placeholder object boundary"),
     );
 
     assert_eq!(binding.symbol, SymbolId(1));
@@ -33,11 +33,11 @@ fn type_value_binding_keeps_symbol_place_and_type_value_distinct() {
 }
 
 #[test]
-fn alias_chain_forwards_without_creating_a_fresh_writable_place() {
+fn alias_chain_placeholder_object_boundary_distinguishes_query_modes() {
     let alias = AliasChain::new(
         SymbolId(2),
         SymbolId(3),
-        Provenance::new("let T === uint8 placeholder"),
+        Provenance::new("alias chain placeholder object boundary"),
     );
 
     assert_eq!(alias.source_symbol, SymbolId(2));
@@ -59,29 +59,29 @@ fn alias_chain_forwards_without_creating_a_fresh_writable_place() {
 }
 
 #[test]
-fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_source_fixture() {
+    let world = v08_candidate_world();
     let callee = world
         .snapshot()
         .capability()
         .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
         .expect("core struct resolves through namespace graph as SymbolObject");
 
-    let arg_shape = one_expression_arg_shape();
+    let arg_shape = candidate_fixture_arg_shape();
     let result = prepare_meta_callable_candidate(
         &callee,
         arg_shape,
-        ParameterShape::exact_arity(1, Provenance::new("single type constructor parameter")),
+        ParameterShape::exact_arity(1, Provenance::new("struct source product placeholder")),
         CandidatePreparationContext {
             lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
             build_identity: CandidateBuildIdentityPlaceholder {
                 package_identity_fragment: Some("package:app".to_string()),
                 mount_identity_fragment: Some("mount:core".to_string()),
-                build_config_fingerprint_fragment: Some("build:debug-test".to_string()),
+                build_config_fingerprint_fragment: Some("build:fixture".to_string()),
                 policy_export_fingerprint_fragment: Some("policy:export-meta".to_string()),
             },
-            provenance: Provenance::new("v0.8 candidate preparation"),
+            provenance: Provenance::new("v0.8 source-fixture candidate preparation"),
         },
     );
 
@@ -95,9 +95,10 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
         candidate.arg_product_shape.raw_args[0].value_class,
         RawArgValueClass::UnknownExpression
     ));
-    // Candidate-prep must not insert pass actions before value/type/rank/meta/
-    // pattern classification; UnknownExpression may become a value later.
-    assert!(!candidate.arg_product_shape.raw_args[0].receives_automatic_pass_action());
+    assert!(
+        !candidate.arg_product_shape.raw_args[0].receives_automatic_pass_action(),
+        "UnknownExpression does not receive automatic pass action at candidate-prep boundary"
+    );
     assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::Meta);
     assert_eq!(
         candidate.policy_planes.symbol_visibility_policy,
@@ -159,7 +160,7 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
             .canonical_key_seed
             .build_config_fingerprint_fragment
             .as_deref(),
-        Some("build:debug-test")
+        Some("build:fixture")
     );
     assert_eq!(
         candidate
@@ -171,17 +172,22 @@ fn candidate_prep_requires_graph_resolved_symbolobject_and_arg_product_shape() {
 }
 
 #[test]
-fn symbol_visibility_does_not_imply_body_entry_or_return_object_policy() {
-    let field_symbol = runtime_only_field_function_symbol();
+fn generated_field_function_from_source_fixture_keeps_policy_planes_separate() {
+    let world = v08_candidate_world();
+    let field_symbol = world
+        .snapshot()
+        .capability()
+        .resolve_field_function("field::ref::T", &world.package_context())
+        .expect("generated ref field function resolves through namespace graph");
     let result = prepare_meta_callable_candidate(
         &field_symbol,
-        one_expression_arg_shape(),
+        candidate_fixture_arg_shape(),
         ParameterShape::exact_arity(1, Provenance::new("field parameter placeholder")),
         CandidatePreparationContext {
             lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
-            provenance: Provenance::new("meta-visible runtime-body field function"),
+            provenance: Provenance::new("source-fixture generated field function"),
         },
     );
 
@@ -211,33 +217,25 @@ fn symbol_visibility_does_not_imply_body_entry_or_return_object_policy() {
 }
 
 #[test]
-fn canonical_key_seed_reserves_canonical_argument_product_slots() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let callee = world
-        .snapshot()
-        .capability()
-        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
-        .expect("core struct resolves through namespace graph as SymbolObject");
-    let product = NormProduct {
-        elements: vec![
-            NormProductElem::Expr(NormExpr::Name {
-                text: "T".to_string(),
-                origin: origin(1),
-            }),
-            NormProductElem::Unit { origin: origin(2) },
-        ],
-        origin: origin(3),
-    };
+fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixture() {
+    let product =
+        product_fixture_call_source("product_unit_preservation.lang", "v08 canonical product");
     let arg_shape = lang_build::ProductObject::from_norm_product(
         product,
         lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
     )
     .to_arg_product_shape();
+    let world = v08_candidate_world();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .expect("core struct resolves through namespace graph as SymbolObject");
 
     let CandidatePrepResult::ApplicablePlaceholder(candidate) = prepare_meta_callable_candidate(
         &callee,
         arg_shape,
-        ParameterShape::exact_arity(2, Provenance::new("unit-sensitive parameter placeholder")),
+        ParameterShape::exact_arity(3, Provenance::new("unit-sensitive parameter placeholder")),
         CandidatePreparationContext {
             lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
@@ -263,7 +261,7 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots() {
 }
 
 #[test]
-fn failed_v08_generated_delta_installs_no_partial_subtree() {
+fn namespace_delta_atomicity_object_boundary_rejects_partial_generated_subtree() {
     let snapshot = NamespaceGraphSnapshot::new();
     let root = snapshot.root_node();
     let mut base = snapshot.empty_delta();
@@ -313,45 +311,49 @@ fn failed_v08_generated_delta_installs_no_partial_subtree() {
     );
 }
 
-fn one_expression_arg_shape() -> lang_build::ArgProductShape {
-    let product = NormProduct {
-        elements: vec![NormProductElem::Expr(NormExpr::Name {
-            text: "T".to_string(),
-            origin: origin(1),
-        })],
-        origin: origin(2),
-    };
+fn v08_candidate_world() -> CompilationWorld {
+    build_single_fixture_world("v08_candidate", "app")
+}
+
+fn candidate_fixture_arg_shape() -> lang_build::ArgProductShape {
     lang_build::ProductObject::from_norm_product(
-        product,
+        candidate_fixture_call_source(),
         lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
     )
     .to_arg_product_shape()
 }
 
-fn runtime_only_field_function_symbol() -> SymbolObject {
-    let mut symbol = SymbolObject::placeholder(
-        SymbolId(100),
-        "field",
-        SymbolKind::FieldFunction,
-        SourceCategory::GeneratedChild,
-        None,
-        Provenance::new("meta-visible runtime-body field function"),
+fn candidate_fixture_call_source() -> NormProduct {
+    let path = fixture_source_root("v08_candidate", "app").join("main.lang");
+    let source = fs::read_to_string(path).expect("read v0.8 candidate fixture");
+    let parsed = lang_syntax::parse(&source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "unexpected parse diagnostics:\n{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
     );
-    symbol.policy_metadata.policy_set = policy_set_meta_runtime();
-    symbol.payload = SymbolPayload::FieldFunction(FieldObject {
-        owner_type_symbol_id: SymbolId(101),
-        field_name: "field".to_string(),
-        field_type_symbol_id: SymbolId(102),
-        projection: FieldProjection::Ref,
-        callable_policy: CallablePolicyMetadata {
-            body_entry_policy: policy_metadata(policy_set_runtime()),
-            return_object_policy: policy_metadata(policy_set_runtime()),
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    match normalized.forms.as_slice() {
+        [NormForm::Let(NormDecl::Let { slot, .. })] => match slot.initializer.as_deref() {
+            Some(NormExpr::Call { source, .. }) => source.clone(),
+            other => panic!("expected candidate fixture initializer call, got {other:#?}"),
         },
-        provenance: Provenance::new("field callable payload"),
-    });
-    symbol
+        other => panic!("expected one let declaration in candidate fixture, got {other:#?}"),
+    }
 }
 
-fn origin(index: usize) -> NormOrigin {
-    NormOrigin::Source(Span::new(index, index + 1, 1, index + 1))
+fn product_fixture_call_source(name: &str, provenance: &str) -> NormProduct {
+    let path = fixture_root().join("v08").join(name);
+    let source = fs::read_to_string(path).expect("read v0.8 product fixture");
+    let parsed = lang_syntax::parse(&source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "unexpected parse diagnostics:\n{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
+    );
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    match normalized.forms.as_slice() {
+        [NormForm::Expr(NormExpr::Call { source, .. })] => source.clone(),
+        other => panic!("expected one normalized call expression for {provenance}, got {other:#?}"),
+    }
 }
