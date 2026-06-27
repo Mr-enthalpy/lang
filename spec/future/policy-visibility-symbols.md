@@ -166,6 +166,10 @@ execute the field function body while acting in a meta execution environment,
 because the body-entry policy is runtime-only. This is ordinary compiler
 reasoning over symbol objects, not reflection.
 
+For the future invocation pipeline that uses these policy planes to perform
+partial or strict meta reduction, see
+`meta-object-invocation-and-policy-reduction.md`.
+
 ## 4. Context Policy and Import Rule
 
 Every context carries a **current policy**.

@@ -18,6 +18,14 @@ It builds on, and does not replace, the build/package architecture in
 semantics remain a separate track in
 `spec/future/static-pattern-spaces-and-extraction-chains.md`.
 
+This document records the **current** build / namespace graph / early-meta
+bootstrap track (v0.6–v0.8) and its narrow implemented slice. The **future**
+unified invocation semantics — one policy-governed callable-invocation model
+covering ordinary functions, meta functions, verification, control predicates,
+operators, and type constructors, together with partial/strict meta reduction
+and residualization — are specified in
+`spec/future/meta-object-invocation-and-policy-reduction.md`.
+
 ## v0.7 implementation additions
 
 v0.7 introduces early policy-aware resolution with three policy flags:
