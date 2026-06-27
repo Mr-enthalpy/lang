@@ -227,6 +227,13 @@ IR. They carry only as much information as the candidate-preparation layer can
 establish statically; they do not assert a completed type check, and they are
 not a lowering target.
 
+The `pass expectation` on a `ParameterShape` and the `explicit pass mode` /
+`is value?` facts on a `RawArgShape` are consumed by the mechanical
+argument-passing layer, which inserts a concrete pass action (move/ref/share/copy)
+after or within candidate adaptation. Pass matching is separate from type
+matching: pass mode is not part of `TypeValueId`. See
+`spec/future/mechanical-argument-passing-and-move-fixed-point.md`.
+
 ## 7. Applicability judgment
 
 Candidate applicability is expressed as a small judgment over shapes:
@@ -348,3 +355,6 @@ them for its definitions.
   type-value, place, and symbol identity mean.
 - `type-associated-function-objects-and-access-trees.md` — background for
   type-associated function objects, field functions, and access-tree work.
+- `mechanical-argument-passing-and-move-fixed-point.md` — the mechanical
+  argument-passing layer that consumes `RawArgShape` / `ParameterShape` pass
+  expectations and inserts concrete pass actions (`move` as the fixed point).

@@ -478,6 +478,7 @@ declaration-order fallback
 |---|---|
 | `static-pattern-spaces-and-extraction-chains.md` §12 | Summary overview of overload resolution; this document is the formal specification |
 | `pattern-normalization-and-first-order-overload.md` | Earlier, narrower candidate-preparation subset (pattern normalization + first-order type-value candidate model) feeding meta object invocation; not full runtime overload resolution |
+| `mechanical-argument-passing-and-move-fixed-point.md` | Pass-mode adaptation (move/ref/share/copy/in) is separate from type/rank compatibility; `move` does not create a new type value |
 | `policy-visibility-symbols.md` §12.1 | Policy-filtered namespace lookup feeds overload set construction |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph provides the `RawChildren` (C0) layer |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |

@@ -32,6 +32,12 @@ val share.field1.field2
 
 This document does not specify evaluation or lowering for those forms.
 
+Automatic `ref` / `share` argument passing constructs a borrow object and moves
+the borrow handle. Moving a borrow handle keeps the same parent/origin and does
+not deepen the access tree, so access-tree depth does not grow through argument
+passing. The mechanical pass-insertion semantics are specified in
+`spec/future/mechanical-argument-passing-and-move-fixed-point.md`.
+
 ## Role-Aware Namespace Lookup
 
 `ref` and `share` are namespace subspaces. Field functions are object-role
