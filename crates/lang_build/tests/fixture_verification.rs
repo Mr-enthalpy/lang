@@ -116,6 +116,11 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     ("diagnostic_conflict", "app", "conflict"),
     ("diagnostic_descendant", "app", "parent-to-descendant"),
     ("duplicate_declaration", "app", "conflict"),
+    (
+        "v08_identity_type_notype",
+        "app",
+        "could not be resolved as a type object",
+    ),
 ];
 
 #[test]

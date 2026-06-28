@@ -5,9 +5,13 @@ use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, Nor
 use crate::{
     call_target::{resolve_call_target, ResolvedCallTarget},
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
+    identity::TypeValueId,
     meta_candidate::{
         prepare_meta_callable_candidate_from_input, CandidateBuildIdentityPlaceholder,
         CandidatePreparationContext, CandidatePreparationInput, ParameterShape,
+    },
+    meta_invocation::{
+        invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
     },
     model::{
         CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
@@ -18,7 +22,7 @@ use crate::{
     normalized_call::{extract_single_call_site, NormalizedCallSite},
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
     product_shape::ProductMaterialRole,
-    type_argument::classify_type_arguments,
+    type_argument::classify_type_arguments_with_report,
 };
 
 /// Result of a successful early meta expansion.
@@ -549,13 +553,13 @@ fn expand_identity_type_meta(
         site.source_product_object(ProductMaterialRole::MetaConstructionArgumentProduct);
     let shape = product_obj.to_arg_product_shape();
 
-    // --- Substrate stage 2: classify type arguments ---
-    let classified = classify_type_arguments(&shape, &snapshot.capability(), context);
+    // --- Substrate stage 2: classify type arguments (with report) ---
+    let report = classify_type_arguments_with_report(&shape, &snapshot.capability(), context);
 
     // --- Substrate stage 3: candidate preparation ---
     let input = CandidatePreparationInput::new(
         resolved.callee.clone(),
-        classified,
+        report.classified_shape.clone(),
         ParameterShape::type_parameter_signature(Provenance::new(
             "IdentityType : type -> type signature",
         )),
@@ -578,29 +582,65 @@ fn expand_identity_type_meta(
             )));
         }
         crate::meta_candidate::CandidatePrepResult::Diagnostic(d) => {
+            // Enrich diagnostic if unresolved type names are available
+            if !report.unresolved_names.is_empty() {
+                let names = report.unresolved_names.join(", ");
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    format!(
+                        "meta hard error: IdentityType argument `{names}` could not be resolved as a type object"
+                    ),
+                    Some(provenance.clone()),
+                )));
+            }
             return Err(BuildError::single(d));
         }
     };
 
-    // --- Primitive reduction (no NamespaceDelta) ---
-    let type_value_id = candidate
-        .canonical_key_seed
-        .argument_product_shape_material
-        .known_type_values
-        .get(0)
-        .and_then(|tv| *tv)
-        .ok_or_else(|| {
-            BuildError::single(Diagnostic::hard_error(
-                "meta hard error: IdentityType argument must be a classified type object with a TypeValueId",
-                Some(provenance.clone()),
-            ))
-        })?;
+    // --- Stage 4: formal meta invocation (pure reduction) ---
+    let invocation_input = MetaInvocationInput::new(
+        *candidate,
+        CoreMetaFunction::IdentityType,
+        provenance.clone(),
+    );
 
+    let type_value_id = match invoke_meta_callable(invocation_input) {
+        MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv)) => tv,
+        MetaInvocationResult::Diagnostic(d) => {
+            return Err(BuildError::single(d));
+        }
+    };
+
+    // --- Stage 5: declaration binding (where NamespaceDelta is installed) ---
+    bind_meta_type_value_result(
+        type_value_id,
+        snapshot,
+        parent_namespace,
+        binding_name,
+        provenance,
+    )
+}
+
+/// Bind a meta invocation result `TypeValueId` into a declaration expansion.
+///
+/// Looks up the corresponding type symbol from the snapshot, constructs a
+/// declared type symbol under `binding_name`, and returns a
+/// `MetaExpansionResult` containing the `NamespaceDelta`.
+///
+/// This is the **declaration binding** layer — it is separate from formal
+/// meta invocation. `MetaReductionResult` itself does not install symbols
+/// or `NamespaceDelta`.
+pub fn bind_meta_type_value_result(
+    type_value_id: TypeValueId,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    provenance: Provenance,
+) -> Result<MetaExpansionResult, BuildError> {
     let type_symbol_id = SymbolId(type_value_id.0);
     let type_symbol = snapshot.symbol(type_symbol_id).ok_or_else(|| {
         BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: IdentityType argument TypeValueId({}) does not correspond to a known symbol",
+                "meta hard error: TypeValueId({}) does not correspond to a known symbol",
                 type_value_id.0
             ),
             Some(provenance.clone()),
@@ -610,14 +650,13 @@ fn expand_identity_type_meta(
     let SymbolPayload::Type(type_obj) = &type_symbol.payload else {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: IdentityType argument symbol `{}` does not have a Type payload",
+                "meta hard error: symbol `{}` does not have a Type payload",
                 type_symbol.name
             ),
             Some(type_symbol.provenance.clone()),
         )));
     };
 
-    // --- Declaration binding (where NamespaceDelta is installed) ---
     let mut delta = snapshot.empty_delta();
     let declared_id = delta.allocate_symbol_id();
     let declared_symbol = SymbolObject {
@@ -656,6 +695,6 @@ fn expand_identity_type_meta(
         replacement_object: type_symbol.clone(),
         namespace_delta: delta,
         diagnostics: Vec::new(),
-        provenance: Provenance::new(format!("IdentityType expansion for `{binding_name}`")),
+        provenance,
     })
 }
