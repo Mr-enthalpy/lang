@@ -18,7 +18,31 @@ t      = the returned value
 t?     = the extraction-facing view of the returned value
 ```
 
-`?` does not inspect call history. It exposes the returned value's declared extraction interface.
+`?` requests the extraction-facing view of a value. It is **not** "decompose"
+— decomposition is only a consequence when the extraction view is a product,
+named product, or sum branch. The base rules are:
+
+```text
+leaf?   -> leaf          (idempotent on leaf extraction views)
+P?      -> split(P)      (expose product)
+C(P)?   -> extraction_view_C(C(P))  (constructor's declared extraction interface)
+```
+
+`?` must not be understood as generic tuple unpacking, generic type-function
+inversion, or call-history inspection.
+
+A leaf is any value whose current extraction interface does not permit further
+decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std`
+are all leaves in ordinary value context. Thus:
+
+```text
+(int Vec::std)? == int Vec::std
+```
+
+This is not a claim that `Vec::std` has no argument — it is the statement that
+`(int)Vec::std` carries no product extraction interface in ordinary value
+context. Extraction of the type parameter requires an explicit rank-pattern
+context.
 
 ## 1. Single-return value
 
@@ -39,6 +63,16 @@ If `single_return` returns a single expression value, then the trivial extractio
 ```text
 t? == t
 ```
+
+This idempotence also holds for constructor-shaped values that do not expose
+a product extraction interface:
+
+```text
+(int Vec::std)? == int Vec::std
+```
+
+`(int)Vec::std` is a single return value — not a product — so `?` acts as
+the identity on its leaf extraction view.
 
 Therefore:
 
@@ -158,7 +192,9 @@ ordinary expression evaluation never inserts `?`
 
 ## 4. Named extraction is not bare product extraction
 
-A struct value does not extract to a bare product unless its extraction interface declares a bare product.
+For a constructor-shaped value, `?` uses the constructor's declared extraction
+interface. A struct value does not extract to a bare product unless its
+extraction interface declares a bare product.
 
 Given:
 
@@ -271,7 +307,10 @@ value equality:
   never calls constructors
 
 extraction view:
-  v? exposes v's extraction-facing pattern space
+  v? enters v's extraction-facing view
+  leaf? → leaf (idempotent)
+  P? → product
+  C(P)? → via constructor's declared extraction interface
   may preserve labels / field names / constructor-specific pattern structure
 
 binding decomposition:
