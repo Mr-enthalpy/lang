@@ -42,7 +42,7 @@ reading order is:
 ```text
 1. v0.8-semantic-spine.md — positive semantic model
 2. return-value-extraction-and-implicit-decomposition.md — extraction view
-3. v0.8-meta-construction-value-pattern-clarifications.md — construction values
+3. v0.8-symbolic-construction-values-and-extraction-interfaces.md — construction values
 4. meta-object-invocation-and-policy-reduction.md — invocation + policy
 5. v0.8-meta-construction-agent-constraints.md — implementation guardrails
 ```
