@@ -46,7 +46,10 @@ pub use identity::{
     AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
-pub use meta::{bind_meta_type_value_result, MetaExpansionResult};
+pub use meta::{
+    bind_meta_invocation_value_result, legacy_bind_forwarded_type_value_projection,
+    MetaExpansionResult,
+};
 pub use meta_cache::{CachedMetaInstance, MetaInstanceCache};
 pub use meta_candidate::{
     prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
@@ -58,7 +61,7 @@ pub use meta_candidate::{
 };
 pub use meta_invocation::{
     invoke_meta_callable, invoke_meta_callable_cached, ForwardedValue, GeneratedConstructionValue,
-    MetaInvocationInput, MetaInvocationResult, MetaInvocationValue, MetaReductionResult,
+    MetaInvocationInput, MetaInvocationResult, MetaInvocationValue, MetaValueTarget,
     ReturnViewShape,
 };
 pub use meta_key::{compute_meta_instance_key, CanonicalFingerprint, MetaInstanceKey};

@@ -3,18 +3,19 @@ mod support;
 use support::*;
 
 use lang_build::{
-    bind_meta_type_value_result, classify_type_arguments, classify_type_arguments_with_report,
-    extract_single_call_site, invoke_meta_callable, invoke_meta_callable_cached,
+    bind_meta_invocation_value_result, classify_type_arguments,
+    classify_type_arguments_with_report, extract_single_call_site, invoke_meta_callable,
+    invoke_meta_callable_cached, legacy_bind_forwarded_type_value_projection,
     prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
     resolve_call_target, type_value_id_from_type_symbol_placeholder, AliasChain,
     AliasQueryDisposition, AliasQueryMode, CandidateBuildIdentityPlaceholder,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
     CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FieldProjection,
     MetaInstanceCache, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
-    NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape,
-    PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass,
-    ReturnViewShape, SourceCategory, SymbolId, SymbolPayload, TypeValueBindingPlaceholder,
-    TypeValueId,
+    MetaValueTarget, NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, NonValueArgKind,
+    ParameterShape, PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance,
+    RawArgValueClass, ReturnViewShape, SourceCategory, SymbolId, SymbolPayload,
+    TypeValueBindingPlaceholder, TypeValueId,
 };
 
 #[test]
@@ -593,7 +594,7 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
 }
 
 #[test]
-fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture() {
+fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixture() {
     let world = v08_identity_type_world();
     let expr = parse_and_normalize_fixture_let_initializer(
         fixture_source_root("v08_identity_type", "app").join("main.lang"),
@@ -638,7 +639,8 @@ fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture()
         panic!("invoke_meta_callable should yield ForwardedValue");
     };
     assert_eq!(fv.return_view, ReturnViewShape::Leaf);
-    assert!(fv.target.0 != 0, "ForwardedValue target must be non-zero");
+    let MetaValueTarget::TypeValueProjection(fv_tv) = fv.target;
+    assert!(fv_tv.0 != 0, "ForwardedValue target must be non-zero");
     // Verify fv.target matches what the classifier assigned
     let expected_tv = TypeValueId(
         world
@@ -650,7 +652,7 @@ fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture()
             .0,
     );
     assert_eq!(
-        fv.target, expected_tv,
+        fv_tv, expected_tv,
         "ForwardedValue target must match uint8 TypeValueId"
     );
 }
@@ -665,14 +667,14 @@ fn identity_type_declaration_binding_installs_declared_type_after_invocation() {
         .expect("uint8 resolves as type object");
     let tv = type_value_id_from_type_symbol_placeholder(uint8.id);
 
-    let result = bind_meta_type_value_result(
+    let result = legacy_bind_forwarded_type_value_projection(
         tv,
         world.snapshot(),
         world.package_root_node(),
         "T",
         Provenance::new("binding test"),
     )
-    .expect("bind_meta_type_value_result should succeed");
+    .expect("legacy_bind_forwarded_type_value_projection should succeed");
     assert!(
         !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
         "declaration binding must install a NamespaceDelta"
@@ -710,7 +712,7 @@ fn type_value_id_placeholder_bridge_is_explicit_object_boundary() {
 }
 
 #[test]
-fn meta_instance_cache_reuses_identity_type_reduction() {
+fn meta_instance_cache_reuses_identity_type_invocation_value() {
     let world = v08_identity_type_world();
     let expr = parse_and_normalize_fixture_let_initializer(
         fixture_source_root("v08_identity_type", "app").join("main.lang"),
@@ -792,4 +794,73 @@ fn meta_instance_cache_reuses_identity_type_reduction() {
         "cache-hit result must match original"
     );
     assert_eq!(cache.len(), 1, "cache should not grow on hit");
+}
+
+#[test]
+fn binding_layer_consumes_forwarded_invocation_value_via_legacy_type_projection() {
+    let world = v08_identity_type_world();
+    let uint8_id = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint8", &world.package_context())
+        .expect("uint8 resolves")
+        .id;
+    let tv = type_value_id_from_type_symbol_placeholder(uint8_id);
+
+    let fv = lang_build::MetaInvocationValue::ForwardedValue(lang_build::ForwardedValue {
+        target: MetaValueTarget::TypeValueProjection(tv),
+        return_view: ReturnViewShape::Leaf,
+        provenance: Provenance::new("binding test"),
+    });
+
+    let result = bind_meta_invocation_value_result(
+        fv,
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        Provenance::new("binding via ForwardedValue"),
+    )
+    .expect(
+        "bind_meta_invocation_value_result should succeed for ForwardedValue(TypeValueProjection)",
+    );
+
+    assert!(
+        !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
+        "binding must install a NamespaceDelta"
+    );
+}
+
+#[test]
+fn generated_construction_value_binding_is_explicitly_unsupported_not_typevalue_fallback() {
+    let world = v08_identity_type_world();
+
+    let gcv = lang_build::MetaInvocationValue::GeneratedConstructionValue(
+        lang_build::GeneratedConstructionValue {
+            callee_symbol_id: SymbolId(99),
+            canonical_args: lang_build::CanonicalArgProductShapeMaterial {
+                arity: 1,
+                unit_positions: vec![],
+                atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
+                known_type_values: vec![Some(TypeValueId(1))],
+            },
+            return_view: ReturnViewShape::Leaf,
+            provenance: Provenance::new("test gcv"),
+        },
+    );
+
+    let err = bind_meta_invocation_value_result(
+        gcv,
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        Provenance::new("should not bind GCV"),
+    )
+    .expect_err("GeneratedConstructionValue binding must be unsupported, not succeed");
+
+    assert!(
+        err.diagnostics
+            .iter()
+            .any(|d| d.message.contains("not yet supported")),
+        "GCV binding diagnostic must explain it is not yet supported"
+    );
 }
