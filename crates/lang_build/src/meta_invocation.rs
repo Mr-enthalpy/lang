@@ -106,8 +106,6 @@ pub struct ForwardedValue {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedConstructionValue {
     pub construction_instance_id: ConstructionInstanceId,
-    pub callee_symbol_id: SymbolId,
-    pub canonical_args: CanonicalArgProductShapeMaterial,
     pub identity_material: ConstructionIdentityMaterial,
     pub return_view: ReturnViewShape,
     pub provenance: Provenance,
@@ -163,6 +161,10 @@ pub fn compute_construction_instance_id(
     h.write_str_field("v08:construction");
     h.write_field(&material.callee_symbol_id.0.to_le_bytes());
     h.write_field(&(material.canonical_args.arity as u64).to_le_bytes());
+    h.write_field(&(material.canonical_args.unit_positions.len() as u64).to_le_bytes());
+    for pos in &material.canonical_args.unit_positions {
+        h.write_field(&(*pos as u64).to_le_bytes());
+    }
     for kind in &material.canonical_args.atom_kinds {
         h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
     }
@@ -186,7 +188,9 @@ pub fn compute_construction_instance_id(
     if let Some(ref s) = material.policy_export_fingerprint_fragment {
         h.write_str_field(s);
     }
-    ConstructionInstanceId(u64::from_str_radix(&h.finish_hex(), 16).unwrap_or(0))
+    let raw = u64::from_str_radix(&h.finish_hex(), 16)
+        .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
+    ConstructionInstanceId(raw)
 }
 
 /// Return value shape — whether the invocation value exposes a leaf or product
@@ -364,8 +368,6 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvoc
     MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(
         GeneratedConstructionValue {
             construction_instance_id,
-            callee_symbol_id: candidate.callee_symbol_id,
-            canonical_args: mat.clone(),
             identity_material,
             return_view: ReturnViewShape::Leaf,
             provenance: input.provenance.clone(),

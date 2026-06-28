@@ -836,19 +836,12 @@ fn binding_layer_consumes_forwarded_invocation_value_via_legacy_type_projection(
 }
 
 #[test]
-fn generated_construction_value_binding_is_explicitly_unsupported_not_typevalue_fallback() {
+fn generated_construction_value_binding_materializes_without_typevalue_fallback() {
     let world = v08_identity_type_world();
 
     let gcv = lang_build::MetaInvocationValue::GeneratedConstructionValue(
         lang_build::GeneratedConstructionValue {
             construction_instance_id: lang_build::ConstructionInstanceId(99),
-            callee_symbol_id: SymbolId(99),
-            canonical_args: lang_build::CanonicalArgProductShapeMaterial {
-                arity: 1,
-                unit_positions: vec![],
-                atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
-                known_type_values: vec![Some(TypeValueId(1))],
-            },
             identity_material: lang_build::ConstructionIdentityMaterial {
                 callee_symbol_id: SymbolId(99),
                 canonical_args: lang_build::CanonicalArgProductShapeMaterial {
@@ -1147,39 +1140,42 @@ fn generated_construction_identity_changes_with_canonical_args() {
     let gcv_uint8 = produce_gcv(&callee, classified_uint8);
     let cid_uint8 = gcv_uint8.construction_instance_id;
 
-    // Produce a second GCV with different canonical material (known_type_values differ)
-    let seed = lang_build::CanonicalMetaInstanceKeySeed {
-        callee_function_symbol_id: callee.id,
-        argument_product_shape_fingerprint_fragment: None,
-        argument_product_shape_material: lang_build::CanonicalArgProductShapeMaterial {
-            arity: 1,
-            unit_positions: vec![],
-            atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
-            known_type_values: vec![Some(TypeValueId(99))],
-        },
-        unit_positions: vec![],
-        argument_arity: 1,
-        argument_type_values: vec![Some(TypeValueId(99))],
-        package_identity_fragment: None,
-        mount_identity_fragment: None,
-        build_config_fingerprint_fragment: None,
-        policy_export_fingerprint_fragment: None,
-        provenance: Provenance::new("different args"),
-    };
-    let identity_material_diff = lang_build::ConstructionIdentityMaterial {
-        callee_symbol_id: callee.id,
-        canonical_args: seed.argument_product_shape_material.clone(),
-        return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
-        build_identity_fragment: None,
-        policy_export_fingerprint_fragment: None,
-        provenance: Provenance::new("different args"),
-    };
-    let cid_diff = lang_build::compute_construction_instance_id(&identity_material_diff);
+    // Produce a second GCV with a different real type argument (uint16).
+    let uint16 = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint16", &context)
+        .expect("uint16 resolves as type object");
+    let classified_uint16 = produce_classified_shape(
+        &uint16,
+        &world,
+        &context,
+        lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
+    );
+    let cid_uint16 = produce_gcv(&callee, classified_uint16).construction_instance_id;
 
     assert_ne!(
-        cid_uint8, cid_diff,
-        "different canonical args must produce different ConstructionInstanceId"
+        cid_uint8, cid_uint16,
+        "different canonical args (uint8 vs uint16) must produce different ConstructionInstanceId"
     );
+}
+
+fn produce_classified_shape(
+    type_symbol: &lang_build::SymbolObject,
+    _world: &lang_build::CompilationWorld,
+    _context: &lang_build::ResolverContext,
+    role: lang_build::ProductMaterialRole,
+) -> lang_build::ArgProductShape {
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(role);
+    let mut classified = shape.clone();
+    let type_value = type_value_id_from_type_symbol_placeholder(type_symbol.id);
+    for raw in &mut classified.raw_args {
+        if matches!(raw.value_class, RawArgValueClass::UnknownExpression) {
+            *raw = raw.clone().as_type_object_with_type_value(type_value);
+        }
+    }
+    classified
 }
 
 fn v08_identity_type_call_site() -> lang_build::NormalizedCallSite {
