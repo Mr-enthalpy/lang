@@ -3,14 +3,22 @@ use std::collections::BTreeSet;
 use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
 use crate::{
+    call_target::{resolve_call_target, ResolvedCallTarget},
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
-    model::{
-        CallablePolicyMetadata, CoreMetaFunction, Diagnostic, FieldObject, FieldProjection,
-        MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
-        PolicyEnv, Provenance, ResolverCode, SourceCategory, SymbolKind, SymbolObject,
-        SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+    meta_candidate::{
+        prepare_meta_callable_candidate_from_input, CandidateBuildIdentityPlaceholder,
+        CandidatePreparationContext, CandidatePreparationInput, ParameterShape,
     },
+    model::{
+        CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
+        FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
+        NamespaceNodeKind, PolicyEnv, Provenance, SourceCategory, SymbolId, SymbolKind,
+        SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+    },
+    normalized_call::{extract_single_call_site, NormalizedCallSite},
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
+    product_shape::ProductMaterialRole,
+    type_argument::classify_type_arguments,
 };
 
 /// Result of a successful early meta expansion.
@@ -30,47 +38,40 @@ pub fn try_expand_early_meta_initializer(
     context: &ResolverContext,
     provenance: Provenance,
 ) -> Result<Option<MetaExpansionResult>, BuildError> {
-    let NormExpr::Call { source, target, .. } = initializer else {
+    let site = match extract_single_call_site(initializer) {
+        Ok(site) => site,
+        Err(_) => return Ok(None),
+    };
+
+    let Some(resolved) = resolve_call_target(
+        &site.target,
+        &snapshot.capability(),
+        context,
+        PolicyEnv::Meta,
+    )
+    .map_err(BuildError::single)?
+    else {
         return Ok(None);
     };
 
-    let target_path = match expr_to_source_path(target) {
-        Some(path) => path,
-        None => return Ok(None),
-    };
-
-    let target_symbol = match snapshot.capability().resolve_meta_function_with_policy(
-        &target_path.join("::"),
-        context,
-        PolicyEnv::Meta,
-    ) {
-        Ok(symbol) => symbol,
-        Err(diagnostic) => match diagnostic.code {
-            Some(ResolverCode::Unresolved) | None => return Ok(None),
-            Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => {
-                return Err(BuildError::single(diagnostic))
-            }
-        },
-    };
-
-    let SymbolPayload::MetaFunction(meta_function) = &target_symbol.payload else {
-        if target_symbol.kind == SymbolKind::MetaFunction {
+    let SymbolPayload::MetaFunction(meta_function) = &resolved.callee.payload else {
+        if resolved.callee.kind == SymbolKind::MetaFunction {
             return Err(BuildError::single(Diagnostic::hard_error(
                 format!(
                     "meta hard error: `{}` has no meta-function payload",
-                    target_symbol.name
+                    resolved.callee.name
                 ),
-                Some(target_symbol.provenance),
+                Some(resolved.callee.provenance),
             )));
         }
         return Ok(None);
     };
 
     let syntax = SyntaxObject {
-        kind: SyntaxObjectKind::Product(source.clone()),
+        kind: SyntaxObjectKind::Product(site.source_product.clone()),
         provenance: Provenance::from_norm_origin(
             "closed early-meta source syntax",
-            product_origin(source),
+            product_origin(&site.source_product),
         ),
     };
 
@@ -94,10 +95,11 @@ pub fn try_expand_early_meta_initializer(
             Some(provenance),
         ))),
         CoreMetaFunction::IdentityType => expand_identity_type_meta(
+            &site,
+            &resolved,
             snapshot,
             parent_namespace,
             binding_name,
-            &syntax,
             context,
             provenance,
             meta_function,
@@ -512,94 +514,110 @@ fn product_origin(product: &NormProduct) -> &NormOrigin {
 
 /// Expand `IdentityType : type -> type`.
 ///
-/// Parses a single type-object argument from the source product, resolves it
-/// through the namespace graph, and binds the result as a declared type symbol
-/// with the argument's type identity.
+/// **Pipeline (v0.8 substrate)**:
 ///
-/// IdentityType installs a single declared type symbol (carrying the resolved
-/// argument's `TypeValueId`) but does **not** generate field projections or
-/// type-associated namespaces. The declared symbol's `TypeObject` payload
-/// reuses the argument type's `type_symbol_id` so `IdentityType(T)` has the
-/// same identity as `T`.
+/// ```text
+/// NormalizedCallSite.source_product
+///   → ProductObject
+///   → ArgProductShape
+///   → classify_type_arguments (resolves names as type objects)
+///   → CandidatePreparationInput
+///   → prepare_meta_callable_candidate_from_input
+///   → extract TypeValueId from canonical material
+/// ```
+///
+/// **Primitive reduction** (no `NamespaceDelta`):
+/// The single argument must be `NonValue(TypeObject)` carrying a `TypeValueId`.
+/// The primitive result is that same `TypeValueId`.
+///
+/// **Declaration binding** (where `NamespaceDelta` is installed):
+/// A declared type symbol is installed under `binding_name`, carrying the
+/// argument type's identity (`type_symbol_id`). No type-associated namespace
+/// or field projections are generated for `IdentityType`.
 fn expand_identity_type_meta(
+    site: &NormalizedCallSite,
+    resolved: &ResolvedCallTarget,
     snapshot: &NamespaceGraphSnapshot,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
-    syntax: &SyntaxObject,
     context: &ResolverContext,
-    _provenance: Provenance,
+    provenance: Provenance,
     _meta_function: &MetaFunctionObject,
 ) -> Result<MetaExpansionResult, BuildError> {
-    let SyntaxObjectKind::Product(product) = &syntax.kind;
+    // --- Substrate stage 1: source product → ArgProductShape ---
+    let product_obj =
+        site.source_product_object(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let shape = product_obj.to_arg_product_shape();
 
-    if product.elements.len() != 1 {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            format!(
-                "meta hard error: IdentityType requires exactly one type argument, got {}",
-                product.elements.len()
-            ),
-            Some(Provenance::from_norm_origin(
-                format!("IdentityType argument product for `{binding_name}`"),
-                &product.origin,
-            )),
-        )));
-    }
+    // --- Substrate stage 2: classify type arguments ---
+    let classified = classify_type_arguments(&shape, &snapshot.capability(), context);
 
-    let NormProductElem::Expr(type_expr) = &product.elements[0] else {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: IdentityType argument must be a type expression, not a Unit",
-            Some(Provenance::from_norm_origin(
-                format!("IdentityType Unit argument for `{binding_name}`"),
-                &product.origin,
-            )),
-        )));
-    };
+    // --- Substrate stage 3: candidate preparation ---
+    let input = CandidatePreparationInput::new(
+        resolved.callee.clone(),
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new(
+            "IdentityType : type -> type signature",
+        )),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: provenance.clone(),
+        },
+    );
 
-    let type_path = match expr_to_source_path(type_expr) {
-        Some(path) => path,
-        None => {
-            return Err(BuildError::single(Diagnostic::hard_error(
-                "meta hard error: IdentityType argument must be a name or navigation path",
-                Some(Provenance::from_norm_origin(
-                    format!("IdentityType non-name argument for `{binding_name}`"),
-                    expr_origin(type_expr),
-                )),
-            )));
-        }
-    };
-
-    let type_symbol = match snapshot.capability().resolve_type_object_with_policy(
-        &type_path.join("::"),
-        context,
-        PolicyEnv::Meta,
-    ) {
-        Ok(symbol) => symbol,
-        Err(diagnostic) => {
+    let candidate = match prepare_meta_callable_candidate_from_input(input) {
+        crate::meta_candidate::CandidatePrepResult::ApplicablePlaceholder(c) => c,
+        crate::meta_candidate::CandidatePrepResult::Deferred { reason, .. } => {
             return Err(BuildError::single(Diagnostic::hard_error(
                 format!(
-                    "meta hard error: IdentityType argument `{}` could not be resolved as a type object",
-                    type_path.join("::")
+                    "meta hard error: IdentityType candidate preparation deferred ({reason:?})"
                 ),
-                Some(diagnostic.provenance.clone().unwrap_or_else(|| {
-                    Provenance::new("IdentityType type argument resolution error")
-                })),
+                Some(provenance.clone()),
             )));
         }
+        crate::meta_candidate::CandidatePrepResult::Diagnostic(d) => {
+            return Err(BuildError::single(d));
+        }
     };
+
+    // --- Primitive reduction (no NamespaceDelta) ---
+    let type_value_id = candidate
+        .canonical_key_seed
+        .argument_product_shape_material
+        .known_type_values
+        .get(0)
+        .and_then(|tv| *tv)
+        .ok_or_else(|| {
+            BuildError::single(Diagnostic::hard_error(
+                "meta hard error: IdentityType argument must be a classified type object with a TypeValueId",
+                Some(provenance.clone()),
+            ))
+        })?;
+
+    let type_symbol_id = SymbolId(type_value_id.0);
+    let type_symbol = snapshot.symbol(type_symbol_id).ok_or_else(|| {
+        BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: IdentityType argument TypeValueId({}) does not correspond to a known symbol",
+                type_value_id.0
+            ),
+            Some(provenance.clone()),
+        ))
+    })?;
 
     let SymbolPayload::Type(type_obj) = &type_symbol.payload else {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
-                "meta hard error: IdentityType argument `{}` resolved but does not have a Type payload",
+                "meta hard error: IdentityType argument symbol `{}` does not have a Type payload",
                 type_symbol.name
             ),
             Some(type_symbol.provenance.clone()),
         )));
     };
 
-    // Install a declared type symbol for `binding_name` carrying the argument
-    // type's identity. No type-associated namespace or field projections are
-    // generated for IdentityType.
+    // --- Declaration binding (where NamespaceDelta is installed) ---
     let mut delta = snapshot.empty_delta();
     let declared_id = delta.allocate_symbol_id();
     let declared_symbol = SymbolObject {
@@ -625,7 +643,7 @@ fn expand_identity_type_meta(
             type_associated_namespace: type_obj.type_associated_namespace,
             provenance: Provenance::new(format!(
                 "identity type `{binding_name}` from argument `{}`",
-                type_path.join("::")
+                type_symbol.name
             )),
             generation_origin: Some("core::IdentityType identity".to_string()),
             layout_slot: type_obj.layout_slot.clone(),
@@ -635,7 +653,7 @@ fn expand_identity_type_meta(
     delta.insert_symbol(parent_namespace, declared_symbol);
 
     Ok(MetaExpansionResult {
-        replacement_object: type_symbol,
+        replacement_object: type_symbol.clone(),
         namespace_delta: delta,
         diagnostics: Vec::new(),
         provenance: Provenance::new(format!("IdentityType expansion for `{binding_name}`")),

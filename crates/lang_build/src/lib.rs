@@ -17,6 +17,7 @@ pub mod model;
 pub mod normalized_call;
 pub mod product_shape;
 pub mod source;
+pub mod type_argument;
 pub mod verify;
 pub mod world;
 
@@ -67,5 +68,6 @@ pub use product_shape::{
     RawArgValueClass,
 };
 pub use source::SourceFragment;
+pub use type_argument::classify_type_arguments;
 pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;
