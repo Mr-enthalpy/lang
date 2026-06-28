@@ -38,15 +38,27 @@ impl CanonicalFingerprint {
 /// callee identity, argument structure, type values, and build/policy context.
 /// It does **not** capture binding names, provenance descriptions, or
 /// declaration-level metadata.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// ## Equality and ordering
+///
+/// Only `fingerprint` and `callee_symbol_id` participate in equality /
+/// ordering. `provenance` is excluded — it is diagnostic context, not
+/// canonical identity.
+#[derive(Clone, Debug)]
 pub struct MetaInstanceKey {
     pub fingerprint: CanonicalFingerprint,
     pub callee_symbol_id: SymbolId,
     pub provenance: Provenance,
 }
 
-// Manual Ord: use fingerprint + callee_symbol_id only. Provenance is not
-// orderable and should not change key identity.
+impl PartialEq for MetaInstanceKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.fingerprint == other.fingerprint && self.callee_symbol_id == other.callee_symbol_id
+    }
+}
+
+impl Eq for MetaInstanceKey {}
+
 impl PartialOrd for MetaInstanceKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))

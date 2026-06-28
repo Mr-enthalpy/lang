@@ -178,6 +178,9 @@ pub enum CallableCandidateKind {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,
+    /// Remains `None` — reserved for a future serialized-key format.
+    /// The authoritative canonical key is computed by
+    /// `compute_meta_instance_key(&PreparedCallableCandidate)`.
     pub argument_product_shape_fingerprint_fragment: Option<String>,
     pub argument_product_shape_material: CanonicalArgProductShapeMaterial,
     pub unit_positions: Vec<usize>,
