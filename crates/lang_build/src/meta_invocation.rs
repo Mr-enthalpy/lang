@@ -111,11 +111,12 @@ pub struct GeneratedConstructionValue {
     pub provenance: Provenance,
 }
 
-/// Stable identity for a generated construction value.
+/// Deterministic build-local construction identity placeholder.
 ///
 /// Produced by `compute_construction_instance_id`. Distinct from `SymbolId`
 /// and `TypeValueId` — two different symbols may carry the same construction
-/// instance identity.
+/// instance identity. This is a placeholder; a stable cross-build identity
+/// will use a different key derivation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConstructionInstanceId(pub u64);
 
@@ -138,6 +139,10 @@ pub enum ReturnSlotSemantics {
 ///
 /// Same callee + same canonical args + same return-slot semantics + same
 /// build/policy identity → same `ConstructionInstanceId`.
+///
+/// `provenance` is non-identity diagnostic material. It does not participate
+/// in `compute_construction_instance_id` and must not be treated as part of
+/// construction identity equality.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstructionIdentityMaterial {
     pub callee_symbol_id: SymbolId,
@@ -148,7 +153,8 @@ pub struct ConstructionIdentityMaterial {
     pub provenance: Provenance,
 }
 
-/// Compute a stable `ConstructionInstanceId` from identity material.
+/// Compute a deterministic build-local `ConstructionInstanceId` from identity
+/// material.
 ///
 /// Uses a placeholder FNV-1a hash. Must be replaced with a stable
 /// construction-instance key derivation when cross-build identity is
@@ -182,11 +188,19 @@ pub fn compute_construction_instance_id(
         ReturnSlotSemantics::Generate => 1u8,
     };
     h.write_field(&[sem]);
-    if let Some(ref s) = material.build_identity_fragment {
-        h.write_str_field(s);
+    match &material.build_identity_fragment {
+        None => h.write_field(&[0u8]),
+        Some(s) => {
+            h.write_field(&[1u8]);
+            h.write_str_field(s);
+        }
     }
-    if let Some(ref s) = material.policy_export_fingerprint_fragment {
-        h.write_str_field(s);
+    match &material.policy_export_fingerprint_fragment {
+        None => h.write_field(&[0u8]),
+        Some(s) => {
+            h.write_field(&[1u8]);
+            h.write_str_field(s);
+        }
     }
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");

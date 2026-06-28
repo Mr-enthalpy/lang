@@ -629,9 +629,7 @@ fn expand_identity_type_meta(
 /// - `ForwardedValue` with `TypeValueProjection`: delegates to the legacy
 ///   forwarded-type-value-projection binding helper.
 /// - `ForwardedValue` with other targets: not yet supported.
-/// - `GeneratedConstructionValue`: explicitly unsupported — returns a
-///   diagnostic that records this as an implementation-stage downgrade,
-///   not a semantic rejection.
+/// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
 pub fn bind_meta_invocation_value_result(
     value: MetaInvocationValue,
     snapshot: &NamespaceGraphSnapshot,
@@ -738,8 +736,8 @@ fn legacy_bind_forwarded_type_value_projection(
 
 /// Bind a `GeneratedConstructionValue` into the namespace graph.
 ///
-/// Creates a declared type symbol under `binding_name` whose `TypeObject`
-/// payload carries the `construction_instance_id` as a cache fragment.
+/// Creates a declared type symbol under `binding_name` whose `SymbolObject`
+/// carries the `construction_instance_id` as a `cache_key_fragment`.
 /// The declared symbol's `type_symbol_id` is a fresh `SymbolId` — the
 /// construction identity is the `construction_instance_id`, not the
 /// declared symbol ID.
