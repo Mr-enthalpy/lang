@@ -11,7 +11,7 @@ use crate::{
         CandidatePreparationContext, CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
+        invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
     },
     model::{
         CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
@@ -600,7 +600,13 @@ fn expand_identity_type_meta(
     let invocation_input = MetaInvocationInput::new(*candidate, provenance.clone());
 
     let type_value_id = match invoke_meta_callable(invocation_input) {
-        MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv)) => tv,
+        MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv)) => fv.target,
+        MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) => {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "meta hard error: GeneratedConstructionValue is not yet supported in binding",
+                Some(gcv.provenance),
+            )));
+        }
         MetaInvocationResult::Diagnostic(d) => {
             return Err(BuildError::single(d));
         }

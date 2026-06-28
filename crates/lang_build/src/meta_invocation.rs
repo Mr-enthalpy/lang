@@ -33,9 +33,9 @@
 use crate::{
     identity::TypeValueId,
     meta_cache::MetaInstanceCache,
-    meta_candidate::PreparedCallableCandidate,
+    meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::{compute_meta_instance_key, MetaInstanceKey},
-    model::{Diagnostic, Provenance},
+    model::{Diagnostic, Provenance, SymbolId},
 };
 
 /// Input for formal meta invocation.
@@ -62,7 +62,9 @@ impl MetaInvocationInput {
     }
 }
 
-/// Pure reduction result of formal meta invocation.
+/// Legacy placeholder reduction result. Use `MetaInvocationValue::ForwardedValue`
+/// for forwarding proofs. `MetaInvocationValue::GeneratedConstructionValue` is
+/// the future replacement for generative type-to-type meta construction.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaReductionResult {
     TypeValue(TypeValueId),
@@ -71,8 +73,48 @@ pub enum MetaReductionResult {
 /// Result of formal meta invocation.
 #[derive(Clone, Debug)]
 pub enum MetaInvocationResult {
-    Reduction(MetaReductionResult),
+    Value(MetaInvocationValue),
     Diagnostic(Diagnostic),
+}
+
+/// Invocation value produced by formal meta invocation.
+///
+/// `ForwardedValue` represents `r === arg` semantics (forwarding proof).
+/// `GeneratedConstructionValue` represents `r = t` semantics (generative
+/// construction). Both are future slots — currently only `ForwardedValue`
+/// is produced for `IdentityType`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MetaInvocationValue {
+    ForwardedValue(ForwardedValue),
+    GeneratedConstructionValue(GeneratedConstructionValue),
+}
+
+/// Forwarded existing value — the call returns the same value that was passed
+/// as argument (`r === arg`). Used by `IdentityType` as forwarding proof.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ForwardedValue {
+    pub target: TypeValueId,
+    pub return_view: ReturnViewShape,
+    pub provenance: Provenance,
+}
+
+/// Generated construction value — the call returns a new construction value
+/// whose external identity is shielded by callee + canonical args + build
+/// identity (`r = t`). Reserved for future generative type constructors.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GeneratedConstructionValue {
+    pub callee_symbol_id: SymbolId,
+    pub canonical_args: CanonicalArgProductShapeMaterial,
+    pub return_view: ReturnViewShape,
+    pub provenance: Provenance,
+}
+
+/// Return value shape — whether the invocation value exposes a leaf or product
+/// extraction view. `Leaf` means `v? == v`; `Product` means `v?` splits.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReturnViewShape {
+    Leaf,
+    Product { arity: usize },
 }
 
 /// Invoke a prepared callable candidate through the formal meta invocation
@@ -139,13 +181,13 @@ pub fn invoke_meta_callable_cached(
     }
     let key = input.compute_key();
     if let Some(cached) = cache.lookup(&key) {
-        return MetaInvocationResult::Reduction(cached.result.clone());
+        return MetaInvocationResult::Value(cached.result.clone());
     }
     let result = invoke_meta_callable(input);
-    if let MetaInvocationResult::Reduction(ref red) = result {
+    if let MetaInvocationResult::Value(ref val) = result {
         cache.insert(
             key,
-            red.clone(),
+            val.clone(),
             Provenance::new("cached meta invocation result"),
         );
     }
@@ -182,5 +224,9 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
         }
     };
 
-    MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(type_value_id))
+    MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(ForwardedValue {
+        target: type_value_id,
+        return_view: ReturnViewShape::Leaf,
+        provenance: input.provenance.clone(),
+    }))
 }

@@ -16,10 +16,10 @@ use lang_build::{
     ArgProductShape, CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason,
     CandidatePrepResult, CandidatePreparationContext, CandidatePreparationInput,
     CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed,
-    ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject, MetaInstanceCache,
-    MetaInvocationInput, MetaReductionResult, NonValueArgKind, ParameterShape, PolicyEnv,
-    PreparedCallableCandidate, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
-    RawArgValueClass, SymbolId, TypeValueId,
+    ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject, ForwardedValue,
+    MetaInstanceCache, MetaInvocationInput, MetaInvocationValue, NonValueArgKind, ParameterShape,
+    PolicyEnv, PreparedCallableCandidate, ProductAtom, ProductMaterialRole, Provenance,
+    RawArgShape, RawArgValueClass, ReturnViewShape, SymbolId, TypeValueId,
 };
 
 /// Unit positions must remain in the canonical argument material and not be
@@ -666,11 +666,18 @@ fn meta_instance_cache_stores_reduction_not_namespace_delta() {
     let key = key_for_type_value_arg(TypeValueId(5));
     cache.insert(
         key.clone(),
-        MetaReductionResult::TypeValue(TypeValueId(5)),
+        MetaInvocationValue::ForwardedValue(ForwardedValue {
+            target: TypeValueId(5),
+            return_view: ReturnViewShape::Leaf,
+            provenance: Provenance::new("test cache insert"),
+        }),
         Provenance::new("test cache insert"),
     );
     let cached = cache.lookup(&key).expect("cache entry should be found");
-    assert!(matches!(cached.result, MetaReductionResult::TypeValue(_)));
+    assert!(matches!(
+        cached.result,
+        MetaInvocationValue::ForwardedValue(_)
+    ));
     // MetaInstanceCache does not expose NamespaceDelta — compile-time guarantee.
     assert_eq!(cache.len(), 1);
 }

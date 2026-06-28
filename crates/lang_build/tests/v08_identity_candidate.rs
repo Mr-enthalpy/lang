@@ -10,10 +10,11 @@ use lang_build::{
     AliasQueryDisposition, AliasQueryMode, CandidateBuildIdentityPlaceholder,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
     CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FieldProjection,
-    MetaInstanceCache, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
+    MetaInstanceCache, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
     NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape,
     PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass,
-    SourceCategory, SymbolId, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
+    ReturnViewShape, SourceCategory, SymbolId, SymbolPayload, TypeValueBindingPlaceholder,
+    TypeValueId,
 };
 
 #[test]
@@ -631,13 +632,14 @@ fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture()
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("formal invocation"));
-    let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(result_tv)) =
+    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv)) =
         invoke_meta_callable(invocation_input)
     else {
-        panic!("invoke_meta_callable should yield TypeValue reduction");
+        panic!("invoke_meta_callable should yield ForwardedValue");
     };
-    assert!(result_tv.0 != 0, "TypeValueId result must be non-zero");
-    // Verify result_tv matches what the classifier assigned
+    assert_eq!(fv.return_view, ReturnViewShape::Leaf);
+    assert!(fv.target.0 != 0, "ForwardedValue target must be non-zero");
+    // Verify fv.target matches what the classifier assigned
     let expected_tv = TypeValueId(
         world
             .snapshot()
@@ -648,8 +650,8 @@ fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture()
             .0,
     );
     assert_eq!(
-        result_tv, expected_tv,
-        "invocation result must match uint8 TypeValueId"
+        fv.target, expected_tv,
+        "ForwardedValue target must match uint8 TypeValueId"
     );
 }
 
@@ -751,15 +753,17 @@ fn meta_instance_cache_reuses_identity_type_reduction() {
     assert!(cache.lookup(&key).is_none(), "cache should be empty");
 
     let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
-    let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv1)) = result1 else {
-        panic!("invocation should yield TypeValue");
+    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv1)) = result1 else {
+        panic!("invocation should yield ForwardedValue");
     };
 
     let cached = cache.lookup(&key).expect("entry should now be cached");
-    let MetaReductionResult::TypeValue(cached_tv) = &cached.result;
+    let MetaInvocationValue::ForwardedValue(fv_cached) = &cached.result else {
+        panic!("cached result should be ForwardedValue");
+    };
     assert_eq!(
-        tv1, *cached_tv,
-        "cached TypeValue must match invocation result"
+        fv1.target, fv_cached.target,
+        "cached ForwardedValue target must match invocation result"
     );
 
     // Second invocation with same material (new candidate from same input)
@@ -780,9 +784,12 @@ fn meta_instance_cache_reuses_identity_type_reduction() {
     };
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("cache test 2"));
     let result2 = lang_build::invoke_meta_callable_cached(invocation_input2, &mut cache);
-    let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv2)) = result2 else {
-        panic!("second invocation should yield TypeValue");
+    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv2)) = result2 else {
+        panic!("second invocation should yield ForwardedValue");
     };
-    assert_eq!(tv1, tv2, "cache-hit result must match original");
+    assert_eq!(
+        fv1.target, fv2.target,
+        "cache-hit result must match original"
+    );
     assert_eq!(cache.len(), 1, "cache should not grow on hit");
 }
