@@ -44,6 +44,69 @@ This is not a claim that `Vec::std` has no argument — it is the statement that
 context. Extraction of the type parameter requires an explicit rank-pattern
 context.
 
+## 0. The hourglass model
+
+Every constructed value can be understood as a waist point:
+
+```text
+        extraction pattern space
+              ↑
+              |
+        construct / extract
+              |
+              ↓
+          value point
+              |
+              ?
+              ↓
+        next extraction view
+```
+
+Upward, the value participates in a constructor-specific isomorphism:
+
+```text
+construct_C : Pattern_C -> Value_C
+extract_C   : Value_C -> Pattern_C
+
+extract_C(construct_C(P)) = P
+construct_C(extract_C(v)) = v
+```
+
+This `extract_C` is a named constructor/extractor pair — not bare `?`.
+
+Downward, `?` enters the value's currently exposed extraction view:
+
+```text
+leaf?     -> leaf       (idempotent)
+product?  -> split/product-view
+C(P)?     -> declared ordinary extraction view
+```
+
+If that view contains product elements, each element may itself be a new
+waist point, and `?` may be applied again. The result is not a one-shot AST
+expansion but a chain of waist points connected by `?`.
+
+Examples:
+
+- `()single_return` is a waist point; `?` enters a leaf view → `?` is
+  idempotent.
+- `()two_return` is a waist point; `?` enters a product view → split.
+- `val : t` is a waist point; `?` enters a named-field product → split;
+  the constructor `t` restores the original value upward.
+- `(int)Vec::std` is a waist point; `?` enters a leaf view in ordinary
+  value context → idempotent. Extraction of `int` requires the
+  constructor-specific `extract_Vec` interface, not bare `?`.
+
+This is why `?` must not be understood as "inverse constructor." It goes
+downward into the next extraction view. The upward constructor/extractor
+isomorphism is a separate named interface.
+
+In summary: a constructed value is not the endpoint of type computation —
+it is a symbolic construction node. Upward, it belongs to a
+constructor/extractor isomorphism. Downward, `?` enters the value's
+currently exposed extraction view, and that view may itself contain new
+waist points.
+
 ## 1. Single-return value
 
 For:
@@ -312,6 +375,13 @@ extraction view:
   P? → product
   C(P)? → via constructor's declared extraction interface
   may preserve labels / field names / constructor-specific pattern structure
+
+constructor/extractor isomorphism:
+  construct_C(P) = v
+  extract_C(v) = P
+  not bare `?`
+  each constructed value is a waist point: upward it belongs to a
+    constructor/extractor pair; downward `?` enters the next view
 
 binding decomposition:
   `let Pattern = v` may insert one implicit `?`
