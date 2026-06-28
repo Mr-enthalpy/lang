@@ -18,18 +18,31 @@ t      = the returned value
 t?     = the extraction-facing view of the returned value
 ```
 
-`?` requests the extraction-facing view of a value. It is **not** "decompose"
-— decomposition is only a consequence when the extraction view is a product,
-named product, or sum branch. The base rules are:
+`?` does not mean destructure. `?` means enter the next extraction view.
+Destructuring happens only if that view is product-shaped.
 
-```text
-leaf?   -> leaf          (idempotent on leaf extraction views)
-P?      -> split(P)      (expose product)
-C(P)?   -> extraction_view_C(C(P))  (constructor's declared extraction interface)
-```
+1. `?` is a value-to-extraction-view operator.
 
-`?` must not be understood as generic tuple unpacking, generic type-function
-inversion, or call-history inspection.
+2. On leaf values, `?` is idempotent:
+   ```text
+   e? -> e
+   ```
+
+3. On product-facing values, `?` exposes and splits the product view:
+   ```text
+   P? -> split(P)
+   ```
+
+4. On named construction values, `?` exposes the declared named extraction
+   shape, not necessarily a bare product.
+
+5. Equality never inserts `?`.
+
+6. Binding may insert `?` only as pattern-directed decomposition repair.
+
+7. Meta invocation must be specified at the symbolic/reduction level because
+   a type constructor call returns a construction value first; type
+   computation is only one projection of that value.
 
 A leaf is any value whose current extraction interface does not permit further
 decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std`
@@ -143,7 +156,10 @@ Therefore:
 let a, b = t?;
 ```
 
-is an error unless `t` exposes a product extraction interface. In the ordinary single-return case, it does not.
+is an error because `t?` reduces to the leaf value `t`, which cannot match
+a two-element product pattern. `?` is still valid on `t` — it just returns
+`t` itself (idempotent on leaf), so `let a, b = t?` fails at pattern
+matching, not at extraction.
 
 So:
 
@@ -361,31 +377,24 @@ The product view and the constructed value are distinct values at the expression
 
 ## 6. Summary rule
 
-There are three different relations:
-
 ```text
-value equality:
-  compares values directly
-  never inserts `?`
-  never calls constructors
+1. `?` enters the next extraction view. It does not mean destructure.
 
-extraction view:
-  v? enters v's extraction-facing view
-  leaf? → leaf (idempotent)
-  P? → product
-  C(P)? → via constructor's declared extraction interface
-  may preserve labels / field names / constructor-specific pattern structure
+2. On leaf values, `?` is idempotent:
+   e? -> e
 
-constructor/extractor isomorphism:
-  construct_C(P) = v
-  extract_C(v) = P
-  not bare `?`
-  each constructed value is a waist point: upward it belongs to a
-    constructor/extractor pair; downward `?` enters the next view
+3. On product-facing values, `?` splits the product:
+   P? -> split(P)
 
-binding decomposition:
-  `let Pattern = v` may insert one implicit `?`
-  only when Pattern demands extraction and v's direct value shape does not match
+4. Named construction values expose their declared named extraction shape
+   via `?`, not necessarily a bare product.
+
+5. Equality never inserts `?`.
+
+6. Binding may insert `?` as pattern-directed decomposition repair.
+
+7. Meta call returns a symbolic construction value first; type computation
+   is a projection of that value, not its definition.
 ```
 
 Therefore:
