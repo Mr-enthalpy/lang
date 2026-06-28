@@ -81,10 +81,9 @@ pub enum MetaValueTarget {
 
 /// Invocation value produced by formal meta invocation.
 ///
-/// `ForwardedValue` represents `r === arg` semantics (forwarding proof).
-/// `GeneratedConstructionValue` represents `r = t` semantics (generative
-/// construction). Both are future slots — currently only `ForwardedValue`
-/// is produced for `IdentityType`.
+/// `ForwardedValue` is produced by `IdentityType` (`r === arg`).
+/// `GeneratedConstructionValue` is produced by `UnaryConstructionPrototype`
+/// (`r = arg`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaInvocationValue {
     ForwardedValue(ForwardedValue),
@@ -143,7 +142,7 @@ pub enum ReturnSlotSemantics {
 /// `provenance` is non-identity diagnostic material. It does not participate
 /// in `compute_construction_instance_id` and must not be treated as part of
 /// construction identity equality.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct ConstructionIdentityMaterial {
     pub callee_symbol_id: SymbolId,
     pub canonical_args: CanonicalArgProductShapeMaterial,
@@ -152,6 +151,18 @@ pub struct ConstructionIdentityMaterial {
     pub policy_export_fingerprint_fragment: Option<String>,
     pub provenance: Provenance,
 }
+
+impl PartialEq for ConstructionIdentityMaterial {
+    fn eq(&self, other: &Self) -> bool {
+        self.callee_symbol_id == other.callee_symbol_id
+            && self.canonical_args == other.canonical_args
+            && self.return_slot_semantics == other.return_slot_semantics
+            && self.build_identity_fragment == other.build_identity_fragment
+            && self.policy_export_fingerprint_fragment == other.policy_export_fingerprint_fragment
+    }
+}
+
+impl Eq for ConstructionIdentityMaterial {}
 
 /// Compute a deterministic build-local `ConstructionInstanceId` from identity
 /// material.

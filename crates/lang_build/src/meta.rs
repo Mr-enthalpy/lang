@@ -751,6 +751,26 @@ fn bind_generated_construction_value(
     binding_name: &str,
     provenance: Provenance,
 ) -> Result<MetaExpansionResult, BuildError> {
+    // Validate that the construction_instance_id matches the identity material.
+    let expected = crate::meta_invocation::compute_construction_instance_id(&gcv.identity_material);
+    if expected != gcv.construction_instance_id {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: GeneratedConstructionValue has mismatched construction_instance_id (expected {}, got {})",
+                expected.as_u64(), gcv.construction_instance_id.as_u64()
+            ),
+            Some(gcv.provenance.clone()),
+        )));
+    }
+    if gcv.identity_material.return_slot_semantics
+        != crate::meta_invocation::ReturnSlotSemantics::Generate
+    {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            "meta hard error: GeneratedConstructionValue must have Generate return-slot semantics",
+            Some(gcv.provenance.clone()),
+        )));
+    }
+
     let mut delta = snapshot.empty_delta();
     let declared_id = delta.allocate_symbol_id();
     let declared_symbol = SymbolObject {
