@@ -161,6 +161,30 @@ self..return(error)
 But that step is the behavior of the default handler, not a hardcoded compiler
 intrinsic.
 
+### 6.1 `self..return(d)` — the function object's built-in return capability
+
+`self..return(d)` is the current function object's built-in return capability.
+It is lookupable as a function associated with the anonymous type of `self`, but
+its semantic effect is special:
+
+1. **Local pattern/type-check channel**: it completes the current branch with
+   `Done(unit)`. The branch contributes no further pattern material to the
+   same-level continuation. `unit` is absorbed as the zero element of `+`.
+
+2. **Enclosing function return accumulator**: it contributes `Done(D)` to the
+   final return accumulator, independently of the local branch pattern space.
+
+3. **Lifetime postcondition**: it consumes / closes the return-relevant mutable
+   capability of `self`. Later same-block code cannot borrow that capability
+   again. The lifetime checker trusts the declared postcondition — it does not
+   inspect implementation bodies to rediscover this fact.
+
+Thus when `Error.handle(e, self)` calls `self..return(error)`, the result is not
+an exception jump or a compiler intrinsic. It is an early return through the
+function object's exposed return capability. The error handler remains an
+ordinary lookupable symbol subject to policy constraints; only the return
+capability itself carries the special semantic effect.
+
 Thus `r?` expands conceptually as:
 
 ```text

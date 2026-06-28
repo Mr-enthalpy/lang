@@ -140,115 +140,71 @@ when value/type canonical forms are designed.
 Future design note:
 `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
-#### How should pattern spaces be represented as static objects?
+The following questions are **resolved at the future-design level**. They are
+not open semantic decisions — only the implementation mechanics and IR-level
+representation remain future work.
 
-**Status:** Open (active at v0.10+)
+#### Resolved: no silent discard including void/unit
 
-**Current v0.4 foundation:** Normalized AST preserves the value/pattern
-boundary but does not construct semantic pattern spaces.
+Status: **Resolved at future-design level** (see §7 of the pattern-spaces document).
 
-**Question:** What are the canonical pattern constructors that generate static
-pattern spaces? How are product patterns, sum patterns, canonical skeletons,
-and meta-function-produced pattern interfaces represented without turning the
-compiler into a general set-theoretic solver?
+The rejected rule was `final pattern = void => silent completion allowed`.
+The correct rule is `every expression result must be consumed`. There is no
+void exception. If an implementation would otherwise silently discard an
+expression result, that position must be interpreted as an error or as the
+current block's return boundary.
 
----
+#### Resolved: block-final unconsumed result is current-block return
 
-#### How should sum patterns and pattern combination be specified?
+Status: **Resolved at future-design level**.
 
-**Status:** Open (active at v0.10+)
+A block-final expression whose result is not otherwise consumed is the return
+value of the current block. This applies to `unit` and `void` as well — there
+is no silent completion with no result.
 
-**Current v0.4 foundation:** Pattern-position operator-shaped syntax remains
-pattern material. No pattern-space reduction is performed.
+#### Resolved: non-final unconsumed result is an error
 
-**Question:** How should canonical sum pattern syntax (`P1 | P2`) differ from
-meta-level pattern combination / reduction (`P + Q`)? Which combinations are
-constructible, deleted, or rejected by the relevant meta-level `operator+`?
+Status: **Resolved at future-design level**.
 
----
+If an expression result is not consumed and later same-block material exists,
+the program is ill-formed. The repar is either consume/discard the result, or
+remove the later material and let the expression become the block return.
 
-#### How should extraction chains propagate residual pattern space?
+#### Resolved: Done isolates completed branch results
 
-**Status:** Open (active at v0.10+)
+Status: **Resolved at future-design level** (see §6 of the pattern-spaces document).
 
-**Current v0.4 foundation:** Pipe and closure structure are normalized without
-pattern-head resolution, extraction applicability checks, or exhaustiveness
-checking.
+`Done` separates completed branch results from unprocessed continuation
+material. It is not eliminated while same-level extraction continuation is
+still processing input residuals. Return/result boundaries perform one local
+`Done` reduction and re-wrap the result. `Done` is isolated by default but
+explicitly re-enterable.
 
-**Question:** Given an extraction atom `A |> S { body }`, how should later
-phases mechanically decide whether `S` is an applicable subspace of `A`, how
-should `A - S` be represented, and how should extraction failure act as
-contextual residual propagation rather than a control-flow primitive?
+#### Resolved: early function return via self..return(d)
 
----
+Status: **Resolved at future-design level** (see §6.3.1, §7.5 of the
+pattern-spaces document, and the function-object-self-and-return-capability
+design note).
 
-#### How should the `Done` isolation layer work?
+Early function return is modeled by calling `self..return(d)` — the current
+function object's built-in return capability. The effect uses a dual-channel
+model: local branch produces `Done(unit)`, and the final return accumulator
+receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
+pattern-space reduction, not silent discard.
 
-**Status:** Open (active at v0.10+)
+#### Still open
 
-**Current v0.4 foundation:** Normalization does not insert, eliminate, or
-interpret `Done`.
+The following remain open for later implementation phases:
 
-**Question:** Where is `Done` introduced for completed extraction-arm results,
-which boundaries eliminate it, and how can users explicitly re-enter or consume
-`Done`-wrapped material without allowing same-level extraction arms to
-implicitly inspect completed results?
-
----
-
-#### How should binding and product extraction totality be checked?
-
-**Status:** Open (active at v0.10+)
-
-**Current v0.4 foundation:** Binding and closure parameter extraction preserve
-pattern/product structure, including explicit unit positions, but perform no
-matching or totality checks.
-
-**Question:** In binding contexts where skip has no residual object to
-propagate, how should later phases check exact extraction, product-field
-completeness, explicit `_` discard, and hard structural product-pattern errors?
-
----
-
-#### How should result consumption and void-only silent completion work?
-
-**Status:** Open (active at v0.10+)
-
-**Current v0.4 foundation:** Normalization preserves expression and closure-body
-structure but does not check whether expression results are consumed.
-
-**Question:** At expression and body boundaries, which pattern spaces must be
-bound, passed, returned, explicitly discarded with `_`, or closed by a consumer?
-How is pure `void` distinguished from ordinary unit payload?
-
----
-
-#### How should postfix `?` and conventional `match` closing be modeled?
-
-**Status:** Open (active at v0.10+)
-
-**Current v0.4 foundation:** `?` remains operator-shaped syntax / operator
-lowering material, and `match` remains an ordinary name unless later phases
-give a library convention meaning to a specific binding.
-
-**Question:** How should postfix `?` perform explicit value-to-pattern
-conversion, for example to a closed `if | else` control-pattern space? How can
-a conventional identity consumer such as `match` force explicit total
-consumption and one `Done`-elimination boundary without becoming a privileged
-parser or normalizer form?
-
----
-
-#### How should closed control-pattern spaces avoid ambient extension?
-
-**Status:** Open (active at package/name-resolution stages)
-
-**Current v0.4 foundation:** Normalization performs no namespace/package
-ownership checks, no operator lookup, and no ADL-like forwarding.
-
-**Question:** How do package ownership, explicit lookup routing, and the absence
-of unrestricted ADL prevent downstream code from adding ambient candidates that
-make closed control-pattern residuals combine with unrelated pattern spaces?
+- Concrete representation of pattern spaces as static objects and canonical
+  pattern constructors (product patterns, sum patterns, canonical skeletons).
+- Concrete representation of `Done` in later semantic IR.
+- Exact lifetime fact encoding for the self-return capability postcondition.
+- Exact implementation phase that builds the final return accumulator.
+- Diagnostics and recovery details for unconsumed results.
+- Representation of extraction chains and residual propagation in later IR.
+- Closed control-pattern non-additivity enforcement via package ownership /
+  explicit lookup routing.
 
 ---
 

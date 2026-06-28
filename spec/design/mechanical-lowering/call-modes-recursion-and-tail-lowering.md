@@ -256,6 +256,13 @@ If a call looks syntactically last in the surface syntax but still has work that
 must execute after it once lowering is applied, then it is not a legal tail call —
 unless that work can be proven to complete before the tail transfer.
 
+An early return capability call (`self..return(d)`) is **not** a tail call
+candidate. It goes through the dual-channel model (branch-local `Done(unit)`
+plus final-accumulator `Done(D)`) rather than through ordinary callee TCO. Tail
+analysis sees the already-explicit block-local result boundary and return
+capability effect — it does not treat `self..return(d)` as an ordinary callee
+eligible for tail-call optimization.
+
 ## 10. Non-goals
 
 ```text

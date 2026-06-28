@@ -422,24 +422,24 @@ Important invariant:
 Done is not eliminated while same-level extraction continuation is still processing input residuals.
 ```
 
-### 6.3.1 Return is always block-relative
+### 6.3.1 Return is always block-relative; early return uses a dual-channel model
 
 A return always targets the current enclosing block. It is not an unstructured non-local exit. The return boundary described in §6.3 applies at the block level — `Done` reduction and re-wrapping are local to the function / closure / branch body that contains the return.
 
-A desire to return from a deeper branch position is expressed structurally:
+An early return from a deeper branch position is expressed structurally:
 
 ```text
-self |> return(r);
+self..return(d);
 ()
 ```
 
-This means:
-1. `self |> return(r)` completes the current branch, producing `Done(r)` as the branch's contribution.
-2. The trailing `()` is a unit expression.
-3. Because `+` reduction treats unit as the zero element (`A + Unit = A`), the unit expression is absorbed into the branch pattern residual without contributing further material.
-4. The branch therefore produces `Done(r)` as its only meaningful contribution, and the enclosing block's return boundary reduces and re-wraps it.
+This uses the current function object's built-in return capability `return`, which is lookupable under the anonymous type of `self`. The effect has two channels:
 
-This is not a special control-flow escape. It is an ordinary consequence of explicit consumption plus the zero-element property of unit under `operator+`.
+1. **Local pattern/type-check channel**: the branch completes with `Done(unit)`. The trailing `()` is an explicit unit expression, not a silent completion. The local pattern space becomes `A - S + Done(unit)`, and `unit` is later absorbed as the zero element of `+`. No further same-level pattern material is contributed by this branch.
+
+2. **Final enclosing-function return channel**: the return capability simultaneously contributes `Done(D)` to the enclosing function's return accumulator, independently of what the local branch pattern space produces.
+
+This is not a special control-flow escape. It is the ordinary result of calling the function object's `return` capability plus branch-local unit completion. The two channels are separate — the local extraction/type-check path does not need to know the final return accumulator value, and the accumulator does not need to know which branch produced it.
 
 ### 6.3.2 No silent discard — every unconsumed value is a return
 
@@ -547,6 +547,10 @@ Correct rule:
 ```text
 every expression result must be consumed
 ```
+
+If an implementation would otherwise silently discard an expression result,
+that position must instead be interpreted either as an explicit error or as
+the current block's return boundary when it is the block-final expression.
 
 A result may be consumed by being:
 
@@ -689,39 +693,40 @@ an explicit capability value.
 ### 7.5 Function return from inside a deeper branch
 
 Returning from the enclosing function inside a deeper branch is represented by
-calling the current function's return capability.
+calling the current function object's built-in return capability.
 
 Conceptually:
 
 ```lang
-self |> return(r);
+self..return(d);
 ();
 ```
 
 means:
 
 ```text
-1. invoke the function-return capability with r;
+1. invoke the function object's return capability with d;
 2. locally complete the current branch block with unit.
 ```
 
-The first expression is an ordinary call expression. Its result must also be
-consumed according to the universal result-consumption rule. The canonical form
-above treats it as the explicit function-return action and then makes the branch
-itself return unit.
+The first expression is an ordinary call expression whose target is the
+`return` capability lookupable under the anonymous type of `self`. Its result
+must also be consumed according to the universal result-consumption rule. The
+canonical form above treats it as the explicit function-return action and then
+makes the branch itself return unit.
 
-The branch-local `()` is not silent completion. It is the current branch block's
-explicit unit result.
+This operates through two semantic channels:
 
-If the current extraction chain has input pattern space `A` and this branch
-extracts subspace `S`, then after the function-return capability is invoked and
-the branch locally returns unit, the same-level pattern space becomes:
+**Local pattern/type-check channel** (`A - S + Done(unit)`):
+The branch extracts subspace `S` from the input pattern space `A`. After the
+return capability is invoked and the branch locally returns unit, the
+same-level pattern space becomes `A - S + Done(unit)`. The `Done(unit)` layer
+records that this branch has completed.
 
-```text
-A - S + Done(unit)
-```
-
-The `Done(unit)` layer records that this branch has completed.
+**Final enclosing-function return channel** (`ReturnAccumulator + Done(D)`):
+The return capability simultaneously contributes `Done(D)` to the enclosing
+function's return accumulator. This is independent of the local branch pattern
+space; the accumulator does not need to know which branch produced the value.
 
 Later result-space combination may absorb `unit` as the zero element of `+`:
 
