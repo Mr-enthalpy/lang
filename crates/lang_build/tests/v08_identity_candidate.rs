@@ -1091,10 +1091,12 @@ fn generated_construction_value_is_not_type_value_id() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("GCV != TV invocation"));
-    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
-        invoke_meta_callable(invocation_input)
-    else {
-        panic!("UCPrototype should yield GCV");
+    let gcv = match invoke_meta_callable(invocation_input) {
+        MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) => gcv,
+        MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(_)) => {
+            panic!("UCPrototype must NOT return ForwardedValue(TypeValueProjection)")
+        }
+        MetaInvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
     };
 
     assert!(
@@ -1141,13 +1143,15 @@ fn binding_layer_materializes_generated_construction_value() {
 
     let invocation_input =
         MetaInvocationInput::new(*candidate, Provenance::new("binding materialization"));
-    let MetaInvocationResult::Value(invocation_value) = invoke_meta_callable(invocation_input)
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
     else {
-        panic!("should yield invocation value");
+        panic!("should yield GCV");
     };
+    let cid = gcv.construction_instance_id;
 
     let result = bind_meta_invocation_value_result(
-        invocation_value,
+        MetaInvocationValue::GeneratedConstructionValue(gcv),
         world.snapshot(),
         world.package_root_node(),
         "T",
@@ -1158,6 +1162,18 @@ fn binding_layer_materializes_generated_construction_value() {
     assert!(
         !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
         "GCV binding must install a NamespaceDelta"
+    );
+
+    // TypeValueId projection must be derived from declared symbol after binding,
+    // not from the construction instance identity.
+    let declared = &result.replacement_object;
+    assert_eq!(declared.kind, lang_build::SymbolKind::Type);
+    assert_eq!(declared.name, "T");
+    let tv = type_value_id_from_type_symbol_placeholder(declared.id);
+    assert_ne!(
+        tv.as_u64(),
+        cid.as_u64(),
+        "construction identity must not equal TypeValueId projection"
     );
 }
 
