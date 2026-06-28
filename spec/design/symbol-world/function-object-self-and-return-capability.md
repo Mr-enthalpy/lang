@@ -2,6 +2,14 @@
 
 **Status: Future design boundary. Not current implementation behavior.**
 
+**Canonical definition.** This document is the authoritative definition of
+`self`, the return capability, and its lifetime contract. Other documents
+that mention `self..return(d)` reference this document rather than redefining
+the semantics:
+
+- Pattern-space consequences: `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §6.3.1, §7.5
+- Mechanical lowering consequences: `spec/design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md` §6.1
+
 ## 1. Purpose
 
 This document defines the design boundary for `self`, the built-in return

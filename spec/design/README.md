@@ -28,21 +28,29 @@ should migrate into `spec/public/`, `spec/contracts/`, `spec/planning/`, and
 The current staging route (not a permanent design reading order) is:
 
 ```text
-package/manifest identity
-  -> namespace graph / SymbolObject
-  -> TypeValueId / PlaceId / AliasChain
-  -> ProductObject / ArgProductShape
-  -> pattern normalization + first-order candidate shapes
-  -> formal meta object invocation
+v0.8-semantic-spine (values-first narrative)
+  -> symbolic construction values and extraction interfaces
+  -> meta-invocation
   -> mechanical lowering family
   -> later runtime lookup
   -> first-order type check
 ```
 
+For v0.8-adjacent type-to-type meta construction work, the recommended
+reading order is:
+
+```text
+1. v0.8-semantic-spine.md — positive semantic model
+2. return-value-extraction-and-implicit-decomposition.md — extraction view
+3. v0.8-meta-construction-value-pattern-clarifications.md — construction values
+4. meta-object-invocation-and-policy-reduction.md — invocation + policy
+5. v0.8-meta-construction-agent-constraints.md — implementation guardrails
+```
+
 In block terms:
 
 ```text
-build-package -> symbol-world -> patterns-overload -> meta-invocation
+symbolic-construction-values -> meta-invocation -> patterns-overload
   -> mechanical-lowering -> later runtime lookup / type check
 ```
 
