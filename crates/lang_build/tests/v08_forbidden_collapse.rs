@@ -541,3 +541,46 @@ fn candidate_input(shape: ArgProductShape) -> CandidatePreparationInput {
         },
     )
 }
+
+/// `CandidatePrepResult::ApplicablePlaceholder` is not meta invocation.
+///
+/// Candidate prep must not return TypeValueId, must not install NamespaceDelta,
+/// and must not produce MetaInvocationResult or MetaReductionResult.
+#[test]
+fn candidate_preparation_does_not_return_meta_invocation_result() {
+    let world = v08_candidate_world();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .expect("struct resolves");
+
+    let site = v08_candidate_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        shape,
+        ParameterShape::exact_arity(1, Provenance::new("struct arity")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("forbidden: candidate prep != invocation"),
+        },
+    );
+
+    let result = prepare_meta_callable_candidate_from_input(input);
+    // CandidatePrepResult is NOT MetaInvocationResult (compile-time type guarantee).
+    // Runtime: assert it is ApplicablePlaceholder — which has no TypeValueId,
+    // no NamespaceDelta, no declared symbol.
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = result else {
+        panic!("struct candidate-prep should yield ApplicablePlaceholder");
+    };
+    assert!(
+        candidate.arg_product_shape.raw_args[0]
+            .known_first_order_type_value
+            .is_none(),
+        "candidate-prep must not assign TypeValueId"
+    );
+}

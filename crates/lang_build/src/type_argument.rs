@@ -13,7 +13,7 @@ use lang_syntax::NormExpr;
 
 use crate::{
     graph::{NamespaceGraphCapability, ResolverContext},
-    identity::TypeValueId,
+    identity::type_value_id_from_type_symbol_placeholder,
     model::PolicyEnv,
     product_shape::{ArgProductShape, ProductAtom, RawArgValueClass},
 };
@@ -54,7 +54,7 @@ pub fn classify_type_arguments(
         else {
             continue;
         };
-        let type_value_id = TypeValueId(type_symbol.id.0);
+        let type_value_id = type_value_id_from_type_symbol_placeholder(type_symbol.id);
         *raw_arg = raw_arg
             .clone()
             .as_type_object_with_type_value(type_value_id);
@@ -62,5 +62,61 @@ pub fn classify_type_arguments(
     ArgProductShape {
         raw_args: args,
         ..shape.clone()
+    }
+}
+
+/// Classification report: carries the classified shape alongside unresolved
+/// type-name entries for near-cause diagnostics.
+#[derive(Clone, Debug)]
+pub struct TypeArgumentClassificationReport {
+    pub classified_shape: ArgProductShape,
+    pub unresolved_names: Vec<String>,
+}
+
+/// Classify type-object arguments and record unresolved names for diagnostics.
+///
+/// Same logic as `classify_type_arguments`, but also returns a list of
+/// names that could not be resolved as type objects. Callers can surface
+/// these as near-cause diagnostics.
+pub fn classify_type_arguments_with_report(
+    shape: &ArgProductShape,
+    capability: &NamespaceGraphCapability<'_>,
+    context: &ResolverContext,
+) -> TypeArgumentClassificationReport {
+    let mut args = shape.raw_args.clone();
+    let mut unresolved = Vec::new();
+    for raw_arg in &mut args {
+        if !matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
+            continue;
+        }
+        let atom = match shape.flattened.atoms.get(raw_arg.index) {
+            Some(atom) => atom,
+            None => continue,
+        };
+        let name = match atom {
+            ProductAtom::Expression {
+                expr: NormExpr::Name { text, .. },
+                ..
+            } => text.clone(),
+            _ => continue,
+        };
+        match capability.resolve_type_object_with_policy(&name, context, PolicyEnv::Meta) {
+            Ok(type_symbol) => {
+                let type_value_id = type_value_id_from_type_symbol_placeholder(type_symbol.id);
+                *raw_arg = raw_arg
+                    .clone()
+                    .as_type_object_with_type_value(type_value_id);
+            }
+            Err(_) => {
+                unresolved.push(name);
+            }
+        }
+    }
+    TypeArgumentClassificationReport {
+        classified_shape: ArgProductShape {
+            raw_args: args,
+            ..shape.clone()
+        },
+        unresolved_names: unresolved,
     }
 }

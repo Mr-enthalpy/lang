@@ -13,6 +13,7 @@ pub mod identity;
 pub mod manifest;
 pub mod meta;
 pub mod meta_candidate;
+pub mod meta_invocation;
 pub mod model;
 pub mod normalized_call;
 pub mod product_shape;
@@ -38,11 +39,12 @@ pub use graph::{
     ResolveExpectation, ResolverContext,
 };
 pub use identity::{
-    AliasChain, AliasCycleDetectionState, AliasQueryDisposition, AliasQueryMode, AliasQueryRequest,
-    AliasQueryResult, AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
+    type_value_id_from_type_symbol_placeholder, AliasChain, AliasCycleDetectionState,
+    AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasQueryResult,
+    AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
-pub use meta::MetaExpansionResult;
+pub use meta::{bind_meta_type_value_result, MetaExpansionResult};
 pub use meta_candidate::{
     prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
     CallableCandidateKind, CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes,
@@ -50,6 +52,9 @@ pub use meta_candidate::{
     CandidatePreparationInput, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
     CanonicalMetaInstanceKeySeed, ParameterArgRequirement, ParameterShape,
     PreparedCallableCandidate,
+};
+pub use meta_invocation::{
+    invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
 };
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
@@ -68,6 +73,8 @@ pub use product_shape::{
     RawArgValueClass,
 };
 pub use source::SourceFragment;
-pub use type_argument::classify_type_arguments;
+pub use type_argument::{
+    classify_type_arguments, classify_type_arguments_with_report, TypeArgumentClassificationReport,
+};
 pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;

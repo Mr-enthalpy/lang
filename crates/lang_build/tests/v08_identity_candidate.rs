@@ -3,11 +3,13 @@ mod support;
 use support::*;
 
 use lang_build::{
-    classify_type_arguments, extract_single_call_site, prepare_meta_callable_candidate,
-    prepare_meta_callable_candidate_from_input, resolve_call_target, AliasChain,
-    AliasQueryDisposition, AliasQueryMode, CandidateBuildIdentityPlaceholder,
-    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-    CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FieldProjection,
+    bind_meta_type_value_result, classify_type_arguments, classify_type_arguments_with_report,
+    extract_single_call_site, invoke_meta_callable, prepare_meta_callable_candidate,
+    prepare_meta_callable_candidate_from_input, resolve_call_target,
+    type_value_id_from_type_symbol_placeholder, AliasChain, AliasQueryDisposition, AliasQueryMode,
+    CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
+    CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
+    FieldProjection, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
     NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape,
     PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass,
     SourceCategory, SymbolId, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
@@ -583,4 +585,123 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
     assert_eq!(mat.arity, 1);
     assert_eq!(mat.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
     assert!(mat.known_type_values[0].is_some());
+}
+
+#[test]
+fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture() {
+    let world = v08_identity_type_world();
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    let site = extract_single_call_site(&expr).expect("fixture must be a call");
+    let context = world.package_context();
+    let resolved = resolve_call_target(
+        &site.target,
+        &world.snapshot().capability(),
+        &context,
+        PolicyEnv::Meta,
+    )
+    .expect("resolve_call_target should succeed")
+    .expect("IdentityType target should resolve");
+
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        resolved.callee.clone(),
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("formal invocation test"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("candidate-prep should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input = MetaInvocationInput::new(
+        *candidate,
+        lang_build::CoreMetaFunction::IdentityType,
+        Provenance::new("formal invocation"),
+    );
+    let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(result_tv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("invoke_meta_callable should yield TypeValue reduction");
+    };
+    assert!(result_tv.0 != 0, "TypeValueId result must be non-zero");
+    // Verify result_tv matches what the classifier assigned
+    let expected_tv = TypeValueId(
+        world
+            .snapshot()
+            .capability()
+            .resolve_type_object("uint8", &world.package_context())
+            .expect("uint8 resolves")
+            .id
+            .0,
+    );
+    assert_eq!(
+        result_tv, expected_tv,
+        "invocation result must match uint8 TypeValueId"
+    );
+}
+
+#[test]
+fn identity_type_declaration_binding_installs_declared_type_after_invocation() {
+    let world = v08_identity_type_world();
+    let uint8 = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint8", &world.package_context())
+        .expect("uint8 resolves as type object");
+    let tv = type_value_id_from_type_symbol_placeholder(uint8.id);
+
+    let result = bind_meta_type_value_result(
+        tv,
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        Provenance::new("binding test"),
+    )
+    .expect("bind_meta_type_value_result should succeed");
+    assert!(
+        !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
+        "declaration binding must install a NamespaceDelta"
+    );
+    assert_eq!(
+        result.replacement_object.name, "uint8",
+        "replacement_object should be the uint8 type symbol"
+    );
+}
+
+#[test]
+fn identity_type_unresolved_type_argument_reports_resolution_failure() {
+    let world = build_single_fixture_world("v08_identity_type", "app");
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    let site = extract_single_call_site(&expr).expect("fixture must be a call");
+    let context = world.package_context();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+
+    let report =
+        classify_type_arguments_with_report(&shape, &world.snapshot().capability(), &context);
+    assert_eq!(report.classified_shape.arity, 1, "single arg shape");
+    assert!(
+        report.unresolved_names.is_empty(),
+        "uint8 should resolve without diagnostics"
+    );
+}
+
+#[test]
+fn type_value_id_placeholder_bridge_is_explicit_object_boundary() {
+    let tv = type_value_id_from_type_symbol_placeholder(SymbolId(42));
+    assert_eq!(tv, TypeValueId(42));
+    assert_eq!(tv.as_u64(), 42);
 }
