@@ -7,7 +7,7 @@ use lang_build::{
     classify_type_arguments_with_report, extract_single_call_site, invoke_meta_callable,
     invoke_meta_callable_cached, prepare_meta_callable_candidate,
     prepare_meta_callable_candidate_from_input, resolve_call_target,
-    type_value_id_from_type_symbol_placeholder, AliasChain, AliasQueryDisposition, AliasQueryMode,
+    type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
     CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
     FieldProjection, MetaInstanceCache, MetaInvocationInput, MetaInvocationResult,
@@ -113,7 +113,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         candidate
             .canonical_key_seed
             .argument_product_shape_material
-            .known_type_values,
+            .known_type_symbols,
         vec![None]
     );
     assert_eq!(candidate.arg_product_shape.raw_args[0].is_value(), None);
@@ -164,7 +164,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         Vec::<usize>::new()
     );
     assert_eq!(
-        candidate.canonical_key_seed.argument_type_values,
+        candidate.canonical_key_seed.argument_type_symbols,
         vec![None]
     );
     assert_eq!(
@@ -491,7 +491,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     );
     assert_eq!(
         classified.raw_args[0].known_first_order_type_value,
-        Some(type_value_id_from_type_symbol_placeholder(uint8.id)),
+        Some(type_value_projection_from_type_symbol(uint8.id)),
         "classified type argument TypeValueId must match uint8's SymbolId"
     );
     assert!(
@@ -505,8 +505,9 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert_eq!(material.arity, 1);
     assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
     assert_eq!(
-        material.known_type_values[0],
-        Some(type_value_id_from_type_symbol_placeholder(uint8.id))
+        material.known_type_symbols[0],
+        Some(uint8.id),
+        "canonical material must record uint8's SymbolId as TypeSymbol"
     );
 }
 
@@ -589,7 +590,7 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
     let mat = &candidate.canonical_key_seed.argument_product_shape_material;
     assert_eq!(mat.arity, 1);
     assert_eq!(mat.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
-    assert!(mat.known_type_values[0].is_some());
+    assert!(mat.known_type_symbols[0].is_some());
 }
 
 #[test]
@@ -638,42 +639,71 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
         panic!("invoke_meta_callable should yield ForwardedValue");
     };
     assert_eq!(fv.return_view, ReturnViewShape::Leaf);
-    let MetaValueTarget::TypeValueProjection(fv_tv) = fv.target;
-    assert!(fv_tv.0 != 0, "ForwardedValue target must be non-zero");
-    // Verify fv.target matches what the classifier assigned
-    let expected_tv = TypeValueId(
-        world
-            .snapshot()
-            .capability()
-            .resolve_type_object("uint8", &world.package_context())
-            .expect("uint8 resolves")
-            .id
-            .0,
+    let MetaValueTarget::TypeSymbol(fv_sym) = fv.target;
+    assert!(
+        fv_sym.0 != 0,
+        "ForwardedValue target SymbolId must be non-zero"
     );
+    // Verify fv.target matches what the classifier assigned
+    let expected_sym = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint8", &world.package_context())
+        .expect("uint8 resolves")
+        .id;
     assert_eq!(
-        fv_tv, expected_tv,
-        "ForwardedValue target must match uint8 TypeValueId"
+        fv_sym, expected_sym,
+        "ForwardedValue target SymbolId must match uint8's SymbolId"
     );
 }
 
 #[test]
-fn identity_type_declaration_binding_installs_declared_type_after_invocation() {
+fn identity_type_binding_uses_invocation_value_boundary() {
     let world = v08_identity_type_world();
-    let uint8 = world
-        .snapshot()
-        .capability()
-        .resolve_type_object("uint8", &world.package_context())
-        .expect("uint8 resolves as type object");
-    let tv = type_value_id_from_type_symbol_placeholder(uint8.id);
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    let site = extract_single_call_site(&expr).expect("fixture must be a call");
+    let context = world.package_context();
+    let resolved = resolve_call_target(
+        &site.target,
+        &world.snapshot().capability(),
+        &context,
+        PolicyEnv::Meta,
+    )
+    .expect("resolve_call_target should succeed")
+    .expect("IdentityType target should resolve");
 
-    let fv = MetaInvocationValue::ForwardedValue(lang_build::ForwardedValue {
-        target: MetaValueTarget::TypeValueProjection(tv),
-        return_view: ReturnViewShape::Leaf,
-        provenance: Provenance::new("binding test"),
-    });
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        resolved.callee.clone(),
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("binding boundary test")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("binding boundary test"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("binding boundary"));
+    let MetaInvocationResult::Value(invocation_value) = invoke_meta_callable(invocation_input)
+    else {
+        panic!("IdentityType should yield invocation value");
+    };
 
     let result = bind_meta_invocation_value_result(
-        fv,
+        invocation_value,
         world.snapshot(),
         world.package_root_node(),
         "T",
@@ -685,8 +715,8 @@ fn identity_type_declaration_binding_installs_declared_type_after_invocation() {
         "declaration binding must install a NamespaceDelta"
     );
     assert_eq!(
-        result.replacement_object.name, "uint8",
-        "replacement_object should be the uint8 type symbol"
+        result.replacement_object.name, "T",
+        "replacement_object is the declared forwarding symbol"
     );
 }
 
@@ -710,8 +740,8 @@ fn identity_type_unresolved_type_argument_reports_resolution_failure() {
 }
 
 #[test]
-fn type_value_id_placeholder_bridge_is_explicit_object_boundary() {
-    let tv = type_value_id_from_type_symbol_placeholder(SymbolId(42));
+fn type_value_id_projection_is_derived_from_type_symbol() {
+    let tv = type_value_projection_from_type_symbol(SymbolId(42));
     assert_eq!(tv, TypeValueId(42));
     assert_eq!(tv.as_u64(), 42);
 }
@@ -802,41 +832,81 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
 }
 
 #[test]
-fn binding_layer_consumes_forwarded_invocation_value_via_legacy_type_projection() {
+fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
     let world = v08_identity_type_world();
-    let uint8_id = world
-        .snapshot()
-        .capability()
-        .resolve_type_object("uint8", &world.package_context())
-        .expect("uint8 resolves")
-        .id;
-    let tv = type_value_id_from_type_symbol_placeholder(uint8_id);
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    let site = extract_single_call_site(&expr).expect("fixture must be a call");
+    let context = world.package_context();
+    let resolved = resolve_call_target(
+        &site.target,
+        &world.snapshot().capability(),
+        &context,
+        PolicyEnv::Meta,
+    )
+    .expect("resolve_call_target should succeed")
+    .expect("IdentityType target should resolve");
 
-    let fv = lang_build::MetaInvocationValue::ForwardedValue(lang_build::ForwardedValue {
-        target: MetaValueTarget::TypeValueProjection(tv),
-        return_view: ReturnViewShape::Leaf,
-        provenance: Provenance::new("binding test"),
-    });
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        resolved.callee.clone(),
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("forwarded binding boundary")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("forwarded binding boundary"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("forwarded binding"));
+    let MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(fv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("IdentityType must yield ForwardedValue");
+    };
+    let MetaValueTarget::TypeSymbol(sym) = fv.target;
 
     let result = bind_meta_invocation_value_result(
-        fv,
+        MetaInvocationValue::ForwardedValue(fv),
         world.snapshot(),
         world.package_root_node(),
         "T",
-        Provenance::new("binding via ForwardedValue"),
+        Provenance::new("forwarding binding"),
     )
-    .expect(
-        "bind_meta_invocation_value_result should succeed for ForwardedValue(TypeValueProjection)",
-    );
+    .expect("binding should succeed");
 
     assert!(
         !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
-        "binding must install a NamespaceDelta"
+        "forwarded binding must install a NamespaceDelta"
+    );
+    assert_eq!(result.replacement_object.kind, lang_build::SymbolKind::Type);
+    assert_eq!(result.replacement_object.name, "T");
+    // The declared forwarding symbol carries the ForwardedValue's type
+    // SymbolId as its type_symbol_id, not a clone of the original uint8
+    // TypeObject.
+    let SymbolPayload::Type(type_obj) = &result.replacement_object.payload else {
+        panic!("declared symbol must have Type payload");
+    };
+    assert_eq!(
+        type_obj.type_symbol_id, sym,
+        "declared forwarding type must use the forwarded TypeSymbol"
     );
 }
 
 #[test]
-fn generated_construction_value_binding_materializes_without_typevalue_fallback() {
+fn generated_construction_value_binding_materializes_declared_type_symbol() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
@@ -878,7 +948,7 @@ fn generated_construction_value_binding_rejects_mismatched_construction_instance
             arity: 1,
             unit_positions: vec![],
             atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
-            known_type_values: vec![Some(TypeValueId(1))],
+            known_type_symbols: vec![Some(SymbolId(1))],
         },
         return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
         build_identity_fragment: None,
@@ -1058,7 +1128,7 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
 }
 
 #[test]
-fn generated_construction_value_is_not_type_value_id() {
+fn generated_construction_value_carries_construction_instance_identity() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
@@ -1079,7 +1149,7 @@ fn generated_construction_value_is_not_type_value_id() {
             lookup_env: PolicyEnv::Meta,
             demanded_execution: ExecutionEnv::Meta,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
-            provenance: Provenance::new("GCV != TV test"),
+            provenance: Provenance::new("GCV identity test"),
         },
     );
 
@@ -1090,11 +1160,11 @@ fn generated_construction_value_is_not_type_value_id() {
     };
 
     let invocation_input =
-        MetaInvocationInput::new(*candidate, Provenance::new("GCV != TV invocation"));
+        MetaInvocationInput::new(*candidate, Provenance::new("GCV identity invocation"));
     let gcv = match invoke_meta_callable(invocation_input) {
         MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) => gcv,
         MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(_)) => {
-            panic!("UCPrototype must NOT return ForwardedValue(TypeValueProjection)")
+            panic!("UCPrototype must NOT return ForwardedValue(TypeSymbol)")
         }
         MetaInvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
     };
@@ -1169,7 +1239,7 @@ fn binding_layer_materializes_generated_construction_value() {
     let declared = &result.replacement_object;
     assert_eq!(declared.kind, lang_build::SymbolKind::Type);
     assert_eq!(declared.name, "T");
-    let tv = type_value_id_from_type_symbol_placeholder(declared.id);
+    let tv = type_value_projection_from_type_symbol(declared.id);
     assert_ne!(
         tv.as_u64(),
         cid.as_u64(),
@@ -1302,10 +1372,9 @@ fn produce_classified_shape(
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(role);
     let mut classified = shape.clone();
-    let type_value = type_value_id_from_type_symbol_placeholder(type_symbol.id);
     for raw in &mut classified.raw_args {
         if matches!(raw.value_class, RawArgValueClass::UnknownExpression) {
-            *raw = raw.clone().as_type_object_with_type_value(type_value);
+            *raw = raw.clone().as_type_object_with_type_symbol(type_symbol.id);
         }
     }
     classified

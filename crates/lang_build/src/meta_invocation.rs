@@ -1,7 +1,7 @@
 //! Formal meta invocation boundary.
 //!
 //! Consumes a `PreparedCallableCandidate` and dispatches to the appropriate
-//! primitive invocation. This is a **pure** step — it produces an
+//! primitive invocation. This is a **pure** step — it produces a
 //! `MetaInvocationValue` but does **not** install `NamespaceDelta`, bind
 //! declared symbols, or mutate the namespace graph.
 //!
@@ -31,7 +31,6 @@
 //! `ProductObject` / `ArgProductShape` / `RawArgShape`.
 
 use crate::{
-    identity::TypeValueId,
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::{compute_meta_instance_key, MetaInstanceKey},
@@ -71,12 +70,13 @@ pub enum MetaInvocationResult {
 
 /// Target of a forwarded invocation value.
 ///
-/// `TypeValueProjection` is the current legacy path — forwarded values only
-/// carry a type-value identity. Future variants will carry `SymbolId`,
-/// `ValueObject`, and `ConstructionInstance` targets.
+/// `TypeSymbol` carries the forwarded type's `SymbolId` as its primary
+/// identity. `TypeValueId` projection is derived from the symbol identity
+/// (via `type_value_projection_from_type_symbol`), never used as
+/// a binding lookup source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MetaValueTarget {
-    TypeValueProjection(TypeValueId),
+    TypeSymbol(SymbolId),
 }
 
 /// Invocation value produced by formal meta invocation.
@@ -92,6 +92,9 @@ pub enum MetaInvocationValue {
 
 /// Forwarded existing value — the call returns the same value that was passed
 /// as argument (`r === arg`). Used by `IdentityType` as forwarding proof.
+///
+/// The `target` carries the forwarded type's `SymbolId`. `TypeValueId`
+/// projection is implicitly derived from the symbol identity.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ForwardedValue {
     pub target: MetaValueTarget,
@@ -113,8 +116,8 @@ pub struct GeneratedConstructionValue {
 /// Deterministic build-local construction identity placeholder.
 ///
 /// Produced by `compute_construction_instance_id`. Distinct from `SymbolId`
-/// and `TypeValueId` — two different symbols may carry the same construction
-/// instance identity. This is a placeholder; a stable cross-build identity
+/// and the type-value projection — two different symbols may carry the same
+/// construction instance identity. This is a placeholder; a stable
 /// will use a different key derivation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConstructionInstanceId(pub u64);
@@ -185,12 +188,12 @@ pub fn compute_construction_instance_id(
     for kind in &material.canonical_args.atom_kinds {
         h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
     }
-    for tv in &material.canonical_args.known_type_values {
-        match tv {
+    for sym in &material.canonical_args.known_type_symbols {
+        match sym {
             None => h.write_field(&[0u8]),
-            Some(tv) => {
+            Some(s) => {
                 h.write_field(&[1u8]);
-                h.write_field(&tv.0.to_le_bytes());
+                h.write_field(&s.0.to_le_bytes());
             }
         }
     }
@@ -230,7 +233,8 @@ pub enum ReturnViewShape {
 /// Invoke a prepared callable candidate through the formal meta invocation
 /// boundary.
 ///
-/// Reads `callee_primitive` from the candidate itself. The reduction is pure.
+/// Reads `callee_primitive` from the candidate itself. Invocation is pure
+/// — no graph mutation, no `NamespaceDelta` installation.
 pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult {
     let Some(primitive) = input.candidate.callee_primitive else {
         return MetaInvocationResult::Diagnostic(
@@ -325,12 +329,12 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
         );
     }
 
-    let type_value_id = match mat.known_type_values.get(0).and_then(|tv| *tv) {
-        Some(tv) => tv,
+    let type_symbol_id = match mat.known_type_symbols.get(0).and_then(|s| *s) {
+        Some(s) => s,
         None => {
             return MetaInvocationResult::Diagnostic(
                 Diagnostic::hard_error(
-                    "IdentityType: argument is not a classified type object with a TypeValueId",
+                    "IdentityType: argument is not a classified type object with a TypeSymbol",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),
@@ -339,7 +343,7 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
     };
 
     MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(ForwardedValue {
-        target: MetaValueTarget::TypeValueProjection(type_value_id),
+        target: MetaValueTarget::TypeSymbol(type_symbol_id),
         return_view: ReturnViewShape::Leaf,
         provenance: input.provenance.clone(),
     }))
@@ -362,12 +366,12 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvoc
         );
     }
 
-    let _type_value_id = match mat.known_type_values.get(0).and_then(|tv| *tv) {
-        Some(tv) => tv,
+    let _type_symbol_id = match mat.known_type_symbols.get(0).and_then(|s| *s) {
+        Some(s) => s,
         None => {
             return MetaInvocationResult::Diagnostic(
                 Diagnostic::hard_error(
-                    "UnaryConstructionPrototype: argument is not a classified type object with a TypeValueId",
+                    "UnaryConstructionPrototype: argument is not a classified type object with a TypeSymbol",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),

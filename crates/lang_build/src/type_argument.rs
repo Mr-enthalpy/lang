@@ -3,7 +3,8 @@
 //! Classifies `UnknownExpression` arguments in an `ArgProductShape` by
 //! resolving their corresponding product-atom names through the namespace
 //! graph as type objects. Classification sets `NonValue(TypeObject)` and
-//! records the type-object's `TypeValueId`.
+//! records the type-object's `SymbolId` as primary identity; `TypeValueId`
+//! is derived as a secondary projection.
 //!
 //! This module does **not** resolve call targets, does **not** perform type
 //! checking, does **not** insert mechanical pass actions, and does **not**
@@ -13,7 +14,6 @@ use lang_syntax::NormExpr;
 
 use crate::{
     graph::{NamespaceGraphCapability, ResolverContext},
-    identity::type_value_id_from_type_symbol_placeholder,
     model::PolicyEnv,
     product_shape::{ArgProductShape, ProductAtom, RawArgValueClass},
 };
@@ -23,8 +23,9 @@ use crate::{
 /// For each `UnknownExpression` argument whose corresponding atom is a
 /// `NormExpr::Name`, resolves the name through the namespace graph as a type
 /// object under the given policy. Successfully resolved arguments are refined
-/// to `NonValue(TypeObject)` with the type's `TypeValueId`. Unresolved names
-/// remain `UnknownExpression`.
+/// to `NonValue(TypeObject)` with the type-object's `SymbolId` as primary
+/// identity; `TypeValueId` is derived as secondary projection material.
+/// Unresolved names remain `UnknownExpression`.
 ///
 /// Index, provenance, and pass-action boundaries are preserved. Unit and
 /// Expression-barrier atoms are passed through unchanged.
@@ -54,10 +55,9 @@ pub fn classify_type_arguments(
         else {
             continue;
         };
-        let type_value_id = type_value_id_from_type_symbol_placeholder(type_symbol.id);
         *raw_arg = raw_arg
             .clone()
-            .as_type_object_with_type_value(type_value_id);
+            .as_type_object_with_type_symbol(type_symbol.id);
     }
     ArgProductShape {
         raw_args: args,
@@ -102,10 +102,9 @@ pub fn classify_type_arguments_with_report(
         };
         match capability.resolve_type_object_with_policy(&name, context, PolicyEnv::Meta) {
             Ok(type_symbol) => {
-                let type_value_id = type_value_id_from_type_symbol_placeholder(type_symbol.id);
                 *raw_arg = raw_arg
                     .clone()
-                    .as_type_object_with_type_value(type_value_id);
+                    .as_type_object_with_type_symbol(type_symbol.id);
             }
             Err(_) => {
                 unresolved.push(name);

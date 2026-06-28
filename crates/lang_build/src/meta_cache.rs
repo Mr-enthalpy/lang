@@ -6,7 +6,7 @@
 //! ## Separation of concerns
 //!
 //! The cache stores only pure invocation results. Declaration binding
-//! (`bind_meta_type_value_result`) remains outside the cache — duplicate
+//! (`bind_meta_invocation_value_result`) remains outside the cache — duplicate
 //! invocation material can be reused, but each distinct binding still installs
 //! its own declared symbol via `NamespaceDelta`.
 
@@ -38,12 +38,12 @@ impl MetaInstanceCache {
         }
     }
 
-    /// Look up a cached reduction result by key.
+    /// Look up a cached invocation value by key.
     pub fn lookup(&self, key: &MetaInstanceKey) -> Option<&CachedMetaInstance> {
         self.entries.get(key)
     }
 
-    /// Insert a reduction result into the cache.
+    /// Insert an invocation value into the cache.
     pub fn insert(
         &mut self,
         key: MetaInstanceKey,

@@ -20,7 +20,6 @@
 
 use crate::{
     callable_body_allows_execution,
-    identity::TypeValueId,
     model::{
         CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject, MetaFunctionObject, PolicyEnv,
         PolicyMetadata, Provenance, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
@@ -169,12 +168,13 @@ pub enum CallableCandidateKind {
 ///
 /// The final key must be derived from the resolved callee `SymbolId`,
 /// canonical argument product shape, Expression barrier structure, Unit
-/// positions, arity, first-order `TypeValueId` values where known, package
-/// identity, mount identity, build/config fingerprint, policy/export-relevant
-/// metadata, and provenance/cache key fragments as needed.
+/// positions, arity, first-order type-value projection material where known,
+/// package identity, mount identity, build/config fingerprint,
+/// policy/export-relevant metadata, and provenance/cache key fragments
+/// as needed.
 ///
 /// It must not be reduced to source text, a normalized dump, callee name plus
-/// arity, or callee name plus `TypeValueId` list only.
+/// arity, or callee name plus a type-value projection list only.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,
@@ -185,7 +185,7 @@ pub struct CanonicalMetaInstanceKeySeed {
     pub argument_product_shape_material: CanonicalArgProductShapeMaterial,
     pub unit_positions: Vec<usize>,
     pub argument_arity: usize,
-    pub argument_type_values: Vec<Option<TypeValueId>>,
+    pub argument_type_symbols: Vec<Option<SymbolId>>,
     pub package_identity_fragment: Option<String>,
     pub mount_identity_fragment: Option<String>,
     pub build_config_fingerprint_fragment: Option<String>,
@@ -203,7 +203,7 @@ pub struct CanonicalArgProductShapeMaterial {
     pub arity: usize,
     pub unit_positions: Vec<usize>,
     pub atom_kinds: Vec<CanonicalArgAtomKind>,
-    pub known_type_values: Vec<Option<TypeValueId>>,
+    pub known_type_symbols: Vec<Option<SymbolId>>,
 }
 
 impl CanonicalArgProductShapeMaterial {
@@ -245,10 +245,10 @@ impl CanonicalArgProductShapeMaterial {
                     RawArgValueClass::Unsupported { .. } => CanonicalArgAtomKind::Unsupported,
                 })
                 .collect(),
-            known_type_values: shape
+            known_type_symbols: shape
                 .raw_args
                 .iter()
-                .map(|raw_arg| raw_arg.known_first_order_type_value)
+                .map(|raw_arg| raw_arg.known_type_symbol_id)
                 .collect(),
         }
     }
@@ -286,7 +286,7 @@ pub enum CanonicalArgAtomKind {
 ///
 /// `ApplicablePlaceholder` means the candidate passed the current placeholder
 /// arity and body-entry checks. It is not a completed invocation result and it
-/// does not produce a `MetaReductionResult`, `MetaExpansionResult`, or
+/// does not produce a `MetaInvocationResult`, `MetaExpansionResult`, or
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must
@@ -349,10 +349,10 @@ pub fn prepare_meta_callable_candidate(
         ),
         unit_positions,
         argument_arity: arg_product_shape.arity,
-        argument_type_values: arg_product_shape
+        argument_type_symbols: arg_product_shape
             .raw_args
             .iter()
-            .map(|raw_arg| raw_arg.known_first_order_type_value)
+            .map(|raw_arg| raw_arg.known_type_symbol_id)
             .collect(),
         package_identity_fragment: context.build_identity.package_identity_fragment.clone(),
         mount_identity_fragment: context.build_identity.mount_identity_fragment.clone(),

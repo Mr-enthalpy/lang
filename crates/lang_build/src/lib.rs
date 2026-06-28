@@ -41,7 +41,7 @@ pub use graph::{
     ResolveExpectation, ResolverContext,
 };
 pub use identity::{
-    type_value_id_from_type_symbol_placeholder, AliasChain, AliasCycleDetectionState,
+    type_value_projection_from_type_symbol, AliasChain, AliasCycleDetectionState,
     AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasQueryResult,
     AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
 };

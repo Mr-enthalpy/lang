@@ -437,6 +437,7 @@ fn raw_arg(index: usize, value_class: RawArgValueClass) -> RawArgShape {
         index,
         value_class,
         explicit_pass_mode: None,
+        known_type_symbol_id: None,
         known_first_order_type_value: None,
         provenance: Provenance::new("object-boundary placeholder"),
     }
@@ -469,18 +470,19 @@ fn identity_type_rejects_unclassified_or_non_type_argument() {
     );
 }
 
-/// Object-boundary test: `as_type_object_with_type_value` and
+/// Object-boundary test: `as_type_object_with_type_symbol` and
 /// `as_resolved_value_with_value_type` carry distinct `value_class` and
 /// pass-action boundaries.
 #[test]
 fn raw_arg_shape_typed_refinement_helpers_distinguish_type_object_from_value_type() {
     let arg = raw_arg(0, RawArgValueClass::UnknownExpression);
 
-    let type_arg = arg.clone().as_type_object_with_type_value(TypeValueId(5));
+    let type_arg = arg.clone().as_type_object_with_type_symbol(SymbolId(5));
     assert!(matches!(
         type_arg.value_class,
         RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
     ));
+    assert_eq!(type_arg.known_type_symbol_id, Some(SymbolId(5)));
     assert_eq!(type_arg.known_first_order_type_value, Some(TypeValueId(5)));
     assert_eq!(type_arg.is_value(), Some(false));
     assert!(
@@ -503,6 +505,7 @@ fn shape_with_class(value_class: RawArgValueClass) -> ArgProductShape {
         index: 0,
         value_class,
         explicit_pass_mode: None,
+        known_type_symbol_id: None,
         known_first_order_type_value: None,
         provenance: Provenance::new("rejection test shape"),
     }];
@@ -614,11 +617,11 @@ fn canonical_fingerprint_distinguishes_expression_barrier_from_type_object() {
     );
 }
 
-/// Canonical fingerprint must distinguish different TypeValueIds.
+/// Canonical fingerprint must distinguish different TypeSymbols.
 #[test]
 fn canonical_fingerprint_distinguishes_type_value_ids() {
-    let key_a = key_for_type_value_arg(TypeValueId(1));
-    let key_b = key_for_type_value_arg(TypeValueId(2));
+    let key_a = key_for_type_symbol_arg(SymbolId(1));
+    let key_b = key_for_type_symbol_arg(SymbolId(2));
     assert_ne!(key_a.fingerprint.value, key_b.fingerprint.value);
 }
 
@@ -642,8 +645,8 @@ fn canonical_fingerprint_excludes_declaration_binding_name() {
 /// MetaInstanceKey equality must ignore provenance.
 #[test]
 fn meta_instance_key_equality_ignores_provenance() {
-    let key_a = key_for_type_value_arg_with_provenance(TypeValueId(5), "provenance A");
-    let key_b = key_for_type_value_arg_with_provenance(TypeValueId(5), "provenance B");
+    let key_a = key_for_type_symbol_arg_with_provenance(SymbolId(5), "provenance A");
+    let key_b = key_for_type_symbol_arg_with_provenance(SymbolId(5), "provenance B");
 
     assert_eq!(key_a, key_b, "key equality must ignore provenance");
     assert_eq!(
@@ -652,7 +655,7 @@ fn meta_instance_key_equality_ignores_provenance() {
         "key ordering must ignore provenance"
     );
 
-    let key_c = key_for_type_value_arg_with_provenance(TypeValueId(6), "provenance A");
+    let key_c = key_for_type_symbol_arg_with_provenance(SymbolId(6), "provenance A");
     assert_ne!(
         key_a, key_c,
         "different TypeValueId must produce different key"
@@ -663,11 +666,11 @@ fn meta_instance_key_equality_ignores_provenance() {
 #[test]
 fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     let mut cache = MetaInstanceCache::new();
-    let key = key_for_type_value_arg(TypeValueId(5));
+    let key = key_for_type_symbol_arg(SymbolId(5));
     cache.insert(
         key.clone(),
         MetaInvocationValue::ForwardedValue(ForwardedValue {
-            target: MetaValueTarget::TypeValueProjection(TypeValueId(5)),
+            target: MetaValueTarget::TypeSymbol(SymbolId(5)),
             return_view: ReturnViewShape::Leaf,
             provenance: Provenance::new("test cache insert"),
         }),
@@ -704,11 +707,11 @@ fn key_for_single_arg(kind: CanonicalArgAtomKind) -> lang_build::MetaInstanceKey
             arity: 1,
             unit_positions: Vec::new(),
             atom_kinds: vec![kind],
-            known_type_values: vec![None],
+            known_type_symbols: vec![None],
         },
         unit_positions: Vec::new(),
         argument_arity: 1,
-        argument_type_values: vec![None],
+        argument_type_symbols: vec![None],
         package_identity_fragment: None,
         mount_identity_fragment: None,
         build_config_fingerprint_fragment: None,
@@ -761,7 +764,7 @@ fn key_for_single_arg(kind: CanonicalArgAtomKind) -> lang_build::MetaInstanceKey
     compute_meta_instance_key(&candidate)
 }
 
-fn key_for_type_value_arg(tv: TypeValueId) -> lang_build::MetaInstanceKey {
+fn key_for_type_symbol_arg(symbol_id: SymbolId) -> lang_build::MetaInstanceKey {
     let seed = CanonicalMetaInstanceKeySeed {
         callee_function_symbol_id: SymbolId(99),
         argument_product_shape_fingerprint_fragment: None,
@@ -769,11 +772,11 @@ fn key_for_type_value_arg(tv: TypeValueId) -> lang_build::MetaInstanceKey {
             arity: 1,
             unit_positions: Vec::new(),
             atom_kinds: vec![CanonicalArgAtomKind::TypeObject],
-            known_type_values: vec![Some(tv)],
+            known_type_symbols: vec![Some(symbol_id)],
         },
         unit_positions: Vec::new(),
         argument_arity: 1,
-        argument_type_values: vec![Some(tv)],
+        argument_type_symbols: vec![Some(symbol_id)],
         package_identity_fragment: None,
         mount_identity_fragment: None,
         build_config_fingerprint_fragment: None,
@@ -846,11 +849,11 @@ fn key_for_shape_with_units(unit_positions: &[usize]) -> lang_build::MetaInstanc
             arity,
             unit_positions: up.clone(),
             atom_kinds: kinds,
-            known_type_values: vec![None, None, None],
+            known_type_symbols: vec![None, None, None],
         },
         unit_positions: up,
         argument_arity: arity,
-        argument_type_values: vec![None, None, None],
+        argument_type_symbols: vec![None, None, None],
         package_identity_fragment: None,
         mount_identity_fragment: None,
         build_config_fingerprint_fragment: None,
@@ -911,11 +914,11 @@ fn bare_candidate() -> PreparedCallableCandidate {
             arity: 0,
             unit_positions: vec![],
             atom_kinds: vec![],
-            known_type_values: vec![],
+            known_type_symbols: vec![],
         },
         unit_positions: vec![],
         argument_arity: 0,
-        argument_type_values: vec![],
+        argument_type_symbols: vec![],
         package_identity_fragment: None,
         mount_identity_fragment: None,
         build_config_fingerprint_fragment: None,
@@ -978,11 +981,11 @@ fn key_for_single_arg_with_provenance(
             arity: 1,
             unit_positions: Vec::new(),
             atom_kinds: vec![kind],
-            known_type_values: vec![None],
+            known_type_symbols: vec![None],
         },
         unit_positions: Vec::new(),
         argument_arity: 1,
-        argument_type_values: vec![None],
+        argument_type_symbols: vec![None],
         package_identity_fragment: None,
         mount_identity_fragment: None,
         build_config_fingerprint_fragment: None,
@@ -1035,8 +1038,8 @@ fn key_for_single_arg_with_provenance(
     compute_meta_instance_key(&candidate)
 }
 
-fn key_for_type_value_arg_with_provenance(
-    tv: TypeValueId,
+fn key_for_type_symbol_arg_with_provenance(
+    symbol_id: SymbolId,
     provenance_desc: &str,
 ) -> lang_build::MetaInstanceKey {
     let seed = CanonicalMetaInstanceKeySeed {
@@ -1046,11 +1049,11 @@ fn key_for_type_value_arg_with_provenance(
             arity: 1,
             unit_positions: Vec::new(),
             atom_kinds: vec![CanonicalArgAtomKind::TypeObject],
-            known_type_values: vec![Some(tv)],
+            known_type_symbols: vec![Some(symbol_id)],
         },
         unit_positions: Vec::new(),
         argument_arity: 1,
-        argument_type_values: vec![Some(tv)],
+        argument_type_symbols: vec![Some(symbol_id)],
         package_identity_fragment: None,
         mount_identity_fragment: None,
         build_config_fingerprint_fragment: None,
