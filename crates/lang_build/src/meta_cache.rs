@@ -1,6 +1,6 @@
 //! Minimal in-memory meta instance cache.
 //!
-//! Stores `MetaReductionResult` keyed by `MetaInstanceKey`. Does **not** store
+//! Stores `MetaInvocationValue` keyed by `MetaInstanceKey`. Does **not** store
 //! `NamespaceDelta`, `MetaExpansionResult`, declared symbols, or binding names.
 //!
 //! ## Separation of concerns
@@ -12,13 +12,13 @@
 
 use std::collections::BTreeMap;
 
-use crate::{meta_invocation::MetaReductionResult, meta_key::MetaInstanceKey, model::Provenance};
+use crate::{meta_invocation::MetaInvocationValue, meta_key::MetaInstanceKey, model::Provenance};
 
 /// Cached meta invocation entry.
 #[derive(Clone, Debug)]
 pub struct CachedMetaInstance {
     pub key: MetaInstanceKey,
-    pub result: MetaReductionResult,
+    pub result: MetaInvocationValue,
     pub provenance: Provenance,
 }
 
@@ -47,7 +47,7 @@ impl MetaInstanceCache {
     pub fn insert(
         &mut self,
         key: MetaInstanceKey,
-        result: MetaReductionResult,
+        result: MetaInvocationValue,
         provenance: Provenance,
     ) {
         self.entries.insert(

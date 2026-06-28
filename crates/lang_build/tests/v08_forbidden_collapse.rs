@@ -16,10 +16,10 @@ use lang_build::{
     ArgProductShape, CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason,
     CandidatePrepResult, CandidatePreparationContext, CandidatePreparationInput,
     CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed,
-    ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject, MetaInstanceCache,
-    MetaInvocationInput, MetaReductionResult, NonValueArgKind, ParameterShape, PolicyEnv,
-    PreparedCallableCandidate, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
-    RawArgValueClass, SymbolId, TypeValueId,
+    ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject, ForwardedValue,
+    MetaInstanceCache, MetaInvocationInput, MetaInvocationValue, MetaValueTarget, NonValueArgKind,
+    ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom, ProductMaterialRole,
+    Provenance, RawArgShape, RawArgValueClass, ReturnViewShape, SymbolId, TypeValueId,
 };
 
 /// Unit positions must remain in the canonical argument material and not be
@@ -55,7 +55,7 @@ fn canonical_arg_material_does_not_collapse_unit_positions() {
 /// CandidatePrepResult is before formal meta invocation.
 ///
 /// The enum variants (ApplicablePlaceholder, Deferred, Diagnostic) must not
-/// be mistaken for MetaReductionResult or MetaExpansionResult. This test
+/// be mistaken for MetaInvocationResult or MetaExpansionResult. This test
 /// confirms that candidate-prep may defer on body-entry policy without
 /// returning a meta execution result.
 #[test]
@@ -95,7 +95,7 @@ fn candidate_prep_does_not_execute_meta_invocation() {
             panic!("meta execution on runtime-only body must defer, not diagnose")
         }
     }
-    // Confirm CandidatePrepResult is NOT MetaReductionResult / MetaExpansionResult
+    // Confirm CandidatePrepResult is NOT MetaInvocationResult / MetaExpansionResult
     // (compile-time type guarantee; runtime assertion above proves behavior).
 }
 
@@ -548,7 +548,7 @@ fn candidate_input(shape: ArgProductShape) -> CandidatePreparationInput {
 /// `CandidatePrepResult::ApplicablePlaceholder` is not meta invocation.
 ///
 /// Candidate prep must not return TypeValueId, must not install NamespaceDelta,
-/// and must not produce MetaInvocationResult or MetaReductionResult.
+/// and must not produce MetaInvocationResult.
 #[test]
 fn candidate_preparation_does_not_return_meta_invocation_result() {
     let world = v08_candidate_world();
@@ -659,18 +659,25 @@ fn meta_instance_key_equality_ignores_provenance() {
     );
 }
 
-/// Cache stores reduction result, not NamespaceDelta.
+/// Cache stores invocation value, not NamespaceDelta.
 #[test]
-fn meta_instance_cache_stores_reduction_not_namespace_delta() {
+fn meta_instance_cache_stores_invocation_value_not_namespace_delta() {
     let mut cache = MetaInstanceCache::new();
     let key = key_for_type_value_arg(TypeValueId(5));
     cache.insert(
         key.clone(),
-        MetaReductionResult::TypeValue(TypeValueId(5)),
+        MetaInvocationValue::ForwardedValue(ForwardedValue {
+            target: MetaValueTarget::TypeValueProjection(TypeValueId(5)),
+            return_view: ReturnViewShape::Leaf,
+            provenance: Provenance::new("test cache insert"),
+        }),
         Provenance::new("test cache insert"),
     );
     let cached = cache.lookup(&key).expect("cache entry should be found");
-    assert!(matches!(cached.result, MetaReductionResult::TypeValue(_)));
+    assert!(matches!(
+        cached.result,
+        MetaInvocationValue::ForwardedValue(_)
+    ));
     // MetaInstanceCache does not expose NamespaceDelta — compile-time guarantee.
     assert_eq!(cache.len(), 1);
 }

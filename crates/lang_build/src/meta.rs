@@ -11,7 +11,8 @@ use crate::{
         CandidatePreparationContext, CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
+        invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
+        MetaValueTarget,
     },
     model::{
         CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
@@ -599,16 +600,14 @@ fn expand_identity_type_meta(
     // --- Stage 4: formal meta invocation (pure reduction) ---
     let invocation_input = MetaInvocationInput::new(*candidate, provenance.clone());
 
-    let type_value_id = match invoke_meta_callable(invocation_input) {
-        MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv)) => tv,
-        MetaInvocationResult::Diagnostic(d) => {
-            return Err(BuildError::single(d));
-        }
+    let invocation_value = match invoke_meta_callable(invocation_input) {
+        MetaInvocationResult::Value(v) => v,
+        MetaInvocationResult::Diagnostic(d) => return Err(BuildError::single(d)),
     };
 
     // --- Stage 5: declaration binding (where NamespaceDelta is installed) ---
-    bind_meta_type_value_result(
-        type_value_id,
+    bind_meta_invocation_value_result(
+        invocation_value,
         snapshot,
         parent_namespace,
         binding_name,
@@ -616,16 +615,47 @@ fn expand_identity_type_meta(
     )
 }
 
-/// Bind a meta invocation result `TypeValueId` into a declaration expansion.
+/// Bind a meta invocation value into a declaration expansion.
 ///
-/// Looks up the corresponding type symbol from the snapshot, constructs a
-/// declared type symbol under `binding_name`, and returns a
-/// `MetaExpansionResult` containing the `NamespaceDelta`.
+/// This is the formal binding entry point. It dispatches on the invocation
+/// value type:
 ///
-/// This is the **declaration binding** layer — it is separate from formal
-/// meta invocation. `MetaReductionResult` itself does not install symbols
-/// or `NamespaceDelta`.
-pub fn bind_meta_type_value_result(
+/// - `ForwardedValue` with `TypeValueProjection`: delegates to the legacy
+///   forwarded-type-value-projection binding helper.
+/// - `ForwardedValue` with other targets: not yet supported.
+/// - `GeneratedConstructionValue`: explicitly unsupported — returns a
+///   diagnostic that records this as an implementation-stage downgrade,
+///   not a semantic rejection.
+pub fn bind_meta_invocation_value_result(
+    value: MetaInvocationValue,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    provenance: Provenance,
+) -> Result<MetaExpansionResult, BuildError> {
+    match value {
+        MetaInvocationValue::ForwardedValue(fv) => match fv.target {
+            MetaValueTarget::TypeValueProjection(tv) => {
+                legacy_bind_forwarded_type_value_projection(
+                    tv, snapshot, parent_namespace, binding_name, provenance,
+                )
+            }
+        },
+        MetaInvocationValue::GeneratedConstructionValue(gcv) => {
+            Err(BuildError::single(Diagnostic::hard_error(
+                "meta hard error: GeneratedConstructionValue binding is not yet supported (v0.8 downgrade — this is an implementation-stage limitation, not a semantic rejection)",
+                Some(gcv.provenance),
+            )))
+        }
+    }
+}
+
+/// Legacy compatibility helper (crate-private).
+///
+/// Binds a forwarded `TypeValueProjection` into a declared type symbol.
+/// This is **not** the formal meta-invocation binding entry. Do not call
+/// from new construction paths.
+fn legacy_bind_forwarded_type_value_projection(
     type_value_id: TypeValueId,
     snapshot: &NamespaceGraphSnapshot,
     parent_namespace: NamespaceNodeId,
