@@ -105,10 +105,88 @@ pub struct ForwardedValue {
 /// identity (`r = t`). Reserved for future generative type constructors.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedConstructionValue {
+    pub construction_instance_id: ConstructionInstanceId,
     pub callee_symbol_id: SymbolId,
     pub canonical_args: CanonicalArgProductShapeMaterial,
+    pub identity_material: ConstructionIdentityMaterial,
     pub return_view: ReturnViewShape,
     pub provenance: Provenance,
+}
+
+/// Stable identity for a generated construction value.
+///
+/// Produced by `compute_construction_instance_id`. Distinct from `SymbolId`
+/// and `TypeValueId` — two different symbols may carry the same construction
+/// instance identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ConstructionInstanceId(pub u64);
+
+impl ConstructionInstanceId {
+    pub const fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// Return-slot semantics for the meta callable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReturnSlotSemantics {
+    /// `r === arg` — forwarded existing value.
+    Forward,
+    /// `r = arg` — generated construction value.
+    Generate,
+}
+
+/// Material that determines a generated construction value's identity.
+///
+/// Same callee + same canonical args + same return-slot semantics + same
+/// build/policy identity → same `ConstructionInstanceId`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConstructionIdentityMaterial {
+    pub callee_symbol_id: SymbolId,
+    pub canonical_args: CanonicalArgProductShapeMaterial,
+    pub return_slot_semantics: ReturnSlotSemantics,
+    pub build_identity_fragment: Option<String>,
+    pub policy_export_fingerprint_fragment: Option<String>,
+    pub provenance: Provenance,
+}
+
+/// Compute a stable `ConstructionInstanceId` from identity material.
+///
+/// Uses a placeholder FNV-1a hash. Must be replaced with a stable
+/// construction-instance key derivation when cross-build identity is
+/// implemented.
+pub fn compute_construction_instance_id(
+    material: &ConstructionIdentityMaterial,
+) -> ConstructionInstanceId {
+    use crate::fingerprint::Fnv1a64;
+    let mut h = Fnv1a64::new();
+    h.write_str_field("v08:construction");
+    h.write_field(&material.callee_symbol_id.0.to_le_bytes());
+    h.write_field(&(material.canonical_args.arity as u64).to_le_bytes());
+    for kind in &material.canonical_args.atom_kinds {
+        h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
+    }
+    for tv in &material.canonical_args.known_type_values {
+        match tv {
+            None => h.write_field(&[0u8]),
+            Some(tv) => {
+                h.write_field(&[1u8]);
+                h.write_field(&tv.0.to_le_bytes());
+            }
+        }
+    }
+    let sem = match material.return_slot_semantics {
+        ReturnSlotSemantics::Forward => 0u8,
+        ReturnSlotSemantics::Generate => 1u8,
+    };
+    h.write_field(&[sem]);
+    if let Some(ref s) = material.build_identity_fragment {
+        h.write_str_field(s);
+    }
+    if let Some(ref s) = material.policy_export_fingerprint_fragment {
+        h.write_str_field(s);
+    }
+    ConstructionInstanceId(u64::from_str_radix(&h.finish_hex(), 16).unwrap_or(0))
 }
 
 /// Return value shape — whether the invocation value exposes a leaf or product
@@ -139,6 +217,9 @@ pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult 
 
     match primitive {
         crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
+        crate::model::CoreMetaFunction::UnaryConstructionPrototype => {
+            invoke_unary_construction_prototype(&input)
+        }
         crate::model::CoreMetaFunction::Struct => MetaInvocationResult::Diagnostic(
             Diagnostic::hard_error(
                 "meta invocation: struct is not yet callable through formal invocation",
@@ -232,4 +313,62 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
         return_view: ReturnViewShape::Leaf,
         provenance: input.provenance.clone(),
     }))
+}
+
+fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvocationResult {
+    let candidate = &input.candidate;
+    let mat = &candidate.canonical_key_seed.argument_product_shape_material;
+
+    if mat.arity != 1 {
+        return MetaInvocationResult::Diagnostic(
+            Diagnostic::hard_error(
+                format!(
+                    "UnaryConstructionPrototype: expected exactly 1 type argument, got {}",
+                    mat.arity
+                ),
+                Some(input.provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id),
+        );
+    }
+
+    let _type_value_id = match mat.known_type_values.get(0).and_then(|tv| *tv) {
+        Some(tv) => tv,
+        None => {
+            return MetaInvocationResult::Diagnostic(
+                Diagnostic::hard_error(
+                    "UnaryConstructionPrototype: argument is not a classified type object with a TypeValueId",
+                    Some(input.provenance.clone()),
+                )
+                .with_symbol_context(candidate.callee_symbol_id),
+            );
+        }
+    };
+
+    let identity_material = ConstructionIdentityMaterial {
+        callee_symbol_id: candidate.callee_symbol_id,
+        canonical_args: mat.clone(),
+        return_slot_semantics: ReturnSlotSemantics::Generate,
+        build_identity_fragment: candidate
+            .canonical_key_seed
+            .package_identity_fragment
+            .clone(),
+        policy_export_fingerprint_fragment: candidate
+            .canonical_key_seed
+            .policy_export_fingerprint_fragment
+            .clone(),
+        provenance: input.provenance.clone(),
+    };
+    let construction_instance_id = compute_construction_instance_id(&identity_material);
+
+    MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(
+        GeneratedConstructionValue {
+            construction_instance_id,
+            callee_symbol_id: candidate.callee_symbol_id,
+            canonical_args: mat.clone(),
+            identity_material,
+            return_view: ReturnViewShape::Leaf,
+            provenance: input.provenance.clone(),
+        },
+    ))
 }

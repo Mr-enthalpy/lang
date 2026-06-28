@@ -141,7 +141,7 @@ fn encode_canonical_meta_instance_key_seed(seed: &CanonicalMetaInstanceKeySeed) 
     h.finish_hex()
 }
 
-fn atom_kind_discriminant(kind: &CanonicalArgAtomKind) -> u8 {
+pub(crate) fn atom_kind_discriminant(kind: &CanonicalArgAtomKind) -> u8 {
     match kind {
         CanonicalArgAtomKind::ExpressionBarrier => 0,
         CanonicalArgAtomKind::ResolvedValue => 1,

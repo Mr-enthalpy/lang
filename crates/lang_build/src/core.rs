@@ -55,6 +55,14 @@ pub fn install_core_bootstrap(
         Provenance::new("core meta-function `IdentityType`"),
         policy_set_export_meta(),
     );
+    insert_meta_function(
+        &mut delta,
+        core_node,
+        "UnaryConstructionPrototype",
+        CoreMetaFunction::UnaryConstructionPrototype,
+        Provenance::new("core meta-function `UnaryConstructionPrototype`"),
+        policy_set_export_meta(),
+    );
     insert_verification_namespace(&mut delta, core_node);
 
     for name in [
@@ -93,9 +101,10 @@ fn insert_meta_function(
     let symbol_id = delta.allocate_symbol_id();
     let return_policy = match primitive {
         CoreMetaFunction::Struct => policy_set_meta_runtime(),
-        CoreMetaFunction::Assert | CoreMetaFunction::Verify(_) | CoreMetaFunction::IdentityType => {
-            policy_set_meta()
-        }
+        CoreMetaFunction::Assert
+        | CoreMetaFunction::Verify(_)
+        | CoreMetaFunction::IdentityType
+        | CoreMetaFunction::UnaryConstructionPrototype => policy_set_meta(),
     };
     let mut symbol = SymbolObject::placeholder(
         symbol_id,
