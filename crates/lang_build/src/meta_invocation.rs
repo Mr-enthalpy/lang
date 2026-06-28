@@ -123,6 +123,20 @@ pub fn invoke_meta_callable_cached(
     input: MetaInvocationInput,
     cache: &mut MetaInstanceCache,
 ) -> MetaInvocationResult {
+    // Validate primitive before cache lookup — prevents a manually-inserted
+    // cache entry for a no-primitive candidate from bypassing validation.
+    if input.candidate.callee_primitive.is_none() {
+        return MetaInvocationResult::Diagnostic(
+            Diagnostic::hard_error(
+                format!(
+                    "meta invocation (cached): candidate `{}` has no callee primitive",
+                    input.candidate.callee_name
+                ),
+                Some(input.provenance),
+            )
+            .with_symbol_context(input.candidate.callee_symbol_id),
+        );
+    }
     let key = input.compute_key();
     if let Some(cached) = cache.lookup(&key) {
         return MetaInvocationResult::Reduction(cached.result.clone());

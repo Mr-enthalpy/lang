@@ -100,6 +100,11 @@ fn encode_canonical_meta_instance_key_seed(seed: &CanonicalMetaInstanceKeySeed) 
     // Argument arity
     h.write_field(&(seed.argument_arity as u64).to_le_bytes());
 
+    debug_assert_eq!(
+        seed.argument_arity, seed.argument_product_shape_material.arity,
+        "seed arity must match material arity"
+    );
+
     // Unit positions
     h.write_field(&(seed.unit_positions.len() as u64).to_le_bytes());
     for pos in &seed.unit_positions {
