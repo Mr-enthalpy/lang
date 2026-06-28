@@ -10,13 +10,16 @@ mod support;
 use support::*;
 
 use lang_build::{
-    prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input, AliasChain,
-    AliasCycleDetectionState, AliasQueryDisposition, AliasQueryMode, AliasQueryRequest,
-    AliasWritableBoundary, ArgProductShape, CandidateBuildIdentityPlaceholder,
-    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-    CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FlattenedProductInvariant,
-    FlattenedProductObject, NonValueArgKind, ParameterShape, PolicyEnv, ProductAtom,
-    ProductMaterialRole, Provenance, RawArgShape, RawArgValueClass, SymbolId, TypeValueId,
+    compute_meta_instance_key, prepare_meta_callable_candidate,
+    prepare_meta_callable_candidate_from_input, AliasChain, AliasCycleDetectionState,
+    AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasWritableBoundary,
+    ArgProductShape, CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason,
+    CandidatePrepResult, CandidatePreparationContext, CandidatePreparationInput,
+    CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed,
+    ExecutionEnv, FlattenedProductInvariant, FlattenedProductObject, MetaInstanceCache,
+    MetaInvocationInput, MetaReductionResult, NonValueArgKind, ParameterShape, PolicyEnv,
+    PreparedCallableCandidate, ProductAtom, ProductMaterialRole, Provenance, RawArgShape,
+    RawArgValueClass, SymbolId, TypeValueId,
 };
 
 /// Unit positions must remain in the canonical argument material and not be
@@ -583,4 +586,512 @@ fn candidate_preparation_does_not_return_meta_invocation_result() {
             .is_none(),
         "candidate-prep must not assign TypeValueId"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Round 7: canonical fingerprint + cache structure tests
+// ---------------------------------------------------------------------------
+
+/// Canonical fingerprint must distinguish different Unit positions.
+#[test]
+fn canonical_fingerprint_distinguishes_unit_positions() {
+    let key_left = key_for_shape_with_units(&vec![0]);
+    let key_right = key_for_shape_with_units(&vec![1]);
+    assert_ne!(
+        key_left.fingerprint.value, key_right.fingerprint.value,
+        "different Unit positions must produce different fingerprints"
+    );
+}
+
+/// Canonical fingerprint must distinguish unresolved from typed atoms.
+#[test]
+fn canonical_fingerprint_distinguishes_expression_barrier_from_type_object() {
+    let key_barrier = key_for_single_arg(CanonicalArgAtomKind::ExpressionBarrier);
+    let key_typed = key_for_single_arg(CanonicalArgAtomKind::TypeObject);
+    assert_ne!(
+        key_barrier.fingerprint.value, key_typed.fingerprint.value,
+        "ExpressionBarrier vs TypeObject must produce different fingerprints"
+    );
+}
+
+/// Canonical fingerprint must distinguish different TypeValueIds.
+#[test]
+fn canonical_fingerprint_distinguishes_type_value_ids() {
+    let key_a = key_for_type_value_arg(TypeValueId(1));
+    let key_b = key_for_type_value_arg(TypeValueId(2));
+    assert_ne!(key_a.fingerprint.value, key_b.fingerprint.value);
+}
+
+/// Canonical fingerprint must not include binding name.
+#[test]
+fn canonical_fingerprint_excludes_declaration_binding_name() {
+    let key_a =
+        key_for_single_arg_with_provenance(CanonicalArgAtomKind::TypeObject, "binding context A");
+    let key_b =
+        key_for_single_arg_with_provenance(CanonicalArgAtomKind::TypeObject, "binding context B");
+    assert_eq!(
+        key_a.fingerprint.value, key_b.fingerprint.value,
+        "same semantic material must yield same key regardless of context"
+    );
+    assert_eq!(
+        key_a, key_b,
+        "keys with different provenance but same canonical material must be equal"
+    );
+}
+
+/// MetaInstanceKey equality must ignore provenance.
+#[test]
+fn meta_instance_key_equality_ignores_provenance() {
+    let key_a = key_for_type_value_arg_with_provenance(TypeValueId(5), "provenance A");
+    let key_b = key_for_type_value_arg_with_provenance(TypeValueId(5), "provenance B");
+
+    assert_eq!(key_a, key_b, "key equality must ignore provenance");
+    assert_eq!(
+        key_a.cmp(&key_b),
+        std::cmp::Ordering::Equal,
+        "key ordering must ignore provenance"
+    );
+
+    let key_c = key_for_type_value_arg_with_provenance(TypeValueId(6), "provenance A");
+    assert_ne!(
+        key_a, key_c,
+        "different TypeValueId must produce different key"
+    );
+}
+
+/// Cache stores reduction result, not NamespaceDelta.
+#[test]
+fn meta_instance_cache_stores_reduction_not_namespace_delta() {
+    let mut cache = MetaInstanceCache::new();
+    let key = key_for_type_value_arg(TypeValueId(5));
+    cache.insert(
+        key.clone(),
+        MetaReductionResult::TypeValue(TypeValueId(5)),
+        Provenance::new("test cache insert"),
+    );
+    let cached = cache.lookup(&key).expect("cache entry should be found");
+    assert!(matches!(cached.result, MetaReductionResult::TypeValue(_)));
+    // MetaInstanceCache does not expose NamespaceDelta — compile-time guarantee.
+    assert_eq!(cache.len(), 1);
+}
+
+/// MetaInvocationInput primitive is derived from candidate, not caller.
+#[test]
+fn meta_invocation_primitive_identity_is_derived_from_candidate() {
+    let candidate = bare_candidate();
+    assert!(
+        candidate.callee_primitive.is_some(),
+        "candidate from candidate-prep must carry callee_primitive"
+    );
+    let input = MetaInvocationInput::new(candidate, Provenance::new("test"));
+    // input has no callee_primitive field — compile-time guarantee.
+    let key = input.compute_key();
+    assert!(!key.fingerprint.value.is_empty());
+}
+
+fn key_for_single_arg(kind: CanonicalArgAtomKind) -> lang_build::MetaInstanceKey {
+    let seed = CanonicalMetaInstanceKeySeed {
+        callee_function_symbol_id: SymbolId(99),
+        argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial {
+            arity: 1,
+            unit_positions: Vec::new(),
+            atom_kinds: vec![kind],
+            known_type_values: vec![None],
+        },
+        unit_positions: Vec::new(),
+        argument_arity: 1,
+        argument_type_values: vec![None],
+        package_identity_fragment: None,
+        mount_identity_fragment: None,
+        build_config_fingerprint_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new("test key seed"),
+    };
+    let candidate = PreparedCallableCandidate {
+        callee_symbol_id: SymbolId(99),
+        callee_name: "test".to_string(),
+        callee_primitive: None,
+        callable_kind: lang_build::CallableCandidateKind::MetaFunction,
+        arg_product_shape: ArgProductShape {
+            flattened: FlattenedProductObject {
+                atoms: vec![],
+                provenance: Provenance::new("test"),
+                invariant: FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            },
+            arity: 1,
+            raw_args: vec![],
+            provenance: Provenance::new("test"),
+        },
+        parameter_shape: ParameterShape::deferred(Provenance::new("test")),
+        policy_planes: lang_build::CandidatePolicyPlanes {
+            lookup_env: PolicyEnv::Meta,
+            symbol_visibility_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            demanded_execution: lang_build::ExecutionEnv::Meta,
+            body_entry_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            return_object_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+        },
+        canonical_key_seed: seed,
+        provenance: Provenance::new("test candidate"),
+    };
+    compute_meta_instance_key(&candidate)
+}
+
+fn key_for_type_value_arg(tv: TypeValueId) -> lang_build::MetaInstanceKey {
+    let seed = CanonicalMetaInstanceKeySeed {
+        callee_function_symbol_id: SymbolId(99),
+        argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial {
+            arity: 1,
+            unit_positions: Vec::new(),
+            atom_kinds: vec![CanonicalArgAtomKind::TypeObject],
+            known_type_values: vec![Some(tv)],
+        },
+        unit_positions: Vec::new(),
+        argument_arity: 1,
+        argument_type_values: vec![Some(tv)],
+        package_identity_fragment: None,
+        mount_identity_fragment: None,
+        build_config_fingerprint_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new("test key seed"),
+    };
+    let candidate = PreparedCallableCandidate {
+        callee_symbol_id: SymbolId(99),
+        callee_name: "test".to_string(),
+        callee_primitive: None,
+        callable_kind: lang_build::CallableCandidateKind::MetaFunction,
+        arg_product_shape: ArgProductShape {
+            flattened: FlattenedProductObject {
+                atoms: vec![],
+                provenance: Provenance::new("test"),
+                invariant: FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            },
+            arity: 1,
+            raw_args: vec![],
+            provenance: Provenance::new("test"),
+        },
+        parameter_shape: ParameterShape::deferred(Provenance::new("test")),
+        policy_planes: lang_build::CandidatePolicyPlanes {
+            lookup_env: PolicyEnv::Meta,
+            symbol_visibility_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            demanded_execution: lang_build::ExecutionEnv::Meta,
+            body_entry_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            return_object_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+        },
+        canonical_key_seed: seed,
+        provenance: Provenance::new("test candidate"),
+    };
+    compute_meta_instance_key(&candidate)
+}
+
+fn key_for_shape_with_units(unit_positions: &[usize]) -> lang_build::MetaInstanceKey {
+    let up: Vec<usize> = unit_positions.to_vec();
+    let arity = 3usize;
+    let mut kinds = vec![
+        CanonicalArgAtomKind::ExpressionBarrier,
+        CanonicalArgAtomKind::ExpressionBarrier,
+        CanonicalArgAtomKind::ExpressionBarrier,
+    ];
+    for p in &up {
+        if *p < arity {
+            kinds[*p] = CanonicalArgAtomKind::ProductUnit;
+        }
+    }
+    let seed = CanonicalMetaInstanceKeySeed {
+        callee_function_symbol_id: SymbolId(99),
+        argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial {
+            arity,
+            unit_positions: up.clone(),
+            atom_kinds: kinds,
+            known_type_values: vec![None, None, None],
+        },
+        unit_positions: up,
+        argument_arity: arity,
+        argument_type_values: vec![None, None, None],
+        package_identity_fragment: None,
+        mount_identity_fragment: None,
+        build_config_fingerprint_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new("test key seed"),
+    };
+    let candidate = PreparedCallableCandidate {
+        callee_symbol_id: SymbolId(99),
+        callee_name: "test".to_string(),
+        callee_primitive: None,
+        callable_kind: lang_build::CallableCandidateKind::MetaFunction,
+        arg_product_shape: ArgProductShape {
+            flattened: FlattenedProductObject {
+                atoms: vec![],
+                provenance: Provenance::new("test"),
+                invariant: FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            },
+            arity,
+            raw_args: vec![],
+            provenance: Provenance::new("test"),
+        },
+        parameter_shape: ParameterShape::deferred(Provenance::new("test")),
+        policy_planes: lang_build::CandidatePolicyPlanes {
+            lookup_env: PolicyEnv::Meta,
+            symbol_visibility_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            demanded_execution: lang_build::ExecutionEnv::Meta,
+            body_entry_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            return_object_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+        },
+        canonical_key_seed: seed,
+        provenance: Provenance::new("test candidate"),
+    };
+    compute_meta_instance_key(&candidate)
+}
+
+fn bare_candidate() -> PreparedCallableCandidate {
+    let seed = CanonicalMetaInstanceKeySeed {
+        callee_function_symbol_id: SymbolId(1),
+        argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial {
+            arity: 0,
+            unit_positions: vec![],
+            atom_kinds: vec![],
+            known_type_values: vec![],
+        },
+        unit_positions: vec![],
+        argument_arity: 0,
+        argument_type_values: vec![],
+        package_identity_fragment: None,
+        mount_identity_fragment: None,
+        build_config_fingerprint_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new("bare candidate"),
+    };
+    PreparedCallableCandidate {
+        callee_symbol_id: SymbolId(1),
+        callee_name: "bare".to_string(),
+        callee_primitive: Some(lang_build::CoreMetaFunction::IdentityType),
+        callable_kind: lang_build::CallableCandidateKind::MetaFunction,
+        arg_product_shape: ArgProductShape {
+            flattened: FlattenedProductObject {
+                atoms: vec![],
+                provenance: Provenance::new("test"),
+                invariant: FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            },
+            arity: 0,
+            raw_args: vec![],
+            provenance: Provenance::new("test"),
+        },
+        parameter_shape: ParameterShape::deferred(Provenance::new("test")),
+        policy_planes: lang_build::CandidatePolicyPlanes {
+            lookup_env: PolicyEnv::Meta,
+            symbol_visibility_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            demanded_execution: lang_build::ExecutionEnv::Meta,
+            body_entry_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            return_object_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+        },
+        canonical_key_seed: seed,
+        provenance: Provenance::new("test candidate"),
+    }
+}
+
+fn key_for_single_arg_with_provenance(
+    kind: CanonicalArgAtomKind,
+    provenance_desc: &str,
+) -> lang_build::MetaInstanceKey {
+    let seed = CanonicalMetaInstanceKeySeed {
+        callee_function_symbol_id: SymbolId(99),
+        argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial {
+            arity: 1,
+            unit_positions: Vec::new(),
+            atom_kinds: vec![kind],
+            known_type_values: vec![None],
+        },
+        unit_positions: Vec::new(),
+        argument_arity: 1,
+        argument_type_values: vec![None],
+        package_identity_fragment: None,
+        mount_identity_fragment: None,
+        build_config_fingerprint_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new(provenance_desc),
+    };
+    let candidate = PreparedCallableCandidate {
+        callee_symbol_id: SymbolId(99),
+        callee_name: "test".to_string(),
+        callee_primitive: None,
+        callable_kind: lang_build::CallableCandidateKind::MetaFunction,
+        arg_product_shape: ArgProductShape {
+            flattened: FlattenedProductObject {
+                atoms: vec![],
+                provenance: Provenance::new(provenance_desc),
+                invariant: FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            },
+            arity: 1,
+            raw_args: vec![],
+            provenance: Provenance::new(provenance_desc),
+        },
+        parameter_shape: ParameterShape::deferred(Provenance::new(provenance_desc)),
+        policy_planes: lang_build::CandidatePolicyPlanes {
+            lookup_env: PolicyEnv::Meta,
+            symbol_visibility_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            demanded_execution: lang_build::ExecutionEnv::Meta,
+            body_entry_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            return_object_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+        },
+        canonical_key_seed: seed,
+        provenance: Provenance::new(provenance_desc),
+    };
+    compute_meta_instance_key(&candidate)
+}
+
+fn key_for_type_value_arg_with_provenance(
+    tv: TypeValueId,
+    provenance_desc: &str,
+) -> lang_build::MetaInstanceKey {
+    let seed = CanonicalMetaInstanceKeySeed {
+        callee_function_symbol_id: SymbolId(99),
+        argument_product_shape_fingerprint_fragment: None,
+        argument_product_shape_material: CanonicalArgProductShapeMaterial {
+            arity: 1,
+            unit_positions: Vec::new(),
+            atom_kinds: vec![CanonicalArgAtomKind::TypeObject],
+            known_type_values: vec![Some(tv)],
+        },
+        unit_positions: Vec::new(),
+        argument_arity: 1,
+        argument_type_values: vec![Some(tv)],
+        package_identity_fragment: None,
+        mount_identity_fragment: None,
+        build_config_fingerprint_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new(provenance_desc),
+    };
+    let candidate = PreparedCallableCandidate {
+        callee_symbol_id: SymbolId(99),
+        callee_name: "test".to_string(),
+        callee_primitive: None,
+        callable_kind: lang_build::CallableCandidateKind::MetaFunction,
+        arg_product_shape: ArgProductShape {
+            flattened: FlattenedProductObject {
+                atoms: vec![],
+                provenance: Provenance::new(provenance_desc),
+                invariant: FlattenedProductInvariant {
+                    no_direct_product_atom_remains: true,
+                },
+            },
+            arity: 1,
+            raw_args: vec![],
+            provenance: Provenance::new(provenance_desc),
+        },
+        parameter_shape: ParameterShape::deferred(Provenance::new(provenance_desc)),
+        policy_planes: lang_build::CandidatePolicyPlanes {
+            lookup_env: PolicyEnv::Meta,
+            symbol_visibility_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            demanded_execution: lang_build::ExecutionEnv::Meta,
+            body_entry_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+            return_object_policy: lang_build::PolicyMetadata {
+                slots: std::collections::BTreeMap::new(),
+                policy_set: lang_build::PolicySet {
+                    flags: std::collections::BTreeSet::new(),
+                },
+            },
+        },
+        canonical_key_seed: seed,
+        provenance: Provenance::new(provenance_desc),
+    };
+    compute_meta_instance_key(&candidate)
 }

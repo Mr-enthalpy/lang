@@ -4,12 +4,13 @@ use support::*;
 
 use lang_build::{
     bind_meta_type_value_result, classify_type_arguments, classify_type_arguments_with_report,
-    extract_single_call_site, invoke_meta_callable, prepare_meta_callable_candidate,
-    prepare_meta_callable_candidate_from_input, resolve_call_target,
-    type_value_id_from_type_symbol_placeholder, AliasChain, AliasQueryDisposition, AliasQueryMode,
-    CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
-    FieldProjection, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
+    extract_single_call_site, invoke_meta_callable, invoke_meta_callable_cached,
+    prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
+    resolve_call_target, type_value_id_from_type_symbol_placeholder, AliasChain,
+    AliasQueryDisposition, AliasQueryMode, CandidateBuildIdentityPlaceholder,
+    CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+    CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FieldProjection,
+    MetaInstanceCache, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
     NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape,
     PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass,
     SourceCategory, SymbolId, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
@@ -489,7 +490,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     );
     assert_eq!(
         classified.raw_args[0].known_first_order_type_value,
-        Some(TypeValueId(uint8.id.0)),
+        Some(type_value_id_from_type_symbol_placeholder(uint8.id)),
         "classified type argument TypeValueId must match uint8's SymbolId"
     );
     assert!(
@@ -502,7 +503,10 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         lang_build::CanonicalArgProductShapeMaterial::from_arg_product_shape(&classified);
     assert_eq!(material.arity, 1);
     assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
-    assert_eq!(material.known_type_values[0], Some(TypeValueId(uint8.id.0)));
+    assert_eq!(
+        material.known_type_values[0],
+        Some(type_value_id_from_type_symbol_placeholder(uint8.id))
+    );
 }
 
 #[test]
@@ -625,11 +629,8 @@ fn identity_type_formal_meta_invocation_returns_type_value_from_source_fixture()
         panic!("candidate-prep should yield ApplicablePlaceholder");
     };
 
-    let invocation_input = MetaInvocationInput::new(
-        *candidate,
-        lang_build::CoreMetaFunction::IdentityType,
-        Provenance::new("formal invocation"),
-    );
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("formal invocation"));
     let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(result_tv)) =
         invoke_meta_callable(invocation_input)
     else {
@@ -704,4 +705,84 @@ fn type_value_id_placeholder_bridge_is_explicit_object_boundary() {
     let tv = type_value_id_from_type_symbol_placeholder(SymbolId(42));
     assert_eq!(tv, TypeValueId(42));
     assert_eq!(tv.as_u64(), 42);
+}
+
+#[test]
+fn meta_instance_cache_reuses_identity_type_reduction() {
+    let world = v08_identity_type_world();
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    let site = extract_single_call_site(&expr).expect("fixture must be a call");
+    let context = world.package_context();
+    let resolved = resolve_call_target(
+        &site.target,
+        &world.snapshot().capability(),
+        &context,
+        PolicyEnv::Meta,
+    )
+    .expect("resolve_call_target should succeed")
+    .expect("IdentityType target should resolve");
+
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified0 = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        resolved.callee.clone(),
+        classified0.clone(),
+        ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("cache reuse test"),
+        },
+    );
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("candidate-prep should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("cache test"));
+    let key = invocation_input.compute_key();
+
+    let mut cache = MetaInstanceCache::new();
+    assert!(cache.lookup(&key).is_none(), "cache should be empty");
+
+    let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
+    let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv1)) = result1 else {
+        panic!("invocation should yield TypeValue");
+    };
+
+    let cached = cache.lookup(&key).expect("entry should now be cached");
+    let MetaReductionResult::TypeValue(cached_tv) = &cached.result;
+    assert_eq!(
+        tv1, *cached_tv,
+        "cached TypeValue must match invocation result"
+    );
+
+    // Second invocation with same material (new candidate from same input)
+    let CandidatePrepResult::ApplicablePlaceholder(candidate2) =
+        prepare_meta_callable_candidate_from_input(CandidatePreparationInput::new(
+            resolved.callee.clone(),
+            classified0,
+            ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
+            CandidatePreparationContext {
+                lookup_env: PolicyEnv::Meta,
+                demanded_execution: ExecutionEnv::Meta,
+                build_identity: CandidateBuildIdentityPlaceholder::default(),
+                provenance: Provenance::new("cache reuse test 2"),
+            },
+        ))
+    else {
+        panic!("second candidate-prep should yield ApplicablePlaceholder");
+    };
+    let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("cache test 2"));
+    let result2 = lang_build::invoke_meta_callable_cached(invocation_input2, &mut cache);
+    let MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv2)) = result2 else {
+        panic!("second invocation should yield TypeValue");
+    };
+    assert_eq!(tv1, tv2, "cache-hit result must match original");
+    assert_eq!(cache.len(), 1, "cache should not grow on hit");
 }
