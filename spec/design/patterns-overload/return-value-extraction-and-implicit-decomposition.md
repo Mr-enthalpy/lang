@@ -32,6 +32,9 @@ Destructuring happens only if that view is product-shaped.
    ```text
    P? -> split(P)
    ```
+   `split(P)` denotes the product-shaped extraction view made available to
+   binding/pattern contexts. It is not an implicit coercion inserted into
+   ordinary value expressions.
 
 4. On named construction values, `?` exposes the declared named extraction
    shape, not necessarily a bare product.
