@@ -15,6 +15,18 @@ Program
                     ParamClause
                       extract:
                         elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName self
+                            annotation:
+                              None
+                            with_clause:
+                              None
+                            initializer:
+                              None
                 BodyBlock
                   forms:
                     ExprForm

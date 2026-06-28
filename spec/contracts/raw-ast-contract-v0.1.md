@@ -128,8 +128,8 @@ Normalization must **not** assume:
   mechanically inserted by the exact `|> name { ... }` shorthand.
 - `x |> { ... }` is rejected because it is the fully headless in-place closure
   case. It has no product/extraction head at all.
-- `x |> () => { ... }`, `x |> (a) => { ... }`, and
-  `x |> [] () => { ... }` are ordinary explicit closures with product
+- `x |> (self) => { ... }`, `x |> (a) => { ... }`, and
+  `x |> [] (self) => { ... }` are ordinary explicit closures with product
   extraction heads. `x |> () { ... }` and `x |> (a) { ... }` are product-head
   plus in-place-closure branch forms in incoming pipe position.
 - At Raw AST level, trailing material after the locally rewritten prefix

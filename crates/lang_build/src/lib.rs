@@ -4,6 +4,7 @@
 //! normalized source fragments, but does not add parser or normalizer rules.
 
 pub mod build;
+pub mod call_target;
 pub mod core;
 pub mod discovery;
 pub mod fingerprint;
@@ -16,6 +17,7 @@ pub mod model;
 pub mod normalized_call;
 pub mod product_shape;
 pub mod source;
+pub mod type_argument;
 pub mod verify;
 pub mod world;
 
@@ -25,6 +27,7 @@ pub use build::{
     PackageBuildMetadata, PackageBuildSpec, SourceRootMetadata, SourceUnitBuildMetadata,
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
+pub use call_target::{resolve_call_target, ResolvedCallTarget};
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
     SourceRootRequest,
@@ -45,7 +48,8 @@ pub use meta_candidate::{
     CallableCandidateKind, CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
     CandidatePreparationInput, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
-    CanonicalMetaInstanceKeySeed, ParameterShape, PreparedCallableCandidate,
+    CanonicalMetaInstanceKeySeed, ParameterArgRequirement, ParameterShape,
+    PreparedCallableCandidate,
 };
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
@@ -64,5 +68,6 @@ pub use product_shape::{
     RawArgValueClass,
 };
 pub use source::SourceFragment;
+pub use type_argument::classify_type_arguments;
 pub use verify::evaluate_source_verifications;
 pub use world::CompilationWorld;

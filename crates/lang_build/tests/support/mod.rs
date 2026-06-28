@@ -400,3 +400,8 @@ pub fn v08_candidate_call_site() -> NormalizedCallSite {
         panic!("v08 candidate initializer is not a call: {diagnostic:?}")
     })
 }
+
+/// Build the v0.8 identity type fixture world (`v08_identity_type` / `app`).
+pub fn v08_identity_type_world() -> CompilationWorld {
+    build_single_fixture_world("v08_identity_type", "app")
+}

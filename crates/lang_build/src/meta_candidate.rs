@@ -31,6 +31,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ParameterShape {
     pub expected_arity: Option<usize>,
+    pub expected_arg_kinds: Vec<ParameterArgRequirement>,
     pub provenance: Provenance,
 }
 
@@ -38,6 +39,7 @@ impl ParameterShape {
     pub fn deferred(provenance: Provenance) -> Self {
         Self {
             expected_arity: None,
+            expected_arg_kinds: Vec::new(),
             provenance,
         }
     }
@@ -45,9 +47,26 @@ impl ParameterShape {
     pub fn exact_arity(expected_arity: usize, provenance: Provenance) -> Self {
         Self {
             expected_arity: Some(expected_arity),
+            expected_arg_kinds: Vec::new(),
             provenance,
         }
     }
+
+    /// Single-parameter signature requiring a type object argument.
+    pub fn type_parameter_signature(provenance: Provenance) -> Self {
+        Self {
+            expected_arity: Some(1),
+            expected_arg_kinds: vec![ParameterArgRequirement::TypeObject],
+            provenance,
+        }
+    }
+}
+
+/// Per-argument kind requirement for parameter shape validation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ParameterArgRequirement {
+    TypeObject,
+    Deferred,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -371,6 +390,37 @@ pub fn prepare_meta_callable_candidate(
             )
             .with_symbol_context(candidate.callee_symbol_id),
         );
+    }
+    for (index, requirement) in candidate
+        .parameter_shape
+        .expected_arg_kinds
+        .iter()
+        .enumerate()
+    {
+        let raw_arg = match candidate.arg_product_shape.raw_args.get(index) {
+            Some(arg) => arg,
+            None => break,
+        };
+        match requirement {
+            ParameterArgRequirement::TypeObject => {
+                if !matches!(
+                    raw_arg.value_class,
+                    RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+                ) {
+                    let got = format!("{:?}", raw_arg.value_class);
+                    return CandidatePrepResult::Diagnostic(
+                        Diagnostic::hard_error(
+                            format!(
+                                "candidate preparation argument kind mismatch at position {index}: expected TypeObject argument, got {got}"
+                            ),
+                            Some(raw_arg.provenance.clone()),
+                        )
+                        .with_symbol_context(candidate.callee_symbol_id),
+                    );
+                }
+            }
+            ParameterArgRequirement::Deferred => {}
+        }
     }
     if !candidate
         .policy_planes

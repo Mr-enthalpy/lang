@@ -571,6 +571,7 @@ pub enum CoreMetaFunction {
     Struct,
     Assert,
     Verify(VerificationPrimitive),
+    IdentityType,
 }
 
 /// Core source-verification primitive resolved through the namespace graph.

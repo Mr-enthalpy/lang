@@ -438,3 +438,106 @@ fn raw_arg(index: usize, value_class: RawArgValueClass) -> RawArgShape {
         provenance: Provenance::new("object-boundary placeholder"),
     }
 }
+
+// ---------------------------------------------------------------------------
+// Round 5: IdentityType + ParameterArgRequirement
+// ---------------------------------------------------------------------------
+
+/// Type-argument check: `UnknownExpression` and `Value` arguments must not
+/// satisfy a `ParameterShape` requiring `TypeObject`.
+#[test]
+fn identity_type_rejects_unclassified_or_non_type_argument() {
+    // UnknownExpression should be rejected by TypeObject requirement
+    let unknown_shape = shape_with_class(RawArgValueClass::UnknownExpression);
+    let input = candidate_input(unknown_shape);
+    let result = prepare_meta_callable_candidate_from_input(input);
+    assert!(
+        !matches!(result, CandidatePrepResult::ApplicablePlaceholder(_)),
+        "UnknownExpression must not satisfy TypeObject requirement"
+    );
+
+    // Value should be rejected by TypeObject requirement
+    let value_shape = shape_with_class(RawArgValueClass::Value);
+    let input = candidate_input(value_shape);
+    let result = prepare_meta_callable_candidate_from_input(input);
+    assert!(
+        !matches!(result, CandidatePrepResult::ApplicablePlaceholder(_)),
+        "Value must not satisfy TypeObject requirement"
+    );
+}
+
+/// Object-boundary test: `as_type_object_with_type_value` and
+/// `as_resolved_value_with_value_type` carry distinct `value_class` and
+/// pass-action boundaries.
+#[test]
+fn raw_arg_shape_typed_refinement_helpers_distinguish_type_object_from_value_type() {
+    let arg = raw_arg(0, RawArgValueClass::UnknownExpression);
+
+    let type_arg = arg.clone().as_type_object_with_type_value(TypeValueId(5));
+    assert!(matches!(
+        type_arg.value_class,
+        RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+    ));
+    assert_eq!(type_arg.known_first_order_type_value, Some(TypeValueId(5)));
+    assert_eq!(type_arg.is_value(), Some(false));
+    assert!(
+        !type_arg.receives_automatic_pass_action(),
+        "type-object argument must not receive automatic pass action"
+    );
+
+    let value_arg = arg.as_resolved_value_with_value_type(TypeValueId(7));
+    assert_eq!(value_arg.value_class, RawArgValueClass::Value);
+    assert_eq!(value_arg.known_first_order_type_value, Some(TypeValueId(7)));
+    assert_eq!(value_arg.is_value(), Some(true));
+    assert!(
+        value_arg.receives_automatic_pass_action(),
+        "value argument must receive automatic pass action"
+    );
+}
+
+fn shape_with_class(value_class: RawArgValueClass) -> ArgProductShape {
+    let raw_args = vec![RawArgShape {
+        index: 0,
+        value_class,
+        explicit_pass_mode: None,
+        known_first_order_type_value: None,
+        provenance: Provenance::new("rejection test shape"),
+    }];
+    let atoms = vec![ProductAtom::Unit {
+        provenance: Provenance::new("rejection test atom"),
+    }];
+    ArgProductShape {
+        flattened: FlattenedProductObject {
+            atoms,
+            provenance: Provenance::new("rejection test"),
+            invariant: FlattenedProductInvariant {
+                no_direct_product_atom_remains: true,
+            },
+        },
+        arity: 1,
+        raw_args,
+        provenance: Provenance::new("rejection test"),
+    }
+}
+
+fn candidate_input(shape: ArgProductShape) -> CandidatePreparationInput {
+    let placeholder_callee = lang_build::SymbolObject::placeholder(
+        SymbolId(100),
+        "test_callee",
+        lang_build::SymbolKind::MetaFunction,
+        lang_build::SourceCategory::DeclaredSymbol,
+        None,
+        Provenance::new("rejection test callee"),
+    );
+    CandidatePreparationInput::new(
+        placeholder_callee,
+        shape,
+        ParameterShape::type_parameter_signature(Provenance::new("rejection test param")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("rejection test"),
+        },
+    )
+}
