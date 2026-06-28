@@ -490,7 +490,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     );
     assert_eq!(
         classified.raw_args[0].known_first_order_type_value,
-        Some(TypeValueId(uint8.id.0)),
+        Some(type_value_id_from_type_symbol_placeholder(uint8.id)),
         "classified type argument TypeValueId must match uint8's SymbolId"
     );
     assert!(
@@ -503,7 +503,10 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         lang_build::CanonicalArgProductShapeMaterial::from_arg_product_shape(&classified);
     assert_eq!(material.arity, 1);
     assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
-    assert_eq!(material.known_type_values[0], Some(TypeValueId(uint8.id.0)));
+    assert_eq!(
+        material.known_type_values[0],
+        Some(type_value_id_from_type_symbol_placeholder(uint8.id))
+    );
 }
 
 #[test]
