@@ -6,10 +6,10 @@ use lang_build::{
     prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input, AliasChain,
     AliasQueryDisposition, AliasQueryMode, CandidateBuildIdentityPlaceholder,
     CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
-    CandidatePreparationInput, ExecutionEnv, FieldProjection, NamespaceGraphSnapshot,
-    NamespaceNode, NamespaceNodeKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag,
-    ProductMaterialRole, Provenance, RawArgValueClass, SourceCategory, SymbolId, SymbolPayload,
-    TypeValueBindingPlaceholder, TypeValueId,
+    CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv, FieldProjection,
+    NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape,
+    PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass,
+    SourceCategory, SymbolId, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
 };
 
 #[test]
@@ -404,4 +404,112 @@ fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
     };
     assert_eq!(candidate.callee_name, "struct");
     assert_eq!(candidate.arg_product_shape.arity, 1);
+}
+
+#[test]
+fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
+    let world = v08_identity_type_world();
+    let t = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("T", &world.package_context())
+        .expect("T should be resolved as type object in world from fixture");
+    assert_eq!(t.kind, lang_build::SymbolKind::Type);
+    assert!(
+        matches!(t.payload, SymbolPayload::Type(_)),
+        "t must carry Type payload (IdentityType result)"
+    );
+    assert_eq!(t.name, "T");
+
+    let uint8 = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint8", &world.package_context())
+        .expect("uint8 resolves as type object");
+    let SymbolPayload::Type(type_obj) = &t.payload else {
+        panic!("t payload is not Type");
+    };
+    assert_eq!(
+        type_obj.type_symbol_id, uint8.id,
+        "IdentityType(uint8) must return uint8's TypeValueId"
+    );
+
+    let identity = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy(
+            "IdentityType",
+            &world.package_context(),
+            PolicyEnv::Meta,
+        )
+        .expect("IdentityType resolves as meta function through namespace graph");
+    assert_eq!(identity.name, "IdentityType");
+    assert_eq!(identity.kind, lang_build::SymbolKind::MetaFunction);
+}
+
+#[test]
+fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
+    let world = v08_identity_type_world();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy(
+            "IdentityType",
+            &world.package_context(),
+            PolicyEnv::Meta,
+        )
+        .expect("IdentityType resolves through namespace graph");
+
+    let site = v08_candidate_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified_shape = classify_as_type_arg(shape, TypeValueId(1));
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        classified_shape,
+        ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("IdentityType candidate-prep object boundary"),
+        },
+    );
+
+    let result = prepare_meta_callable_candidate_from_input(input);
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = result else {
+        panic!("IdentityType should reach applicable placeholder with type argument");
+    };
+    assert_eq!(candidate.callee_name, "IdentityType");
+    assert_eq!(candidate.arg_product_shape.arity, 1);
+    assert!(matches!(
+        candidate.arg_product_shape.raw_args[0].value_class,
+        RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+    ));
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .arity,
+        1
+    );
+    assert_eq!(
+        candidate
+            .canonical_key_seed
+            .argument_product_shape_material
+            .atom_kinds[0],
+        CanonicalArgAtomKind::TypeObject
+    );
+}
+
+fn classify_as_type_arg(
+    mut shape: lang_build::ArgProductShape,
+    tv: TypeValueId,
+) -> lang_build::ArgProductShape {
+    for raw in &mut shape.raw_args {
+        if matches!(raw.value_class, RawArgValueClass::UnknownExpression) {
+            *raw = raw.clone().as_type_object_with_type_value(tv);
+        }
+    }
+    shape
 }

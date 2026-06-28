@@ -228,6 +228,28 @@ impl RawArgShape {
     pub fn as_non_value(self, kind: NonValueArgKind) -> Self {
         self.with_value_class(RawArgValueClass::NonValue(kind))
     }
+
+    /// Refine into `NonValue(TypeObject)` and record the type-object's
+    /// `TypeValueId`. The argument material itself is a type object being
+    /// passed as a meta argument.
+    ///
+    /// This is an object-boundary placeholder operation. It does **not**
+    /// perform type checking.
+    pub fn as_type_object_with_type_value(self, type_value: TypeValueId) -> Self {
+        self.with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
+            .with_known_first_order_type_value(type_value)
+    }
+
+    /// Refine into `Value` and record the value's type `TypeValueId`.
+    /// The argument material is a value; the `TypeValueId` identifies
+    /// the value's type.
+    ///
+    /// This is an object-boundary placeholder operation. It does **not**
+    /// perform type checking.
+    pub fn as_resolved_value_with_value_type(self, type_value: TypeValueId) -> Self {
+        self.with_value_class(RawArgValueClass::Value)
+            .with_known_first_order_type_value(type_value)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

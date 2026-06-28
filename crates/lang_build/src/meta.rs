@@ -93,6 +93,16 @@ pub fn try_expand_early_meta_initializer(
             "meta hard error: source verification operations cannot be used as initializers",
             Some(provenance),
         ))),
+        CoreMetaFunction::IdentityType => expand_identity_type_meta(
+            snapshot,
+            parent_namespace,
+            binding_name,
+            &syntax,
+            context,
+            provenance,
+            meta_function,
+        )
+        .map(Some),
     }
 }
 
@@ -498,4 +508,136 @@ fn expr_origin(expr: &NormExpr) -> &NormOrigin {
 
 fn product_origin(product: &NormProduct) -> &NormOrigin {
     &product.origin
+}
+
+/// Expand `IdentityType : type -> type`.
+///
+/// Parses a single type-object argument from the source product, resolves it
+/// through the namespace graph, and binds the result as a declared type symbol
+/// with the argument's type identity.
+///
+/// IdentityType installs a single declared type symbol (carrying the resolved
+/// argument's `TypeValueId`) but does **not** generate field projections or
+/// type-associated namespaces. The declared symbol's `TypeObject` payload
+/// reuses the argument type's `type_symbol_id` so `IdentityType(T)` has the
+/// same identity as `T`.
+fn expand_identity_type_meta(
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    syntax: &SyntaxObject,
+    context: &ResolverContext,
+    _provenance: Provenance,
+    _meta_function: &MetaFunctionObject,
+) -> Result<MetaExpansionResult, BuildError> {
+    let SyntaxObjectKind::Product(product) = &syntax.kind;
+
+    if product.elements.len() != 1 {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: IdentityType requires exactly one type argument, got {}",
+                product.elements.len()
+            ),
+            Some(Provenance::from_norm_origin(
+                format!("IdentityType argument product for `{binding_name}`"),
+                &product.origin,
+            )),
+        )));
+    }
+
+    let NormProductElem::Expr(type_expr) = &product.elements[0] else {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            "meta hard error: IdentityType argument must be a type expression, not a Unit",
+            Some(Provenance::from_norm_origin(
+                format!("IdentityType Unit argument for `{binding_name}`"),
+                &product.origin,
+            )),
+        )));
+    };
+
+    let type_path = match expr_to_source_path(type_expr) {
+        Some(path) => path,
+        None => {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "meta hard error: IdentityType argument must be a name or navigation path",
+                Some(Provenance::from_norm_origin(
+                    format!("IdentityType non-name argument for `{binding_name}`"),
+                    expr_origin(type_expr),
+                )),
+            )));
+        }
+    };
+
+    let type_symbol = match snapshot.capability().resolve_type_object_with_policy(
+        &type_path.join("::"),
+        context,
+        PolicyEnv::Meta,
+    ) {
+        Ok(symbol) => symbol,
+        Err(diagnostic) => {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                format!(
+                    "meta hard error: IdentityType argument `{}` could not be resolved as a type object",
+                    type_path.join("::")
+                ),
+                Some(diagnostic.provenance.clone().unwrap_or_else(|| {
+                    Provenance::new("IdentityType type argument resolution error")
+                })),
+            )));
+        }
+    };
+
+    let SymbolPayload::Type(type_obj) = &type_symbol.payload else {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: IdentityType argument `{}` resolved but does not have a Type payload",
+                type_symbol.name
+            ),
+            Some(type_symbol.provenance.clone()),
+        )));
+    };
+
+    // Install a declared type symbol for `binding_name` carrying the argument
+    // type's identity. No type-associated namespace or field projections are
+    // generated for IdentityType.
+    let mut delta = snapshot.empty_delta();
+    let declared_id = delta.allocate_symbol_id();
+    let declared_symbol = SymbolObject {
+        id: declared_id,
+        kind: SymbolKind::Type,
+        name: binding_name.to_string(),
+        source_category: SourceCategory::DeclaredSymbol,
+        node_kind: type_symbol.node_kind,
+        parent: Some(parent_namespace),
+        policy_metadata: type_symbol.policy_metadata.clone(),
+        visibility_metadata: type_symbol.visibility_metadata.clone(),
+        diagnostics: Vec::new(),
+        generation_origin: Some("core::IdentityType early meta expansion".to_string()),
+        cache_key_fragment: None,
+        provenance: Provenance::new(format!(
+            "declared identity type `{binding_name}` via core::IdentityType"
+        )),
+        payload: SymbolPayload::Type(TypeObject {
+            type_symbol_id: type_obj.type_symbol_id,
+            fields: type_obj.fields.clone(),
+            field_names: type_obj.field_names.clone(),
+            field_type_symbol_ids: type_obj.field_type_symbol_ids.clone(),
+            type_associated_namespace: type_obj.type_associated_namespace,
+            provenance: Provenance::new(format!(
+                "identity type `{binding_name}` from argument `{}`",
+                type_path.join("::")
+            )),
+            generation_origin: Some("core::IdentityType identity".to_string()),
+            layout_slot: type_obj.layout_slot.clone(),
+            abi_slot: type_obj.abi_slot.clone(),
+        }),
+    };
+    delta.insert_symbol(parent_namespace, declared_symbol);
+
+    Ok(MetaExpansionResult {
+        replacement_object: type_symbol,
+        namespace_delta: delta,
+        diagnostics: Vec::new(),
+        provenance: Provenance::new(format!("IdentityType expansion for `{binding_name}`")),
+    })
 }
