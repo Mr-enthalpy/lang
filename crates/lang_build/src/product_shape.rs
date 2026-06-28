@@ -239,7 +239,7 @@ impl RawArgShape {
     /// identity source; `TypeValueId` is derived projection material, never
     /// a binding lookup key.
     pub fn as_type_object_with_type_symbol(self, symbol_id: SymbolId) -> Self {
-        let type_value = crate::identity::type_value_id_from_type_symbol_placeholder(symbol_id);
+        let type_value = crate::identity::type_value_projection_from_type_symbol(symbol_id);
         self.with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
             .with_known_type_symbol_id(symbol_id)
             .with_known_first_order_type_value(type_value)

@@ -7,7 +7,7 @@ use lang_build::{
     classify_type_arguments_with_report, extract_single_call_site, invoke_meta_callable,
     invoke_meta_callable_cached, prepare_meta_callable_candidate,
     prepare_meta_callable_candidate_from_input, resolve_call_target,
-    type_value_id_from_type_symbol_placeholder, AliasChain, AliasQueryDisposition, AliasQueryMode,
+    type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
     CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
     FieldProjection, MetaInstanceCache, MetaInvocationInput, MetaInvocationResult,
@@ -491,7 +491,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     );
     assert_eq!(
         classified.raw_args[0].known_first_order_type_value,
-        Some(type_value_id_from_type_symbol_placeholder(uint8.id)),
+        Some(type_value_projection_from_type_symbol(uint8.id)),
         "classified type argument TypeValueId must match uint8's SymbolId"
     );
     assert!(
@@ -741,7 +741,7 @@ fn identity_type_unresolved_type_argument_reports_resolution_failure() {
 
 #[test]
 fn type_value_id_projection_is_derived_from_type_symbol() {
-    let tv = type_value_id_from_type_symbol_placeholder(SymbolId(42));
+    let tv = type_value_projection_from_type_symbol(SymbolId(42));
     assert_eq!(tv, TypeValueId(42));
     assert_eq!(tv.as_u64(), 42);
 }
@@ -1239,7 +1239,7 @@ fn binding_layer_materializes_generated_construction_value() {
     let declared = &result.replacement_object;
     assert_eq!(declared.kind, lang_build::SymbolKind::Type);
     assert_eq!(declared.name, "T");
-    let tv = type_value_id_from_type_symbol_placeholder(declared.id);
+    let tv = type_value_projection_from_type_symbol(declared.id);
     assert_ne!(
         tv.as_u64(),
         cid.as_u64(),

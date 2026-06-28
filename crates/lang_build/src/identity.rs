@@ -22,16 +22,15 @@ impl TypeValueId {
     }
 }
 
-/// Temporary v0.8 identity projection.
+/// Derive the current first-order type-value projection from a TypeSymbol.
 ///
 /// `TypeValueId` is a first-order type-value projection derived from the
-/// resolved Type symbol's `SymbolId`. This is **not** final cross-build
-/// type-value identity. Future replacement will read from the `TypeObject` /
-/// a type-value table.
+/// resolved Type symbol's `SymbolId`. This is projection material, not
+/// canonical invocation identity and not a binding source.
 ///
 /// All `TypeValueId` projection construction from `SymbolId` must go
 /// through this helper.
-pub fn type_value_id_from_type_symbol_placeholder(symbol_id: SymbolId) -> TypeValueId {
+pub fn type_value_projection_from_type_symbol(symbol_id: SymbolId) -> TypeValueId {
     TypeValueId(symbol_id.0)
 }
 

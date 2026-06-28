@@ -72,7 +72,7 @@ pub enum MetaInvocationResult {
 ///
 /// `TypeSymbol` carries the forwarded type's `SymbolId` as its primary
 /// identity. `TypeValueId` projection is derived from the symbol identity
-/// (via `type_value_id_from_type_symbol_placeholder`), never used as
+/// (via `type_value_projection_from_type_symbol`), never used as
 /// a binding lookup source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MetaValueTarget {
