@@ -188,15 +188,6 @@ pub fn compute_construction_instance_id(
     for kind in &material.canonical_args.atom_kinds {
         h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
     }
-    for tv in &material.canonical_args.known_type_values {
-        match tv {
-            None => h.write_field(&[0u8]),
-            Some(tv) => {
-                h.write_field(&[1u8]);
-                h.write_field(&tv.0.to_le_bytes());
-            }
-        }
-    }
     for sym in &material.canonical_args.known_type_symbols {
         match sym {
             None => h.write_field(&[0u8]),

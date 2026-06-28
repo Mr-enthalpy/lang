@@ -113,7 +113,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         candidate
             .canonical_key_seed
             .argument_product_shape_material
-            .known_type_values,
+            .known_type_symbols,
         vec![None]
     );
     assert_eq!(candidate.arg_product_shape.raw_args[0].is_value(), None);
@@ -164,7 +164,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         Vec::<usize>::new()
     );
     assert_eq!(
-        candidate.canonical_key_seed.argument_type_values,
+        candidate.canonical_key_seed.argument_type_symbols,
         vec![None]
     );
     assert_eq!(
@@ -505,8 +505,9 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert_eq!(material.arity, 1);
     assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
     assert_eq!(
-        material.known_type_values[0],
-        Some(type_value_id_from_type_symbol_placeholder(uint8.id))
+        material.known_type_symbols[0],
+        Some(uint8.id),
+        "canonical material must record uint8's SymbolId as TypeSymbol"
     );
 }
 
@@ -589,7 +590,7 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
     let mat = &candidate.canonical_key_seed.argument_product_shape_material;
     assert_eq!(mat.arity, 1);
     assert_eq!(mat.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
-    assert!(mat.known_type_values[0].is_some());
+    assert!(mat.known_type_symbols[0].is_some());
 }
 
 #[test]
@@ -739,7 +740,7 @@ fn identity_type_unresolved_type_argument_reports_resolution_failure() {
 }
 
 #[test]
-fn type_value_id_placeholder_bridge_is_explicit_object_boundary() {
+fn type_value_id_projection_is_derived_from_type_symbol() {
     let tv = type_value_id_from_type_symbol_placeholder(SymbolId(42));
     assert_eq!(tv, TypeValueId(42));
     assert_eq!(tv.as_u64(), 42);
@@ -948,7 +949,6 @@ fn generated_construction_value_binding_rejects_mismatched_construction_instance
             unit_positions: vec![],
             atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
             known_type_symbols: vec![Some(SymbolId(1))],
-            known_type_values: vec![Some(TypeValueId(1))],
         },
         return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
         build_identity_fragment: None,

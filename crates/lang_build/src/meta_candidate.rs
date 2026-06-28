@@ -20,7 +20,6 @@
 
 use crate::{
     callable_body_allows_execution,
-    identity::TypeValueId,
     model::{
         CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject, MetaFunctionObject, PolicyEnv,
         PolicyMetadata, Provenance, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
@@ -186,7 +185,6 @@ pub struct CanonicalMetaInstanceKeySeed {
     pub unit_positions: Vec<usize>,
     pub argument_arity: usize,
     pub argument_type_symbols: Vec<Option<SymbolId>>,
-    pub argument_type_values: Vec<Option<TypeValueId>>,
     pub package_identity_fragment: Option<String>,
     pub mount_identity_fragment: Option<String>,
     pub build_config_fingerprint_fragment: Option<String>,
@@ -205,7 +203,6 @@ pub struct CanonicalArgProductShapeMaterial {
     pub unit_positions: Vec<usize>,
     pub atom_kinds: Vec<CanonicalArgAtomKind>,
     pub known_type_symbols: Vec<Option<SymbolId>>,
-    pub known_type_values: Vec<Option<TypeValueId>>,
 }
 
 impl CanonicalArgProductShapeMaterial {
@@ -251,11 +248,6 @@ impl CanonicalArgProductShapeMaterial {
                 .raw_args
                 .iter()
                 .map(|raw_arg| raw_arg.known_type_symbol_id)
-                .collect(),
-            known_type_values: shape
-                .raw_args
-                .iter()
-                .map(|raw_arg| raw_arg.known_first_order_type_value)
                 .collect(),
         }
     }
@@ -360,11 +352,6 @@ pub fn prepare_meta_callable_candidate(
             .raw_args
             .iter()
             .map(|raw_arg| raw_arg.known_type_symbol_id)
-            .collect(),
-        argument_type_values: arg_product_shape
-            .raw_args
-            .iter()
-            .map(|raw_arg| raw_arg.known_first_order_type_value)
             .collect(),
         package_identity_fragment: context.build_identity.package_identity_fragment.clone(),
         mount_identity_fragment: context.build_identity.mount_identity_fragment.clone(),
