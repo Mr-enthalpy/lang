@@ -83,7 +83,7 @@ pub enum MetaValueTarget {
 ///
 /// `ForwardedValue` is produced by `IdentityType` (`r === arg`).
 /// `GeneratedConstructionValue` is produced by `UnaryConstructionPrototype`
-/// (`r = arg`).
+/// (`r = t`, where `t` is computed from the argument object).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaInvocationValue {
     ForwardedValue(ForwardedValue),
@@ -215,7 +215,8 @@ pub fn compute_construction_instance_id(
     }
     let raw = u64::from_str_radix(&h.finish_hex(), 16)
         .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
-    ConstructionInstanceId(raw)
+    // Non-zero invariant: 0 is reserved as an invalid sentinel.
+    ConstructionInstanceId(if raw == 0 { 1 } else { raw })
 }
 
 /// Return value shape — whether the invocation value exposes a leaf or product
