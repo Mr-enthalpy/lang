@@ -1022,8 +1022,8 @@ mechanically inserted by the exact `|> name { ... }` shorthand. `x |> { ... }`
 is rejected because it is the fully headless in-place closure case. It has no
 product/extraction head at all.
 
-`x |> () => { ... }`, `x |> (a) => { ... }`, and
-`x |> [] () => { ... }` are ordinary explicit closures with product extraction
+`x |> (self) => { ... }`, `x |> (a) => { ... }`, and
+`x |> [] (self) => { ... }` are ordinary explicit closures with product extraction
 heads. They preserve ordinary explicit closure Raw AST. `x |> () { ... }` and
 `x |> (a) { ... }` are product-head plus in-place-closure branch forms in
 incoming pipe position.
@@ -1745,7 +1745,7 @@ A headed closure must use `=>`. Forms such as `[](){}`, `[x]{}`, `(){}`, and
 Minimal form:
 
 ```text
-() => {}
+(self) => {}
 ```
 
 ### 10.4 Body block
@@ -2044,7 +2044,7 @@ Forms such as `[](){}`, `[x]{ body }`, `(){ body }`, and `pre c { body }`
 produce `InvalidClosureHead` diagnostics.
 
 v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
-forms remain `() => {}` and `{ }`, and `(x) => {}` where the `()` is a
+forms remain `(self) => {}` and `{ }`, and `(x) => {}` where the `()` is a
 `ParamClause`. `(x) => {}` with a single param inside parens is the simplest
 parametrized explicit closure form.
 
@@ -2197,7 +2197,7 @@ x |> f (a) g
 
 x |> f (a) g (b) h
 
-() => {}
+(self) => {}
 
 <T>(x: T): runtime -> T => {
     x
