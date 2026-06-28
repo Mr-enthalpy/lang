@@ -600,12 +600,9 @@ fn expand_identity_type_meta(
     // --- Stage 4: formal meta invocation (pure reduction) ---
     let invocation_input = MetaInvocationInput::new(*candidate, provenance.clone());
 
-    let MetaInvocationResult::Value(invocation_value) = invoke_meta_callable(invocation_input)
-    else {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: IdentityType invocation failed",
-            Some(provenance.clone()),
-        )));
+    let invocation_value = match invoke_meta_callable(invocation_input) {
+        MetaInvocationResult::Value(v) => v,
+        MetaInvocationResult::Diagnostic(d) => return Err(BuildError::single(d)),
     };
 
     // --- Stage 5: declaration binding (where NamespaceDelta is installed) ---
@@ -653,12 +650,12 @@ pub fn bind_meta_invocation_value_result(
     }
 }
 
-/// Legacy compatibility helper.
+/// Legacy compatibility helper (crate-private).
 ///
 /// Binds a forwarded `TypeValueProjection` into a declared type symbol.
 /// This is **not** the formal meta-invocation binding entry. Do not call
 /// from new construction paths.
-pub fn legacy_bind_forwarded_type_value_projection(
+fn legacy_bind_forwarded_type_value_projection(
     type_value_id: TypeValueId,
     snapshot: &NamespaceGraphSnapshot,
     parent_namespace: NamespaceNodeId,
