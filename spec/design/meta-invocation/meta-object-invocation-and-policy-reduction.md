@@ -176,26 +176,30 @@ MetaStrictContext
   If lookup or execution requires a non-meta candidate, this is a hard diagnostic.
 ```
 
-Ordinary source normalization may use **partial** reduction. The evaluator runs
-the meta machinery as far as the available meta values and policy allow, then
-stops cleanly at a runtime boundary:
+### 4.1 Invocation layer: meta return values
+
+The invocation layer evaluates or reduces a meta callable under policy. It
+returns a **value**, not merely a `TypeValueId`.
+
+For ordinary generic type-to-type meta construction (see the clarification
+document), the invocation result must distinguish at least:
 
 ```text
-meta can run as far as it can;
-when it reaches a runtime-only value or callable, it stops;
-the residual expression is preserved for the later runtime phase.
+GeneratedConstructionValue(callee, canonical_args, computed_material, external_shape)
+ForwardedValue(target)
+Residual(expr, suspension_reason)
+Diagnostic(error)
 ```
 
-Other contexts demand **strict** reduction. Verification forms, manifest meta,
-compile-time contracts, and the bodies of meta-functions must complete under
-meta policy. There is no residual fallback for them:
+This vocabulary matters because the system needs to know whether the call
+produced a new generative construction (`r = t`), forwarded an existing value
+(`r === t`), suspended at a runtime boundary, or failed. A bare `TypeValueId`
+reduction collapses these categories and is only acceptable for placeholder
+proof paths (see §4.3).
 
-```text
-if a strict meta context cannot resolve or execute using meta-admissible candidates,
-the program is ill-formed in that context.
-```
-
-A reduction step produces one of a fixed set of results:
+The internal reduction model retains its existing shape as a phase-internal
+mechanism. For internal reduction, the current `MetaReductionResult` vocabulary
+is retained:
 
 ```text
 MetaReductionResult =
@@ -209,9 +213,7 @@ MetaReductionResult =
 `TailCall` is part of the result shape because the language has no loop
 construct: iteration and continuation are expressed through call modes, and
 future meta functions reuse the same call-mode model. The detailed semantics of
-call modes are intentionally left to a future call-mode document; here `TailCall`
-only marks that reduction may continue as another call rather than returning a
-value, a delta, or a residual.
+call modes are intentionally left to a future call-mode document.
 
 When reduction does not complete to a value or delta, the suspension is tagged
 with a reason:
@@ -241,10 +243,51 @@ Meta candidate exists but body-entry policy does not admit meta:
 
 Ambiguity and conflict are errors in *both* contexts: a residual is the deferral
 of a single well-identified call, not a way to paper over an unresolved choice.
-The only difference between the two contexts is what happens when reduction
-reaches a legitimate runtime boundary — partial reduction suspends into a
-residual, while strict reduction reports that the program is ill-formed in that
-context.
+
+### 4.2 Expansion / binding layer
+
+After the invocation layer produces a value, the expansion / binding layer
+applies it to a build or declaration context. This includes:
+
+```text
+- installing a NamespaceDelta atomically;
+- binding the declared target (e.g. `let T: type = ...`);
+- exposing an extraction-facing interface on the constructed value;
+- applying the return-object policy of the callee.
+```
+
+This separation is intentional: the invocation result is a **value**, and the
+expansion is a **side-effecting binding operation** that consumes that value.
+Conflating the two into a single `MetaExpansionResult` without distinguishing
+the value from the binding is acceptable as a current temporary shortcut but
+must not harden into the permanent model.
+
+### 4.3 IdentityType is a placeholder proof path only
+
+`IdentityType` proves graph-resolved invocation plumbing: it demonstrates that
+a prepared candidate can flow through the candidate preparation, key
+computation, cache lookup, and primitive reduction pipeline. It does **not**
+prove generative type-to-type construction.
+
+```text
+IdentityType proves:
+  graph-resolved target lookup;
+  normalized call-site extraction;
+  argument product shaping and classification;
+  candidate preparation and policy checking;
+  formal meta invocation dispatch;
+  canonical key computation and cache memoization.
+
+IdentityType does NOT prove:
+  generative construction value production (r = t);
+  forwarding value production (r === t);
+  declaration binding from arbitrary meta return values;
+  extraction-facing interface exposure;
+  ordinary generic type constructor behavior.
+```
+
+Any implementation, test, or document that uses `IdentityType` as evidence that
+ordinary type-to-type meta construction has been implemented is incorrect.
 
 ## 5. No `if constexpr`: guarded invocation instead
 

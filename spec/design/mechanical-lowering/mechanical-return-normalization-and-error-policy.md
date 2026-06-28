@@ -174,10 +174,13 @@ its semantic effect is special:
 2. **Enclosing function return accumulator**: it contributes `Done(D)` to the
    final return accumulator, independently of the local branch pattern space.
 
-3. **Lifetime postcondition**: it consumes / closes the return-relevant mutable
-   capability of `self`. Later same-block code cannot borrow that capability
-   again. The lifetime checker trusts the declared postcondition — it does not
-   inspect implementation bodies to rediscover this fact.
+3. **Lifetime postcondition**: the return capability declares that the
+   return-relevant mutable capability of `self` is consumed / closed after the
+   call. The lifetime checker trusts the declared contract: it checks the call
+   precondition before the call, then trusts the declared postcondition after
+   the call. It does **not** inspect implementation bodies to rediscover
+   control-flow facts. This is a name-and-contract system — checking happens
+   at the call boundary, not through body-level control-flow analysis.
 
 Thus when `Error.handle(e, self)` calls `self..return(error)`, the result is not
 an exception jump or a compiler intrinsic. It is an early return through the

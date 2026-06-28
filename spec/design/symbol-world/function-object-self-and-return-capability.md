@@ -74,15 +74,13 @@ value.
 
 ### 5.3 Lifetime postcondition
 
-`self..return(d)` declares that the return-relevant mutable capability of
-`self` is consumed / closed after the call. The lifetime checker:
-
-1. checks the call precondition before the call;
-2. trusts the declared postcondition after the call;
-3. does **not** inspect implementation bodies to rediscover this fact.
-
-Therefore any later same-block expression that would require the ordinary
-implicit mutable borrow of `self` is rejected.
+`self..return(d)` **declares** that the return-relevant mutable capability of
+`self` is consumed / closed after the call. The lifetime checker operates on
+the principle of trust: it checks the call precondition before the call, then
+trusts the declared postcondition after the call. It does **not** inspect
+implementation bodies to rediscover control-flow facts. This is a
+name-and-contract lifecycle system — the capability's availability is stated,
+not inferred from body analysis.
 
 ## 6. Consequence: no more code after `self..return(d)`
 

@@ -192,6 +192,25 @@ model: local branch produces `Done(unit)`, and the final return accumulator
 receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
 pattern-space reduction, not silent discard.
 
+#### Resolved: r = t and r === t produce different meta return values
+
+Status: **Resolved at future-design level** (see the meta-construction value/pattern
+clarifications document).
+
+`r = t` produces a generative construction value (`GeneratedConstructionValue`)
+whose external identity is shielded by callee + canonical args + build identity.
+`r === t` produces a forwarding value (`ForwardedValue`) that shares the target's
+existing identity. These are not implementation variants of the same behavior.
+
+#### Resolved: MetaReductionResult::TypeValue is a placeholder proof path only
+
+Status: **Resolved at future-design level**.
+
+`MetaReductionResult::TypeValue(TypeValueId)` models only a narrow forwarding-like
+placeholder. It is acceptable for proving graph-resolved invocation plumbing
+(`IdentityType`) but must not be used as the result type for ordinary generative
+type-to-type meta construction (`(T)Vec`, `(T)Option`, `(A, B)Pair`).
+
 #### Still open
 
 The following remain open for later implementation phases:
