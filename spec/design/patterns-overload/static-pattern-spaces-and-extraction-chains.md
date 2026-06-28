@@ -422,6 +422,31 @@ Important invariant:
 Done is not eliminated while same-level extraction continuation is still processing input residuals.
 ```
 
+### 6.3.1 Return is always block-relative
+
+A return always targets the current enclosing block. It is not an unstructured non-local exit. The return boundary described in §6.3 applies at the block level — `Done` reduction and re-wrapping are local to the function / closure / branch body that contains the return.
+
+A desire to return from a deeper branch position is expressed structurally:
+
+```text
+self |> return(r);
+()
+```
+
+This means:
+1. `self |> return(r)` completes the current branch, producing `Done(r)` as the branch's contribution.
+2. The trailing `()` is a unit expression.
+3. Because `+` reduction treats unit as the zero element (`A + Unit = A`), the unit expression is absorbed into the branch pattern residual without contributing further material.
+4. The branch therefore produces `Done(r)` as its only meaningful contribution, and the enclosing block's return boundary reduces and re-wraps it.
+
+This is not a special control-flow escape. It is an ordinary consequence of explicit consumption plus the zero-element property of unit under `operator+`.
+
+### 6.3.2 No silent discard — every unconsumed value is a return
+
+Because §7 states that no value may be silently discarded, an expression that appears at the end of a block and is not consumed must be treated as a return. The `Done` re-wrapping described in §6.3 therefore applies not only to explicit returns but also to block-final expressions whose result pattern is otherwise unhandled.
+
+Concretely: if a block's final expression evaluates to a value `V`, and there is no consumer for `V`, the block's return boundary reduces one `Done` layer (if present) and wraps `V` in `Done`. The caller sees `Done(V)`. This is not a special implicit-return rule — it is the same return-boundary mechanism, applied consistently for every block exit point.
+
 ### 6.4 `match` as an explicit closer
 
 `match` may be a conventional library-level closer, not a built-in control-flow syntax.
@@ -499,33 +524,318 @@ match's return boundary reduces one Done layer, then re-wraps the result.
 The following operator+ reduction performs closure / exhaustiveness checking.
 ```
 
-## 7. Result Consumption
+## 7. Result Consumption, Block Return, and Call Result Semantics
 
-Expression results must not be silently discarded unless the final pattern space reduces to pure `void`.
+Expression results must never be silently discarded.
+
+This rule is universal. It applies to ordinary expression blocks, extraction arm
+bodies, closure bodies, function bodies, meta-function bodies, and any later
+block-like body form.
+
+There is no `void` exception. Even if a result space reduces to pure `void` or
+`unit`, the result is still a result and must enter an explicit result position.
+
+Rejected rule:
 
 ```text
 final pattern = void   => silent completion is allowed
 final pattern != void  => result must be consumed
 ```
 
-A non-`void` result must be:
+Correct rule:
+
+```text
+every expression result must be consumed
+```
+
+A result may be consumed by being:
 
 ```text
 bound
 passed to another expression / call skeleton
-returned
-used as the final result of an enclosing body
+returned as the current block result
 explicitly matched and discarded with `_`
+consumed by another explicit result-consuming operation
 ```
 
-`_` is not implicit ignore. `_` is an explicit consumption pattern.
+A result is never consumed merely by being statically empty, unit-like, or
+void-like.
+
+### 7.1 Calls produce results
+
+A call is an expression. Therefore a call produces a result.
+
+The result of a call must obey the same result-consumption rule as every other
+expression result. It must be consumed by a surrounding expression, bound, passed,
+explicitly discarded, or used as the current block result.
+
+There is no special rule saying that a call may be executed only for effect and
+then silently ignored.
+
+If a call appears in a position where its result is not otherwise consumed, and
+the block ends there, that call result is the result of the current block.
 
 ```text
-missing consumer => error
-written _        => explicit consumption
+{
+    f(x)
+}
 ```
 
-This rule prevents unhandled residual pattern spaces from disappearing merely because an expression is used as a statement. Exhaustiveness follows from residual propagation and result consumption, not from a separate privileged `match` checker.
+means:
+
+```text
+return the result of f(x) as the current block result
+```
+
+not:
+
+```text
+call f(x) and silently discard its result
+```
+
+### 7.2 Unconsumed final result means current block return
+
+If an expression result is not otherwise consumed and appears at a block result
+boundary, it is interpreted as the return value of the current block.
+
+Thus:
+
+```text
+{
+    e
+}
+```
+
+means:
+
+```text
+return e as the result of this block
+```
+
+not:
+
+```text
+evaluate e and silently discard its result
+```
+
+This remains true when `e` reduces to `unit` or `void`:
+
+```text
+{
+    ()
+}
+```
+
+means:
+
+```text
+return unit as the result of this block
+```
+
+not:
+
+```text
+silently complete with no result
+```
+
+### 7.3 Unconsumed non-final result is an error
+
+If an expression result is not consumed and there is later same-block material
+after it, the program is ill-formed.
+
+Example:
+
+```lang
+{
+    e;
+    next
+}
+```
+
+If `e` produces a result and no explicit consumer is written for that result,
+then the semicolon must not be interpreted as silent discard. This is an error.
+
+The diagnostic should report that the result of `e` is unconsumed.
+
+The canonical repairs are:
+
+```text
+1. consume or explicitly discard the result of e;
+2. remove the later same-block material and let e be the block return.
+```
+
+Equivalently:
+
+```text
+do not silently discard
+or
+make this expression the current block return by ending the block there
+```
+
+### 7.4 Return is always current-block return
+
+Return is always a result boundary for the current block.
+
+It does not automatically mean "return from the nearest enclosing function" from
+inside an arbitrary deeper branch. A branch body, closure body, extraction arm
+body, function body, and meta-function body each have their own current block
+result boundary.
+
+This prevents return from becoming an implicit non-local control keyword.
+
+Non-local function return is still expressible, but it must be expressed through
+an explicit capability value.
+
+### 7.5 Function return from inside a deeper branch
+
+Returning from the enclosing function inside a deeper branch is represented by
+calling the current function's return capability.
+
+Conceptually:
+
+```lang
+self |> return(r);
+();
+```
+
+means:
+
+```text
+1. invoke the function-return capability with r;
+2. locally complete the current branch block with unit.
+```
+
+The first expression is an ordinary call expression. Its result must also be
+consumed according to the universal result-consumption rule. The canonical form
+above treats it as the explicit function-return action and then makes the branch
+itself return unit.
+
+The branch-local `()` is not silent completion. It is the current branch block's
+explicit unit result.
+
+If the current extraction chain has input pattern space `A` and this branch
+extracts subspace `S`, then after the function-return capability is invoked and
+the branch locally returns unit, the same-level pattern space becomes:
+
+```text
+A - S + Done(unit)
+```
+
+The `Done(unit)` layer records that this branch has completed.
+
+Later result-space combination may absorb `unit` as the zero element of `+`:
+
+```text
+X + unit => X
+unit + X => X
+```
+
+This absorption is a defined pattern-space reduction. It is not silent discard.
+
+### 7.6 Unit absorption is not silent discard
+
+The reduction:
+
+```text
+X + unit => X
+```
+
+does not mean that the unit result was ignored.
+
+It means:
+
+```text
+1. the branch produced unit;
+2. the unit result entered the result space as completed material;
+3. the result-space combination operation absorbed unit as its zero element.
+```
+
+Forbidden interpretation:
+
+```text
+the branch result was silently discarded
+```
+
+Correct interpretation:
+
+```text
+the branch returned unit;
+unit is the zero element of result-space combination;
+the combination rule absorbed it.
+```
+
+Result production, result consumption, and result-space reduction are separate
+semantic events.
+
+### 7.7 Meta-function return is an instance of the general rule
+
+A meta-function body is not a special return world.
+
+Inside a meta-function body, assignments or aliases to the return object slot
+define what value the meta-function body will return, but the body itself still
+uses the same block-local result rule as every other block.
+
+For example:
+
+```lang
+meta+ runtime let id = (self, t: type): meta -> r: type => {
+    r = t;
+    r;
+};
+```
+
+The final expression:
+
+```text
+r
+```
+
+is the current block result of the meta-function body. It is not a special
+meta-only return form.
+
+Likewise:
+
+```lang
+meta+ runtime let id = (self, t: type): meta -> r: type => {
+    r === t;
+    r;
+};
+```
+
+also returns by the same block-local result rule. The difference between `r = t`
+and `r === t` belongs to return-object construction / forwarding semantics, not
+to a separate meta-function return mechanism.
+
+Thus meta-function return behavior is a normal consequence of:
+
+```text
+call result semantics
+block-local return boundaries
+result consumption
+symbol / place / value construction rules
+```
+
+not a special exception to them.
+
+### 7.8 Diagnostics
+
+A result-consumption diagnostic must not suggest that `void` results may be
+ignored.
+
+For an unconsumed result followed by later same-block material, the diagnostic
+should present exactly two repair families:
+
+```text
+consume the result
+or
+make this expression the current block return by removing later same-block material
+```
+
+Examples of consumption include binding, passing, explicit discard, explicit
+match/close, or another result-consuming operation.
+
+The compiler must not silently insert discard just because the result is unit,
+void, or statically known to carry no payload.
 
 ## 8. `_` and Bare Branch-Name Arm Sugar
 
@@ -804,7 +1114,7 @@ extraction residual propagation
 Done isolation
 explicit match closing
 operator+ result reduction
-no silent discard of non-void results
+no silent discard of results
 explicit _ consumption
 non-additivity of closed control-pattern spaces with unrelated patterns
 ```
@@ -856,7 +1166,6 @@ Done re-wrapping
 operator+ meta-reduction
 closed control-pattern checking
 result-consumption checking
-void-only silent completion
 exhaustiveness checking
 pattern-head resolution
 overload candidate filtering
@@ -895,7 +1204,7 @@ the compiler can automatically search all related namespaces
 
 This design is also not a traditional keyword-based control-flow system. `if`, `else`, and `match` may exist as ordinary names or library conventions, but the core semantics does not depend on them as privileged keywords.
 
-This design is not an implicit-discard system. `_` is explicit consumption. A missing consumer is an error. Only expressions whose final pattern space reduces to pure `void` may silently complete.
+This design is not an implicit-discard system. `_` is explicit consumption. A missing consumer is a return — the unconsumed value becomes the block's return result. No expression may be silently completed, regardless of its pattern space.
 
 This design also does not include call history in extraction. A call returns a value. Extraction processes the returned value’s static pattern space. The call target itself is not an extraction name.
 
@@ -912,7 +1221,7 @@ The core of the design is:
 6. Done isolates completed results by default but is explicitly re-enterable.
 7. Return/result boundaries reduce one Done layer locally, then wrap the returned result in Done again.
 8. match is an identity closing consumer, not built-in matching syntax.
-9. Expression results must not be silently discarded unless they are pure void.
+9. Expression results must never be silently discarded — no void exception. Unconsumed values must be consumed or become the current block return.
 10. `_` is an explicit consumption pattern.
 11. `?` is postfix value-to-pattern conversion; bool? produces the closed pattern space if | else.
 12. Closed control-pattern spaces cannot be added to unrelated patterns.
