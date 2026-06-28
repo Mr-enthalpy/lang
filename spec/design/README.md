@@ -28,32 +28,43 @@ should migrate into `spec/public/`, `spec/contracts/`, `spec/planning/`, and
 The current staging route (not a permanent design reading order) is:
 
 ```text
-package/manifest identity
-  -> namespace graph / SymbolObject
-  -> TypeValueId / PlaceId / AliasChain
-  -> ProductObject / ArgProductShape
-  -> pattern normalization + first-order candidate shapes
-  -> formal meta object invocation
+v0.8-semantic-spine (values-first narrative)
+  -> symbolic construction values and extraction interfaces
+  -> meta-invocation
   -> mechanical lowering family
   -> later runtime lookup
   -> first-order type check
 ```
 
+For v0.8-adjacent type-to-type meta construction work, the recommended
+reading order is:
+
+```text
+1. v0.8-semantic-spine.md — positive semantic model
+2. return-value-extraction-and-implicit-decomposition.md — extraction view
+3. v0.8-symbolic-construction-values-and-extraction-interfaces.md — construction values
+4. meta-object-invocation-and-policy-reduction.md — invocation + policy
+5. v0.8-meta-construction-agent-constraints.md — implementation guardrails
+```
+
 In block terms:
 
 ```text
-build-package -> symbol-world -> patterns-overload -> meta-invocation
-  -> mechanical-lowering -> later runtime lookup / type check
+semantic-spine
+  -> patterns-overload / extraction-view
+  -> symbolic-construction-values
+  -> meta-invocation
+  -> mechanical-lowering
+  -> later runtime lookup / type check
 ```
 
 Runtime lookup and first-order type checking are deliberately later than the
 pattern/type-value/meta-invocation work.
 
-For v0.8-adjacent type-to-type meta construction work, read
-`spec/contracts/v0.8-meta-construction-agent-constraints.md` first. That
-contract does not replace the design blocks; it binds their crossing points so
-work touching build/package, symbol-world, patterns-overload, policy,
-meta-invocation, or mechanical-lowering stays on the shared no-bypass route.
+For implementation patches that touch v0.8-adjacent type-to-type meta
+construction, read `spec/contracts/v0.8-meta-construction-agent-constraints.md`
+after the semantic spine and construction-value documents. It is the
+implementation guardrail, not the semantic entry point.
 
 ## Blocks
 
@@ -61,7 +72,7 @@ meta-invocation, or mechanical-lowering stays on the shared no-bypass route.
 |---|---|---|
 | `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, export surface, cache/fingerprint/provenance. | Language expression semantics. |
 | `symbol-world/` | Namespace graph world model: `SymbolObject`, `SymbolId` / `PlaceId` / `TypeValueId`, alias forwarding, writable-place, field functions, `ref`/`share` projection namespaces, type-associated function objects, injection targets, function-object self and return capability; plus the early-meta / namespace-graph bootstrap. | Full type checking, full alias resolver, access-tree construction, lifetime checking implementation. |
-| `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains. | Runtime overload resolution implementation; full pattern-space algebra. |
+| `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and implicit decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
 | `meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation; control-like callables instead of an `if constexpr` / `if` syntax split. | Defining symbol-world, patterns-overload, or policy-capability internals (it references them). |
 | `policy-capability/` | Symbol-visibility policy, callable body-entry policy, return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. | Mechanical return normalization (that lives in `mechanical-lowering/` and only references policy planes here). |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |

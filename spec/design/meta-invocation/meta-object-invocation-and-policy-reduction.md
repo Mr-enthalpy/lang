@@ -381,21 +381,22 @@ A meta object receives normalized objects, pattern objects, type values, graph o
 or argument shapes. It does not receive raw text by default.
 ```
 
-A meta object may produce any of the following:
+A meta object may produce:
 
 ```text
-graph delta
-type value
-normalized residual expression
-diagnostic
-verification result
+a meta invocation value (GeneratedConstructionValue, ForwardedValue)
+a residual expression
+a diagnostic
 ```
+
+Graph deltas and declaration bindings belong to the expansion/binding layer
+(§4.2), not the ordinary returned-value layer.
 
 But the mechanism producing those results is still ordinary invocation through
 graph-resolved callable objects. There is no separate expansion phase, no
 textual substitution, and no privileged rewriting step. A meta object is a
 callable selected by the candidate pipeline, executed under an execution
-environment, returning one of the `MetaReductionResult` shapes.
+environment, returning an invocation result.
 
 This is why the front end must stay neutral:
 
