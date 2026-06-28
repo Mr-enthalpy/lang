@@ -57,11 +57,10 @@ symbolic-construction-values -> meta-invocation -> patterns-overload
 Runtime lookup and first-order type checking are deliberately later than the
 pattern/type-value/meta-invocation work.
 
-For v0.8-adjacent type-to-type meta construction work, read
-`spec/contracts/v0.8-meta-construction-agent-constraints.md` first. That
-contract does not replace the design blocks; it binds their crossing points so
-work touching build/package, symbol-world, patterns-overload, policy,
-meta-invocation, or mechanical-lowering stays on the shared no-bypass route.
+For implementation patches that touch v0.8-adjacent type-to-type meta
+construction, read `spec/contracts/v0.8-meta-construction-agent-constraints.md`
+after the semantic spine and construction-value documents. It is the
+implementation guardrail, not the semantic entry point.
 
 ## Blocks
 

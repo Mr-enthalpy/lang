@@ -52,7 +52,7 @@ decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std`
 are all leaves in ordinary value context. Thus:
 
 ```text
-(int Vec::std)? == int Vec::std
+((int)Vec::std)? == (int)Vec::std
 ```
 
 This is not a claim that `Vec::std` has no argument — it is the statement that
@@ -147,7 +147,7 @@ This idempotence also holds for constructor-shaped values that do not expose
 a product extraction interface:
 
 ```text
-(int Vec::std)? == int Vec::std
+((int)Vec::std)? == (int)Vec::std
 ```
 
 `(int)Vec::std` is a single return value — not a product — so `?` acts as
