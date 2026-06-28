@@ -22,13 +22,15 @@ impl TypeValueId {
     }
 }
 
-/// Temporary v0.8 identity bridge.
+/// Temporary v0.8 identity projection.
 ///
-/// `TypeValueId` currently wraps the resolved Type symbol's `SymbolId`.
-/// This is **not** final cross-build type-value identity. Future replacement
-/// will read from the `TypeObject` / a type-value table.
+/// `TypeValueId` is a first-order type-value projection derived from the
+/// resolved Type symbol's `SymbolId`. This is **not** final cross-build
+/// type-value identity. Future replacement will read from the `TypeObject` /
+/// a type-value table.
 ///
-/// All `TypeValueId` construction from `SymbolId` must go through this helper.
+/// All `TypeValueId` projection construction from `SymbolId` must go
+/// through this helper.
 pub fn type_value_id_from_type_symbol_placeholder(symbol_id: SymbolId) -> TypeValueId {
     TypeValueId(symbol_id.0)
 }

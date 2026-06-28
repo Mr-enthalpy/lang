@@ -116,8 +116,8 @@ pub struct GeneratedConstructionValue {
 /// Deterministic build-local construction identity placeholder.
 ///
 /// Produced by `compute_construction_instance_id`. Distinct from `SymbolId`
-/// and `TypeValueId` — two different symbols may carry the same construction
-/// instance identity. This is a placeholder; a stable cross-build identity
+/// and the type-value projection — two different symbols may carry the same
+/// construction instance identity. This is a placeholder; a stable
 /// will use a different key derivation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConstructionInstanceId(pub u64);

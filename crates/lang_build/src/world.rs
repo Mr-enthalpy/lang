@@ -562,7 +562,7 @@ fn declared_type_placeholder_delta(
     // through `t` must target place(t), not place(uint8), once writable-place
     // checking exists.
     //
-    // This PR (v0.6.1) does not implement TypeValueId, canonical type-value
+    // This PR (v0.6.1) does not implement canonical type-value projection
     // equality, alias forwarding evaluation, or writable-place checking.
     // The placeholder representation remains until those features land.
     let mut delta = snapshot.empty_delta();

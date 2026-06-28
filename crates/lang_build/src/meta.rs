@@ -701,8 +701,8 @@ pub fn bind_meta_invocation_value_result(
 ///
 /// The `TypeObject` payload attached here is a **binding / materialization
 /// projection** of the `GeneratedConstructionValue`, not the invocation
-/// result itself. A `TypeValueId` can be derived from the declared symbol
-/// only after binding.
+/// result itself. A type-value projection can be derived from the declared
+/// symbol only after binding.
 ///
 /// The declared symbol's `type_symbol_id` is a fresh `SymbolId` — the
 /// construction identity is the `construction_instance_id`, not the

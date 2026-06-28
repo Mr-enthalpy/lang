@@ -168,12 +168,13 @@ pub enum CallableCandidateKind {
 ///
 /// The final key must be derived from the resolved callee `SymbolId`,
 /// canonical argument product shape, Expression barrier structure, Unit
-/// positions, arity, first-order `TypeValueId` values where known, package
-/// identity, mount identity, build/config fingerprint, policy/export-relevant
-/// metadata, and provenance/cache key fragments as needed.
+/// positions, arity, first-order type-value projection material where known,
+/// package identity, mount identity, build/config fingerprint,
+/// policy/export-relevant metadata, and provenance/cache key fragments
+/// as needed.
 ///
 /// It must not be reduced to source text, a normalized dump, callee name plus
-/// arity, or callee name plus `TypeValueId` list only.
+/// arity, or callee name plus a type-value projection list only.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,

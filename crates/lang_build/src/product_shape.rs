@@ -204,7 +204,7 @@ impl RawArgShape {
         }
     }
 
-    /// Controlled refinement: set a known first-order type value.
+    /// Controlled refinement: set a known first-order type-value projection.
     pub fn with_known_first_order_type_value(self, type_value: TypeValueId) -> Self {
         Self {
             known_first_order_type_value: Some(type_value),
@@ -252,9 +252,9 @@ impl RawArgShape {
         }
     }
 
-    /// Refine into `Value` and record the value's type `TypeValueId`.
-    /// The argument material is a value; the `TypeValueId` identifies
-    /// the value's type.
+    /// Refine into `Value` and record the value's first-order type-value
+    /// projection. The argument material is a value; the type-value
+    /// projection identifies the value's type.
     ///
     /// This is an object-boundary placeholder operation. It does **not**
     /// perform type checking.
