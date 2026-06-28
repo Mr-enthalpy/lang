@@ -21,7 +21,7 @@
 
 use lang_syntax::{NormError, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
-use crate::{identity::TypeValueId, model::Provenance};
+use crate::{identity::TypeValueId, model::Provenance, model::SymbolId};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProductObject {
@@ -67,7 +67,7 @@ pub enum ProductMaterialRole {
     SourceProduct,
     /// Candidate-preparation input (argument product).
     CallableArgumentProduct,
-    /// Type-to-type meta construction input.
+    /// Meta-construction argument product.
     MetaConstructionArgumentProduct,
     /// Temporary boundary only.
     Placeholder,
@@ -149,6 +149,7 @@ pub struct RawArgShape {
     pub index: usize,
     pub value_class: RawArgValueClass,
     pub explicit_pass_mode: Option<ExplicitPassMode>,
+    pub known_type_symbol_id: Option<SymbolId>,
     pub known_first_order_type_value: Option<TypeValueId>,
     pub provenance: Provenance,
 }
@@ -166,6 +167,7 @@ impl RawArgShape {
             index,
             value_class,
             explicit_pass_mode: None,
+            known_type_symbol_id: None,
             known_first_order_type_value: None,
             provenance: atom.provenance().clone(),
         }
@@ -230,14 +232,24 @@ impl RawArgShape {
     }
 
     /// Refine into `NonValue(TypeObject)` and record the type-object's
-    /// `TypeValueId`. The argument material itself is a type object being
-    /// passed as a meta argument.
+    /// `SymbolId` as the primary identity. Derives `TypeValueId` as a
+    /// secondary projection.
     ///
-    /// This is an object-boundary placeholder operation. It does **not**
-    /// perform type checking.
-    pub fn as_type_object_with_type_value(self, type_value: TypeValueId) -> Self {
+    /// This is the primary classification entry point — `TypeSymbol` is the
+    /// identity source; `TypeValueId` is derived projection material, never
+    /// a binding lookup key.
+    pub fn as_type_object_with_type_symbol(self, symbol_id: SymbolId) -> Self {
+        let type_value = crate::identity::type_value_id_from_type_symbol_placeholder(symbol_id);
         self.with_value_class(RawArgValueClass::NonValue(NonValueArgKind::TypeObject))
+            .with_known_type_symbol_id(symbol_id)
             .with_known_first_order_type_value(type_value)
+    }
+
+    fn with_known_type_symbol_id(self, symbol_id: SymbolId) -> Self {
+        Self {
+            known_type_symbol_id: Some(symbol_id),
+            ..self
+        }
     }
 
     /// Refine into `Value` and record the value's type `TypeValueId`.

@@ -118,7 +118,19 @@ fn encode_canonical_meta_instance_key_seed(seed: &CanonicalMetaInstanceKeySeed) 
         h.write_field(&[discriminant]);
     }
 
-    // Known type values
+    // Known type symbols (primary identity; TypeSymbol is the identity source)
+    h.write_field(&(seed.argument_type_symbols.len() as u64).to_le_bytes());
+    for sym in &seed.argument_type_symbols {
+        match sym {
+            None => h.write_field(&[0u8]),
+            Some(s) => {
+                h.write_field(&[1u8]);
+                h.write_field(&s.0.to_le_bytes());
+            }
+        }
+    }
+
+    // Known type values (projection material)
     h.write_field(
         &(seed.argument_product_shape_material.known_type_values.len() as u64).to_le_bytes(),
     );

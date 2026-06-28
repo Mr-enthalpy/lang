@@ -185,6 +185,7 @@ pub struct CanonicalMetaInstanceKeySeed {
     pub argument_product_shape_material: CanonicalArgProductShapeMaterial,
     pub unit_positions: Vec<usize>,
     pub argument_arity: usize,
+    pub argument_type_symbols: Vec<Option<SymbolId>>,
     pub argument_type_values: Vec<Option<TypeValueId>>,
     pub package_identity_fragment: Option<String>,
     pub mount_identity_fragment: Option<String>,
@@ -203,6 +204,7 @@ pub struct CanonicalArgProductShapeMaterial {
     pub arity: usize,
     pub unit_positions: Vec<usize>,
     pub atom_kinds: Vec<CanonicalArgAtomKind>,
+    pub known_type_symbols: Vec<Option<SymbolId>>,
     pub known_type_values: Vec<Option<TypeValueId>>,
 }
 
@@ -245,6 +247,11 @@ impl CanonicalArgProductShapeMaterial {
                     RawArgValueClass::Unsupported { .. } => CanonicalArgAtomKind::Unsupported,
                 })
                 .collect(),
+            known_type_symbols: shape
+                .raw_args
+                .iter()
+                .map(|raw_arg| raw_arg.known_type_symbol_id)
+                .collect(),
             known_type_values: shape
                 .raw_args
                 .iter()
@@ -286,7 +293,7 @@ pub enum CanonicalArgAtomKind {
 ///
 /// `ApplicablePlaceholder` means the candidate passed the current placeholder
 /// arity and body-entry checks. It is not a completed invocation result and it
-/// does not produce a `MetaReductionResult`, `MetaExpansionResult`, or
+/// does not produce a `MetaInvocationResult`, `MetaExpansionResult`, or
 /// `NamespaceDelta`.
 ///
 /// `Deferred` means later pattern/type/policy/meta-invocation machinery must
@@ -349,6 +356,11 @@ pub fn prepare_meta_callable_candidate(
         ),
         unit_positions,
         argument_arity: arg_product_shape.arity,
+        argument_type_symbols: arg_product_shape
+            .raw_args
+            .iter()
+            .map(|raw_arg| raw_arg.known_type_symbol_id)
+            .collect(),
         argument_type_values: arg_product_shape
             .raw_args
             .iter()

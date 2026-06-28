@@ -5,7 +5,6 @@ use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, Nor
 use crate::{
     call_target::{resolve_call_target, ResolvedCallTarget},
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
-    identity::TypeValueId,
     meta_candidate::{
         prepare_meta_callable_candidate_from_input, CandidateBuildIdentityPlaceholder,
         CandidatePreparationContext, CandidatePreparationInput, ParameterShape,
@@ -17,8 +16,8 @@ use crate::{
     model::{
         CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
         FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, PolicyEnv, Provenance, SourceCategory, SymbolId, SymbolKind,
-        SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+        NamespaceNodeKind, PolicyEnv, Provenance, SourceCategory, SymbolKind, SymbolObject,
+        SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
     },
     normalized_call::{extract_single_call_site, NormalizedCallSite},
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
@@ -523,7 +522,10 @@ fn product_origin(product: &NormProduct) -> &NormOrigin {
     &product.origin
 }
 
-/// Expand `IdentityType : type -> type`.
+/// IdentityType:
+///   r === arg (forwarding proof)
+///   → ForwardedValue(TypeSymbol)
+///   → binding declares a type symbol forwarding the target's symbol identity
 ///
 /// **Pipeline (v0.8 substrate)**:
 ///
@@ -534,17 +536,14 @@ fn product_origin(product: &NormProduct) -> &NormOrigin {
 ///   → classify_type_arguments (resolves names as type objects)
 ///   → CandidatePreparationInput
 ///   → prepare_meta_callable_candidate_from_input
-///   → extract TypeValueId from canonical material
+///   → invoke_meta_callable → ForwardedValue(TypeSymbol)
+///   → bind_meta_invocation_value_result
 /// ```
 ///
-/// **Primitive reduction** (no `NamespaceDelta`):
-/// The single argument must be `NonValue(TypeObject)` carrying a `TypeValueId`.
-/// The primitive result is that same `TypeValueId`.
-///
 /// **Declaration binding** (where `NamespaceDelta` is installed):
-/// A declared type symbol is installed under `binding_name`, carrying the
-/// argument type's identity (`type_symbol_id`). No type-associated namespace
-/// or field projections are generated for `IdentityType`.
+/// A declared forwarding type symbol is installed under `binding_name`.
+/// The forwarding target is the `TypeSymbol` carried by the
+/// `ForwardedValue`, not a clone of the original `TypeObject`.
 fn expand_identity_type_meta(
     site: &NormalizedCallSite,
     resolved: &ResolvedCallTarget,
@@ -603,7 +602,7 @@ fn expand_identity_type_meta(
         }
     };
 
-    // --- Stage 4: formal meta invocation (pure reduction) ---
+    // --- Stage 4: formal meta invocation ---
     let invocation_input = MetaInvocationInput::new(*candidate, provenance.clone());
 
     let invocation_value = match invoke_meta_callable(invocation_input) {
@@ -626,8 +625,8 @@ fn expand_identity_type_meta(
 /// This is the formal binding entry point. It dispatches on the invocation
 /// value type:
 ///
-/// - `ForwardedValue` with `TypeValueProjection`: delegates to the legacy
-///   forwarded-type-value-projection binding helper.
+/// - `ForwardedValue` with `TypeSymbol`: materializes a declaration
+///   that forwards the target type's symbol identity.
 /// - `ForwardedValue` with other targets: not yet supported.
 /// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
 pub fn bind_meta_invocation_value_result(
@@ -639,14 +638,48 @@ pub fn bind_meta_invocation_value_result(
 ) -> Result<MetaExpansionResult, BuildError> {
     match value {
         MetaInvocationValue::ForwardedValue(fv) => match fv.target {
-            MetaValueTarget::TypeValueProjection(tv) => {
-                legacy_bind_forwarded_type_value_projection(
-                    tv,
-                    snapshot,
-                    parent_namespace,
-                    binding_name,
+            MetaValueTarget::TypeSymbol(type_symbol_id) => {
+                let mut delta = snapshot.empty_delta();
+                let declared_id = delta.allocate_symbol_id();
+                let declared_symbol = SymbolObject {
+                    id: declared_id,
+                    kind: SymbolKind::Type,
+                    name: binding_name.to_string(),
+                    source_category: SourceCategory::DeclaredSymbol,
+                    node_kind: None,
+                    parent: Some(parent_namespace),
+                    policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
+                    visibility_metadata: crate::model::VisibilityMetadata {
+                        slots: std::collections::BTreeMap::new(),
+                    },
+                    diagnostics: Vec::new(),
+                    generation_origin: Some("ForwardedValue(TypeSymbol) binding".to_string()),
+                    cache_key_fragment: None,
+                    provenance: Provenance::new(format!(
+                        "declared forwarding type `{binding_name}`"
+                    )),
+                    payload: SymbolPayload::Type(TypeObject {
+                        type_symbol_id,
+                        fields: Vec::new(),
+                        field_names: Vec::new(),
+                        field_type_symbol_ids: Vec::new(),
+                        type_associated_namespace: None,
+                        provenance: Provenance::new(format!(
+                            "forwarding type `{binding_name}` from TypeSymbol({})",
+                            type_symbol_id.0
+                        )),
+                        generation_origin: Some("ForwardedValue(TypeSymbol) forwarder".to_string()),
+                        layout_slot: None,
+                        abi_slot: None,
+                    }),
+                };
+                delta.insert_symbol(parent_namespace, declared_symbol.clone());
+                Ok(MetaExpansionResult {
+                    replacement_object: declared_symbol.clone(),
+                    namespace_delta: delta,
+                    diagnostics: Vec::new(),
                     provenance,
-                )
+                })
             }
         },
         MetaInvocationValue::GeneratedConstructionValue(gcv) => bind_generated_construction_value(
@@ -657,81 +690,6 @@ pub fn bind_meta_invocation_value_result(
             provenance,
         ),
     }
-}
-
-/// Legacy compatibility helper (crate-private).
-///
-/// Binds a forwarded `TypeValueProjection` into a declared type symbol.
-/// This is **not** the formal meta-invocation binding entry. Do not call
-/// from new construction paths.
-fn legacy_bind_forwarded_type_value_projection(
-    type_value_id: TypeValueId,
-    snapshot: &NamespaceGraphSnapshot,
-    parent_namespace: NamespaceNodeId,
-    binding_name: &str,
-    provenance: Provenance,
-) -> Result<MetaExpansionResult, BuildError> {
-    let type_symbol_id = SymbolId(type_value_id.0);
-    let type_symbol = snapshot.symbol(type_symbol_id).ok_or_else(|| {
-        BuildError::single(Diagnostic::hard_error(
-            format!(
-                "meta hard error: TypeValueId({}) does not correspond to a known symbol",
-                type_value_id.0
-            ),
-            Some(provenance.clone()),
-        ))
-    })?;
-
-    let SymbolPayload::Type(type_obj) = &type_symbol.payload else {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            format!(
-                "meta hard error: symbol `{}` does not have a Type payload",
-                type_symbol.name
-            ),
-            Some(type_symbol.provenance.clone()),
-        )));
-    };
-
-    let mut delta = snapshot.empty_delta();
-    let declared_id = delta.allocate_symbol_id();
-    let declared_symbol = SymbolObject {
-        id: declared_id,
-        kind: SymbolKind::Type,
-        name: binding_name.to_string(),
-        source_category: SourceCategory::DeclaredSymbol,
-        node_kind: type_symbol.node_kind,
-        parent: Some(parent_namespace),
-        policy_metadata: type_symbol.policy_metadata.clone(),
-        visibility_metadata: type_symbol.visibility_metadata.clone(),
-        diagnostics: Vec::new(),
-        generation_origin: Some("core::IdentityType early meta expansion".to_string()),
-        cache_key_fragment: None,
-        provenance: Provenance::new(format!(
-            "declared identity type `{binding_name}` via core::IdentityType"
-        )),
-        payload: SymbolPayload::Type(TypeObject {
-            type_symbol_id: type_obj.type_symbol_id,
-            fields: type_obj.fields.clone(),
-            field_names: type_obj.field_names.clone(),
-            field_type_symbol_ids: type_obj.field_type_symbol_ids.clone(),
-            type_associated_namespace: type_obj.type_associated_namespace,
-            provenance: Provenance::new(format!(
-                "identity type `{binding_name}` from argument `{}`",
-                type_symbol.name
-            )),
-            generation_origin: Some("core::IdentityType identity".to_string()),
-            layout_slot: type_obj.layout_slot.clone(),
-            abi_slot: type_obj.abi_slot.clone(),
-        }),
-    };
-    delta.insert_symbol(parent_namespace, declared_symbol);
-
-    Ok(MetaExpansionResult {
-        replacement_object: type_symbol.clone(),
-        namespace_delta: delta,
-        diagnostics: Vec::new(),
-        provenance,
-    })
 }
 
 /// Bind a `GeneratedConstructionValue` into the namespace graph.
