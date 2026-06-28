@@ -110,6 +110,12 @@ pub fn try_expand_early_meta_initializer(
             meta_function,
         )
         .map(Some),
+        CoreMetaFunction::UnaryConstructionPrototype => Err(BuildError::single(
+            Diagnostic::hard_error(
+                "meta hard error: UnaryConstructionPrototype has no source-level expansion; use formal invocation",
+                Some(provenance),
+            ),
+        )),
     }
 }
 
@@ -623,9 +629,7 @@ fn expand_identity_type_meta(
 /// - `ForwardedValue` with `TypeValueProjection`: delegates to the legacy
 ///   forwarded-type-value-projection binding helper.
 /// - `ForwardedValue` with other targets: not yet supported.
-/// - `GeneratedConstructionValue`: explicitly unsupported — returns a
-///   diagnostic that records this as an implementation-stage downgrade,
-///   not a semantic rejection.
+/// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
 pub fn bind_meta_invocation_value_result(
     value: MetaInvocationValue,
     snapshot: &NamespaceGraphSnapshot,
@@ -637,16 +641,21 @@ pub fn bind_meta_invocation_value_result(
         MetaInvocationValue::ForwardedValue(fv) => match fv.target {
             MetaValueTarget::TypeValueProjection(tv) => {
                 legacy_bind_forwarded_type_value_projection(
-                    tv, snapshot, parent_namespace, binding_name, provenance,
+                    tv,
+                    snapshot,
+                    parent_namespace,
+                    binding_name,
+                    provenance,
                 )
             }
         },
-        MetaInvocationValue::GeneratedConstructionValue(gcv) => {
-            Err(BuildError::single(Diagnostic::hard_error(
-                "meta hard error: GeneratedConstructionValue binding is not yet supported (v0.8 downgrade — this is an implementation-stage limitation, not a semantic rejection)",
-                Some(gcv.provenance),
-            )))
-        }
+        MetaInvocationValue::GeneratedConstructionValue(gcv) => bind_generated_construction_value(
+            &gcv,
+            snapshot,
+            parent_namespace,
+            binding_name,
+            provenance,
+        ),
     }
 }
 
@@ -719,6 +728,107 @@ fn legacy_bind_forwarded_type_value_projection(
 
     Ok(MetaExpansionResult {
         replacement_object: type_symbol.clone(),
+        namespace_delta: delta,
+        diagnostics: Vec::new(),
+        provenance,
+    })
+}
+
+/// Bind a `GeneratedConstructionValue` into the namespace graph.
+///
+/// Creates a declared type symbol under `binding_name`. The `SymbolObject`
+/// carries the `construction_instance_id` as a `cache_key_fragment`
+/// (temporary carrier — the identity model is `ConstructionInstanceId`,
+/// not the cache key).
+///
+/// The `TypeObject` payload attached here is a **binding / materialization
+/// projection** of the `GeneratedConstructionValue`, not the invocation
+/// result itself. A `TypeValueId` can be derived from the declared symbol
+/// only after binding.
+///
+/// The declared symbol's `type_symbol_id` is a fresh `SymbolId` — the
+/// construction identity is the `construction_instance_id`, not the
+/// declared symbol ID.
+///
+/// This function installs a `NamespaceDelta`. It is the **binding**
+/// layer — `invoke_meta_callable` remains pure.
+fn bind_generated_construction_value(
+    gcv: &crate::meta_invocation::GeneratedConstructionValue,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    provenance: Provenance,
+) -> Result<MetaExpansionResult, BuildError> {
+    // Validate that the construction_instance_id matches the identity material.
+    let expected = crate::meta_invocation::compute_construction_instance_id(&gcv.identity_material);
+    if expected != gcv.construction_instance_id {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: GeneratedConstructionValue has mismatched construction_instance_id (expected {}, got {})",
+                expected.as_u64(), gcv.construction_instance_id.as_u64()
+            ),
+            Some(gcv.provenance.clone()),
+        )));
+    }
+    if gcv.identity_material.return_slot_semantics
+        != crate::meta_invocation::ReturnSlotSemantics::Generate
+    {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            "meta hard error: GeneratedConstructionValue must have Generate return-slot semantics",
+            Some(gcv.provenance.clone()),
+        )));
+    }
+
+    let mut delta = snapshot.empty_delta();
+    let declared_id = delta.allocate_symbol_id();
+    let declared_symbol = SymbolObject {
+        id: declared_id,
+        kind: SymbolKind::Type,
+        name: binding_name.to_string(),
+        source_category: SourceCategory::DeclaredSymbol,
+        node_kind: None,
+        parent: Some(parent_namespace),
+        policy_metadata: crate::policy_metadata(policy_set_meta_runtime()),
+        visibility_metadata: crate::model::VisibilityMetadata {
+            slots: std::collections::BTreeMap::new(),
+        },
+        diagnostics: Vec::new(),
+        generation_origin: Some(
+            "core::UnaryConstructionPrototype generated construction".to_string(),
+        ),
+        cache_key_fragment: Some(format!(
+            "construction:{}",
+            gcv.construction_instance_id.as_u64()
+        )),
+        provenance: Provenance::new(format!(
+            "declared construction type `{binding_name}` via core::UnaryConstructionPrototype"
+        )),
+        payload: SymbolPayload::Type(TypeObject {
+            type_symbol_id: declared_id,
+            fields: Vec::new(),
+            field_names: Vec::new(),
+            field_type_symbol_ids: Vec::new(),
+            type_associated_namespace: None,
+            provenance: Provenance::new(format!(
+                "generated construction type `{binding_name}` (construction instance {})",
+                gcv.construction_instance_id.as_u64()
+            )),
+            generation_origin: Some(
+                "core::UnaryConstructionPrototype generated construction type".to_string(),
+            ),
+            layout_slot: None,
+            abi_slot: None,
+        }),
+    };
+    delta.insert_symbol(parent_namespace, declared_symbol.clone());
+
+    let replacement = SymbolObject {
+        id: declared_id,
+        ..declared_symbol.clone()
+    };
+
+    Ok(MetaExpansionResult {
+        replacement_object: replacement,
         namespace_delta: delta,
         diagnostics: Vec::new(),
         provenance,

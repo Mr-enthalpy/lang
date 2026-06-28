@@ -836,20 +836,64 @@ fn binding_layer_consumes_forwarded_invocation_value_via_legacy_type_projection(
 }
 
 #[test]
-fn generated_construction_value_binding_is_explicitly_unsupported_not_typevalue_fallback() {
+fn generated_construction_value_binding_materializes_without_typevalue_fallback() {
     let world = v08_identity_type_world();
+    let context = world.package_context();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UCPrototype resolves");
+
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let gcv = produce_gcv(&callee, classified);
+    let cid = gcv.construction_instance_id;
+
+    let result = bind_meta_invocation_value_result(
+        MetaInvocationValue::GeneratedConstructionValue(gcv),
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        Provenance::new("valid GCV binding"),
+    )
+    .expect("GCV binding should succeed");
+
+    assert!(
+        !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
+        "GCV binding must install a NamespaceDelta"
+    );
+    assert_ne!(cid, lang_build::ConstructionInstanceId(0));
+}
+
+#[test]
+fn generated_construction_value_binding_rejects_mismatched_construction_instance_id() {
+    let world = v08_identity_type_world();
+
+    let identity_material = lang_build::ConstructionIdentityMaterial {
+        callee_symbol_id: SymbolId(99),
+        canonical_args: lang_build::CanonicalArgProductShapeMaterial {
+            arity: 1,
+            unit_positions: vec![],
+            atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
+            known_type_values: vec![Some(TypeValueId(1))],
+        },
+        return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
+        build_identity_fragment: None,
+        policy_export_fingerprint_fragment: None,
+        provenance: Provenance::new("test gcv"),
+    };
+    let real_cid = lang_build::compute_construction_instance_id(&identity_material);
+    let fake_cid = lang_build::ConstructionInstanceId(real_cid.as_u64() + 1);
 
     let gcv = lang_build::MetaInvocationValue::GeneratedConstructionValue(
         lang_build::GeneratedConstructionValue {
-            callee_symbol_id: SymbolId(99),
-            canonical_args: lang_build::CanonicalArgProductShapeMaterial {
-                arity: 1,
-                unit_positions: vec![],
-                atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
-                known_type_values: vec![Some(TypeValueId(1))],
-            },
+            construction_instance_id: fake_cid,
+            identity_material,
             return_view: ReturnViewShape::Leaf,
-            provenance: Provenance::new("test gcv"),
+            provenance: Provenance::new("mismatched CID"),
         },
     );
 
@@ -858,14 +902,449 @@ fn generated_construction_value_binding_is_explicitly_unsupported_not_typevalue_
         world.snapshot(),
         world.package_root_node(),
         "T",
-        Provenance::new("should not bind GCV"),
+        Provenance::new("should reject mismatched CID"),
     )
-    .expect_err("GeneratedConstructionValue binding must be unsupported, not succeed");
+    .expect_err("mismatched CID must be rejected");
+
+    assert!(err
+        .diagnostics
+        .iter()
+        .any(|d| d.message.contains("mismatched construction_instance_id")));
+}
+
+#[test]
+fn meta_instance_cache_reuses_generated_construction_value() {
+    let world = v08_identity_type_world();
+    let context = world.package_context();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UCPrototype resolves");
+
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    // First invocation through candidate-prep → cache miss.
+    let input = CandidatePreparationInput::new(
+        callee.clone(),
+        classified.clone(),
+        ParameterShape::type_parameter_signature(Provenance::new("GCV cache test")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("GCV cache test"),
+        },
+    );
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+    let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV cache"));
+    let key = invocation_input.compute_key();
+
+    let mut cache = MetaInstanceCache::new();
+    assert!(cache.lookup(&key).is_none());
+
+    let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv1)) =
+        result1
+    else {
+        panic!("first invocation should yield GCV");
+    };
+    let cid1 = gcv1.construction_instance_id;
+
+    let cached = cache.lookup(&key).expect("GCV entry should now be cached");
+    assert!(matches!(
+        cached.result,
+        MetaInvocationValue::GeneratedConstructionValue(_)
+    ));
+
+    // Second invocation with same material → cache hit.
+    let input2 = CandidatePreparationInput::new(
+        callee,
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("GCV cache test 2")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("GCV cache test 2"),
+        },
+    );
+    let CandidatePrepResult::ApplicablePlaceholder(candidate2) =
+        prepare_meta_callable_candidate_from_input(input2)
+    else {
+        panic!("second candidate-prep should yield ApplicablePlaceholder");
+    };
+    let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("GCV cache 2"));
+    let result2 = invoke_meta_callable_cached(invocation_input2, &mut cache);
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv2)) =
+        result2
+    else {
+        panic!("second invocation should yield GCV");
+    };
+
+    assert_eq!(cid1, gcv2.construction_instance_id);
+    assert_eq!(cache.len(), 1, "cache should not grow on hit");
+}
+
+#[test]
+fn unary_construction_prototype_invocation_returns_generated_construction_value() {
+    let world = v08_identity_type_world();
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    let site = extract_single_call_site(&expr).expect("fixture must be a call");
+    let context = world.package_context();
+    let _resolved = resolve_call_target(
+        &site.target,
+        &world.snapshot().capability(),
+        &context,
+        PolicyEnv::Meta,
+    )
+    .expect("resolve_call_target should succeed")
+    .expect("target should resolve");
+
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UnaryConstructionPrototype resolves through namespace graph");
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new(
+            "UnaryConstructionPrototype param",
+        )),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("UCPrototype invocation test"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("UCPrototype candidate-prep should yield ApplicablePlaceholder");
+    };
+
+    let callee_symbol_id = candidate.callee_symbol_id;
+
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("UCPrototype invocation"));
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("UCPrototype should yield GeneratedConstructionValue");
+    };
+
+    assert_eq!(gcv.return_view, ReturnViewShape::Leaf);
+    assert_eq!(
+        gcv.identity_material.return_slot_semantics,
+        lang_build::ReturnSlotSemantics::Generate
+    );
+    assert!(gcv.construction_instance_id.as_u64() != 0);
+    assert_eq!(gcv.identity_material.callee_symbol_id, callee_symbol_id);
+}
+
+#[test]
+fn generated_construction_value_is_not_type_value_id() {
+    let world = v08_identity_type_world();
+    let context = world.package_context();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UCPrototype resolves");
+
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("UCPrototype param")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("GCV != TV test"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("GCV != TV invocation"));
+    let gcv = match invoke_meta_callable(invocation_input) {
+        MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) => gcv,
+        MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(_)) => {
+            panic!("UCPrototype must NOT return ForwardedValue(TypeValueProjection)")
+        }
+        MetaInvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
+    };
 
     assert!(
-        err.diagnostics
-            .iter()
-            .any(|d| d.message.contains("not yet supported")),
-        "GCV binding diagnostic must explain it is not yet supported"
+        gcv.construction_instance_id.as_u64() != 0,
+        "GeneratedConstructionValue must have a ConstructionInstanceId"
     );
+    assert_eq!(
+        gcv.identity_material.return_slot_semantics,
+        lang_build::ReturnSlotSemantics::Generate
+    );
+}
+
+#[test]
+fn binding_layer_materializes_generated_construction_value() {
+    let world = v08_identity_type_world();
+    let context = world.package_context();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UCPrototype resolves");
+
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("UCPrototype binding test")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("binding materialization test"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("binding materialization"));
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("should yield GCV");
+    };
+    let cid = gcv.construction_instance_id;
+
+    let result = bind_meta_invocation_value_result(
+        MetaInvocationValue::GeneratedConstructionValue(gcv),
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        Provenance::new("GCV materialization"),
+    )
+    .expect("GCV binding should succeed");
+
+    assert!(
+        !result.namespace_delta.nodes.is_empty() || !result.namespace_delta.symbols.is_empty(),
+        "GCV binding must install a NamespaceDelta"
+    );
+
+    // TypeValueId projection must be derived from declared symbol after binding,
+    // not from the construction instance identity.
+    let declared = &result.replacement_object;
+    assert_eq!(declared.kind, lang_build::SymbolKind::Type);
+    assert_eq!(declared.name, "T");
+    let tv = type_value_id_from_type_symbol_placeholder(declared.id);
+    assert_ne!(
+        tv.as_u64(),
+        cid.as_u64(),
+        "construction identity must not equal TypeValueId projection"
+    );
+}
+
+#[test]
+fn generated_construction_identity_is_independent_of_binding_name() {
+    let world = v08_identity_type_world();
+    let context = world.package_context();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UCPrototype resolves");
+
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let input = CandidatePreparationInput::new(
+        callee,
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("UCPrototype identity test")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("identity independence test"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input =
+        MetaInvocationInput::new(*candidate, Provenance::new("identity independence"));
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("should yield GCV");
+    };
+    let _cid = gcv.construction_instance_id;
+
+    // Bind same GCV under two different names, installing the first to
+    // advance the snapshot so the second gets a distinct SymbolId.
+    let result_a = bind_meta_invocation_value_result(
+        MetaInvocationValue::GeneratedConstructionValue(gcv.clone()),
+        world.snapshot(),
+        world.package_root_node(),
+        "A",
+        Provenance::new("bind as A"),
+    )
+    .expect("bind as A should succeed");
+
+    // Install A's delta so B gets a different SymbolId from the graph.
+    let snapshot_after_a = world
+        .snapshot()
+        .install_delta(result_a.namespace_delta)
+        .expect("install A's delta");
+
+    let result_b = bind_meta_invocation_value_result(
+        MetaInvocationValue::GeneratedConstructionValue(gcv),
+        &snapshot_after_a,
+        world.package_root_node(),
+        "B",
+        Provenance::new("bind as B"),
+    )
+    .expect("bind as B should succeed");
+
+    assert_ne!(
+        result_a.replacement_object.id, result_b.replacement_object.id,
+        "distinct bindings must have distinct declared symbol IDs"
+    );
+    assert_eq!(
+        result_a.replacement_object.cache_key_fragment.as_deref(),
+        result_b.replacement_object.cache_key_fragment.as_deref(),
+        "same GCV bound at different names must carry same cache key fragment"
+    );
+}
+
+#[test]
+fn generated_construction_identity_changes_with_canonical_args() {
+    let world = v08_identity_type_world();
+    let context = world.package_context();
+    let callee = world
+        .snapshot()
+        .capability()
+        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .expect("UCPrototype resolves");
+
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let classified_uint8 =
+        classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+
+    let gcv_uint8 = produce_gcv(&callee, classified_uint8);
+    let cid_uint8 = gcv_uint8.construction_instance_id;
+
+    // Produce a second GCV with a different real type argument (uint16).
+    let uint16 = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint16", &context)
+        .expect("uint16 resolves as type object");
+    let classified_uint16 = produce_classified_shape(
+        &uint16,
+        &world,
+        &context,
+        lang_build::ProductMaterialRole::MetaConstructionArgumentProduct,
+    );
+    let cid_uint16 = produce_gcv(&callee, classified_uint16).construction_instance_id;
+
+    assert_ne!(
+        cid_uint8, cid_uint16,
+        "different canonical args (uint8 vs uint16) must produce different ConstructionInstanceId"
+    );
+}
+
+fn produce_classified_shape(
+    type_symbol: &lang_build::SymbolObject,
+    _world: &lang_build::CompilationWorld,
+    _context: &lang_build::ResolverContext,
+    role: lang_build::ProductMaterialRole,
+) -> lang_build::ArgProductShape {
+    let site = v08_identity_type_call_site();
+    let shape = site.to_arg_product_shape(role);
+    let mut classified = shape.clone();
+    let type_value = type_value_id_from_type_symbol_placeholder(type_symbol.id);
+    for raw in &mut classified.raw_args {
+        if matches!(raw.value_class, RawArgValueClass::UnknownExpression) {
+            *raw = raw.clone().as_type_object_with_type_value(type_value);
+        }
+    }
+    classified
+}
+
+fn v08_identity_type_call_site() -> lang_build::NormalizedCallSite {
+    let expr = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+    extract_single_call_site(&expr).expect("fixture must be a call")
+}
+
+fn produce_gcv(
+    callee: &lang_build::SymbolObject,
+    classified: lang_build::ArgProductShape,
+) -> lang_build::GeneratedConstructionValue {
+    let input = CandidatePreparationInput::new(
+        callee.clone(),
+        classified,
+        ParameterShape::type_parameter_signature(Provenance::new("GCV production")),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new("GCV production"),
+        },
+    );
+
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("should yield ApplicablePlaceholder");
+    };
+
+    let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV production"));
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("should yield GCV");
+    };
+    gcv
 }
