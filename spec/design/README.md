@@ -50,8 +50,12 @@ reading order is:
 In block terms:
 
 ```text
-symbolic-construction-values -> meta-invocation -> patterns-overload
-  -> mechanical-lowering -> later runtime lookup / type check
+semantic-spine
+  -> patterns-overload / extraction-view
+  -> symbolic-construction-values
+  -> meta-invocation
+  -> mechanical-lowering
+  -> later runtime lookup / type check
 ```
 
 Runtime lookup and first-order type checking are deliberately later than the
