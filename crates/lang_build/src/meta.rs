@@ -597,11 +597,7 @@ fn expand_identity_type_meta(
     };
 
     // --- Stage 4: formal meta invocation (pure reduction) ---
-    let invocation_input = MetaInvocationInput::new(
-        *candidate,
-        CoreMetaFunction::IdentityType,
-        provenance.clone(),
-    );
+    let invocation_input = MetaInvocationInput::new(*candidate, provenance.clone());
 
     let type_value_id = match invoke_meta_callable(invocation_input) {
         MetaInvocationResult::Reduction(MetaReductionResult::TypeValue(tv)) => tv,

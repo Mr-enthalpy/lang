@@ -12,8 +12,10 @@ pub mod graph;
 pub mod identity;
 pub mod manifest;
 pub mod meta;
+pub mod meta_cache;
 pub mod meta_candidate;
 pub mod meta_invocation;
+pub mod meta_key;
 pub mod model;
 pub mod normalized_call;
 pub mod product_shape;
@@ -45,6 +47,7 @@ pub use identity::{
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{bind_meta_type_value_result, MetaExpansionResult};
+pub use meta_cache::{CachedMetaInstance, MetaInstanceCache};
 pub use meta_candidate::{
     prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
     CallableCandidateKind, CandidateBuildIdentityPlaceholder, CandidatePolicyPlanes,
@@ -54,8 +57,10 @@ pub use meta_candidate::{
     PreparedCallableCandidate,
 };
 pub use meta_invocation::{
-    invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaReductionResult,
+    invoke_meta_callable, invoke_meta_callable_cached, MetaInvocationInput, MetaInvocationResult,
+    MetaReductionResult,
 };
+pub use meta_key::{compute_meta_instance_key, CanonicalFingerprint, MetaInstanceKey};
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
     policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,

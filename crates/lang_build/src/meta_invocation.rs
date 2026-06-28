@@ -32,45 +32,39 @@
 
 use crate::{
     identity::TypeValueId,
+    meta_cache::MetaInstanceCache,
     meta_candidate::PreparedCallableCandidate,
-    model::{CoreMetaFunction, Diagnostic, Provenance},
+    meta_key::{compute_meta_instance_key, MetaInstanceKey},
+    model::{Diagnostic, Provenance},
 };
 
 /// Input for formal meta invocation.
 ///
 /// The candidate must already have passed `prepare_meta_callable_candidate`.
-/// The `callee_primitive` identifies which primitive implementation to invoke.
-///
-/// Future: `MetaInvocationInput` will also carry an `InvocationFrame` with
-/// implicit `self` when the `()` call-entry model is implemented.
+/// The primitive is read from `candidate.callee_primitive` — callers do not
+/// pass it separately, preventing primitive-vs-candidate mismatch.
 #[derive(Clone, Debug)]
 pub struct MetaInvocationInput {
     pub candidate: PreparedCallableCandidate,
-    pub callee_primitive: CoreMetaFunction,
     pub provenance: Provenance,
 }
 
 impl MetaInvocationInput {
-    pub fn new(
-        candidate: PreparedCallableCandidate,
-        callee_primitive: CoreMetaFunction,
-        provenance: Provenance,
-    ) -> Self {
+    pub fn new(candidate: PreparedCallableCandidate, provenance: Provenance) -> Self {
         Self {
             candidate,
-            callee_primitive,
             provenance,
         }
+    }
+
+    pub fn compute_key(&self) -> MetaInstanceKey {
+        compute_meta_instance_key(&self.candidate)
     }
 }
 
 /// Pure reduction result of formal meta invocation.
-///
-/// Does **not** carry `NamespaceDelta`, declared symbols, or generated objects.
-/// This is the minimal output of a primitive meta callable.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaReductionResult {
-    /// The invocation returned a type value (e.g. `IdentityType(uint8)`).
     TypeValue(TypeValueId),
 }
 
@@ -84,13 +78,24 @@ pub enum MetaInvocationResult {
 /// Invoke a prepared callable candidate through the formal meta invocation
 /// boundary.
 ///
-/// Dispatches based on `callee_primitive`. Currently only `IdentityType`
-/// is supported. The reduction is pure — no graph mutation, no
-/// `NamespaceDelta` installation, no declared symbol creation.
+/// Reads `callee_primitive` from the candidate itself. The reduction is pure.
 pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult {
-    match input.callee_primitive {
-        CoreMetaFunction::IdentityType => invoke_identity_type(&input),
-        CoreMetaFunction::Struct => MetaInvocationResult::Diagnostic(
+    let Some(primitive) = input.candidate.callee_primitive else {
+        return MetaInvocationResult::Diagnostic(
+            Diagnostic::hard_error(
+                format!(
+                    "meta invocation: candidate `{}` has no callee primitive",
+                    input.candidate.callee_name
+                ),
+                Some(input.provenance),
+            )
+            .with_symbol_context(input.candidate.callee_symbol_id),
+        );
+    };
+
+    match primitive {
+        crate::model::CoreMetaFunction::IdentityType => invoke_identity_type(&input),
+        crate::model::CoreMetaFunction::Struct => MetaInvocationResult::Diagnostic(
             Diagnostic::hard_error(
                 "meta invocation: struct is not yet callable through formal invocation",
                 Some(input.provenance),
@@ -101,13 +106,36 @@ pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult 
             Diagnostic::hard_error(
                 format!(
                     "meta invocation: primitive {:?} is not callable through formal invocation",
-                    input.callee_primitive
+                    primitive
                 ),
                 Some(input.provenance),
             )
             .with_symbol_context(input.candidate.callee_symbol_id),
         ),
     }
+}
+
+/// Cached variant: look up the key in the cache before invoking.
+///
+/// On cache miss, invokes and inserts the result. On hit, returns the cached
+/// reduction. The cache stores only `MetaReductionResult` — no `NamespaceDelta`.
+pub fn invoke_meta_callable_cached(
+    input: MetaInvocationInput,
+    cache: &mut MetaInstanceCache,
+) -> MetaInvocationResult {
+    let key = input.compute_key();
+    if let Some(cached) = cache.lookup(&key) {
+        return MetaInvocationResult::Reduction(cached.result.clone());
+    }
+    let result = invoke_meta_callable(input);
+    if let MetaInvocationResult::Reduction(ref red) = result {
+        cache.insert(
+            key,
+            red.clone(),
+            Provenance::new("cached meta invocation result"),
+        );
+    }
+    result
 }
 
 fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {

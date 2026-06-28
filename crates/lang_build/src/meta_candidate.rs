@@ -22,8 +22,8 @@ use crate::{
     callable_body_allows_execution,
     identity::TypeValueId,
     model::{
-        Diagnostic, ExecutionEnv, FieldObject, MetaFunctionObject, PolicyEnv, PolicyMetadata,
-        Provenance, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+        CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject, MetaFunctionObject, PolicyEnv,
+        PolicyMetadata, Provenance, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
     },
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
 };
@@ -150,6 +150,7 @@ impl CandidatePolicyPlanes {
 pub struct PreparedCallableCandidate {
     pub callee_symbol_id: SymbolId,
     pub callee_name: String,
+    pub callee_primitive: Option<CoreMetaFunction>,
     pub callable_kind: CallableCandidateKind,
     pub arg_product_shape: ArgProductShape,
     pub parameter_shape: ParameterShape,
@@ -362,9 +363,14 @@ pub fn prepare_meta_callable_candidate(
             .clone(),
         provenance: context.provenance.clone(),
     };
+    let callee_primitive = match &callee.payload {
+        SymbolPayload::MetaFunction(mf) => Some(mf.primitive),
+        _ => None,
+    };
     let candidate = PreparedCallableCandidate {
         callee_symbol_id: callee.id,
         callee_name: callee.name.clone(),
+        callee_primitive,
         callable_kind,
         arg_product_shape,
         parameter_shape,
