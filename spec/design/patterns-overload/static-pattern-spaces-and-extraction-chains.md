@@ -875,6 +875,9 @@ The payload discard is still explicit in the elaborated structure.
 
 `?` is a unary postfix operator. It implements explicit value-to-pattern conversion.
 
+Bare `?` peels one declared top pattern layer. It is not recursive by default
+and is not an error-propagation shorthand.
+
 ```text
 value?
 ```

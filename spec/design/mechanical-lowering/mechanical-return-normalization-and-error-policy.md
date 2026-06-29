@@ -428,3 +428,9 @@ model specified here, and this document does not depend on them for its meaning.
   lowering actions.
 - `policy-visibility-symbols.md` — the overall policy model whose visibility /
   body-entry / return-object planes gate Error branch lookup and execution.
+- `return-value-extraction-and-implicit-decomposition.md` — defines the
+  extraction-view `?` operator as a one-step declared top-pattern-layer
+  transition. Although Error carrier handling also uses pattern-shaped branches,
+  it is not written as `r?`. The `?` operator is reserved for the declared
+  extraction-view transition described there. Return normalization uses the
+  explicit guarded branch form shown in this document.
