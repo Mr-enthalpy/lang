@@ -1239,3 +1239,72 @@ The core of the design is:
 ```
 
 Exhaustiveness is therefore not a privilege of special `match` syntax. It is an ordinary consequence of pattern-space residuals, `Done` isolation, explicit closing, result consumption, and closed-pattern reduction.
+
+## 17. Control-Flow-Local Meta Evaluation Substrate
+
+The sum-pattern-space design (§9–10) is complemented by a branch-local evaluation
+substrate that provides the four cornerstones for control-flow-driven meta
+evaluation:
+
+- **Sum patterns** provide branch-selection material (e.g. `if | else`,
+  `Some | None`). `SumPatternSpaceShape` records the closed alternatives of a
+  sum pattern space; `SelectedSumPattern` records the chosen branch.
+- **Simple type check** provides branch-local type facts. `SimpleTypeFacts`
+  records known type predicates (`HasError`, `HasPass`, etc.) for given type
+  symbols. `check_simple_type_predicate` returns `KnownTrue`, `KnownFalse`, or
+  `Unknown`. Unknown guards residualize — they are not silently coerced to
+  false.
+- **Simple policy check** provides branch-local capability facts.
+  `SimplePolicyFacts` records available capabilities (`ErrorReturnCapability`,
+  `MetaExecution`, etc.). `check_simple_policy` returns `Allowed`, `Denied`, or
+  `Unknown`.
+- **Symbol-space construction and lookup** provides branch-local names.
+  `BranchLocalSymbolSpace` is a transient, branch-local collection; it is not a
+  `NamespaceDelta` and does not install symbols into the graph.
+
+The central invariant:
+
+```text
+Only the selected branch may perform lookup, policy check, meta invocation, or
+local symbol construction. Unselected branches have no lookup, policy,
+invocation, or NamespaceDelta obligation.
+```
+
+This substrate is shape-level. It does not execute arbitrary user meta-function
+bodies, loops, full pattern matching, or full type solving.
+
+### Product/sum type-pattern expressions as the source of branch patterns
+
+`SumPatternSpaceShape` is not a free-floating test artifact. It can be derived
+from product/sum type-pattern expressions accepted by `struct`.
+
+`TypePatternExprShape` represents the internal shape of type-pattern expressions:
+
+- `Leaf { external_type_path, local_pattern_name }` — a field with an external
+  type path and a local field/pattern name (e.g. `uint8 a`).
+- `Product { elements }` — a product of fields (e.g. `(uint8 a, uint8 b)`).
+- `Sum { alternatives }` — a sum of alternatives (e.g. `Some | None`).
+- `Named { child, pattern_name }` — a named construction where `pattern_name`
+  is the pattern/constructor name at the current layer (not the externally
+  bound symbol).
+
+The externally bound type symbol (e.g. the first `bool` in
+`let bool: type = ((if | else) bool) |> struct;`) and the internal
+pattern/construction name (the second `bool`) are distinct.
+
+`derive_sum_pattern_space` converts a `Sum` or `Named { child: Sum }`
+`TypePatternExprShape` into a `SumPatternSpaceShape`. Sum alternatives become
+`SumPatternAlternative` entries; product payloads become
+`ProductNormalFormShape` payloads.
+
+Examples of type-pattern expressions:
+
+```text
+(uint8 a, uint8 b) |> struct
+((uint8 a, uint8 b) mytype) |> struct
+(((uint8 a, uint8 b) Some | None) mytype) |> struct
+let bool: type = ((if | else) bool) |> struct
+```
+
+This is a shape-level substrate. It does not parse surface syntax, execute
+`struct` meta-functions, or install symbols into the namespace graph.
