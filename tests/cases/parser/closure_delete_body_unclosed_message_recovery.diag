@@ -1,0 +1,3 @@
+error UnclosedString "unclosed string literal" @ 1:8 [7..18]
+error InvalidClosureHead "expected `)` after delete message" @ 1:19 [18..18]
+error InvalidClosureHead "expected `)` then `delete` after `=>`" @ 1:19 [18..18]

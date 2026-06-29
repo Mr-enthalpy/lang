@@ -104,6 +104,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                     });
                 }
                 None => {
+                    parser.recover_to_form_boundary();
                     let body_start = parser.cursor.current_span();
                     parser.error(
                         DiagnosticCode::InvalidClosureHead,
@@ -126,6 +127,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 }
             }
         }
+        parser.recover_to_form_boundary();
         let body_start = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidClosureHead,

@@ -1,0 +1,2 @@
+error InvalidClosureHead "expected `delete` after `)` in `=> (...message...) delete`" @ 1:15 [14..24]
+error InvalidClosureHead "expected `)` then `delete` after `=>`" @ 1:25 [24..25]
