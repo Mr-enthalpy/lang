@@ -19,6 +19,17 @@
 //! - In leaf position, the final bare Name in an application chain is the
 //!   local field/payload pattern name; the prefix is the type expression.
 //!   This rule is struct-decoding-local only.
+//! - An explicit Group `(...)` boundary separates child structure from the
+//!   parent name: `(Group_contents parent_name)` lifts the Group to a Product
+//!   and wraps it in Named, rather than treating the Group as a type expression.
+//!
+//! ## Type-expression metadata boundary
+//!
+//! This decoder preserves non-path type expressions (e.g. `int Vec` in
+//! `int Vec a`) on the leaf type side via `StructLeafTypeExprShape::NormalizedAst`.
+//! It does **not** yet make arbitrary type expressions resolvable as field
+//! type `SymbolId` through the existing field classification path. That
+//! classification still only handles simple `Name` and `Nav` type paths.
 
 use lang_syntax::{NormExpr, NormProduct, NormProductElem};
 
@@ -232,6 +243,15 @@ fn decode_call_with_name_target(
                         name,
                         provenance,
                     ))
+                }
+                // Explicit Group (Product) → lift to Named construction.
+                // `((uint8 a, uint8 b) mytype)` →
+                //   Named(Product[Leaf(uint8,a), Leaf(uint8,b)], "mytype")
+                // The Group boundary is consumed: its contents become the
+                // child structure of the Named.
+                NormExpr::Product(group_product) => {
+                    let child = decode_product(group_product, provenance.clone())?;
+                    Ok(TypePatternExprShape::named(child, name, provenance))
                 }
                 // Any other expression (including inner Call) → Leaf with the
                 // expression as type_expr, and `name` as the local pattern name.

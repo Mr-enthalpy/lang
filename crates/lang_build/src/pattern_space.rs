@@ -350,7 +350,7 @@ pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatter
 }
 
 /// Convert a `TypePatternExprShape` alternative into a `SumPatternAlternative`.
-/// Returns `None` for variants that cannot be alternatives (bare Product, bare Leaf).
+/// Returns `None` for variants that cannot be alternatives (bare Product, bare Sum).
 fn alt_to_sum_alternative(alt: &TypePatternExprShape) -> Option<SumPatternAlternative> {
     match alt {
         TypePatternExprShape::Named {
@@ -371,12 +371,19 @@ fn alt_to_sum_alternative(alt: &TypePatternExprShape) -> Option<SumPatternAltern
                 provenance: provenance.clone(),
             })
         }
-        TypePatternExprShape::Leaf { .. } => {
-            // A bare leaf is a local field/payload name, not a sum alternative
-            // label. Only Named { child: Leaf, pattern_name } can become a
-            // sum alternative — the pattern_name serves as the alternative
-            // label.
-            None
+        TypePatternExprShape::Leaf {
+            local_pattern_name,
+            provenance,
+            ..
+        } => {
+            // A bare leaf alternative uses its local field/payload name as
+            // the sum alternative label. Example: in `uint8 a | None`,
+            // `a` is the leaf pattern name and becomes a valid alternative.
+            Some(SumPatternAlternative {
+                label: local_pattern_name.clone(),
+                payload_shape: Some(SumPatternPayloadShape::ValuePoint),
+                provenance: provenance.clone(),
+            })
         }
         TypePatternExprShape::Sum { .. } => None,
         TypePatternExprShape::Product { .. } => None,

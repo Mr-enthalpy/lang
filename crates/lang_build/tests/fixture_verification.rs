@@ -56,7 +56,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "unknown verification operation",
     ),
     ("verify_malformed_arity", "app", "expects 2 argument(s)"),
-    ("struct_duplicate_field", "app", "duplicate struct field"),
+    ("struct_duplicate_field", "app", "duplicate field name"),
     ("struct_non_type_field", "app", "unknown struct field type"),
     ("struct_nested_product", "app", "invalid struct syntax"),
     ("struct_unit_field", "app", "unit field or trailing unit"),

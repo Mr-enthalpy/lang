@@ -182,20 +182,19 @@ pub fn expand_meta_initializer_via_invocation(
             let classified_shape =
                 classify_struct_field_arguments(snapshot, &arg_product_shape, resolver_context)?;
 
-            // Try the struct-local decoder for type-pattern shape metadata.
-            // Decoder failure is not fatal — the invocation still proceeds
-            // without type-pattern shape metadata.
-            // Pass the source argument product (the expression inside `( ... ) |> struct`),
-            // not the full initializer.
+            // Decode the struct argument as a type-pattern expression.
+            // Decoder failure is fatal — the expression has entered the
+            // core::struct type-pattern decoding path and must be valid.
             let source_arg = NormExpr::Product(site.source_product.clone());
-            struct_decoded_pattern = crate::struct_decoder::decode_struct_type_pattern_expr(
+            let decoded_shape = crate::struct_decoder::decode_struct_type_pattern_expr(
                 &source_arg,
                 provenance.clone(),
             )
-            .ok()
-            .map(|shape| {
-                crate::struct_decoder::DecodedStructPattern::new(shape, provenance.clone())
-            });
+            .map_err(|diag| BuildError::single(diag))?;
+            struct_decoded_pattern = Some(crate::struct_decoder::DecodedStructPattern::new(
+                decoded_shape,
+                provenance.clone(),
+            ));
 
             (
                 classified_shape.clone(),

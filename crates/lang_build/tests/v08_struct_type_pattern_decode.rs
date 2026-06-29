@@ -2,7 +2,7 @@ mod support;
 
 use lang_build::{
     decode_struct_type_pattern_expr, derive_sum_pattern_space, DecodedStructPattern,
-    DiagnosticSeverity, Provenance, StructLeafTypeExprShape, TypePatternExprShape,
+    DiagnosticSeverity, Provenance, StructLeafTypeExprShape, SymbolPathShape, TypePatternExprShape,
 };
 use lang_syntax::{
     norm::NormNavComponent, NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem,
@@ -387,6 +387,32 @@ fn decode_duplicate_alternative_name_is_diagnostic() {
     assert!(diag.message.contains("duplicate"));
 }
 
+#[test]
+fn leaf_alternative_derives_sum_pattern_space() {
+    // A bare Leaf (e.g. `uint8 a`) is a valid sum alternative.
+    // `uint8 a | None` → Sum[Leaf(uint8,a), Named(Product[], "None")]
+    let leaf_a = TypePatternExprShape::leaf(
+        StructLeafTypeExprShape::Path(SymbolPathShape::single("uint8")),
+        "a",
+        provenance("leaf a"),
+    );
+    let none_alt = TypePatternExprShape::named(
+        TypePatternExprShape::product(vec![], provenance("nullary")),
+        "None",
+        provenance("none alt"),
+    );
+    let sum = TypePatternExprShape::sum(vec![leaf_a, none_alt], provenance("leaf | None"));
+    let derived = derive_sum_pattern_space(&sum);
+    assert!(derived.is_some());
+    let space = derived.unwrap();
+    let labels: Vec<&str> = space
+        .alternatives
+        .iter()
+        .map(|a| a.label.as_str())
+        .collect();
+    assert_eq!(labels, vec!["a", "None"]);
+}
+
 // ---------------------------------------------------------------------------
 // 5. Unsupported shape test
 // ---------------------------------------------------------------------------
@@ -437,28 +463,33 @@ fn decoded_struct_pattern_wraps_type_pattern_expr() {
 
 #[test]
 fn named_pattern_name_is_inner_construction_name_not_bound_symbol() {
-    // With the final-Name mechanical rule, a single-element call source is
-    // interpreted as a Leaf: the rightmost Name is the local pattern name.
-    // `(uint8 a) mytype` → Leaf(type_expr=Call(uint8,a), local_name="mytype")
-    // Multi-element named products (e.g. `(uint8 a, uint8 b) mytype`) still
-    // decode as Named — see `decode_named_product_struct_expr`.
-    let expr = named_call(call_type_field("uint8", "a"), "mytype");
+    // An explicit Group `(child parent)` lifts the Group to Product and wraps
+    // as Named. `(uint8 a) mytype` → Named(Product[Leaf(uint8,a)], "mytype").
+    // In normalized AST, `(uint8 a)` is a Product (Group), and `(uint8 a) mytype`
+    // is Call(source: [Product([Call(uint8,a)])], target: Name("mytype")).
+    let inner_product = NormExpr::Product(NormProduct {
+        elements: vec![NormProductElem::Expr(call_type_field("uint8", "a"))],
+        origin: fake_origin(),
+    });
+    let expr = NormExpr::Call {
+        source: NormProduct {
+            elements: vec![NormProductElem::Expr(inner_product)],
+            origin: fake_origin(),
+        },
+        target: Box::new(NormExpr::Name {
+            text: "mytype".to_string(),
+            origin: fake_origin(),
+        }),
+        origin: fake_origin(),
+    };
     let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Leaf {
-            external_type_expr,
-            local_pattern_name,
-            ..
-        } => {
-            assert_eq!(local_pattern_name, "mytype");
-            match external_type_expr {
-                StructLeafTypeExprShape::NormalizedAst { .. } => {}
-                _ => panic!("expected NormalizedAst for single-element Call source"),
-            }
+        TypePatternExprShape::Named { pattern_name, .. } => {
+            assert_eq!(pattern_name, "mytype");
         }
-        _ => panic!("expected Leaf"),
+        _ => panic!("expected Named"),
     }
 }
 

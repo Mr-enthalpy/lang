@@ -25,7 +25,7 @@ fn failed_struct_meta_leaves_no_partial_generated_subtree() {
     assert!(error
         .diagnostics
         .iter()
-        .any(|diagnostic| diagnostic.message.contains("duplicate struct field")));
+        .any(|diagnostic| diagnostic.message.contains("duplicate field name")));
     assert!(
         snapshot
             .child_symbol(world.package_root_node(), "T")
