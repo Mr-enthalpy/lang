@@ -2,9 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use lang_syntax::norm::{
-    NormBindingSlot, NormClosure, NormClosureKind, NormDecl, NormExpr, NormForm, NormNavComponent,
-    NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem, NormProduct, NormProductElem,
-    NormProgram, NormRule,
+    NormBindingSlot, NormClosure, NormClosureBody, NormClosureKind, NormDecl, NormExpr, NormForm,
+    NormNavComponent, NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem, NormProduct,
+    NormProductElem, NormProgram, NormRule,
 };
 
 fn case_path(name: &str, extension: &str) -> PathBuf {
@@ -183,7 +183,11 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule) {
 }
 
 fn expect_generated_body_call(closure: &NormClosure) -> (&NormProduct, &NormExpr, &NormOrigin) {
-    match closure.body.forms.as_slice() {
+    let prog = match &closure.body {
+        NormClosureBody::Block(prog) => prog,
+        NormClosureBody::Delete(_) => panic!("expected block body, got delete"),
+    };
+    match prog.forms.as_slice() {
         [NormForm::Expr(expr)] => expect_call(expr),
         other => panic!("expected generated closure body expression, got {other:#?}"),
     }

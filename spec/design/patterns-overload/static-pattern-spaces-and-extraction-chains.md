@@ -1366,3 +1366,49 @@ The decoder lives in `struct_decoder.rs` and is called from the `core::struct`
 invocation path. It produces `TypePatternExprShape`, which is attached to
 `GeneratedTypeDefinitionValue`. The decoder does not install symbols into the
 namespace graph — only binding/materialization installs `NamespaceDelta`.
+
+## 19. `delete` — Meta-Stage Non-Constructible Branch
+
+A `delete` body terminates an explicit closure with a non-constructible result:
+
+```lang
+(<...> (params)): meta -> let r: type
+  => ("reason message") delete
+```
+
+### Semantics
+
+- `delete` is a meta-stage non-constructible result. It does not return a value,
+  does not produce `unit`, does not panic, and is not a runtime function call.
+- A `delete` closure body is produced by a selected meta-operation: the
+  overload candidate can be selected, but once the meta body is evaluated, it
+  produces a static diagnostic carrying the message.
+- `delete` is not candidate mismatch. A `=> ("msg") delete` overload can
+  outrank a generic fallback, preventing the fallback from being selected.
+- `delete` is only valid in meta bodies. Runtime-only function bodies with
+  `=> ("msg") delete` are rejected at build/check stage.
+
+### Parser / AST / Normalizer
+
+- `delete` is lexed as `Name`, not as a keyword. It is recognized only in the
+  strong context `=> (...) delete`.
+- Raw AST: `ExplicitClosureAst.body: ClosureBodyAst` with variant
+  `Delete(DeleteBodyAst { message: ExprAst, delete_name: NameAst, span })`.
+- Normalized AST: `NormClosure.body: NormClosureBody` with variant
+  `Delete(NormDeleteBody { message: NormExpr, origin })`.
+- The normalizer does **not** lower `delete` to ordinary call form
+  (`Call(source=msg, target=Name("delete"))`).
+
+### Invariants
+
+```text
+delete does not return a value.
+delete does not produce unit.
+delete does not panic.
+delete is not assert.
+delete is not a runtime call.
+delete produces a static diagnostic when the selected meta body is evaluated.
+A delete candidate can be selected; selection + execution = diagnostic.
+InPlace closures (`{ ... }`) are unaffected.
+delete is only valid in meta bodies.
+```

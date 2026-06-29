@@ -533,6 +533,11 @@ fn closure_explicit_trait_clause() {
 }
 
 #[test]
+fn closure_explicit_delete_body() {
+    assert_parser_case("closure_explicit_delete_body", false);
+}
+
+#[test]
 fn closure_explicit_return_type() {
     assert_parser_case("closure_explicit_return_type", false);
 }

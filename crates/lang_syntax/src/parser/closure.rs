@@ -1,7 +1,7 @@
 use crate::{
-    AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, DiagnosticCode,
-    ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst, InPlaceClosureAst, ParamClauseAst,
-    ReturnClauseAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
+    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst,
+    InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -78,8 +78,9 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.cursor.consume_symbol(Symbol::FatArrow).is_some() {
         parser.ungate_keep_diagnostics();
         if parser.cursor.at_symbol(Symbol::LBrace) {
-            let body = parse_body_block(parser);
-            let span = head.span.join(body.span);
+            let block = parse_body_block(parser);
+            let span = head.span.join(block.span);
+            let body = ClosureBodyAst::Block(block);
             return Some(AtomAst {
                 kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
                     head,
@@ -89,17 +90,53 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span,
             });
         }
+        if parser.cursor.at_symbol(Symbol::LParen) {
+            match parse_delete_body(parser) {
+                Some(delete_body) => {
+                    let span = head.span.join(delete_body.span);
+                    return Some(AtomAst {
+                        kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                            head,
+                            body: ClosureBodyAst::Delete(delete_body),
+                            span,
+                        })),
+                        span,
+                    });
+                }
+                None => {
+                    let body_start = parser.cursor.current_span();
+                    parser.error(
+                        DiagnosticCode::InvalidClosureHead,
+                        "expected `)` then `delete` after `=>`",
+                        body_start,
+                    );
+                    let body = ClosureBodyAst::Block(BodyBlockAst {
+                        forms: Vec::new(),
+                        span: body_start,
+                    });
+                    let span = head.span.join(body_start);
+                    return Some(AtomAst {
+                        kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                            head,
+                            body,
+                            span,
+                        })),
+                        span,
+                    });
+                }
+            }
+        }
         let body_start = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidClosureHead,
-            "expected `{` after `=>`",
+            "expected `{` or `(message) delete` after `=>`",
             body_start,
         );
-        let body = BodyBlockAst {
+        let body = ClosureBodyAst::Block(BodyBlockAst {
             forms: Vec::new(),
             span: body_start,
-        };
-        let span = head.span.join(body.span);
+        });
+        let span = head.span.join(body_start);
         return Some(AtomAst {
             kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
                 head,
@@ -128,6 +165,56 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     parser.cursor.set_index(saved);
     parser.ungate_drop_diagnostics();
     None
+}
+
+// -- Delete body --
+
+/// Parse `(message_expr) delete` after `=>`.
+///
+/// Caller has already verified that the cursor is at `(`.
+/// Returns `None` if the grouped expression or the `delete` name
+/// cannot be parsed (diagnostics are emitted by the caller).
+fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
+    let lparen = parser.cursor.consume_symbol(Symbol::LParen)?;
+
+    // Parse the message expression, terminated by `)`
+    let message = parse_expr_until(parser, |p| p.cursor.at_symbol(Symbol::RParen));
+
+    let _rparen = match parser.cursor.consume_symbol(Symbol::RParen) {
+        Some(tok) => tok.span,
+        None => {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected `)` after delete message",
+                span,
+            );
+            return None;
+        }
+    };
+
+    let delete_token = match parser.cursor.consume_name("delete") {
+        Some(tok) => tok,
+        None => {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected `delete` after `)` in `=> (...message...) delete`",
+                span,
+            );
+            return None;
+        }
+    };
+
+    let span = lparen.span.join(delete_token.span);
+    Some(DeleteBodyAst {
+        message,
+        delete_name: NameAst {
+            text: "delete".to_string(),
+            span: delete_token.span,
+        },
+        span,
+    })
 }
 
 // -- FnHeadPrefix --

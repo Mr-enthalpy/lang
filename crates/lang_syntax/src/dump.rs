@@ -611,7 +611,14 @@ fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize)
         crate::ClosureAst::Explicit(inner) => {
             line(output, indent, "Closure Explicit");
             dump_fn_head_prefix(output, &inner.head, indent + 1);
-            dump_body_block(output, &inner.body, indent + 1);
+            match &inner.body {
+                crate::ClosureBodyAst::Block(block) => dump_body_block(output, block, indent + 1),
+                crate::ClosureBodyAst::Delete(del) => {
+                    line(output, indent + 1, "Delete");
+                    line(output, indent + 2, &format!("message"));
+                    dump_expr(output, &del.message, indent + 3);
+                }
+            }
         }
     }
 }
