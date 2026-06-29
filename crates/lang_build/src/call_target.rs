@@ -25,7 +25,7 @@
 use lang_syntax::{NormExpr, NormNavComponent};
 
 use crate::{
-    graph::{NamespaceGraphCapability, ResolverContext},
+    graph::{NamespaceGraphCapability, ResolveExpectation, ResolverContext},
     model::{Diagnostic, PolicyEnv, Provenance, ResolverCode, SymbolObject},
 };
 
@@ -42,8 +42,9 @@ pub struct ResolvedCallTarget {
 /// Resolve the target of a `NormalizedCallSite` to a callable `SymbolObject`.
 ///
 /// The target must be a `NormExpr::Name` or `NormExpr::Nav` whose components are
-/// all names. It is resolved through the namespace graph as a meta function under
-/// the given policy. Unknown / unresolved targets return `None` (not an error).
+/// all names. It is resolved through the namespace graph as a policy-visible
+/// meta-function first, then as a policy-visible object. Unknown / unresolved
+/// targets return `None` (not an error).
 /// Ambiguous or conflicting resolutions return a diagnostic.
 pub fn resolve_call_target(
     target: &NormExpr,
@@ -56,15 +57,33 @@ pub fn resolve_call_target(
         None => return Ok(None),
     };
 
-    let target_symbol = match capability.resolve_meta_function_with_policy(
-        &target_path.join("::"),
+    let meta_symbol = match capability.resolve_with_policy(
+        &target_path,
         context,
+        ResolveExpectation::MetaFunction,
         policy_env,
     ) {
-        Ok(symbol) => symbol,
+        Ok(symbol) => Some(symbol),
         Err(diagnostic) => match diagnostic.code {
-            Some(ResolverCode::Unresolved) | None => return Ok(None),
+            Some(ResolverCode::Unresolved) | None => None,
             Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => return Err(diagnostic),
+        },
+    };
+    let target_symbol = match meta_symbol {
+        Some(symbol) => symbol,
+        None => match capability.resolve_with_policy(
+            &target_path,
+            context,
+            ResolveExpectation::Object,
+            policy_env,
+        ) {
+            Ok(symbol) => symbol,
+            Err(diagnostic) => match diagnostic.code {
+                Some(ResolverCode::Unresolved) | None => return Ok(None),
+                Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => {
+                    return Err(diagnostic);
+                }
+            },
         },
     };
 

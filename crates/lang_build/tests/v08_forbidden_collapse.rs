@@ -23,10 +23,10 @@ use lang_build::{
 };
 
 /// Unit positions must remain in the canonical argument material and not be
-/// collapsed into arity-only or arity-plus-type-values-only data.
+/// collapsed into arity-only or arity-plus-type-symbols-only data.
 ///
 /// Future implementations must not claim that the canonical key depends only
-/// on arity and type-value list without also recording where Units sit.
+/// on arity and type-symbol list without also recording where Units sit.
 #[test]
 fn canonical_arg_material_does_not_collapse_unit_positions() {
     let shape = fixture_arg_product_shape(
@@ -619,7 +619,7 @@ fn canonical_fingerprint_distinguishes_expression_barrier_from_type_object() {
 
 /// Canonical fingerprint must distinguish different TypeSymbols.
 #[test]
-fn canonical_fingerprint_distinguishes_type_value_ids() {
+fn canonical_fingerprint_distinguishes_type_symbols() {
     let key_a = key_for_type_symbol_arg(SymbolId(1));
     let key_b = key_for_type_symbol_arg(SymbolId(2));
     assert_ne!(key_a.fingerprint.value, key_b.fingerprint.value);
@@ -658,7 +658,7 @@ fn meta_instance_key_equality_ignores_provenance() {
     let key_c = key_for_type_symbol_arg_with_provenance(SymbolId(6), "provenance A");
     assert_ne!(
         key_a, key_c,
-        "different TypeValueId must produce different key"
+        "different TypeSymbol must produce different key"
     );
 }
 

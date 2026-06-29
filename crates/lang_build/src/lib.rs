@@ -46,7 +46,9 @@ pub use identity::{
     AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
-pub use meta::{bind_meta_invocation_value_result, MetaExpansionResult};
+pub use meta::{
+    bind_meta_invocation_value_result, expand_meta_initializer_via_invocation, MetaExpansionResult,
+};
 pub use meta_cache::{CachedMetaInstance, MetaInstanceCache};
 pub use meta_candidate::{
     prepare_meta_callable_candidate, prepare_meta_callable_candidate_from_input,
@@ -57,10 +59,12 @@ pub use meta_candidate::{
     PreparedCallableCandidate,
 };
 pub use meta_invocation::{
-    compute_construction_instance_id, invoke_meta_callable, invoke_meta_callable_cached,
-    ConstructionIdentityMaterial, ConstructionInstanceId, ForwardedValue,
-    GeneratedConstructionValue, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
-    MetaValueTarget, ReturnSlotSemantics, ReturnViewShape,
+    compute_construction_instance_id, compute_type_definition_instance_id, invoke_meta_callable,
+    invoke_meta_callable_cached, ConstructionIdentityMaterial, ConstructionInstanceId,
+    FieldSignatureMaterial, ForwardedValue, GeneratedConstructionValue, GeneratedFieldDefinition,
+    GeneratedTypeDefinitionValue, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
+    MetaValueTarget, ReturnSlotSemantics, ReturnViewShape, TypeDefinitionIdentityMaterial,
+    TypeDefinitionInstanceId,
 };
 pub use meta_key::{compute_meta_instance_key, CanonicalFingerprint, MetaInstanceKey};
 pub use model::{

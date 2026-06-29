@@ -8,7 +8,7 @@
 //!
 //! Fingerprints are prefixed `v08:` to mark them as **not** cross-version-stable.
 //! The final stable canonical key will use a different encoding scheme and key
-//! derivation when cross-build type-value identity is implemented.
+//! derivation when cross-build TypeSymbol identity is implemented.
 
 use crate::{
     fingerprint::Fnv1a64,
@@ -35,7 +35,7 @@ impl CanonicalFingerprint {
 /// Canonical meta instance key derived from a `PreparedCallableCandidate`.
 ///
 /// The key captures everything that identifies a unique meta invocation:
-/// callee identity, argument structure, type values, and build/policy context.
+/// callee identity, argument structure, TypeSymbol material, and build/policy context.
 /// It does **not** capture binding names, provenance descriptions, or
 /// declaration-level metadata.
 ///

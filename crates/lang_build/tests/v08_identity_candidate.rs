@@ -4,17 +4,18 @@ use support::*;
 
 use lang_build::{
     bind_meta_invocation_value_result, classify_type_arguments,
-    classify_type_arguments_with_report, extract_single_call_site, invoke_meta_callable,
+    classify_type_arguments_with_report, compute_type_definition_instance_id,
+    expand_meta_initializer_via_invocation, extract_single_call_site, invoke_meta_callable,
     invoke_meta_callable_cached, prepare_meta_callable_candidate,
     prepare_meta_callable_candidate_from_input, resolve_call_target,
     type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
     CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
-    FieldProjection, MetaInstanceCache, MetaInvocationInput, MetaInvocationResult,
-    MetaInvocationValue, MetaValueTarget, NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeKind,
-    NonValueArgKind, ParameterShape, PlaceId, PolicyEnv, PolicyFlag, ProductMaterialRole,
-    Provenance, RawArgValueClass, ReturnViewShape, SourceCategory, SymbolId, SymbolPayload,
-    TypeValueBindingPlaceholder, TypeValueId,
+    FieldProjection, GeneratedTypeDefinitionValue, MetaInstanceCache, MetaInvocationInput,
+    MetaInvocationResult, MetaInvocationValue, MetaValueTarget, NamespaceGraphSnapshot,
+    NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape, PlaceId, PolicyEnv,
+    PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape, SourceCategory,
+    SymbolId, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
 };
 
 #[test]
@@ -308,7 +309,7 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixt
     assert_eq!(
         candidate.canonical_key_seed.unit_positions,
         vec![1],
-        "canonical argument product material must not collapse to arity + type values only"
+        "canonical argument product material must not collapse to arity + TypeSymbols only"
     );
     assert_eq!(
         candidate
@@ -436,7 +437,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     };
     assert_eq!(
         type_obj.type_symbol_id, uint8.id,
-        "IdentityType(uint8) must return uint8's TypeValueId"
+        "IdentityType(uint8) must forward uint8's TypeSymbol"
     );
 
     let identity = world
@@ -1166,6 +1167,9 @@ fn generated_construction_value_carries_construction_instance_identity() {
         MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(_)) => {
             panic!("UCPrototype must NOT return ForwardedValue(TypeSymbol)")
         }
+        MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(_)) => {
+            panic!("UCPrototype must NOT return GeneratedTypeDefinitionValue")
+        }
         MetaInvocationResult::Diagnostic(d) => panic!("unexpected diagnostic: {d:?}"),
     };
 
@@ -1416,4 +1420,368 @@ fn produce_gcv(
         panic!("should yield GCV");
     };
     gcv
+}
+
+#[test]
+fn identity_type_initializer_expands_through_meta_invocation_driver() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_identity_type", "app").join("main.lang"),
+    );
+
+    let result = expand_meta_initializer_via_invocation(
+        &initializer,
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        &world.package_context(),
+        PolicyEnv::Meta,
+        ExecutionEnv::Meta,
+        CandidateBuildIdentityPlaceholder::default(),
+        Provenance::new("IdentityType driver test"),
+        None,
+    )
+    .expect("driver should expand IdentityType initializer");
+
+    let uint8 = world
+        .snapshot()
+        .capability()
+        .resolve_type_object("uint8", &world.package_context())
+        .expect("uint8 resolves");
+    assert!(!result.namespace_delta.symbols.is_empty());
+    assert_eq!(result.replacement_object.name, "T");
+    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+        panic!("replacement_object must be the declared binding symbol with Type payload");
+    };
+    assert_eq!(
+        type_object.type_symbol_id, uint8.id,
+        "TypeObject.type_symbol_id must be the forwarded TypeSymbol"
+    );
+}
+
+#[test]
+fn unary_construction_initializer_expands_through_meta_invocation_driver() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_unary_construction", "app").join("main.lang"),
+    );
+
+    let result = expand_meta_initializer_via_invocation(
+        &initializer,
+        world.snapshot(),
+        world.package_root_node(),
+        "T",
+        &world.package_context(),
+        PolicyEnv::Meta,
+        ExecutionEnv::Meta,
+        CandidateBuildIdentityPlaceholder::default(),
+        Provenance::new("UnaryConstructionPrototype driver test"),
+        None,
+    )
+    .expect("driver should expand UnaryConstructionPrototype initializer");
+
+    assert_eq!(result.replacement_object.kind, lang_build::SymbolKind::Type);
+    assert_eq!(result.replacement_object.name, "T");
+    assert!(result
+        .replacement_object
+        .cache_key_fragment
+        .as_deref()
+        .is_some_and(|fragment| fragment.starts_with("construction:")));
+    assert!(!result.namespace_delta.symbols.is_empty());
+}
+
+#[test]
+fn struct_initializer_expands_through_generated_type_definition_value() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let key = struct_invocation_input(&world, &initializer, "uint8", "struct driver cache key")
+        .compute_key();
+    let mut cache = MetaInstanceCache::new();
+
+    let result = expand_meta_initializer_via_invocation(
+        &initializer,
+        world.snapshot(),
+        world.package_root_node(),
+        "S",
+        &world.package_context(),
+        PolicyEnv::Meta,
+        ExecutionEnv::Meta,
+        CandidateBuildIdentityPlaceholder::default(),
+        Provenance::new("struct driver test"),
+        Some(&mut cache),
+    )
+    .expect("driver should expand struct initializer");
+
+    let cached = cache
+        .lookup(&key)
+        .expect("driver should cache pure struct invocation value");
+    assert!(matches!(
+        cached.result,
+        MetaInvocationValue::GeneratedTypeDefinitionValue(_)
+    ));
+    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+        panic!("struct binding must materialize a TypeObject");
+    };
+    let type_namespace = type_object
+        .type_associated_namespace
+        .expect("struct type must have associated namespace");
+    assert!(result.namespace_delta.nodes.contains_key(&type_namespace));
+    assert_eq!(type_object.field_names, vec!["a".to_string()]);
+    assert!(result
+        .namespace_delta
+        .symbols
+        .values()
+        .any(|symbol| matches!(symbol.payload, SymbolPayload::FieldFunction(_))));
+}
+
+#[test]
+fn struct_formal_invocation_produces_value_not_namespace_delta() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let invocation_input =
+        struct_invocation_input(&world, &initializer, "uint8", "pure struct invocation");
+
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
+    };
+
+    assert_ne!(gtdv.type_definition_id.as_u64(), 0);
+    assert_eq!(gtdv.fields.len(), 1);
+}
+
+#[test]
+fn generated_type_definition_identity_is_independent_of_binding_name() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let gtdv = produce_gtdv_from_struct_initializer(&world, &initializer, "uint8");
+    let type_definition_id = gtdv.type_definition_id;
+
+    let result_a = bind_meta_invocation_value_result(
+        MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv.clone()),
+        world.snapshot(),
+        world.package_root_node(),
+        "A",
+        Provenance::new("bind generated struct A"),
+    )
+    .expect("bind A");
+    let snapshot_a = world
+        .snapshot()
+        .install_delta(result_a.namespace_delta.clone())
+        .expect("install A");
+    let result_b = bind_meta_invocation_value_result(
+        MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv),
+        &snapshot_a,
+        world.package_root_node(),
+        "B",
+        Provenance::new("bind generated struct B"),
+    )
+    .expect("bind B");
+
+    assert_ne!(
+        result_a.replacement_object.id,
+        result_b.replacement_object.id
+    );
+    assert_eq!(
+        result_a.replacement_object.cache_key_fragment,
+        result_b.replacement_object.cache_key_fragment
+    );
+    assert_eq!(
+        result_a.replacement_object.cache_key_fragment.as_deref(),
+        Some(format!("type-definition:{}", type_definition_id.as_u64()).as_str())
+    );
+}
+
+#[test]
+fn generated_type_definition_identity_changes_with_field_signature() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let uint8_initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let uint16_initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint16", "app").join("main.lang"),
+    );
+
+    let uint8_gtdv = produce_gtdv_from_struct_initializer(&world, &uint8_initializer, "uint8");
+    let uint16_gtdv = produce_gtdv_from_struct_initializer(&world, &uint16_initializer, "uint16");
+
+    assert_ne!(
+        uint8_gtdv.type_definition_id, uint16_gtdv.type_definition_id,
+        "different field type symbols must produce different TypeDefinitionInstanceId"
+    );
+    assert_eq!(
+        compute_type_definition_instance_id(&uint8_gtdv.identity_material),
+        uint8_gtdv.type_definition_id
+    );
+}
+
+#[test]
+fn type_definition_identity_material_equality_ignores_field_provenance() {
+    let canonical_args = lang_build::CanonicalArgProductShapeMaterial {
+        arity: 1,
+        unit_positions: vec![],
+        atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
+        known_type_symbols: vec![Some(SymbolId(2))],
+    };
+    let left = lang_build::TypeDefinitionIdentityMaterial {
+        callee_symbol_id: SymbolId(1),
+        canonical_args: canonical_args.clone(),
+        field_signature_material: vec![lang_build::FieldSignatureMaterial {
+            field_name: "a".to_string(),
+            field_type_symbol_id: SymbolId(2),
+            field_index: 0,
+            provenance: Provenance::new("left field provenance"),
+        }],
+        return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
+        build_identity_fragment: Some("build".to_string()),
+        policy_export_fingerprint_fragment: Some("policy".to_string()),
+        provenance: Provenance::new("left type definition provenance"),
+    };
+    let right = lang_build::TypeDefinitionIdentityMaterial {
+        callee_symbol_id: SymbolId(1),
+        canonical_args,
+        field_signature_material: vec![lang_build::FieldSignatureMaterial {
+            field_name: "a".to_string(),
+            field_type_symbol_id: SymbolId(2),
+            field_index: 0,
+            provenance: Provenance::new("right field provenance"),
+        }],
+        return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
+        build_identity_fragment: Some("build".to_string()),
+        policy_export_fingerprint_fragment: Some("policy".to_string()),
+        provenance: Provenance::new("right type definition provenance"),
+    };
+
+    assert_eq!(left, right);
+    assert_eq!(
+        compute_type_definition_instance_id(&left),
+        compute_type_definition_instance_id(&right),
+        "field provenance must not affect generated type definition identity"
+    );
+}
+
+#[test]
+fn meta_instance_cache_reuses_generated_type_definition_value() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let invocation_input = struct_invocation_input(
+        &world,
+        &initializer,
+        "uint8",
+        "generated type definition cache",
+    );
+    let key = invocation_input.compute_key();
+    let mut cache = MetaInstanceCache::new();
+
+    let result1 = invoke_meta_callable_cached(invocation_input, &mut cache);
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
+        result1
+    else {
+        panic!("first invocation should yield GeneratedTypeDefinitionValue");
+    };
+    let cached = cache
+        .lookup(&key)
+        .expect("GeneratedTypeDefinitionValue should be cached");
+    let cached_debug = format!("{cached:?}");
+    assert!(!cached_debug.contains("NamespaceDelta"));
+    assert!(!cached_debug.contains("CachedStructBinding"));
+
+    let invocation_input2 = struct_invocation_input(
+        &world,
+        &initializer,
+        "uint8",
+        "generated type definition cache hit",
+    );
+    let result2 = invoke_meta_callable_cached(invocation_input2, &mut cache);
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
+        result2
+    else {
+        panic!("second invocation should yield GeneratedTypeDefinitionValue");
+    };
+
+    assert_eq!(gtdv1.type_definition_id, gtdv2.type_definition_id);
+    assert_eq!(cache.len(), 1);
+}
+
+fn struct_invocation_input(
+    world: &lang_build::CompilationWorld,
+    initializer: &lang_syntax::NormExpr,
+    field_type_name: &str,
+    provenance: &str,
+) -> MetaInvocationInput {
+    let site = extract_single_call_site(initializer).expect("struct initializer must be a call");
+    let context = world.package_context();
+    let resolved = resolve_call_target(
+        &site.target,
+        &world.snapshot().capability(),
+        &context,
+        PolicyEnv::Meta,
+    )
+    .expect("resolve_call_target should succeed")
+    .expect("struct target should resolve");
+    let type_symbol = world
+        .snapshot()
+        .capability()
+        .resolve_type_object(field_type_name, &context)
+        .expect("field type resolves");
+    let mut classified =
+        site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    for raw_arg in &mut classified.raw_args {
+        if matches!(raw_arg.value_class, RawArgValueClass::UnknownExpression) {
+            *raw_arg = raw_arg
+                .clone()
+                .as_type_object_with_type_symbol(type_symbol.id);
+        }
+    }
+    let input = CandidatePreparationInput::new(
+        resolved.callee,
+        classified.clone(),
+        ParameterShape::type_parameter_sequence(
+            classified.arity,
+            Provenance::new("struct direct invocation field signature"),
+        ),
+        CandidatePreparationContext {
+            lookup_env: PolicyEnv::Meta,
+            demanded_execution: ExecutionEnv::Meta,
+            build_identity: CandidateBuildIdentityPlaceholder::default(),
+            provenance: Provenance::new(provenance),
+        },
+    );
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_meta_callable_candidate_from_input(input)
+    else {
+        panic!("struct candidate should be applicable");
+    };
+    MetaInvocationInput::new(*candidate, Provenance::new(provenance))
+}
+
+fn produce_gtdv_from_struct_initializer(
+    world: &lang_build::CompilationWorld,
+    initializer: &lang_syntax::NormExpr,
+    field_type_name: &str,
+) -> GeneratedTypeDefinitionValue {
+    let invocation_input =
+        struct_invocation_input(world, initializer, field_type_name, "produce GTDV");
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+        invoke_meta_callable(invocation_input)
+    else {
+        panic!("struct invocation should yield GeneratedTypeDefinitionValue");
+    };
+    gtdv
 }

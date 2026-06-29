@@ -2,65 +2,71 @@
 
 **Status: Future design boundary. Not current implementation behavior.**
 
-A function call always returns one value.
-
-That value may itself be a product value, but the call result is still one value:
-
-```text
-e      -> e
-(e, e) -> P
-```
-
-Therefore a call result has two distinguishable forms:
+An evaluation returns one result object. The result object's value normal form is
+one of two shapes:
 
 ```text
-t      = the returned value
-t?     = the extraction-facing view of the returned value
+e:
+  ordinary non-product value point
+
+P:
+  product value / product normal form
 ```
 
-`?` does not mean destructure. `?` means enter the next extraction view.
-Destructuring happens only if that view is product-shaped.
+The distinction is semantic, not an implementation-language distinction between
+"single return" and "multiple return":
 
-1. `?` is a value-to-extraction-view operator.
+```text
+return e
+  -> value normal form is e
 
-2. On leaf values, `?` is idempotent:
-   ```text
-   e? -> e
-   ```
+return P
+  -> value normal form is P
+```
 
-3. On product-facing values, `?` exposes and splits the product view:
-   ```text
-   P? -> split(P)
-   ```
-   `split(P)` denotes the product-shaped extraction view made available to
-   binding/pattern contexts. It is not an implicit coercion inserted into
-   ordinary value expressions.
+`P` is not an outer call wrapper. If a function returns a product, the result is
+product normal form.
 
-4. On named construction values, `?` exposes the declared named extraction
-   shape, not necessarily a bare product.
+`?` does not mean destructure. `?` means enter one exposed extraction view:
 
-5. Equality never inserts `?`.
+```text
+leaf e:
+  e? = e
 
-6. Binding may insert `?` only as pattern-directed decomposition repair.
+non-leaf e:
+  e? = peel_one_exposed_extraction_view(e)
+  // result may be e' or P
 
-7. Meta invocation must be specified at the symbolic/reduction level because
-   a type constructor call returns a construction value first; type
-   computation is only one projection of that value.
+product P:
+  P? = P
+```
+
+For `P`, there is no top-level pattern shell to peel. `P` is already the product
+value, so `?` is idempotent on product normal form.
+
+Destructuring is a pattern-matcher operation, not value-level `?` semantics:
+
+```text
+bind ProductPattern against P
+  -> pattern matcher consumes product elements of P
+```
+
+Equality never inserts `?`. Binding may request `?` only as pattern-directed
+repair.
 
 A leaf is any value whose current extraction interface does not permit further
-decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std`
-are all leaves in ordinary value context. Thus:
+decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std` are
+all leaves in ordinary value context. Thus:
 
 ```text
 ((int)Vec::std)? == (int)Vec::std
 ```
 
-This is not a claim that `Vec::std` has no argument — it is the statement that
-`(int)Vec::std` carries no product extraction interface in ordinary value
-context. Extraction of the type parameter requires an explicit rank-pattern
-context.
+This is not a claim that `Vec::std` has no argument. It says `(int)Vec::std`
+carries no product extraction interface in ordinary value context. Extraction of
+the type parameter requires an explicit rank-pattern context.
 
-## 0. The hourglass model
+## 0. The Hourglass Model
 
 Every constructed value can be understood as a waist point:
 
@@ -71,11 +77,11 @@ Every constructed value can be understood as a waist point:
         construct / extract
               |
               ↓
-          value point
+          value point e
               |
               ?
               ↓
-        next extraction view
+        exposed extraction view e' or P
 ```
 
 Upward, the value participates in a constructor-specific isomorphism:
@@ -88,158 +94,77 @@ extract_C(construct_C(P)) = P
 construct_C(extract_C(v)) = v
 ```
 
-This `extract_C` is a named constructor/extractor pair — not bare `?`.
+This `extract_C` is a named constructor/extractor pair, not bare `?`.
 
 Downward, `?` enters the value's currently exposed extraction view:
 
 ```text
-leaf?     -> leaf       (idempotent)
-product?  -> split/product-view
-C(P)?     -> declared ordinary extraction view
+leaf e?       = e
+product P?    = P
+C(P)?         = declared ordinary extraction view
 ```
 
-If that view contains product elements, each element may itself be a new
-waist point, and `?` may be applied again. The result is not a one-shot AST
-expansion but a chain of waist points connected by `?`.
+If that view contains product elements, each element may itself be a new waist
+point, and `?` may be applied again. The result is not a one-shot AST expansion
+but a chain of waist points connected by view transitions.
 
 Examples:
 
-- `()single_return` is a waist point; `?` enters a leaf view → `?` is
-  idempotent.
-- `()two_return` is a waist point; `?` enters a product view → split.
-- `val : t` is a waist point; `?` enters a named-field product → split;
-  the constructor `t` restores the original value upward.
-- `(int)Vec::std` is a waist point; `?` enters a leaf view in ordinary
-  value context → idempotent. Extraction of `int` requires the
-  constructor-specific `extract_Vec` interface, not bare `?`.
+- `()single_return` may evaluate to a leaf `e`; `e? = e`.
+- `()two_return` may evaluate directly to product normal form `P`; `P? = P`.
+- `val : t` is a non-leaf `e`; `val?` enters the named-field product view.
+- `(int)Vec::std` is a leaf in ordinary value context; `?` is idempotent.
 
 This is why `?` must not be understood as "inverse constructor." It goes
-downward into the next extraction view. The upward constructor/extractor
-isomorphism is a separate named interface.
+downward into the next exposed extraction view. The upward
+constructor/extractor isomorphism is a separate named interface.
 
-In summary: a constructed value is not the endpoint of type computation —
-it is a symbolic construction node. Upward, it belongs to a
-constructor/extractor isomorphism. Downward, `?` enters the value's
-currently exposed extraction view, and that view may itself contain new
-waist points.
-
-## 1. Single-return value
+## 1. Single-Return Non-Product Value
 
 For:
 
 ```lang
-let t = () |> single_return;
+let e = () |> single_return;
 ```
 
-the call value is:
+if `single_return` returns a leaf non-product value, then:
 
 ```text
-t == ()single_return
-```
-
-If `single_return` returns a single expression value, then the trivial extraction view is the value itself:
-
-```text
-t? == t
-```
-
-This idempotence also holds for constructor-shaped values that do not expose
-a product extraction interface:
-
-```text
-((int)Vec::std)? == (int)Vec::std
-```
-
-`(int)Vec::std` is a single return value — not a product — so `?` acts as
-the identity on its leaf extraction view.
-
-Therefore:
-
-```lang
-let a, b = t?;
-```
-
-is an error because `t?` reduces to the leaf value `t`, which cannot match
-a two-element product pattern. `?` is still valid on `t` — it just returns
-`t` itself (idempotent on leaf), so `let a, b = t?` fails at pattern
-matching, not at extraction.
-
-So:
-
-```text
-let t = () |> single_return;
-t == ()single_return;      // true
-let a, b = t?;             // ERROR
-t? == t;                   // true
+e? == e
+let a, b = e?       // error: e? is still leaf
+(a, b) == e         // false: e is not product normal form
 ```
 
 A corresponding implicit decomposition form also fails:
 
 ```lang
-let a, b = t;              // ERROR, equivalent attempt would be `let a, b = t?`
+let a, b = e;       // error; pattern-directed repair cannot expose a product
 ```
 
-because the extraction view is still a single value, not a two-element product.
+because the exposed view is still a single value, not a two-element product.
 
-## 2. Product-return value
+## 2. Product-Return Normal Form
 
 For:
 
 ```lang
-let t = () |> two_return;
+let P = () |> two_return;
 ```
 
-the call value is still the call construction value:
+if `two_return` returns product normal form `(a, b)`, then:
 
 ```text
-t == ()two_return
+P == (a, b)
+P? == P
+let a, b = P        // direct product binding
+(a, b) == P         // true
 ```
 
-But if `two_return` returns a product, the extraction-facing view is the returned product:
+There is no value-level call wrapper around the product. If an implementation
+needs call-site provenance, invocation records, or debug origin, that is metadata
+or origin material, not a value-level wrapper.
 
-```text
-t? == (a, b)
-```
-
-Therefore:
-
-```lang
-let a, b = t?;
-```
-
-is valid.
-
-In binding context, when the left side is a product/extraction pattern and the right side is a value whose direct shape does not match, the checker may insert one implicit extraction bridge:
-
-```lang
-let a, b = t;
-```
-
-is interpreted as:
-
-```lang
-let a, b = t?;
-```
-
-provided that `t?` exposes a compatible product pattern.
-
-Thus:
-
-```text
-let t = () |> two_return;
-t == ()two_return;         // true
-
-let a, b = t?;             // valid
-let a, b = t;              // valid by implicit decomposition, equivalent to `let a, b = t?`
-
-t? != t;                   // true
-(a, b) == t?;              // true
-(a, b) == t;               // false
-```
-
-The last line is essential. Equality expression does not insert `?`. Implicit decomposition is a binding-context operation, not a value-level equality rule.
-
-## 3. Binding-context implicit decomposition
+## 3. Binding-Context Implicit Decomposition
 
 The binding rule is:
 
@@ -247,9 +172,10 @@ The binding rule is:
 let Pattern = Expr
 ```
 
-first tries to bind `Pattern` against the direct value shape of `Expr`.
+first tries to bind `Pattern` against the direct value normal form of `Expr`.
 
-If that fails, and `Pattern` is an extraction-demanding pattern, the checker may try:
+If that fails, and `Pattern` is an extraction-demanding pattern, the checker may
+try one view transition:
 
 ```text
 let Pattern = Expr?
@@ -260,23 +186,65 @@ This implicit bridge is allowed only in binding / extraction contexts.
 It is not allowed in ordinary value expressions:
 
 ```text
-(a, b) == t      // no implicit `?`
-f(t)             // no implicit `?` unless f's parameter pattern demands it
+(a, b) == e      // no implicit `?`
+f(e)             // no implicit `?` unless f's parameter pattern demands it
 ```
 
 Therefore:
 
 ```text
-binding context may insert `?`
+binding context may request `?`
 value equality never inserts `?`
 ordinary expression evaluation never inserts `?`
 ```
 
-## 4. Named extraction is not bare product extraction
+## 4. Equality Examples
 
-For a constructor-shaped value, `?` uses the constructor's declared extraction
-interface. A struct value does not extract to a bare product unless its
-extraction interface declares a bare product.
+Equality never inserts `?`, but product normal form participates directly in
+product equality:
+
+```text
+(a, b) == P
+  -> true, when P is exactly product normal form (a, b)
+
+(a, b) == e
+  -> false, when e is a non-product value point
+
+(a, b) == e?
+  -> true, if e? exposes exactly product normal form (a, b)
+```
+
+The correct contrast is:
+
+```text
+P:
+  let a, b = P
+  (a, b) == P
+  P? == P
+
+e:
+  let a, b = e?      // if e? exposes compatible P
+  (a, b) != e
+  (a, b) == e?       // if e? exposes compatible P
+```
+
+For a non-leaf construction value `e` with an exposed product view:
+
+```text
+e? == P
+P == e?             // true
+P == e              // false
+P A== e             // true under named constructor / pattern A, if A reconstructs e
+```
+
+`A==` is provisional notation for constructor/pattern mediated equality. It is
+not ordinary value equality and does not imply that equality inserts `?`.
+
+## 5. Named Extraction Is Not Bare Product Extraction
+
+For a constructor-shaped value, `?` uses the value's declared exposed extraction
+interface. A struct value does not expose a bare product unless its extraction
+interface declares a bare product.
 
 Given:
 
@@ -289,18 +257,16 @@ val ref. b = 1uint8;
 let val = val as t;
 ```
 
-`val` is a value of constructed type `t`.
+`val` is a non-product value point `e` of constructed type `t`.
 
-Its extraction view is not the bare product:
-
-```text
-(value_of_a, value_of_b)
-```
-
-but a field-labeled product shape:
+Its exposed extraction view is the field-labeled product:
 
 ```text
-(a value_of_a::t, b value_of_b::t)
+P_field = (a a::t, b b::t)
+val? == P_field
+P_field == val?       // true
+P_field == val        // false
+P_field t == val      // true, constructor-mediated reconstruction
 ```
 
 Field labels are part of the extraction shape.
@@ -311,15 +277,8 @@ Therefore:
 let a, b = val copy?;
 ```
 
-is an error.
-
-The left side:
-
-```lang
-a, b
-```
-
-is a bare product pattern with two binders. It does not mention the field-pattern names `a` and `b`. But `val copy?` exposes a named field extraction shape, not a bare two-element product.
+is an error if `val copy?` exposes the named field product rather than a bare
+two-element product.
 
 The correct binding form is:
 
@@ -333,83 +292,44 @@ This is valid by binding-context implicit decomposition, and is equivalent to:
 let a a, b b = val copy?;
 ```
 
-Here the first `a` and `b` are field-pattern names, and the second `a` and `b` are local binders.
+Here the first `a` and `b` are field-pattern names, and the second `a` and `b`
+are local binders.
 
-## 5. Struct extraction and reconstruction
-
-For a value `val : t`, its extraction view is the field-labeled product:
-
-```text
-val? == (a a::t, b b::t)
-```
-
-But the field-labeled product is not itself equal to the original constructed value:
+## 6. Summary Rule
 
 ```text
-(a a::t, b b::t) == val      // false
+1. Evaluation result normalizes to e or P.
+
+2. `?` enters one exposed extraction view. It does not mean destructure.
+
+3. On leaf values, `?` is idempotent:
+   e? = e
+
+4. On product normal form, `?` is idempotent:
+   P? = P
+
+5. Named construction values expose their declared named extraction shape via
+   `?`, not necessarily a bare product.
+
+6. Equality never inserts `?`.
+
+7. Binding may request `?` as pattern-directed decomposition repair.
+
+8. Product matching consumes P in the pattern matcher; value-level `?` does not
+   produce a separate split result.
 ```
 
-The original value is recovered by applying the constructor `t` to the field-labeled product:
+For product return:
 
 ```text
-(a a::t, b b::t) t == val    // true
+let P = () |> two_return
+P == (a, b)
+P? == P
+let a, b = P
+(a, b) == P
 ```
 
-Thus:
-
-```text
-(a a::t, b b::t) == val?     // true
-(a a::t, b b::t) == val      // false
-(a a::t, b b::t) t == val    // true
-```
-
-This is the construction / extraction isomorphism:
-
-```text
-extract_t(val) = P
-construct_t(P) = val
-```
-
-but not:
-
-```text
-P = val
-```
-
-The product view and the constructed value are distinct values at the expression-equality level.
-
-## 6. Summary rule
-
-```text
-1. `?` enters the next extraction view. It does not mean destructure.
-
-2. On leaf values, `?` is idempotent:
-   e? -> e
-
-3. On product-facing values, `?` splits the product:
-   P? -> split(P)
-
-4. Named construction values expose their declared named extraction shape
-   via `?`, not necessarily a bare product.
-
-5. Equality never inserts `?`.
-
-6. Binding may insert `?` as pattern-directed decomposition repair.
-
-7. Meta call returns a symbolic construction value first; type computation
-   is a projection of that value, not its definition.
-```
-
-Therefore:
-
-```text
-t == ()two_return        // call value equality
-t? == (a, b)             // extraction view
-let a, b = t             // binding-context implicit decomposition
-(a, b) == t              // false, no implicit decomposition in equality
-```
-
-and for structs:
+For structs:
 
 ```text
 val? == field-labeled product

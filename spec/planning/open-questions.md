@@ -202,14 +202,15 @@ whose external identity is shielded by callee + canonical args + build identity.
 `r === t` produces a forwarding value (`ForwardedValue`) that shares the target's
 existing identity. These are not implementation variants of the same behavior.
 
-#### Resolved: MetaReductionResult::TypeValue is a placeholder proof path only
+#### Resolved: TypeValueId is projection material only
 
 Status: **Resolved at future-design level**.
 
-`MetaReductionResult::TypeValue(TypeValueId)` models only a narrow forwarding-like
-placeholder. It is acceptable for proving graph-resolved invocation plumbing
-(`IdentityType`) but must not be used as the result type for ordinary generative
-type-to-type meta construction (`(T)Vec`, `(T)Option`, `(A, B)Pair`).
+`TypeValueId` is a derived first-order type-value projection material. It is not
+an invocation result, binding source, construction identity, or type-definition
+identity. Graph-resolved invocation plumbing must return `MetaInvocationValue`
+cases such as `ForwardedValue(TypeSymbol)`, `GeneratedConstructionValue`, or
+`GeneratedTypeDefinitionValue`.
 
 #### Still open
 

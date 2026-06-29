@@ -556,13 +556,13 @@ fn declared_type_placeholder_delta(
     provenance: Provenance,
 ) -> NamespaceDelta {
     // v0.6 placeholder: this represents a type-annotated declaration before
-    // type-value evaluation exists. Long-term, `let t: type = uint8` is an
-    // ordinary binding of symbol/place `t` to the existing type value `uint8`,
+    // type-object binding evaluation exists. Long-term, `let t: type = uint8` is an
+    // ordinary binding of symbol/place `t` to the existing type object `uint8`,
     // not fresh type generation and not symbol aliasing. Namespace injection
     // through `t` must target place(t), not place(uint8), once writable-place
     // checking exists.
     //
-    // This PR (v0.6.1) does not implement canonical type-value projection
+    // This PR (v0.6.1) does not implement canonical first-order projection
     // equality, alias forwarding evaluation, or writable-place checking.
     // The placeholder representation remains until those features land.
     let mut delta = snapshot.empty_delta();
