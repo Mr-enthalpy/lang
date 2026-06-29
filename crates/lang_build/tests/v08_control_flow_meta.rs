@@ -691,7 +691,7 @@ fn sum_of_products_type_pattern_shape_derives_sum_pattern_space() {
 fn bool_branch_space_is_derived_from_type_pattern_expression() {
     // `bool_branch_space_for_tests` must not be hand-built — it derives from
     // a Named(Sum([Named(Product[], "if"), Named(Product[], "else")]), "bool")
-    // type-pattern expression representing `((if + else) bool)`.
+    // type-pattern expression representing `((if | else) bool)`.
     let space = bool_branch_space();
     let labels: Vec<&str> = space
         .alternatives

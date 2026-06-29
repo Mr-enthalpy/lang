@@ -180,7 +180,7 @@ interface on the type.
 ### Minimal Sum-Pattern Example: `bool`
 
 ```lang
-let bool: type = ((if + else) bool) |> struct;
+let bool: type = ((if | else) bool) |> struct;
 ```
 
 The first `bool` is the symbol being bound. The second `bool` is the pattern /

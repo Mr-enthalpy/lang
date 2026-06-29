@@ -405,7 +405,7 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
 ///
 /// Semantics:
 /// ```lang
-/// let bool: type = ((if + else) bool) |> struct;
+/// let bool: type = ((if | else) bool) |> struct;
 /// ```
 ///
 /// The first `bool` is the external symbol being bound. The second `bool`

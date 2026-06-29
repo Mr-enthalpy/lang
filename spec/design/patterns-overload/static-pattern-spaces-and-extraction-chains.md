@@ -1289,7 +1289,7 @@ from product/sum type-pattern expressions accepted by `struct`.
   bound symbol).
 
 The externally bound type symbol (e.g. the first `bool` in
-`let bool: type = ((if + else) bool) |> struct;`) and the internal
+`let bool: type = ((if | else) bool) |> struct;`) and the internal
 pattern/construction name (the second `bool`) are distinct.
 
 `derive_sum_pattern_space` converts a `Sum` or `Named { child: Sum }`
@@ -1303,7 +1303,7 @@ Examples of type-pattern expressions:
 (uint8 a, uint8 b) |> struct
 ((uint8 a, uint8 b) mytype) |> struct
 (((uint8 a, uint8 b) Some | None) mytype) |> struct
-let bool: type = ((if + else) bool) |> struct
+let bool: type = ((if | else) bool) |> struct
 ```
 
 This is a shape-level substrate. It does not parse surface syntax, execute
