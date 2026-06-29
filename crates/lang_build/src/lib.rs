@@ -14,6 +14,7 @@ pub mod graph;
 pub mod identity;
 pub mod manifest;
 pub mod meta;
+pub mod meta_body;
 pub mod meta_cache;
 pub mod meta_candidate;
 pub mod meta_invocation;
@@ -68,6 +69,10 @@ pub use identity::{
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
     bind_meta_invocation_value_result, expand_meta_initializer_via_invocation, MetaExpansionResult,
+};
+pub use meta_body::{
+    check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
+    selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
 };
 pub use meta_cache::{CachedMetaInstance, MetaInstanceCache};
 pub use meta_candidate::{
