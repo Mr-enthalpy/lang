@@ -401,3 +401,8 @@ meaning.
   compatibility from pass compatibility.
 - `meta-object-invocation-and-policy-reduction.md` — the invocation engine that
   ultimately receives fully decided pass actions.
+- control-flow-local meta evaluation substrate (see
+  `static-pattern-spaces-and-extraction-chains.md`§17) — the guarded
+  `T: has_pass` branch relies on the same substrate: if explicit pass is
+  present, the default-pass branch is not entered and `get_default_pass` has no
+  lookup or policy obligation.

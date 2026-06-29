@@ -434,3 +434,9 @@ model specified here, and this document does not depend on them for its meaning.
   it is not written as `r?`. The `?` operator is reserved for the declared
   extraction-view transition described there. Return normalization uses the
   explicit guarded branch form shown in this document.
+- `control-flow-local meta evaluation substrate` (see
+  `static-pattern-spaces-and-extraction-chains.md`§17) — the guarded
+  `T |> has(Error)` branch relies on the control-flow-local meta evaluation
+  substrate: the false branch has no Error lookup or return-capability
+  obligation, and the true branch alone checks the Error carrier branch and
+  `self..return(e Error)` capability.

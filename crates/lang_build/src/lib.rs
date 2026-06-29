@@ -5,6 +5,7 @@
 
 pub mod build;
 pub mod call_target;
+pub mod control_flow_meta;
 pub mod core;
 pub mod discovery;
 pub mod extraction_view;
@@ -19,6 +20,7 @@ pub mod meta_invocation;
 pub mod meta_key;
 pub mod model;
 pub mod normalized_call;
+pub mod pattern_space;
 pub mod product_shape;
 pub mod source;
 pub mod type_argument;
@@ -32,6 +34,16 @@ pub use build::{
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
 pub use call_target::{resolve_call_target, ResolvedCallTarget};
+pub use control_flow_meta::{
+    check_simple_policy, check_simple_type_predicate, evaluate_guarded_branches,
+    lookup_branch_local_symbol, select_branch_arm, validate_branch_arm_labels, BranchActionShape,
+    BranchArmShape, BranchLocalBinding, BranchLocalLookupResult, BranchLocalSymbol,
+    BranchLocalSymbolSpace, BranchSelectionResult, ControlFlowLocalEvalResult,
+    ControlFlowLocalMetaContext, EvaluatedBranchAction, GuardResidualReason,
+    MetaInvocationPlanShape, SimpleCapability, SimplePolicyCheckResult, SimplePolicyFacts,
+    SimplePolicyRequirement, SimpleTypeCheckResult, SimpleTypeFacts, SimpleTypePredicate,
+    SimpleTypePredicateFact,
+};
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
     SourceRootRequest,
@@ -85,6 +97,11 @@ pub use model::{
     SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
+pub use pattern_space::{
+    bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,
+    SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape,
+    TypePatternExprShape,
+};
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,

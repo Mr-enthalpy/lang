@@ -497,3 +497,12 @@ ProductPattern + leaf e -> Mismatch
 "Split" is a pattern-matcher consumption operation over product normal form. It
 is not the value-level result of `?`. Equality does not call `question_view` and
 never requests extraction repair.
+
+## 7. Relationship to Control-Flow-Local Meta Evaluation
+
+The one-layer extraction view is complemented by a branch-local evaluation
+substrate (see `static-pattern-spaces-and-extraction-chains.md`§17). That
+substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection material.
+It enforces that only the selected branch may perform lookup, policy check, meta
+invocation, or local symbol construction. Unselected branches have no lookup,
+policy, invocation, or `NamespaceDelta` obligation.
