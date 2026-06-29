@@ -1392,10 +1392,16 @@ A `delete` body terminates an explicit closure with a non-constructible result:
 
 - `delete` is lexed as `Name`, not as a keyword. It is recognized only in the
   strong context `=> (...) delete`.
+- The message inside `(...)` is parsed as an ordinary `message_expr`. Currently
+  a string literal is the primary supported form; arbitrary product or
+  formatting payloads are not yet guaranteed.
 - Raw AST: `ExplicitClosureAst.body: ClosureBodyAst` with variant
   `Delete(DeleteBodyAst { message: ExprAst, delete_name: NameAst, span })`.
 - Normalized AST: `NormClosure.body: NormClosureBody` with variant
   `Delete(NormDeleteBody { message: NormExpr, origin })`.
+- The normalizer does **not** lower `delete` to ordinary call form
+  (`Call(source=msg, target=Name("delete"))`). The norm golden test
+  `closure_delete_body` proves this explicitly.
 - The normalizer does **not** lower `delete` to ordinary call form
   (`Call(source=msg, target=Name("delete"))`).
 

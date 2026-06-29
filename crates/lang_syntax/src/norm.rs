@@ -2230,7 +2230,10 @@ fn dump_closure(output: &mut String, closure: &NormClosure, indent: usize) {
             line(output, indent + 2, "Delete");
             let mut msg_buf = String::new();
             dump_norm_expr(&mut msg_buf, &del.message, 0);
-            line(output, indent + 3, &msg_buf);
+            // dump_norm_expr appends a trailing \n; trim it to avoid
+            // double-newline when passed through line().
+            let msg_text = msg_buf.trim_end_matches('\n');
+            line(output, indent + 3, msg_text);
         }
     }
 }

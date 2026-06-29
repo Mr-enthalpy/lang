@@ -1,0 +1,13 @@
+NormProgram origin=Source@1:1[0..20]
+  forms:
+    Form Expr
+      Closure kind=Explicit origin=Source@1:1[0..20]
+        head:
+          ClosureHead origin=Generated(ClosureNormalize)@1:1[0..5]
+            deduce:
+              None
+            params:
+              None
+        body:
+          Delete
+            Literal String "\"msg\"" origin=Source@1:8[7..12]

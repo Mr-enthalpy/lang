@@ -324,6 +324,11 @@ fn unsupported_audit() {
 }
 
 #[test]
+fn closure_delete_body_normalizes_as_delete_not_call() {
+    assert_norm_case("closure_delete_body", false);
+}
+
+#[test]
 fn annotation_patterns_are_structural_pattern_material() {
     let slot = single_let_slot("let <T> x: T = y");
     let annotation = slot.annotation.as_ref().expect("annotation");
