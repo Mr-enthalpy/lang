@@ -41,6 +41,19 @@ product P:
   P? = P
 ```
 
+Bare `?` peels one declared top extraction pattern layer. It is not recursive by
+default. It does not keep peeling until a target pattern is found. It does not
+perform Error propagation. It does not stand for arbitrary pattern matching.
+
+A type/value may define its exposed `?` view:
+- as one-layer peel;
+- as a direct jump to a chosen exposed view;
+- as an identity view, making the value opaque under bare `?`.
+
+The language default only performs one declared top-view transition. Multi-layer
+or recursive peeling must be explicitly defined by the type / extraction
+interface.
+
 For `P`, there is no top-level pattern shell to peel. `P` is already the product
 value, so `?` is idempotent on product normal form.
 
@@ -118,6 +131,124 @@ Examples:
 This is why `?` must not be understood as "inverse constructor." It goes
 downward into the next exposed extraction view. The upward
 constructor/extractor isomorphism is a separate named interface.
+
+### `?` Peels One Top Pattern Layer
+
+Bare `?` is a one-step extraction-view transition. It attempts to peel one
+declared top pattern layer from the value.
+
+It is not recursive by default, and it is not an error-propagation shorthand.
+
+```text
+leaf e:
+  e? = e
+
+product P:
+  P? = P
+
+non-leaf e:
+  e? = the declared exposed view of e
+```
+
+The exposed view may be a product, a named product, a sum pattern, or another
+value-shaped view. Pattern matching consumes that exposed view after `?`; `?`
+itself does not recursively search for a matching pattern.
+
+A type may define its exposed `?` view as an identity view, making the value
+opaque under bare extraction:
+
+```text
+opaque_value? = opaque_value
+```
+
+A cryptographic key, capability token, opaque handle, or abstract module value
+may intentionally define `?` as identity. Internal structure does not
+automatically imply extractability through bare `?`.
+
+Conversely, a wrapper may define `?` to expose a chosen inner branch pattern
+directly, if that is the abstraction's intended interface:
+
+```text
+wrapped_bool? -> if | else
+```
+
+This is a custom exposed view, not recursive default peeling. The language
+default peels only one declared top layer. If a user wants additional peeling,
+they must either write `?` again or explicitly define a multi-step extraction
+interface on the type.
+
+### Minimal Sum-Pattern Example: `bool`
+
+```lang
+let bool: type = ((if + else) bool) |> struct;
+```
+
+The first `bool` is the symbol being bound. The second `bool` is the pattern /
+construction name attached to the sum pattern `if + else`.
+
+In cond-oriented contexts, logical operators naturally return the bare branch
+pattern:
+
+```text
+bool -> if | else
+(bool, bool) -> if | else
+```
+
+For example:
+
+```text
+not  : bool -> if | else
+and  : (bool, bool) -> if | else
+or   : (bool, bool) -> if | else
+```
+
+Because these operators already return `if | else`, the cond consumer does not
+need to apply `?` — cond branch selection consumes the returned branch pattern
+directly.
+
+If a user wraps the bare `if | else` pattern into a custom `bool` value/type but
+still wants `?` to expose `if | else` in one step, the wrapper's extraction
+interface should define `?` to expose that branch pattern directly:
+
+```text
+wrapped_bool? -> if | else
+```
+
+This is a user-defined extraction interface, not recursive default peeling.
+
+If the wrapper's default top pattern exposes only an intermediate layer:
+
+```text
+wrapped_bool? -> inner_bool_layer
+```
+
+The language default stops there. It does not continue with:
+
+```text
+inner_bool_layer? -> if | else
+```
+
+unless the user explicitly defines recursive / multi-step extraction policy or
+writes `?` a second time.
+
+The same mechanism generalizes beyond `bool`:
+
+```text
+Option-like value:
+  opt? -> some | none
+
+Result-like value:
+  res? -> ok | err
+
+AST node:
+  node? -> literal | call | block | name
+
+User-defined wrapper:
+  wrapper? -> chosen exposed view
+```
+
+These are design examples. They are not implemented as current runtime types,
+pattern matchers, or constructor-specific extractors.
 
 ## 1. Single-Return Non-Product Value
 
@@ -300,7 +431,9 @@ are local binders.
 ```text
 1. Evaluation result normalizes to e or P.
 
-2. `?` enters one exposed extraction view. It does not mean destructure.
+2. `?` peels one declared top extraction pattern layer. It does not mean
+   destructure. It is not recursive by default. It does not perform Error
+   propagation.
 
 3. On leaf values, `?` is idempotent:
    e? = e

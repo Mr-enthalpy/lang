@@ -87,48 +87,85 @@ explicit `share` requires a shared borrow, and explicit `move` requires that the
 current object can be consumed. The detailed conditions are out of scope here;
 the point is that a manual pass mode is a requirement, not a suggestion.
 
-## 4. Default strategy is `in`
+## 4. Default Pass Insertion
 
-When no explicit pass mode is given, the default automatic strategy is `in`:
+When no explicit pass mode is given, the lowering framework inserts a concrete
+pass action selected from the value argument's first-order type and static facts.
+The action must be explicit after lowering; the IR must not carry a deferred
+"default pass" state.
 
-```text
-default_pass_strategy = in
+The inserted action can be described schematically in language-shaped form:
+
+```lang
+arg: type |>
+  if { arg; } |>
+  else {
+      arg |> <T: type>(arg: T) {
+          T: has_pass |>
+              if {
+                  arg;
+              } |>
+              else {
+                  arg |> (T |> get_default_pass);
+              };
+      }
+}
 ```
 
-`in` is not a final IR pass mode. It is a selection function that resolves to a
-concrete mode using statically readable facts:
+Semantic points:
 
-```text
-in(T, target, trait_env):
-  if Copyable(T)
-     and statically_small_copy(T, target)
-     and ABI_allows_copy_pass(T, target)
-       => copy
-  else
-       => share
-```
+1. `arg: type |> if { arg; }` means: non-value argument material passes through
+   unchanged. Non-value material includes type objects, rank objects, namespace
+   objects, meta objects, pattern objects, verification objects, and future
+   manifest/package objects.
+
+2. The `else` branch handles value arguments only.
+
+3. `arg |> <T: type>(arg: T) { ... }` binds the first-order type `T` of value
+   argument `arg`.
+
+4. `T: has_pass` stands for the guarded predicate that the argument already
+   carries an explicit pass action. If so, the lowering preserves `arg` and does
+   not automatically rewrite it.
+
+5. `arg |> (T |> get_default_pass)` means: when no explicit pass is present,
+   obtain the default pass action from `T`'s default pass policy / static facts
+   and insert that action into the argument slot.
+
+6. This example describes the mechanical lowering framework. It does not
+   implement a full trait solver, target ABI decision, borrow checker, copy
+   legality checker, or concrete pass-selection algorithm.
+
+`T |> get_default_pass` is a source-shaped placeholder for the future static
+selection procedure. It may depend on `Copyable`, layout/size, target facts, and
+policy. Those details are not the inserted action's surface shape. The inserted
+argument action is still explicit after lowering; the IR must not receive an
+undecided default pass.
 
 Key properties:
 
-- `in` is not `move`.
-- `in` does not consume the source object.
-- The `copy` / `share` choice inside `in` is not a heuristic; it is a mechanical
-  decision over static traits, layout/size, and target-platform facts — a
-  target-indexed deterministic rule.
+- automatic default insertion applies only when no explicit pass action exists;
+- the default action is not implicitly `move`;
+- the default action must become a concrete pass action before IR/action lower;
 - `Copyable` only guarantees copyability; it does not guarantee that the default
-  copies.
-- A large `Copyable` object may still pass by `share` under default `in`.
-- A small but non-copyable object is not copied merely because it is small.
-- If `share` is also not viable, a later checking stage should report an error;
-  this document does not define the full error conditions.
+  copies;
+- a large `Copyable` object may still pass by `share` under default policy;
+- a small but non-copyable object is not copied merely because it is small;
+- if no selected pass action is viable, a later checking stage should report an
+  error; this document does not define the full error conditions.
 
-## 5. Non-value arguments pass through unchanged
+## 5. Non-Value Arguments Pass Through Unchanged
 
 Automatic pass insertion applies only to value arguments:
 
 ```text
-is_val(arg) == false
-  => arg passes unchanged
+non-value argument material
+  -> pass unchanged
+
+value argument material
+  -> bind first-order type T
+  -> preserve explicit pass if present
+  -> otherwise insert T |> get_default_pass
 ```
 
 Non-value arguments include, but are not limited to, type objects, rank objects,

@@ -29,33 +29,25 @@ alias/binding, and callable execution.
 The core structure of return normalization is:
 
 ```text
-r is_val?
-  true  => inspect first-order type T of r
-  false => return r unchanged
+non-value return material
+  -> return unchanged
+
+value return material
+  -> bind first-order type T
+  -> guard on T |> has(Error)
+  -> branch over the visible Error carrier shape only when the guard is true
 ```
 
-If `r` is a value, the first-order type is inspected:
-
-```text
-<T: type>(r: T) {
-  if T has Error:
-      unwrap or propagate through the visible Error handler
-  else:
-      r
-}
-```
-
-Here `T has Error` is a guarded compile-time predicate. Only when the predicate
-is true does the error-handling branch get entered. The branch that is not
-entered creates no symbol-lookup obligation.
+The guard is lazy. The branch that is not entered creates no symbol-lookup or
+policy obligation.
 
 This is important: in a `noerror` function, if the return value's type has no
-`Error`, the fact that the default error handler is not visible does **not** cause
-an error. A compile-time error arises only when the `T has Error` branch is
-actually entered and needs to look up / execute the default `Error` handler,
-because the `noerror` environment lacks the error policy.
+`Error`, the fact that the default error-return capability is unavailable does
+**not** cause an error. A compile-time error arises only when the `T |> has(Error)`
+branch is actually entered and the current policy/capability environment does
+not permit the return capability used by the default Error behavior.
 
-## 2. Return normalization as mechanical lowering
+## 2. Return Normalization as Mechanical Lowering
 
 Return normalization is a kind of mechanical source-level lowering. It is
 analogous to automatic argument-pass insertion, but it acts on the return slot:
@@ -72,24 +64,64 @@ It is not type checking itself, not exception syntax, not a runtime catch, and
 not macro expansion. It is an ordinary meta-action framework inserted during the
 normalization / lowering stage.
 
-Conceptually:
+The inserted normalization action can be described schematically in
+language-shaped form:
 
-```text
-normalize_return(r):
-  if !is_val(r):
-      r
-  else:
-      <T: type>(r: T) {
-          if T has Error:
-              r? through visible Error handler
-          else:
-              r
+```lang
+r: type |>
+  if { r; } |>
+  else {
+      r |> <T: type>(r: T) {
+          T |> has(Error) |>
+              if {
+                  r |> (e Error) {
+                      self..return(e Error);
+                  } |> (val: _) {
+                      val;
+                  };
+              } |>
+              else {
+                  r;
+              };
       }
+}
 ```
 
-This is design pseudocode. It does not require any current syntax.
+Semantic points:
 
-## 3. Value returns vs non-value returns
+1. `r: type |> if { r; }` means: if `r` is non-value material — type-rank
+   material, a type object, meta material, namespace material, pattern material,
+   or similar — return `r` unchanged. It does not enter automatic error
+   normalization.
+
+2. The `else` branch handles value returns only.
+
+3. `r |> <T: type>(r: T) { ... }` is rank-pattern / type-binding shape. It binds
+   the first-order type `T` of value `r`, then runs guarded predicates over `T`.
+
+4. `T |> has(Error)` is a guarded compile-time predicate. Only when the predicate
+   is true does the error branch run. The branch that is not entered creates no
+   `Error` lookup obligation.
+
+5. `r |> (e Error) { ... } |> (val: _) { ... }` is the Error-carrier branch
+   shape inside the guarded `T |> has(Error)` branch:
+   - the Error branch binds `e Error`;
+   - the value branch binds `val`.
+
+6. `self..return(e Error)` is a call to the current outer function object's
+   return capability.
+
+7. `self` is not an ordinary user name, local variable, or textually captured
+   object. It is the invocation-frame position of the current outer function
+   object, determined during symbol lookup / invocation-frame construction.
+
+8. `self..return(e Error)` is not an exception throw, runtime exception,
+   throw/catch operation, or compiler-intrinsic jump. It is the return
+   capability exposed by the current function object. The capability has a
+   special semantic effect, but it is still entered through symbol / capability
+   boundaries.
+
+## 3. Value Returns vs Non-Value Returns
 
 Automatic error normalization applies only to value returns. Non-value objects
 return unchanged.
@@ -101,71 +133,90 @@ Non-value material is passed through unchanged.
 
 Non-value material includes type objects, namespace objects, meta objects,
 pattern objects, and rank/type material. These must not be subjected to default
-error unwrapping. This avoids mistaking type/meta/pattern material for a runtime
-result-like value.
+error-carrier branching. This avoids mistaking type/meta/pattern material for a
+runtime result-like value.
 
-## 4. Error carrier detection: `T has Error`
+## 4. Error Carrier Detection: `T |> has(Error)`
 
-`T has Error` is a guarded compile-time predicate over the first-order type value
-of the return. It asks whether the returned value's type carries an `Error`
-carrier shape. It is not a runtime test, and it does not, by itself, resolve any
-`Error` handler — it only decides whether the error branch is entered.
+`T |> has(Error)` is a guarded compile-time predicate over the first-order type
+value of the return. It asks whether the returned value's type carries an
+`Error` carrier shape. It is not a runtime test, and it does not, by itself,
+resolve any `Error` branch material — it only decides whether the error branch is
+entered.
 
-The predicate is evaluated over the first-order `TypeValueId` of `r`, not over its
-source symbol name.
+The predicate is evaluated over the first-order `TypeValueId` of `r`, not over
+its source symbol name. `TypeValueId` remains projection material; it is not an
+invocation result or construction identity.
 
-## 5. Guarded branch evaluation
+## 5. Guarded Branch Evaluation
 
-The `T has Error` branch must be guarded / lazy. The two branches must not be
+The `T |> has(Error)` branch must be guarded / lazy. The two branches must not be
 eagerly resolved for all their symbols.
 
 ```text
-In a noerror function, eagerly resolving Error in the unselected branch
-would reject ordinary non-error returns.
+In a noerror function, eagerly resolving Error in the unselected branch would
+reject ordinary non-error returns.
 ```
 
 The correct rule:
 
 ```text
-If T has Error is false:
-  do not enter the error branch
-  do not resolve Error
-  do not require error policy
+If T |> has(Error) is false:
+  the error branch is not entered
+  Error / default return capability is not required
 
-If T has Error is true:
-  enter the error branch
-  resolve Error under current policy
-  fail if no usable Error handler exists
+If T |> has(Error) is true:
+  the branch containing self..return(e Error) is entered
+  the current policy/capability environment must permit that return capability
 ```
 
-A non-error return must never incur an `Error` lookup obligation just because the
-mechanical normalization framework contains an error branch.
+A non-error return must never incur an `Error` lookup or return-capability
+obligation just because the mechanical normalization framework contains an error
+branch.
 
-## 6. Error handler lookup
+## 6. Error Carrier Branch and Return Capability
 
-`Error` is not a compiler-intrinsic exception channel. It is a lookupable
-symbol / handler / object. Default error propagation is conceptually:
+The default Error behavior may be represented by the visible Error carrier branch
+calling the current function object's return capability:
+
+```lang
+r |> (e Error) {
+    self..return(e Error);
+} |> (val: _) {
+    val;
+};
+```
+
+This is the error-carrier branch inside the guarded `T |> has(Error)` branch. It
+is not ordinary value-level `?`, and it must not be confused with extraction-view
+`?` from the `e / P` return-normal-form model.
+
+The visible `Error` symbol / predicate decides whether the branch is available.
+The return capability itself is not forged by binding `Error`; it belongs to the
+current function object's invocation frame.
+
+A library-level Error handler may be factored as an ordinary callable, but the
+mechanical example in this document uses the direct source-shaped branch form so
+that the capability boundary is explicit.
+
+### 6.1 `self` in Inserted Return Normalization
+
+The `self` used in `self..return(e Error)` is not resolved as an ordinary user
+name. It denotes the current outer function object's invocation-frame position.
+The symbol lookup / invocation preparation phase determines this position.
+
+The inserted normalization action may refer to that position, but user code does
+not capture it by spelling a local variable named `self`.
 
 ```text
-handler = lookup(Error)
-handler.handle(error, self)
+self is a position, not a name.
 ```
 
-The default `Error` handler's implementation may call the current function's
-error-return capability, for example:
-
-```text
-self..return(error)
-```
-
-But that step is the behavior of the default handler, not a hardcoded compiler
-intrinsic.
-
-### 6.1 `self..return(d)` — the function object's built-in return capability
+### 6.2 `self..return(d)` — the Function Object's Built-In Return Capability
 
 `self..return(d)` is the current function object's built-in return capability.
-It is lookupable as a function associated with the anonymous type of `self`, but
-its semantic effect is special:
+It is lookupable through the current function-object capability position, but its
+semantic effect is special:
 
 1. **Local pattern/type-check channel**: it completes the current branch with
    `Done(unit)`. The branch contributes no further pattern material to the
@@ -177,47 +228,32 @@ its semantic effect is special:
 3. **Lifetime postcondition**: the return capability declares that the
    return-relevant mutable capability of `self` is consumed / closed after the
    call. The lifetime checker trusts the declared contract: it checks the call
-   precondition before the call, then trusts the declared postcondition after
-   the call. It does **not** inspect implementation bodies to rediscover
-   control-flow facts. This is a name-and-contract system — checking happens
-   at the call boundary, not through body-level control-flow analysis.
+   precondition before the call, then trusts the declared postcondition after the
+   call. It does **not** inspect implementation bodies to rediscover
+   control-flow facts. This is a name-and-contract system — checking happens at
+   the call boundary, not through body-level control-flow analysis.
 
-Thus when `Error.handle(e, self)` calls `self..return(error)`, the result is not
-an exception jump or a compiler intrinsic. It is an early return through the
-function object's exposed return capability. The error handler remains an
-ordinary lookupable symbol subject to policy constraints; only the return
-capability itself carries the special semantic effect.
+Thus when the Error branch calls `self..return(e Error)`, the result is not an
+exception jump or a compiler intrinsic. It is an early return through the
+function object's exposed return capability.
 
-Thus `r?` expands conceptually as:
-
-```text
-r? expansion:
-  match r {
-    error e => Error.handle(e, self)
-    val v   => v
-  }
-```
-
-where `Error` comes from ordinary symbol lookup and is constrained by the current
-policy environment.
-
-## 7. Ordinary function behavior
+## 7. Ordinary Function Behavior
 
 An ordinary function has, by default, the error-return capability. Therefore the
-default `Error` handler is visible and executable, and automatic propagation is
-inserted and valid when the return type has an `Error` carrier.
+default Error carrier branch is visible and executable, and automatic propagation
+is inserted and valid when the return type has an `Error` carrier.
 
-## 8. `noerror` behavior
+## 8. `noerror` Behavior
 
 `noerror` does not mean "values containing `Error` may not appear in the body".
 It means the current function's default error-return capability is unavailable,
-and the default error-propagation handler should not be visible / executable
-under the current policy.
+and the default error-propagation branch should not be visible / executable under
+the current policy.
 
 ```text
 noerror removes the ambient default error-return capability.
 It does not ban Error-shaped data.
-It bans implicit error propagation through the default Error handler.
+It bans implicit default propagation through the default return capability.
 ```
 
 An annotation such as:
@@ -226,16 +262,31 @@ An annotation such as:
 (): noerror
 ```
 
-makes the lookup / execution of the default `Error` handler be blocked by policy.
-If automatic return normalization actually enters the `T has Error` branch and
-can only rely on the default `Error` handler, a compile-time error is produced.
+makes the use of the default error-return capability be blocked by policy. If
+automatic return normalization actually enters the `T |> has(Error)` branch and
+requires `self..return(e Error)` through the default capability, a compile-time
+error is produced.
 
-## 9. Local Error binding and active propagation
+If `T |> has(Error)` is false:
 
-Because `Error` is an ordinary lookupable symbol, a local alias/binding may
-intercept an unqualified `Error` lookup. This lets a `noerror` function turn an
-error into an ordinary return value explicitly, instead of using the default
-error-return capability.
+```text
+the error branch is not entered;
+Error / default return capability is not required.
+```
+
+If `T |> has(Error)` is true:
+
+```text
+the branch containing self..return(e Error) is entered;
+this requires the current policy/capability environment to permit that return capability.
+```
+
+## 9. Local Error Binding and Active Propagation
+
+Because `Error` is an ordinary lookupable symbol in the carrier predicate and
+branch shape, a local alias/binding may intercept an unqualified `Error` lookup.
+This lets a `noerror` function turn an error into an ordinary return value
+explicitly, instead of using the default return capability.
 
 Conceptually:
 
@@ -243,8 +294,8 @@ Conceptually:
 let Error === MyPureResultHandler
 ```
 
-or an equivalent local binding, so that `Error.handle(e, self)` no longer calls
-`self..return(error)` but instead constructs an ordinary value, for example:
+or an equivalent local binding, so that the Error carrier branch constructs an
+ordinary value, for example:
 
 ```text
 Result::Err(e)
@@ -269,40 +320,28 @@ active propagation / value conversion:
 ```
 
 A local alias/binding may only intercept the `Error` symbol lookup. It cannot
-forge the ambient error-return capability. That is, this symbol can be affected
-by a local binding:
-
-```text
-Error
-```
-
-but this still requires a real error policy / capability:
-
-```text
-self..return(error)
-```
-
-A custom handler that wants to be legal in a `noerror` environment must therefore
-avoid calling the error-return capability.
+forge the ambient error-return capability. A custom handler that wants to be
+legal in a `noerror` environment must therefore avoid calling the return
+capability.
 
 This resembles Rust-style `Result` propagation, but it is not a copy of Rust:
 
 ```text
 By rebinding Error to a pure handler, a noerror function can convert an
 Error-shaped carrier into an ordinary sum/value return. This resembles explicit
-Result-style propagation, but in this language it arises from symbol binding
-and policy-controlled handler lookup rather than from a built-in Result type.
+Result-style propagation, but in this language it arises from symbol binding and
+policy-controlled branch availability rather than from a built-in Result type.
 ```
 
 Three stable cases summarize the model:
 
 ```text
 1. Ordinary function, return value type has Error:
-   default Error handler is visible
+   default Error carrier branch is visible
    automatic propagation is inserted and valid
 
 2. noerror function, return value type has Error, no custom Error handler:
-   default Error handler is not visible/executable
+   default return capability is not visible/executable
    entering the error branch is a compile-time error
 
 3. noerror function, return value type has Error, local Error binding points to pure handler:
@@ -310,30 +349,32 @@ Three stable cases summarize the model:
    function still satisfies noerror
 ```
 
-## 10. Policy planes involved
+## 10. Policy Planes Involved
 
 This design depends on future policy checking; it does not assume a complete
 error-policy checker exists. The relevant policy planes:
 
-- **Symbol visibility policy** controls whether the `Error` handler can be found.
-- **Body-entry policy** controls whether the found handler may execute.
+- **Symbol visibility policy** controls whether the `Error` branch predicate and
+  carrier shape can be found.
+- **Body-entry policy** controls whether any factored callable handler may
+  execute.
 - **Return-object policy** describes the produced object.
 - `noerror` changes the current capability / policy environment so that the
-  default `Error` handler is excluded or not executable.
+  default return capability is excluded or not executable.
 
 These are future design statements, not a description of an implemented policy
 checker.
 
-## 11. Relation to meta object invocation
+## 11. Relation to Meta Object Invocation
 
 Automatic return normalization should ultimately reuse the formal meta object
 invocation model rather than becoming a return-specific compiler oracle. The
 steps:
 
 ```text
-T has Error
-Error handler lookup
-handler invocation
+T |> has(Error)
+Error carrier branch availability
+optional handler invocation
 branch guarding
 ```
 
@@ -346,14 +387,14 @@ the dependency:
 ```text
 return normalization depends on:
   is_val
-  first-order TypeValueId
-  T has Error predicate
+  first-order TypeValueId projection material
+  T |> has(Error) predicate
   guarded branch evaluation
   policy-aware Error lookup
-  callable body-entry checking
+  callable body-entry checking for any factored handler
 ```
 
-## 12. Non-goals
+## 12. Non-Goals
 
 ```text
 No parser syntax change.
@@ -370,20 +411,26 @@ No macro system.
 No eager branch lookup.
 ```
 
-## 13. Relationship to other documents
+## 13. Relationship to Other Documents
 
 The documents below are adjacent design. They do not define the return-normalization
 model specified here, and this document does not depend on them for its meaning.
 
 - `meta-object-invocation-and-policy-reduction.md` — the unified policy-aware
-  lookup and invocation engine that `Error` handler lookup and branch guarding
+  lookup and invocation engine that `Error` branch lookup and branch guarding
   should reuse.
 - `pattern-normalization-and-first-order-overload.md` — provides `is_val` and the
-  first-order type information that `T has Error` is evaluated over.
-- `type-values-places-and-alias-forwarding.md` — defines `TypeValueId`, over which
-  `T has Error` is computed.
+  first-order type information that `T |> has(Error)` is evaluated over.
+- `type-values-places-and-alias-forwarding.md` — defines `TypeValueId`, over
+  which `T |> has(Error)` is computed as projection material.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the argument-slot
   counterpart of this return-slot normalization; both are mechanical source-level
   lowering actions.
 - `policy-visibility-symbols.md` — the overall policy model whose visibility /
-  body-entry / return-object planes gate `Error` handler lookup and execution.
+  body-entry / return-object planes gate Error branch lookup and execution.
+- `return-value-extraction-and-implicit-decomposition.md` — defines the
+  extraction-view `?` operator as a one-step declared top-pattern-layer
+  transition. Although Error carrier handling also uses pattern-shaped branches,
+  it is not written as `r?`. The `?` operator is reserved for the declared
+  extraction-view transition described there. Return normalization uses the
+  explicit guarded branch form shown in this document.
