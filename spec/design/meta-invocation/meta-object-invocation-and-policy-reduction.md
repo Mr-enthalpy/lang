@@ -197,26 +197,22 @@ produced a new generative construction (`r = t`), forwarded an existing value
 reduction collapses these categories and is only acceptable for placeholder
 proof paths (see §4.3).
 
-The internal reduction model retains its existing shape as a phase-internal
-mechanism. For internal reduction, the current `MetaReductionResult` vocabulary
-is retained:
+The internal evaluation model remains phase-internal. At the public semantic
+boundary for formal meta invocation, the result vocabulary is:
 
 ```text
-MetaReductionResult =
-  | MetaValue(value)
-  | GraphDelta(delta)
-  | Residual(expr, suspension_reason)
-  | TailCall(mode, callee, args)
+MetaInvocationResult =
+  | Value(MetaInvocationValue)
   | Diagnostic(error)
 ```
 
-`TailCall` is part of the result shape because the language has no loop
-construct: iteration and continuation are expressed through call modes, and
-future meta functions reuse the same call-mode model. The detailed semantics of
-call modes are intentionally left to a future call-mode document.
+Namespace graph installation is not part of formal invocation. Binding
+materialization consumes `MetaInvocationValue` and installs `NamespaceDelta`.
+Future user-defined meta bodies may need an internal control-state vocabulary,
+but that vocabulary must stay below this invocation boundary.
 
-When reduction does not complete to a value or delta, the suspension is tagged
-with a reason:
+When candidate preparation or invocation cannot proceed, diagnostics should name
+the current semantic boundary:
 
 ```text
 NoMetaVisibleCandidate

@@ -226,13 +226,23 @@ impl PartialEq for TypeDefinitionIdentityMaterial {
 
 impl Eq for TypeDefinitionIdentityMaterial {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct FieldSignatureMaterial {
     pub field_name: String,
     pub field_type_symbol_id: SymbolId,
     pub field_index: usize,
     pub provenance: Provenance,
 }
+
+impl PartialEq for FieldSignatureMaterial {
+    fn eq(&self, other: &Self) -> bool {
+        self.field_name == other.field_name
+            && self.field_type_symbol_id == other.field_type_symbol_id
+            && self.field_index == other.field_index
+    }
+}
+
+impl Eq for FieldSignatureMaterial {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedFieldDefinition {

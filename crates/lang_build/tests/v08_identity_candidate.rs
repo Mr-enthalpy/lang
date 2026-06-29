@@ -1629,6 +1629,51 @@ fn generated_type_definition_identity_changes_with_field_signature() {
 }
 
 #[test]
+fn type_definition_identity_material_equality_ignores_field_provenance() {
+    let canonical_args = lang_build::CanonicalArgProductShapeMaterial {
+        arity: 1,
+        unit_positions: vec![],
+        atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
+        known_type_symbols: vec![Some(SymbolId(2))],
+    };
+    let left = lang_build::TypeDefinitionIdentityMaterial {
+        callee_symbol_id: SymbolId(1),
+        canonical_args: canonical_args.clone(),
+        field_signature_material: vec![lang_build::FieldSignatureMaterial {
+            field_name: "a".to_string(),
+            field_type_symbol_id: SymbolId(2),
+            field_index: 0,
+            provenance: Provenance::new("left field provenance"),
+        }],
+        return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
+        build_identity_fragment: Some("build".to_string()),
+        policy_export_fingerprint_fragment: Some("policy".to_string()),
+        provenance: Provenance::new("left type definition provenance"),
+    };
+    let right = lang_build::TypeDefinitionIdentityMaterial {
+        callee_symbol_id: SymbolId(1),
+        canonical_args,
+        field_signature_material: vec![lang_build::FieldSignatureMaterial {
+            field_name: "a".to_string(),
+            field_type_symbol_id: SymbolId(2),
+            field_index: 0,
+            provenance: Provenance::new("right field provenance"),
+        }],
+        return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
+        build_identity_fragment: Some("build".to_string()),
+        policy_export_fingerprint_fragment: Some("policy".to_string()),
+        provenance: Provenance::new("right type definition provenance"),
+    };
+
+    assert_eq!(left, right);
+    assert_eq!(
+        compute_type_definition_instance_id(&left),
+        compute_type_definition_instance_id(&right),
+        "field provenance must not affect generated type definition identity"
+    );
+}
+
+#[test]
 fn meta_instance_cache_reuses_generated_type_definition_value() {
     let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
         .expect("empty world with core");

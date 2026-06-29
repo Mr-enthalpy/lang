@@ -59,31 +59,34 @@ pub fn try_expand_early_meta_initializer(
         return Ok(None);
     };
 
-    if resolved.callee.kind == SymbolKind::MetaFunction
-        && !matches!(resolved.callee.payload, SymbolPayload::MetaFunction(_))
-    {
-        return Err(BuildError::single(Diagnostic::hard_error(
-            format!(
-                "meta hard error: `{}` has no meta-function payload",
-                resolved.callee.name
-            ),
-            Some(resolved.callee.provenance),
-        )));
+    match &resolved.callee.payload {
+        SymbolPayload::MetaFunction(_) => expand_meta_initializer_via_invocation(
+            initializer,
+            snapshot,
+            parent_namespace,
+            binding_name,
+            context,
+            PolicyEnv::Meta,
+            ExecutionEnv::Meta,
+            CandidateBuildIdentityPlaceholder::default(),
+            provenance,
+            None,
+        )
+        .map(Some),
+        _ => {
+            if resolved.callee.kind == SymbolKind::MetaFunction {
+                Err(BuildError::single(Diagnostic::hard_error(
+                    format!(
+                        "meta hard error: `{}` has no meta-function payload",
+                        resolved.callee.name
+                    ),
+                    Some(resolved.callee.provenance),
+                )))
+            } else {
+                Ok(None)
+            }
+        }
     }
-
-    expand_meta_initializer_via_invocation(
-        initializer,
-        snapshot,
-        parent_namespace,
-        binding_name,
-        context,
-        PolicyEnv::Meta,
-        ExecutionEnv::Meta,
-        CandidateBuildIdentityPlaceholder::default(),
-        provenance,
-        None,
-    )
-    .map(Some)
 }
 
 pub fn expand_meta_initializer_via_invocation(

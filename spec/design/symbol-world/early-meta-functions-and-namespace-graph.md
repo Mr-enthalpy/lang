@@ -798,9 +798,10 @@ or other type-to-type meta construction. New work must follow the shared route:
 resolve callee
   -> ProductObject / ArgProductShape
   -> RawArgShape / ParameterShape
-  -> TypeValueId compatibility
+  -> TypeSymbol argument classification
   -> policy body-entry check
-  -> MetaReductionResult / MetaExpansionResult
+  -> MetaInvocationValue
+  -> binding-layer MetaExpansionResult
   -> NamespaceDelta atomic install
 ```
 
