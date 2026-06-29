@@ -273,6 +273,7 @@ pub fn type_with_namespace(
         field_names: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(type_namespace_id),
+        extraction_interface: None,
         provenance: Provenance::new(provenance),
         generation_origin: None,
         layout_slot: None,

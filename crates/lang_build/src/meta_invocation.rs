@@ -35,6 +35,9 @@ use std::collections::BTreeSet;
 use lang_syntax::{NormExpr, NormProductElem};
 
 use crate::{
+    extraction_view::{
+        EvalResultNormalForm, ExposedExtractionInterface, ValuePointKind, ValuePointShape,
+    },
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::{compute_meta_instance_key, MetaInstanceKey},
@@ -96,6 +99,40 @@ pub enum MetaInvocationValue {
     ForwardedValue(ForwardedValue),
     GeneratedConstructionValue(GeneratedConstructionValue),
     GeneratedTypeDefinitionValue(GeneratedTypeDefinitionValue),
+}
+
+impl MetaInvocationValue {
+    pub fn return_normal_form_shape(&self) -> EvalResultNormalForm {
+        match self {
+            MetaInvocationValue::ForwardedValue(value) => {
+                EvalResultNormalForm::ValuePoint(ValuePointShape {
+                    value_kind: ValuePointKind::Forwarded {
+                        target: value.target,
+                    },
+                    extraction_interface: ExposedExtractionInterface::Leaf,
+                    provenance: value.provenance.clone(),
+                })
+            }
+            MetaInvocationValue::GeneratedConstructionValue(value) => {
+                EvalResultNormalForm::ValuePoint(ValuePointShape {
+                    value_kind: ValuePointKind::GeneratedConstruction {
+                        construction_instance_id: value.construction_instance_id,
+                    },
+                    extraction_interface: ExposedExtractionInterface::Leaf,
+                    provenance: value.provenance.clone(),
+                })
+            }
+            MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
+                EvalResultNormalForm::ValuePoint(ValuePointShape {
+                    value_kind: ValuePointKind::GeneratedTypeDefinition {
+                        type_definition_id: value.type_definition_id,
+                    },
+                    extraction_interface: ExposedExtractionInterface::Leaf,
+                    provenance: value.provenance.clone(),
+                })
+            }
+        }
+    }
 }
 
 /// Forwarded existing value — the call returns the same value that was passed
@@ -363,8 +400,12 @@ pub fn compute_type_definition_instance_id(
     TypeDefinitionInstanceId(if raw == 0 { 1 } else { raw })
 }
 
-/// Return value shape — whether the invocation value exposes a leaf or product
-/// extraction view. `Leaf` means `v? == v`; `Product` means `v?` splits.
+/// Return value shape marker.
+///
+/// `Leaf` marks a returned normal form that is a non-product value point. If
+/// the value point has no exposed extraction interface, `?` is idempotent.
+/// `Product` marks product normal form `P`: `P? = P`, and product pattern
+/// matching consumes `P` directly.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReturnViewShape {
     Leaf,

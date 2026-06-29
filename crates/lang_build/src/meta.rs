@@ -2,6 +2,7 @@ use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, Nor
 
 use crate::{
     call_target::resolve_call_target,
+    extraction_view::{NamedExtractionField, NamedProductExtractionShape, TypeExtractionInterface},
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
     meta_cache::MetaInstanceCache,
     meta_candidate::{
@@ -600,6 +601,7 @@ pub fn bind_meta_invocation_value_result(
                         field_names: Vec::new(),
                         field_type_symbol_ids: Vec::new(),
                         type_associated_namespace: None,
+                        extraction_interface: None,
                         provenance: Provenance::new(format!(
                             "forwarding type `{binding_name}` from TypeSymbol({})",
                             type_symbol_id.0
@@ -711,6 +713,11 @@ fn bind_generated_type_definition_value(
             .map(|field| field.type_symbol_id)
             .collect(),
         type_associated_namespace: Some(type_namespace_id),
+        extraction_interface: Some(generated_type_extraction_interface(
+            type_symbol_id,
+            &value.fields,
+            provenance.clone(),
+        )),
         provenance: provenance.clone(),
         generation_origin: Some(format!(
             "core::struct generated type definition {}",
@@ -754,6 +761,31 @@ fn bind_generated_type_definition_value(
         diagnostics: Vec::new(),
         provenance,
     })
+}
+
+fn generated_type_extraction_interface(
+    owner_type_symbol_id: SymbolId,
+    fields: &[GeneratedFieldDefinition],
+    provenance: Provenance,
+) -> TypeExtractionInterface {
+    TypeExtractionInterface {
+        owner_type_symbol_id,
+        exposed_view: NamedProductExtractionShape {
+            owner_type_symbol_id,
+            fields: fields
+                .iter()
+                .map(|field| NamedExtractionField {
+                    label: field.name.clone(),
+                    field_type_symbol_id: field.type_symbol_id,
+                    field_index: field.index,
+                    projection: FieldProjection::Value,
+                    provenance: field.provenance.clone(),
+                })
+                .collect(),
+            provenance: provenance.clone(),
+        },
+        provenance,
+    }
 }
 
 /// Bind a `GeneratedConstructionValue` into the namespace graph.
@@ -830,6 +862,7 @@ fn bind_generated_construction_value(
             field_names: Vec::new(),
             field_type_symbol_ids: Vec::new(),
             type_associated_namespace: None,
+            extraction_interface: None,
             provenance: Provenance::new(format!(
                 "generated construction type `{binding_name}` (construction instance {})",
                 gcv.construction_instance_id.as_u64()

@@ -7,6 +7,7 @@ pub mod build;
 pub mod call_target;
 pub mod core;
 pub mod discovery;
+pub mod extraction_view;
 pub mod fingerprint;
 pub mod graph;
 pub mod identity;
@@ -34,6 +35,12 @@ pub use call_target::{resolve_call_target, ResolvedCallTarget};
 pub use discovery::{
     DiscoveredSourceRoot, DiscoveredSourceUnit, SourceDiscoveryConfig, SourceDiscoveryReport,
     SourceRootRequest,
+};
+pub use extraction_view::{
+    match_binding_pattern_shape, question_view, BindingPatternShape, BindingShapeMatchResult,
+    EvalResultNormalForm, ExposedExtractionInterface, ExtractionViewResult, NamedExtractionField,
+    NamedProductExtractionShape, ProductNormalFormElem, ProductNormalFormKind,
+    ProductNormalFormShape, TypeExtractionInterface, ValuePointKind, ValuePointShape,
 };
 pub use fingerprint::{fnv1a64_hex, Fnv1a64};
 pub use graph::{
