@@ -118,6 +118,12 @@ pub fn invoke_restricted_meta_overload(
 pub fn select_restricted_meta_overload(
     input: OverloadSelectionInput<'_>,
 ) -> Result<SelectedOverloadCandidate, Diagnostic> {
+    if input.visibility == VisibilityView::External {
+        return Err(Diagnostic::hard_error(
+            "External visibility is not implemented in the restricted v0.8 overload selector",
+            Some(input.provenance),
+        ));
+    }
     let candidate_set = construct_c0(&input);
     if candidate_set.c0_symbol_ids.is_empty() {
         return Err(Diagnostic::hard_error(
