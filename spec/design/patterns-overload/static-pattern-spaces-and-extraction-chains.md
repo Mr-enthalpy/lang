@@ -1423,3 +1423,14 @@ A delete candidate can be selected; selection + execution = diagnostic.
 InPlace closures (`{ ... }`) are unaffected.
 delete is only valid in meta bodies.
 ```
+
+### Build/check semantics
+
+A build-level semantic substrate (`lang_build::meta_body`) enforces:
+- A `Delete` closure body is legal only under meta execution (`ClosureBodyExecutionEnv::Meta`).
+- Runtime-only `Delete` bodies are rejected with a static diagnostic.
+- Evaluating a selected meta `Delete` body produces a hard static diagnostic
+  carrying the delete message (currently string literal messages).
+- `Block` closure bodies remain unaffected.
+- `delete` does not produce a `MetaInvocationValue`, is not a `CoreMetaFunction`,
+  and is not routed through `assert` or `panic`.
