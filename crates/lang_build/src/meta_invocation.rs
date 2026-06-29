@@ -30,11 +30,16 @@
 //! The implicit `self` belongs to the invocation frame, **not** to
 //! `ProductObject` / `ArgProductShape` / `RawArgShape`.
 
+use std::collections::BTreeSet;
+
+use lang_syntax::{NormExpr, NormProductElem};
+
 use crate::{
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::{compute_meta_instance_key, MetaInstanceKey},
     model::{Diagnostic, Provenance, SymbolId},
+    product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
 };
 
 /// Input for formal meta invocation.
@@ -84,10 +89,13 @@ pub enum MetaValueTarget {
 /// `ForwardedValue` is produced by `IdentityType` (`r === arg`).
 /// `GeneratedConstructionValue` is produced by `UnaryConstructionPrototype`
 /// (`r = t`, where `t` is computed from the argument object).
+/// `GeneratedTypeDefinitionValue` is produced by `struct` and is materialized
+/// only by the binding layer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaInvocationValue {
     ForwardedValue(ForwardedValue),
     GeneratedConstructionValue(GeneratedConstructionValue),
+    GeneratedTypeDefinitionValue(GeneratedTypeDefinitionValue),
 }
 
 /// Forwarded existing value — the call returns the same value that was passed
@@ -113,6 +121,19 @@ pub struct GeneratedConstructionValue {
     pub provenance: Provenance,
 }
 
+/// Generated type-definition value produced by formal `struct` invocation.
+///
+/// This is pure invocation output. The declared type symbol, associated
+/// namespace, and field projections are binding materialization artifacts.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GeneratedTypeDefinitionValue {
+    pub type_definition_id: TypeDefinitionInstanceId,
+    pub identity_material: TypeDefinitionIdentityMaterial,
+    pub fields: Vec<GeneratedFieldDefinition>,
+    pub return_view: ReturnViewShape,
+    pub provenance: Provenance,
+}
+
 /// Deterministic build-local construction identity placeholder.
 ///
 /// Produced by `compute_construction_instance_id`. Distinct from `SymbolId`
@@ -123,6 +144,16 @@ pub struct GeneratedConstructionValue {
 pub struct ConstructionInstanceId(pub u64);
 
 impl ConstructionInstanceId {
+    pub const fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
+/// Deterministic build-local generated type-definition identity placeholder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TypeDefinitionInstanceId(pub u64);
+
+impl TypeDefinitionInstanceId {
     pub const fn as_u64(self) -> u64 {
         self.0
     }
@@ -166,6 +197,50 @@ impl PartialEq for ConstructionIdentityMaterial {
 }
 
 impl Eq for ConstructionIdentityMaterial {}
+
+/// Material that determines a generated type definition's identity.
+///
+/// `provenance` is diagnostic material and is excluded from equality and
+/// identity computation.
+#[derive(Clone, Debug)]
+pub struct TypeDefinitionIdentityMaterial {
+    pub callee_symbol_id: SymbolId,
+    pub canonical_args: CanonicalArgProductShapeMaterial,
+    pub field_signature_material: Vec<FieldSignatureMaterial>,
+    pub return_slot_semantics: ReturnSlotSemantics,
+    pub build_identity_fragment: Option<String>,
+    pub policy_export_fingerprint_fragment: Option<String>,
+    pub provenance: Provenance,
+}
+
+impl PartialEq for TypeDefinitionIdentityMaterial {
+    fn eq(&self, other: &Self) -> bool {
+        self.callee_symbol_id == other.callee_symbol_id
+            && self.canonical_args == other.canonical_args
+            && self.field_signature_material == other.field_signature_material
+            && self.return_slot_semantics == other.return_slot_semantics
+            && self.build_identity_fragment == other.build_identity_fragment
+            && self.policy_export_fingerprint_fragment == other.policy_export_fingerprint_fragment
+    }
+}
+
+impl Eq for TypeDefinitionIdentityMaterial {}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FieldSignatureMaterial {
+    pub field_name: String,
+    pub field_type_symbol_id: SymbolId,
+    pub field_index: usize,
+    pub provenance: Provenance,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GeneratedFieldDefinition {
+    pub name: String,
+    pub type_symbol_id: SymbolId,
+    pub index: usize,
+    pub provenance: Provenance,
+}
 
 /// Compute a deterministic build-local `ConstructionInstanceId` from identity
 /// material.
@@ -222,6 +297,62 @@ pub fn compute_construction_instance_id(
     ConstructionInstanceId(if raw == 0 { 1 } else { raw })
 }
 
+pub fn compute_type_definition_instance_id(
+    material: &TypeDefinitionIdentityMaterial,
+) -> TypeDefinitionInstanceId {
+    use crate::fingerprint::Fnv1a64;
+    let mut h = Fnv1a64::new();
+    h.write_str_field("v08:type-definition");
+    h.write_field(&material.callee_symbol_id.0.to_le_bytes());
+    h.write_field(&(material.canonical_args.arity as u64).to_le_bytes());
+    h.write_field(&(material.canonical_args.unit_positions.len() as u64).to_le_bytes());
+    for pos in &material.canonical_args.unit_positions {
+        h.write_field(&(*pos as u64).to_le_bytes());
+    }
+    h.write_field(&(material.canonical_args.atom_kinds.len() as u64).to_le_bytes());
+    for kind in &material.canonical_args.atom_kinds {
+        h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
+    }
+    h.write_field(&(material.canonical_args.known_type_symbols.len() as u64).to_le_bytes());
+    for sym in &material.canonical_args.known_type_symbols {
+        match sym {
+            None => h.write_field(&[0u8]),
+            Some(s) => {
+                h.write_field(&[1u8]);
+                h.write_field(&s.0.to_le_bytes());
+            }
+        }
+    }
+    h.write_field(&(material.field_signature_material.len() as u64).to_le_bytes());
+    for field in &material.field_signature_material {
+        h.write_str_field(&field.field_name);
+        h.write_field(&field.field_type_symbol_id.0.to_le_bytes());
+        h.write_field(&(field.field_index as u64).to_le_bytes());
+    }
+    let sem = match material.return_slot_semantics {
+        ReturnSlotSemantics::Forward => 0u8,
+        ReturnSlotSemantics::Generate => 1u8,
+    };
+    h.write_field(&[sem]);
+    match &material.build_identity_fragment {
+        None => h.write_field(&[0u8]),
+        Some(s) => {
+            h.write_field(&[1u8]);
+            h.write_str_field(s);
+        }
+    }
+    match &material.policy_export_fingerprint_fragment {
+        None => h.write_field(&[0u8]),
+        Some(s) => {
+            h.write_field(&[1u8]);
+            h.write_str_field(s);
+        }
+    }
+    let raw = u64::from_str_radix(&h.finish_hex(), 16)
+        .expect("Fnv1a64::finish_hex must produce a valid u64 hex string");
+    TypeDefinitionInstanceId(if raw == 0 { 1 } else { raw })
+}
+
 /// Return value shape — whether the invocation value exposes a leaf or product
 /// extraction view. `Leaf` means `v? == v`; `Product` means `v?` splits.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -254,13 +385,7 @@ pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult 
         crate::model::CoreMetaFunction::UnaryConstructionPrototype => {
             invoke_unary_construction_prototype(&input)
         }
-        crate::model::CoreMetaFunction::Struct => MetaInvocationResult::Diagnostic(
-            Diagnostic::hard_error(
-                "meta invocation: struct is not yet callable through formal invocation",
-                Some(input.provenance),
-            )
-            .with_symbol_context(input.candidate.callee_symbol_id),
-        ),
+        crate::model::CoreMetaFunction::Struct => invoke_struct_type_definition(&input),
         _ => MetaInvocationResult::Diagnostic(
             Diagnostic::hard_error(
                 format!(
@@ -402,5 +527,193 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvoc
             return_view: ReturnViewShape::Leaf,
             provenance: input.provenance.clone(),
         },
+    ))
+}
+
+fn invoke_struct_type_definition(input: &MetaInvocationInput) -> MetaInvocationResult {
+    let candidate = &input.candidate;
+    let mat = &candidate.canonical_key_seed.argument_product_shape_material;
+
+    if mat.arity == 0 {
+        return MetaInvocationResult::Diagnostic(
+            Diagnostic::hard_error(
+                "struct: expected at least one classified field argument",
+                Some(input.provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id),
+        );
+    }
+
+    let field_signature_material =
+        match field_signature_material_from_candidate(candidate, &input.provenance) {
+            Ok(fields) => fields,
+            Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
+        };
+
+    let identity_material = TypeDefinitionIdentityMaterial {
+        callee_symbol_id: candidate.callee_symbol_id,
+        canonical_args: mat.clone(),
+        field_signature_material: field_signature_material.clone(),
+        return_slot_semantics: ReturnSlotSemantics::Generate,
+        build_identity_fragment: candidate
+            .canonical_key_seed
+            .package_identity_fragment
+            .clone(),
+        policy_export_fingerprint_fragment: candidate
+            .canonical_key_seed
+            .policy_export_fingerprint_fragment
+            .clone(),
+        provenance: input.provenance.clone(),
+    };
+    let type_definition_id = compute_type_definition_instance_id(&identity_material);
+    let fields = field_signature_material
+        .iter()
+        .map(|field| GeneratedFieldDefinition {
+            name: field.field_name.clone(),
+            type_symbol_id: field.field_type_symbol_id,
+            index: field.field_index,
+            provenance: field.provenance.clone(),
+        })
+        .collect();
+
+    MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(
+        GeneratedTypeDefinitionValue {
+            type_definition_id,
+            identity_material,
+            fields,
+            return_view: ReturnViewShape::Leaf,
+            provenance: input.provenance.clone(),
+        },
+    ))
+}
+
+fn field_signature_material_from_candidate(
+    candidate: &PreparedCallableCandidate,
+    provenance: &Provenance,
+) -> Result<Vec<FieldSignatureMaterial>, Diagnostic> {
+    let mut fields = Vec::new();
+    let mut seen_names = BTreeSet::new();
+
+    for raw_arg in &candidate.arg_product_shape.raw_args {
+        if !matches!(
+            raw_arg.value_class,
+            RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
+        ) {
+            return Err(Diagnostic::hard_error(
+                "struct field type did not resolve as TypeSymbol",
+                Some(raw_arg.provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id));
+        }
+        let Some(type_symbol_id) = raw_arg.known_type_symbol_id else {
+            return Err(Diagnostic::hard_error(
+                "struct field type did not resolve as TypeSymbol",
+                Some(raw_arg.provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id));
+        };
+        let atom = candidate
+            .arg_product_shape
+            .flattened
+            .atoms
+            .get(raw_arg.index)
+            .ok_or_else(|| {
+                Diagnostic::hard_error(
+                    "struct argument product shape is missing field atom material",
+                    Some(provenance.clone()),
+                )
+                .with_symbol_context(candidate.callee_symbol_id)
+            })?;
+        let (field_name, field_provenance) =
+            struct_field_name_from_atom(atom, candidate.callee_symbol_id)?;
+        if !seen_names.insert(field_name.clone()) {
+            return Err(Diagnostic::hard_error(
+                format!("duplicate struct field `{field_name}`"),
+                Some(field_provenance),
+            )
+            .with_symbol_context(candidate.callee_symbol_id));
+        }
+        fields.push(FieldSignatureMaterial {
+            field_name,
+            field_type_symbol_id: type_symbol_id,
+            field_index: raw_arg.index,
+            provenance: field_provenance,
+        });
+    }
+
+    Ok(fields)
+}
+
+fn struct_field_name_from_atom(
+    atom: &ProductAtom,
+    callee_symbol_id: SymbolId,
+) -> Result<(String, Provenance), Diagnostic> {
+    let ProductAtom::Expression { expr, .. } = atom else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: unit field or trailing unit is not supported",
+            Some(atom.provenance().clone()),
+        )
+        .with_symbol_context(callee_symbol_id));
+    };
+    let NormExpr::Call {
+        source,
+        target,
+        origin,
+    } = expr
+    else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field form like `uint8 a`",
+            Some(atom.provenance().clone()),
+        )
+        .with_symbol_context(callee_symbol_id));
+    };
+    if source.elements.len() != 1 {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: nested product fields are not supported in v0.8",
+            Some(Provenance::from_norm_origin(
+                "struct field source",
+                &source.origin,
+            )),
+        )
+        .with_symbol_context(callee_symbol_id));
+    }
+    match &source.elements[0] {
+        NormProductElem::Expr(NormExpr::Product(product)) => {
+            return Err(Diagnostic::hard_error(
+                "invalid struct syntax: nested product fields are not supported in v0.8",
+                Some(Provenance::from_norm_origin(
+                    "nested struct field product",
+                    &product.origin,
+                )),
+            )
+            .with_symbol_context(callee_symbol_id));
+        }
+        NormProductElem::Unit { origin } => {
+            return Err(Diagnostic::hard_error(
+                "invalid struct syntax: unit field type is not supported",
+                Some(Provenance::from_norm_origin(
+                    "unit struct field type",
+                    origin,
+                )),
+            )
+            .with_symbol_context(callee_symbol_id));
+        }
+        NormProductElem::Expr(_) => {}
+    }
+
+    let field_name = match target.as_ref() {
+        NormExpr::Name { text, .. } => text.clone(),
+        _ => {
+            return Err(Diagnostic::hard_error(
+                "invalid struct syntax: expected a field binder name",
+                Some(atom.provenance().clone()),
+            )
+            .with_symbol_context(callee_symbol_id));
+        }
+    };
+
+    Ok((
+        field_name,
+        Provenance::from_norm_origin("struct field", origin),
     ))
 }

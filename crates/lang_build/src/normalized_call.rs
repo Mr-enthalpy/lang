@@ -5,7 +5,7 @@
 //!
 //! It preserves Expression barriers, does **not** perform symbol lookup, does
 //! **not** decide callable validity, does **not** erase Unit, and does **not**
-//! infer type values.
+//! infer type identities.
 //!
 //! The current implementation boundary lives in `lang_build::normalized_call`,
 //! `lang_build::product_shape`, and `lang_build::meta_candidate`. These are

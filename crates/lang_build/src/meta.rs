@@ -1,27 +1,28 @@
-use std::collections::BTreeSet;
-
 use lang_syntax::{norm::NormNavComponent, NormExpr, NormOrigin, NormProduct, NormProductElem};
 
 use crate::{
-    call_target::{resolve_call_target, ResolvedCallTarget},
+    call_target::resolve_call_target,
     graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
+    meta_cache::MetaInstanceCache,
     meta_candidate::{
         prepare_meta_callable_candidate_from_input, CandidateBuildIdentityPlaceholder,
-        CandidatePreparationContext, CandidatePreparationInput, ParameterShape,
+        CandidatePrepDeferredReason, CandidatePrepResult, CandidatePreparationContext,
+        CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        invoke_meta_callable, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
-        MetaValueTarget,
+        compute_type_definition_instance_id, invoke_meta_callable, invoke_meta_callable_cached,
+        GeneratedFieldDefinition, GeneratedTypeDefinitionValue, MetaInvocationInput,
+        MetaInvocationResult, MetaInvocationValue, MetaValueTarget, ReturnSlotSemantics,
     },
     model::{
         CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
-        FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, PolicyEnv, Provenance, SourceCategory, SymbolKind, SymbolObject,
-        SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+        FieldProjection, NamespaceDelta, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
+        PolicyEnv, Provenance, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+        TypeField, TypeObject,
     },
-    normalized_call::{extract_single_call_site, NormalizedCallSite},
+    normalized_call::extract_single_call_site,
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
-    product_shape::ProductMaterialRole,
+    product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
 };
 
@@ -58,64 +59,203 @@ pub fn try_expand_early_meta_initializer(
         return Ok(None);
     };
 
+    if resolved.callee.kind == SymbolKind::MetaFunction
+        && !matches!(resolved.callee.payload, SymbolPayload::MetaFunction(_))
+    {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: `{}` has no meta-function payload",
+                resolved.callee.name
+            ),
+            Some(resolved.callee.provenance),
+        )));
+    }
+
+    expand_meta_initializer_via_invocation(
+        initializer,
+        snapshot,
+        parent_namespace,
+        binding_name,
+        context,
+        PolicyEnv::Meta,
+        ExecutionEnv::Meta,
+        CandidateBuildIdentityPlaceholder::default(),
+        provenance,
+        None,
+    )
+    .map(Some)
+}
+
+pub fn expand_meta_initializer_via_invocation(
+    initializer: &NormExpr,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    resolver_context: &ResolverContext,
+    lookup_env: PolicyEnv,
+    demanded_execution: ExecutionEnv,
+    build_identity: CandidateBuildIdentityPlaceholder,
+    provenance: Provenance,
+    cache: Option<&mut MetaInstanceCache>,
+) -> Result<MetaExpansionResult, BuildError> {
+    let site = extract_single_call_site(initializer).map_err(|_| {
+        BuildError::single(Diagnostic::hard_error(
+            "initializer is not a meta call initializer",
+            Some(provenance.clone()),
+        ))
+    })?;
+
+    let resolved = resolve_call_target(
+        &site.target,
+        &snapshot.capability(),
+        resolver_context,
+        lookup_env,
+    )
+    .map_err(BuildError::single)?
+    .ok_or_else(|| {
+        BuildError::single(Diagnostic::hard_error(
+            "meta target did not resolve to a callable symbol",
+            Some(site.provenance.clone()),
+        ))
+    })?;
+
     let SymbolPayload::MetaFunction(meta_function) = &resolved.callee.payload else {
-        if resolved.callee.kind == SymbolKind::MetaFunction {
-            return Err(BuildError::single(Diagnostic::hard_error(
-                format!(
-                    "meta hard error: `{}` has no meta-function payload",
-                    resolved.callee.name
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: `{}` has no meta-function payload",
+                resolved.callee.name
+            ),
+            Some(resolved.callee.provenance),
+        )));
+    };
+    let primitive = meta_function.primitive;
+    let primitive_name = match primitive {
+        CoreMetaFunction::Struct => "struct",
+        CoreMetaFunction::Assert => "assert",
+        CoreMetaFunction::Verify(_) => "verify",
+        CoreMetaFunction::IdentityType => "IdentityType",
+        CoreMetaFunction::UnaryConstructionPrototype => "UnaryConstructionPrototype",
+    };
+
+    let arg_product_shape =
+        site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+    let mut unresolved_type_names = Vec::new();
+    let (classified_shape, parameter_shape) = match primitive {
+        CoreMetaFunction::IdentityType => {
+            let report = classify_type_arguments_with_report(
+                &arg_product_shape,
+                &snapshot.capability(),
+                resolver_context,
+            );
+            unresolved_type_names = report.unresolved_names;
+            (
+                report.classified_shape,
+                ParameterShape::type_parameter_signature(Provenance::new(
+                    "IdentityType : type -> type signature",
+                )),
+            )
+        }
+        CoreMetaFunction::UnaryConstructionPrototype => {
+            let report = classify_type_arguments_with_report(
+                &arg_product_shape,
+                &snapshot.capability(),
+                resolver_context,
+            );
+            unresolved_type_names = report.unresolved_names;
+            (
+                report.classified_shape,
+                ParameterShape::type_parameter_signature(Provenance::new(
+                    "UnaryConstructionPrototype : type -> type signature",
+                )),
+            )
+        }
+        CoreMetaFunction::Struct => {
+            validate_struct_source_product(&site.source_product)?;
+            let classified_shape =
+                classify_struct_field_arguments(snapshot, &arg_product_shape, resolver_context)?;
+            (
+                classified_shape.clone(),
+                ParameterShape::type_parameter_sequence(
+                    classified_shape.arity,
+                    Provenance::new("struct field type signature"),
                 ),
-                Some(resolved.callee.provenance),
+            )
+        }
+        CoreMetaFunction::Assert => {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "meta hard error: direct source-level `assert` expansion is not implemented",
+                Some(provenance),
             )));
         }
-        return Ok(None);
-    };
-
-    let syntax = SyntaxObject {
-        kind: SyntaxObjectKind::Product(site.source_product.clone()),
-        provenance: Provenance::from_norm_origin(
-            "closed early-meta source syntax",
-            product_origin(&site.source_product),
-        ),
-    };
-
-    match meta_function.primitive {
-        CoreMetaFunction::Struct => expand_struct_meta(
-            snapshot,
-            parent_namespace,
-            binding_name,
-            &syntax,
-            context,
-            provenance,
-            meta_function,
-        )
-        .map(Some),
-        CoreMetaFunction::Assert => Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: direct source-level `assert` expansion is not implemented in v0.6",
-            Some(provenance),
-        ))),
-        CoreMetaFunction::Verify(_) => Err(BuildError::single(Diagnostic::hard_error(
-            "meta hard error: source verification operations cannot be used as initializers",
-            Some(provenance),
-        ))),
-        CoreMetaFunction::IdentityType => expand_identity_type_meta(
-            &site,
-            &resolved,
-            snapshot,
-            parent_namespace,
-            binding_name,
-            context,
-            provenance,
-            meta_function,
-        )
-        .map(Some),
-        CoreMetaFunction::UnaryConstructionPrototype => Err(BuildError::single(
-            Diagnostic::hard_error(
-                "meta hard error: UnaryConstructionPrototype has no source-level expansion; use formal invocation",
+        CoreMetaFunction::Verify(_) => {
+            return Err(BuildError::single(Diagnostic::hard_error(
+                "meta hard error: source verification operations cannot be used as initializers",
                 Some(provenance),
-            ),
-        )),
-    }
+            )));
+        }
+    };
+
+    let input = CandidatePreparationInput::new(
+        resolved.callee.clone(),
+        classified_shape,
+        parameter_shape,
+        CandidatePreparationContext {
+            lookup_env,
+            demanded_execution,
+            build_identity,
+            provenance: provenance.clone(),
+        },
+    );
+
+    let candidate = match prepare_meta_callable_candidate_from_input(input) {
+        CandidatePrepResult::ApplicablePlaceholder(candidate) => *candidate,
+        CandidatePrepResult::Deferred { reason, .. } => {
+            let message = match reason {
+                CandidatePrepDeferredReason::BodyEntryPolicyMismatch => {
+                    "candidate preparation deferred because body-entry policy is not meta-executable"
+                }
+                CandidatePrepDeferredReason::ParameterShapeCompatibilityDeferred => {
+                    "candidate preparation deferred because parameter shape compatibility is incomplete"
+                }
+            };
+            return Err(BuildError::single(Diagnostic::hard_error(
+                message,
+                Some(provenance),
+            )));
+        }
+        CandidatePrepResult::Diagnostic(diagnostic) => {
+            if !unresolved_type_names.is_empty() {
+                let names = unresolved_type_names.join(", ");
+                return Err(BuildError::single(Diagnostic::hard_error(
+                    format!(
+                        "meta hard error: {primitive_name} argument `{names}` could not be resolved as a type object"
+                    ),
+                    Some(provenance),
+                )));
+            }
+            return Err(BuildError::single(diagnostic));
+        }
+    };
+
+    let invocation_input = MetaInvocationInput::new(candidate, provenance.clone());
+    let invocation_result = match cache {
+        Some(cache) => invoke_meta_callable_cached(invocation_input, cache),
+        None => invoke_meta_callable(invocation_input),
+    };
+    let invocation_value = match invocation_result {
+        MetaInvocationResult::Value(value) => value,
+        MetaInvocationResult::Diagnostic(diagnostic) => {
+            return Err(BuildError::single(diagnostic));
+        }
+    };
+
+    bind_meta_invocation_value_result(
+        invocation_value,
+        snapshot,
+        parent_namespace,
+        binding_name,
+        provenance,
+    )
 }
 
 pub fn compile_time_assert(
@@ -133,102 +273,209 @@ pub fn compile_time_assert(
     }
 }
 
-fn expand_struct_meta(
+fn classify_struct_field_arguments(
     snapshot: &NamespaceGraphSnapshot,
-    parent_namespace: NamespaceNodeId,
-    binding_name: &str,
-    syntax: &SyntaxObject,
+    shape: &ArgProductShape,
     context: &ResolverContext,
-    declaration_provenance: Provenance,
-    _meta_function: &MetaFunctionObject,
-) -> Result<MetaExpansionResult, BuildError> {
-    let fields = parse_struct_fields(snapshot, syntax, context)?;
-    let mut delta = snapshot.empty_delta();
+) -> Result<ArgProductShape, BuildError> {
+    let mut args = shape.raw_args.clone();
+    let mut diagnostics = Vec::new();
 
-    let type_symbol_id = delta.allocate_symbol_id();
-    let type_namespace_id = delta.allocate_node_id();
-    delta.insert_node(NamespaceNode::new(
-        type_namespace_id,
-        format!("{binding_name}<type-associated>"),
-        NamespaceNodeKind::Virtual,
-        SourceCategory::TypeAssociatedNamespace,
-        Some(parent_namespace),
-        declaration_provenance.clone(),
-    ));
+    for raw_arg in &mut args {
+        let Some(atom) = shape.flattened.atoms.get(raw_arg.index) else {
+            diagnostics.push(Diagnostic::hard_error(
+                "struct argument product shape is missing field atom material",
+                Some(raw_arg.provenance.clone()),
+            ));
+            continue;
+        };
+        match classify_struct_field_argument(snapshot, atom, context) {
+            Ok(type_symbol_id) => {
+                *raw_arg = raw_arg
+                    .clone()
+                    .as_type_object_with_type_symbol(type_symbol_id);
+            }
+            Err(diagnostic) => diagnostics.push(diagnostic),
+        }
+    }
 
-    let mut type_object = SymbolObject::placeholder(
-        type_symbol_id,
-        binding_name,
-        SymbolKind::Type,
-        SourceCategory::DeclaredSymbol,
-        Some(parent_namespace),
-        declaration_provenance.clone(),
-    );
-    type_object.policy_metadata.policy_set = policy_set_meta_runtime();
-    type_object.node_kind = Some(NamespaceNodeKind::Virtual);
-    type_object.generation_origin = Some("core::struct early meta expansion".to_string());
-    type_object.cache_key_fragment = Some(format!("struct:{binding_name}:{}", fields.len()));
-    type_object.payload = SymbolPayload::Type(TypeObject {
-        type_symbol_id,
-        fields: fields
-            .iter()
-            .map(|field| TypeField {
-                name: field.name.clone(),
-                type_symbol_id: field.type_symbol_id,
-                provenance: field.provenance.clone(),
-            })
-            .collect(),
-        field_names: fields.iter().map(|field| field.name.clone()).collect(),
-        field_type_symbol_ids: fields.iter().map(|field| field.type_symbol_id).collect(),
-        type_associated_namespace: Some(type_namespace_id),
-        provenance: declaration_provenance.clone(),
-        generation_origin: Some("core::struct early meta expansion".to_string()),
-        layout_slot: None,
-        abi_slot: None,
-    });
+    if shape.arity == 0 && diagnostics.is_empty() {
+        diagnostics.push(Diagnostic::hard_error(
+            "invalid struct syntax: struct requires at least one field",
+            Some(shape.provenance.clone()),
+        ));
+    }
 
-    delta.insert_symbol(parent_namespace, type_object.clone());
-    insert_field_projection_layer(
-        &mut delta,
-        type_namespace_id,
-        type_symbol_id,
-        &fields,
-        FieldProjection::Value,
-        None,
-    );
-    insert_projection_namespace(
-        &mut delta,
-        type_namespace_id,
-        "ref",
-        type_symbol_id,
-        &fields,
-        FieldProjection::Ref,
-        declaration_provenance.clone(),
-    );
-    insert_projection_namespace(
-        &mut delta,
-        type_namespace_id,
-        "share",
-        type_symbol_id,
-        &fields,
-        FieldProjection::Share,
-        declaration_provenance.clone(),
-    );
+    if diagnostics.is_empty() {
+        Ok(ArgProductShape {
+            raw_args: args,
+            ..shape.clone()
+        })
+    } else {
+        Err(BuildError { diagnostics })
+    }
+}
 
-    Ok(MetaExpansionResult {
-        replacement_object: type_object,
-        namespace_delta: delta,
-        diagnostics: Vec::new(),
-        provenance: declaration_provenance,
-    })
+fn validate_struct_source_product(product: &NormProduct) -> Result<(), BuildError> {
+    let mut diagnostics = Vec::new();
+    for element in &product.elements {
+        if let NormProductElem::Expr(NormExpr::Product(nested)) = element {
+            diagnostics.push(Diagnostic::hard_error(
+                "invalid struct syntax: nested product fields are not supported in v0.8",
+                Some(Provenance::from_norm_origin(
+                    "nested struct field product",
+                    &nested.origin,
+                )),
+            ));
+        }
+    }
+    if diagnostics.is_empty() {
+        Ok(())
+    } else {
+        Err(BuildError { diagnostics })
+    }
+}
+
+fn classify_struct_field_argument(
+    snapshot: &NamespaceGraphSnapshot,
+    atom: &ProductAtom,
+    context: &ResolverContext,
+) -> Result<SymbolId, Diagnostic> {
+    let ProductAtom::Expression { expr, .. } = atom else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: unit field or trailing unit is not supported",
+            Some(atom.provenance().clone()),
+        ));
+    };
+    let NormExpr::Call { source, target, .. } = expr else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field form like `uint8 a`",
+            Some(Provenance::from_norm_origin(
+                "struct field expression",
+                expr_origin(expr),
+            )),
+        ));
+    };
+
+    if source.elements.len() != 1 {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: nested product fields are not supported in v0.8",
+            Some(Provenance::from_norm_origin(
+                "struct field source",
+                &source.origin,
+            )),
+        ));
+    }
+
+    let type_expr = match &source.elements[0] {
+        NormProductElem::Expr(NormExpr::Product(product)) => {
+            return Err(Diagnostic::hard_error(
+                "invalid struct syntax: nested product fields are not supported in v0.8",
+                Some(Provenance::from_norm_origin(
+                    "nested struct field product",
+                    &product.origin,
+                )),
+            ));
+        }
+        NormProductElem::Expr(expr) => expr,
+        NormProductElem::Unit { origin } => {
+            return Err(Diagnostic::hard_error(
+                "invalid struct syntax: unit field type is not supported",
+                Some(Provenance::from_norm_origin(
+                    "unit struct field type",
+                    origin,
+                )),
+            ));
+        }
+    };
+
+    if !matches!(target.as_ref(), NormExpr::Name { .. }) {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field binder name",
+            Some(Provenance::from_norm_origin(
+                "struct field binder",
+                expr_origin(target),
+            )),
+        ));
+    }
+
+    let type_path = expr_to_source_path(type_expr).ok_or_else(|| {
+        Diagnostic::hard_error(
+            "invalid struct syntax: unsupported field type expression",
+            Some(Provenance::from_norm_origin(
+                "struct field type",
+                expr_origin(type_expr),
+            )),
+        )
+    })?;
+    let type_path_str = type_path.join("::");
+    let type_symbol = snapshot
+        .capability()
+        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::Meta)
+        .map_err(|_| {
+            if let Ok(non_type_symbol) = snapshot.capability().resolve_with_policy(
+                &type_path,
+                context,
+                ResolveExpectation::Object,
+                PolicyEnv::Meta,
+            ) {
+                return Diagnostic::hard_error(
+                    format!(
+                        "unknown struct field type `{}`: resolved symbol is not a type",
+                        type_path_str
+                    ),
+                    Some(non_type_symbol.provenance),
+                );
+            }
+            Diagnostic::hard_error(
+                format!("unknown struct field type `{type_path_str}`"),
+                Some(Provenance::from_norm_origin(
+                    "struct field type",
+                    expr_origin(type_expr),
+                )),
+            )
+        })?;
+
+    Ok(type_symbol.id)
+}
+
+fn expr_to_source_path(expr: &NormExpr) -> Option<Vec<String>> {
+    match expr {
+        NormExpr::Name { text, .. } => Some(vec![text.clone()]),
+        NormExpr::Nav { components, .. } => {
+            let mut path = Vec::new();
+            for component in components {
+                match component {
+                    NormNavComponent::Name { name, .. } => path.push(name.clone()),
+                    _ => return None,
+                }
+            }
+            Some(path)
+        }
+        _ => None,
+    }
+}
+
+fn expr_origin(expr: &NormExpr) -> &NormOrigin {
+    match expr {
+        NormExpr::Call { origin, .. }
+        | NormExpr::Name { origin, .. }
+        | NormExpr::Literal { origin, .. }
+        | NormExpr::Nav { origin, .. }
+        | NormExpr::OperatorTarget { origin, .. }
+        | NormExpr::Unsupported { origin, .. } => origin,
+        NormExpr::Product(product) => &product.origin,
+        NormExpr::Closure(closure) => &closure.origin,
+        NormExpr::Error(error) => &error.origin,
+    }
 }
 
 fn insert_projection_namespace(
     delta: &mut NamespaceDelta,
     parent: NamespaceNodeId,
     name: &str,
-    owner_type_symbol_id: crate::model::SymbolId,
-    fields: &[StructFieldSpec],
+    owner_type_symbol_id: SymbolId,
+    fields: &[GeneratedFieldDefinition],
     projection: FieldProjection,
     provenance: Provenance,
 ) {
@@ -266,8 +513,8 @@ fn insert_projection_namespace(
 fn insert_field_projection_layer(
     delta: &mut NamespaceDelta,
     parent: NamespaceNodeId,
-    owner_type_symbol_id: crate::model::SymbolId,
-    fields: &[StructFieldSpec],
+    owner_type_symbol_id: SymbolId,
+    fields: &[GeneratedFieldDefinition],
     projection: FieldProjection,
     forced_provenance: Option<Provenance>,
 ) {
@@ -306,320 +553,6 @@ fn insert_field_projection_layer(
     }
 }
 
-#[derive(Clone, Debug)]
-struct StructFieldSpec {
-    name: String,
-    type_symbol_id: crate::model::SymbolId,
-    provenance: Provenance,
-}
-
-fn parse_struct_fields(
-    snapshot: &NamespaceGraphSnapshot,
-    syntax: &SyntaxObject,
-    context: &ResolverContext,
-) -> Result<Vec<StructFieldSpec>, BuildError> {
-    let SyntaxObjectKind::Product(product) = &syntax.kind;
-    let mut fields = Vec::new();
-    let mut seen_names = BTreeSet::new();
-    let mut diagnostics = Vec::new();
-
-    for element in &product.elements {
-        match element {
-            NormProductElem::Expr(expr) => match parse_field_expr(snapshot, expr, context) {
-                Ok(field) => {
-                    if !seen_names.insert(field.name.clone()) {
-                        diagnostics.push(Diagnostic::hard_error(
-                            format!("duplicate struct field `{}`", field.name),
-                            Some(field.provenance),
-                        ));
-                    } else {
-                        fields.push(field);
-                    }
-                }
-                Err(diagnostic) => diagnostics.push(diagnostic),
-            },
-            NormProductElem::Unit { origin } => diagnostics.push(Diagnostic::hard_error(
-                "invalid struct syntax: unit field or trailing unit is not supported",
-                Some(Provenance::from_norm_origin(
-                    "struct unit product element",
-                    origin,
-                )),
-            )),
-        }
-    }
-
-    if fields.is_empty() && diagnostics.is_empty() {
-        diagnostics.push(Diagnostic::hard_error(
-            "invalid struct syntax: struct requires at least one field",
-            Some(syntax.provenance.clone()),
-        ));
-    }
-
-    match compile_time_assert(
-        diagnostics.is_empty(),
-        syntax.provenance.clone(),
-        "struct private checker failed",
-    ) {
-        Ok(()) => Ok(fields),
-        Err(assert_diagnostic) => {
-            diagnostics.push(assert_diagnostic);
-            Err(BuildError { diagnostics })
-        }
-    }
-}
-
-fn parse_field_expr(
-    snapshot: &NamespaceGraphSnapshot,
-    expr: &NormExpr,
-    context: &ResolverContext,
-) -> Result<StructFieldSpec, Diagnostic> {
-    let NormExpr::Call {
-        source,
-        target,
-        origin,
-    } = expr
-    else {
-        return Err(Diagnostic::hard_error(
-            "invalid struct syntax: expected a field form like `uint8 a`",
-            Some(Provenance::from_norm_origin(
-                "struct field expression",
-                expr_origin(expr),
-            )),
-        ));
-    };
-
-    if source.elements.len() != 1 {
-        return Err(Diagnostic::hard_error(
-            "invalid struct syntax: nested product fields are not supported in v0.6",
-            Some(Provenance::from_norm_origin(
-                "struct field source",
-                &source.origin,
-            )),
-        ));
-    }
-
-    let type_expr = match &source.elements[0] {
-        NormProductElem::Expr(NormExpr::Product(product)) => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: nested product fields are not supported in v0.6",
-                Some(Provenance::from_norm_origin(
-                    "nested struct field product",
-                    &product.origin,
-                )),
-            ));
-        }
-        NormProductElem::Expr(expr) => expr,
-        NormProductElem::Unit { origin } => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: unit field type is not supported",
-                Some(Provenance::from_norm_origin(
-                    "unit struct field type",
-                    origin,
-                )),
-            ));
-        }
-    };
-
-    let type_path = expr_to_source_path(type_expr).ok_or_else(|| {
-        Diagnostic::hard_error(
-            "invalid struct syntax: unsupported field type expression",
-            Some(Provenance::from_norm_origin(
-                "struct field type",
-                expr_origin(type_expr),
-            )),
-        )
-    })?;
-    let type_path_str = type_path.join("::");
-    let type_symbol = snapshot
-        .capability()
-        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::Meta)
-        .map_err(|_| {
-            if let Ok(non_type_symbol) = snapshot.capability().resolve_with_policy(
-                &type_path,
-                context,
-                ResolveExpectation::Object,
-                PolicyEnv::Meta,
-            ) {
-                return Diagnostic::hard_error(
-                    format!(
-                        "unknown struct field type `{}`: resolved symbol is not a type",
-                        type_path_str
-                    ),
-                    Some(non_type_symbol.provenance),
-                );
-            }
-            Diagnostic::hard_error(
-                format!("unknown struct field type `{}`", type_path_str),
-                Some(Provenance::from_norm_origin(
-                    "struct field type",
-                    expr_origin(type_expr),
-                )),
-            )
-        })?;
-
-    if type_symbol.kind != SymbolKind::Type {
-        return Err(Diagnostic::hard_error(
-            format!(
-                "unknown struct field type `{}`: resolved symbol is not a type",
-                type_path.join("::")
-            ),
-            Some(type_symbol.provenance),
-        ));
-    }
-
-    let field_name = match target.as_ref() {
-        NormExpr::Name { text, .. } => text.clone(),
-        _ => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: expected a field binder name",
-                Some(Provenance::from_norm_origin(
-                    "struct field binder",
-                    expr_origin(target),
-                )),
-            ));
-        }
-    };
-
-    Ok(StructFieldSpec {
-        name: field_name,
-        type_symbol_id: type_symbol.id,
-        provenance: Provenance::from_norm_origin("struct field", origin),
-    })
-}
-
-fn expr_to_source_path(expr: &NormExpr) -> Option<Vec<String>> {
-    match expr {
-        NormExpr::Name { text, .. } => Some(vec![text.clone()]),
-        NormExpr::Nav { components, .. } => {
-            let mut path = Vec::new();
-            for component in components {
-                match component {
-                    NormNavComponent::Name { name, .. } => path.push(name.clone()),
-                    _ => return None,
-                }
-            }
-            Some(path)
-        }
-        _ => None,
-    }
-}
-
-fn expr_origin(expr: &NormExpr) -> &NormOrigin {
-    match expr {
-        NormExpr::Call { origin, .. }
-        | NormExpr::Name { origin, .. }
-        | NormExpr::Literal { origin, .. }
-        | NormExpr::Nav { origin, .. }
-        | NormExpr::OperatorTarget { origin, .. }
-        | NormExpr::Unsupported { origin, .. } => origin,
-        NormExpr::Product(product) => &product.origin,
-        NormExpr::Closure(closure) => &closure.origin,
-        NormExpr::Error(error) => &error.origin,
-    }
-}
-
-fn product_origin(product: &NormProduct) -> &NormOrigin {
-    &product.origin
-}
-
-/// IdentityType:
-///   r === arg (forwarding proof)
-///   → ForwardedValue(TypeSymbol)
-///   → binding declares a type symbol forwarding the target's symbol identity
-///
-/// **Pipeline (v0.8 substrate)**:
-///
-/// ```text
-/// NormalizedCallSite.source_product
-///   → ProductObject
-///   → ArgProductShape
-///   → classify_type_arguments (resolves names as type objects)
-///   → CandidatePreparationInput
-///   → prepare_meta_callable_candidate_from_input
-///   → invoke_meta_callable → ForwardedValue(TypeSymbol)
-///   → bind_meta_invocation_value_result
-/// ```
-///
-/// **Declaration binding** (where `NamespaceDelta` is installed):
-/// A declared forwarding type symbol is installed under `binding_name`.
-/// The forwarding target is the `TypeSymbol` carried by the
-/// `ForwardedValue`, not a clone of the original `TypeObject`.
-fn expand_identity_type_meta(
-    site: &NormalizedCallSite,
-    resolved: &ResolvedCallTarget,
-    snapshot: &NamespaceGraphSnapshot,
-    parent_namespace: NamespaceNodeId,
-    binding_name: &str,
-    context: &ResolverContext,
-    provenance: Provenance,
-    _meta_function: &MetaFunctionObject,
-) -> Result<MetaExpansionResult, BuildError> {
-    // --- Substrate stage 1: source product → ArgProductShape ---
-    let product_obj =
-        site.source_product_object(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let shape = product_obj.to_arg_product_shape();
-
-    // --- Substrate stage 2: classify type arguments (with report) ---
-    let report = classify_type_arguments_with_report(&shape, &snapshot.capability(), context);
-
-    // --- Substrate stage 3: candidate preparation ---
-    let input = CandidatePreparationInput::new(
-        resolved.callee.clone(),
-        report.classified_shape.clone(),
-        ParameterShape::type_parameter_signature(Provenance::new(
-            "IdentityType : type -> type signature",
-        )),
-        CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
-            build_identity: CandidateBuildIdentityPlaceholder::default(),
-            provenance: provenance.clone(),
-        },
-    );
-
-    let candidate = match prepare_meta_callable_candidate_from_input(input) {
-        crate::meta_candidate::CandidatePrepResult::ApplicablePlaceholder(c) => c,
-        crate::meta_candidate::CandidatePrepResult::Deferred { reason, .. } => {
-            return Err(BuildError::single(Diagnostic::hard_error(
-                format!(
-                    "meta hard error: IdentityType candidate preparation deferred ({reason:?})"
-                ),
-                Some(provenance.clone()),
-            )));
-        }
-        crate::meta_candidate::CandidatePrepResult::Diagnostic(d) => {
-            // Enrich diagnostic if unresolved type names are available
-            if !report.unresolved_names.is_empty() {
-                let names = report.unresolved_names.join(", ");
-                return Err(BuildError::single(Diagnostic::hard_error(
-                    format!(
-                        "meta hard error: IdentityType argument `{names}` could not be resolved as a type object"
-                    ),
-                    Some(provenance.clone()),
-                )));
-            }
-            return Err(BuildError::single(d));
-        }
-    };
-
-    // --- Stage 4: formal meta invocation ---
-    let invocation_input = MetaInvocationInput::new(*candidate, provenance.clone());
-
-    let invocation_value = match invoke_meta_callable(invocation_input) {
-        MetaInvocationResult::Value(v) => v,
-        MetaInvocationResult::Diagnostic(d) => return Err(BuildError::single(d)),
-    };
-
-    // --- Stage 5: declaration binding (where NamespaceDelta is installed) ---
-    bind_meta_invocation_value_result(
-        invocation_value,
-        snapshot,
-        parent_namespace,
-        binding_name,
-        provenance,
-    )
-}
-
 /// Bind a meta invocation value into a declaration expansion.
 ///
 /// This is the formal binding entry point. It dispatches on the invocation
@@ -627,8 +560,8 @@ fn expand_identity_type_meta(
 ///
 /// - `ForwardedValue` with `TypeSymbol`: materializes a declaration
 ///   that forwards the target type's symbol identity.
-/// - `ForwardedValue` with other targets: not yet supported.
 /// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
+/// - `GeneratedTypeDefinitionValue`: materialized by `bind_generated_type_definition_value`.
 pub fn bind_meta_invocation_value_result(
     value: MetaInvocationValue,
     snapshot: &NamespaceGraphSnapshot,
@@ -675,7 +608,7 @@ pub fn bind_meta_invocation_value_result(
                 };
                 delta.insert_symbol(parent_namespace, declared_symbol.clone());
                 Ok(MetaExpansionResult {
-                    replacement_object: declared_symbol.clone(),
+                    replacement_object: declared_symbol,
                     namespace_delta: delta,
                     diagnostics: Vec::new(),
                     provenance,
@@ -689,7 +622,135 @@ pub fn bind_meta_invocation_value_result(
             binding_name,
             provenance,
         ),
+        MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv) => {
+            bind_generated_type_definition_value(
+                &gtdv,
+                snapshot,
+                parent_namespace,
+                binding_name,
+                provenance,
+            )
+        }
     }
+}
+
+fn bind_generated_type_definition_value(
+    value: &GeneratedTypeDefinitionValue,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    provenance: Provenance,
+) -> Result<MetaExpansionResult, BuildError> {
+    let expected = compute_type_definition_instance_id(&value.identity_material);
+    if expected != value.type_definition_id {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: GeneratedTypeDefinitionValue has mismatched TypeDefinitionInstanceId (expected {}, got {})",
+                expected.as_u64(),
+                value.type_definition_id.as_u64()
+            ),
+            Some(value.provenance.clone()),
+        )));
+    }
+    if value.identity_material.return_slot_semantics != ReturnSlotSemantics::Generate {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            "meta hard error: GeneratedTypeDefinitionValue must have Generate return-slot semantics",
+            Some(value.provenance.clone()),
+        )));
+    }
+
+    let mut delta = snapshot.empty_delta();
+    let type_symbol_id = delta.allocate_symbol_id();
+    let type_namespace_id = delta.allocate_node_id();
+    delta.insert_node(NamespaceNode::new(
+        type_namespace_id,
+        format!("{binding_name}<type-associated>"),
+        NamespaceNodeKind::Virtual,
+        SourceCategory::TypeAssociatedNamespace,
+        Some(parent_namespace),
+        provenance.clone(),
+    ));
+
+    let type_definition_fragment = format!("type-definition:{}", value.type_definition_id.as_u64());
+    let mut type_object = SymbolObject::placeholder(
+        type_symbol_id,
+        binding_name,
+        SymbolKind::Type,
+        SourceCategory::DeclaredSymbol,
+        Some(parent_namespace),
+        provenance.clone(),
+    );
+    type_object.policy_metadata.policy_set = policy_set_meta_runtime();
+    type_object.node_kind = Some(NamespaceNodeKind::Virtual);
+    type_object.generation_origin = Some("core::struct generated type definition".to_string());
+    // cache_key_fragment is a temporary carrier;
+    // TypeDefinitionInstanceId is the semantic identity.
+    type_object.cache_key_fragment = Some(type_definition_fragment.clone());
+    type_object.payload = SymbolPayload::Type(TypeObject {
+        type_symbol_id,
+        fields: value
+            .fields
+            .iter()
+            .map(|field| TypeField {
+                name: field.name.clone(),
+                type_symbol_id: field.type_symbol_id,
+                provenance: field.provenance.clone(),
+            })
+            .collect(),
+        field_names: value
+            .fields
+            .iter()
+            .map(|field| field.name.clone())
+            .collect(),
+        field_type_symbol_ids: value
+            .fields
+            .iter()
+            .map(|field| field.type_symbol_id)
+            .collect(),
+        type_associated_namespace: Some(type_namespace_id),
+        provenance: provenance.clone(),
+        generation_origin: Some(format!(
+            "core::struct generated type definition {}",
+            value.type_definition_id.as_u64()
+        )),
+        layout_slot: None,
+        abi_slot: None,
+    });
+
+    delta.insert_symbol(parent_namespace, type_object.clone());
+    insert_field_projection_layer(
+        &mut delta,
+        type_namespace_id,
+        type_symbol_id,
+        &value.fields,
+        FieldProjection::Value,
+        None,
+    );
+    insert_projection_namespace(
+        &mut delta,
+        type_namespace_id,
+        "ref",
+        type_symbol_id,
+        &value.fields,
+        FieldProjection::Ref,
+        provenance.clone(),
+    );
+    insert_projection_namespace(
+        &mut delta,
+        type_namespace_id,
+        "share",
+        type_symbol_id,
+        &value.fields,
+        FieldProjection::Share,
+        provenance.clone(),
+    );
+
+    Ok(MetaExpansionResult {
+        replacement_object: type_object,
+        namespace_delta: delta,
+        diagnostics: Vec::new(),
+        provenance,
+    })
 }
 
 /// Bind a `GeneratedConstructionValue` into the namespace graph.
@@ -699,17 +760,16 @@ pub fn bind_meta_invocation_value_result(
 /// (temporary carrier — the identity model is `ConstructionInstanceId`,
 /// not the cache key).
 ///
-/// The `TypeObject` payload attached here is a **binding / materialization
-/// projection** of the `GeneratedConstructionValue`, not the invocation
-/// result itself. A type-value projection can be derived from the declared
-/// symbol only after binding.
+/// The `TypeObject` payload attached here is a binding projection of the
+/// `GeneratedConstructionValue`, not the invocation result itself. A type-value
+/// projection can be derived from the declared symbol only after binding.
 ///
 /// The declared symbol's `type_symbol_id` is a fresh `SymbolId` — the
 /// construction identity is the `construction_instance_id`, not the
 /// declared symbol ID.
 ///
-/// This function installs a `NamespaceDelta`. It is the **binding**
-/// layer — `invoke_meta_callable` remains pure.
+/// This function installs a `NamespaceDelta`. It is the binding layer —
+/// `invoke_meta_callable` remains pure.
 fn bind_generated_construction_value(
     gcv: &crate::meta_invocation::GeneratedConstructionValue,
     snapshot: &NamespaceGraphSnapshot,
@@ -717,13 +777,13 @@ fn bind_generated_construction_value(
     binding_name: &str,
     provenance: Provenance,
 ) -> Result<MetaExpansionResult, BuildError> {
-    // Validate that the construction_instance_id matches the identity material.
     let expected = crate::meta_invocation::compute_construction_instance_id(&gcv.identity_material);
     if expected != gcv.construction_instance_id {
         return Err(BuildError::single(Diagnostic::hard_error(
             format!(
                 "meta hard error: GeneratedConstructionValue has mismatched construction_instance_id (expected {}, got {})",
-                expected.as_u64(), gcv.construction_instance_id.as_u64()
+                expected.as_u64(),
+                gcv.construction_instance_id.as_u64()
             ),
             Some(gcv.provenance.clone()),
         )));
@@ -780,13 +840,8 @@ fn bind_generated_construction_value(
     };
     delta.insert_symbol(parent_namespace, declared_symbol.clone());
 
-    let replacement = SymbolObject {
-        id: declared_id,
-        ..declared_symbol.clone()
-    };
-
     Ok(MetaExpansionResult {
-        replacement_object: replacement,
+        replacement_object: declared_symbol,
         namespace_delta: delta,
         diagnostics: Vec::new(),
         provenance,

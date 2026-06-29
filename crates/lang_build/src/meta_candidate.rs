@@ -59,6 +59,14 @@ impl ParameterShape {
             provenance,
         }
     }
+
+    pub fn type_parameter_sequence(expected_arity: usize, provenance: Provenance) -> Self {
+        Self {
+            expected_arity: Some(expected_arity),
+            expected_arg_kinds: vec![ParameterArgRequirement::TypeObject; expected_arity],
+            provenance,
+        }
+    }
 }
 
 /// Per-argument kind requirement for parameter shape validation.
@@ -168,13 +176,13 @@ pub enum CallableCandidateKind {
 ///
 /// The final key must be derived from the resolved callee `SymbolId`,
 /// canonical argument product shape, Expression barrier structure, Unit
-/// positions, arity, first-order type-value projection material where known,
+/// positions, arity, known type-symbol material where available,
 /// package identity, mount identity, build/config fingerprint,
 /// policy/export-relevant metadata, and provenance/cache key fragments
 /// as needed.
 ///
 /// It must not be reduced to source text, a normalized dump, callee name plus
-/// arity, or callee name plus a type-value projection list only.
+/// arity, or callee name plus a projection-material list only.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CanonicalMetaInstanceKeySeed {
     pub callee_function_symbol_id: SymbolId,
@@ -259,7 +267,7 @@ impl CanonicalArgProductShapeMaterial {
 /// Records whether an argument position carries an Expression barrier, a
 /// positively classified value, a specific non-value object kind, a Product
 /// Unit, or unsupported material. This is structural classification only —
-/// it does **not** encode type values, resolve lookup, or decide semantics.
+/// it does **not** encode first-order projection values, resolve lookup, or decide semantics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CanonicalArgAtomKind {
     /// Opaque Expression barrier — target not yet resolved.
