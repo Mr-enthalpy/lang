@@ -9,8 +9,8 @@ use lang_build::{
     EvalResultNormalForm, ExposedExtractionInterface, Provenance, SelectedSumPattern,
     SimpleCapability, SimplePolicyCheckResult, SimplePolicyFacts, SimplePolicyRequirement,
     SimpleTypeCheckResult, SimpleTypeFacts, SimpleTypePredicate, SimpleTypePredicateFact,
-    SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape, SymbolId, SymbolKind,
-    SymbolPathShape, TypePatternExprShape, ValuePointKind, ValuePointShape,
+    StructLeafTypeExprShape, SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape,
+    SymbolId, SymbolKind, SymbolPathShape, TypePatternExprShape, ValuePointKind, ValuePointShape,
 };
 
 // ---------------------------------------------------------------------------
@@ -27,6 +27,14 @@ fn leaf_value() -> EvalResultNormalForm {
         extraction_interface: ExposedExtractionInterface::Leaf,
         provenance: provenance("leaf value"),
     })
+}
+
+fn leaf_path(type_path: &str, name: &str, prov: Provenance) -> TypePatternExprShape {
+    TypePatternExprShape::leaf(
+        StructLeafTypeExprShape::Path(SymbolPathShape::single(type_path)),
+        name,
+        prov,
+    )
 }
 
 fn sum_alternative(label: &str, payload: Option<SumPatternPayloadShape>) -> SumPatternAlternative {
@@ -578,16 +586,8 @@ fn anonymous_product_type_pattern_shape_records_fields() {
     // (uint8 a, uint8 b)
     let expr = TypePatternExprShape::product(
         vec![
-            TypePatternExprShape::leaf(
-                SymbolPathShape::single("uint8"),
-                "a",
-                provenance("field a"),
-            ),
-            TypePatternExprShape::leaf(
-                SymbolPathShape::single("uint8"),
-                "b",
-                provenance("field b"),
-            ),
+            leaf_path("uint8", "a", provenance("field a")),
+            leaf_path("uint8", "b", provenance("field b")),
         ],
         provenance("anonymous product"),
     );
@@ -597,11 +597,16 @@ fn anonymous_product_type_pattern_shape_records_fields() {
             assert_eq!(elements.len(), 2);
             match &elements[0] {
                 TypePatternExprShape::Leaf {
-                    external_type_path,
+                    external_type_expr,
                     local_pattern_name,
                     ..
                 } => {
-                    assert_eq!(external_type_path.segments, vec!["uint8"]);
+                    match external_type_expr {
+                        StructLeafTypeExprShape::Path(p) => {
+                            assert_eq!(p.segments, vec!["uint8"]);
+                        }
+                        _ => panic!("expected Path"),
+                    }
                     assert_eq!(local_pattern_name, "a");
                 }
                 _ => panic!("expected Leaf"),
@@ -619,11 +624,7 @@ fn named_product_type_pattern_shape_distinguishes_pattern_name_from_bound_symbol
     // type-pattern expression.
     let expr = TypePatternExprShape::named(
         TypePatternExprShape::product(
-            vec![TypePatternExprShape::leaf(
-                SymbolPathShape::single("uint8"),
-                "a",
-                provenance("field a"),
-            )],
+            vec![leaf_path("uint8", "a", provenance("field a"))],
             provenance("inner product"),
         ),
         "mytype",
@@ -652,16 +653,8 @@ fn sum_of_products_type_pattern_shape_derives_sum_pattern_space() {
     let some_alt = TypePatternExprShape::named(
         TypePatternExprShape::product(
             vec![
-                TypePatternExprShape::leaf(
-                    SymbolPathShape::single("uint8"),
-                    "a",
-                    provenance("field a"),
-                ),
-                TypePatternExprShape::leaf(
-                    SymbolPathShape::single("uint8"),
-                    "b",
-                    provenance("field b"),
-                ),
+                leaf_path("uint8", "a", provenance("field a")),
+                leaf_path("uint8", "b", provenance("field b")),
             ],
             provenance("Some payload"),
         ),
@@ -725,19 +718,20 @@ fn none_alternative_is_nullary_product() {
 
 #[test]
 fn leaf_external_type_path_is_lookup_subject_but_pattern_name_is_local() {
-    let leaf = TypePatternExprShape::leaf(
-        SymbolPathShape::single("uint8"),
-        "field_name",
-        provenance("test leaf"),
-    );
+    let leaf = leaf_path("uint8", "field_name", provenance("test leaf"));
     match &leaf {
         TypePatternExprShape::Leaf {
-            external_type_path,
+            external_type_expr,
             local_pattern_name,
             ..
         } => {
-            // external_type_path is the lookup subject (e.g. needs external resolution)
-            assert_eq!(external_type_path.segments, vec!["uint8"]);
+            // external_type_expr is the type expression (e.g. needs external resolution)
+            match external_type_expr {
+                StructLeafTypeExprShape::Path(p) => {
+                    assert_eq!(p.segments, vec!["uint8"]);
+                }
+                _ => panic!("expected Path"),
+            }
             // local_pattern_name is the local field/pattern name within the expression
             assert_eq!(local_pattern_name, "field_name");
         }
@@ -751,16 +745,8 @@ fn anonymous_product_does_not_derive_sum_pattern_space() {
     // not a sum pattern space. derive_sum_pattern_space must return None.
     let product_expr = TypePatternExprShape::product(
         vec![
-            TypePatternExprShape::leaf(
-                SymbolPathShape::single("uint8"),
-                "a",
-                provenance("field a"),
-            ),
-            TypePatternExprShape::leaf(
-                SymbolPathShape::single("uint8"),
-                "b",
-                provenance("field b"),
-            ),
+            leaf_path("uint8", "a", provenance("field a")),
+            leaf_path("uint8", "b", provenance("field b")),
         ],
         provenance("bare product"),
     );

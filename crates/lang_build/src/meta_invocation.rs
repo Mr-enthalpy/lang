@@ -42,7 +42,9 @@ use crate::{
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::{compute_meta_instance_key, MetaInstanceKey},
     model::{Diagnostic, Provenance, SymbolId},
+    pattern_space::{derive_sum_pattern_space, SumPatternSpaceShape, TypePatternExprShape},
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
+    struct_decoder::DecodedStructPattern,
 };
 
 /// Input for formal meta invocation.
@@ -54,6 +56,9 @@ use crate::{
 pub struct MetaInvocationInput {
     pub candidate: PreparedCallableCandidate,
     pub provenance: Provenance,
+    /// Pre-decoded struct type-pattern shape, if this is a struct invocation
+    /// and the decoder was able to interpret the argument.
+    pub struct_decoded_pattern: Option<DecodedStructPattern>,
 }
 
 impl MetaInvocationInput {
@@ -61,6 +66,7 @@ impl MetaInvocationInput {
         Self {
             candidate,
             provenance,
+            struct_decoded_pattern: None,
         }
     }
 
@@ -168,6 +174,12 @@ pub struct GeneratedTypeDefinitionValue {
     pub identity_material: TypeDefinitionIdentityMaterial,
     pub fields: Vec<GeneratedFieldDefinition>,
     pub return_view: ReturnViewShape,
+    /// The decoded type-pattern expression shape, if the struct argument
+    /// was successfully decoded by the struct-local decoder.
+    pub type_pattern_expr: Option<TypePatternExprShape>,
+    /// The sum pattern space derived from the type-pattern expression,
+    /// if the expression contains a sum.
+    pub sum_pattern_space: Option<SumPatternSpaceShape>,
     pub provenance: Provenance,
 }
 
@@ -633,6 +645,14 @@ fn invoke_struct_type_definition(input: &MetaInvocationInput) -> MetaInvocationR
             identity_material,
             fields,
             return_view: ReturnViewShape::Leaf,
+            type_pattern_expr: input
+                .struct_decoded_pattern
+                .as_ref()
+                .map(|p| p.type_pattern_expr.clone()),
+            sum_pattern_space: input
+                .struct_decoded_pattern
+                .as_ref()
+                .and_then(|p| derive_sum_pattern_space(&p.type_pattern_expr)),
             provenance: input.provenance.clone(),
         },
     ))
