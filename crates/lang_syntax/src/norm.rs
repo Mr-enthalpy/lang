@@ -9,12 +9,12 @@
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
-    CanonicalProductElementAst, CanonicalSkeletonAst, ClosureAst, DeduceListAst, EntityRefAst,
-    ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst, LetAliasAst, LetAst,
-    NavComponentAst, OperatorExprAst, OperatorExprKind, OperatorFixity, OperatorNameAst,
-    ParamClauseAst, PipeExprAst, ProductElementAst, ProductExprAst, ProductExtractAst,
-    ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
-    SelectorAst, Span, WithClauseAst, WithClauseKind,
+    CanonicalProductElementAst, CanonicalSkeletonAst, ClosureAst, ClosureBodyAst, DeduceListAst,
+    EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst,
+    LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind, OperatorFixity,
+    OperatorNameAst, ParamClauseAst, PipeExprAst, ProductElementAst, ProductExprAst,
+    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst,
+    SegmentElementAst, SelectorAst, Span, WithClauseAst, WithClauseKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -189,7 +189,19 @@ pub struct NormWithClause {
 pub struct NormClosure {
     pub kind: NormClosureKind,
     pub head: Option<NormClosureHead>,
-    pub body: NormProgram,
+    pub body: NormClosureBody,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NormClosureBody {
+    Block(NormProgram),
+    Delete(NormDeleteBody),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormDeleteBody {
+    pub message: Box<NormExpr>,
     pub origin: NormOrigin,
 }
 
@@ -1042,15 +1054,24 @@ fn normalize_closure(closure: &ClosureAst) -> NormClosure {
         ClosureAst::InPlace(inner) => NormClosure {
             kind: NormClosureKind::InPlace,
             head: None,
-            body: normalize_body_block(&inner.body),
+            body: NormClosureBody::Block(normalize_body_block(&inner.body)),
             origin: NormOrigin::Source(inner.span),
         },
-        ClosureAst::Explicit(inner) => NormClosure {
-            kind: NormClosureKind::Explicit,
-            head: Some(normalize_closure_head(&inner.head)),
-            body: normalize_body_block(&inner.body),
-            origin: NormOrigin::Source(inner.span),
-        },
+        ClosureAst::Explicit(inner) => {
+            let body = match &inner.body {
+                ClosureBodyAst::Block(block) => NormClosureBody::Block(normalize_body_block(block)),
+                ClosureBodyAst::Delete(del) => NormClosureBody::Delete(NormDeleteBody {
+                    message: Box::new(normalize_expr(&del.message)),
+                    origin: NormOrigin::Source(del.span),
+                }),
+            };
+            NormClosure {
+                kind: NormClosureKind::Explicit,
+                head: Some(normalize_closure_head(&inner.head)),
+                body,
+                origin: NormOrigin::Source(inner.span),
+            }
+        }
     }
 }
 
@@ -1631,10 +1652,10 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
             clauses: Vec::new(),
             origin: NormOrigin::Generated { rule, span },
         }),
-        body: NormProgram {
+        body: NormClosureBody::Block(NormProgram {
             forms: vec![NormForm::Expr(body_expr)],
             origin: NormOrigin::Generated { rule, span },
-        },
+        }),
         origin: NormOrigin::Generated { rule, span },
     }
 }
@@ -2203,7 +2224,18 @@ fn dump_closure(output: &mut String, closure: &NormClosure, indent: usize) {
         None => line(output, indent + 2, "None"),
     }
     line(output, indent + 1, "body:");
-    dump_norm_program_body(output, &closure.body, indent + 2);
+    match &closure.body {
+        NormClosureBody::Block(program) => dump_norm_program_body(output, program, indent + 2),
+        NormClosureBody::Delete(del) => {
+            line(output, indent + 2, "Delete");
+            let mut msg_buf = String::new();
+            dump_norm_expr(&mut msg_buf, &del.message, 0);
+            // dump_norm_expr appends a trailing \n; trim it to avoid
+            // double-newline when passed through line().
+            let msg_text = msg_buf.trim_end_matches('\n');
+            line(output, indent + 3, msg_text);
+        }
+    }
 }
 
 fn dump_closure_head(output: &mut String, head: &NormClosureHead, indent: usize) {

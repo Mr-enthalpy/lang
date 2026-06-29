@@ -533,6 +533,31 @@ fn closure_explicit_trait_clause() {
 }
 
 #[test]
+fn closure_explicit_delete_body() {
+    assert_parser_case("closure_explicit_delete_body", false);
+}
+
+#[test]
+fn closure_delete_body_requires_delete_name() {
+    assert_parser_case("closure_delete_body_requires_delete_name", true);
+}
+
+#[test]
+fn closure_delete_body_requires_grouped_message() {
+    assert_parser_case("closure_delete_body_requires_grouped_message", true);
+}
+
+#[test]
+fn closure_delete_body_missing_delete_no_residual() {
+    assert_parser_case("closure_delete_body_missing_delete_no_residual", true);
+}
+
+#[test]
+fn closure_delete_body_unclosed_message_recovery() {
+    assert_parser_case("closure_delete_body_unclosed_message_recovery", true);
+}
+
+#[test]
 fn closure_explicit_return_type() {
     assert_parser_case("closure_explicit_return_type", false);
 }

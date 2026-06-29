@@ -313,7 +313,20 @@ pub struct InPlaceClosureAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExplicitClosureAst {
     pub head: FnHeadPrefixAst,
-    pub body: BodyBlockAst,
+    pub body: ClosureBodyAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClosureBodyAst {
+    Block(BodyBlockAst),
+    Delete(DeleteBodyAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeleteBodyAst {
+    pub message: ExprAst,
+    pub delete_name: NameAst,
     pub span: Span,
 }
 

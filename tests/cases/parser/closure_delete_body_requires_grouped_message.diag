@@ -1,0 +1,1 @@
+error InvalidClosureHead "expected `{` or `(message) delete` after `=>`" @ 1:19 [18..18]
