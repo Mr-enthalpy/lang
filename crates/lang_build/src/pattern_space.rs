@@ -303,19 +303,9 @@ pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatter
             }
         },
         TypePatternExprShape::Product {
-            provenance,
-            elements,
-        } => {
-            let payload = SumPatternPayloadShape::Product(product_payload_from_elements(elements));
-            Some(SumPatternSpaceShape {
-                alternatives: vec![SumPatternAlternative {
-                    label: String::new(),
-                    payload_shape: Some(payload),
-                    provenance: provenance.clone(),
-                }],
-                provenance: provenance.clone(),
-            })
-        }
+            provenance: _,
+            elements: _,
+        } => None,
         TypePatternExprShape::Leaf { .. } => None,
     }
 }
@@ -342,28 +332,14 @@ fn alt_to_sum_alternative(alt: &TypePatternExprShape) -> Option<SumPatternAltern
                 provenance: provenance.clone(),
             })
         }
-        TypePatternExprShape::Leaf {
-            local_pattern_name,
-            provenance,
-            ..
-        } => Some(SumPatternAlternative {
-            label: local_pattern_name.clone(),
-            payload_shape: Some(SumPatternPayloadShape::ValuePoint),
-            provenance: provenance.clone(),
-        }),
-        TypePatternExprShape::Sum {
-            alternatives: inner_alts,
-            provenance,
-        } => {
-            // Flatten nested sums? No — a sum inside a sum is just an
-            // alternative. For simplicity at this stage, don't flatten.
-            // Treat a Sum at alt level as deriving from itself.
-            derive_sum_pattern_space(alt).map(|_space| SumPatternAlternative {
-                label: format!("sum_{}_alternatives", inner_alts.len()),
-                payload_shape: None,
-                provenance: provenance.clone(),
-            })
+        TypePatternExprShape::Leaf { .. } => {
+            // A bare leaf is a local field/payload name, not a sum alternative
+            // label. Only Named { child: Leaf, pattern_name } can become a
+            // sum alternative — the pattern_name serves as the alternative
+            // label.
+            None
         }
+        TypePatternExprShape::Sum { .. } => None,
         TypePatternExprShape::Product { .. } => None,
     }
 }

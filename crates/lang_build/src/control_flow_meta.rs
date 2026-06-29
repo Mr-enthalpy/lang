@@ -254,6 +254,17 @@ pub struct BranchArmShape {
     pub label: String,
     pub local_bindings: Vec<BranchLocalBinding>,
     pub action: BranchActionShape,
+    pub type_requirements: Vec<BranchTypeRequirement>,
+    pub policy_requirements: Vec<SimplePolicyRequirement>,
+    pub provenance: Provenance,
+}
+
+/// A type predicate that the selected branch requires to hold.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BranchTypeRequirement {
+    pub type_symbol_id: SymbolId,
+    pub predicate: SimpleTypePredicate,
+    pub must_be_known_true: bool,
     pub provenance: Provenance,
 }
 
@@ -392,7 +403,7 @@ pub fn evaluate_guarded_branches(
     arms: &[BranchArmShape],
     context: &ControlFlowLocalMetaContext<'_>,
 ) -> ControlFlowLocalEvalResult {
-    let diagnostics: Vec<Diagnostic> = Vec::new();
+    let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
     // Validate selector belongs to space
     if let Err(diag) = selector.validate() {
@@ -418,8 +429,78 @@ pub fn evaluate_guarded_branches(
         }
     };
 
-    // Build branch-local symbol space from the selected arm's bindings
-    let local_space = if selected_arm.local_bindings.is_empty() {
+    // Check type requirements — only for the selected arm
+    for req in &selected_arm.type_requirements {
+        let result = check_simple_type_predicate(
+            context.type_facts,
+            req.type_symbol_id,
+            req.predicate.clone(),
+        );
+        match result {
+            SimpleTypeCheckResult::KnownTrue => {
+                if !req.must_be_known_true {
+                    diagnostics.push(Diagnostic::new(
+                        DiagnosticSeverity::Error,
+                        format!(
+                            "type predicate {:?} is KnownTrue but branch expected false",
+                            req.predicate
+                        ),
+                        Some(req.provenance.clone()),
+                    ));
+                }
+            }
+            SimpleTypeCheckResult::KnownFalse => {
+                if req.must_be_known_true {
+                    diagnostics.push(Diagnostic::new(
+                        DiagnosticSeverity::Error,
+                        format!(
+                            "type predicate {:?} is KnownFalse but branch expected true",
+                            req.predicate
+                        ),
+                        Some(req.provenance.clone()),
+                    ));
+                }
+            }
+            SimpleTypeCheckResult::Unknown => {
+                return ControlFlowLocalEvalResult::Residual {
+                    reason: GuardResidualReason::NonSumSelector,
+                    diagnostics: vec![Diagnostic::new(
+                        DiagnosticSeverity::Warning,
+                        format!(
+                            "type predicate {:?} is Unknown — guard residualizes",
+                            req.predicate
+                        ),
+                        Some(req.provenance.clone()),
+                    )],
+                };
+            }
+        }
+    }
+
+    // Check policy requirements — only for the selected arm
+    for req in &selected_arm.policy_requirements {
+        match check_simple_policy(context.policy_facts, req) {
+            SimplePolicyCheckResult::Allowed => {}
+            SimplePolicyCheckResult::Denied(diag) => {
+                return ControlFlowLocalEvalResult::Diagnostic(diag);
+            }
+            SimplePolicyCheckResult::Unknown => {
+                diagnostics.push(Diagnostic::new(
+                    DiagnosticSeverity::Warning,
+                    format!("policy requirement {:?} is Unknown", req),
+                    Some(selected_arm.provenance.clone()),
+                ));
+            }
+        }
+    }
+
+    // Build branch-local symbol space from the selected arm's bindings AND
+    // from any BuildLocalSymbol-encoded symbols.
+    let mut local_symbol_count = selected_arm.local_bindings.len();
+    if matches!(selected_arm.action, BranchActionShape::BuildLocalSymbol(_)) {
+        local_symbol_count += 1;
+    }
+    let local_space = if local_symbol_count == 0 {
         None
     } else {
         let mut space = BranchLocalSymbolSpace::new("selected_branch", context.provenance.clone());
@@ -431,6 +512,9 @@ pub fn evaluate_guarded_branches(
                 provenance: binding.provenance.clone(),
             });
         }
+        if let BranchActionShape::BuildLocalSymbol(sym) = &selected_arm.action {
+            space.add_symbol(sym.clone());
+        }
         Some(space)
     };
 
@@ -440,10 +524,7 @@ pub fn evaluate_guarded_branches(
         BranchActionShape::InvokeMeta(plan) => {
             EvaluatedBranchAction::MetaInvocationPlanned(plan.clone())
         }
-        BranchActionShape::BuildLocalSymbol(_sym) => {
-            // The symbol is already in the local space; the action is Noop
-            EvaluatedBranchAction::Noop
-        }
+        BranchActionShape::BuildLocalSymbol(_) => EvaluatedBranchAction::Noop,
         BranchActionShape::Noop => EvaluatedBranchAction::Noop,
     };
 

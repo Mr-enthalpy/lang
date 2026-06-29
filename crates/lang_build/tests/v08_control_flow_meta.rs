@@ -46,6 +46,8 @@ fn branch_arm(
         label: label.to_string(),
         local_bindings: bindings,
         action,
+        type_requirements: vec![],
+        policy_requirements: vec![],
         provenance: provenance(&format!("arm {label}")),
     }
 }
@@ -56,6 +58,17 @@ fn branch_arm_noop(label: &str) -> BranchArmShape {
 
 fn branch_arm_value(label: &str, value: EvalResultNormalForm) -> BranchArmShape {
     branch_arm(label, BranchActionShape::ReturnValue(value), vec![])
+}
+
+fn branch_arm_with_policy(label: &str, policy: SimplePolicyRequirement) -> BranchArmShape {
+    BranchArmShape {
+        label: label.to_string(),
+        local_bindings: vec![],
+        action: BranchActionShape::Noop,
+        type_requirements: vec![],
+        policy_requirements: vec![policy],
+        provenance: provenance(&format!("arm {label}")),
+    }
 }
 
 fn bool_branch_space() -> SumPatternSpaceShape {
@@ -251,12 +264,15 @@ fn unselected_branch_has_no_symbol_lookup_obligation() {
 
 #[test]
 fn unselected_branch_has_no_policy_obligation() {
-    // else arm requires ErrorReturnCapability which is not available
+    // else arm requires ErrorReturnCapability which is NOT available
     // Select if — the unselected else arm must not be checked for policy
     let sel = selected_if();
     let arms = vec![
         branch_arm_value("if", leaf_value()),
-        branch_arm_noop("else"),
+        branch_arm_with_policy(
+            "else",
+            SimplePolicyRequirement::CapabilityAvailable(SimpleCapability::ErrorReturnCapability),
+        ),
     ];
 
     let no_caps = SimplePolicyFacts::new();
@@ -327,7 +343,10 @@ fn selected_branch_can_construct_local_symbol_space() {
         ControlFlowLocalEvalResult::Selected {
             local_symbol_space, ..
         } => {
-            assert!(local_symbol_space.is_none());
+            assert!(local_symbol_space.is_some());
+            let space = local_symbol_space.unwrap();
+            assert_eq!(space.local_symbols.len(), 1);
+            assert_eq!(space.local_symbols[0].name, "if_sym");
         }
         _ => panic!("expected Selected"),
     }
@@ -383,12 +402,16 @@ fn selected_branch_policy_denied() {
 
 #[test]
 fn unselected_branch_policy_denied_is_ignored() {
-    // else requires ErrorReturnCapability (denied), if does not
-    // Selecting if — the denied else policy must be ignored
+    // else arm requires ErrorReturnCapability (denied — not in policy facts),
+    // if arm has no policy requirements.
+    // Selecting if — the denied else policy must be ignored.
     let sel = selected_if();
     let arms = vec![
         branch_arm_value("if", leaf_value()),
-        branch_arm_noop("else"),
+        branch_arm_with_policy(
+            "else",
+            SimplePolicyRequirement::CapabilityAvailable(SimpleCapability::ErrorReturnCapability),
+        ),
     ];
 
     let no_caps = SimplePolicyFacts::new();
@@ -403,6 +426,29 @@ fn unselected_branch_policy_denied_is_ignored() {
         result,
         ControlFlowLocalEvalResult::Selected { .. }
     ));
+}
+
+#[test]
+fn selected_branch_denied_policy_fails() {
+    // Select else, which has policy requirement ErrorReturnCapability — denied
+    let sel = selected_else();
+    let arms = vec![
+        branch_arm_noop("if"),
+        branch_arm_with_policy(
+            "else",
+            SimplePolicyRequirement::CapabilityAvailable(SimpleCapability::ErrorReturnCapability),
+        ),
+    ];
+
+    let no_caps = SimplePolicyFacts::new();
+    let context = ControlFlowLocalMetaContext {
+        type_facts: &SimpleTypeFacts::new(),
+        policy_facts: &no_caps,
+        provenance: provenance("test context"),
+    };
+
+    let result = evaluate_guarded_branches(&sel, &arms, &context);
+    assert!(matches!(result, ControlFlowLocalEvalResult::Diagnostic(_)));
 }
 
 // ---------------------------------------------------------------------------
@@ -697,4 +743,27 @@ fn leaf_external_type_path_is_lookup_subject_but_pattern_name_is_local() {
         }
         _ => panic!("expected Leaf"),
     }
+}
+
+#[test]
+fn anonymous_product_does_not_derive_sum_pattern_space() {
+    // (uint8 a, uint8 b) without a Named wrapper is an anonymous product,
+    // not a sum pattern space. derive_sum_pattern_space must return None.
+    let product_expr = TypePatternExprShape::product(
+        vec![
+            TypePatternExprShape::leaf(
+                SymbolPathShape::single("uint8"),
+                "a",
+                provenance("field a"),
+            ),
+            TypePatternExprShape::leaf(
+                SymbolPathShape::single("uint8"),
+                "b",
+                provenance("field b"),
+            ),
+        ],
+        provenance("bare product"),
+    );
+
+    assert!(derive_sum_pattern_space(&product_expr).is_none());
 }
