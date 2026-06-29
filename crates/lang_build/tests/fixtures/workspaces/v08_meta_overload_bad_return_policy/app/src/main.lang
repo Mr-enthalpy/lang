@@ -1,0 +1,7 @@
+let unit: type = type;
+
+meta | runtime let bad =
+  (self, t: type): meta -> meta | runtime let r: type =>
+{
+  r === t;
+};

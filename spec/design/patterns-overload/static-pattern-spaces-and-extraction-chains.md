@@ -20,6 +20,32 @@ This design is not an arbitrary set-theoretic pattern algebra. It does not make 
 
 This file is the fuller, later pattern-space / extraction-chain design. The earlier pattern normalization / candidate-shape layer used to prepare meta-invocation candidates is a different, earlier layer, documented in `spec/design/patterns-overload/pattern-normalization-and-first-order-overload.md`.
 
+## 0.1 v0.8 boundary
+
+v0.8 does not implement the full pattern-space and extraction-chain model in
+this document. It implements only a restricted overload-selection substrate:
+
+- source-declared overload sets in the namespace graph;
+- policy visibility and body-entry filtering;
+- top-pattern applicability for binders, named discard patterns, and the
+  restricted `_ if | else: type` or-pattern;
+- the formal extraction-specificity tuple for the supported shapes;
+- selected delete-body diagnostics and simple forwarding-body values.
+
+Not implemented in v0.8:
+
+- D/Done reduction;
+- `A - S + Done(D)` control-flow state transformation;
+- guarded branch invocation;
+- short-circuit invocation;
+- pattern-space algebra beyond the restricted top-pattern matching needed for
+  overload selection.
+
+The `|` in `meta | runtime` is policy-set union in declaration-policy context.
+The `|` in `_ if | else: type` is restricted pattern-side or material in
+parameter-pattern context. Neither use is expression-level operator lookup,
+and neither is implemented by source-declared `+`.
+
 ## 2. Core Principles
 
 ### 2.1 Pattern spaces are static objects, not arbitrary sets

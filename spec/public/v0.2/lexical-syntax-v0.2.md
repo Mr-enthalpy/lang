@@ -297,8 +297,10 @@ symbol variants, listed below with their source spelling and lexical identity.
 | `TripleEqual` | `===` | Triple-equal (alias binding delimiter) |
 
 `TripleEqual` is a structural delimiter for alias binding (`let binder ===
-EntityRef`). It is not an operator spelling and does not denote equality or
-comparison semantics.
+EntityRef`) at the lexer level. In ordinary expression context, the parser may
+reinterpret it as a non-associative binary operator spelling for source
+preservation. Neither use denotes equality, forwarding, or comparison semantics
+at the lexer/parser boundary.
 
 `Less` and `Greater` are symbols at the lexer level. In expression and
 operator contexts the parser may reinterpret them as operator spellings. In
@@ -309,13 +311,14 @@ delimit a DeduceList (`<...>`). These are parser-level decisions documented in
 ## 10. Operator spellings
 
 The lexer produces 30 `TokenKind::Operator` spellings via maximal-munch
-(longest-match) tokenization. Two additional operator-name spellings, `<` and
-`>`, are lexed as `Symbol::Less` / `Symbol::Greater` and may be reinterpreted
-by parser contexts. `[]` is a contextual paired operator spelling and is never
-produced by the lexer as a single token.
+(longest-match) tokenization. Three additional operator-name spellings, `<`,
+`>`, and `===`, are lexed as structural `Symbol` tokens and may be
+reinterpreted by parser contexts. `[]` is a contextual paired operator spelling
+and is never produced by the lexer as a single token.
 
-Structural symbols `=>`, `->`, `|>`, `..`, `::`, and `===` are not operator
-spellings. They are `Symbol` tokens (see §9).
+Structural symbols `=>`, `->`, `|>`, `..`, and `::` are not operator spellings.
+They are `Symbol` tokens (see §9). `===` is also a `Symbol` token, but ordinary
+expression parsing may reinterpret it as an operator spelling.
 
 | Category | Spellings |
 |---|---|
@@ -326,15 +329,15 @@ spellings. They are `Symbol` tokens (see §9).
 | 2-char comparison/equality | `<=`, `>=`, `==`, `!=` |
 | 2-char shift | `<<`, `>>` |
 | 1-char | `+`, `-`, `*`, `/`, `!`, `&`, `\|`, `@`, `~`, `^`, `$`, `?` |
-| Symbol-lexed, parser-reinterpreted | `<`, `>` |
+| Symbol-lexed, parser-reinterpreted | `<`, `>`, `===` |
 | Contextual paired bracket | `[]` |
 
 ### 10.1 Symbol-lexed operator names
 
-The spellings `<` and `>` are lexed as `Symbol::Less` and `Symbol::Greater`,
-not as operator tokens. The parser may reinterpret them as operator spellings
-in expression and operator contexts. In strong binding contexts they may
-delimit a DeduceList (`<...>`).
+The spellings `<`, `>`, and `===` are lexed as structural symbols, not as
+operator tokens. The parser may reinterpret them as operator spellings in
+expression and operator contexts. In strong binding contexts `<` and `>` may
+delimit a DeduceList (`<...>`), and `===` may delimit alias binding.
 
 ### 10.2 Contextual bracket-call operator
 

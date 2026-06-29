@@ -13,11 +13,13 @@ Program
               Pipe
                 Segment has_incoming=false
                   OperatorExpr
-                    Atom
-                      Name T
-                  OperatorExpr
-                    Atom
-                      Name y
+                    OperatorSugar fixity=Binary operator="==="
+                      lhs:
+                        Atom
+                          Name T
+                      rhs:
+                        Atom
+                          Name y
         with_clause:
           None
         initializer:

@@ -132,7 +132,15 @@ pub fn expand_meta_initializer_via_invocation(
             Some(resolved.callee.provenance),
         )));
     };
-    let primitive = meta_function.primitive;
+    let Some(primitive) = meta_function.primitive else {
+        return Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "meta hard error: `{}` is source-declared and must be invoked through overload selection",
+                resolved.callee.name
+            ),
+            Some(resolved.callee.provenance),
+        )));
+    };
     let primitive_name = match primitive {
         CoreMetaFunction::Struct => "struct",
         CoreMetaFunction::Assert => "assert",

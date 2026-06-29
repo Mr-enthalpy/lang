@@ -1,12 +1,8 @@
 # Overload Resolution Design
 
-**Status: Non-normative future design. Not implemented in v0.6–v0.8.**
-Overload resolution is deferred to v0.10+ and depends on the pattern-space
-and extraction-chain infrastructure defined in
-`spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`. The v0.7-prep
-work (`PolicyFlag`, `PolicySet`, `PolicyEnv::Meta`) provides the self-policy
-filtering layer (step C2) that future overload resolution will invoke; all
-other steps are design specification only.
+**Status: Mixed.** Full overload resolution remains non-normative future
+design. v0.8 implements only the restricted source-declared meta-overload
+selection slice described in §0.1.
 
 This document remains the broader overload-resolution design. The earlier
 pattern/type candidate-preparation subset used by future meta object invocation
@@ -15,6 +11,91 @@ subset is the narrower candidate model — argument/parameter shapes, applicabil
 and a constrained specificity ordering — that the meta invocation engine needs;
 it is **not** equivalent to full runtime overload resolution, which this document
 continues to specify.
+
+---
+
+## 0.1 v0.8 restricted implemented slice
+
+The v0.8 implementation is deliberately narrower than this full design. It
+supports source-declared callable/meta-function overloads harvested through:
+
+```text
+source text
+  -> lexer
+  -> parser
+  -> normalizer
+  -> declaration harvesting
+  -> namespace graph symbols
+  -> overload candidate construction
+```
+
+Implemented for this slice:
+
+- multiple same-name callable object-role children under one namespace node;
+- non-call lookup of a same-name overload set as ambiguity, not silent choice;
+- `meta | runtime` declaration-policy elaboration to symbol self-policy
+  `{ Meta, Runtime }`;
+- `: meta ->` body-entry policy as `{ Meta }`;
+- return-object policy defaulting to the symbol self-policy;
+- C0 from selected namespace graph children by name, role, arity, and
+  source-callable shape;
+- C2 self-policy filtering for `MetaAction` and metadata for
+  `RuntimeBinding`;
+- C3 restricted parameter extraction-pattern applicability;
+- C4 body-entry eligibility for demanded meta execution;
+- C7' extraction-pattern specificity with the lexicographic tuple in §4;
+- unique selection or hard ambiguity diagnostics;
+- selected delete-body diagnostics and simple `r === x` forwarding bodies.
+
+Explicitly not implemented in v0.8:
+
+- full runtime overload resolution;
+- concept legality or concept ordering (`C5`, `C6`);
+- first-order instantiation preference (`C8`);
+- lifetime precondition matching or lifetime specificity (`C9`, `C10`);
+- ADL, unrestricted lookup, or global search for all symbols of a name;
+- D/Done reduction or control-flow pattern transformation;
+- guarded branch invocation, short-circuit invocation, or full meta block
+  interpretation.
+
+Declaration order is not a semantic tiebreaker. When implemented stages leave
+two equal maximal candidates, selection reports ambiguity.
+
+`meta | runtime` is a policy expression in declaration-policy context. Its
+`|` is policy-set union. It is not pattern-space canonical sum, not
+expression-level operator lookup, and not evidence that the body may execute
+under runtime policy. Pattern-side forms such as `_ if | else: type` are parsed
+and interpreted in parameter-pattern context only.
+
+Three policy planes remain separate:
+
+```text
+symbol self-policy  -> lookup visibility
+body-entry policy   -> execution permission
+return-object policy -> result object capability
+```
+
+For:
+
+```lang
+meta | runtime let + =
+  (self, t: type, u: type): meta -> let r: type =>
+{
+  r === t;
+};
+```
+
+v0.8 elaborates:
+
+```text
+symbol self-policy = { Meta, Runtime }
+body-entry policy = { Meta }
+return-object policy = { Meta, Runtime }
+```
+
+The current `+` overload support is not compiler-intrinsic set union. `+`
+remains a source-declared locatable operator/callable symbol, and candidate
+sets come from the selected namespace graph view.
 
 ---
 
@@ -395,8 +476,8 @@ if |C10| > 1 → error: ambiguous overload
 ```
 
 Neither zero nor multiple candidates are acceptable. There is no fallback to
-declaration order. Declaration order may be used for diagnostic message
-ordering only.
+where a declaration was written. The written listing may be used for diagnostic
+message presentation only.
 
 ---
 

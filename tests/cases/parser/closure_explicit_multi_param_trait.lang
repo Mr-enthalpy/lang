@@ -1,0 +1,1 @@
+(self, t: type): meta -> let r: type => { r === t }

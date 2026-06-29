@@ -1,0 +1,62 @@
+let unit: type = uint8;
+let int: type = uint16;
+let if: type = uint8;
+let else: type = uint16;
+
+meta | runtime let + =
+  (self, t: type, u: type): meta -> let r: type =>
+{
+  r === t;
+};
+
+meta | runtime let + =
+  (self, _ unit: type, _ unit: type): meta -> let r: type =>
+{
+  r === unit;
+};
+
+meta | runtime let + =
+  (self, t: type, _ unit: type): meta -> let r: type =>
+{
+  r === t;
+};
+
+meta | runtime let + =
+  (self, _ unit: type, t: type): meta -> let r: type =>
+{
+  r === t;
+};
+
+meta | runtime let + =
+  (self, _ if: type, u: type): meta -> let r: type =>
+  ("cannot combine bare if") delete;
+
+meta | runtime let + =
+  (self, _ else: type, u: type): meta -> let r: type =>
+  ("cannot combine bare else") delete;
+
+meta | runtime let + =
+  (self, t: type, _ if: type): meta -> let r: type =>
+  ("cannot combine into bare if") delete;
+
+meta | runtime let + =
+  (self, t: type, _ else: type): meta -> let r: type =>
+  ("cannot combine into bare else") delete;
+
+meta | runtime let either =
+  (self, _ if | else: type, u: type): meta -> let r: type =>
+{
+  r === u;
+};
+
+meta | runtime let bad =
+  (self, t: type, u: type): meta -> let r: type =>
+{
+  r === t | u;
+};
+
+meta | runtime let runtime_body =
+  (self, t: type): runtime -> let r: type =>
+{
+  r === t;
+};

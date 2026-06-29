@@ -1,6 +1,9 @@
 # Meta Object Invocation and Policy Reduction
 
-**Status: Non-normative future design. Not current public language behavior. The current implementation only contains a narrow early-meta/source-verification slice. This document specifies the intended model that later phases should converge toward.**
+**Status: Mixed.** This remains the broader future invocation design. The
+current implementation contains the earlier source-verification/core-meta path
+plus a restricted v0.8 source-declared meta-overload invocation slice described
+in §0.1.
 
 This document specifies a single invocation model for the language. Its claim is
 that compile-time, meta-time, and runtime behavior are not separate languages
@@ -14,6 +17,52 @@ It is a future design. It is not a general macro system, not a full type
 checker, not a runtime evaluator, and not a full policy checker. It defines the
 invocation *frame* that later passes will use; it does not define the entire
 pattern system, type system, or runtime.
+
+## 0.1 v0.8 restricted source-declared meta invocation
+
+v0.8 implements a bounded formal invocation path for selected source-declared
+meta overloads:
+
+```text
+namespace graph overload candidates
+  -> policy and extraction-pattern selection
+  -> unique selected source callable
+  -> restricted selected-body evaluator
+  -> MetaInvocationResult::Value(...) or MetaInvocationResult::Diagnostic(...)
+```
+
+This path remains pure. It does not install namespace graph deltas; binding or
+materialization remains the graph-installation boundary.
+
+Supported selected body forms:
+
+- delete body, such as `("message") delete`, returns
+  `MetaInvocationResult::Diagnostic(...)`;
+- simple forwarding equality, such as `{ r === t; }` or `{ r === unit; }`,
+  returns `MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(...))`
+  when the forwarded type-pattern value is available in the graph.
+
+Unsupported selected body forms return hard diagnostics. In particular, a body
+that requires guarded branch evaluation, predicate calls, postfix `?`,
+short-circuit behavior, D/Done reduction, or a full meta block interpreter is
+outside this v0.8 slice. `delete` is not a value and there is no
+`CoreMetaFunction::Delete`.
+
+The body-entry policy is derived from the selected closure/function head, not
+from symbol visibility. For example:
+
+```lang
+meta | runtime let + =
+  (self, t: type, u: type): meta -> let r: type =>
+{
+  r === t;
+};
+```
+
+has symbol self-policy `{ Meta, Runtime }`, body-entry policy `{ Meta }`, and
+return-object policy `{ Meta, Runtime }` by default. Runtime lookup may see the
+symbol metadata if that lookup phase is requested, but runtime execution must
+not enter this meta-only body.
 
 ## 1. Purpose
 
@@ -140,11 +189,13 @@ Reading the layers from the top:
   body-entry policy is compatible with the execution environment the call site
   demands.
 
-The current implementation realizes only a narrow part of this pipeline:
-namespace graph lookup, the `PolicyEnv::Meta` visibility environment, the core
-meta-functions, and the source verification operations. Argument-shape and
-pattern/type candidate matching — the applicable and executable layers — are
-future work and are not implemented.
+The current implementation realizes this pipeline only for two narrow paths:
+the earlier core-meta/source-verification path, and the v0.8 restricted
+source-declared meta-overload path. The v0.8 path has argument-shape matching,
+restricted parameter-pattern applicability, body-entry filtering, and selected
+simple-body evaluation, but not full runtime overload resolution, concepts,
+lifetime preconditions, guarded branch execution, or arbitrary meta block
+interpretation.
 
 A formal sketch of the intended end-to-end frame:
 
@@ -156,9 +207,9 @@ A formal sketch of the intended end-to-end frame:
 Γ; ExecutionEnv ⊢ invoke(selected_callable, args) ⇓ InvocationResult
 ```
 
-This sketch is a target, not a description of present behavior. Only the first
-line (policy-filtered lookup) and a hardcoded primitive dispatch for `struct`
-and `verify` exist today.
+This sketch is the target for general invocation. v0.8 proves the path for a
+restricted source-declared meta-overload subset and leaves the omitted layers
+explicitly deferred.
 
 ## 4. Partial meta reduction versus strict meta execution
 
@@ -411,20 +462,25 @@ call-chain material, not a parser-produced call node.
 
 ## 8. Relation to existing early-meta slice
 
-The model above is the destination. The current implementation is a small step
-toward it, useful for grounding the design but not a definition of it.
+The model above is the destination. The current implementation contains two
+bounded steps toward it, useful for grounding the design but not a definition
+of full invocation.
 
 Current state:
 
-- `crates/lang_build` currently implements a narrow early-meta slice over the
-  namespace graph.
+- `crates/lang_build` implements a narrow early-meta slice over the namespace
+  graph.
 - `struct` is a core meta-function symbol resolved through the namespace graph,
   not a parser keyword.
 - `verify` is a core meta-visible verification namespace/object, with
   verification operations installed below it as core symbols.
-- `PolicyEnv::Meta` is implemented as lookup-visibility filtering only.
-- The current early-meta and verification behavior is not yet the full
-  invocation model; it is a hardcoded vertical slice.
+- Source-declared callable/meta-function overloads can be harvested into graph
+  symbols and selected by the restricted v0.8 overload path.
+- `PolicyEnv::Meta` and `PolicyEnv::Runtime` support visibility metadata; the
+  restricted overload selector also checks selected body-entry policy before
+  meta execution.
+- The current early-meta, verification, and v0.8 overload behavior are not yet
+  the full invocation model; they are bounded vertical slices.
 
 Intended convergence: the existing `struct` and `verify` paths should eventually
 stop being bespoke code and instead become clients of one shared meta invocation

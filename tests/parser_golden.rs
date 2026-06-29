@@ -593,6 +593,11 @@ fn closure_explicit_multi_param() {
 }
 
 #[test]
+fn closure_explicit_multi_param_trait() {
+    assert_parser_case("closure_explicit_multi_param_trait", false);
+}
+
+#[test]
 fn closure_product_extract_explicit_let() {
     assert_parser_case("closure_product_extract_explicit_let", false);
 }
@@ -1063,6 +1068,11 @@ fn canonical_product_double_trailing_unit() {
 }
 
 #[test]
+fn canonical_pattern_bar_param() {
+    assert_parser_case("canonical_pattern_bar_param", false);
+}
+
+#[test]
 fn newline_between_coloncolon_and_leaf() {
     assert_parser_case("newline_between_coloncolon_and_leaf", false);
 }
@@ -1115,6 +1125,11 @@ fn operator_comparison() {
 #[test]
 fn operator_equality() {
     assert_parser_case("operator_equality", false);
+}
+
+#[test]
+fn operator_triple_equal_forwarding_expr() {
+    assert_parser_case("operator_triple_equal_forwarding_expr", false);
 }
 
 #[test]

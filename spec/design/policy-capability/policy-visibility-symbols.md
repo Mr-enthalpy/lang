@@ -77,23 +77,23 @@ policy let ...
 For example:
 
 ```text
-runtime + meta let Vec: _: fn = ...
+runtime | meta let Vec: _: fn = ...
 ```
 
-Here the leftmost `runtime + meta` annotates the symbol `Vec`'s own policy —
+Here the leftmost `runtime | meta` annotates the symbol `Vec`'s own policy —
 not the function body's entry policy, and not the return-value policy.
 
 The function body's entry policy is specified through the function arrow or
 function trait annotation:
 
 ```text
-(T: type): meta -> meta + runtime let r: type => { ... }
+(T: type): meta -> meta | runtime let r: type => { ... }
 ```
 
 - `meta` describes the function body execution environment.
 - The environment begins at the parameter binding; policy is not computed only
   from the `{ ... }` body.
-- The return slot `meta + runtime let r: type` annotates the returned object
+- The return slot `meta | runtime let r: type` annotates the returned object
   `r`'s own policy.
 
 ## 3.1 Symbol visibility policy vs callable execution policy
@@ -143,7 +143,7 @@ symbol visible under PolicyEnv::Meta
 Generated field functions are the key v0.7-prep example:
 
 ```text
-meta + runtime let field::ref::T =
+meta | runtime let field::ref::T =
   (self, object: T ref): runtime -> runtime let r: field_type ref => { ... }
 ```
 
@@ -151,7 +151,7 @@ This records three distinct planes:
 
 ```text
 field::ref::T symbol policy:
-  meta + runtime
+  meta | runtime
 
 field::ref::T function body entry policy:
   runtime
@@ -234,14 +234,14 @@ a simple parent-child chain.
 enters. It is not a general `let`-side policy annotation.
 
 ```text
-runtime + meta let Vec: _: fn =
-  (T: type): meta -> meta + runtime let r: type => { ... }
+runtime | meta let Vec: _: fn =
+  (T: type): meta -> meta | runtime let r: type => { ... }
 ```
 
-- `runtime + meta` — `Vec`'s own symbol policy.
+- `runtime | meta` — `Vec`'s own symbol policy.
 - `meta` — function body execution policy.
 - The parameter `T` is already in the `meta` environment from its binding point.
-- The return slot `r` has policy `meta + runtime`.
+- The return slot `r` has policy `meta | runtime`.
 - The entry policy and the exit policy are not required to be identical.
 - When not explicit, inference or explicit projection checking determines legality
   (deferred to a later stage).

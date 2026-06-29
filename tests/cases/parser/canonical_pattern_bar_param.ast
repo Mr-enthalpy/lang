@@ -1,0 +1,37 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              PatternSkeleton
+                                CanonicalSegment
+                                  elements:
+                                    CanonicalWildcard _
+                                    CanonicalName role=NodeName name=if
+                                    CanonicalName role=NodeName name=else
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name type
+                            with_clause:
+                              None
+                            initializer:
+                              None
+                BodyBlock
+                  forms:

@@ -107,6 +107,12 @@ syntax-level operator names:
 +=  -=  *=  /=  &=  |=  <<=  >>=
 ```
 
+`===` is lexed as `Symbol::TripleEqual` because alias-let uses it as a
+structural delimiter. In ordinary expression context, the parser may
+reinterpret that structural token as a non-associative binary operator
+spelling for source preservation. This does not give `===` equality, aliasing,
+or forwarding semantics at parse time.
+
 Operator-aware tokenization uses maximal munch: when multiple operator
 spellings can start at the same source position, choose the longest spelling.
 For example, `<<=`, `&=`, `|=`, `&&`, `||`, `<=`, `++`, and `==` are each
@@ -772,6 +778,12 @@ CanonicalAtom ::=
 CanonicalNavPath ::= Name ("::" Name)*
 ```
 
+In a canonical-skeleton segment, a top-level `|` may separate adjacent
+pattern-side alternatives for restricted parameter-pattern preservation, for
+example `_ if | else`. The parser keeps this confined to canonical-skeleton
+contexts. It is not a policy-expression union, not expression-level operator
+lookup, and not semantic pattern-space canonical-sum evaluation.
+
 AST:
 
 ```text
@@ -1405,15 +1417,15 @@ declaration and must not be lowered as an ordinary operator call.
 Normalization must special-case this shape and rewrite it to
 `()zero::(x |> type) - x`.
 
-Comparison, equality, and equals-suffixed operator chains are
+Comparison, equality, `===`, and equals-suffixed operator chains are
 non-associative in this phase. The parser diagnoses:
 
 ```text
 chained non-associative operator requires explicit grouping
 ```
 
-for ungrouped syntax such as `a < b < c`, `a == b == c`, `a += b += c`, and
-`a &= b &= c`.
+for ungrouped syntax such as `a < b < c`, `a == b == c`, `a === b === c`,
+`a += b += c`, and `a &= b &= c`.
 
 ### 8.5 Member sugar
 
@@ -2017,7 +2029,12 @@ A `{ ... }` body-like form is assigned by its immediate syntactic owner:
 3. A successfully parsed `FnHeadPrefix` followed by `=> { ... }` is parsed as
    `ExplicitClosureAst`.
 
-4. A successfully parsed `FnHeadPrefix` followed directly by `{ ... }` without
+4. A parenthesized product followed by closure-head material such as `:`,
+   `->`, a head-clause keyword, or `=>` commits to explicit closure-head
+   parsing. This allows heads such as `(self, t: type): meta -> r => { ... }`
+   to parse as closures rather than product expressions.
+
+5. A successfully parsed `FnHeadPrefix` followed directly by `{ ... }` without
    `=>` is invalid and produces `InvalidClosureHead`; it is not reinterpreted as
    an in-place closure.
 
@@ -2264,8 +2281,10 @@ outer navigation component after `::`, matching ordinary Raw AST navigation:
 `xxx::(int Vec::std)` is valid, while a grouped expression as the innermost
 component (`(int Vec::std)::ns`) emits `InvalidEntityRef`.
 
-`===` is a structural delimiter token (`Symbol::TripleEqual`), not an
-expression operator. It is not available as `OperatorName`.
+In alias-let dispatch, `===` is a structural delimiter token
+(`Symbol::TripleEqual`). In ordinary expression context, the same token may be
+reinterpreted as an operator spelling. It is not available as an alias
+`OperatorName`.
 
 `<` is not accepted as an alias binder; it goes to extract-let.
 

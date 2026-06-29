@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use lang_syntax::{
-    norm::NormNavComponent, NormAliasBinder, NormAnnotation, NormDecl, NormForm, NormOrigin,
-    NormPattern, NormProgram,
+    norm::NormNavComponent, NormAliasBinder, NormAnnotation, NormClosure, NormDecl, NormExpr,
+    NormForm, NormOrigin, NormPattern, NormProgram,
 };
 
 use crate::{
@@ -14,11 +14,12 @@ use crate::{
     manifest::{BuildManifest, NamespaceMount},
     meta::try_expand_early_meta_initializer,
     model::{
-        Diagnostic, DiagnosticSeverity, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, Provenance, SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
-        TypeObject,
+        Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceDelta, NamespaceNode,
+        NamespaceNodeId, NamespaceNodeKind, PolicySet, Provenance, SourceCallableObject,
+        SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
     },
-    policy_set_meta_runtime, policy_set_runtime,
+    policy_expr::elaborate_declaration_policy_expr,
+    policy_metadata, policy_set_meta, policy_set_meta_runtime, policy_set_runtime,
     source::SourceFragment,
     verify::evaluate_source_verifications as evaluate_verify_forms,
 };
@@ -267,6 +268,7 @@ impl CompilationWorld {
 
         let binder_name = match &slot.value_pattern {
             NormPattern::Binder { name, .. } => name.clone(),
+            NormPattern::OperatorBinder { spelling, .. } => spelling.clone(),
             NormPattern::Nav { .. }
             | NormPattern::Sequence { .. }
             | NormPattern::Skeleton { .. } => {
@@ -311,6 +313,24 @@ impl CompilationWorld {
                     .install_delta(expansion.namespace_delta)
                     .map_err(BuildError::from)?;
                 self.diagnostics.extend(expansion.diagnostics);
+                return Ok(());
+            }
+        }
+
+        if let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() {
+            if closure.head.is_some() {
+                let delta = source_callable_delta(
+                    &self.snapshot,
+                    namespace,
+                    &binder_name,
+                    slot.policy.as_deref(),
+                    closure,
+                    declaration_provenance.clone(),
+                )?;
+                self.snapshot = self
+                    .snapshot
+                    .install_delta(delta)
+                    .map_err(BuildError::from)?;
                 return Ok(());
             }
         }
@@ -600,6 +620,91 @@ fn declared_type_placeholder_delta(
     });
     delta.insert_symbol(parent, symbol);
     delta
+}
+
+fn source_callable_delta(
+    snapshot: &NamespaceGraphSnapshot,
+    parent: NamespaceNodeId,
+    name: &str,
+    policy_expr: Option<&NormExpr>,
+    closure: &NormClosure,
+    provenance: Provenance,
+) -> Result<NamespaceDelta, BuildError> {
+    let symbol_policy = elaborate_declaration_policy_expr(policy_expr, provenance.clone())
+        .map_err(BuildError::single)?;
+    let body_entry_policy =
+        body_entry_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
+    ensure_return_policy_supported(closure, provenance.clone()).map_err(BuildError::single)?;
+
+    let mut delta = snapshot.empty_delta();
+    let symbol_id = delta.allocate_symbol_id();
+    let mut symbol = SymbolObject::placeholder(
+        symbol_id,
+        name,
+        SymbolKind::MetaFunction,
+        SourceCategory::DeclaredSymbol,
+        Some(parent),
+        provenance.clone(),
+    );
+    symbol.policy_metadata.policy_set = symbol_policy.clone();
+    symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
+        function_symbol_id: symbol_id,
+        primitive: None,
+        source_callable: Some(SourceCallableObject {
+            closure: closure.clone(),
+            provenance: provenance.clone(),
+        }),
+        function_policy: policy_metadata(symbol_policy.clone()),
+        body_entry_policy: policy_metadata(body_entry_policy),
+        return_object_policy: policy_metadata(symbol_policy),
+    });
+    delta.insert_symbol(parent, symbol);
+    Ok(delta)
+}
+
+fn body_entry_policy_from_closure(
+    closure: &NormClosure,
+    provenance: Provenance,
+) -> Result<PolicySet, Diagnostic> {
+    let Some(head) = &closure.head else {
+        return Err(Diagnostic::hard_error(
+            "source callable declaration requires an explicit closure head",
+            Some(provenance),
+        ));
+    };
+    let Some(annotation) = &head.fn_item_trait else {
+        return Err(Diagnostic::hard_error(
+            "source callable declaration requires a body-entry annotation such as `: meta ->`",
+            Some(provenance),
+        ));
+    };
+    match &annotation.pattern {
+        NormPattern::Name { name, .. } if name == "meta" => Ok(policy_set_meta()),
+        NormPattern::Name { name, .. } if name == "runtime" => Ok(policy_set_runtime()),
+        _ => Err(Diagnostic::hard_error(
+            "source callable body-entry policy must currently be `meta` or `runtime`",
+            Some(provenance),
+        )),
+    }
+}
+
+fn ensure_return_policy_supported(
+    closure: &NormClosure,
+    provenance: Provenance,
+) -> Result<(), Diagnostic> {
+    let Some(head) = &closure.head else {
+        return Ok(());
+    };
+    let Some(returns) = &head.returns else {
+        return Ok(());
+    };
+    if returns.policy.is_some() {
+        return Err(Diagnostic::hard_error(
+            "unsupported explicit return policy annotation in restricted v0.8 callable declaration",
+            Some(provenance),
+        ));
+    }
+    Ok(())
 }
 
 fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {

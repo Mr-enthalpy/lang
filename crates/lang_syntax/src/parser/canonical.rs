@@ -1,6 +1,6 @@
 use crate::{
     CanonicalNameRole, CanonicalProductElementAst, CanonicalSkeletonAst, DeduceListAst,
-    DiagnosticCode, ErrorAst, NameAst, Symbol, TokenKind,
+    DiagnosticCode, ErrorAst, NameAst, OperatorSpelling, Symbol, TokenKind,
 };
 
 use super::form::Parser;
@@ -17,6 +17,13 @@ pub fn parse_canonical_skeleton(
         && !parser.cursor.at_name("with")
         && !parser.is_form_boundary()
     {
+        if matches!(
+            parser.cursor.peek_non_trivia().kind,
+            TokenKind::Operator(OperatorSpelling::Pipe)
+        ) {
+            parser.cursor.bump_non_trivia();
+            continue;
+        }
         if let Some(element) = parse_canonical_element(parser, deduce) {
             elements.push(element);
         } else {

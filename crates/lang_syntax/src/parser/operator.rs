@@ -173,7 +173,9 @@ fn parse_operand(
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
                 if matches!(
                     after.kind,
-                    TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow)
+                    TokenKind::Symbol(
+                        Symbol::Colon | Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow
+                    )
                 ) || token_index_starts_head_clause(parser, idx)
                 {
                     let atom = parse_atom(parser)?;
@@ -427,7 +429,6 @@ fn is_operator_expr_boundary(
                     | Symbol::ThinArrow
                     | Symbol::Equal
                     | Symbol::Colon
-                    | Symbol::TripleEqual
             )
     )
 }
@@ -493,7 +494,7 @@ fn binary_info(spelling: OperatorSpelling) -> Option<BinaryInfo> {
             precedence: 7,
             associativity: Associativity::NonAssociative,
         },
-        EqualEqual | BangEqual => BinaryInfo {
+        EqualEqual | BangEqual | TripleEqual => BinaryInfo {
             precedence: 6,
             associativity: Associativity::NonAssociative,
         },

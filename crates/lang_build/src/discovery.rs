@@ -112,7 +112,7 @@ impl SourceDiscoveryReport {
 
 impl SourceDiscoveryConfig {
     /// Build a discovery configuration from API-level source roots, assigning a
-    /// stable `root_index` by declaration order.
+    /// stable `root_index` by caller-provided root ordering.
     pub fn from_source_roots(roots: &[SourceRoot]) -> Self {
         Self {
             roots: roots
