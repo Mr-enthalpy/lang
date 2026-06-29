@@ -97,11 +97,11 @@ The action must be explicit after lowering; the IR must not carry a deferred
 The inserted action can be described schematically in language-shaped form:
 
 ```lang
-arg: type |>
+(arg: type)? |>
   if { arg; } |>
   else {
       arg |> <T: type>(arg: T) {
-          T: has_pass |>
+          (T: has_pass)? |>
               if {
                   arg;
               } |>
@@ -114,19 +114,22 @@ arg: type |>
 
 Semantic points:
 
-1. `arg: type |> if { arg; }` means: non-value argument material passes through
-   unchanged. Non-value material includes type objects, rank objects, namespace
-   objects, meta objects, pattern objects, verification objects, and future
-   manifest/package objects.
+1. `(arg: type)? |> if { arg; }` means: the guard `arg: type` produces a
+   bool-protected result `(if | else) bool`; `?` opens the bool extraction
+   view. Non-value argument material passes through unchanged. Non-value
+   material includes type objects, rank objects, namespace objects, meta
+   objects, pattern objects, verification objects, and future manifest/package
+   objects.
 
 2. The `else` branch handles value arguments only.
 
 3. `arg |> <T: type>(arg: T) { ... }` binds the first-order type `T` of value
    argument `arg`.
 
-4. `T: has_pass` stands for the guarded predicate that the argument already
-   carries an explicit pass action. If so, the lowering preserves `arg` and does
-   not automatically rewrite it.
+4. `(T: has_pass)? |> if { ... }` means: the guarded predicate produces
+   `(if | else) bool`, then `?` exposes the control-pattern view. If explicit
+   pass is present, the lowering preserves `arg` and does not automatically
+   rewrite it.
 
 5. `arg |> (T |> get_default_pass)` means: when no explicit pass is present,
    obtain the default pass action from `T`'s default pass policy / static facts

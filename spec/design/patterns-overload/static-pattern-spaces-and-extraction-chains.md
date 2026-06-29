@@ -890,11 +890,16 @@ For a bool-like condition:
 bool_cond?
 ```
 
-the operator produces a closed sum pattern space:
+the operator exposes the value's extraction view, producing the control-pattern
+space:
 
 ```text
 if | else
 ```
+
+under the bool-protected result `(if | else) bool`. Logical, predicate, and
+guard expressions do not produce naked `if | else` pattern space; they produce
+the wrapped bool result, and `?` explicitly exposes the extraction view.
 
 Here `if` and `else` are not lexer keywords and not built-in control-flow syntax. They are mutually exclusive branch names in the pattern space produced by `?`.
 

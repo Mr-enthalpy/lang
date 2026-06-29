@@ -17,7 +17,28 @@ A recurring invariant across this block: **default strategies (`in`, default
 error propagation, automatic call-mode selection) exist only before lowering /
 meta invocation. The final IR receives only fully decided actions.**
 
-For v0.8-adjacent type-to-type meta construction work, read
+## Bool-protected guard rule
+
+Logical, predicate, and guard expressions do not produce a naked `if | else`
+pattern space. They produce a bool-protected control result:
+
+```text
+(if | else) bool
+```
+
+The `bool` construction prevents naked control-pattern material from being
+combined as an ordinary result pattern. To use such a value as an extraction
+chain input, the code must explicitly expose its extraction view with `?`:
+
+```text
+cond? |> if { ... } |> else { ... }
+```
+
+Thus `cond |> if { ... } |> else { ... }` is not the canonical form when
+`cond` is a bool value. Mechanical-lowering examples in this block use the
+correct `?`-preceded form.
+
+## For v0.8-adjacent type-to-type meta construction work, read
 `spec/contracts/v0.8-meta-construction-agent-constraints.md` first. Its
 non-value argument boundary applies here: type objects, rank objects, namespace
 objects, meta objects, and pattern objects are not value arguments and must not

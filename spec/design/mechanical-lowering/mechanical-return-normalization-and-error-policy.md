@@ -68,11 +68,11 @@ The inserted normalization action can be described schematically in
 language-shaped form:
 
 ```lang
-r: type |>
+(r: type)? |>
   if { r; } |>
   else {
       r |> <T: type>(r: T) {
-          T |> has(Error) |>
+          (T |> has(Error))? |>
               if {
                   r |> (e Error) {
                       self..return(e Error);
@@ -89,18 +89,23 @@ r: type |>
 
 Semantic points:
 
-1. `r: type |> if { r; }` means: if `r` is non-value material — type-rank
-   material, a type object, meta material, namespace material, pattern material,
-   or similar — return `r` unchanged. It does not enter automatic error
-   normalization.
+1. `(r: type)? |> if { r; }` means: the guard `r: type` produces a
+   bool-protected result `(if | else) bool`; `?` exposes the bool extraction
+   view before the `if` / `else` heads are applied. If `r` is non-value
+   material — type-rank material, a type object, meta material, namespace
+   material, pattern material, or similar — the `if` branch returns `r`
+   unchanged. It does not enter automatic error normalization.
 
 2. The `else` branch handles value returns only.
 
 3. `r |> <T: type>(r: T) { ... }` is rank-pattern / type-binding shape. It binds
    the first-order type `T` of value `r`, then runs guarded predicates over `T`.
 
-4. `T |> has(Error)` is a guarded compile-time predicate. Only when the predicate
-   is true does the error branch run. The branch that is not entered creates no
+4. `(T |> has(Error))? |> if { ... }` means: `T |> has(Error)` produces a
+   bool-protected result `(if | else) bool`. Only after `?` exposes the
+   control-pattern view does the branch chain select `if` or `else`. The
+   predicate is evaluated at compile time. Only when the predicate is true
+   does the error branch run. The branch that is not entered creates no
    `Error` lookup obligation.
 
 5. `r |> (e Error) { ... } |> (val: _) { ... }` is the Error-carrier branch
