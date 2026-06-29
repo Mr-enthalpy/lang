@@ -1,0 +1,85 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Explicit
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName self
+                            annotation:
+                              None
+                            with_clause:
+                              None
+                            initializer:
+                              None
+                          BindingSlot let=false
+                            deduce:
+                              None
+                            pattern:
+                              Binder
+                                TextName t
+                            annotation:
+                              AnnotationExpr
+                                Expr
+                                  Pipe
+                                    Segment has_incoming=false
+                                      OperatorExpr
+                                        Atom
+                                          Name type
+                            with_clause:
+                              None
+                            initializer:
+                              None
+                  fn_item_trait:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name meta
+                  returns:
+                    ReturnClause
+                      slot:
+                        BindingSlot let=true
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName r
+                          annotation:
+                            AnnotationExpr
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Name type
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              OperatorSugar fixity=Binary operator="==="
+                                lhs:
+                                  Atom
+                                    Name r
+                                rhs:
+                                  Atom
+                                    Name t

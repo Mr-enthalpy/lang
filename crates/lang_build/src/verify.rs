@@ -139,7 +139,7 @@ impl VerificationInvocation {
                 ),
             )));
         };
-        let CoreMetaFunction::Verify(primitive) = meta_function.primitive else {
+        let Some(CoreMetaFunction::Verify(primitive)) = meta_function.primitive else {
             return Some(Err(source_verification_error(
                 &operation_origin,
                 format!(
@@ -945,7 +945,8 @@ mod tests {
         operation.policy_metadata.policy_set = policy_set_runtime();
         operation.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
             function_symbol_id: operation_id,
-            primitive: CoreMetaFunction::Verify(VerificationPrimitive::Exists),
+            primitive: Some(CoreMetaFunction::Verify(VerificationPrimitive::Exists)),
+            source_callable: None,
             function_policy: policy_metadata(policy_set_runtime()),
             body_entry_policy: policy_metadata(policy_set_runtime()),
             return_object_policy: policy_metadata(policy_set_runtime()),

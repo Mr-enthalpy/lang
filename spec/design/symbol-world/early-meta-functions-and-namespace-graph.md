@@ -86,25 +86,25 @@ call modes; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-l
 
 | Symbol source | Policy set |
 |---|---|
-| Core namespace symbol | `export + meta + runtime` |
-| Namespace symbols (declared, physical, dependency mount, generated) | `meta + runtime` |
-| Core meta-functions (`struct`, `assert`) | `export + meta` |
-| Core verification namespace and operations (`verify`, `verify::exists`, …) | `export + meta` |
-| Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export + meta + runtime` |
+| Core namespace symbol | `export | meta | runtime` |
+| Namespace symbols (declared, physical, dependency mount, generated) | `meta | runtime` |
+| Core meta-functions (`struct`, `assert`) | `export | meta` |
+| Core verification namespace and operations (`verify`, `verify::exists`, …) | `export | meta` |
+| Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export | meta | runtime` |
 | Source-contributed ordinary value placeholders | `runtime` |
-| Source-contributed type-annotated placeholders (`: type`) | `meta + runtime` |
-| Struct-generated `TypeObject` | `meta + runtime` |
-| Projection namespace symbols (`ref`/`share` under a generated type) | `meta + runtime` |
-| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `meta + runtime` |
+| Source-contributed type-annotated placeholders (`: type`) | `meta | runtime` |
+| Struct-generated `TypeObject` | `meta | runtime` |
+| Projection namespace symbols (`ref`/`share` under a generated type) | `meta | runtime` |
+| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `meta | runtime` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
 
 Generated `struct` expansion currently assigns these policy planes:
 
 | Generated object | Policy plane |
 |---|---|
-| Generated `TypeObject` | symbol policy = `meta + runtime` |
-| Projection namespace `ref` / `share` | symbol policy = `meta + runtime` |
-| Generated field function | symbol policy = `meta + runtime` |
+| Generated `TypeObject` | symbol policy = `meta | runtime` |
+| Projection namespace `ref` / `share` | symbol policy = `meta | runtime` |
+| Generated field function | symbol policy = `meta | runtime` |
 | Generated field function | body entry policy = `runtime` |
 | Generated field function | return object policy = `runtime` |
 
@@ -128,7 +128,7 @@ namespace intermediaries like `core`) is checked against the policy
 environment. Namespace symbols that must be traversed under a policy
 environment therefore carry appropriate traversal policy flags. For v0.7,
 the compiler-seeded `core` namespace symbol is assigned
-`export + meta + runtime` so that explicit paths such as `struct::core`
+`export | meta | runtime` so that explicit paths such as `struct::core`
 and `uint8::core` resolve correctly under `PolicyEnv::Meta`.
 
 `PolicyEnv::Meta` is lookup visibility, not meta execution permission. Meta
@@ -179,7 +179,7 @@ model boundary:
   generated type-associated namespace containing `a::T`, `a::ref::T`,
   `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
   symbols. These field-function symbols are visible under `PolicyEnv::Meta`
-  because their symbol policy is `meta + runtime`, but their callable
+  because their symbol policy is `meta | runtime`, but their callable
   body-entry and return-object policies are runtime-only.
 - Namespace child lookup is role-aware. Object/function symbols and pure
   namespace subspaces can share the same textual child name. Terminal lookup
@@ -571,7 +571,7 @@ field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
 ```
 
-Their symbol policy is `meta + runtime`, so the compiler can resolve and inspect
+Their symbol policy is `meta | runtime`, so the compiler can resolve and inspect
 them during meta/type-checking phases and can construct residual runtime calls
 that reference them. Their callable body-entry policy is `runtime`, and their
 return-object policy is `runtime`; meta lookup visibility does not permit a meta
@@ -775,7 +775,7 @@ a **type-object construction interpreter**.
 - **Declaration-as-assignment / assignment-as-injection** — a `let` inside the
   meta body creates symbols through the NamespaceGraph Capability Layer.
 - **`===`** is symbol alias / forwarding, not a copy.
-- **Explicit return object slot**, e.g. `meta + runtime let r: type`:
+- **Explicit return object slot**, e.g. `meta | runtime let r: type`:
   - `r = t` returns the generated object,
   - `r === t` forwards an existing globally visible symbol.
 - **Generative meta identity** is based on the function symbol + canonical

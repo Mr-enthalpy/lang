@@ -117,7 +117,8 @@ fn insert_meta_function(
     symbol.policy_metadata.policy_set = policy_set;
     symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
         function_symbol_id: symbol_id,
-        primitive,
+        primitive: Some(primitive),
+        source_callable: None,
         function_policy: policy_metadata(symbol.policy_metadata.policy_set.clone()),
         body_entry_policy: policy_metadata(policy_set_meta()),
         return_object_policy: policy_metadata(return_policy),

@@ -21,7 +21,10 @@ pub mod meta_invocation;
 pub mod meta_key;
 pub mod model;
 pub mod normalized_call;
+pub mod overload_pattern;
+pub mod overload_set;
 pub mod pattern_space;
+pub mod policy_expr;
 pub mod product_shape;
 pub mod source;
 pub mod struct_decoder;
@@ -99,15 +102,25 @@ pub use model::{
     ChildNameRole, CoreMetaFunction, Diagnostic, DiagnosticSeverity, ExecutionEnv, FieldObject,
     FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
     NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet, Provenance, ResolverCode,
-    SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload, SyntaxObject,
-    SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive, VisibilityMetadata,
+    SourceCallableObject, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+    SyntaxObject, SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive,
+    VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
+pub use overload_pattern::{
+    decode_param_pattern, match_param_pattern, overload_args_from_classified_shape,
+    OverloadArgShape, PatternMatchOutcome, RestrictedParamPattern, SpecificityTuple,
+};
+pub use overload_set::{
+    construct_c0, invoke_restricted_meta_overload, select_restricted_meta_overload, LookupPhase,
+    OverloadCandidateSet, OverloadSelectionInput, SelectedOverloadCandidate, VisibilityView,
+};
 pub use pattern_space::{
     bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,
     StructLeafTypeExprShape, SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape,
     SymbolPathShape, TypePatternExprShape,
 };
+pub use policy_expr::elaborate_declaration_policy_expr;
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,

@@ -155,8 +155,11 @@ is accepted wherever operator-name positions are syntactically valid.
 general expression parser mode. The alias RHS boundary is hard-only: `;`,
 `}`, or EOF. Residual tokens before a hard boundary produce a diagnostic.
 
-`===` is a structural symbol (`Symbol::TripleEqual`), not an equality operator
-and not an operator spelling.
+In alias-let dispatch, `===` is a structural delimiter
+(`Symbol::TripleEqual`). In ordinary expression context, the parser may
+reinterpret the same spelling as an operator expression spelling for source
+preservation. The alias delimiter use does not imply alias semantics,
+operator lookup, or equality semantics.
 
 `with { ... }` is not accepted in alias binding.
 
@@ -439,6 +442,11 @@ Comparison, equality, and equals-suffixed operator chains are non-associative.
 Ungrouped chains (`a < b < c`, `a == b == c`, `a += b += c`) produce a
 `ChainedNonAssociativeOperator` diagnostic.
 
+The `===` spelling is accepted as an ordinary non-associative binary operator
+expression outside alias-let dispatch. This preserves restricted meta-body
+forms such as `r === t`; the parser does not assign equality, aliasing, or
+forwarding semantics to the operator.
+
 The parser does not perform operator lookup, overload resolution, ADL,
 type-directed lookup, mutation semantics, semantic validation, or semantic
 lowering. Future normalization must desugar operator sugar non-semantically
@@ -542,6 +550,13 @@ The parameter clause is one `ProductExtractAst`. Each element is a binding
 slot in parameter context (no initializer, `with` allowed, `let` optional,
 `<>` allowed per slot).
 
+A parenthesized product in expression position is recognized as the parameter
+clause of an explicit closure head when it is followed by later closure-head
+material such as a fn-item-trait clause (`:`), return clause (`->`), head
+clause, or body delimiter. For example, `(self, t: type): meta -> r => { ... }`
+is parsed as an explicit headed closure, not as a product expression followed
+by an unrelated `:` token.
+
 ### 20.2 Return clause
 
 ```text
@@ -571,6 +586,12 @@ CanonicalElement ::=
   | Literal                   // literal atom
   | CanonicalNavPath          // Name::Name
 ```
+
+In the restricted parameter-pattern forms needed by the v0.8 overload slice,
+a top-level `|` inside a canonical skeleton segment may separate adjacent
+pattern alternatives, as in `_ if | else`. This is parser preservation in a
+strong pattern context. It is not policy union, expression-level operator
+lookup, or pattern-space canonical-sum evaluation.
 
 A `Name` in skeleton position carries a `CanonicalNameRole`:
 

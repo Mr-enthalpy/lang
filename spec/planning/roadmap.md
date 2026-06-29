@@ -365,7 +365,7 @@ Must cover:
 - declaration-as-assignment / assignment-as-injection
 - `let` inside a meta body creates symbols through the namespace graph capability
 - `===` as symbol alias / forwarding, not copy
-- explicit return object slot, e.g. `meta + runtime let r: type`
+- explicit return object slot, e.g. `meta | runtime let r: type`
 - `r = t` returns the generated object; `r === t` forwards an existing globally
   visible symbol
 - generative meta identity = function symbol + canonical args + build/config

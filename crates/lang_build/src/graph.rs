@@ -215,35 +215,67 @@ impl NamespaceGraphSnapshot {
                 .or_else(|| delta.symbols.get(symbol));
 
             if let Some(parent_node) = self.nodes.get(parent) {
-                if let Some(existing_symbol) = parent_node
-                    .children
-                    .get(name)
-                    .and_then(|bucket| bucket.get(*role))
-                {
-                    diagnostics.push(
-                        Diagnostic::hard_error(
-                            format!(
-                                "delta install conflict: symbol `{name}` already exists for role {role:?}"
-                            ),
-                            Some(provenance.clone()),
-                        )
-                        .with_node_context(*parent)
-                        .with_symbol_context(existing_symbol),
-                    );
+                if let Some(bucket) = parent_node.children.get(name) {
+                    match role {
+                        ChildNameRole::Object => {
+                            for existing_symbol in bucket.object_symbols() {
+                                let existing = self.symbols.get(existing_symbol);
+                                if !object_symbols_are_overload_compatible(existing, linked_symbol)
+                                {
+                                    diagnostics.push(
+                                        Diagnostic::hard_error(
+                                            format!(
+                                                "delta install conflict: symbol `{name}` already exists for role {role:?}"
+                                            ),
+                                            Some(provenance.clone()),
+                                        )
+                                        .with_node_context(*parent)
+                                        .with_symbol_context(*existing_symbol),
+                                    );
+                                }
+                            }
+                        }
+                        ChildNameRole::NamespaceSubspace => {
+                            if let Some(existing_symbol) = bucket.namespace_subspace {
+                                diagnostics.push(
+                                    Diagnostic::hard_error(
+                                        format!(
+                                            "delta install conflict: symbol `{name}` already exists for role {role:?}"
+                                        ),
+                                        Some(provenance.clone()),
+                                    )
+                                    .with_node_context(*parent)
+                                    .with_symbol_context(existing_symbol),
+                                );
+                            }
+                        }
+                    }
                 }
 
                 if let (Some(bucket), Some(symbol_object)) =
                     (parent_node.children.get(name), linked_symbol)
                 {
-                    let opposite = match role {
-                        ChildNameRole::Object => bucket.namespace_subspace,
-                        ChildNameRole::NamespaceSubspace => bucket.object,
+                    let opposite_conflict = match role {
+                        ChildNameRole::Object => cross_role_namespace_capable_conflict(
+                            *role,
+                            symbol_object,
+                            bucket
+                                .namespace_subspace
+                                .and_then(|id| self.symbols.get(&id)),
+                        ),
+                        ChildNameRole::NamespaceSubspace => bucket
+                            .object_symbols()
+                            .iter()
+                            .filter_map(|id| self.symbols.get(id))
+                            .any(|opposite| {
+                                cross_role_namespace_capable_conflict(
+                                    *role,
+                                    symbol_object,
+                                    Some(opposite),
+                                )
+                            }),
                     };
-                    if cross_role_namespace_capable_conflict(
-                        *role,
-                        symbol_object,
-                        opposite.and_then(|id| self.symbols.get(&id)),
-                    ) {
+                    if opposite_conflict {
                         diagnostics.push(
                             Diagnostic::hard_error(
                                 format!(
@@ -258,11 +290,11 @@ impl NamespaceGraphSnapshot {
                 }
             }
 
-            if !pending_links.insert((*parent, name.clone(), *role)) {
+            if !pending_links.insert((*parent, name.clone(), *role, *symbol)) {
                 diagnostics.push(
                     Diagnostic::hard_error(
                         format!(
-                            "delta install conflict: duplicate symbol `{name}` in same namespace for role {role:?}"
+                            "delta install conflict: duplicate symbol link `{name}` in same namespace for role {role:?}"
                         ),
                         Some(provenance.clone()),
                     )
@@ -272,14 +304,63 @@ impl NamespaceGraphSnapshot {
 
             let pending_bucket = pending_buckets.entry((*parent, name.clone())).or_default();
             if let Some(symbol_object) = linked_symbol {
-                let opposite = match role {
-                    ChildNameRole::Object => pending_bucket.namespace_subspace,
-                    ChildNameRole::NamespaceSubspace => pending_bucket.object,
+                if *role == ChildNameRole::Object {
+                    for existing_symbol in pending_bucket.object_symbols() {
+                        let existing = self
+                            .symbols
+                            .get(existing_symbol)
+                            .or_else(|| delta.symbols.get(existing_symbol));
+                        if !object_symbols_are_overload_compatible(existing, linked_symbol) {
+                            diagnostics.push(
+                                Diagnostic::hard_error(
+                                    format!(
+                                        "delta install conflict: duplicate symbol `{name}` in same namespace for role {role:?}"
+                                    ),
+                                    Some(provenance.clone()),
+                                )
+                                .with_node_context(*parent)
+                                .with_symbol_context(*existing_symbol),
+                            );
+                        }
+                    }
+                } else if let Some(existing_symbol) = pending_bucket.namespace_subspace {
+                    diagnostics.push(
+                        Diagnostic::hard_error(
+                            format!(
+                                "delta install conflict: duplicate symbol `{name}` in same namespace for role {role:?}"
+                            ),
+                            Some(provenance.clone()),
+                        )
+                        .with_node_context(*parent)
+                        .with_symbol_context(existing_symbol),
+                    );
+                }
+
+                let opposite_conflict = match role {
+                    ChildNameRole::Object => {
+                        let opposite_symbol = pending_bucket
+                            .namespace_subspace
+                            .and_then(|id| self.symbols.get(&id))
+                            .or_else(|| {
+                                pending_bucket
+                                    .namespace_subspace
+                                    .and_then(|id| delta.symbols.get(&id))
+                            });
+                        cross_role_namespace_capable_conflict(*role, symbol_object, opposite_symbol)
+                    }
+                    ChildNameRole::NamespaceSubspace => pending_bucket
+                        .object_symbols()
+                        .iter()
+                        .filter_map(|id| self.symbols.get(id).or_else(|| delta.symbols.get(id)))
+                        .any(|opposite| {
+                            cross_role_namespace_capable_conflict(
+                                *role,
+                                symbol_object,
+                                Some(opposite),
+                            )
+                        }),
                 };
-                let opposite_symbol = opposite
-                    .and_then(|id| self.symbols.get(&id))
-                    .or_else(|| opposite.and_then(|id| delta.symbols.get(&id)));
-                if cross_role_namespace_capable_conflict(*role, symbol_object, opposite_symbol) {
+                if opposite_conflict {
                     diagnostics.push(
                         Diagnostic::hard_error(
                             format!(
@@ -312,7 +393,7 @@ impl Default for NamespaceGraphSnapshot {
 /// Resolver search context for a graph query.
 ///
 /// `current_namespace` is searched first, `explicit_mount_roots` support
-/// source-order explicit paths such as `uint8::core`, and `default_mounts`
+/// explicit paths such as `uint8::core`, and `default_mounts`
 /// support short-name lookup such as `uint8`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolverContext {
@@ -735,6 +816,10 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
             None => true,
             Some(env) => match env {
                 PolicyEnv::Meta => symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta),
+                PolicyEnv::Runtime => symbol
+                    .policy_metadata
+                    .policy_set
+                    .contains(PolicyFlag::Runtime),
             },
         }
     }
@@ -931,10 +1016,8 @@ fn select_symbol_from_bucket<'symbols>(
     let symbol = |id: SymbolId| symbols.get(&id);
     match expectation {
         ResolveExpectation::AnyUnique => {
-            let mut ids = [bucket.object, bucket.namespace_subspace]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
+            let mut ids = bucket.object_symbols().to_vec();
+            ids.extend(bucket.namespace_subspace);
             ids.sort();
             ids.dedup();
             match ids.as_slice() {
@@ -949,14 +1032,14 @@ fn select_symbol_from_bucket<'symbols>(
                 .with_code(ResolverCode::Ambiguous))),
             }
         }
-        ResolveExpectation::Object => bucket.object.and_then(symbol).map(Ok),
+        ResolveExpectation::Object => select_unique_object_symbol(symbols, bucket, name, |_| true),
         ResolveExpectation::NamespaceSubspace => bucket.namespace_subspace.and_then(symbol).map(Ok),
         ResolveExpectation::NamespaceCapableParent => {
             let mut candidates = Vec::new();
             if let Some(namespace_symbol) = bucket.namespace_subspace.and_then(symbol) {
                 candidates.push(namespace_symbol);
             }
-            if let Some(object_symbol) = bucket.object.and_then(symbol) {
+            for object_symbol in bucket.object_symbols().iter().filter_map(|id| symbol(*id)) {
                 if object_symbol.namespace_node().is_some() {
                     candidates.push(object_symbol);
                 }
@@ -971,19 +1054,61 @@ fn select_symbol_from_bucket<'symbols>(
                 .with_code(ResolverCode::Ambiguous))),
             }
         }
-        ResolveExpectation::TypeObject => bucket
-            .object
-            .and_then(symbol)
-            .and_then(|symbol| (symbol.kind == SymbolKind::Type).then_some(Ok(symbol))),
-        ResolveExpectation::MetaFunction => bucket
-            .object
-            .and_then(symbol)
-            .and_then(|symbol| (symbol.kind == SymbolKind::MetaFunction).then_some(Ok(symbol))),
-        ResolveExpectation::FieldFunction => bucket
-            .object
-            .and_then(symbol)
-            .and_then(|symbol| (symbol.kind == SymbolKind::FieldFunction).then_some(Ok(symbol))),
+        ResolveExpectation::TypeObject => {
+            select_unique_object_symbol(symbols, bucket, name, |symbol| {
+                symbol.kind == SymbolKind::Type
+            })
+        }
+        ResolveExpectation::MetaFunction => {
+            select_unique_object_symbol(symbols, bucket, name, |symbol| {
+                symbol.kind == SymbolKind::MetaFunction
+            })
+        }
+        ResolveExpectation::FieldFunction => {
+            select_unique_object_symbol(symbols, bucket, name, |symbol| {
+                symbol.kind == SymbolKind::FieldFunction
+            })
+        }
     }
+}
+
+fn select_unique_object_symbol<'symbols>(
+    symbols: &'symbols BTreeMap<SymbolId, SymbolObject>,
+    bucket: &ChildBucket,
+    name: &str,
+    predicate: impl Fn(&SymbolObject) -> bool,
+) -> Option<Result<&'symbols SymbolObject, Diagnostic>> {
+    let mut candidates = bucket
+        .object_symbols()
+        .iter()
+        .filter_map(|id| symbols.get(id))
+        .filter(|symbol| predicate(symbol))
+        .collect::<Vec<_>>();
+    candidates.sort_by_key(|symbol| symbol.id);
+    match candidates.as_slice() {
+        [symbol] => Some(Ok(*symbol)),
+        [] => None,
+        _ => Some(Err(
+            Diagnostic::hard_error(
+                format!(
+                    "resolver error: non-call lookup of same-name overload set `{name}` requires overload context"
+                ),
+                None,
+            )
+            .with_code(ResolverCode::Ambiguous),
+        )),
+    }
+}
+
+fn object_symbols_are_overload_compatible(
+    existing: Option<&SymbolObject>,
+    incoming: Option<&SymbolObject>,
+) -> bool {
+    matches!(
+        (existing, incoming),
+        (Some(left), Some(right))
+            if left.kind == SymbolKind::MetaFunction && right.kind == SymbolKind::MetaFunction
+    )
 }
 
 fn cross_role_namespace_capable_conflict(

@@ -7,7 +7,7 @@ Program
             OperatorSugar fixity=Binary operator="==="
               lhs:
                 Atom
-                  Name x
+                  Name r
               rhs:
                 Atom
-                  Name y
+                  Name t

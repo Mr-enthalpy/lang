@@ -83,7 +83,8 @@ fn runtime_only_meta_function_is_filtered_under_meta_policy() {
     local_struct.policy_metadata.policy_set = policy_set_runtime();
     local_struct.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
         function_symbol_id: local_struct_id,
-        primitive: CoreMetaFunction::Assert,
+        primitive: Some(CoreMetaFunction::Assert),
+        source_callable: None,
         function_policy: PolicyMetadata::default(),
         body_entry_policy: PolicyMetadata::default(),
         return_object_policy: PolicyMetadata::default(),

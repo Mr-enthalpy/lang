@@ -1,6 +1,9 @@
 # Pattern Normalization and First-Order Overload
 
-**Status: Non-normative future design. Not implemented as current parser, normalizer, type checker, runtime lookup, or full overload resolution behavior.**
+**Status: Mixed.** This remains the broader future design for pattern
+normalization and first-order overload preparation. v0.8 implements only the
+restricted meta-overload subset described in §0.1; full runtime lookup, type
+checking, and full pattern-space reasoning remain future work.
 
 This document specifies the *pattern/type candidate-preparation layer* that must
 exist before a formal meta object invocation model can select callables. It is a
@@ -12,6 +15,66 @@ meaning from `overload-resolution-design.md`,
 `static-pattern-spaces-and-extraction-chains.md`, or
 `early-meta-functions-and-namespace-graph.md`. Those documents are background
 context only; the design here stands on its own.
+
+## 0.1 v0.8 restricted subset
+
+The implemented v0.8 subset object-izes only enough parameter-pattern and
+argument-shape material to select source-declared meta overloads.
+
+Supported parameter patterns:
+
+```text
+t: type
+u: type
+_ unit: type
+_ if: type
+_ else: type
+_ if | else: type
+```
+
+The restricted semantics are:
+
+- `t: type` and `u: type` are binders that match any supported type-pattern
+  argument and bind the matched argument value for a selected body;
+- `_ unit: type`, `_ if: type`, and `_ else: type` are discard plus named
+  type-pattern matches against the argument top pattern name;
+- `_ if | else: type` is a restricted pattern-side or-pattern that matches
+  `if` or `else` and does not match `unit`;
+- the `|` in `_ if | else` is pattern-context material, not policy union and
+  not expression-level operator lookup.
+
+Supported argument shapes are produced from normalized/product-derived material,
+not raw source text. The intended bridge remains:
+
+```text
+NormProduct
+  -> ProductObject
+  -> FlattenedProductObject
+  -> ArgProductShape
+  -> RawArgShape / OverloadArgShape
+```
+
+The current implementation supports named type-pattern arguments such as
+`unit`, `int`, `if`, and `else`. It does not implement D/Done reduction,
+control-flow transformation, guarded branch selection, or arbitrary
+pattern-space algebra. A source expression containing a name such as `Done`
+does not trigger special reduction inside overload selection.
+
+Specificity for the supported patterns uses the formal tuple:
+
+```text
+specificity(P, E) =
+  (
+    max depth(n) for n in C(P, E),
+    sum depth(n) for n in C(P, E),
+    non_discard_explicit_node_count
+  )
+```
+
+Comparison is lexicographic. Declaration order is not part of this tuple and
+is not a semantic priority. For or-patterns, v0.8 uses the selected alternative
+for specificity so `_ if | else` does not outrank `_ if` merely because it
+mentions more alternatives.
 
 ## 1. Purpose
 

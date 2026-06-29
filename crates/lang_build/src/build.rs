@@ -288,7 +288,7 @@ impl BuildSession {
             .collect();
 
         // Dependencies sorted deterministically so fingerprints/metadata are
-        // independent of declaration order.
+        // independent of dependency-list ordering.
         let mut dependencies: Vec<DependencyBuildMetadata> = spec
             .dependencies
             .iter()

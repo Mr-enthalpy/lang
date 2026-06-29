@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
 };
 
-use lang_syntax::{NormOrigin, NormProduct, Span};
+use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
 use crate::extraction_view::TypeExtractionInterface;
 
@@ -92,23 +92,35 @@ pub enum ChildNameRole {
 /// Role-aware child slot for a single textual name.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ChildBucket {
-    pub object: Option<SymbolId>,
+    pub object_symbols: Vec<SymbolId>,
     pub namespace_subspace: Option<SymbolId>,
 }
 
 impl ChildBucket {
     pub fn get(&self, role: ChildNameRole) -> Option<SymbolId> {
         match role {
-            ChildNameRole::Object => self.object,
+            ChildNameRole::Object => match self.object_symbols.as_slice() {
+                [symbol] => Some(*symbol),
+                _ => None,
+            },
             ChildNameRole::NamespaceSubspace => self.namespace_subspace,
         }
     }
 
     pub fn set(&mut self, role: ChildNameRole, symbol: SymbolId) {
         match role {
-            ChildNameRole::Object => self.object = Some(symbol),
+            ChildNameRole::Object => {
+                if !self.object_symbols.contains(&symbol) {
+                    self.object_symbols.push(symbol);
+                    self.object_symbols.sort();
+                }
+            }
             ChildNameRole::NamespaceSubspace => self.namespace_subspace = Some(symbol),
         }
+    }
+
+    pub fn object_symbols(&self) -> &[SymbolId] {
+        &self.object_symbols
     }
 }
 
@@ -152,6 +164,7 @@ impl PolicySet {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyEnv {
     Meta,
+    Runtime,
 }
 
 /// Callable body execution environment.
@@ -562,10 +575,20 @@ pub enum FieldProjection {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetaFunctionObject {
     pub function_symbol_id: SymbolId,
-    pub primitive: CoreMetaFunction,
+    pub primitive: Option<CoreMetaFunction>,
+    pub source_callable: Option<SourceCallableObject>,
     pub function_policy: PolicyMetadata,
     pub body_entry_policy: PolicyMetadata,
     pub return_object_policy: PolicyMetadata,
+}
+
+/// Source-declared callable/meta-function payload harvested from normalized
+/// source. The closure remains structural Normalized AST; overload selection
+/// and restricted body evaluation consume it later without graph mutation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceCallableObject {
+    pub closure: NormClosure,
+    pub provenance: Provenance,
 }
 
 /// Compiler-seeded core meta-function implementations.

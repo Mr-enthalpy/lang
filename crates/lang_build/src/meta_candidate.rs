@@ -375,7 +375,7 @@ pub fn prepare_meta_callable_candidate(
         provenance: context.provenance.clone(),
     };
     let callee_primitive = match &callee.payload {
-        SymbolPayload::MetaFunction(mf) => Some(mf.primitive),
+        SymbolPayload::MetaFunction(mf) => mf.primitive,
         _ => None,
     };
     let candidate = PreparedCallableCandidate {
