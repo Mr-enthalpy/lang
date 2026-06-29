@@ -218,6 +218,7 @@ pub(crate) fn insert_core_type(
         field_names: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(associated_node),
+        extraction_interface: None,
         provenance,
         generation_origin: Some("core bootstrap".to_string()),
         layout_slot: None,

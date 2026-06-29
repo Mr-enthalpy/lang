@@ -6,6 +6,8 @@ use std::{
 
 use lang_syntax::{NormOrigin, NormProduct, Span};
 
+use crate::extraction_view::TypeExtractionInterface;
+
 /// Stable identity for a namespace node inside one graph snapshot.
 ///
 /// v0.6 IDs are snapshot-local numeric identities. Cross-build stable IDs are
@@ -510,6 +512,7 @@ pub struct TypeObject {
     pub field_names: Vec<String>,
     pub field_type_symbol_ids: Vec<SymbolId>,
     pub type_associated_namespace: Option<NamespaceNodeId>,
+    pub extraction_interface: Option<TypeExtractionInterface>,
     pub provenance: Provenance,
     pub generation_origin: Option<String>,
     pub layout_slot: Option<String>,

@@ -336,3 +336,31 @@ val? == field-labeled product
 field-labeled product != val
 field-labeled product |> constructor == val
 ```
+
+## Implementation Substrate Note
+
+The build implementation records this model as a static shape substrate:
+
+```text
+EvalResultNormalForm = ValuePoint(e) | Product(P)
+```
+
+`question_view` is the pure shape-level view transition:
+
+```text
+Product(P) -> Product(P)
+leaf e     -> e
+non-leaf e -> exposed view
+```
+
+Binding and pattern matching consume product normal form directly:
+
+```text
+ProductPattern + P -> Direct
+ProductPattern + non-leaf e exposing P -> AfterExtraction
+ProductPattern + leaf e -> Mismatch
+```
+
+"Split" is a pattern-matcher consumption operation over product normal form. It
+is not the value-level result of `?`. Equality does not call `question_view` and
+never requests extraction repair.
