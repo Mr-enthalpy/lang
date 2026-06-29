@@ -23,6 +23,7 @@ pub mod normalized_call;
 pub mod pattern_space;
 pub mod product_shape;
 pub mod source;
+pub mod struct_decoder;
 pub mod type_argument;
 pub mod verify;
 pub mod world;
@@ -99,8 +100,8 @@ pub use model::{
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use pattern_space::{
     bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,
-    SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape,
-    TypePatternExprShape,
+    StructLeafTypeExprShape, SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape,
+    SymbolPathShape, TypePatternExprShape,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
@@ -108,6 +109,7 @@ pub use product_shape::{
     RawArgValueClass,
 };
 pub use source::SourceFragment;
+pub use struct_decoder::{decode_struct_type_pattern_expr, DecodedStructPattern};
 pub use type_argument::{
     classify_type_arguments, classify_type_arguments_with_report, TypeArgumentClassificationReport,
 };

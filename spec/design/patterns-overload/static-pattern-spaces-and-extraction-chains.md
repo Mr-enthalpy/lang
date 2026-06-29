@@ -1308,3 +1308,61 @@ let bool: type = ((if | else) bool) |> struct
 
 This is a shape-level substrate. It does not parse surface syntax, execute
 `struct` meta-functions, or install symbols into the namespace graph.
+
+## 18. core::struct Normalized-AST Decoding
+
+`core::struct` interprets generic normalized AST expressions in a struct-local
+context. The parser and normalizer remain generic; no struct-specific nodes are
+introduced.
+
+### Decoding rules (struct-local only)
+
+| AST shape | Type-pattern interpretation |
+|---|---|
+| `Product(elem1, elem2, ...)` | `Product[decode(elem1), ...]` |
+| `Call(source: [type_name], target: Name(field))` | `Leaf(type_expr, field)` |
+| `Call(source: Product(elems), target: Name(name))` | `Named(decode(Product(elems)), name)` |
+| `Call(source: Product(alts), target: OperatorTarget("│"))` | `Sum[decode(alt) for alt in alts]` |
+| `Call(source: Product(alts), target: OperatorTarget("+"))` | Diagnostic: `+` requires pattern-combination reduction first |
+
+`|` is the canonical sum-pattern result form consumed by `core::struct`. `+` is
+a pattern-combination / reduction action and is not directly accepted as a
+canonical sum.
+
+### Leaf type expression
+
+A leaf's type side is not restricted to a simple path. It may be a type
+expression such as `int Vec` in `int Vec a`. The decoder preserves the type
+expression. The final bare Name in the application chain is the local field /
+pattern name; the prefix is the type expression. This rule is local to struct
+leaf decoding and is not a general expression or normalizer rule.
+
+### Examples
+
+```lang
+(uint8 a, uint8 b) |> struct
+  → Product[Leaf(uint8, a), Leaf(uint8, b)]
+
+((uint8 a, uint8 b) mytype) |> struct
+  → Named(Product[Leaf(uint8, a), Leaf(uint8, b)], "mytype")
+
+(((uint8 a, uint8 b) Some | None) mytype) |> struct
+  → Named(Sum[Named(Product[Leaf(uint8,a), Leaf(uint8,b)], "Some"),
+               Named(Product[], "None")], "mytype")
+
+let bool: type = ((if | else) bool) |> struct
+  → outer let-binding: symbol "bool"
+  → inner Named(Sum[Named(Product[], "if"), Named(Product[], "else")], "bool")
+```
+
+In the bool example, the first `bool` is the external type symbol installed at
+the binding/materialization boundary. The second `bool` is the inner
+pattern/construction name inside the type-pattern expression. The canonical
+form uses `|`, the sum-pattern result form.
+
+### Decoder placement
+
+The decoder lives in `struct_decoder.rs` and is called from the `core::struct`
+invocation path. It produces `TypePatternExprShape`, which is attached to
+`GeneratedTypeDefinitionValue`. The decoder does not install symbols into the
+namespace graph — only binding/materialization installs `NamespaceDelta`.

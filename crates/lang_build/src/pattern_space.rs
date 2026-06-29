@@ -40,13 +40,49 @@ impl SymbolPathShape {
 }
 
 // ---------------------------------------------------------------------------
+// Struct leaf type expression shape
+// ---------------------------------------------------------------------------
+
+/// The type-side expression of a struct leaf field.
+///
+/// A leaf's left side is not restricted to a simple type path. It may be a
+/// type expression such as `int Vec` in `int Vec a`. The simplest case is a
+/// path like `uint8`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StructLeafTypeExprShape {
+    /// A simple type path (e.g. `uint8`, `Vec::std`).
+    Path(SymbolPathShape),
+
+    /// A type expression that the decoder cannot fully reduce to a simple
+    /// path at this stage. Carries a debug description and provenance for
+    /// diagnostics.
+    NormalizedAst {
+        description: String,
+        provenance: Provenance,
+    },
+}
+
+impl From<SymbolPathShape> for StructLeafTypeExprShape {
+    fn from(p: SymbolPathShape) -> Self {
+        Self::Path(p)
+    }
+}
+
+impl StructLeafTypeExprShape {
+    pub fn path(path: SymbolPathShape) -> Self {
+        Self::Path(path)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Type-pattern expression shape
 // ---------------------------------------------------------------------------
 
 /// Shape-level representation of a product/sum type-pattern expression.
 ///
 /// Naming convention:
-/// - Leaf `external_type_path` — path needing external symbol lookup (e.g. `uint8`)
+/// - Leaf `external_type_expr` — type expression needing external resolution
+///   (e.g. `uint8` in `uint8 a`, or `int Vec` in `int Vec a`)
 /// - Leaf `local_pattern_name` — local field/payload name within this
 ///   type-pattern expression (e.g. `a`)
 /// - Named `pattern_name` — pattern/constructor name at the current
@@ -54,15 +90,18 @@ impl SymbolPathShape {
 /// - Outer `let` binding name — the type symbol installed into the symbol
 ///   graph; distinct from any inner pattern/construction name
 ///
-/// `,` is product / `*`, `|` is sum / `+`. Parenthesised sub-expressions
-/// are same-level children. The parent name appears on the right, child
-/// structure on the left: `(child_structure parent_pattern_name)`.
+/// `,` is product / `*`, `|` is the canonical sum-pattern result form.
+/// `+` is a pattern-combination / reduction action, not a canonical sum
+/// form. Parenthesised sub-expressions are same-level children. The parent
+/// name appears on the right, child structure on the left:
+/// `(child_structure parent_pattern_name)`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypePatternExprShape {
-    /// Leaf field: `external_type_path local_pattern_name`.
+    /// Leaf field: `external_type_expr local_pattern_name`.
     /// Example: `uint8 a` (lookup `uint8` externally, bind `a` locally).
+    /// Example: `int Vec a` (type expression `int Vec`, local name `a`).
     Leaf {
-        external_type_path: SymbolPathShape,
+        external_type_expr: StructLeafTypeExprShape,
         local_pattern_name: String,
         provenance: Provenance,
     },
@@ -93,12 +132,12 @@ pub enum TypePatternExprShape {
 
 impl TypePatternExprShape {
     pub fn leaf(
-        external_type_path: SymbolPathShape,
+        external_type_expr: StructLeafTypeExprShape,
         local_pattern_name: impl Into<String>,
         provenance: Provenance,
     ) -> Self {
         Self::Leaf {
-            external_type_path,
+            external_type_expr,
             local_pattern_name: local_pattern_name.into(),
             provenance,
         }
@@ -409,7 +448,7 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
 /// ```
 ///
 /// The first `bool` is the external symbol being bound. The second `bool`
-/// is the pattern/construction name attached to the sum pattern `if + else`.
+/// is the pattern/construction name attached to the sum pattern `if | else`.
 ///
 /// This function constructs the inner type-pattern expression and derives
 /// the sum pattern space from it (not hand-built).

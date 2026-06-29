@@ -143,7 +143,11 @@ pub fn expand_meta_initializer_via_invocation(
 
     let arg_product_shape =
         site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
+
     let mut unresolved_type_names = Vec::new();
+
+    let mut struct_decoded_pattern: Option<crate::struct_decoder::DecodedStructPattern> = None;
+
     let (classified_shape, parameter_shape) = match primitive {
         CoreMetaFunction::IdentityType => {
             let report = classify_type_arguments_with_report(
@@ -177,6 +181,19 @@ pub fn expand_meta_initializer_via_invocation(
             validate_struct_source_product(&site.source_product)?;
             let classified_shape =
                 classify_struct_field_arguments(snapshot, &arg_product_shape, resolver_context)?;
+
+            // Try the struct-local decoder for type-pattern shape metadata.
+            // Decoder failure is not fatal — the invocation still proceeds
+            // without type-pattern shape metadata.
+            struct_decoded_pattern = crate::struct_decoder::decode_struct_type_pattern_expr(
+                initializer,
+                provenance.clone(),
+            )
+            .ok()
+            .map(|shape| {
+                crate::struct_decoder::DecodedStructPattern::new(shape, provenance.clone())
+            });
+
             (
                 classified_shape.clone(),
                 ParameterShape::type_parameter_sequence(
@@ -241,7 +258,8 @@ pub fn expand_meta_initializer_via_invocation(
         }
     };
 
-    let invocation_input = MetaInvocationInput::new(candidate, provenance.clone());
+    let mut invocation_input = MetaInvocationInput::new(candidate, provenance.clone());
+    invocation_input.struct_decoded_pattern = struct_decoded_pattern;
     let invocation_result = match cache {
         Some(cache) => invoke_meta_callable_cached(invocation_input, cache),
         None => invoke_meta_callable(invocation_input),
