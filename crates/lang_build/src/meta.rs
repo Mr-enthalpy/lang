@@ -185,8 +185,11 @@ pub fn expand_meta_initializer_via_invocation(
             // Try the struct-local decoder for type-pattern shape metadata.
             // Decoder failure is not fatal — the invocation still proceeds
             // without type-pattern shape metadata.
+            // Pass the source argument product (the expression inside `( ... ) |> struct`),
+            // not the full initializer.
+            let source_arg = NormExpr::Product(site.source_product.clone());
             struct_decoded_pattern = crate::struct_decoder::decode_struct_type_pattern_expr(
-                initializer,
+                &source_arg,
                 provenance.clone(),
             )
             .ok()

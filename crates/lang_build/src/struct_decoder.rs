@@ -57,12 +57,17 @@ pub fn decode_struct_type_pattern_expr(
         NormExpr::Product(product) => decode_product(product, provenance),
         NormExpr::Call { source, target, .. } => decode_call(source, target, provenance),
         NormExpr::Name { text, .. } => {
-            // A bare name in struct argument position is treated as a nullary
-            // constructor alternative: Named(Product[], text).
-            Ok(TypePatternExprShape::named(
-                TypePatternExprShape::product(vec![], provenance.clone()),
-                text.clone(),
-                provenance,
+            // A bare name at the top level of a struct argument is only valid
+            // as a nullary constructor alternative inside a Sum context.
+            // At the top level it is not a valid type-pattern expression.
+            Err(Diagnostic::new(
+                DiagnosticSeverity::Error,
+                format!(
+                    "bare name `{}` is only valid as a nullary constructor alternative inside a sum pattern; \
+                     wrap it in a Named constructor or place it inside a product",
+                    text
+                ),
+                Some(provenance),
             ))
         }
         _ => Err(Diagnostic::new(
@@ -228,15 +233,16 @@ fn decode_call_with_name_target(
                         provenance,
                     ))
                 }
-                // Inner call — recursively decode and wrap in Named.
-                // Example: `(uint8 a) mytype` → Named(Leaf(uint8,a), "mytype")
-                NormExpr::Call { .. } => {
-                    let inner = decode_struct_type_pattern_expr(source_expr, provenance.clone())?;
-                    Ok(TypePatternExprShape::named(inner, name, provenance))
-                }
-                // Any other expression → Leaf with the expression as type_expr,
-                // and `name` as the local pattern name.
-                // This handles `int Vec a` where the type side is `int Vec`.
+                // Any other expression (including inner Call) → Leaf with the
+                // expression as type_expr, and `name` as the local pattern name.
+                //
+                // This implements the mechanical leaf rule:
+                //   E Name → Leaf(external_type_expr = E, local_pattern_name = Name)
+                //
+                // Example: `int Vec a` → Leaf(type_expr = Call(int, Vec), name = a)
+                // The rightmost Name in the application chain is the local
+                // field/payload pattern name; the prefix is the type expression.
+                // This rule is struct-decoding-local only.
                 other => {
                     let type_desc = format!("{:?}", other);
                     Ok(TypePatternExprShape::leaf(

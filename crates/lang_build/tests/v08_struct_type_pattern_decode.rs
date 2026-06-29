@@ -285,20 +285,24 @@ fn decode_leaf_type_expr_as_normalized_ast() {
     let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
     assert!(result.is_ok());
     let shape = result.unwrap();
-    // The decoder recursively interprets the inner Call(int, Vec) as a Leaf
-    // and wraps it in Named(Leaf(int, Vec), "a"). This is correct for
-    // constructor-named fields. Distinguishing type chains from field names
-    // requires type-level context (future work).
+    // Per the mechanical leaf rule, the rightmost Name in an application
+    // chain is the local pattern name; the prefix is the type expression:
+    //   E Name → Leaf(external_type_expr = E, local_pattern_name = Name)
+    // Here `int Vec a` → Leaf(type_expr = int Vec, local_pattern_name = a).
+    // The inner call `int Vec` is preserved as the type expression.
     match shape {
-        TypePatternExprShape::Named {
-            pattern_name,
-            child,
+        TypePatternExprShape::Leaf {
+            external_type_expr,
+            local_pattern_name,
             ..
         } => {
-            assert_eq!(pattern_name, "a");
-            assert!(matches!(child.as_ref(), TypePatternExprShape::Leaf { .. }));
+            assert_eq!(local_pattern_name, "a");
+            match external_type_expr {
+                StructLeafTypeExprShape::NormalizedAst { .. } => {}
+                _ => panic!("expected NormalizedAst for type expression"),
+            }
         }
-        _ => panic!("expected Named wrapping Leaf"),
+        _ => panic!("expected Leaf"),
     }
 }
 
@@ -308,8 +312,12 @@ fn decode_leaf_type_expr_as_normalized_ast() {
 
 #[test]
 fn canonical_bar_sum_decodes_as_sum() {
+    // (((uint8 a, uint8 b) Some | None) mytype) — Named wrapping Sum wrapping Named alternatives
     let expr = bar_sum(vec![
-        named_call(product_of_fields(vec![("uint8", "a")]), "Some"),
+        named_call(
+            product_of_fields(vec![("uint8", "a"), ("uint8", "b")]),
+            "Some",
+        ),
         named_call(empty_product(), "None"),
     ]);
     let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
@@ -326,7 +334,10 @@ fn canonical_bar_sum_decodes_as_sum() {
 #[test]
 fn plus_requires_pattern_combination_reduction() {
     let expr = plus_sum(vec![
-        named_call(product_of_fields(vec![("uint8", "a")]), "Some"),
+        named_call(
+            product_of_fields(vec![("uint8", "a"), ("uint8", "b")]),
+            "Some",
+        ),
         named_call(empty_product(), "None"),
     ]);
     let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
@@ -393,6 +404,21 @@ fn decode_unsupported_shape_is_diagnostic() {
     assert!(diag.message.contains("unsupported"));
 }
 
+#[test]
+fn bare_name_at_top_level_is_diagnostic() {
+    // A bare Name at the top level of a struct argument is only valid as a
+    // nullary constructor alternative inside a Sum context. At the top level
+    // it should produce a diagnostic.
+    let expr = NormExpr::Name {
+        text: "None".to_string(),
+        origin: fake_origin(),
+    };
+    let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
+    assert!(result.is_err());
+    let diag = result.unwrap_err();
+    assert!(diag.message.contains("bare name"));
+}
+
 // ---------------------------------------------------------------------------
 // 6. DecodedStructPattern wrapper test
 // ---------------------------------------------------------------------------
@@ -411,15 +437,28 @@ fn decoded_struct_pattern_wraps_type_pattern_expr() {
 
 #[test]
 fn named_pattern_name_is_inner_construction_name_not_bound_symbol() {
+    // With the final-Name mechanical rule, a single-element call source is
+    // interpreted as a Leaf: the rightmost Name is the local pattern name.
+    // `(uint8 a) mytype` → Leaf(type_expr=Call(uint8,a), local_name="mytype")
+    // Multi-element named products (e.g. `(uint8 a, uint8 b) mytype`) still
+    // decode as Named — see `decode_named_product_struct_expr`.
     let expr = named_call(call_type_field("uint8", "a"), "mytype");
     let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
     assert!(result.is_ok());
     let shape = result.unwrap();
     match shape {
-        TypePatternExprShape::Named { pattern_name, .. } => {
-            assert_eq!(pattern_name, "mytype");
+        TypePatternExprShape::Leaf {
+            external_type_expr,
+            local_pattern_name,
+            ..
+        } => {
+            assert_eq!(local_pattern_name, "mytype");
+            match external_type_expr {
+                StructLeafTypeExprShape::NormalizedAst { .. } => {}
+                _ => panic!("expected NormalizedAst for single-element Call source"),
+            }
         }
-        _ => panic!("expected Named"),
+        _ => panic!("expected Leaf"),
     }
 }
 
