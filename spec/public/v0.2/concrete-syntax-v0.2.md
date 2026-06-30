@@ -93,7 +93,7 @@ recognized as a policy-prefixed let form. Alias-let is recognized inside that
 let path by a following `===` delimiter. Expression forms cover all other
 non-trivia token sequences.
 
-The parser produces four form categories at the Raw AST level:
+The parser produces five form categories at the Raw AST level:
 
 | Raw AST shape | Recognition rule |
 |---|---|

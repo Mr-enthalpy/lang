@@ -60,9 +60,9 @@ only records what it currently does.
 | `InvalidAliasBinder` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Reserved; not currently emitted by parser. |
 | `UnusedClosureAst` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Optional; not guaranteed to be emitted in current parser. |
 | Golden tests | `implemented-syntax` | `tests/lexer_golden.rs`, `tests/parser_golden.rs`, `tests/diagnostics_golden.rs` | `ast-construction-v0.1.md` §15 | Covers lexer, parser/AST, and diagnostics. Stable hand-written dump format. |
-| Return terminal forms (`E return`, `E \|> (T return)`, `E (T return)`) | `implemented-syntax` | `form.rs`, `ast.rs` | `ast-construction-v0.1.md` §19, `concrete-syntax-v0.2.md` | Parser contextually recognizes `return` in return terminal form positions at form level. `return` remains a `Name` token. | Parser preserves structural return event. No semantic return execution. |
-| Terminal body block enforcement | `implemented-syntax` | `closure.rs` | `ast-construction-v0.1.md` §19 | Once a terminal block form appears, no later form may occur before `}`. Generates `StatementAfterTerminalBlockForm`. | Semicolons tolerated; actual following forms diagnosed. |
-| Normalized TailValue / ReturnEvent | `implemented-normalization` | `norm.rs` | `normalized-surface-semantics-v0.5.md` | Last expr normalized as `NormForm::TailValue`; return events normalized as `NormForm::ReturnEvent`. Target syntax preserved unresolved. | No semantic target resolution. |
+| Return terminal forms (`E return`, `E \|> (T return)`, `E (T return)`) | `implemented-syntax` | `form.rs`, `ast.rs` | `ast-construction-v0.1.md` §15, `concrete-syntax-v0.2.md` | Parser contextually recognizes `return` in return terminal form positions at form level. `return` remains a `Name` token. Parser preserves structural return event. No semantic return execution. |
+| Terminal body block enforcement | `implemented-syntax` | `closure.rs` | `ast-construction-v0.1.md` §15 | Once a terminal block form appears, no later form may occur before `}`. Generates `StatementAfterTerminalBlockForm`. Semicolons tolerated; actual following forms diagnosed. |
+| Normalized TailValue / ReturnEvent | `implemented-normalization` | `norm.rs` | `normalized-surface-semantics-v0.5.md` | Last expr normalized as `NormForm::TailValue`; return events normalized as `NormForm::ReturnEvent`. Target syntax preserved unresolved. No semantic target resolution. |
 
 ## Current golden test snapshot
 

@@ -565,6 +565,13 @@ unit input.
 > The return target is not the spelling `Self`; it is the target
 > syntax in the explicit target position, resolved later by
 > semantic target binding.
+>
+> The example fragment above is a product/extraction-head + in-place
+> closure structural illustration. In current concrete syntax, this
+> shape is accepted as an incoming pipe / branch form (e.g.,
+> `x |> (<A: type> a: A) { ... }` or `(<A: type> a: A) { ... }`
+> in branch position). It is not a standalone closure literal
+> grammar.
 
 _See also: ClosureAST, ExplicitClosureAST._
 
