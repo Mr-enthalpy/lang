@@ -1,7 +1,8 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
-    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst,
-    InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol, TokenKind,
+    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol,
+    TokenKind,
 };
 
 use super::{
@@ -22,15 +23,53 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
 
     parser.enter_nesting();
     let mut forms = Vec::new();
+    let mut seen_terminal = false;
 
     loop {
         if parser.cursor.at_eof() || parser.cursor.at_symbol(Symbol::RBrace) {
             break;
         }
         if parser.cursor.consume_symbol(Symbol::Semicolon).is_some() {
+            if seen_terminal {
+                let span = parser.cursor.current_span();
+                parser.error(
+                    DiagnosticCode::StatementAfterBlockTailValue,
+                    "statement after block tail value",
+                    span,
+                );
+            }
             continue;
         }
-        forms.push(parser.parse_form());
+        if seen_terminal {
+            let form = parser.parse_form();
+            let span = form_span(&form);
+            parser.error(
+                DiagnosticCode::StatementAfterReturnEvent,
+                "statement after terminal block form",
+                span,
+            );
+            forms.push(FormAst::Error(
+                parser.error_ast("statement after terminal block form", span),
+            ));
+            continue;
+        }
+        let form = parser.parse_form();
+        if matches!(&form, FormAst::ReturnEvent(_)) {
+            seen_terminal = true;
+        }
+        forms.push(form);
+    }
+
+    if !forms.is_empty() && !seen_terminal {
+        if let Some(last) = forms.last() {
+            if matches!(
+                last,
+                FormAst::Expr(_) | FormAst::Let(_) | FormAst::AliasLet(_) | FormAst::Error(_)
+            ) {
+                // The last form is implicitly a tail value;
+                // nothing else may follow.
+            }
+        }
     }
 
     let end = if let Some(rbrace) = parser.cursor.consume_symbol(Symbol::RBrace) {
@@ -49,6 +88,16 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
     BodyBlockAst {
         forms,
         span: lbrace.span.join(end),
+    }
+}
+
+fn form_span(form: &FormAst) -> Span {
+    match form {
+        FormAst::Let(l) => l.span,
+        FormAst::AliasLet(a) => a.span,
+        FormAst::Expr(e) => e.span,
+        FormAst::ReturnEvent(r) => r.span,
+        FormAst::Error(e) => e.span,
     }
 }
 

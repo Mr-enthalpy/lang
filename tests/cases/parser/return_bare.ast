@@ -1,0 +1,11 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    Error "return requires a value expression"

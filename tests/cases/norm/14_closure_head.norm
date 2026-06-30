@@ -26,7 +26,7 @@ NormProgram origin=Source@1:1[0..63]
         body:
           NormBody origin=Source@1:22[21..28]
             forms:
-              Form Expr
+              Form TailValue
                 Name "val" origin=Source@1:24[23..26]
     Form Expr
       Closure kind=Explicit origin=Source@2:1[30..63]
@@ -55,5 +55,5 @@ NormProgram origin=Source@1:1[0..63]
         body:
           NormBody origin=Source@2:25[54..63]
             forms:
-              Form Expr
+              Form TailValue
                 Name "other" origin=Source@2:27[56..61]

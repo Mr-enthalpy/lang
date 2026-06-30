@@ -21,8 +21,9 @@ pub fn evaluate_source_verifications(
 
     let mut diagnostics = Vec::new();
     for form in &program.forms {
-        let NormForm::Expr(expr) = form else {
-            continue;
+        let expr = match form {
+            NormForm::Expr(expr) | NormForm::TailValue(expr) => expr,
+            _ => continue,
         };
         let Some(invocation) = VerificationInvocation::from_expr(snapshot, context, expr) else {
             continue;

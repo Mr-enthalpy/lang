@@ -1566,3 +1566,33 @@ fn invalid_with_trailing_comma() {
 fn invalid_alias_expression_position() {
     assert_parser_case("invalid_alias_expression_position", true);
 }
+
+#[test]
+fn return_implicit_basic() {
+    assert_parser_case("return_implicit_basic", false);
+}
+
+#[test]
+fn return_explicit_self() {
+    assert_parser_case("return_explicit_self", false);
+}
+
+#[test]
+fn return_implicit_unit() {
+    assert_parser_case("return_implicit_unit", false);
+}
+
+#[test]
+fn return_bare() {
+    assert_parser_case("return_bare", true);
+}
+
+#[test]
+fn return_in_group() {
+    assert_parser_case("return_in_group", true);
+}
+
+#[test]
+fn return_after_return() {
+    assert_parser_case("return_after_return", true);
+}

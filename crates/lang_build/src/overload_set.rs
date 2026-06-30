@@ -659,7 +659,9 @@ fn evaluate_block_body(
                     local_names.insert(name);
                 }
             }
-            NormForm::Expr(expr) if final_expr.is_none() => final_expr = Some(expr),
+            NormForm::Expr(expr) | NormForm::TailValue(expr) if final_expr.is_none() => {
+                final_expr = Some(expr)
+            }
             _ => {
                 return Err(unsupported_body(
                     selected,

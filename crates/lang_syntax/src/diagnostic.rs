@@ -31,6 +31,10 @@ pub enum DiagnosticCode {
     InvalidEntityRef,
     UnexpectedAliasRhsExpression,
     InvalidNumericLiteral,
+    ReturnRequiresValue,
+    StatementAfterReturnEvent,
+    StatementAfterBlockTailValue,
+    ReturnExpressionNotAllowed,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

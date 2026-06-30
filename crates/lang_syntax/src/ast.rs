@@ -16,7 +16,21 @@ pub enum FormAst {
     Let(LetAst),
     AliasLet(LetAliasAst),
     Expr(ExprAst),
+    ReturnEvent(ReturnEventAst),
     Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReturnEventAst {
+    pub value: Box<ExprAst>,
+    pub target: ReturnTargetAst,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReturnTargetAst {
+    ImplicitNearest { span: Span },
+    Explicit { target: Box<ExprAst>, span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
