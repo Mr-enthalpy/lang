@@ -242,7 +242,16 @@ impl CompilationWorld {
             match form {
                 NormForm::Let(decl) => self.harvest_let(namespace, decl, file)?,
                 NormForm::Alias(decl) => self.harvest_alias(namespace, decl, file)?,
-                NormForm::Expr(_) => {}
+                NormForm::Expr(_) | NormForm::TailValue(_) => {}
+                NormForm::ReturnEvent(return_ev) => {
+                    return Err(BuildError::single(Diagnostic::hard_error(
+                        "source contribution error: return event is not allowed at the top level",
+                        Some(Provenance::from_norm_origin(
+                            "normalized return event",
+                            &return_ev.origin,
+                        )),
+                    )));
+                }
                 NormForm::Error(error) => {
                     return Err(BuildError::single(Diagnostic::hard_error(
                         "source contribution error: cannot harvest declaration from normalized error form",

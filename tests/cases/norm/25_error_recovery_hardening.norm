@@ -100,7 +100,7 @@ NormProgram origin=Source@1:1[0..127]
         body:
           NormBody origin=Source@7:23[94..101]
             forms:
-              Form Expr
+              Form TailValue
                 Name "val" origin=Source@7:25[96..99]
     Form Let
       Decl Let origin=Source@8:1[103..126]

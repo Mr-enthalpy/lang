@@ -132,6 +132,13 @@ fn parse_annotation_term_in_deduce(parser: &mut Parser<'_>) -> AnnotationTermAst
             || p.cursor.at_symbol(Symbol::Greater)
             || p.cursor.at_symbol(Symbol::Equal)
     });
+    if super::form::expression_contains_name(&expr, "return") {
+        parser.error(
+            crate::DiagnosticCode::ReturnExpressionNotAllowed,
+            "return is only allowed as a block terminal form",
+            expr.span,
+        );
+    }
     AnnotationTermAst::Expr(expr)
 }
 

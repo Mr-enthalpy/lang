@@ -1,5 +1,6 @@
 use crate::{
-    Diagnostic, DiagnosticCode, ErrorAst, FormAst, ProgramAst, Span, Symbol, Token, TokenKind,
+    Diagnostic, DiagnosticCode, ErrorAst, ExprAst, ExprKind, FormAst, ProgramAst, ReturnEventAst,
+    ReturnTargetAst, Span, Symbol, Token, TokenKind,
 };
 
 use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form};
@@ -47,22 +48,60 @@ impl<'tokens> Parser<'tokens> {
 
     pub fn parse_form(&mut self) -> FormAst {
         if self.cursor.at_name("let") {
-            parse_let_form(self, None)
-        } else {
-            // A policy expression is recognized only by the shape `Expr let`.
-            // Parse a leading expression that stops at a top-level `let`; if a
-            // `let` follows, this is a policy-prefixed binding form. Otherwise
-            // the same expression is the ordinary expression form (no top-level
-            // `let` means the result is identical to parsing to the boundary).
-            let expr = parse_expr_until(self, |parser| {
-                parser.cursor.at_name("let") || parser.is_form_boundary()
-            });
-            if self.cursor.at_name("let") {
-                parse_let_form(self, Some(expr))
-            } else {
-                FormAst::Expr(expr)
-            }
+            return parse_let_form(self, None);
         }
+
+        let expr = parse_expr_until(self, |parser| {
+            parser.cursor.at_name("let")
+                || parser.is_form_boundary()
+                || parser.cursor.at_name("return")
+        });
+        if self.cursor.at_name("let") {
+            return parse_let_form(self, Some(expr));
+        }
+
+        // Implicit return: `<value> return`
+        if self.cursor.at_name("return") {
+            let return_span = self.cursor.peek_non_trivia().span;
+            if is_empty_expression(&expr) {
+                self.error(
+                    DiagnosticCode::ReturnRequiresValue,
+                    "return requires a value expression; use `() return` for unit return",
+                    return_span,
+                );
+                self.cursor.bump_non_trivia(); // consume 'return'
+                self.cursor.consume_form_boundary();
+                return FormAst::Error(
+                    self.error_ast("return requires a value expression", return_span),
+                );
+            }
+            self.cursor.bump_non_trivia();
+            let span = expr.span.join(return_span);
+            self.cursor.consume_form_boundary();
+            return FormAst::ReturnEvent(ReturnEventAst {
+                value: Box::new(expr),
+                target: ReturnTargetAst::ImplicitNearest { span: return_span },
+                span,
+            });
+        }
+
+        // Explicit return: `<value> |> (Self return)`
+        if let Some(return_event) = try_extract_explicit_return(&expr) {
+            self.cursor.consume_form_boundary();
+            return FormAst::ReturnEvent(return_event);
+        }
+
+        // Detect `return` used in invalid expression position
+        if expression_contains_name(&expr, "return") {
+            self.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+            return FormAst::Expr(expr);
+        }
+
+        FormAst::Expr(expr)
     }
 
     pub fn is_form_boundary(&mut self) -> bool {
@@ -146,6 +185,238 @@ impl<'tokens> Parser<'tokens> {
         }
         if self.cursor.at_symbol(Symbol::RParen) {
             self.cursor.bump_non_trivia();
+        }
+    }
+}
+
+fn is_empty_expression(expr: &ExprAst) -> bool {
+    match &expr.kind {
+        ExprKind::Pipe(pipe) => pipe.segments.iter().all(|s| s.elements.is_empty()),
+        ExprKind::Product(_) => false,
+        ExprKind::Error(_) => true,
+    }
+}
+
+fn try_extract_explicit_return(expr: &ExprAst) -> Option<ReturnEventAst> {
+    let ExprKind::Pipe(pipe) = &expr.kind else {
+        return None;
+    };
+
+    // Path 1: x |> (expr return)  — 2 segments
+    if pipe.segments.len() == 2 {
+        let lhs_seg = &pipe.segments[0];
+        let rhs_seg = &pipe.segments[1];
+        if rhs_seg.elements.len() != 1 {
+            return None;
+        }
+        let rhs_elem = &rhs_seg.elements[0];
+        let (target, span) = extract_return_target_from_segment_element(rhs_elem)?;
+        let value = segment_to_expr(lhs_seg);
+        let span = value.span.join(span);
+        return Some(ReturnEventAst {
+            value: Box::new(value),
+            target,
+            span,
+        });
+    }
+
+    // Path 2: x (expr return)  — 1 segment with exactly 2 elements
+    if pipe.segments.len() == 1 {
+        let seg = &pipe.segments[0];
+        if seg.elements.len() == 2 {
+            let first = &seg.elements[0];
+            let second = &seg.elements[1];
+            let (target, span) = extract_return_target_from_segment_element(second)?;
+            let value = element_to_expr(first);
+            let span = value.span.join(span);
+            return Some(ReturnEventAst {
+                value: Box::new(value),
+                target,
+                span,
+            });
+        }
+    }
+
+    None
+}
+
+fn extract_return_target_from_segment_element(
+    elem: &crate::SegmentElementAst,
+) -> Option<(ReturnTargetAst, Span)> {
+    let crate::SegmentElementAst::OperatorExpr(op) = elem else {
+        return None;
+    };
+    extract_return_target_from_operator(op)
+}
+
+fn extract_return_target_from_operator(
+    op: &crate::OperatorExprAst,
+) -> Option<(ReturnTargetAst, Span)> {
+    let crate::OperatorExprKind::Atom(atom) = &op.kind else {
+        return None;
+    };
+    let crate::AtomKind::Group(inner_expr) = &atom.kind else {
+        return None;
+    };
+    let crate::ExprKind::Pipe(inner_pipe) = &inner_expr.kind else {
+        return None;
+    };
+    if inner_pipe.segments.len() != 1 {
+        return None;
+    }
+    let inner_seg = &inner_pipe.segments[0];
+    if inner_seg.elements.len() < 1 || inner_seg.elements.len() > 2 {
+        return None;
+    }
+    let last_elem = inner_seg.elements.last().unwrap();
+    if !element_is_name(last_elem, "return") {
+        return None;
+    }
+    if inner_seg.elements.len() == 2 {
+        let first_elem = &inner_seg.elements[0];
+        Some((
+            ReturnTargetAst::Explicit {
+                target: Box::new(element_to_expr(first_elem)),
+                span: element_span(first_elem),
+            },
+            atom.span,
+        ))
+    } else {
+        Some((
+            ReturnTargetAst::ImplicitNearest {
+                span: element_span(last_elem),
+            },
+            atom.span,
+        ))
+    }
+}
+
+pub(crate) fn expression_contains_name(expr: &ExprAst, name: &str) -> bool {
+    match &expr.kind {
+        ExprKind::Pipe(pipe) => pipe.segments.iter().any(|seg| {
+            seg.elements
+                .iter()
+                .any(|el| segment_element_contains_name(el, name))
+        }),
+        ExprKind::Product(prod) => prod.elements.iter().any(|el| match el {
+            crate::ProductElementAst::Expr(e) => expression_contains_name(e, name),
+            crate::ProductElementAst::Unit { .. } => false,
+        }),
+        ExprKind::Error(_) => false,
+    }
+}
+
+fn segment_element_contains_name(el: &crate::SegmentElementAst, name: &str) -> bool {
+    match el {
+        crate::SegmentElementAst::OperatorExpr(op) => operator_expr_contains_name(op, name),
+        crate::SegmentElementAst::Product(prod) => prod.elements.iter().any(|el| match el {
+            crate::ProductElementAst::Expr(e) => expression_contains_name(e, name),
+            crate::ProductElementAst::Unit { .. } => false,
+        }),
+    }
+}
+
+fn operator_expr_contains_name(op: &crate::OperatorExprAst, name: &str) -> bool {
+    match &op.kind {
+        crate::OperatorExprKind::Atom(atom) => match &atom.kind {
+            crate::AtomKind::Name(n) => &n.text == name,
+            crate::AtomKind::Group(expr) => expression_contains_name(expr, name),
+            crate::AtomKind::NavPath { components, .. } => components.iter().any(|c| match c {
+                crate::NavComponentAst::Text(n) => &n.text == name,
+                crate::NavComponentAst::Group(expr) => expression_contains_name(expr, name),
+                _ => false,
+            }),
+            _ => false,
+        },
+        crate::OperatorExprKind::Product(prod) => prod.elements.iter().any(|el| match el {
+            crate::ProductElementAst::Expr(e) => expression_contains_name(e, name),
+            crate::ProductElementAst::Unit { .. } => false,
+        }),
+        crate::OperatorExprKind::OperatorSugar { args, .. } => args
+            .iter()
+            .any(|arg| operator_expr_contains_name(arg, name)),
+        crate::OperatorExprKind::MemberSugar { object, .. }
+        | crate::OperatorExprKind::DoubleDotSugar { object, .. }
+        | crate::OperatorExprKind::BracketCallSugar { object, .. } => {
+            operator_expr_contains_name(object, name)
+        }
+        crate::OperatorExprKind::NavPath { components, .. } => components.iter().any(|c| match c {
+            crate::NavComponentAst::Text(n) => &n.text == name,
+            crate::NavComponentAst::Group(expr) => expression_contains_name(expr, name),
+            _ => false,
+        }),
+        crate::OperatorExprKind::Error(_) => false,
+    }
+}
+
+fn element_is_name(el: &crate::SegmentElementAst, name: &str) -> bool {
+    match el {
+        crate::SegmentElementAst::OperatorExpr(op) => match &op.kind {
+            crate::OperatorExprKind::Atom(atom) => {
+                matches!(&atom.kind, crate::AtomKind::Name(n) if &n.text == name)
+            }
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+fn element_to_expr(el: &crate::SegmentElementAst) -> ExprAst {
+    match el {
+        crate::SegmentElementAst::OperatorExpr(op) => ExprAst {
+            kind: ExprKind::Pipe(crate::PipeExprAst {
+                segments: vec![crate::SegmentAst {
+                    elements: vec![el.clone()],
+                    has_incoming: false,
+                    span: op.span,
+                }],
+                span: op.span,
+            }),
+            span: op.span,
+        },
+        crate::SegmentElementAst::Product(prod) => ExprAst {
+            kind: ExprKind::Product(prod.clone()),
+            span: prod.span,
+        },
+    }
+}
+
+fn element_span(el: &crate::SegmentElementAst) -> Span {
+    match el {
+        crate::SegmentElementAst::OperatorExpr(op) => op.span,
+        crate::SegmentElementAst::Product(prod) => prod.span,
+    }
+}
+
+fn segment_to_expr(seg: &crate::SegmentAst) -> ExprAst {
+    if seg.elements.is_empty() {
+        return ExprAst {
+            kind: ExprKind::Error(crate::ErrorAst {
+                message: "empty segment".to_string(),
+                span: seg.span,
+            }),
+            span: seg.span,
+        };
+    }
+    if seg.elements.len() == 1 {
+        let span = match &seg.elements[0] {
+            crate::SegmentElementAst::OperatorExpr(_op) => seg.span,
+            crate::SegmentElementAst::Product(prod) => prod.span,
+        };
+        return ExprAst {
+            kind: ExprKind::Pipe(crate::PipeExprAst {
+                segments: vec![seg.clone()],
+                span,
+            }),
+            span,
+        };
+    } else {
+        ExprAst {
+            kind: ExprKind::Pipe(crate::PipeExprAst {
+                segments: vec![seg.clone()],
+                span: seg.span,
+            }),
+            span: seg.span,
         }
     }
 }

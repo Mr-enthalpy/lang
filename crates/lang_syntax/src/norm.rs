@@ -28,7 +28,22 @@ pub enum NormForm {
     Let(NormDecl),
     Alias(NormDecl),
     Expr(NormExpr),
+    TailValue(NormExpr),
+    ReturnEvent(NormReturnEvent),
     Error(NormError),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormReturnEvent {
+    pub value: NormExpr,
+    pub target: NormReturnTargetSyntax,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NormReturnTargetSyntax {
+    ImplicitNearest,
+    Explicit(NormExpr),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -390,6 +405,22 @@ fn normalize_form(form: &FormAst) -> NormForm {
         FormAst::Let(let_ast) => NormForm::Let(normalize_let_decl(let_ast)),
         FormAst::AliasLet(alias) => NormForm::Alias(normalize_alias_decl(alias)),
         FormAst::Expr(expr) => NormForm::Expr(normalize_expr(expr)),
+        FormAst::ReturnEvent(return_ev) => {
+            let value = normalize_expr(&return_ev.value);
+            let target = match &return_ev.target {
+                crate::ReturnTargetAst::ImplicitNearest { .. } => {
+                    NormReturnTargetSyntax::ImplicitNearest
+                }
+                crate::ReturnTargetAst::Explicit { target, .. } => {
+                    NormReturnTargetSyntax::Explicit(normalize_expr(target))
+                }
+            };
+            NormForm::ReturnEvent(NormReturnEvent {
+                value,
+                target,
+                origin: NormOrigin::Source(return_ev.span),
+            })
+        }
         FormAst::Error(error) => NormForm::Error(normalize_error(error)),
     }
 }
@@ -1076,8 +1107,24 @@ fn normalize_closure(closure: &ClosureAst) -> NormClosure {
 }
 
 fn normalize_body_block(body: &BodyBlockAst) -> NormProgram {
+    let len = body.forms.len();
+    let forms: Vec<NormForm> = body
+        .forms
+        .iter()
+        .enumerate()
+        .map(|(i, form)| {
+            if i == len - 1 {
+                match form {
+                    FormAst::Expr(expr) => NormForm::TailValue(normalize_expr(expr)),
+                    _ => normalize_form(form),
+                }
+            } else {
+                normalize_form(form)
+            }
+        })
+        .collect();
     NormProgram {
-        forms: body.forms.iter().map(normalize_form).collect(),
+        forms,
         origin: NormOrigin::Source(body.span),
     }
 }
@@ -1766,6 +1813,25 @@ fn dump_norm_form(output: &mut String, form: &NormForm, indent: usize) {
         NormForm::Expr(expr) => {
             line(output, indent, "Form Expr");
             dump_norm_expr(output, expr, indent + 1);
+        }
+        NormForm::TailValue(expr) => {
+            line(output, indent, "Form TailValue");
+            dump_norm_expr(output, expr, indent + 1);
+        }
+        NormForm::ReturnEvent(return_ev) => {
+            line(output, indent, "Form ReturnEvent");
+            line(output, indent + 1, "value");
+            dump_norm_expr(output, &return_ev.value, indent + 2);
+            line(output, indent + 1, "target");
+            match &return_ev.target {
+                NormReturnTargetSyntax::ImplicitNearest => {
+                    line(output, indent + 2, "ImplicitNearest");
+                }
+                NormReturnTargetSyntax::Explicit(target) => {
+                    line(output, indent + 2, "Explicit");
+                    dump_norm_expr(output, target, indent + 3);
+                }
+            }
         }
         NormForm::Error(error) => {
             line(output, indent, "Form Error");

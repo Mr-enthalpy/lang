@@ -61,6 +61,21 @@ fn dump_form(output: &mut String, form: &FormAst, indent: usize) {
             line(output, indent, "ExprForm");
             dump_expr(output, expr, indent + 1);
         }
+        FormAst::ReturnEvent(return_ev) => {
+            line(output, indent, "ReturnEvent");
+            line(output, indent + 1, "value");
+            dump_expr(output, &return_ev.value, indent + 2);
+            line(output, indent + 1, "target");
+            match &return_ev.target {
+                crate::ReturnTargetAst::ImplicitNearest { .. } => {
+                    line(output, indent + 2, "ImplicitNearest");
+                }
+                crate::ReturnTargetAst::Explicit { target, .. } => {
+                    line(output, indent + 2, "Explicit");
+                    dump_expr(output, target, indent + 3);
+                }
+            }
+        }
         FormAst::Error(error) => {
             line(
                 output,
@@ -800,6 +815,9 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::InvalidEntityRef => "InvalidEntityRef",
         DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
         DiagnosticCode::InvalidNumericLiteral => "InvalidNumericLiteral",
+        DiagnosticCode::ReturnRequiresValue => "ReturnRequiresValue",
+        DiagnosticCode::StatementAfterTerminalBlockForm => "StatementAfterTerminalBlockForm",
+        DiagnosticCode::ReturnExpressionNotAllowed => "ReturnExpressionNotAllowed",
     }
 }
 

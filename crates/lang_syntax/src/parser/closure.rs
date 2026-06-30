@@ -1,7 +1,8 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
-    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, HeadClauseAst,
-    InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol, TokenKind,
+    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol,
+    TokenKind,
 };
 
 use super::{
@@ -22,6 +23,7 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
 
     parser.enter_nesting();
     let mut forms = Vec::new();
+    let mut seen_terminal = false;
 
     loop {
         if parser.cursor.at_eof() || parser.cursor.at_symbol(Symbol::RBrace) {
@@ -30,7 +32,24 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
         if parser.cursor.consume_symbol(Symbol::Semicolon).is_some() {
             continue;
         }
-        forms.push(parser.parse_form());
+        if seen_terminal {
+            let form = parser.parse_form();
+            let span = form_span(&form);
+            parser.error(
+                DiagnosticCode::StatementAfterTerminalBlockForm,
+                "statement after terminal block form",
+                span,
+            );
+            forms.push(FormAst::Error(
+                parser.error_ast("statement after terminal block form", span),
+            ));
+            continue;
+        }
+        let form = parser.parse_form();
+        if matches!(&form, FormAst::ReturnEvent(_) | FormAst::Expr(_)) {
+            seen_terminal = true;
+        }
+        forms.push(form);
     }
 
     let end = if let Some(rbrace) = parser.cursor.consume_symbol(Symbol::RBrace) {
@@ -49,6 +68,16 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
     BodyBlockAst {
         forms,
         span: lbrace.span.join(end),
+    }
+}
+
+fn form_span(form: &FormAst) -> Span {
+    match form {
+        FormAst::Let(l) => l.span,
+        FormAst::AliasLet(a) => a.span,
+        FormAst::Expr(e) => e.span,
+        FormAst::ReturnEvent(r) => r.span,
+        FormAst::Error(e) => e.span,
     }
 }
 
@@ -181,6 +210,13 @@ fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
 
     // Parse the message expression, terminated by `)`
     let message = parse_expr_until(parser, |p| p.cursor.at_symbol(Symbol::RParen));
+    if super::form::expression_contains_name(&message, "return") {
+        parser.error(
+            DiagnosticCode::ReturnExpressionNotAllowed,
+            "return is only allowed as a block terminal form",
+            message.span,
+        );
+    }
 
     let _rparen = match parser.cursor.consume_symbol(Symbol::RParen) {
         Some(tok) => tok.span,
@@ -258,6 +294,13 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
                 || p.cursor.at_symbol(Symbol::LBrace)
                 || p.is_form_boundary()
         });
+        if super::form::expression_contains_name(&expr, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+        }
         Some(expr)
     } else {
         None
@@ -390,7 +433,15 @@ fn parse_head_clauses(parser: &mut Parser<'_>) -> Vec<HeadClauseAst> {
             );
             error_expr(parser, "missing head clause expression", span)
         } else {
-            parse_expr_until(parser, clause_expr_boundary)
+            let expr = parse_expr_until(parser, clause_expr_boundary);
+            if super::form::expression_contains_name(&expr, "return") {
+                parser.error(
+                    DiagnosticCode::ReturnExpressionNotAllowed,
+                    "return is only allowed as a block terminal form",
+                    expr.span,
+                );
+            }
+            expr
         };
 
         let span = header_span.join(expr.span);
@@ -422,6 +473,13 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
         let expr = parse_expr_until(parser, |p| {
             p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
         });
+        if super::form::expression_contains_name(&expr, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+        }
         let span = expr.span;
         items.push(CaptureItemAst { expr, span });
 
