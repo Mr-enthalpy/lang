@@ -56,7 +56,8 @@ Normalization must **not** assume:
 ## Program / Form invariants
 
 - `ProgramAst.forms` preserves source order.
-- `FormAst` distinguishes `Let`, `AliasLet`, `Expr`, and `Error`.
+- `FormAst` distinguishes `Let`, `AliasLet`, `Expr`, `ReturnEvent`, and `Error`.
+- `ReturnEventAst` carries a value expression and an unresolved return target (`ReturnTargetAst`). Target syntax is preserved but not resolved. `ReturnEvent` is a block terminal form, not an expression.
 - Forms are not reordered by the parser.
 
 ## Let and alias-let invariants
@@ -96,7 +97,7 @@ Normalization must **not** assume:
 - `ProductExprAst` preserves ordered `ProductElementAst` elements and span. A parenthesized top-level-comma form in expression context is product construction.
 - `ProductElementAst` is either `Expr(ExprAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit product elements. They are not skipped, not wildcards, and not implicit discards.
 - There is no standalone `ExprKind::Unit`; unit from commas is scoped to product elements only.
-- There is no `BlockExpr`, `ReturnStmt`, `ElseExpr`, `MatchExpr`, `IfExpr`, `IfStmt`, `ElseClause`, `ElseIf`, `MatchStmt`, `CallExpr`, or `ArgPack` as a semantic construct in Raw AST.
+- There is no semantic `ReturnStmt`, `BlockExpr`, `ElseExpr`, `MatchExpr`, `IfExpr`, `IfStmt`, `ElseClause`, `ElseIf`, `MatchStmt`, `CallExpr`, or `ArgPack` as a semantic construct in Raw AST. The parser does preserve a structural `ReturnEvent` terminal form (see `ReturnEventAst`, `ReturnTargetAst`); it is not a semantic return statement.
 
 ## PipeExpr / Segment / Product invariants
 

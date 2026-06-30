@@ -24,7 +24,10 @@ behavior, especially:
 - annotation patterns and DeduceList holes;
 - origin / provenance and error / `Unsupported` visibility at the normalized
   layer;
-- what Normalized AST explicitly does **not** do.
+- what Normalized AST explicitly does **not** do;
+- control-flow end events: `TailValue` and `ReturnEvent` as block terminal forms
+  (tail-value / targeted return), with `ReturnTargetSyntax` (implicit nearest
+  vs explicit target) preserved as unresolved normalized syntax.
 
 ## v0.5 public documents
 

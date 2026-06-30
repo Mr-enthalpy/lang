@@ -701,3 +701,72 @@ call-binding behavior. `Done`, residual propagation, pattern-space subtraction,
 `operator+` meta-reduction, `match` closing, exhaustiveness, and pattern-head
 resolution are future semantics, not current behavior, and must not be read as
 implemented.
+
+## 14. Control-Flow End Events
+
+The normalized surface reports control-flow end events structurally.
+These are not ordinary expressions or calls.
+
+### TailValue
+
+The last expression form in each body block is normalized as:
+
+```text
+NormForm::TailValue(NormExpr)
+```
+
+This is a block result / tail value. It is not early return. It
+represents the implicit control-flow end of a body block when no
+explicit return event is present.
+
+### ReturnEvent
+
+Explicit return terminal forms are normalized as:
+
+```text
+NormForm::ReturnEvent(NormReturnEvent)
+
+NormReturnEvent {
+  value: NormExpr,
+  target: NormReturnTargetSyntax,
+  origin: NormOrigin
+}
+
+NormReturnTargetSyntax ::=
+    ImplicitNearest
+  | Explicit(NormExpr)
+```
+
+| Source | Normalized Form |
+|---|---|
+| `E return;` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E \|> (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
+| `E (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
+
+`Explicit(NormExpr)` preserves unresolved target syntax. The
+normalizer does **not** resolve `Self` or any other target
+expression. Target resolution is deferred to a later elaboration
+phase.
+
+### Non-Call Representation
+
+Return events are **not** represented as:
+
+```text
+✗ NormExpr::Call { target: Name("return"), ... }
+✗ NormExpr::Call { target: OperatorTarget("|>"), ... }
+✗ NormExpr::Pipe { lhs: E, rhs: Group(...) }
+```
+
+They are structurally distinct `NormForm` variants.
+
+### Deferred Semantics
+
+The following are **not** implemented in the current normalized
+surface and must not be assumed:
+
+- Target resolution (implicit or explicit)
+- Return outside returnable context checking
+- D-reduction / Done_Return
+- Control-flow propagation
+- Result-slot injection

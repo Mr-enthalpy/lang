@@ -55,7 +55,8 @@ _See also: Token._
 ## Name
 
 A token class representing an identifier. Names include what traditional languages
-call keywords. In v0.1, `return`, `else`, `match`, `drop`, `move`, `sync`,
+call keywords. In v0.1, `return` (contextually recognized in return terminal
+forms at the form level; remains a `Name` token lexically), `else`, `match`, `drop`, `move`, `sync`,
 `effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, and
 `struct` are all ordinary `Name` tokens at the lexical level.
 
@@ -540,6 +541,30 @@ Having no extraction head is not the same as having a unit extraction pattern:
 a headless in-place closure accepts no extracted input, including no implicit
 unit input.
 
+> **Explicit self position for return:** A headless in-place closure
+> has no self target and cannot express early return. Early return
+> examples that target a specific closure should use a headed closure
+> with an explicit self parameter, e.g.:
+>
+> ```lang
+> (<Self: type> self: Self) {
+>   () |> (Self return);
+> }
+> ```
+>
+> `Self` and `self` are replaceable positional binders, not reserved
+> names. The same positional structure with different names:
+>
+> ```lang
+> (<R: type> this: R) {
+>   () |> (R return);
+> }
+> ```
+>
+> The return target is not the spelling `Self`; it is the target
+> syntax in the explicit target position, resolved later by
+> semantic target binding.
+
 _See also: ClosureAST, ExplicitClosureAST._
 
 ---
@@ -886,3 +911,90 @@ against a checked-in expected file. Golden tests must be used for every syntax
 rule. The dump format must be stable and hand-written, not Rust `Debug` output.
 
 _See also: lexer_golden.rs, parser_golden.rs, diagnostics_golden.rs._
+
+---
+
+## ReturnEvent
+
+A block terminal form representing a targeted return event. It is
+not an expression. Raw AST: `FormAst::ReturnEvent(ReturnEventAst)`.
+Norm AST: `NormForm::ReturnEvent(NormReturnEvent)`.
+
+_See also: TailValue, ReturnTargetSyntax, Control-flow end event._
+
+## TailValue
+
+The last expression form in a body block, normalized as
+`NormForm::TailValue(NormExpr)`. A block result / tail value,
+not early return.
+
+_See also: ReturnEvent, Control-flow end event._
+
+## ReturnTargetSyntax
+
+The unresolved target syntax of a return event:
+
+```text
+NormReturnTargetSyntax ::=
+    ImplicitNearest
+  | Explicit(NormExpr)
+```
+
+`ImplicitNearest` represents a return targeted at the nearest
+enclosing self (resolved in a future semantic phase).
+`Explicit(NormExpr)` preserves the explicit target syntax
+without resolution.
+
+_See also: ReturnEvent._
+
+## ImplicitNearest return target
+
+A return target indicating the return should target the nearest
+enclosing function-object self. In the parser and normalizer,
+`ImplicitNearest` is an unresolved marker. The source form is
+`E return;`. Resolution is deferred to a later semantic phase.
+
+_See also: ReturnTargetSyntax, Explicit return target._
+
+## Explicit return target
+
+A return target where the explicit target syntax is preserved
+in the AST. In the parser, `Explicit(ExprAst)`; in the
+normalizer, `Explicit(NormExpr)`. Source forms are
+`E |> (T return);` and `E (T return);`.
+
+The explicit target syntax `T` is not resolved by parser or
+normalizer. Resolution is deferred.
+
+_See also: ReturnTargetSyntax, ImplicitNearest return target._
+
+## Control-flow end event
+
+A structural category covering tail values and return events:
+
+```text
+Control-flow end event :=
+    TailValue(E)
+  | ReturnEvent(E, target)
+```
+
+Reported by the parser and normalizer as explicit control-flow
+data. Not an expression category.
+
+_See also: TailValue, ReturnEvent._
+
+## Terminal block form
+
+A form that ends a body block. Once a terminal form appears,
+no later form may occur before `}`:
+
+```text
+Terminal block form :=
+    TailValue(E)
+  | ReturnEvent(E, target)
+```
+
+The parser emits `StatementAfterTerminalBlockForm` for forms
+after a terminal.
+
+_See also: Control-flow end event._

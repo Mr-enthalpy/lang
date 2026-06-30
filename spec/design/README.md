@@ -75,6 +75,7 @@ implementation guardrail, not the semantic entry point.
 | `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and implicit decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
 | `meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation; control-like callables instead of an `if constexpr` / `if` syntax split. | Defining symbol-world, patterns-overload, or policy-capability internals (it references them). |
 | `policy-capability/` | Symbol-visibility policy, callable body-entry policy, return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. | Mechanical return normalization (that lives in `mechanical-lowering/` and only references policy planes here). |
+| `control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only | |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |
 
 ## Eventual absorption targets

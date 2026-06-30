@@ -140,7 +140,7 @@ Program {
 ### 3.2 Form
 
 ```text
-Form ::= LetStmt | ExprStmt
+Form ::= LetStmt | AliasLetStmt | ExprStmt | ReturnTerminalForm | ErrorForm
 ```
 
 Form selection rule:
@@ -156,9 +156,10 @@ FormAst ::=
     Let(LetAst)
   | AliasLet(LetAliasAst)
   | Expr(ExprAst)
+  | ReturnEvent(ReturnEventAst)
   | Error(ErrorAst)
 ```
-
+```
 ### 3.3 Form boundary
 
 A form ends only at one of:
@@ -2163,9 +2164,8 @@ Recommended recoverable errors:
 The parser must not construct special semantic AST nodes for:
 
 ```text
-return
-else
-match
+      else
+      match
 drop
 move
 ref
@@ -2309,6 +2309,7 @@ FormAst ::=
     Let(LetAst)
   | AliasLet(LetAliasAst)
   | Expr(ExprAst)
+  | ReturnEvent(ReturnEventAst)
   | Error(ErrorAst)
 
 LetAliasAst {
@@ -2441,3 +2442,74 @@ document.
 | §11.9 Closure lookahead              | `x => { }` rejected as non-closure-head     | `UnexpectedToken` at `=>`                                                                |
 | §12 Match non-special                | `match obj` at form start                   | No diagnostic (name, not syntax)                                                         |
 | §12 Match non-special                | `obj match (a) { }`                         | No diagnostic (name + group + closure)                                                   |
+
+## 19. Return Terminal Forms
+
+Parser construction rules for return terminal forms (v0.9).
+
+### Contextual Recognition
+
+`return` is lexically a `Name` token. The parser recognizes it
+contextually only in return terminal form positions at the form
+level. It is not recognized as special in expression, pattern,
+group, or annotation contexts.
+
+### Terminal Return Form Rules
+
+At the form level, after parsing a value expression, the parser
+checks for return patterns:
+
+```
+ReturnTerminalForm ::=
+    ValueExpr "return"
+  | ValueExpr "|>" "(" TargetExpr "return" ")"
+  | ValueExpr "(" TargetExpr "return" ")"
+```
+
+These produce:
+
+```text
+FormAst::ReturnEvent(ReturnEventAst {
+    value: ValueExpr,
+    target: ImplicitNearest { span }
+})
+
+FormAst::ReturnEvent(ReturnEventAst {
+    value: ValueExpr,
+    target: Explicit {
+        target: TargetExpr,
+        span
+    }
+})
+```
+
+The explicit target syntax (`TargetExpr`) is preserved verbatim
+in the AST. It is not resolved by the parser or normalizer.
+
+### Return Construction Rules
+
+| Source Pattern | Recognition | AST |
+|---|---|---|
+| `E return;` | After value expr, `return` keyword at form level | `ReturnEvent(value=E, target=ImplicitNearest)` |
+| `E \|> (T return);` | Pipe with 2-segment RHS group containing target + return | `ReturnEvent(value=E, target=Explicit(T))` |
+| `E (T return);` | Single segment with 2 elements, second is group with target + return | `ReturnEvent(value=E, target=Explicit(T))` |
+
+### Non-Expression Guarantee
+
+Return events are not parsed as expressions. The parser consumes
+the return terminal form and produces a `FormAst::ReturnEvent`,
+not a `FormAst::Expr`. Return-like forms are rejected when
+embedded in expression, pattern, group, or annotation contexts.
+
+### Terminal Block Rule
+
+Once a terminal block form (`Expr` or `ReturnEvent`) appears at
+the form level in a body block, no later form may appear before
+`}`:
+
+```
+BodyBlock ::= { NonTerminalForm* TerminalForm }
+```
+
+The parser emits `StatementAfterTerminalBlockForm` for forms after
+the terminal. Extra semicolons after the terminal are tolerated.

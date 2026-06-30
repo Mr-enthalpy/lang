@@ -60,7 +60,7 @@ A syntax frontend that:
 - Operator names in binder and innermost navigation-component positions.
 - Alias binding (`let binder === EntityRef`) as raw AST preservation.
 - EntityRef parser for alias RHS.
-- 29 DiagnosticCode variants across lexer, parser, operator, and alias categories.
+- 32 DiagnosticCode variants across lexer, parser, operator, and alias categories.
 
 For the authoritative factual inventory of v0.1 delivered features,
 see `spec/implementation/v0.1/implementation-status-v0.1.md`. For the Raw AST contract

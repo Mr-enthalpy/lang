@@ -56,10 +56,13 @@ only records what it currently does.
 | Alias binding (`let binder === EntityRef`) | `implemented-syntax` | `let_stmt.rs`, `ast.rs`, `token.rs` | `ast-construction-v0.1.md` §16 + `entity-alias-design.md` | Raw AST preservation only. No alias semantics, lookup, target validation, or operator identity validation. EntityRef parsed only in alias-let RHS. Optional `policy` prefix preserved. |
 | EntityRef parser (alias RHS subset) | `implemented-syntax` | `let_stmt.rs` | `entity-ref-design.md` + `ast-construction-v0.1.md` §16 | Only inside `let binder === ...`. Not a general expression parser mode. |
 | Alias RHS boundary checking | `implemented-syntax` | `form.rs`, `let_stmt.rs` | `entity-alias-design.md` | Hard-only boundary: `;`, `}`, EOF. Newline promotion removed. Residual tokens before a hard boundary produce `UnexpectedAliasRhsExpression`. |
-| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 29 DiagnosticCode variants. 4 lexer, 17 parser (including 1 optional/not-guaranteed-emitted), 3 operator, 5 alias. |
+| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 32 DiagnosticCode variants. 4 lexer, 17 parser (including 1 optional/not-guaranteed-emitted), 3 operator, 5 alias. |
 | `InvalidAliasBinder` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Reserved; not currently emitted by parser. |
 | `UnusedClosureAst` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Optional; not guaranteed to be emitted in current parser. |
 | Golden tests | `implemented-syntax` | `tests/lexer_golden.rs`, `tests/parser_golden.rs`, `tests/diagnostics_golden.rs` | `ast-construction-v0.1.md` §15 | Covers lexer, parser/AST, and diagnostics. Stable hand-written dump format. |
+| Return terminal forms (`E return`, `E \|> (T return)`, `E (T return)`) | `implemented-syntax` | `form.rs`, `ast.rs` | `ast-construction-v0.1.md` §19, `concrete-syntax-v0.2.md` | Parser contextually recognizes `return` in return terminal form positions at form level. `return` remains a `Name` token. | Parser preserves structural return event. No semantic return execution. |
+| Terminal body block enforcement | `implemented-syntax` | `closure.rs` | `ast-construction-v0.1.md` §19 | Once a terminal block form appears, no later form may occur before `}`. Generates `StatementAfterTerminalBlockForm`. | Semicolons tolerated; actual following forms diagnosed. |
+| Normalized TailValue / ReturnEvent | `implemented-normalization` | `norm.rs` | `normalized-surface-semantics-v0.5.md` | Last expr normalized as `NormForm::TailValue`; return events normalized as `NormForm::ReturnEvent`. Target syntax preserved unresolved. | No semantic target resolution. |
 
 ## Current golden test snapshot
 
@@ -70,5 +73,5 @@ workspace smoke tests).
 | Category | Count |
 |---|---|
 | Lexer golden cases | 25 |
-| Parser golden cases | 299 |
+| Parser golden cases | 325 |
 | Diagnostic golden cases | 43 |
