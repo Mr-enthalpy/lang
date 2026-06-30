@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use lang_syntax::{
     NormClosure, NormClosureBody, NormExpr, NormForm, NormPattern, NormPatternElem, NormProductElem,
@@ -7,17 +7,19 @@ use lang_syntax::{
 use crate::{
     callable_body_allows_execution,
     graph::{NamespaceGraphSnapshot, ResolverContext},
+    initializer_eval::{evaluate_initializer_best_effort, EvalMode, EvalOutcome},
     meta_body::selected_meta_delete_diagnostic,
     meta_invocation::{
         ForwardedValue, MetaInvocationResult, MetaInvocationValue, MetaValueTarget, ReturnViewShape,
     },
     model::{
-        Diagnostic, DiagnosticSeverity, ExecutionEnv, NamespaceNodeId, PolicyFlag, Provenance,
-        SourceCallableObject, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+        Diagnostic, DiagnosticSeverity, ExecutionEnv, NamespaceNodeId, PolicyFlag, PolicySet,
+        Provenance, ResolverCode, SourceCallableObject, SymbolId, SymbolKind, SymbolObject,
+        SymbolPayload,
     },
     overload_pattern::{
         decode_param_pattern, match_param_pattern, overload_args_from_classified_shape,
-        OverloadArgShape, SpecificityTuple,
+        OverloadArgShape, RestrictedParamPattern, SpecificityTuple,
     },
     product_shape::ProductMaterialRole,
     type_argument::classify_type_arguments_with_report,
@@ -72,12 +74,88 @@ pub struct SelectedOverloadCandidate {
 }
 
 #[derive(Clone, Debug)]
+pub enum RestrictedMetaInvocationOutcome {
+    Value {
+        value: MetaInvocationValue,
+        result_policy: PolicySet,
+    },
+    Diagnostic {
+        diagnostic: Diagnostic,
+        failure_kind: RestrictedOverloadFailureKind,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RestrictedOverloadFailureKind {
+    InvalidTarget,
+    NoSourceDeclaredCallable {
+        callable_name: String,
+    },
+    NotVisibleToLookupPhase {
+        callable_name: String,
+        lookup_phase: LookupPhase,
+    },
+    NoApplicableCandidate {
+        callable_name: String,
+    },
+    BodyEntryPolicyMismatch {
+        demanded_execution: ExecutionEnv,
+    },
+    AmbiguousCandidate {
+        specificity: SpecificityTuple,
+    },
+    UnsupportedExternalVisibility,
+    UnsupportedCandidateShape,
+    UnsupportedParameterPattern,
+    UnsupportedCanonicalSumPatternValue,
+    UnsupportedSelectedMetaBody,
+    UnsupportedSelectedMetaBodyLocalBinding,
+    SelectedDeleteBodyDiagnostic,
+}
+
+impl RestrictedOverloadFailureKind {
+    pub fn diagnostic_code(&self) -> ResolverCode {
+        match self {
+            Self::InvalidTarget => ResolverCode::UnsupportedOverloadTarget,
+            Self::NoSourceDeclaredCallable { .. }
+            | Self::NotVisibleToLookupPhase { .. }
+            | Self::NoApplicableCandidate { .. } => ResolverCode::NoMetaVisibleCandidate,
+            Self::BodyEntryPolicyMismatch { .. } => ResolverCode::BodyEntryPolicyMismatch,
+            Self::AmbiguousCandidate { .. } => ResolverCode::AmbiguousMetaCandidate,
+            Self::UnsupportedExternalVisibility => ResolverCode::UnsupportedExternalVisibility,
+            Self::UnsupportedCandidateShape => ResolverCode::UnsupportedCandidateShape,
+            Self::UnsupportedParameterPattern => ResolverCode::UnsupportedParameterPattern,
+            Self::UnsupportedCanonicalSumPatternValue => {
+                ResolverCode::UnsupportedCanonicalSumPatternValue
+            }
+            Self::UnsupportedSelectedMetaBody => ResolverCode::UnsupportedSelectedMetaBody,
+            Self::UnsupportedSelectedMetaBodyLocalBinding => {
+                ResolverCode::UnsupportedSelectedMetaBodyLocalBinding
+            }
+            Self::SelectedDeleteBodyDiagnostic => ResolverCode::UnsupportedSelectedMetaBody,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RestrictedOverloadFailure {
+    pub diagnostic: Diagnostic,
+    pub kind: RestrictedOverloadFailureKind,
+}
+
+#[derive(Clone, Debug)]
 struct ApplicableCandidate {
     symbol: SymbolObject,
     source_callable: SourceCallableObject,
     bindings: BTreeMap<String, OverloadArgShape>,
     specificity: SpecificityTuple,
     return_slot_name: String,
+}
+
+enum CandidateApplicabilityFailure {
+    Inapplicable(Diagnostic),
+    UnsupportedParameterPattern(Diagnostic),
+    UnsupportedCandidateShape(Diagnostic),
 }
 
 pub fn invoke_restricted_meta_overload(
@@ -90,16 +168,44 @@ pub fn invoke_restricted_meta_overload(
     visibility: VisibilityView,
     provenance: Provenance,
 ) -> MetaInvocationResult {
+    match invoke_restricted_meta_overload_with_policy(
+        snapshot,
+        namespace,
+        call_site,
+        resolver_context,
+        lookup_phase,
+        demanded_execution,
+        visibility,
+        provenance,
+    ) {
+        RestrictedMetaInvocationOutcome::Value { value, .. } => MetaInvocationResult::Value(value),
+        RestrictedMetaInvocationOutcome::Diagnostic { diagnostic, .. } => {
+            MetaInvocationResult::Diagnostic(diagnostic)
+        }
+    }
+}
+
+pub fn invoke_restricted_meta_overload_with_policy(
+    snapshot: &NamespaceGraphSnapshot,
+    namespace: NamespaceNodeId,
+    call_site: &NormalizedCallSite,
+    resolver_context: &ResolverContext,
+    lookup_phase: LookupPhase,
+    demanded_execution: ExecutionEnv,
+    visibility: VisibilityView,
+    provenance: Provenance,
+) -> RestrictedMetaInvocationOutcome {
     let Some(callable_name) = callable_name_from_target(&call_site.target) else {
-        return MetaInvocationResult::Diagnostic(Diagnostic::hard_error(
+        return diagnostic_outcome(
+            RestrictedOverloadFailureKind::InvalidTarget,
             "restricted overload selection requires a name or operator target",
-            Some(call_site.provenance.clone()),
-        ));
+            call_site.provenance.clone(),
+        );
     };
     let arg_shape = call_site.to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct);
     let classified =
         classify_type_arguments_with_report(&arg_shape, &snapshot.capability(), resolver_context);
-    let selected = match select_restricted_meta_overload(OverloadSelectionInput {
+    let selected = match select_restricted_meta_overload_structured(OverloadSelectionInput {
         snapshot,
         namespace,
         callable_name,
@@ -110,28 +216,75 @@ pub fn invoke_restricted_meta_overload(
         provenance,
     }) {
         Ok(selected) => selected,
-        Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
+        Err(failure) => {
+            return RestrictedMetaInvocationOutcome::Diagnostic {
+                diagnostic: failure.diagnostic,
+                failure_kind: failure.kind,
+            };
+        }
     };
-    evaluate_selected_source_meta_body(snapshot, resolver_context, &selected)
+    let result_policy = selected_return_object_policy(&selected);
+    match evaluate_selected_source_meta_body(snapshot, resolver_context, &selected) {
+        Ok(value) => RestrictedMetaInvocationOutcome::Value {
+            value,
+            result_policy,
+        },
+        Err(failure) => RestrictedMetaInvocationOutcome::Diagnostic {
+            diagnostic: failure.diagnostic,
+            failure_kind: failure.kind,
+        },
+    }
+}
+
+fn diagnostic_outcome(
+    kind: RestrictedOverloadFailureKind,
+    message: impl Into<String>,
+    provenance: Provenance,
+) -> RestrictedMetaInvocationOutcome {
+    let diagnostic =
+        Diagnostic::hard_error(message, Some(provenance)).with_code(kind.diagnostic_code());
+    RestrictedMetaInvocationOutcome::Diagnostic {
+        diagnostic,
+        failure_kind: kind,
+    }
+}
+
+fn selected_return_object_policy(selected: &SelectedOverloadCandidate) -> PolicySet {
+    match &selected.symbol.payload {
+        SymbolPayload::MetaFunction(meta_function) => {
+            meta_function.return_object_policy.policy_set.clone()
+        }
+        _ => selected.symbol.policy_metadata.policy_set.clone(),
+    }
 }
 
 pub fn select_restricted_meta_overload(
     input: OverloadSelectionInput<'_>,
 ) -> Result<SelectedOverloadCandidate, Diagnostic> {
+    select_restricted_meta_overload_structured(input).map_err(|failure| failure.diagnostic)
+}
+
+pub fn select_restricted_meta_overload_structured(
+    input: OverloadSelectionInput<'_>,
+) -> Result<SelectedOverloadCandidate, RestrictedOverloadFailure> {
     if input.visibility == VisibilityView::External {
-        return Err(Diagnostic::hard_error(
+        return Err(overload_failure(
+            RestrictedOverloadFailureKind::UnsupportedExternalVisibility,
             "External visibility is not implemented in the restricted v0.8 overload selector",
-            Some(input.provenance),
+            input.provenance,
         ));
     }
     let candidate_set = construct_c0(&input);
     if candidate_set.c0_symbol_ids.is_empty() {
-        return Err(Diagnostic::hard_error(
+        return Err(overload_failure(
+            RestrictedOverloadFailureKind::NoSourceDeclaredCallable {
+                callable_name: input.callable_name.clone(),
+            },
             format!(
                 "no matching overload candidate: no source-declared callable `{}` in selected namespace view",
                 input.callable_name
             ),
-            Some(input.provenance),
+            input.provenance,
         ));
     }
 
@@ -156,33 +309,75 @@ pub fn select_restricted_meta_overload(
         }
     }
     if policy_visible.is_empty() {
-        return Err(Diagnostic::hard_error(
+        return Err(overload_failure(
+            RestrictedOverloadFailureKind::NotVisibleToLookupPhase {
+                callable_name: input.callable_name.clone(),
+                lookup_phase: input.lookup_phase,
+            },
             format!(
                 "no matching overload candidate: `{}` is not visible to {:?}",
                 input.callable_name, input.lookup_phase
             ),
-            Some(input.provenance),
+            input.provenance,
         ));
     }
 
     let mut shape_matches = Vec::new();
-    let mut last_pattern_error = None;
+    let mut first_unsupported_shape = None;
+    let mut first_unsupported_pattern = None;
+    let mut last_inapplicable = None;
     for symbol in policy_visible {
         match applicable_candidate_from_symbol(&symbol, &args, input.demanded_execution) {
             Ok(candidate) => shape_matches.push(candidate),
-            Err(diagnostic) => last_pattern_error = Some(diagnostic),
+            Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(d)) => {
+                if first_unsupported_shape.is_none() {
+                    first_unsupported_shape = Some(d);
+                }
+            }
+            Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(d)) => {
+                if first_unsupported_pattern.is_none() {
+                    first_unsupported_pattern = Some(d);
+                }
+            }
+            Err(CandidateApplicabilityFailure::Inapplicable(d)) => {
+                last_inapplicable = Some(d);
+            }
         }
     }
     if shape_matches.is_empty() {
-        return Err(last_pattern_error.unwrap_or_else(|| {
-            Diagnostic::hard_error(
-                format!(
-                    "no matching overload candidate for `{}`",
-                    input.callable_name
+        if let Some(diagnostic) = first_unsupported_shape {
+            return Err(RestrictedOverloadFailure {
+                diagnostic: diagnostic.with_code(
+                    RestrictedOverloadFailureKind::UnsupportedCandidateShape.diagnostic_code(),
                 ),
-                Some(input.provenance.clone()),
-            )
-        }));
+                kind: RestrictedOverloadFailureKind::UnsupportedCandidateShape,
+            });
+        }
+        if let Some(diagnostic) = first_unsupported_pattern {
+            return Err(RestrictedOverloadFailure {
+                diagnostic: diagnostic.with_code(
+                    RestrictedOverloadFailureKind::UnsupportedParameterPattern.diagnostic_code(),
+                ),
+                kind: RestrictedOverloadFailureKind::UnsupportedParameterPattern,
+            });
+        }
+        let kind = RestrictedOverloadFailureKind::NoApplicableCandidate {
+            callable_name: input.callable_name.clone(),
+        };
+        if let Some(diagnostic) = last_inapplicable {
+            return Err(RestrictedOverloadFailure {
+                diagnostic: diagnostic.with_code(kind.diagnostic_code()),
+                kind,
+            });
+        }
+        return Err(overload_failure(
+            kind,
+            format!(
+                "no matching overload candidate for `{}`",
+                input.callable_name
+            ),
+            input.provenance.clone(),
+        ));
     }
 
     let body_entry_matches = shape_matches
@@ -198,9 +393,12 @@ pub fn select_restricted_meta_overload(
         })
         .collect::<Vec<_>>();
     if body_entry_matches.is_empty() {
-        return Err(Diagnostic::hard_error(
+        return Err(overload_failure(
+            RestrictedOverloadFailureKind::BodyEntryPolicyMismatch {
+                demanded_execution: input.demanded_execution,
+            },
             "candidate body-entry policy does not admit demanded execution",
-            Some(input.provenance),
+            input.provenance,
         ));
     }
 
@@ -222,14 +420,27 @@ pub fn select_restricted_meta_overload(
             return_slot_name: candidate.return_slot_name.clone(),
         }),
         [] => unreachable!("maximal candidates are built from a non-empty list"),
-        _ => Err(Diagnostic::hard_error(
+        _ => Err(overload_failure(
+            RestrictedOverloadFailureKind::AmbiguousCandidate {
+                specificity: max_specificity,
+            },
             format!(
                 "ambiguous overload candidate: duplicate overload declaration is ambiguous only when selected (specificity {:?})",
                 max_specificity
             ),
-            Some(input.provenance),
+            input.provenance,
         )),
     }
+}
+
+fn overload_failure(
+    kind: RestrictedOverloadFailureKind,
+    message: impl Into<String>,
+    provenance: Provenance,
+) -> RestrictedOverloadFailure {
+    let diagnostic =
+        Diagnostic::hard_error(message, Some(provenance)).with_code(kind.diagnostic_code());
+    RestrictedOverloadFailure { diagnostic, kind }
 }
 
 pub fn construct_c0(input: &OverloadSelectionInput<'_>) -> OverloadCandidateSet {
@@ -266,42 +477,56 @@ fn applicable_candidate_from_symbol(
     symbol: &SymbolObject,
     args: &[OverloadArgShape],
     _demanded_execution: ExecutionEnv,
-) -> Result<ApplicableCandidate, Diagnostic> {
+) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     let SymbolPayload::MetaFunction(meta_function) = &symbol.payload else {
-        return Err(Diagnostic::hard_error(
-            "overload candidate is not a meta-function payload",
-            Some(symbol.provenance.clone()),
+        return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
+            Diagnostic::hard_error(
+                "overload candidate is not a meta-function payload",
+                Some(symbol.provenance.clone()),
+            ),
         ));
     };
     let source_callable = meta_function.source_callable.clone().ok_or_else(|| {
-        Diagnostic::hard_error(
+        CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
             "overload candidate is not source-declared callable material",
             Some(symbol.provenance.clone()),
-        )
+        ))
     })?;
     let head = source_callable.closure.head.as_ref().ok_or_else(|| {
-        Diagnostic::hard_error(
+        CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
             "overload candidate lacks explicit closure head",
             Some(source_callable.provenance.clone()),
-        )
+        ))
     })?;
     if head.params.len() != args.len() + 1 {
-        return Err(Diagnostic::hard_error(
-            format!(
-                "overload candidate arity mismatch: expected {} explicit args, got {}",
-                head.params.len().saturating_sub(1),
-                args.len()
+        return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
+            Diagnostic::hard_error(
+                format!(
+                    "overload candidate arity mismatch: expected {} explicit args, got {}",
+                    head.params.len().saturating_sub(1),
+                    args.len()
+                ),
+                Some(source_callable.provenance.clone()),
             ),
-            Some(source_callable.provenance.clone()),
         ));
     }
 
-    let return_slot_name = return_slot_name(&source_callable.closure)?;
+    let return_slot_name = return_slot_name(&source_callable.closure)
+        .map_err(CandidateApplicabilityFailure::UnsupportedCandidateShape)?;
     let mut specificity = SpecificityTuple::default();
     let mut bindings = BTreeMap::new();
     for (param, arg) in head.params.iter().skip(1).zip(args) {
         let pattern = decode_param_pattern(param);
-        let outcome = match_param_pattern(&pattern, arg)?;
+        if let RestrictedParamPattern::Unsupported { reason, provenance } = &pattern {
+            return Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(
+                Diagnostic::hard_error(
+                    format!("unsupported parameter extraction pattern: {reason}"),
+                    Some(provenance.clone()),
+                ),
+            ));
+        }
+        let outcome = match_param_pattern(&pattern, arg)
+            .map_err(CandidateApplicabilityFailure::Inapplicable)?;
         specificity = specificity.add(outcome.specificity);
         bindings.extend(outcome.bindings);
     }
@@ -358,11 +583,19 @@ fn evaluate_selected_source_meta_body(
     snapshot: &NamespaceGraphSnapshot,
     resolver_context: &ResolverContext,
     selected: &SelectedOverloadCandidate,
-) -> MetaInvocationResult {
+) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
     match &selected.source_callable.closure.body {
-        NormClosureBody::Delete(delete) => MetaInvocationResult::Diagnostic(
-            selected_meta_delete_diagnostic(delete, selected.source_callable.provenance.clone()),
-        ),
+        NormClosureBody::Delete(delete) => {
+            let diagnostic = selected_meta_delete_diagnostic(
+                delete,
+                selected.source_callable.provenance.clone(),
+            )
+            .with_code(ResolverCode::UnsupportedSelectedMetaBody);
+            Err(RestrictedOverloadFailure {
+                diagnostic,
+                kind: RestrictedOverloadFailureKind::SelectedDeleteBodyDiagnostic,
+            })
+        }
         NormClosureBody::Block(program) => {
             evaluate_block_body(snapshot, resolver_context, selected, program)
         }
@@ -374,19 +607,103 @@ fn evaluate_block_body(
     resolver_context: &ResolverContext,
     selected: &SelectedOverloadCandidate,
     program: &lang_syntax::NormProgram,
-) -> MetaInvocationResult {
-    let [NormForm::Expr(expr)] = program.forms.as_slice() else {
-        return unsupported_body(
+) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+    let mut final_expr = None;
+    let mut local_names = BTreeSet::new();
+    for form in &program.forms {
+        match form {
+            NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
+                if let Some(initializer) = slot.initializer.as_deref() {
+                    if expr_refs_selected_or_local_binding(initializer, selected, &local_names) {
+                        return Err(selected_body_failure(
+                            selected,
+                            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
+                            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+                        ));
+                    }
+                    match evaluate_initializer_best_effort(
+                        snapshot,
+                        selected
+                            .symbol
+                            .parent
+                            .unwrap_or_else(|| snapshot.root_node()),
+                        initializer,
+                        resolver_context,
+                        EvalMode::MetaStrict,
+                        Provenance::from_norm_origin("selected meta body local let", &slot.origin),
+                    ) {
+                        EvalOutcome::Value { .. } => {}
+                        EvalOutcome::Residual {
+                            reason, provenance, ..
+                        } => {
+                            return Err(RestrictedOverloadFailure {
+                                diagnostic: Diagnostic::hard_error(
+                                format!(
+                                    "ResidualNotAllowedInMetaStrict: runtime-only dependency in MetaStrict context ({reason:?})"
+                                ),
+                                Some(provenance),
+                                )
+                                .with_code(ResolverCode::ResidualNotAllowedInMetaStrict),
+                                kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                            });
+                        }
+                        EvalOutcome::Diagnostic(diagnostic) => {
+                            return Err(RestrictedOverloadFailure {
+                                diagnostic,
+                                kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                            });
+                        }
+                    }
+                }
+                if let Some(name) = binding_slot_name(slot) {
+                    local_names.insert(name);
+                }
+            }
+            NormForm::Expr(expr) if final_expr.is_none() => final_expr = Some(expr),
+            _ => {
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+                ));
+            }
+        }
+    }
+    let Some(expr) = final_expr else {
+        return Err(unsupported_body(
             selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
             "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
-        );
+        ));
     };
+    if forwarding_expr_is_canonical_sum(expr, &selected.return_slot_name) {
+        return Err(unsupported_body(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
+            "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
+        ));
+    }
     let Some(rhs_name) = forwarding_equality_rhs(expr, &selected.return_slot_name) else {
-        return unsupported_body(
+        if forwarding_rhs_is_canonical_sum(expr, &selected.return_slot_name) {
+            return Err(unsupported_body(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
+                "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
+            ));
+        }
+        return Err(unsupported_body(
             selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
             "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
-        );
+        ));
     };
+    if local_names.contains(&rhs_name) {
+        return Err(selected_body_failure(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
+            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+        ));
+    }
     if let Some(bound) = selected.bindings.get(&rhs_name) {
         return forwarded_type_value(selected, bound.type_symbol_id);
     }
@@ -397,10 +714,11 @@ fn evaluate_block_body(
     );
     match resolved {
         Ok(symbol) => forwarded_type_value(selected, Some(symbol.id)),
-        Err(_) => unsupported_body(
+        Err(_) => Err(unsupported_body(
             selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
             "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
-        ),
+        )),
     }
 }
 
@@ -431,17 +749,62 @@ fn forwarding_equality_rhs(expr: &NormExpr, return_slot_name: &str) -> Option<St
     }
 }
 
+fn forwarding_rhs_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> bool {
+    let NormExpr::Call { source, target, .. } = expr else {
+        return false;
+    };
+    let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
+        return false;
+    };
+    if spelling != "===" || source.elements.len() != 2 {
+        return false;
+    }
+    let lhs = match &source.elements[0] {
+        NormProductElem::Expr(NormExpr::Name { text, .. }) => text,
+        _ => return false,
+    };
+    if lhs != return_slot_name {
+        return false;
+    }
+    matches!(
+        &source.elements[1],
+        NormProductElem::Expr(NormExpr::Call { target, .. })
+            if matches!(target.as_ref(), NormExpr::OperatorTarget { spelling, .. } if spelling == "|")
+    )
+}
+
+fn forwarding_expr_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> bool {
+    let NormExpr::Call { source, target, .. } = expr else {
+        return false;
+    };
+    let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
+        return false;
+    };
+    if spelling != "|" || source.elements.is_empty() {
+        return false;
+    }
+    source.elements.iter().any(|element| {
+        matches!(
+            element,
+            NormProductElem::Expr(inner)
+                if forwarding_equality_rhs(inner, return_slot_name).is_some()
+                    || forwarding_expr_is_canonical_sum(inner, return_slot_name)
+        )
+    })
+}
+
 fn forwarded_type_value(
     selected: &SelectedOverloadCandidate,
     type_symbol_id: Option<SymbolId>,
-) -> MetaInvocationResult {
+) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
     let Some(type_symbol_id) = type_symbol_id else {
-        return unsupported_body(
+        return Err(unsupported_body(
             selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
             "selected simple forwarding body requires a graph-resolved TypeSymbol value",
-        );
+        ));
     };
-    MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(ForwardedValue {
+    Ok(MetaInvocationValue::ForwardedValue(ForwardedValue {
         target: MetaValueTarget::TypeSymbol(type_symbol_id),
         return_view: ReturnViewShape::Leaf,
         provenance: selected.source_callable.provenance.clone(),
@@ -450,16 +813,54 @@ fn forwarded_type_value(
 
 fn unsupported_body(
     selected: &SelectedOverloadCandidate,
+    kind: RestrictedOverloadFailureKind,
     message: impl Into<String>,
-) -> MetaInvocationResult {
-    MetaInvocationResult::Diagnostic(
-        Diagnostic::new(
-            DiagnosticSeverity::Error,
-            message,
-            Some(selected.source_callable.provenance.clone()),
-        )
-        .with_symbol_context(selected.symbol.id),
+) -> RestrictedOverloadFailure {
+    selected_body_failure(selected, kind, message)
+}
+
+fn selected_body_failure(
+    selected: &SelectedOverloadCandidate,
+    kind: RestrictedOverloadFailureKind,
+    message: impl Into<String>,
+) -> RestrictedOverloadFailure {
+    let diagnostic = Diagnostic::new(
+        DiagnosticSeverity::Error,
+        message,
+        Some(selected.source_callable.provenance.clone()),
     )
+    .with_symbol_context(selected.symbol.id)
+    .with_code(kind.diagnostic_code());
+    RestrictedOverloadFailure { diagnostic, kind }
+}
+
+fn binding_slot_name(slot: &lang_syntax::NormBindingSlot) -> Option<String> {
+    match &slot.value_pattern {
+        NormPattern::Binder { name, .. } => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn expr_refs_selected_or_local_binding(
+    expr: &NormExpr,
+    selected: &SelectedOverloadCandidate,
+    local_names: &BTreeSet<String>,
+) -> bool {
+    match expr {
+        NormExpr::Name { text, .. } => {
+            selected.bindings.contains_key(text) || local_names.contains(text)
+        }
+        NormExpr::Call { source, target, .. } => {
+            expr_refs_selected_or_local_binding(target, selected, local_names)
+                || source.elements.iter().any(|element| match element {
+                    NormProductElem::Expr(expr) => {
+                        expr_refs_selected_or_local_binding(expr, selected, local_names)
+                    }
+                    _ => false,
+                })
+        }
+        _ => false,
+    }
 }
 
 fn callable_name_from_target(target: &NormExpr) -> Option<String> {

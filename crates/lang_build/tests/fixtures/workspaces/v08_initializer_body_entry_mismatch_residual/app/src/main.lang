@@ -1,0 +1,9 @@
+let int: type = uint16;
+
+meta | runtime let f =
+  (self, t: type): runtime -> let r: type =>
+{
+  r === t;
+};
+
+let x = int f;

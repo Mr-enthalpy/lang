@@ -12,6 +12,7 @@ pub mod extraction_view;
 pub mod fingerprint;
 pub mod graph;
 pub mod identity;
+pub mod initializer_eval;
 pub mod manifest;
 pub mod meta;
 pub mod meta_body;
@@ -69,6 +70,10 @@ pub use identity::{
     AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasQueryResult,
     AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
 };
+pub use initializer_eval::{
+    binding_assertion_annotation_context, evaluate_initializer_best_effort, residual_diagnostic,
+    AnnotationContext, EvalMode, EvalOutcome, ResidualReason,
+};
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
     bind_meta_invocation_value_result, expand_meta_initializer_via_invocation, MetaExpansionResult,
@@ -112,8 +117,11 @@ pub use overload_pattern::{
     OverloadArgShape, PatternMatchOutcome, RestrictedParamPattern, SpecificityTuple,
 };
 pub use overload_set::{
-    construct_c0, invoke_restricted_meta_overload, select_restricted_meta_overload, LookupPhase,
-    OverloadCandidateSet, OverloadSelectionInput, SelectedOverloadCandidate, VisibilityView,
+    construct_c0, invoke_restricted_meta_overload, invoke_restricted_meta_overload_with_policy,
+    select_restricted_meta_overload, select_restricted_meta_overload_structured, LookupPhase,
+    OverloadCandidateSet, OverloadSelectionInput, RestrictedMetaInvocationOutcome,
+    RestrictedOverloadFailure, RestrictedOverloadFailureKind, SelectedOverloadCandidate,
+    VisibilityView,
 };
 pub use pattern_space::{
     bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,

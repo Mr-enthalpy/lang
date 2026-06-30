@@ -1,0 +1,10 @@
+let int: type = uint16;
+let string: type = uint32;
+
+meta | runtime let + =
+  (self, t: type, u: type): meta -> let r: type =>
+{
+  r === t | u;
+};
+
+let Y: type = int + string;

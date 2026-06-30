@@ -19,7 +19,6 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("v08_unary_construction", "app"),
     ("v08_struct_uint8", "app"),
     ("v08_struct_uint16", "app"),
-    ("non_meta_target", "app"),
     ("same_name_distinct_namespaces", "app"),
     ("resolver_core_conflict", "app"),
     ("single_package_type_binding", "app"),
@@ -119,6 +118,7 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     ("diagnostic_conflict", "app", "conflict"),
     ("diagnostic_descendant", "app", "parent-to-descendant"),
     ("duplicate_declaration", "app", "conflict"),
+    ("non_meta_target", "app", "UnsupportedDeferredTypeAssertion"),
     (
         "v08_identity_type_notype",
         "app",

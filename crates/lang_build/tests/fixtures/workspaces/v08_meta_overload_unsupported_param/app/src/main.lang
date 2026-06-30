@@ -1,0 +1,7 @@
+let int: type = uint16;
+
+meta | runtime let magic =
+  (self, _: type): meta -> let r: type =>
+{
+  r === int;
+};

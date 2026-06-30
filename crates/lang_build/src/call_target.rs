@@ -66,7 +66,7 @@ pub fn resolve_call_target(
         Ok(symbol) => Some(symbol),
         Err(diagnostic) => match diagnostic.code {
             Some(ResolverCode::Unresolved) | None => None,
-            Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => return Err(diagnostic),
+            _ => return Err(diagnostic),
         },
     };
     let target_symbol = match meta_symbol {
@@ -80,9 +80,7 @@ pub fn resolve_call_target(
             Ok(symbol) => symbol,
             Err(diagnostic) => match diagnostic.code {
                 Some(ResolverCode::Unresolved) | None => return Ok(None),
-                Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => {
-                    return Err(diagnostic);
-                }
+                _ => return Err(diagnostic),
             },
         },
     };

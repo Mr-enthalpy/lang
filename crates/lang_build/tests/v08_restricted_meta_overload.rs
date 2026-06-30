@@ -1,10 +1,11 @@
 mod support;
 
 use lang_build::{
-    construct_c0, invoke_restricted_meta_overload, select_restricted_meta_overload,
-    CompilationWorld, Diagnostic, ExecutionEnv, LookupPhase, MetaInvocationResult,
-    MetaInvocationValue, MetaValueTarget, OverloadSelectionInput, PolicyFlag, ProductMaterialRole,
-    Provenance, ResolveExpectation, ResolverCode, VisibilityView,
+    construct_c0, invoke_restricted_meta_overload, invoke_restricted_meta_overload_with_policy,
+    select_restricted_meta_overload, CompilationWorld, Diagnostic, ExecutionEnv, LookupPhase,
+    MetaInvocationResult, MetaInvocationValue, MetaValueTarget, OverloadSelectionInput, PolicyFlag,
+    ProductMaterialRole, Provenance, ResolveExpectation, ResolverCode,
+    RestrictedMetaInvocationOutcome, RestrictedOverloadFailureKind, VisibilityView,
 };
 use lang_syntax::{NormExpr, NormForm};
 use support::{build_fixture_error, build_single_fixture_world, fixture_source_root};
@@ -509,4 +510,78 @@ fn plus_is_not_treated_as_bar_by_parser_or_normalizer() {
         NormExpr::OperatorTarget { ref spelling, .. } if spelling == "+"
     ));
     assert_eq!(forwarded_type_name(invoke("int + unit")), "int");
+}
+
+fn unsupported_param_world() -> CompilationWorld {
+    build_single_fixture_world("v08_meta_overload_unsupported_param", "app")
+}
+
+fn non_binder_return_world() -> CompilationWorld {
+    build_single_fixture_world("v08_meta_overload_no_return_slot", "app")
+}
+
+fn invoke_with_policy(world: &CompilationWorld, source: &str) -> RestrictedMetaInvocationOutcome {
+    let site = call_site(source);
+    invoke_restricted_meta_overload_with_policy(
+        world.snapshot(),
+        world.package_root_node(),
+        &site,
+        &world.package_context(),
+        LookupPhase::MetaAction,
+        ExecutionEnv::Meta,
+        VisibilityView::Internal,
+        Provenance::new(source),
+    )
+}
+
+#[test]
+fn unsupported_parameter_pattern_produces_hard_error_not_residual() {
+    let outcome = invoke_with_policy(&unsupported_param_world(), "int magic");
+    let RestrictedMetaInvocationOutcome::Diagnostic {
+        diagnostic,
+        failure_kind,
+    } = outcome
+    else {
+        panic!("expected diagnostic outcome for unsupported parameter pattern");
+    };
+    assert_eq!(
+        failure_kind,
+        RestrictedOverloadFailureKind::UnsupportedParameterPattern
+    );
+    assert_eq!(
+        diagnostic.code,
+        Some(ResolverCode::UnsupportedParameterPattern)
+    );
+    assert!(
+        diagnostic
+            .message
+            .contains("unsupported parameter extraction pattern"),
+        "diagnostic message should mention unsupported parameter pattern, got: {}",
+        diagnostic.message
+    );
+}
+
+#[test]
+fn unsupported_candidate_shape_non_binder_return_is_hard_error() {
+    let outcome = invoke_with_policy(&non_binder_return_world(), "int magic");
+    let RestrictedMetaInvocationOutcome::Diagnostic {
+        diagnostic,
+        failure_kind,
+    } = outcome
+    else {
+        panic!("expected diagnostic outcome for missing return slot");
+    };
+    assert_eq!(
+        failure_kind,
+        RestrictedOverloadFailureKind::UnsupportedCandidateShape
+    );
+    assert_eq!(
+        diagnostic.code,
+        Some(ResolverCode::UnsupportedCandidateShape)
+    );
+    assert!(
+        diagnostic.message.contains("return slot must be a binder"),
+        "diagnostic message should mention return slot must be a binder, got: {}",
+        diagnostic.message
+    );
 }

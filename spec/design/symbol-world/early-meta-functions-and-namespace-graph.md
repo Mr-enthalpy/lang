@@ -189,10 +189,19 @@ model boundary:
   fields, and unsupported nested products are rejected. Fields named `ref` or
   `share` are allowed because fields are unary function objects while
   `ref` / `share` are namespace subspaces.
-- v0.6 still represents non-meta `let T: type = uint8` as a placeholder type
-  payload. That is an implementation placeholder only: the long-term semantics
-  are ordinary type-value binding, not fresh type generation and not symbol
-  aliasing.
+- v0.8 ordinary initializer evaluation can materialize
+  `let T: type = uint8` as a forwarding type-value binding: `T` is a fresh
+  symbol/place whose type value is the existing type value `uint8`. This is not
+  symbol aliasing and does not canonicalize namespace injection targets.
+- v0.8 source-declared callable overload selection reports structured failure
+  kinds. Initializer MetaPartial residualization is driven by those kinds, not
+  by diagnostic message text. Ambiguity remains a hard diagnostic; no
+  meta-visible candidate and body-entry mismatch may residualize only at legal
+  MetaPartial initializer boundaries.
+- Selected source meta body evaluation remains narrow. Simple forwarding and
+  delete diagnostics are supported. Local-let initializers may be checked under
+  MetaStrict, but a selected-body parameter/local binding environment is not
+  implemented; such cases report `UnsupportedSelectedMetaBodyLocalBinding`.
 - Policy and visibility are metadata slots only. No policy checker, type
   checker, resolver overlay, overload merging, package solver, lockfile, or
   general meta interpreter is implemented.

@@ -61,19 +61,22 @@ pub fn try_expand_early_meta_initializer(
     };
 
     match &resolved.callee.payload {
-        SymbolPayload::MetaFunction(_) => expand_meta_initializer_via_invocation(
-            initializer,
-            snapshot,
-            parent_namespace,
-            binding_name,
-            context,
-            PolicyEnv::Meta,
-            ExecutionEnv::Meta,
-            CandidateBuildIdentityPlaceholder::default(),
-            provenance,
-            None,
-        )
-        .map(Some),
+        SymbolPayload::MetaFunction(meta_function) if meta_function.primitive.is_some() => {
+            expand_meta_initializer_via_invocation(
+                initializer,
+                snapshot,
+                parent_namespace,
+                binding_name,
+                context,
+                PolicyEnv::Meta,
+                ExecutionEnv::Meta,
+                CandidateBuildIdentityPlaceholder::default(),
+                provenance,
+                None,
+            )
+            .map(Some)
+        }
+        SymbolPayload::MetaFunction(_) => Ok(None),
         _ => {
             if resolved.callee.kind == SymbolKind::MetaFunction {
                 Err(BuildError::single(Diagnostic::hard_error(
@@ -606,12 +609,27 @@ pub fn bind_meta_invocation_value_result(
             MetaValueTarget::TypeSymbol(type_symbol_id) => {
                 let mut delta = snapshot.empty_delta();
                 let declared_id = delta.allocate_symbol_id();
+                let type_namespace_id = delta.allocate_node_id();
+                delta.insert_node(NamespaceNode {
+                    id: type_namespace_id,
+                    name: format!("{binding_name}<type-associated>"),
+                    kind: NamespaceNodeKind::Virtual,
+                    source_category: SourceCategory::DeclaredSymbol,
+                    parent: Some(parent_namespace),
+                    children: std::collections::BTreeMap::new(),
+                    policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
+                    visibility_metadata: crate::model::VisibilityMetadata {
+                        slots: std::collections::BTreeMap::new(),
+                    },
+                    provenance: provenance.clone(),
+                    diagnostics: Vec::new(),
+                });
                 let declared_symbol = SymbolObject {
                     id: declared_id,
                     kind: SymbolKind::Type,
                     name: binding_name.to_string(),
                     source_category: SourceCategory::DeclaredSymbol,
-                    node_kind: None,
+                    node_kind: Some(NamespaceNodeKind::Virtual),
                     parent: Some(parent_namespace),
                     policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
                     visibility_metadata: crate::model::VisibilityMetadata {
@@ -628,7 +646,7 @@ pub fn bind_meta_invocation_value_result(
                         fields: Vec::new(),
                         field_names: Vec::new(),
                         field_type_symbol_ids: Vec::new(),
-                        type_associated_namespace: None,
+                        type_associated_namespace: Some(type_namespace_id),
                         extraction_interface: None,
                         provenance: Provenance::new(format!(
                             "forwarding type `{binding_name}` from TypeSymbol({})",

@@ -1,1 +1,1 @@
-let not_type = uint8; let T: type = (not_type a) |> struct
+let not_type = 1; let T: type = (not_type a) |> struct

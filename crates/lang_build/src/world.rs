@@ -11,12 +11,13 @@ use crate::{
     graph::{
         namespace_symbol, BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext,
     },
+    initializer_eval::{evaluate_initializer_best_effort, EvalMode, EvalOutcome},
     manifest::{BuildManifest, NamespaceMount},
-    meta::try_expand_early_meta_initializer,
+    meta::{bind_meta_invocation_value_result, try_expand_early_meta_initializer},
     model::{
         Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceDelta, NamespaceNode,
-        NamespaceNodeId, NamespaceNodeKind, PolicySet, Provenance, SourceCallableObject,
-        SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
+        NamespaceNodeId, NamespaceNodeKind, PolicyFlag, PolicySet, Provenance, ResolverCode,
+        SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
     },
     policy_expr::elaborate_declaration_policy_expr,
     policy_metadata, policy_set_meta, policy_set_meta_runtime, policy_set_runtime,
@@ -299,24 +300,6 @@ impl CompilationWorld {
             vec![self.core_node],
         );
 
-        if let Some(initializer) = slot.initializer.as_deref() {
-            if let Some(expansion) = try_expand_early_meta_initializer(
-                &self.snapshot,
-                namespace,
-                &binder_name,
-                initializer,
-                &context,
-                declaration_provenance.clone(),
-            )? {
-                self.snapshot = self
-                    .snapshot
-                    .install_delta(expansion.namespace_delta)
-                    .map_err(BuildError::from)?;
-                self.diagnostics.extend(expansion.diagnostics);
-                return Ok(());
-            }
-        }
-
         if let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() {
             if closure.head.is_some() {
                 let delta = source_callable_delta(
@@ -332,6 +315,119 @@ impl CompilationWorld {
                     .install_delta(delta)
                     .map_err(BuildError::from)?;
                 return Ok(());
+            }
+        }
+
+        let explicit_policy = slot
+            .policy
+            .as_deref()
+            .map(|policy_expr| {
+                elaborate_declaration_policy_expr(Some(policy_expr), declaration_provenance.clone())
+            })
+            .transpose()
+            .map_err(BuildError::single)?;
+
+        if let Some(initializer) = slot.initializer.as_deref() {
+            if let Some(mut expansion) = try_expand_early_meta_initializer(
+                &self.snapshot,
+                namespace,
+                &binder_name,
+                initializer,
+                &context,
+                declaration_provenance.clone(),
+            )? {
+                assert_expansion_satisfies_annotation(
+                    slot.annotation.as_ref(),
+                    &expansion.replacement_object,
+                    declaration_provenance.clone(),
+                )?;
+                verify_explicit_policy_compatible(
+                    explicit_policy.as_ref(),
+                    &expansion.replacement_object.policy_metadata.policy_set,
+                    declaration_provenance.clone(),
+                )?;
+                let final_binding_policy = final_binding_policy(
+                    explicit_policy.as_ref(),
+                    &expansion.replacement_object.policy_metadata.policy_set,
+                );
+                override_delta_binding_policy(
+                    &mut expansion.namespace_delta,
+                    &binder_name,
+                    final_binding_policy.clone(),
+                );
+                expansion.replacement_object.policy_metadata.policy_set = final_binding_policy;
+                self.snapshot = self
+                    .snapshot
+                    .install_delta(expansion.namespace_delta)
+                    .map_err(BuildError::from)?;
+                self.diagnostics.extend(expansion.diagnostics);
+                return Ok(());
+            }
+
+            match evaluate_initializer_best_effort(
+                &self.snapshot,
+                namespace,
+                initializer,
+                &context,
+                EvalMode::MetaPartial,
+                declaration_provenance.clone(),
+            ) {
+                EvalOutcome::Value {
+                    value,
+                    result_policy,
+                    provenance,
+                } => {
+                    assert_value_satisfies_annotation(
+                        slot.annotation.as_ref(),
+                        &value,
+                        provenance,
+                    )?;
+                    verify_explicit_policy_compatible(
+                        explicit_policy.as_ref(),
+                        &result_policy,
+                        declaration_provenance.clone(),
+                    )?;
+                    let final_binding_policy =
+                        final_binding_policy(explicit_policy.as_ref(), &result_policy);
+                    let mut expansion = bind_meta_invocation_value_result(
+                        value,
+                        &self.snapshot,
+                        namespace,
+                        &binder_name,
+                        declaration_provenance.clone(),
+                    )?;
+                    override_delta_binding_policy(
+                        &mut expansion.namespace_delta,
+                        &binder_name,
+                        final_binding_policy.clone(),
+                    );
+                    expansion.replacement_object.policy_metadata.policy_set = final_binding_policy;
+                    self.snapshot = self
+                        .snapshot
+                        .install_delta(expansion.namespace_delta)
+                        .map_err(BuildError::from)?;
+                    self.diagnostics.extend(expansion.diagnostics);
+                    return Ok(());
+                }
+                EvalOutcome::Residual {
+                    reason, provenance, ..
+                } => {
+                    verify_residual_policy_compatible(
+                        explicit_policy.as_ref(),
+                        &reason,
+                        provenance.clone(),
+                    )?;
+                    if is_type_annotation(slot.annotation.as_ref()) {
+                        return Err(BuildError::single(Diagnostic::hard_error(
+                            "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not implemented in the restricted v0.8 initializer evaluator",
+                            Some(provenance),
+                        )
+                        .with_code(ResolverCode::UnsupportedDeferredTypeAssertion)));
+                    }
+                }
+                EvalOutcome::Diagnostic(diagnostic) => {
+                    return Err(BuildError::single(diagnostic));
+                }
             }
         }
 
@@ -352,11 +448,13 @@ impl CompilationWorld {
             )
         };
         {
-            let policy_set = if is_type_annotation(slot.annotation.as_ref()) {
-                policy_set_meta_runtime()
-            } else {
-                policy_set_runtime()
-            };
+            let policy_set = explicit_policy.clone().unwrap_or_else(|| {
+                if is_type_annotation(slot.annotation.as_ref()) {
+                    policy_set_meta_runtime()
+                } else {
+                    policy_set_runtime()
+                }
+            });
             for symbol in delta.symbols.values_mut() {
                 if symbol.name == binder_name {
                     symbol.policy_metadata.policy_set = policy_set.clone();
@@ -705,6 +803,120 @@ fn ensure_return_policy_supported(
         ));
     }
     Ok(())
+}
+
+fn assert_expansion_satisfies_annotation(
+    annotation: Option<&NormAnnotation>,
+    replacement_object: &SymbolObject,
+    provenance: Provenance,
+) -> Result<(), BuildError> {
+    if is_type_annotation(annotation) && replacement_object.kind != SymbolKind::Type {
+        return Err(BuildError::single(
+            Diagnostic::hard_error(
+                "AnnotationAssertionFailed: `: type` assertion failed after RHS evaluation",
+                Some(provenance),
+            )
+            .with_code(ResolverCode::AnnotationAssertionFailed),
+        ));
+    }
+    Ok(())
+}
+
+fn assert_value_satisfies_annotation(
+    annotation: Option<&NormAnnotation>,
+    value: &crate::MetaInvocationValue,
+    provenance: Provenance,
+) -> Result<(), BuildError> {
+    if !is_type_annotation(annotation) {
+        return Ok(());
+    }
+    let is_type_level = matches!(
+        value,
+        crate::MetaInvocationValue::ForwardedValue(crate::ForwardedValue {
+            target: crate::MetaValueTarget::TypeSymbol(_),
+            ..
+        }) | crate::MetaInvocationValue::GeneratedConstructionValue(_)
+            | crate::MetaInvocationValue::GeneratedTypeDefinitionValue(_)
+    );
+    if is_type_level {
+        Ok(())
+    } else {
+        Err(BuildError::single(
+            Diagnostic::hard_error(
+                "AnnotationAssertionFailed: `: type` assertion failed after RHS evaluation",
+                Some(provenance),
+            )
+            .with_code(ResolverCode::AnnotationAssertionFailed),
+        ))
+    }
+}
+
+fn verify_explicit_policy_compatible(
+    explicit_policy: Option<&PolicySet>,
+    result_policy: &PolicySet,
+    provenance: Provenance,
+) -> Result<(), BuildError> {
+    let Some(explicit_policy) = explicit_policy else {
+        return Ok(());
+    };
+    if policy_subset(explicit_policy, result_policy) {
+        Ok(())
+    } else {
+        Err(BuildError::single(Diagnostic::hard_error(
+            "ExplicitPolicyVerificationFailed: explicit binding policy is not compatible with RHS result policy",
+            Some(provenance),
+        )
+        .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
+    }
+}
+
+fn verify_residual_policy_compatible(
+    explicit_policy: Option<&PolicySet>,
+    reason: &crate::ResidualReason,
+    provenance: Provenance,
+) -> Result<(), BuildError> {
+    let Some(explicit_policy) = explicit_policy else {
+        return Ok(());
+    };
+    if explicit_policy.contains(PolicyFlag::Meta) {
+        Err(BuildError::single(Diagnostic::hard_error(
+            format!(
+                "ExplicitPolicyVerificationFailed: RHS residualized to runtime ({reason:?}) and cannot satisfy explicit meta-visible binding policy"
+            ),
+            Some(provenance),
+        )
+        .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
+    } else {
+        Ok(())
+    }
+}
+
+fn policy_subset(requested: &PolicySet, available: &PolicySet) -> bool {
+    requested.flags.iter().all(|flag| available.contains(*flag))
+}
+
+fn final_binding_policy(
+    explicit_policy: Option<&PolicySet>,
+    result_policy: &PolicySet,
+) -> PolicySet {
+    if let Some(explicit_policy) = explicit_policy {
+        return explicit_policy.clone();
+    }
+    let mut inferred = result_policy.clone();
+    inferred.flags.remove(&PolicyFlag::Export);
+    inferred
+}
+
+fn override_delta_binding_policy(
+    delta: &mut NamespaceDelta,
+    binding_name: &str,
+    policy: PolicySet,
+) {
+    for symbol in delta.symbols.values_mut() {
+        if symbol.name == binding_name {
+            symbol.policy_metadata.policy_set = policy.clone();
+        }
+    }
 }
 
 fn is_type_annotation(annotation: Option<&NormAnnotation>) -> bool {
