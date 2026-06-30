@@ -585,3 +585,268 @@ fn unsupported_candidate_shape_non_binder_return_is_hard_error() {
         diagnostic.message
     );
 }
+
+fn return_body_world() -> CompilationWorld {
+    build_single_fixture_world("v09_return_body", "app")
+}
+
+#[test]
+fn tail_value_report_consumed_by_selected_body() {
+    let selected = plus_selection("int + unit").expect("select overload");
+    let lang_build::SymbolPayload::MetaFunction(meta_function) = &selected.symbol.payload else {
+        panic!("expected meta payload");
+    };
+    assert!(meta_function.source_callable.is_some());
+    assert_eq!(forwarded_type_name(invoke("int + unit")), "int");
+}
+
+#[test]
+fn selected_body_return_event_is_unsupported() {
+    let world = return_body_world();
+    let site = call_site("int return_in_body");
+    let result = invoke_restricted_meta_overload(
+        world.snapshot(),
+        world.package_root_node(),
+        &site,
+        &world.package_context(),
+        LookupPhase::MetaAction,
+        ExecutionEnv::Meta,
+        VisibilityView::Internal,
+        Provenance::new("selected body return event test"),
+    );
+    let MetaInvocationResult::Diagnostic(diagnostic) = result else {
+        panic!("expected diagnostic for return event in selected body");
+    };
+    assert_eq!(
+        diagnostic.code,
+        Some(ResolverCode::UnsupportedSelectedMetaBody),
+        "return event in selected meta body should resolve to UnsupportedSelectedMetaBody, got: {:?}",
+        diagnostic.code
+    );
+}
+
+#[test]
+fn return_is_not_overload_target_named_return() {
+    let world = world();
+    // Verify that none of the '+' overload candidates have 'return' as their operator name.
+    // The name "return" is a contextual return terminal form, not a callable operator.
+    let c0 = construct_c0(&OverloadSelectionInput {
+        snapshot: world.snapshot(),
+        namespace: world.package_root_node(),
+        callable_name: "+".to_string(),
+        arg_product_shape: call_site("unit + unit")
+            .to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct),
+        lookup_phase: LookupPhase::MetaAction,
+        demanded_execution: ExecutionEnv::Meta,
+        visibility: VisibilityView::Internal,
+        provenance: Provenance::new("return is not an overload target"),
+    });
+    for symbol_id in &c0.c0_symbol_ids {
+        let symbol = world.snapshot().symbol(*symbol_id).expect("symbol exists");
+        assert_ne!(
+            symbol.name, "return",
+            "'+' overload candidates should not include a callable named 'return'"
+        );
+    }
+}
+
+// --- Control-flow end report completeness tests ---
+
+use lang_build::{compute_control_flow_end_report, ControlFlowEndDiagnostic};
+use lang_syntax::{
+    NormClosureBody, NormOrigin, NormProgram, NormReturnEvent, NormReturnTargetSyntax,
+};
+
+#[test]
+fn normalized_body_uses_tail_value_not_expr() {
+    let selected = plus_selection("int + unit").expect("select overload");
+    let lang_build::SymbolPayload::MetaFunction(meta_function) = &selected.symbol.payload else {
+        panic!("expected meta payload");
+    };
+    let source_callable = meta_function
+        .source_callable
+        .as_ref()
+        .expect("source callable");
+    let NormClosureBody::Block(prog) = &source_callable.closure.body else {
+        panic!("expected block body");
+    };
+    let has_tail_value = prog
+        .forms
+        .iter()
+        .any(|f| matches!(f, NormForm::TailValue(_)));
+    assert!(
+        has_tail_value,
+        "source callable body must use TailValue, not Expr, for block result"
+    );
+    let has_non_tail_expr = prog.forms.iter().any(|f| matches!(f, NormForm::Expr(_)));
+    assert!(
+        !has_non_tail_expr,
+        "source callable body must not contain bare Expr as block result"
+    );
+}
+
+#[test]
+fn expr_is_not_terminal_in_report() {
+    let expr = NormExpr::Name {
+        text: "x".to_string(),
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    };
+    let program = NormProgram {
+        forms: vec![NormForm::Expr(expr)],
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    };
+    let report = compute_control_flow_end_report(&program);
+    assert!(
+        report.terminal.is_none(),
+        "Expr must not be treated as a terminal; got {:?}",
+        report.terminal
+    );
+}
+
+fn dummy_expr(name: &str) -> NormExpr {
+    NormExpr::Name {
+        text: name.to_string(),
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    }
+}
+
+fn dummy_let() -> NormForm {
+    NormForm::Let(lang_syntax::NormDecl::Let {
+        slot: lang_syntax::NormBindingSlot {
+            policy: None,
+            has_let: true,
+            deduce: vec![],
+            value_pattern: lang_syntax::NormPattern::Binder {
+                name: "x".to_string(),
+                origin: NormOrigin::Generated {
+                    rule: lang_syntax::NormRule::PatternNormalize,
+                    span: lang_syntax::Span::at(0, 1, 1),
+                },
+            },
+            annotation: None,
+            with_clause: None,
+            initializer: None,
+            origin: NormOrigin::Generated {
+                rule: lang_syntax::NormRule::PatternNormalize,
+                span: lang_syntax::Span::at(0, 1, 1),
+            },
+        },
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::PatternNormalize,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    })
+}
+
+#[test]
+fn statement_after_tail_value_in_report() {
+    let program = NormProgram {
+        forms: vec![NormForm::TailValue(dummy_expr("x")), dummy_let()],
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    };
+    let report = compute_control_flow_end_report(&program);
+    assert!(
+        !report.diagnostics.is_empty(),
+        "StatementAfterTerminal diagnostic expected after TailValue"
+    );
+    assert!(
+        matches!(
+            report.diagnostics.first(),
+            Some(ControlFlowEndDiagnostic::StatementAfterTerminal { .. })
+        ),
+        "expected StatementAfterTerminal diagnostic"
+    );
+}
+
+#[test]
+fn statement_after_return_event_in_report() {
+    let return_ev = NormReturnEvent {
+        value: dummy_expr("v"),
+        target: NormReturnTargetSyntax::ImplicitNearest,
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    };
+    let program = NormProgram {
+        forms: vec![NormForm::ReturnEvent(return_ev), dummy_let()],
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    };
+    let report = compute_control_flow_end_report(&program);
+    assert!(
+        !report.diagnostics.is_empty(),
+        "StatementAfterTerminal diagnostic expected after ReturnEvent"
+    );
+    assert!(
+        matches!(
+            report.diagnostics.first(),
+            Some(ControlFlowEndDiagnostic::StatementAfterTerminal { .. })
+        ),
+        "expected StatementAfterTerminal diagnostic"
+    );
+}
+
+#[test]
+fn return_event_body_normalizes_as_return_event() {
+    let world = return_body_world();
+    let bucket = world
+        .snapshot()
+        .node(world.package_root_node())
+        .and_then(|n| n.children.get("return_in_body"))
+        .expect("return_in_body in namespace");
+    let symbol_id = bucket
+        .object_symbols()
+        .first()
+        .expect("return_in_body symbol");
+    let symbol = world.snapshot().symbol(*symbol_id).expect("symbol");
+    let lang_build::SymbolPayload::MetaFunction(meta_function) = &symbol.payload else {
+        panic!("expected meta payload");
+    };
+    let source_callable = meta_function
+        .source_callable
+        .as_ref()
+        .expect("source callable");
+    let NormClosureBody::Block(prog) = &source_callable.closure.body else {
+        panic!("expected block body");
+    };
+    let has_return_event = prog
+        .forms
+        .iter()
+        .any(|f| matches!(f, NormForm::ReturnEvent(_)));
+    assert!(
+        has_return_event,
+        "body {{ t return; }} must normalize to ReturnEvent, not Call or Pipe"
+    );
+}
+
+#[test]
+fn expr_in_selected_body_is_rejected() {
+    let expr = dummy_expr("x");
+    let program = NormProgram {
+        forms: vec![NormForm::Expr(expr)],
+        origin: NormOrigin::Generated {
+            rule: lang_syntax::NormRule::Unsupported,
+            span: lang_syntax::Span::at(0, 1, 1),
+        },
+    };
+    let report = compute_control_flow_end_report(&program);
+    assert!(
+        report.terminal.is_none(),
+        "Expr must not produce a terminal in control-flow end report"
+    );
+}

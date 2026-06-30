@@ -5,6 +5,7 @@
 
 pub mod build;
 pub mod call_target;
+pub mod control_flow_end;
 pub mod control_flow_meta;
 pub mod core;
 pub mod discovery;
@@ -40,6 +41,10 @@ pub use build::{
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
 pub use call_target::{resolve_call_target, ResolvedCallTarget};
+pub use control_flow_end::{
+    compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,
+    ControlFlowTerminal,
+};
 pub use control_flow_meta::{
     check_simple_policy, check_simple_type_predicate, evaluate_guarded_branches,
     lookup_branch_local_symbol, select_branch_arm, validate_branch_arm_labels, BranchActionShape,

@@ -188,8 +188,8 @@ fn expect_generated_body_call(closure: &NormClosure) -> (&NormProduct, &NormExpr
         NormClosureBody::Delete(_) => panic!("expected block body, got delete"),
     };
     match prog.forms.as_slice() {
-        [NormForm::Expr(expr)] => expect_call(expr),
-        other => panic!("expected generated closure body expression, got {other:#?}"),
+        [NormForm::TailValue(expr)] => expect_call(expr),
+        other => panic!("expected generated closure body TailValue, got {other:#?}"),
     }
 }
 

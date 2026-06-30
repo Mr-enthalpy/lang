@@ -608,8 +608,8 @@ fn evaluate_block_body(
     selected: &SelectedOverloadCandidate,
     program: &lang_syntax::NormProgram,
 ) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
-    let mut final_expr = None;
     let mut local_names = BTreeSet::new();
+
     for form in &program.forms {
         match form {
             NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
@@ -659,34 +659,64 @@ fn evaluate_block_body(
                     local_names.insert(name);
                 }
             }
-            NormForm::Expr(expr) | NormForm::TailValue(expr) if final_expr.is_none() => {
-                final_expr = Some(expr)
-            }
-            _ => {
+            NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
+            NormForm::Expr(_) => {
                 return Err(unsupported_body(
                     selected,
                     RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                    "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+                    "selected meta body contains ordinary expression form; expected explicit TailValue terminal",
+                ));
+            }
+            NormForm::Let(lang_syntax::NormDecl::Alias { .. })
+            | NormForm::Let(lang_syntax::NormDecl::Error(_))
+            | NormForm::Alias(_)
+            | NormForm::Error(_) => {
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "selected meta body contains unsupported non-terminal form before terminal",
                 ));
             }
         }
     }
-    let Some(expr) = final_expr else {
+
+    let report = crate::control_flow_end::compute_control_flow_end_report(program);
+
+    if !report.diagnostics.is_empty() {
         return Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+            "statement after terminal block form in selected meta body",
         ));
+    }
+
+    let expr = match report.terminal {
+        Some(crate::control_flow_end::ControlFlowTerminal::TailValue(expr)) => expr,
+        Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(_)) => {
+            return Err(unsupported_body(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                "return event is not supported in restricted selected meta body evaluator",
+            ));
+        }
+        None => {
+            return Err(unsupported_body(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                "selected meta body has no terminal form",
+            ));
+        }
     };
-    if forwarding_expr_is_canonical_sum(expr, &selected.return_slot_name) {
+
+    if forwarding_expr_is_canonical_sum(&expr, &selected.return_slot_name) {
         return Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
             "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
         ));
     }
-    let Some(rhs_name) = forwarding_equality_rhs(expr, &selected.return_slot_name) else {
-        if forwarding_rhs_is_canonical_sum(expr, &selected.return_slot_name) {
+    let Some(rhs_name) = forwarding_equality_rhs(&expr, &selected.return_slot_name) else {
+        if forwarding_rhs_is_canonical_sum(&expr, &selected.return_slot_name) {
             return Err(unsupported_body(
                 selected,
                 RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,

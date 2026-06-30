@@ -1,0 +1,8 @@
+let unit: type = uint8;
+let int: type = uint16;
+
+meta | runtime let return_in_body =
+  (self, t: type): meta -> let r: type =>
+{
+  t return;
+};

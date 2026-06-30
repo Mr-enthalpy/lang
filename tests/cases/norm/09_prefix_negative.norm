@@ -33,7 +33,7 @@ NormProgram origin=Source@1:1[0..2]
             body:
               NormBody origin=Generated(PrefixNegativeLowering)@1:1[0..2]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(PrefixNegativeLowering)@1:1[0..2]
                       source:
                         Product origin=Generated(PrefixNegativeLowering)@1:1[0..2]
