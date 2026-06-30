@@ -100,7 +100,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(MemberLowering)@6:1[55..64]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(MemberLowering)@6:1[55..64]
                       source:
                         Product origin=Generated(MemberLowering)@6:1[55..64]
@@ -145,7 +145,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(MemberLowering)@7:1[66..77]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(MemberLowering)@7:1[66..77]
                       source:
                         Product origin=Generated(MemberLowering)@7:1[66..77]
@@ -190,7 +190,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(DoubleDotLowering)@8:1[79..92]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(DoubleDotLowering)@8:1[79..92]
                       source:
                         Product origin=Generated(DoubleDotLowering)@8:1[79..92]
@@ -235,7 +235,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(DoubleDotLowering)@9:1[94..109]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(DoubleDotLowering)@9:1[94..109]
                       source:
                         Product origin=Generated(DoubleDotLowering)@9:1[94..109]
@@ -284,7 +284,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(DoubleDotLowering)@10:1[111..126]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(DoubleDotLowering)@10:1[111..126]
                       source:
                         Product origin=Generated(DoubleDotLowering)@10:1[111..126]
@@ -332,7 +332,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(DoubleDotLowering)@11:1[128..143]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(DoubleDotLowering)@11:1[128..143]
                       source:
                         Product origin=Generated(DoubleDotLowering)@11:1[128..143]
@@ -380,7 +380,7 @@ NormProgram origin=Source@1:1[0..162]
             body:
               NormBody origin=Generated(DoubleDotLowering)@12:1[145..162]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(DoubleDotLowering)@12:1[145..162]
                       source:
                         Product origin=Generated(DoubleDotLowering)@12:1[145..162]

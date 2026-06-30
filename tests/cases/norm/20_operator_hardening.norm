@@ -73,7 +73,7 @@ NormProgram origin=Source@1:1[0..47]
             body:
               NormBody origin=Generated(PrefixNegativeLowering)@4:1[22..24]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(PrefixNegativeLowering)@4:1[22..24]
                       source:
                         Product origin=Generated(PrefixNegativeLowering)@4:1[22..24]
@@ -139,7 +139,7 @@ NormProgram origin=Source@1:1[0..47]
             body:
               NormBody origin=Generated(PrefixNegativeLowering)@6:1[31..39]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(PrefixNegativeLowering)@6:1[31..39]
                       source:
                         Product origin=Generated(PrefixNegativeLowering)@6:1[31..39]
@@ -193,7 +193,7 @@ NormProgram origin=Source@1:1[0..47]
                       body:
                         NormBody origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                           forms:
-                            Form Expr
+                            Form TailValue
                               Call origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                                 source:
                                   Product origin=Generated(PrefixNegativeLowering)@7:5[45..47]

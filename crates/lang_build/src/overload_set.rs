@@ -659,8 +659,14 @@ fn evaluate_block_body(
                     local_names.insert(name);
                 }
             }
-            // Transitional: Expr may appear in legacy body blocks before TailValue migration.
-            NormForm::Expr(_) | NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
+            NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
+            NormForm::Expr(_) => {
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "selected meta body contains ordinary expression form; expected explicit TailValue terminal",
+                ));
+            }
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
             | NormForm::Let(lang_syntax::NormDecl::Error(_))
             | NormForm::Alias(_)

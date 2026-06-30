@@ -42,7 +42,8 @@ pub use build::{
 };
 pub use call_target::{resolve_call_target, ResolvedCallTarget};
 pub use control_flow_end::{
-    compute_control_flow_end_report, ControlFlowEndReport, ControlFlowTerminal,
+    compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,
+    ControlFlowTerminal,
 };
 pub use control_flow_meta::{
     check_simple_policy, check_simple_type_predicate, evaluate_guarded_branches,

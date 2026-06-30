@@ -1,15 +1,19 @@
-use lang_syntax::{NormForm, NormProgram, NormReturnEvent};
-
-use crate::model::{Diagnostic, Provenance, ResolverCode};
+use lang_syntax::{NormForm, NormOrigin, NormProgram, NormReturnEvent};
 
 pub struct ControlFlowEndReport {
     pub terminal: Option<ControlFlowTerminal>,
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: Vec<ControlFlowEndDiagnostic>,
 }
 
+#[derive(Debug)]
 pub enum ControlFlowTerminal {
     TailValue(lang_syntax::NormExpr),
     ReturnEvent(NormReturnEvent),
+}
+
+#[derive(Debug)]
+pub enum ControlFlowEndDiagnostic {
+    StatementAfterTerminal { origin: NormOrigin },
 }
 
 pub fn compute_control_flow_end_report(program: &NormProgram) -> ControlFlowEndReport {
@@ -19,18 +23,13 @@ pub fn compute_control_flow_end_report(program: &NormProgram) -> ControlFlowEndR
 
     for form in &program.forms {
         if seen_terminal {
-            diagnostics.push(statement_after_terminal_diagnostic(form));
+            diagnostics.push(ControlFlowEndDiagnostic::StatementAfterTerminal {
+                origin: form_origin(form),
+            });
             continue;
         }
 
         match form {
-            // Transitional: generated closures and some legacy paths still
-            // produce NormForm::Expr in body blocks. Treated as TailValue
-            // for compatibility. Remove after all paths emit TailValue.
-            NormForm::Expr(expr) => {
-                terminal = Some(ControlFlowTerminal::TailValue(expr.clone()));
-                seen_terminal = true;
-            }
             NormForm::TailValue(expr) => {
                 terminal = Some(ControlFlowTerminal::TailValue(expr.clone()));
                 seen_terminal = true;
@@ -39,7 +38,7 @@ pub fn compute_control_flow_end_report(program: &NormProgram) -> ControlFlowEndR
                 terminal = Some(ControlFlowTerminal::ReturnEvent(return_ev.clone()));
                 seen_terminal = true;
             }
-            NormForm::Let(_) | NormForm::Alias(_) | NormForm::Error(_) => {}
+            NormForm::Let(_) | NormForm::Alias(_) | NormForm::Expr(_) | NormForm::Error(_) => {}
         }
     }
 
@@ -49,38 +48,16 @@ pub fn compute_control_flow_end_report(program: &NormProgram) -> ControlFlowEndR
     }
 }
 
-fn statement_after_terminal_diagnostic(form: &NormForm) -> Diagnostic {
-    let provenance = match form {
-        NormForm::Let(_) | NormForm::Alias(_) => {
-            Provenance::from_norm_origin("statement after terminal block form", &form_origin(form))
-        }
-        NormForm::Expr(_) | NormForm::TailValue(_) => {
-            Provenance::from_norm_origin("statement after terminal block form", &form_origin(form))
-        }
-        NormForm::ReturnEvent(_) => {
-            Provenance::from_norm_origin("statement after terminal block form", &form_origin(form))
-        }
-        NormForm::Error(_) => {
-            Provenance::from_norm_origin("statement after terminal block form", &form_origin(form))
-        }
-    };
-
-    Diagnostic::hard_error(
-        "statement after terminal block form in selected meta body",
-        Some(provenance),
-    )
-    .with_code(ResolverCode::UnsupportedSelectedMetaBody)
-}
-
-fn form_origin(form: &NormForm) -> lang_syntax::NormOrigin {
+fn form_origin(form: &NormForm) -> NormOrigin {
     match form {
         NormForm::Let(decl) | NormForm::Alias(decl) => match decl {
             lang_syntax::NormDecl::Let { origin, .. }
             | lang_syntax::NormDecl::Alias { origin, .. } => origin.clone(),
             lang_syntax::NormDecl::Error(error) => error.origin.clone(),
         },
-        NormForm::Expr(expr) | NormForm::TailValue(expr) => expr_origin(expr),
+        NormForm::TailValue(expr) => expr_origin(expr),
         NormForm::ReturnEvent(return_ev) => return_ev.origin.clone(),
+        NormForm::Expr(expr) => expr_origin(expr),
         NormForm::Error(error) => error.origin.clone(),
     }
 }

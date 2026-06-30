@@ -1700,7 +1700,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
             origin: NormOrigin::Generated { rule, span },
         }),
         body: NormClosureBody::Block(NormProgram {
-            forms: vec![NormForm::Expr(body_expr)],
+            forms: vec![NormForm::TailValue(body_expr)],
             origin: NormOrigin::Generated { rule, span },
         }),
         origin: NormOrigin::Generated { rule, span },

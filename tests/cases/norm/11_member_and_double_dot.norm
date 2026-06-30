@@ -33,7 +33,7 @@ NormProgram origin=Source@1:1[0..25]
             body:
               NormBody origin=Generated(MemberLowering)@1:1[0..9]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(MemberLowering)@1:1[0..9]
                       source:
                         Product origin=Generated(MemberLowering)@1:1[0..9]
@@ -78,7 +78,7 @@ NormProgram origin=Source@1:1[0..25]
             body:
               NormBody origin=Generated(DoubleDotLowering)@2:1[11..25]
                 forms:
-                  Form Expr
+                  Form TailValue
                     Call origin=Generated(DoubleDotLowering)@2:1[11..25]
                       source:
                         Product origin=Generated(DoubleDotLowering)@2:1[11..25]
