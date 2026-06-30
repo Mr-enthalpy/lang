@@ -159,7 +159,6 @@ FormAst ::=
   | ReturnEvent(ReturnEventAst)
   | Error(ErrorAst)
 ```
-```
 ### 3.3 Form boundary
 
 A form ends only at one of:
@@ -2491,6 +2490,8 @@ in the AST. It is not resolved by the parser or normalizer.
 | Source Pattern | Recognition | AST |
 |---|---|---|
 | `E return;` | After value expr, `return` keyword at form level | `ReturnEvent(value=E, target=ImplicitNearest)` |
+| `E \|> (return);` | Pipe with RHS group containing only `return` | `ReturnEvent(value=E, target=ImplicitNearest)` |
+| `E (return);` | Single segment, second element is group with only `return` | `ReturnEvent(value=E, target=ImplicitNearest)` |
 | `E \|> (T return);` | Pipe with 2-segment RHS group containing target + return | `ReturnEvent(value=E, target=Explicit(T))` |
 | `E (T return);` | Single segment with 2 elements, second is group with target + return | `ReturnEvent(value=E, target=Explicit(T))` |
 

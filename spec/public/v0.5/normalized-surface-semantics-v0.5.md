@@ -740,6 +740,8 @@ NormReturnTargetSyntax ::=
 | Source | Normalized Form |
 |---|---|
 | `E return;` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E \|> (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
 | `E \|> (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
 | `E (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
 

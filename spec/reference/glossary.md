@@ -543,8 +543,9 @@ unit input.
 
 > **Explicit self position for return:** A headless in-place closure
 > has no self target and cannot express early return. Early return
-> examples that target a specific closure should use a headed closure
-> with an explicit self parameter, e.g.:
+> examples that target a specific closure should use an in-place
+> closure with an explicit product/extraction head carrying the
+> self position, e.g.:
 >
 > ```lang
 > (<Self: type> self: Self) {

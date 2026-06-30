@@ -714,6 +714,8 @@ form positions at the form level:
 E return;
 E |> (T return);
 E (T return);
+E |> (return);
+E (return);
 ```
 
 `return` remains a `Name` token at the lexer level. The parser
@@ -744,9 +746,15 @@ ReturnTargetAst ::=
 | Source | Raw AST |
 |---|---|
 | `E return;` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E \|> (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
 | `E \|> (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
 | `E (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
 
+`E |> (return);` and `E (return);` are equivalent to `E return;`
+(all produce `ImplicitNearest`). These forms are recognized by the
+parser's return target extraction when the group contains only
+`return` without an explicit target expression.
 `T` is target syntax only. It is not resolved by the parser or
 normalizer.
 
