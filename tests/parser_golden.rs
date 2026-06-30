@@ -1623,13 +1623,28 @@ fn return_in_let_rhs_adjacent() {
 }
 
 #[test]
-fn return_call_arg_bare() {
-    assert_parser_case("return_call_arg_bare", false);
+fn return_explicit_adjacent_bare_target() {
+    assert_parser_case("return_explicit_adjacent_bare_target", false);
 }
 
 #[test]
 fn return_call_arg_adjacent() {
     assert_parser_case("return_call_arg_adjacent", true);
+}
+
+#[test]
+fn return_embedded_in_let() {
+    assert_parser_case("return_embedded_in_let", true);
+}
+
+#[test]
+fn return_embedded_in_call() {
+    assert_parser_case("return_embedded_in_call", true);
+}
+
+#[test]
+fn return_embedded_in_operator() {
+    assert_parser_case("return_embedded_in_operator", true);
 }
 
 #[test]
