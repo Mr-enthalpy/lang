@@ -1,1 +1,1 @@
-error StatementAfterReturnEvent "statement after terminal block form" @ 1:13 [12..13]
+error StatementAfterTerminalBlockForm "statement after terminal block form" @ 1:13 [12..13]

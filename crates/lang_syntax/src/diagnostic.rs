@@ -32,8 +32,7 @@ pub enum DiagnosticCode {
     UnexpectedAliasRhsExpression,
     InvalidNumericLiteral,
     ReturnRequiresValue,
-    StatementAfterReturnEvent,
-    StatementAfterBlockTailValue,
+    StatementAfterTerminalBlockForm,
     ReturnExpressionNotAllowed,
 }
 

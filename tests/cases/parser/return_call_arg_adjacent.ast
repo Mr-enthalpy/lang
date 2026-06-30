@@ -1,0 +1,38 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name f
+                            OperatorExpr
+                              Atom
+                                Group
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name x
+                                        OperatorExpr
+                                          Atom
+                                            Group
+                                              Expr
+                                                Pipe
+                                                  Segment has_incoming=false
+                                                    OperatorExpr
+                                                      Atom
+                                                        Name Self
+                                                    OperatorExpr
+                                                      Atom
+                                                        Name return

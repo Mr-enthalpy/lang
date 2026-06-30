@@ -1,0 +1,44 @@
+Program
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure InPlace
+                BodyBlock
+                  forms:
+                    Let
+                      slot:
+                        BindingSlot let=true
+                          deduce:
+                            None
+                          pattern:
+                            Binder
+                              TextName y
+                          annotation:
+                            AnnotationExpr
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Group
+                                          Expr
+                                            Pipe
+                                              Segment has_incoming=false
+                                                OperatorExpr
+                                                  Atom
+                                                    Name x
+                                                OperatorExpr
+                                                  Atom
+                                                    Name return
+                          with_clause:
+                            None
+                          initializer:
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name z

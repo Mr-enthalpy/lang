@@ -649,7 +649,7 @@ fn closure_inplace_empty() {
 
 #[test]
 fn closure_inplace_body() {
-    assert_parser_case("closure_inplace_body", false);
+    assert_parser_case("closure_inplace_body", true);
 }
 
 #[test]
@@ -924,7 +924,7 @@ fn head_clause_names_outside_head() {
 
 #[test]
 fn closure_body_multi_form() {
-    assert_parser_case("closure_body_multi_form", false);
+    assert_parser_case("closure_body_multi_form", true);
 }
 
 #[test]
@@ -934,7 +934,7 @@ fn closure_body_newline_single_form() {
 
 #[test]
 fn closure_body_semicolon_two_forms() {
-    assert_parser_case("closure_body_semicolon_two_forms", false);
+    assert_parser_case("closure_body_semicolon_two_forms", true);
 }
 
 #[test]
@@ -1595,4 +1595,54 @@ fn return_in_group() {
 #[test]
 fn return_after_return() {
     assert_parser_case("return_after_return", true);
+}
+
+#[test]
+fn return_explicit_adjacent() {
+    assert_parser_case("return_explicit_adjacent", false);
+}
+
+#[test]
+fn return_explicit_path() {
+    assert_parser_case("return_explicit_path", false);
+}
+
+#[test]
+fn return_in_let_rhs_bare() {
+    assert_parser_case("return_in_let_rhs_bare", true);
+}
+
+#[test]
+fn return_in_let_rhs_pipe() {
+    assert_parser_case("return_in_let_rhs_pipe", true);
+}
+
+#[test]
+fn return_in_let_rhs_adjacent() {
+    assert_parser_case("return_in_let_rhs_adjacent", true);
+}
+
+#[test]
+fn return_call_arg_bare() {
+    assert_parser_case("return_call_arg_bare", false);
+}
+
+#[test]
+fn return_call_arg_adjacent() {
+    assert_parser_case("return_call_arg_adjacent", true);
+}
+
+#[test]
+fn return_in_group_adjacent() {
+    assert_parser_case("return_in_group_adjacent", true);
+}
+
+#[test]
+fn return_in_operator() {
+    assert_parser_case("return_in_operator", true);
+}
+
+#[test]
+fn return_in_annotation() {
+    assert_parser_case("return_in_annotation", true);
 }

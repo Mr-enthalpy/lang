@@ -30,21 +30,13 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
             break;
         }
         if parser.cursor.consume_symbol(Symbol::Semicolon).is_some() {
-            if seen_terminal {
-                let span = parser.cursor.current_span();
-                parser.error(
-                    DiagnosticCode::StatementAfterBlockTailValue,
-                    "statement after block tail value",
-                    span,
-                );
-            }
             continue;
         }
         if seen_terminal {
             let form = parser.parse_form();
             let span = form_span(&form);
             parser.error(
-                DiagnosticCode::StatementAfterReturnEvent,
+                DiagnosticCode::StatementAfterTerminalBlockForm,
                 "statement after terminal block form",
                 span,
             );
@@ -54,22 +46,10 @@ pub fn parse_body_block(parser: &mut Parser<'_>) -> BodyBlockAst {
             continue;
         }
         let form = parser.parse_form();
-        if matches!(&form, FormAst::ReturnEvent(_)) {
+        if matches!(&form, FormAst::ReturnEvent(_) | FormAst::Expr(_)) {
             seen_terminal = true;
         }
         forms.push(form);
-    }
-
-    if !forms.is_empty() && !seen_terminal {
-        if let Some(last) = forms.last() {
-            if matches!(
-                last,
-                FormAst::Expr(_) | FormAst::Let(_) | FormAst::AliasLet(_) | FormAst::Error(_)
-            ) {
-                // The last form is implicitly a tail value;
-                // nothing else may follow.
-            }
-        }
     }
 
     let end = if let Some(rbrace) = parser.cursor.consume_symbol(Symbol::RBrace) {
@@ -230,6 +210,13 @@ fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
 
     // Parse the message expression, terminated by `)`
     let message = parse_expr_until(parser, |p| p.cursor.at_symbol(Symbol::RParen));
+    if super::form::expression_contains_name(&message, "return") {
+        parser.error(
+            DiagnosticCode::ReturnExpressionNotAllowed,
+            "return is only allowed as a block terminal form",
+            message.span,
+        );
+    }
 
     let _rparen = match parser.cursor.consume_symbol(Symbol::RParen) {
         Some(tok) => tok.span,
@@ -307,6 +294,13 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
                 || p.cursor.at_symbol(Symbol::LBrace)
                 || p.is_form_boundary()
         });
+        if super::form::expression_contains_name(&expr, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+        }
         Some(expr)
     } else {
         None
@@ -439,7 +433,15 @@ fn parse_head_clauses(parser: &mut Parser<'_>) -> Vec<HeadClauseAst> {
             );
             error_expr(parser, "missing head clause expression", span)
         } else {
-            parse_expr_until(parser, clause_expr_boundary)
+            let expr = parse_expr_until(parser, clause_expr_boundary);
+            if super::form::expression_contains_name(&expr, "return") {
+                parser.error(
+                    DiagnosticCode::ReturnExpressionNotAllowed,
+                    "return is only allowed as a block terminal form",
+                    expr.span,
+                );
+            }
+            expr
         };
 
         let span = header_span.join(expr.span);
@@ -471,6 +473,13 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
         let expr = parse_expr_until(parser, |p| {
             p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
         });
+        if super::form::expression_contains_name(&expr, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+        }
         let span = expr.span;
         items.push(CaptureItemAst { expr, span });
 

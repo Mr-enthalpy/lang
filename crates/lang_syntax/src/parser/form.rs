@@ -201,25 +201,43 @@ fn try_extract_explicit_return(expr: &ExprAst) -> Option<ReturnEventAst> {
     let ExprKind::Pipe(pipe) = &expr.kind else {
         return None;
     };
-    if pipe.segments.len() != 2 {
-        return None;
-    }
-    let lhs_seg = &pipe.segments[0];
-    let rhs_seg = &pipe.segments[1];
-    if rhs_seg.elements.len() != 1 {
-        return None;
+
+    // Path 1: x |> (expr return)  — 2 segments
+    if pipe.segments.len() == 2 {
+        let lhs_seg = &pipe.segments[0];
+        let rhs_seg = &pipe.segments[1];
+        if rhs_seg.elements.len() != 1 {
+            return None;
+        }
+        let rhs_elem = &rhs_seg.elements[0];
+        let (target, span) = extract_return_target_from_segment_element(rhs_elem)?;
+        let value = segment_to_expr(lhs_seg);
+        let span = value.span.join(span);
+        return Some(ReturnEventAst {
+            value: Box::new(value),
+            target,
+            span,
+        });
     }
 
-    let rhs_elem = &rhs_seg.elements[0];
-    let (target, span) = extract_return_target_from_segment_element(rhs_elem)?;
+    // Path 2: x (expr return)  — 1 segment with exactly 2 elements
+    if pipe.segments.len() == 1 {
+        let seg = &pipe.segments[0];
+        if seg.elements.len() == 2 {
+            let first = &seg.elements[0];
+            let second = &seg.elements[1];
+            let (target, span) = extract_return_target_from_segment_element(second)?;
+            let value = element_to_expr(first);
+            let span = value.span.join(span);
+            return Some(ReturnEventAst {
+                value: Box::new(value),
+                target,
+                span,
+            });
+        }
+    }
 
-    let value = segment_to_expr(lhs_seg);
-    let span = value.span.join(span);
-    Some(ReturnEventAst {
-        value: Box::new(value),
-        target,
-        span,
-    })
+    None
 }
 
 fn extract_return_target_from_segment_element(
@@ -256,9 +274,6 @@ fn extract_return_target_from_operator(
     }
     if inner_seg.elements.len() == 2 {
         let first_elem = &inner_seg.elements[0];
-        if !element_is_name(first_elem, "Self") {
-            return None;
-        }
         Some((
             ReturnTargetAst::Explicit {
                 target: Box::new(element_to_expr(first_elem)),
@@ -276,7 +291,7 @@ fn extract_return_target_from_operator(
     }
 }
 
-fn expression_contains_name(expr: &ExprAst, name: &str) -> bool {
+pub(crate) fn expression_contains_name(expr: &ExprAst, name: &str) -> bool {
     match &expr.kind {
         ExprKind::Pipe(pipe) => pipe.segments.iter().any(|seg| {
             seg.elements

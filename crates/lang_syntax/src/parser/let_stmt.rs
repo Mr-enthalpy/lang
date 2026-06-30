@@ -446,6 +446,13 @@ fn parse_binding_annotation(
         let hole = parser.cursor.bump_non_trivia();
         parser.cursor.consume_symbol(Symbol::Colon);
         let right = parse_expr_until(parser, |p| annotation_stop(p, context));
+        if super::form::expression_contains_name(&right, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                right.span,
+            );
+        }
         let span = hole.span.join(right.span);
         return Some(BindingAnnotationAst::Compound {
             left: AnnotationTermAst::Hole { span: hole.span },
@@ -457,9 +464,23 @@ fn parse_binding_annotation(
     let left_or_expr = parse_expr_until(parser, |p| {
         p.cursor.at_symbol(Symbol::Colon) || annotation_stop(p, context)
     });
+    if super::form::expression_contains_name(&left_or_expr, "return") {
+        parser.error(
+            DiagnosticCode::ReturnExpressionNotAllowed,
+            "return is only allowed as a block terminal form",
+            left_or_expr.span,
+        );
+    }
 
     if parser.cursor.consume_symbol(Symbol::Colon).is_some() {
         let right = parse_expr_until(parser, |p| annotation_stop(p, context));
+        if super::form::expression_contains_name(&right, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                right.span,
+            );
+        }
         let span = left_or_expr.span.join(right.span);
         Some(BindingAnnotationAst::Compound {
             left: AnnotationTermAst::Expr(left_or_expr),
@@ -487,7 +508,15 @@ fn annotation_stop(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool
 
 fn parse_let_value(parser: &mut Parser<'_>, require_initializer: bool) -> ExprAst {
     if parser.cursor.consume_symbol(Symbol::Equal).is_some() {
-        parse_expr_until(parser, |parser| parser.is_form_boundary())
+        let expr = parse_expr_until(parser, |parser| parser.is_form_boundary());
+        if super::form::expression_contains_name(&expr, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+        }
+        expr
     } else {
         let span = parser.cursor.current_span();
         if require_initializer {

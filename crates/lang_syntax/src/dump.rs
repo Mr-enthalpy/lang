@@ -816,8 +816,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::UnexpectedAliasRhsExpression => "UnexpectedAliasRhsExpression",
         DiagnosticCode::InvalidNumericLiteral => "InvalidNumericLiteral",
         DiagnosticCode::ReturnRequiresValue => "ReturnRequiresValue",
-        DiagnosticCode::StatementAfterReturnEvent => "StatementAfterReturnEvent",
-        DiagnosticCode::StatementAfterBlockTailValue => "StatementAfterBlockTailValue",
+        DiagnosticCode::StatementAfterTerminalBlockForm => "StatementAfterTerminalBlockForm",
         DiagnosticCode::ReturnExpressionNotAllowed => "ReturnExpressionNotAllowed",
     }
 }
