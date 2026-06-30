@@ -659,12 +659,18 @@ fn evaluate_block_body(
                     local_names.insert(name);
                 }
             }
-            // Terminal forms end the let-processing pass
+            // Transitional: Expr may appear in legacy body blocks before TailValue migration.
             NormForm::Expr(_) | NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
             NormForm::Let(lang_syntax::NormDecl::Alias { .. })
             | NormForm::Let(lang_syntax::NormDecl::Error(_))
             | NormForm::Alias(_)
-            | NormForm::Error(_) => {}
+            | NormForm::Error(_) => {
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "selected meta body contains unsupported non-terminal form before terminal",
+                ));
+            }
         }
     }
 

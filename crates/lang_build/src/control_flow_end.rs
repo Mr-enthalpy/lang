@@ -24,6 +24,9 @@ pub fn compute_control_flow_end_report(program: &NormProgram) -> ControlFlowEndR
         }
 
         match form {
+            // Transitional: generated closures and some legacy paths still
+            // produce NormForm::Expr in body blocks. Treated as TailValue
+            // for compatibility. Remove after all paths emit TailValue.
             NormForm::Expr(expr) => {
                 terminal = Some(ControlFlowTerminal::TailValue(expr.clone()));
                 seen_terminal = true;

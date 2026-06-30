@@ -617,10 +617,11 @@ fn selected_body_return_event_is_unsupported() {
     let MetaInvocationResult::Diagnostic(diagnostic) = result else {
         panic!("expected diagnostic for return event in selected body");
     };
-    assert!(
-        diagnostic.message.contains("return event is not supported"),
-        "diagnostic should mention return event not supported, got: {}",
-        diagnostic.message
+    assert_eq!(
+        diagnostic.code,
+        Some(ResolverCode::UnsupportedSelectedMetaBody),
+        "return event in selected meta body should resolve to UnsupportedSelectedMetaBody, got: {:?}",
+        diagnostic.code
     );
 }
 
