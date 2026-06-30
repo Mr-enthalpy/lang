@@ -585,3 +585,66 @@ fn unsupported_candidate_shape_non_binder_return_is_hard_error() {
         diagnostic.message
     );
 }
+
+fn return_body_world() -> CompilationWorld {
+    build_single_fixture_world("v09_return_body", "app")
+}
+
+#[test]
+fn tail_value_report_consumed_by_selected_body() {
+    let selected = plus_selection("int + unit").expect("select overload");
+    let lang_build::SymbolPayload::MetaFunction(meta_function) = &selected.symbol.payload else {
+        panic!("expected meta payload");
+    };
+    assert!(meta_function.source_callable.is_some());
+    assert_eq!(forwarded_type_name(invoke("int + unit")), "int");
+}
+
+#[test]
+fn selected_body_return_event_is_unsupported() {
+    let world = return_body_world();
+    let site = call_site("int return_in_body");
+    let result = invoke_restricted_meta_overload(
+        world.snapshot(),
+        world.package_root_node(),
+        &site,
+        &world.package_context(),
+        LookupPhase::MetaAction,
+        ExecutionEnv::Meta,
+        VisibilityView::Internal,
+        Provenance::new("selected body return event test"),
+    );
+    let MetaInvocationResult::Diagnostic(diagnostic) = result else {
+        panic!("expected diagnostic for return event in selected body");
+    };
+    assert!(
+        diagnostic.message.contains("return event is not supported"),
+        "diagnostic should mention return event not supported, got: {}",
+        diagnostic.message
+    );
+}
+
+#[test]
+fn return_is_not_overload_target_named_return() {
+    let world = world();
+    // Verify that none of the '+' overload candidates have 'return' as their operator name.
+    // The name "return" is a contextual return terminal form, not a callable operator.
+    let c0 = construct_c0(&OverloadSelectionInput {
+        snapshot: world.snapshot(),
+        namespace: world.package_root_node(),
+        callable_name: "+".to_string(),
+        arg_product_shape: call_site("unit + unit")
+            .to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct),
+        lookup_phase: LookupPhase::MetaAction,
+        demanded_execution: ExecutionEnv::Meta,
+        visibility: VisibilityView::Internal,
+        provenance: Provenance::new("return is not an overload target"),
+    });
+    for symbol_id in &c0.c0_symbol_ids {
+        let symbol = world.snapshot().symbol(*symbol_id).expect("symbol exists");
+        assert_ne!(
+            symbol.name, "return",
+            "'+' overload candidates should not include a callable named 'return'"
+        );
+    }
+}
