@@ -19,7 +19,7 @@ use crate::{
     },
     overload_pattern::{
         decode_param_pattern, match_param_pattern, overload_args_from_classified_shape,
-        OverloadArgShape, SpecificityTuple,
+        OverloadArgShape, RestrictedParamPattern, SpecificityTuple,
     },
     product_shape::ProductMaterialRole,
     type_argument::classify_type_arguments_with_report,
@@ -150,6 +150,12 @@ struct ApplicableCandidate {
     bindings: BTreeMap<String, OverloadArgShape>,
     specificity: SpecificityTuple,
     return_slot_name: String,
+}
+
+enum CandidateApplicabilityFailure {
+    Inapplicable(Diagnostic),
+    UnsupportedParameterPattern(Diagnostic),
+    UnsupportedCandidateShape(Diagnostic),
 }
 
 pub fn invoke_restricted_meta_overload(
@@ -317,18 +323,48 @@ pub fn select_restricted_meta_overload_structured(
     }
 
     let mut shape_matches = Vec::new();
-    let mut last_pattern_error = None;
+    let mut first_unsupported_shape = None;
+    let mut first_unsupported_pattern = None;
+    let mut last_inapplicable = None;
     for symbol in policy_visible {
         match applicable_candidate_from_symbol(&symbol, &args, input.demanded_execution) {
             Ok(candidate) => shape_matches.push(candidate),
-            Err(diagnostic) => last_pattern_error = Some(diagnostic),
+            Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(d)) => {
+                if first_unsupported_shape.is_none() {
+                    first_unsupported_shape = Some(d);
+                }
+            }
+            Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(d)) => {
+                if first_unsupported_pattern.is_none() {
+                    first_unsupported_pattern = Some(d);
+                }
+            }
+            Err(CandidateApplicabilityFailure::Inapplicable(d)) => {
+                last_inapplicable = Some(d);
+            }
         }
     }
     if shape_matches.is_empty() {
+        if let Some(diagnostic) = first_unsupported_shape {
+            return Err(RestrictedOverloadFailure {
+                diagnostic: diagnostic.with_code(
+                    RestrictedOverloadFailureKind::UnsupportedCandidateShape.diagnostic_code(),
+                ),
+                kind: RestrictedOverloadFailureKind::UnsupportedCandidateShape,
+            });
+        }
+        if let Some(diagnostic) = first_unsupported_pattern {
+            return Err(RestrictedOverloadFailure {
+                diagnostic: diagnostic.with_code(
+                    RestrictedOverloadFailureKind::UnsupportedParameterPattern.diagnostic_code(),
+                ),
+                kind: RestrictedOverloadFailureKind::UnsupportedParameterPattern,
+            });
+        }
         let kind = RestrictedOverloadFailureKind::NoApplicableCandidate {
             callable_name: input.callable_name.clone(),
         };
-        if let Some(diagnostic) = last_pattern_error {
+        if let Some(diagnostic) = last_inapplicable {
             return Err(RestrictedOverloadFailure {
                 diagnostic: diagnostic.with_code(kind.diagnostic_code()),
                 kind,
@@ -441,42 +477,56 @@ fn applicable_candidate_from_symbol(
     symbol: &SymbolObject,
     args: &[OverloadArgShape],
     _demanded_execution: ExecutionEnv,
-) -> Result<ApplicableCandidate, Diagnostic> {
+) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
     let SymbolPayload::MetaFunction(meta_function) = &symbol.payload else {
-        return Err(Diagnostic::hard_error(
-            "overload candidate is not a meta-function payload",
-            Some(symbol.provenance.clone()),
+        return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
+            Diagnostic::hard_error(
+                "overload candidate is not a meta-function payload",
+                Some(symbol.provenance.clone()),
+            ),
         ));
     };
     let source_callable = meta_function.source_callable.clone().ok_or_else(|| {
-        Diagnostic::hard_error(
+        CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
             "overload candidate is not source-declared callable material",
             Some(symbol.provenance.clone()),
-        )
+        ))
     })?;
     let head = source_callable.closure.head.as_ref().ok_or_else(|| {
-        Diagnostic::hard_error(
+        CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
             "overload candidate lacks explicit closure head",
             Some(source_callable.provenance.clone()),
-        )
+        ))
     })?;
     if head.params.len() != args.len() + 1 {
-        return Err(Diagnostic::hard_error(
-            format!(
-                "overload candidate arity mismatch: expected {} explicit args, got {}",
-                head.params.len().saturating_sub(1),
-                args.len()
+        return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
+            Diagnostic::hard_error(
+                format!(
+                    "overload candidate arity mismatch: expected {} explicit args, got {}",
+                    head.params.len().saturating_sub(1),
+                    args.len()
+                ),
+                Some(source_callable.provenance.clone()),
             ),
-            Some(source_callable.provenance.clone()),
         ));
     }
 
-    let return_slot_name = return_slot_name(&source_callable.closure)?;
+    let return_slot_name = return_slot_name(&source_callable.closure)
+        .map_err(CandidateApplicabilityFailure::UnsupportedCandidateShape)?;
     let mut specificity = SpecificityTuple::default();
     let mut bindings = BTreeMap::new();
     for (param, arg) in head.params.iter().skip(1).zip(args) {
         let pattern = decode_param_pattern(param);
-        let outcome = match_param_pattern(&pattern, arg)?;
+        if let RestrictedParamPattern::Unsupported { reason, provenance } = &pattern {
+            return Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(
+                Diagnostic::hard_error(
+                    format!("unsupported parameter extraction pattern: {reason}"),
+                    Some(provenance.clone()),
+                ),
+            ));
+        }
+        let outcome = match_param_pattern(&pattern, arg)
+            .map_err(CandidateApplicabilityFailure::Inapplicable)?;
         specificity = specificity.add(outcome.specificity);
         bindings.extend(outcome.bindings);
     }
