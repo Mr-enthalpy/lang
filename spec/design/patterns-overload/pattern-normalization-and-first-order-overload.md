@@ -60,6 +60,26 @@ control-flow transformation, guarded branch selection, or arbitrary
 pattern-space algebra. A source expression containing a name such as `Done`
 does not trigger special reduction inside overload selection.
 
+The ordinary-initializer path now consumes this restricted candidate model under
+the default `MetaPartial` strategy. `let X: type = int + unit;` succeeds because
+the argument shape for `int + unit` selects the source-declared identity
+overload `(self, t: type, _ unit: type): meta -> ...`, and the selected body
+forwards `t`. The left-hand `: type` annotation is only checked after this RHS
+result exists; it does not cause the RHS meta evaluation.
+
+The generic fallback body `r === t | u` is not part of the implemented value
+model unless canonical sum-pattern values are added. If that body is selected,
+the restricted evaluator reports the structured
+`UnsupportedCanonicalSumPatternValue` diagnostic instead of treating `|` as
+policy union, expression-level operator lookup, or `+` reduction.
+
+Restricted overload failure is structured in v0.8. Ambiguous candidates,
+missing source-declared callables, lookup-phase visibility misses,
+non-applicable candidates, and body-entry mismatches are represented as
+failure kinds rather than inferred from diagnostic message text. The ordinary
+initializer evaluator consumes those failure kinds when deciding whether
+MetaPartial may residualize or MetaStrict must diagnose.
+
 Specificity for the supported patterns uses the formal tuple:
 
 ```text

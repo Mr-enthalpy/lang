@@ -69,7 +69,7 @@ impl VerificationInvocation {
             Ok(symbol) => symbol,
             Err(diagnostic) => match diagnostic.code {
                 Some(ResolverCode::Unresolved) | None => return None,
-                Some(ResolverCode::Ambiguous) | Some(ResolverCode::Conflict) => {
+                _ => {
                     return Some(Err(source_verification_error(
                         expr_origin(expr),
                         format!(

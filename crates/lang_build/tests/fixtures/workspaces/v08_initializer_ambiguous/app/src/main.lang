@@ -1,0 +1,16 @@
+let int: type = uint16;
+let unit: type = uint8;
+
+meta | runtime let + =
+  (self, t: type, _ unit: type): meta -> let r: type =>
+{
+  r === t;
+};
+
+meta | runtime let + =
+  (self, t: type, _ unit: type): meta -> let r: type =>
+{
+  r === t;
+};
+
+let X: type = int + unit;

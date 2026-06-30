@@ -64,6 +64,140 @@ return-object policy `{ Meta, Runtime }` by default. Runtime lookup may see the
 symbol metadata if that lookup phase is requested, but runtime execution must
 not enter this meta-only body.
 
+## 0.2 v0.8 default initializer evaluation
+
+Ordinary initializer evaluation is policy-inferred, not annotation-triggered.
+
+For:
+
+```lang
+let X: type = int + unit;
+```
+
+the `: type` annotation is checked after RHS evaluation. It is not the reason
+the RHS enters meta evaluation. The RHS enters the default inferred evaluation
+strategy because the binding policy is omitted:
+
+```text
+default ordinary initializer strategy = meta | runtime / MetaPartial
+```
+
+`MetaPartial` evaluates the normalized AST as far as meta policy allows. If a
+call can be reduced through meta-visible source-declared overloads, it returns
+a meta value. If it cannot be meta-reduced but has a legal runtime boundary, it
+produces a residual expression and the binding policy inference records that
+the result is not a pure meta value. Runtime fallback is residualization; it is
+not a second runtime lookup that produces a compile-time value.
+
+`MetaStrict` is used inside selected meta-only bodies. It does not allow
+residualization to complete the current meta value:
+
+```text
+runtime-only dependency in MetaStrict context => diagnostic
+```
+
+Runtime body-entry policy does not ban local meta actions. Semantically, a
+runtime body may contain local declarations whose initializers are evaluated
+under the local default `MetaPartial` strategy. The runtime policy says the
+callable's input-to-output mapping is runtime-entered; it is not a blanket ban
+on all meta actions in the body. The restricted v0.8 implementation only proves
+that runtime-body declarations may contain such local meta-shaped initializers;
+full runtime-body execution and local binding materialization are deferred.
+
+Omitted binding policy introduces an inference variable. Explicit policy turns
+that inference into verification:
+
+```lang
+let x = expr;                 // infer from Value or Residual
+meta | runtime let x = expr;  // verify RHS result can satisfy both flags
+runtime let x = expr;         // verify runtime-only visibility is enough
+```
+
+If `expr` only residualizes to runtime, `meta | runtime let x = expr` fails
+verification because no meta-visible value was produced. Ambiguous
+meta-visible candidates remain hard diagnostics in both `MetaPartial` and
+`MetaStrict`; ambiguity is not residualized.
+
+Verification consumes the RHS result policy. Direct type-name forwarding uses
+the forwarded type symbol's own policy. Restricted source-callable invocation
+uses the selected callable's return-object policy. This keeps binding policy
+inference and explicit policy verification from collapsing every successful
+meta value to `meta | runtime`.
+
+When binding policy is omitted and RHS evaluation succeeds with a value, the
+binding policy is inferred from that RHS result policy and written onto the
+materialized binding. For example, a `meta let + = ...` source callable whose
+return-object policy is meta-only produces a meta-only `let X: type = int +
+unit;` binding when no explicit policy is written. Explicit policy annotations
+still use the same result policy for shrink-only verification. Inference does
+not implicitly copy export visibility from a forwarded dependency or core
+object; it uses the phase capability portion of the result policy for the new
+binding.
+
+If any initializer residualizes and the binding has an assertion annotation
+such as `: type`, the assertion is not considered proven or failed. It is
+deferred with the residual expression. Because v0.8 has no deferred/runtime
+type assertion model, the implementation reports:
+
+```text
+UnsupportedDeferredTypeAssertion
+```
+
+This diagnostic means the assertion boundary is unsupported for residual
+initializers; it does not mean the RHS was already checked and found not to be
+a type-level meta value.
+
+The v0.8 success path for `let X: type = int + unit;` is:
+
+```text
+source declarations install real `+` overload symbols
+ordinary initializer sees normalized `int + unit`
+MetaPartial invokes restricted overload selection under MetaAction lookup
+selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
+RHS value is `ForwardedValue(int)`
+`: type` assertion checks that the RHS is a type-level value
+binding materialization installs `X` as a type forwarding `int`
+```
+
+The identity path does not require full canonical sum-pattern values. A
+selected body such as `r === t | u` still requires canonical sum-pattern value
+support; until that exists, v0.8 reports an explicit unsupported diagnostic
+instead of faking success.
+
+Selected meta body local-let support is intentionally narrow: local let
+initializers are checked under `MetaStrict`, but local binding materialization
+inside selected bodies is not implemented. The supported forwarding body still
+resolves only selected parameter bindings or graph-resolved names.
+
+### Structured v0.8 failure routing
+
+The v0.8 initializer evaluator does not inspect diagnostic message text for
+semantic routing. Restricted overload selection returns structured failure
+kinds and code-tagged diagnostics. The initializer evaluator maps those kinds
+to residualization or hard diagnostics:
+
+```text
+AmbiguousCandidate
+  => hard diagnostic in MetaPartial and MetaStrict
+
+NoSourceDeclaredCallable
+NotVisibleToLookupPhase
+NoApplicableCandidate
+  => Residual in MetaPartial
+  => ResidualNotAllowedInMetaStrict in MetaStrict
+
+BodyEntryPolicyMismatch
+  => Residual in legal MetaPartial initializer contexts
+  => ResidualNotAllowedInMetaStrict in MetaStrict
+```
+
+Unsupported selected-body forms remain diagnostics. Canonical sum-pattern
+values such as `r === t | u` report
+`UnsupportedCanonicalSumPatternValue`. Selected meta body local-let forms that
+would require a parameter/local binding environment report
+`UnsupportedSelectedMetaBodyLocalBinding`; v0.8 does not implement that local
+environment.
+
 ## 1. Purpose
 
 The language wants exactly one invocation model. The same mechanism must serve:

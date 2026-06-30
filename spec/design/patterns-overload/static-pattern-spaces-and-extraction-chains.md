@@ -46,6 +46,20 @@ The `|` in `_ if | else: type` is restricted pattern-side or material in
 parameter-pattern context. Neither use is expression-level operator lookup,
 and neither is implemented by source-declared `+`.
 
+The v0.8 ordinary initializer path only needs the unit identity forwarding
+case:
+
+```lang
+let X: type = int + unit;
+```
+
+This succeeds by selecting a source-declared `+` overload whose body is
+`r === t`. It does not require canonical sum-pattern value construction.
+If the selected body is the generic fallback `r === t | u`, the implementation
+must either construct a real canonical sum-pattern value with commutative,
+associative, and idempotent identity, or report an explicit unsupported
+diagnostic. The current restricted slice reports the diagnostic.
+
 ## 2. Core Principles
 
 ### 2.1 Pattern spaces are static objects, not arbitrary sets

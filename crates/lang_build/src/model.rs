@@ -310,6 +310,20 @@ pub enum ResolverCode {
     Ambiguous,
     /// Cross-root conflict — same symbol found in multiple search roots.
     Conflict,
+    AmbiguousMetaCandidate,
+    NoMetaVisibleCandidate,
+    BodyEntryPolicyMismatch,
+    UnsupportedDeferredTypeAssertion,
+    AnnotationAssertionFailed,
+    ExplicitPolicyVerificationFailed,
+    ResidualNotAllowedInMetaStrict,
+    UnsupportedCanonicalSumPatternValue,
+    UnsupportedSelectedMetaBody,
+    UnsupportedSelectedMetaBodyLocalBinding,
+    UnsupportedExternalVisibility,
+    UnsupportedOverloadTarget,
+    UnsupportedCandidateShape,
+    UnsupportedParameterPattern,
 }
 
 /// Build/namespace diagnostic with optional provenance and graph context.
