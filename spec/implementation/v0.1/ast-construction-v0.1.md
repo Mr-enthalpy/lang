@@ -2461,8 +2461,8 @@ checks for return patterns:
 ```
 ReturnTerminalForm ::=
     ValueExpr "return"
-  | ValueExpr "|>" "(" TargetExpr "return" ")"
-  | ValueExpr "(" TargetExpr "return" ")"
+  | ValueExpr "|>" "(" [TargetExpr] "return" ")"
+  | ValueExpr "(" [TargetExpr] "return" ")"
 ```
 
 These produce:
