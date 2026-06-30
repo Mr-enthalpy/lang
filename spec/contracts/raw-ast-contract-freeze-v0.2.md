@@ -29,8 +29,8 @@ v0.6+  — Later semantic design stages
 ## What v0.1 and v0.1.w delivered
 
 - A complete Raw AST frontend: lexer, parser, token dump, AST dump, diagnostic dump.
-- 29 `DiagnosticCode` variants across lexer, parser, operator, and alias categories.
-- Golden test coverage (25 lexer, 299 parser, 43 diagnostics).
+- 32 `DiagnosticCode` variants across lexer, parser, return, operator, and alias categories.
+- Golden test coverage (25 lexer, 325 parser, 43 diagnostics).
 - `crates/lang_syntax` and `crates/lang_cli`.
 - Richer literal spelling: radix integers, digit separators, scientific notation,
   hexadecimal floats, ranked quote-boundary strings.
@@ -58,7 +58,7 @@ exception:
 - Inner-to-outer navigation
 - Alias-let parser preservation (`let binder === EntityRef`)
 - `with { ... }` narrow payload grammar (names only)
-- All 29 diagnostic codes with documented trigger conditions and span policy
+- All 32 diagnostic codes with documented trigger conditions and span policy
 - Binding-slot shape (policy, deduce, pattern, annotation, with, initializer)
 - Canonical skeleton / deduce-list AST preservation (no matching semantics)
 - Operator sugar as Raw AST (no lookup, no lowering)

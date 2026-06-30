@@ -415,3 +415,38 @@ error: Expected name after `.`
 
 The level may be `error`, `warning`, or `note`. In v0.1, all diagnostics are
 `error` level unless the spec says otherwise.
+
+## 3.6 Return Diagnostics (v0.9)
+
+Return terminal form diagnostics added in v0.9.
+
+### 3.6.1 ReturnRequiresValue
+
+- **Status:** guaranteed emitted.
+- **Trigger:** Bare `return;` at form level without a value expression.
+- **Handling:** Parser consumes `return` and the form boundary
+  (`;` or `}`). The form is marked as `FormAst::Error`.
+- **Design rationale:** `return` requires a value to return.
+  Use `() return;` for an explicit unit return.
+
+### 3.6.2 StatementAfterTerminalBlockForm
+
+- **Status:** guaranteed emitted.
+- **Trigger:** A form appears after a terminal block form
+  (tail value expression or return event) before the closing
+  `}` in a body block.
+- **Handling:** ErrorAst wrapping of the subsequent form.
+  Recovery continues to `}`.
+- **Design rationale:** No forms may follow a terminal block
+  form. Extra semicolons after the terminal are tolerated.
+
+### 3.6.3 ReturnExpressionNotAllowed
+
+- **Status:** guaranteed emitted.
+- **Trigger:** Return-like syntax embedded in expression, group,
+  pattern, let-initializer, binding annotation, call-argument,
+  or operator context (i.e., not at the form level).
+- **Handling:** Diagnostic emitted at the expression span.
+  The expression is preserved in the AST.
+- **Design rationale:** Return events are block terminal forms,
+  not expressions. They cannot be grouped or embedded.

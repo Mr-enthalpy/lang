@@ -93,13 +93,14 @@ recognized as a policy-prefixed let form. Alias-let is recognized inside that
 let path by a following `===` delimiter. Expression forms cover all other
 non-trivia token sequences.
 
-The parser produces four form categories at the Raw AST level:
+The parser produces five form categories at the Raw AST level:
 
 | Raw AST shape | Recognition rule |
 |---|---|
 | `FormAst::Let(LetAst)` | The form enters the let path and alias-let recognition does not match. |
 | `FormAst::AliasLet(LetAliasAst)` | The form enters the let path and alias recognition (`===` delimiter) succeeds. |
 | `FormAst::Expr(ExprAst)` | The first non-trivia token starts neither a let path nor a policy-prefixed let path. |
+| `FormAst::ReturnEvent(ReturnEventAst)` | The form contains a return terminal event with a value expression and an unresolved return target. Recognized contextually by the parser in return terminal form positions. |
 | `FormAst::Error(ErrorAst)` | The form cannot be recovered to any valid structure. |
 
 The parser preserves these shapes as Raw AST. It does not classify forms as
@@ -632,14 +633,20 @@ annotation term.
 
 ## 23. Match-style expressions and semantic names
 
-The parser does not have special syntax for `match`, `return`, `else`, `if`,
+The parser does not have special syntax for `match`, `else`, `if`,
 `drop`, `move`, `sync`, `effect`, `fn`, `type`, or similar words. These are
 ordinary `Name` tokens at the lexer level.
+The parser does contextually recognize `return` in return terminal form
+positions (see §Terminal Block Forms and Return Events).
 
 The parser may produce ordinary expression structure — names, product forms,
 closure AST arms — that future meta-functions or semantic passes may later
-interpret. There is no `MatchExpr`, `ReturnStmt`, `IfExpr`, `FnDecl`,
+interpret. There is no `MatchExpr`, `IfExpr`, `FnDecl`,
 `TypeDecl`, or `NamespaceDecl` node in Raw AST.
+There is no semantic `ReturnStmt` construct; the parser
+does preserve a structural `ReturnEvent` terminal form
+(see §Terminal Block Forms and Return Events).
+
 
 ## 24. Parser diagnostics and recovery
 
@@ -649,7 +656,7 @@ The parser is error-tolerant. When an error is detected:
 2. An `ErrorAst` node is inserted at the recovery point.
 3. Parsing continues from a reasonable resynchronization point.
 
-The complete diagnostic catalog (29 `DiagnosticCode` variants across lexer,
+The complete diagnostic catalog (32 `DiagnosticCode` variants across lexer,
 parser, operator, and alias categories) is documented in
 `spec/implementation/v0.1/diagnostics-v0.1.md`. The concrete syntax document names diagnostics
 only when needed to define a syntax boundary.
@@ -695,3 +702,113 @@ current v0.2 parser surface. `lexical-syntax-v0.2.md` defines tokenization.
 `ast-construction-v0.1.md` remains the detailed parser-construction and
 implementation-level normative document. Historical design notes explain
 decisions but are not the primary public syntax entry point.
+
+## 27. Terminal Block Forms and Return Events
+
+### Recognition
+
+The parser contextually recognizes `return` only in return terminal
+form positions at the form level:
+
+```lang
+E return;
+E |> (T return);
+E (T return);
+E |> (return);
+E (return);
+```
+
+`return` remains a `Name` token at the lexer level. The parser
+disambiguates return terminal forms from ordinary name expressions
+by detecting the `return` keyword after the value expression and
+extracting the target syntax from the pipe (`|>`) or adjacency
+(`(...)`) pattern.
+
+### Raw AST
+
+```text
+FormAst ::= ...
+  | ReturnEvent(ReturnEventAst)
+
+ReturnEventAst {
+  value: ExprAst,
+  target: ReturnTargetAst,
+  span: Span
+}
+
+ReturnTargetAst ::=
+    ImplicitNearest { span }
+  | Explicit { target: ExprAst, span }
+```
+
+### Meaning
+
+| Source | Raw AST |
+|---|---|
+| `E return;` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E \|> (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E (return);` | `ReturnEvent(value = E, target = ImplicitNearest)` |
+| `E \|> (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
+| `E (T return);` | `ReturnEvent(value = E, target = Explicit(T))` |
+
+`E |> (return);` and `E (return);` are equivalent to `E return;`
+(all produce `ImplicitNearest`). These forms are recognized by the
+parser's return target extraction when the group contains only
+`return` without an explicit target expression.
+`T` is target syntax only. It is not resolved by the parser or
+normalizer.
+
+### Non-Expression Status
+
+Return events are not expressions:
+
+```text
+ReturnEvent ∉ Expr
+ReturnEvent ∉ Pattern
+ReturnEvent ∉ Group
+ReturnEvent ∈ BlockTerminal / Form
+```
+
+Return-like forms may not be grouped, embedded in expressions,
+or used in non-form contexts. These are diagnostic-bearing:
+
+```lang
+(x return)
+(x |> (T return))
+(x (T return))
+
+let y = (x return);
+let y = x |> (T return);
+let y = x (T return);
+
+g((x return));
+g(x |> (T return));
+g(x (T return));
+
+(x return) + y;
+let y: (x return) = z;
+```
+
+But this is legal as a whole terminal form:
+
+```lang
+f(x return);
+```
+
+It means `ReturnEvent(value = f, target = Explicit(x))`, not a call
+with `x return` as an argument.
+
+### Terminal Block Enforcement
+
+Once a terminal block form appears, no later form may occur before
+`}`. Terminal forms are:
+
+```text
+TailValue(E)                    (bare expression in final position)
+ReturnEvent(E, ImplicitNearest) (E return)
+ReturnEvent(E, Explicit(T))     (E |> (T return) or E (T return))
+```
+
+The parser emits `StatementAfterTerminalBlockForm` for forms after
+a terminal. Extra semicolons after a terminal are tolerated as
+separators.

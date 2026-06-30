@@ -97,6 +97,7 @@ ordinary syntax understanding.
 | `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
 | `v0.4-normalization-prototype-notes.md` | Normative for the v0.4 normalization boundary | Records what the v0.4 Raw AST → Normalized AST prototype/hardening delivered and the boundary it must not cross (value/pattern separation, annotation patterns, unresolved operator/alias targets, `Unsupported` visibility, no pattern-space/semantic behavior). |
 | `v0.8-meta-construction-agent-constraints.md` | Draft construction contract for v0.8-adjacent work; not current public behavior | Cross-block agent guardrails for type-to-type meta construction, requiring no-bypass namespace graph use, `ProductObject` / `ArgProductShape`, `SymbolObject`, `TypeValueId` / `PlaceId` / `AliasChain`, policy planes, canonical meta instance keys, and `NamespaceDelta` atomicity. |
+| `v0.9-control-flow-end-events.md` | Handoff contract for `TailValue`/`ReturnEvent` terminal forms and deferred target resolution | v0.9 control-flow end events contract (implemented syntax/normalized structure, deferred semantic resolution). Covers the three return terminal form spellings, non-expression guarantees, terminal block enforcement, and consumer handoff expectations. Target resolution and D-reduction are explicitly deferred. |
 
 ## Historical design notes
 
@@ -143,6 +144,7 @@ into contracts, moved into planning, or archived into history. Start at
 | `spec/design/patterns-overload/` | Pattern normalization, occurrence roles, argument/parameter shapes, first-order type-value candidate adaptation, applicability, specificity, the full overload-resolution vision, static pattern spaces, and extraction chains. |
 | `spec/design/meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation, and control-like callables instead of `if constexpr` syntax. |
 | `spec/design/policy-capability/` | Symbol-visibility / body-entry / return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. |
+| `spec/design/control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only |
 | `spec/design/mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes with no loop core. |
 
 ## Planning and debt

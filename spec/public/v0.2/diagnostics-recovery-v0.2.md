@@ -49,7 +49,7 @@ as Raw AST.
 
 ## 3. DiagnosticCode inventory
 
-The current `DiagnosticCode` enum contains 29 variants. Each is listed below
+The current `DiagnosticCode` enum contains 32 variants. Each is listed below
 with its category, typical trigger, and stability status.
 
 | Code | Category | Typical trigger | Recovery | Status |
@@ -83,6 +83,9 @@ with its category, typical trigger, and stability status.
 | `InvalidAliasPosition` | Alias | Alias-shaped token sequence appears in non-form position | Emit diagnostic; recover to enclosing delimiter or form boundary | Guaranteed |
 | `InvalidEntityRef` | Alias | Malformed non-boundary EntityRef components (grouped innermost component, operator as outer component) | Preserve parsed segments; replace malformed continuation with error component | Guaranteed |
 | `UnexpectedAliasRhsExpression` | Alias | Valid EntityRef parsed but next token is not a form boundary | Consume tokens until form boundary | Guaranteed |
+| `ReturnRequiresValue` | Return | Bare `return;` without a value expression. | `self.cursor.bump_non_trivia()` + `consume_form_boundary()` + ErrorAst recovery. | guaranteed emitted |
+| `StatementAfterTerminalBlockForm` | Return | A form appears after a terminal block form (tail value or return event) before `}`. | ErrorAst wrapping + recovery to `}`. | guaranteed emitted |
+| `ReturnExpressionNotAllowed` | Return | Return-like syntax embedded in expression, group, pattern, let-initializer, annotation, call-argument, or operator context. | Diagnostic emitted at expression span; the expression is preserved. | guaranteed emitted |
 
 ## 4. Category overview
 
@@ -90,6 +93,7 @@ with its category, typical trigger, and stability status.
 |---|---|---|
 | Lexer | 4 | `InvalidToken`, `UnclosedString`, `UnclosedComment`, `InvalidNumericLiteral` |
 | Parser | 17 | `UnexpectedToken`, `ExpectedName`, `ExpectedColon`, `ExpectedBindingAnnotation`, `ExpectedEqual`, `EmptyPipeSegment`, `ExpectedNameAfterDot`, `ExpectedNameAfterDoubleDot`, `ExpectedProductAfterDoubleDotName`, `UnclosedParen`, `UnclosedBracket`, `UnclosedBrace`, `InvalidDeduceList`, `InvalidCanonicalSkeleton`, `InvalidClosureHead`, `TopLevelComma`, `UnusedClosureAst` |
+| Return | 3 | `ReturnRequiresValue`, `StatementAfterTerminalBlockForm`, `ReturnExpressionNotAllowed` |
 | Operator | 3 | `InvalidOperatorExpression`, `ChainedNonAssociativeOperator`, `InvalidNavComponent` |
 | Alias | 5 | `ExpectedAliasTarget`, `InvalidAliasBinder`, `InvalidAliasPosition`, `InvalidEntityRef`, `UnexpectedAliasRhsExpression` |
 

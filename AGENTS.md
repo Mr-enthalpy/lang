@@ -66,6 +66,7 @@ spec/contracts/raw-ast-contract-v0.1.md
 spec/contracts/raw-ast-contract-freeze-v0.2.md
 spec/contracts/v0.3-normalization-handoff-checklist.md
 spec/contracts/v0.4-normalization-prototype-notes.md
+spec/contracts/v0.9-control-flow-end-events.md
 spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 ```
 
