@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use lang_syntax::{NormNavComponent, NormOrigin};
 
 use crate::{
-    meta_invocation::ConstructionInstanceId,
+    meta_invocation::{ConstructionInstanceId, TypeDefinitionInstanceId},
     model::{Diagnostic, FieldProjection, Provenance, ResolverCode, SymbolId},
 };
 
@@ -49,6 +49,9 @@ pub enum PatternHeadOrigin {
     Generated {
         construction_instance_id: ConstructionInstanceId,
     },
+    GeneratedTypeDefinition {
+        type_definition_id: TypeDefinitionInstanceId,
+    },
     ExternalForward {
         target_symbol_id: SymbolId,
     },
@@ -74,10 +77,12 @@ pub enum PatternMaterializationContext {
     },
     Local {
         place_id: LocalPatternPlaceId,
-        display_name: String,
     },
     Generated {
         construction_instance_id: ConstructionInstanceId,
+    },
+    GeneratedTypeDefinition {
+        type_definition_id: TypeDefinitionInstanceId,
     },
 }
 
@@ -121,6 +126,11 @@ pub struct PatternHeadMaterialization {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct TypeMaterializationState {
+    pub pattern_heads: PatternHeadRegistry,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct PatternHeadRegistry {
     next_id: u64,
     heads: BTreeMap<PatternHeadId, PatternHead>,
@@ -156,14 +166,11 @@ impl PatternHeadRegistry {
                     symbol_id,
                 },
             ),
-            PatternMaterializationContext::Local {
-                place_id,
-                display_name,
-            } => (
+            PatternMaterializationContext::Local { place_id } => (
                 PatternHeadKind::Owner,
                 PatternHeadOrigin::LocalMaterialization {
                     place_id,
-                    display_name,
+                    display_name: display_name.clone(),
                 },
             ),
             PatternMaterializationContext::Generated {
@@ -173,6 +180,10 @@ impl PatternHeadRegistry {
                 PatternHeadOrigin::Generated {
                     construction_instance_id,
                 },
+            ),
+            PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id } => (
+                PatternHeadKind::Generated,
+                PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id },
             ),
         };
         self.allocate_head(kind, origin, display_name, provenance)
@@ -185,7 +196,7 @@ impl PatternHeadRegistry {
         field_type_symbol_id: SymbolId,
         projection: FieldProjection,
         provenance: Provenance,
-    ) -> PatternHeadId {
+    ) -> Result<PatternHeadId, Diagnostic> {
         let field_name = field_name.into();
         let origin = PatternHeadOrigin::Field {
             owner_head,
@@ -193,15 +204,29 @@ impl PatternHeadRegistry {
             field_type_symbol_id,
             projection,
         };
+        let child_key = (owner_head, field_name.clone());
+        if let Some(existing_head) = self.child_scopes.get(&child_key).copied() {
+            let existing_origin = self.heads.get(&existing_head).map(|head| &head.origin);
+            if existing_origin == Some(&origin) {
+                return Ok(existing_head);
+            }
+            return Err(Diagnostic::hard_error(
+                format!(
+                    "explicit pattern extraction child conflict: `{field_name}` is already registered under {:?}",
+                    owner_head
+                ),
+                Some(provenance),
+            )
+            .with_code(ResolverCode::PatternHeadConflict));
+        }
         let field_head = self.allocate_head(
             PatternHeadKind::Field,
             origin,
             field_name.clone(),
             provenance,
         );
-        self.child_scopes
-            .insert((owner_head, field_name), field_head);
-        field_head
+        self.child_scopes.insert(child_key, field_head);
+        Ok(field_head)
     }
 
     pub fn allocate_generated_head(
@@ -240,25 +265,23 @@ impl PatternHeadRegistry {
         display_name: impl Into<String>,
         fields: impl IntoIterator<Item = PatternFieldMaterialization>,
         provenance: Provenance,
-    ) -> PatternHeadMaterialization {
+    ) -> Result<PatternHeadMaterialization, Diagnostic> {
         let owner_head = self.allocate_owner_head(context, display_name, provenance);
-        let field_heads = fields
-            .into_iter()
-            .map(|field| {
-                let field_head = self.allocate_field_head(
-                    owner_head,
-                    field.field_name.clone(),
-                    field.field_type_symbol_id,
-                    field.projection,
-                    field.provenance,
-                );
-                (field.field_name, field_head)
-            })
-            .collect();
-        PatternHeadMaterialization {
+        let mut field_heads = Vec::new();
+        for field in fields {
+            let field_head = self.allocate_field_head(
+                owner_head,
+                field.field_name.clone(),
+                field.field_type_symbol_id,
+                field.projection,
+                field.provenance,
+            )?;
+            field_heads.push((field.field_name, field_head));
+        }
+        Ok(PatternHeadMaterialization {
             owner_head,
             field_heads,
-        }
+        })
     }
 
     pub fn lookup_child(
@@ -275,11 +298,24 @@ impl PatternHeadRegistry {
         &mut self,
         components: impl IntoIterator<Item = impl Into<String>>,
         head_id: PatternHeadId,
-    ) {
-        self.explicit_paths.insert(
-            components.into_iter().map(Into::into).collect::<Vec<_>>(),
-            head_id,
-        );
+        provenance: Provenance,
+    ) -> Result<(), Diagnostic> {
+        let components = components.into_iter().map(Into::into).collect::<Vec<_>>();
+        if let Some(existing) = self.explicit_paths.get(&components).copied() {
+            if existing == head_id {
+                return Ok(());
+            }
+            return Err(Diagnostic::hard_error(
+                format!(
+                    "explicit pattern navigation path conflict: `{}` is already registered",
+                    components.join("::")
+                ),
+                Some(provenance),
+            )
+            .with_code(ResolverCode::PatternHeadConflict));
+        }
+        self.explicit_paths.insert(components, head_id);
+        Ok(())
     }
 
     pub fn lookup_explicit_path(&self, components: &[String]) -> Option<PatternHeadId> {
@@ -298,18 +334,27 @@ impl PatternHeadRegistry {
             PatternLookupInput::AutoName {
                 name,
                 current_scope,
+                expectation,
                 provenance,
-                ..
-            } => self.lookup_child(current_scope, &name).ok_or_else(|| {
-                Diagnostic::hard_error(
-                    format!(
-                        "bounded extraction lookup failed: `{name}` is not a child of {:?}",
-                        current_scope
-                    ),
-                    Some(provenance),
-                )
-                .with_code(ResolverCode::Unresolved)
-            }),
+            } => {
+                if expectation != PatternExpectation::ExtractionChild {
+                    return Err(Diagnostic::hard_error(
+                        "restricted v0.9 pattern lookup only supports AutoName as an extraction child",
+                        Some(provenance),
+                    )
+                    .with_code(ResolverCode::UnsupportedPatternExpectation));
+                }
+                self.lookup_child(current_scope, &name).ok_or_else(|| {
+                    Diagnostic::hard_error(
+                        format!(
+                            "bounded extraction lookup failed: `{name}` is not a child of {:?}",
+                            current_scope
+                        ),
+                        Some(provenance),
+                    )
+                    .with_code(ResolverCode::Unresolved)
+                })
+            }
             PatternLookupInput::ExplicitNav {
                 components,
                 provenance,

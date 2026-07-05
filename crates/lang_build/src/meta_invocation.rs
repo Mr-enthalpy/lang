@@ -42,6 +42,10 @@ use crate::{
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
     meta_key::{compute_meta_instance_key, MetaInstanceKey},
     model::{Diagnostic, Provenance, SymbolId},
+    pattern_head::{
+        PatternFieldMaterialization, PatternHeadId, PatternMaterializationContext,
+        TypeMaterializationState,
+    },
     pattern_space::{derive_sum_pattern_space, SumPatternSpaceShape, TypePatternExprShape},
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
@@ -107,6 +111,7 @@ impl MetaInvocationValue {
                         .iter()
                         .zip(rhs.fields.iter())
                         .all(|(a, b)| a.semantic_eq(b))
+                    && lhs.pattern_heads == rhs.pattern_heads
                     && lhs.return_view == rhs.return_view
                     && type_pattern_expr_semantic_eq(&lhs.type_pattern_expr, &rhs.type_pattern_expr)
                     && sum_pattern_space_semantic_eq(&lhs.sum_pattern_space, &rhs.sum_pattern_space)
@@ -236,6 +241,7 @@ pub struct GeneratedTypeDefinitionValue {
     pub type_definition_id: TypeDefinitionInstanceId,
     pub identity_material: TypeDefinitionIdentityMaterial,
     pub fields: Vec<GeneratedFieldDefinition>,
+    pub pattern_heads: Option<TypeDefinitionPatternHeads>,
     pub return_view: ReturnViewShape,
     /// The decoded type-pattern expression shape, if the struct argument
     /// was successfully decoded by the struct-local decoder.
@@ -244,6 +250,18 @@ pub struct GeneratedTypeDefinitionValue {
     /// if the expression contains a sum.
     pub sum_pattern_space: Option<SumPatternSpaceShape>,
     pub provenance: Provenance,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TypeDefinitionPatternHeads {
+    pub owner_head: PatternHeadId,
+    pub field_heads: Vec<GeneratedFieldPatternHead>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GeneratedFieldPatternHead {
+    pub field_name: String,
+    pub field_head: PatternHeadId,
 }
 
 /// Deterministic build-local construction identity placeholder.
@@ -361,6 +379,7 @@ pub struct GeneratedFieldDefinition {
     pub name: String,
     pub type_symbol_id: SymbolId,
     pub index: usize,
+    pub pattern_head: Option<PatternHeadId>,
     pub provenance: Provenance,
 }
 
@@ -370,6 +389,7 @@ impl GeneratedFieldDefinition {
         self.name == other.name
             && self.type_symbol_id == other.type_symbol_id
             && self.index == other.index
+            && self.pattern_head == other.pattern_head
     }
 }
 
@@ -502,6 +522,14 @@ pub enum ReturnViewShape {
 /// Reads `callee_primitive` from the candidate itself. Invocation is pure
 /// — no graph mutation, no `NamespaceDelta` installation.
 pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult {
+    let mut materialization_state = TypeMaterializationState::default();
+    invoke_meta_callable_with_materialization_state(input, &mut materialization_state)
+}
+
+pub fn invoke_meta_callable_with_materialization_state(
+    input: MetaInvocationInput,
+    materialization_state: &mut TypeMaterializationState,
+) -> MetaInvocationResult {
     let Some(primitive) = input.candidate.callee_primitive else {
         return MetaInvocationResult::Diagnostic(
             Diagnostic::hard_error(
@@ -520,7 +548,9 @@ pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult 
         crate::model::CoreMetaFunction::UnaryConstructionPrototype => {
             invoke_unary_construction_prototype(&input)
         }
-        crate::model::CoreMetaFunction::Struct => invoke_struct_type_definition(&input),
+        crate::model::CoreMetaFunction::Struct => {
+            invoke_struct_type_definition(&input, materialization_state)
+        }
         _ => MetaInvocationResult::Diagnostic(
             Diagnostic::hard_error(
                 format!(
@@ -543,6 +573,15 @@ pub fn invoke_meta_callable_cached(
     input: MetaInvocationInput,
     cache: &mut MetaInstanceCache,
 ) -> MetaInvocationResult {
+    let mut materialization_state = TypeMaterializationState::default();
+    invoke_meta_callable_cached_with_materialization_state(input, cache, &mut materialization_state)
+}
+
+pub fn invoke_meta_callable_cached_with_materialization_state(
+    input: MetaInvocationInput,
+    cache: &mut MetaInstanceCache,
+    materialization_state: &mut TypeMaterializationState,
+) -> MetaInvocationResult {
     // Validate primitive before cache lookup — prevents a manually-inserted
     // cache entry for a no-primitive candidate from bypassing validation.
     if input.candidate.callee_primitive.is_none() {
@@ -561,7 +600,7 @@ pub fn invoke_meta_callable_cached(
     if let Some(cached) = cache.lookup(&key) {
         return MetaInvocationResult::Value(cached.result.clone());
     }
-    let result = invoke_meta_callable(input);
+    let result = invoke_meta_callable_with_materialization_state(input, materialization_state);
     if let MetaInvocationResult::Value(ref val) = result {
         cache.insert(
             key,
@@ -665,7 +704,10 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvoc
     ))
 }
 
-fn invoke_struct_type_definition(input: &MetaInvocationInput) -> MetaInvocationResult {
+fn invoke_struct_type_definition(
+    input: &MetaInvocationInput,
+    materialization_state: &mut TypeMaterializationState,
+) -> MetaInvocationResult {
     let candidate = &input.candidate;
     let mat = &candidate.canonical_key_seed.argument_product_shape_material;
 
@@ -701,21 +743,63 @@ fn invoke_struct_type_definition(input: &MetaInvocationInput) -> MetaInvocationR
         provenance: input.provenance.clone(),
     };
     let type_definition_id = compute_type_definition_instance_id(&identity_material);
+    let owner_display_name = input
+        .struct_decoded_pattern
+        .as_ref()
+        .and_then(|decoded| owner_display_name_from_type_pattern_expr(&decoded.type_pattern_expr))
+        .unwrap_or_else(|| format!("generated-type-definition-{}", type_definition_id.as_u64()));
+    let pattern_fields = field_signature_material
+        .iter()
+        .map(|field| PatternFieldMaterialization {
+            field_name: field.field_name.clone(),
+            field_type_symbol_id: field.field_type_symbol_id,
+            projection: crate::model::FieldProjection::Value,
+            provenance: field.provenance.clone(),
+        });
+    let pattern_materialization = match materialization_state
+        .pattern_heads
+        .materialize_struct_pattern_heads(
+            PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id },
+            owner_display_name,
+            pattern_fields,
+            input.provenance.clone(),
+        ) {
+        Ok(materialization) => materialization,
+        Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
+    };
+    let pattern_head_by_name = pattern_materialization
+        .field_heads
+        .iter()
+        .cloned()
+        .collect::<std::collections::BTreeMap<_, _>>();
     let fields = field_signature_material
         .iter()
         .map(|field| GeneratedFieldDefinition {
             name: field.field_name.clone(),
             type_symbol_id: field.field_type_symbol_id,
             index: field.field_index,
+            pattern_head: pattern_head_by_name.get(&field.field_name).copied(),
             provenance: field.provenance.clone(),
         })
         .collect();
+    let pattern_heads = Some(TypeDefinitionPatternHeads {
+        owner_head: pattern_materialization.owner_head,
+        field_heads: pattern_materialization
+            .field_heads
+            .into_iter()
+            .map(|(field_name, field_head)| GeneratedFieldPatternHead {
+                field_name,
+                field_head,
+            })
+            .collect(),
+    });
 
     MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(
         GeneratedTypeDefinitionValue {
             type_definition_id,
             identity_material,
             fields,
+            pattern_heads,
             return_view: ReturnViewShape::Leaf,
             type_pattern_expr: input
                 .struct_decoded_pattern
@@ -728,6 +812,13 @@ fn invoke_struct_type_definition(input: &MetaInvocationInput) -> MetaInvocationR
             provenance: input.provenance.clone(),
         },
     ))
+}
+
+fn owner_display_name_from_type_pattern_expr(expr: &TypePatternExprShape) -> Option<String> {
+    match expr {
+        TypePatternExprShape::Named { pattern_name, .. } => Some(pattern_name.clone()),
+        _ => None,
+    }
 }
 
 fn field_signature_material_from_candidate(

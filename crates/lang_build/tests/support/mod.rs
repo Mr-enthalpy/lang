@@ -269,6 +269,7 @@ pub fn type_with_namespace(
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::Type(TypeObject {
         type_symbol_id: type_id,
+        owner_pattern_head: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_symbol_ids: Vec::new(),

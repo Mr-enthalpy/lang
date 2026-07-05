@@ -89,7 +89,8 @@ pub use initializer_eval::{
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
-    bind_meta_invocation_value_result, expand_meta_initializer_via_invocation, MetaExpansionResult,
+    bind_meta_invocation_value_result, expand_meta_initializer_via_invocation,
+    expand_meta_initializer_via_invocation_with_materialization_state, MetaExpansionResult,
 };
 pub use meta_body::{
     check_closure_body_delete_legality, evaluate_selected_meta_closure_body,
@@ -106,11 +107,13 @@ pub use meta_candidate::{
 };
 pub use meta_invocation::{
     compute_construction_instance_id, compute_type_definition_instance_id, invoke_meta_callable,
-    invoke_meta_callable_cached, ConstructionIdentityMaterial, ConstructionInstanceId,
-    FieldSignatureMaterial, ForwardedValue, GeneratedConstructionValue, GeneratedFieldDefinition,
-    GeneratedTypeDefinitionValue, MetaInvocationInput, MetaInvocationResult, MetaInvocationValue,
-    MetaValueTarget, ReturnSlotSemantics, ReturnViewShape, TypeDefinitionIdentityMaterial,
-    TypeDefinitionInstanceId,
+    invoke_meta_callable_cached, invoke_meta_callable_cached_with_materialization_state,
+    invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,
+    ConstructionInstanceId, FieldSignatureMaterial, ForwardedValue, GeneratedConstructionValue,
+    GeneratedFieldDefinition, GeneratedFieldPatternHead, GeneratedTypeDefinitionValue,
+    MetaInvocationInput, MetaInvocationResult, MetaInvocationValue, MetaValueTarget,
+    ReturnSlotSemantics, ReturnViewShape, TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId,
+    TypeDefinitionPatternHeads,
 };
 pub use meta_key::{compute_meta_instance_key, CanonicalFingerprint, MetaInstanceKey};
 pub use model::{
@@ -140,6 +143,7 @@ pub use pattern_head::{
     nav_component_name, LocalPatternPlaceId, PatternExpectation, PatternFieldMaterialization,
     PatternHead, PatternHeadId, PatternHeadKind, PatternHeadMaterialization, PatternHeadOrigin,
     PatternHeadRegistry, PatternLookupInput, PatternMaterializationContext,
+    TypeMaterializationState,
 };
 pub use pattern_space::{
     bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,

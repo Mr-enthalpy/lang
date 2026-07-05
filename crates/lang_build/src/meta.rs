@@ -11,9 +11,11 @@ use crate::{
         CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        compute_type_definition_instance_id, invoke_meta_callable, invoke_meta_callable_cached,
-        GeneratedFieldDefinition, GeneratedTypeDefinitionValue, MetaInvocationInput,
-        MetaInvocationResult, MetaInvocationValue, MetaValueTarget, ReturnSlotSemantics,
+        compute_type_definition_instance_id,
+        invoke_meta_callable_cached_with_materialization_state,
+        invoke_meta_callable_with_materialization_state, GeneratedFieldDefinition,
+        GeneratedTypeDefinitionValue, MetaInvocationInput, MetaInvocationResult,
+        MetaInvocationValue, MetaValueTarget, ReturnSlotSemantics,
     },
     model::{
         CallablePolicyMetadata, CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject,
@@ -22,6 +24,7 @@ use crate::{
         TypeField, TypeObject,
     },
     normalized_call::extract_single_call_site,
+    pattern_head::TypeMaterializationState,
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
     product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
@@ -44,6 +47,27 @@ pub fn try_expand_early_meta_initializer(
     context: &ResolverContext,
     provenance: Provenance,
 ) -> Result<Option<MetaExpansionResult>, BuildError> {
+    let mut materialization_state = TypeMaterializationState::default();
+    try_expand_early_meta_initializer_with_materialization_state(
+        snapshot,
+        parent_namespace,
+        binding_name,
+        initializer,
+        context,
+        provenance,
+        &mut materialization_state,
+    )
+}
+
+pub fn try_expand_early_meta_initializer_with_materialization_state(
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    initializer: &NormExpr,
+    context: &ResolverContext,
+    provenance: Provenance,
+    materialization_state: &mut TypeMaterializationState,
+) -> Result<Option<MetaExpansionResult>, BuildError> {
     let site = match extract_single_call_site(initializer) {
         Ok(site) => site,
         Err(_) => return Ok(None),
@@ -62,7 +86,7 @@ pub fn try_expand_early_meta_initializer(
 
     match &resolved.callee.payload {
         SymbolPayload::MetaFunction(meta_function) if meta_function.primitive.is_some() => {
-            expand_meta_initializer_via_invocation(
+            expand_meta_initializer_via_invocation_with_materialization_state(
                 initializer,
                 snapshot,
                 parent_namespace,
@@ -73,6 +97,7 @@ pub fn try_expand_early_meta_initializer(
                 CandidateBuildIdentityPlaceholder::default(),
                 provenance,
                 None,
+                materialization_state,
             )
             .map(Some)
         }
@@ -104,6 +129,35 @@ pub fn expand_meta_initializer_via_invocation(
     build_identity: CandidateBuildIdentityPlaceholder,
     provenance: Provenance,
     cache: Option<&mut MetaInstanceCache>,
+) -> Result<MetaExpansionResult, BuildError> {
+    let mut materialization_state = TypeMaterializationState::default();
+    expand_meta_initializer_via_invocation_with_materialization_state(
+        initializer,
+        snapshot,
+        parent_namespace,
+        binding_name,
+        resolver_context,
+        lookup_env,
+        demanded_execution,
+        build_identity,
+        provenance,
+        cache,
+        &mut materialization_state,
+    )
+}
+
+pub fn expand_meta_initializer_via_invocation_with_materialization_state(
+    initializer: &NormExpr,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    resolver_context: &ResolverContext,
+    lookup_env: PolicyEnv,
+    demanded_execution: ExecutionEnv,
+    build_identity: CandidateBuildIdentityPlaceholder,
+    provenance: Provenance,
+    cache: Option<&mut MetaInstanceCache>,
+    materialization_state: &mut TypeMaterializationState,
 ) -> Result<MetaExpansionResult, BuildError> {
     let site = extract_single_call_site(initializer).map_err(|_| {
         BuildError::single(Diagnostic::hard_error(
@@ -274,8 +328,14 @@ pub fn expand_meta_initializer_via_invocation(
     let mut invocation_input = MetaInvocationInput::new(candidate, provenance.clone());
     invocation_input.struct_decoded_pattern = struct_decoded_pattern;
     let invocation_result = match cache {
-        Some(cache) => invoke_meta_callable_cached(invocation_input, cache),
-        None => invoke_meta_callable(invocation_input),
+        Some(cache) => invoke_meta_callable_cached_with_materialization_state(
+            invocation_input,
+            cache,
+            materialization_state,
+        ),
+        None => {
+            invoke_meta_callable_with_materialization_state(invocation_input, materialization_state)
+        }
     };
     let invocation_value = match invocation_result {
         MetaInvocationResult::Value(value) => value,
@@ -510,6 +570,7 @@ fn insert_projection_namespace(
     parent: NamespaceNodeId,
     name: &str,
     owner_type_symbol_id: SymbolId,
+    owner_pattern_head: Option<crate::pattern_head::PatternHeadId>,
     fields: &[GeneratedFieldDefinition],
     projection: FieldProjection,
     provenance: Provenance,
@@ -539,6 +600,7 @@ fn insert_projection_namespace(
         delta,
         node_id,
         owner_type_symbol_id,
+        owner_pattern_head,
         fields,
         projection,
         None,
@@ -549,6 +611,7 @@ fn insert_field_projection_layer(
     delta: &mut NamespaceDelta,
     parent: NamespaceNodeId,
     owner_type_symbol_id: SymbolId,
+    owner_pattern_head: Option<crate::pattern_head::PatternHeadId>,
     fields: &[GeneratedFieldDefinition],
     projection: FieldProjection,
     forced_provenance: Option<Provenance>,
@@ -575,8 +638,10 @@ fn insert_field_projection_layer(
         ));
         symbol.payload = SymbolPayload::FieldFunction(FieldObject {
             owner_type_symbol_id,
+            owner_pattern_head,
             field_name: field.name.clone(),
             field_type_symbol_id: field.type_symbol_id,
+            field_pattern_head: field.pattern_head,
             projection,
             callable_policy: CallablePolicyMetadata {
                 body_entry_policy: policy_metadata(policy_set_runtime()),
@@ -643,6 +708,7 @@ pub fn bind_meta_invocation_value_result(
                     )),
                     payload: SymbolPayload::Type(TypeObject {
                         type_symbol_id,
+                        owner_pattern_head: None,
                         fields: Vec::new(),
                         field_names: Vec::new(),
                         field_type_symbol_ids: Vec::new(),
@@ -739,12 +805,14 @@ fn bind_generated_type_definition_value(
     type_object.cache_key_fragment = Some(type_definition_fragment.clone());
     type_object.payload = SymbolPayload::Type(TypeObject {
         type_symbol_id,
+        owner_pattern_head: value.pattern_heads.as_ref().map(|heads| heads.owner_head),
         fields: value
             .fields
             .iter()
             .map(|field| TypeField {
                 name: field.name.clone(),
                 type_symbol_id: field.type_symbol_id,
+                pattern_head: field.pattern_head,
                 provenance: field.provenance.clone(),
             })
             .collect(),
@@ -761,6 +829,7 @@ fn bind_generated_type_definition_value(
         type_associated_namespace: Some(type_namespace_id),
         extraction_interface: Some(generated_type_extraction_interface(
             type_symbol_id,
+            value.pattern_heads.as_ref().map(|heads| heads.owner_head),
             &value.fields,
             provenance.clone(),
         )),
@@ -778,6 +847,7 @@ fn bind_generated_type_definition_value(
         &mut delta,
         type_namespace_id,
         type_symbol_id,
+        value.pattern_heads.as_ref().map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Value,
         None,
@@ -787,6 +857,7 @@ fn bind_generated_type_definition_value(
         type_namespace_id,
         "ref",
         type_symbol_id,
+        value.pattern_heads.as_ref().map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Ref,
         provenance.clone(),
@@ -796,6 +867,7 @@ fn bind_generated_type_definition_value(
         type_namespace_id,
         "share",
         type_symbol_id,
+        value.pattern_heads.as_ref().map(|heads| heads.owner_head),
         &value.fields,
         FieldProjection::Share,
         provenance.clone(),
@@ -811,18 +883,22 @@ fn bind_generated_type_definition_value(
 
 fn generated_type_extraction_interface(
     owner_type_symbol_id: SymbolId,
+    owner_pattern_head: Option<crate::pattern_head::PatternHeadId>,
     fields: &[GeneratedFieldDefinition],
     provenance: Provenance,
 ) -> TypeExtractionInterface {
     TypeExtractionInterface {
         owner_type_symbol_id,
+        owner_pattern_head,
         exposed_view: NamedProductExtractionShape {
             owner_type_symbol_id,
+            owner_pattern_head,
             fields: fields
                 .iter()
                 .map(|field| NamedExtractionField {
                     label: field.name.clone(),
                     field_type_symbol_id: field.type_symbol_id,
+                    field_pattern_head: field.pattern_head,
                     field_index: field.index,
                     projection: FieldProjection::Value,
                     provenance: field.provenance.clone(),
@@ -904,6 +980,7 @@ fn bind_generated_construction_value(
         )),
         payload: SymbolPayload::Type(TypeObject {
             type_symbol_id: declared_id,
+            owner_pattern_head: None,
             fields: Vec::new(),
             field_names: Vec::new(),
             field_type_symbol_ids: Vec::new(),

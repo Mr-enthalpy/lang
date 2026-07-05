@@ -215,6 +215,7 @@ pub(crate) fn insert_core_type(
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::Type(TypeObject {
         type_symbol_id: symbol_id,
+        owner_pattern_head: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_symbol_ids: Vec::new(),

@@ -162,6 +162,14 @@ PatternHeadRegistry
   ExtractionChildScope(owner_head)[child_name] = field_head
 ```
 
+This registry is part of the struct/type materialization state. Formal
+`struct` invocation calls `PatternHeadRegistry::materialize_struct_pattern_heads`
+and records the resulting owner/field heads in `GeneratedTypeDefinitionValue`.
+Binding projects those heads into `TypeObject`, `TypeField`, the extraction
+interface, and generated field functions. The registry is therefore the
+materialization boundary for current source-driven struct type definitions,
+not only a hand-built test substrate.
+
 In pattern-side extraction context, a bare name is resolved against the
 current owner `PatternHeadId`:
 
@@ -179,6 +187,15 @@ inner::Other   does not become (inner::Other)::TB
 Value-side lookup does not use the extraction child scope. `PatternHeadId`
 exists to identify resolved pattern heads and constructor heads; display names
 are not semantic identity.
+
+Registration and lookup are intentionally bounded in this slice:
+
+```text
+same explicit path + different head -> diagnostic
+same owner + same field name + different material -> diagnostic
+AutoName with non-ExtractionChild expectation -> diagnostic
+ExplicitNav -> explicit path table only, no bounded fallback
+```
 
 ### 2.5 Behavior comes from locatable code, not compiler oracle knowledge
 

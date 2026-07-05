@@ -64,7 +64,6 @@ fn same_struct_name_in_different_materialization_contexts_have_distinct_pattern_
     let local = registry.allocate_owner_head(
         PatternMaterializationContext::Local {
             place_id: LocalPatternPlaceId(1),
-            display_name: "name".to_string(),
         },
         "name",
         provenance("local name"),
@@ -84,7 +83,6 @@ fn same_display_name_different_local_places_are_distinct() {
     let local1 = registry.allocate_owner_head(
         PatternMaterializationContext::Local {
             place_id: LocalPatternPlaceId(1),
-            display_name: "name".to_string(),
         },
         "name",
         provenance("local1"),
@@ -92,7 +90,6 @@ fn same_display_name_different_local_places_are_distinct() {
     let local2 = registry.allocate_owner_head(
         PatternMaterializationContext::Local {
             place_id: LocalPatternPlaceId(2),
-            display_name: "name".to_string(),
         },
         "name",
         provenance("local2"),
@@ -121,19 +118,21 @@ fn generated_pattern_head_uses_construction_identity() {
 #[test]
 fn struct_materialization_boundary_allocates_owner_and_field_heads() {
     let mut registry = PatternHeadRegistry::new();
-    let materialized = registry.materialize_struct_pattern_heads(
-        PatternMaterializationContext::Global {
-            symbol_id: lang_build::SymbolId(90),
-        },
-        "TB",
-        [PatternFieldMaterialization {
-            field_name: "inner".to_string(),
-            field_type_symbol_id: uint8_symbol(),
-            projection: FieldProjection::Value,
-            provenance: provenance("inner field"),
-        }],
-        provenance("TB materialization"),
-    );
+    let materialized = registry
+        .materialize_struct_pattern_heads(
+            PatternMaterializationContext::Global {
+                symbol_id: lang_build::SymbolId(90),
+            },
+            "TB",
+            [PatternFieldMaterialization {
+                field_name: "inner".to_string(),
+                field_type_symbol_id: uint8_symbol(),
+                projection: FieldProjection::Value,
+                provenance: provenance("inner field"),
+            }],
+            provenance("TB materialization"),
+        )
+        .expect("struct pattern heads materialize");
 
     let inner = materialized.field_heads[0].1;
     assert_eq!(
@@ -168,20 +167,24 @@ fn field_head_is_owner_scoped() {
         "Bounded",
         provenance("owner B"),
     );
-    let inner_a = registry.allocate_field_head(
-        owner_a,
-        "inner",
-        uint8_symbol(),
-        FieldProjection::Value,
-        provenance("inner A"),
-    );
-    let inner_b = registry.allocate_field_head(
-        owner_b,
-        "inner",
-        uint8_symbol(),
-        FieldProjection::Value,
-        provenance("inner B"),
-    );
+    let inner_a = registry
+        .allocate_field_head(
+            owner_a,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner A"),
+        )
+        .expect("inner A");
+    let inner_b = registry
+        .allocate_field_head(
+            owner_b,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner B"),
+        )
+        .expect("inner B");
 
     assert_ne!(inner_a, inner_b);
     assert_eq!(registry.lookup_child(owner_a, "inner"), Some(inner_a));
@@ -198,13 +201,15 @@ fn bare_pattern_name_resolves_under_current_extraction_scope() {
         "TB",
         provenance("TB"),
     );
-    let inner = registry.allocate_field_head(
-        owner,
-        "inner",
-        uint8_symbol(),
-        FieldProjection::Value,
-        provenance("inner::TB"),
-    );
+    let inner = registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("inner::TB");
 
     let resolved = registry
         .resolve_pattern_lookup(PatternLookupInput::AutoName {
@@ -227,13 +232,15 @@ fn explicit_terminated_nav_does_not_use_extraction_scope() {
         "TB",
         provenance("TB"),
     );
-    let inner = registry.allocate_field_head(
-        owner,
-        "inner",
-        uint8_symbol(),
-        FieldProjection::Value,
-        provenance("inner::TB"),
-    );
+    let inner = registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("inner::TB");
 
     let err = registry
         .resolve_pattern_lookup(PatternLookupInput::ExplicitNav {
@@ -261,13 +268,15 @@ fn explicit_nav_path_does_not_receive_extraction_completion() {
         "TB",
         provenance("TB"),
     );
-    let inner = registry.allocate_field_head(
-        owner,
-        "inner",
-        uint8_symbol(),
-        FieldProjection::Value,
-        provenance("inner::TB"),
-    );
+    let inner = registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("inner::TB");
 
     let err = registry
         .resolve_pattern_lookup(PatternLookupInput::ExplicitNav {
@@ -285,6 +294,143 @@ fn explicit_nav_path_does_not_receive_extraction_completion() {
     assert_ne!(
         registry.lookup_explicit_path(&["inner".to_string(), "Other".to_string()]),
         Some(inner)
+    );
+}
+
+#[test]
+fn explicit_registered_path_resolves_without_bounded_scope() {
+    let mut registry = PatternHeadRegistry::new();
+    let owner = registry.allocate_owner_head(
+        PatternMaterializationContext::Global {
+            symbol_id: lang_build::SymbolId(10),
+        },
+        "TB",
+        provenance("TB"),
+    );
+    let field_head = registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("field head");
+    let explicit_head = registry.allocate_external_forward_head(
+        lang_build::SymbolId(99),
+        "inner",
+        provenance("explicit inner"),
+    );
+    registry
+        .register_explicit_path(["inner"], explicit_head, provenance("register inner::"))
+        .expect("explicit path registers");
+
+    let resolved = registry
+        .resolve_pattern_lookup(PatternLookupInput::ExplicitNav {
+            components: vec![nav_component_name("inner", norm_origin())],
+            explicit_terminated: true,
+            current_scope: Some(owner),
+            expectation: PatternExpectation::PatternHead,
+            provenance: provenance("inner::"),
+        })
+        .expect("explicit nav resolves registered path");
+
+    assert_eq!(resolved, explicit_head);
+    assert_ne!(resolved, field_head);
+}
+
+#[test]
+fn duplicate_explicit_path_is_conflict() {
+    let mut registry = PatternHeadRegistry::new();
+    let first = registry.allocate_external_forward_head(
+        lang_build::SymbolId(1),
+        "inner",
+        provenance("first"),
+    );
+    let second = registry.allocate_external_forward_head(
+        lang_build::SymbolId(2),
+        "inner",
+        provenance("second"),
+    );
+    registry
+        .register_explicit_path(["inner"], first, provenance("register first"))
+        .expect("first registration");
+
+    let err = registry
+        .register_explicit_path(["inner"], second, provenance("register second"))
+        .expect_err("different head for same explicit path is a conflict");
+    assert_eq!(
+        err.code,
+        Some(lang_build::ResolverCode::PatternHeadConflict)
+    );
+}
+
+#[test]
+fn duplicate_field_name_under_same_owner_is_conflict() {
+    let mut registry = PatternHeadRegistry::new();
+    let owner = registry.allocate_owner_head(
+        PatternMaterializationContext::Global {
+            symbol_id: lang_build::SymbolId(10),
+        },
+        "TB",
+        provenance("TB"),
+    );
+    registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("first field");
+
+    let err = registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            lang_build::SymbolId(2),
+            FieldProjection::Value,
+            provenance("conflicting inner::TB"),
+        )
+        .expect_err("same owner + same name + different material conflicts");
+    assert_eq!(
+        err.code,
+        Some(lang_build::ResolverCode::PatternHeadConflict)
+    );
+}
+
+#[test]
+fn auto_name_with_non_extraction_expectation_is_rejected() {
+    let mut registry = PatternHeadRegistry::new();
+    let owner = registry.allocate_owner_head(
+        PatternMaterializationContext::Global {
+            symbol_id: lang_build::SymbolId(10),
+        },
+        "TB",
+        provenance("TB"),
+    );
+    registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("field head");
+
+    let err = registry
+        .resolve_pattern_lookup(PatternLookupInput::AutoName {
+            name: "inner".to_string(),
+            current_scope: owner,
+            expectation: PatternExpectation::PatternHead,
+            provenance: provenance("bare inner as PatternHead"),
+        })
+        .expect_err("AutoName is only supported as ExtractionChild");
+    assert_eq!(
+        err.code,
+        Some(lang_build::ResolverCode::UnsupportedPatternExpectation)
     );
 }
 
@@ -325,13 +471,15 @@ fn constructor_reconstruction_roundtrip_uses_pattern_head_identity() {
         "TB",
         provenance("TB"),
     );
-    let field = registry.allocate_field_head(
-        owner,
-        "inner",
-        uint8_symbol(),
-        FieldProjection::Value,
-        provenance("inner::TB"),
-    );
+    let field = registry
+        .allocate_field_head(
+            owner,
+            "inner",
+            uint8_symbol(),
+            FieldProjection::Value,
+            provenance("inner::TB"),
+        )
+        .expect("inner::TB");
 
     let payload = leaf_value(leaf_meta_value("1", uint8_symbol()), provenance("1"));
     let field_value = construct_field_value(

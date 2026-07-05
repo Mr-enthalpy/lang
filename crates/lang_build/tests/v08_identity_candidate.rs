@@ -5,17 +5,20 @@ use support::*;
 use lang_build::{
     bind_meta_invocation_value_result, classify_type_arguments,
     classify_type_arguments_with_report, compute_type_definition_instance_id,
-    expand_meta_initializer_via_invocation, extract_single_call_site, invoke_meta_callable,
-    invoke_meta_callable_cached, prepare_meta_callable_candidate,
+    expand_meta_initializer_via_invocation,
+    expand_meta_initializer_via_invocation_with_materialization_state, extract_single_call_site,
+    invoke_meta_callable, invoke_meta_callable_cached,
+    invoke_meta_callable_with_materialization_state, prepare_meta_callable_candidate,
     prepare_meta_callable_candidate_from_input, resolve_call_target,
     type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
     CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
     FieldProjection, GeneratedTypeDefinitionValue, MetaInstanceCache, MetaInvocationInput,
     MetaInvocationResult, MetaInvocationValue, MetaValueTarget, NamespaceGraphSnapshot,
-    NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape, PlaceId, PolicyEnv,
-    PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape, SourceCategory,
-    SymbolId, SymbolPayload, TypeValueBindingPlaceholder, TypeValueId,
+    NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId,
+    PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
+    SourceCategory, SymbolId, SymbolPayload, TypeMaterializationState, TypeValueBindingPlaceholder,
+    TypeValueId,
 };
 
 #[test]
@@ -1557,6 +1560,147 @@ fn struct_formal_invocation_produces_value_not_namespace_delta() {
 
     assert_ne!(gtdv.type_definition_id.as_u64(), 0);
     assert_eq!(gtdv.fields.len(), 1);
+}
+
+#[test]
+fn materialized_struct_type_definition_records_pattern_heads() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let invocation_input = struct_invocation_input(
+        &world,
+        &initializer,
+        "uint8",
+        "pattern head materialization",
+    );
+    let mut materialization_state = TypeMaterializationState::default();
+
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv)) =
+        invoke_meta_callable_with_materialization_state(
+            invocation_input,
+            &mut materialization_state,
+        )
+    else {
+        panic!("struct formal invocation must produce GeneratedTypeDefinitionValue");
+    };
+
+    let pattern_heads = gtdv
+        .pattern_heads
+        .as_ref()
+        .expect("GeneratedTypeDefinitionValue records pattern heads");
+    let field_head = pattern_heads
+        .field_heads
+        .iter()
+        .find(|field| field.field_name == "a")
+        .expect("field `a` records a pattern head")
+        .field_head;
+    assert_eq!(gtdv.fields[0].pattern_head, Some(field_head));
+    assert_eq!(
+        materialization_state
+            .pattern_heads
+            .lookup_child(pattern_heads.owner_head, "a"),
+        Some(field_head)
+    );
+}
+
+#[test]
+fn generated_type_definition_semantic_eq_includes_pattern_heads() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let gtdv = produce_gtdv_from_struct_initializer(&world, &initializer, "uint8");
+    let mut changed_heads = gtdv.clone();
+    let pattern_heads = changed_heads
+        .pattern_heads
+        .as_mut()
+        .expect("generated type definition records pattern heads");
+    pattern_heads.owner_head = PatternHeadId(pattern_heads.owner_head.0 + 1000);
+    pattern_heads.field_heads[0].field_head =
+        PatternHeadId(pattern_heads.field_heads[0].field_head.0 + 1000);
+    changed_heads.fields[0].pattern_head = Some(pattern_heads.field_heads[0].field_head);
+
+    assert!(
+        !MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv).semantic_eq(
+            &MetaInvocationValue::GeneratedTypeDefinitionValue(changed_heads)
+        )
+    );
+}
+
+#[test]
+fn struct_decoder_uses_pattern_head_registry() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let mut materialization_state = TypeMaterializationState::default();
+
+    let result = expand_meta_initializer_via_invocation_with_materialization_state(
+        &initializer,
+        world.snapshot(),
+        world.package_root_node(),
+        "S",
+        &world.package_context(),
+        PolicyEnv::Meta,
+        ExecutionEnv::Meta,
+        CandidateBuildIdentityPlaceholder::default(),
+        Provenance::new("struct driver pattern heads"),
+        None,
+        &mut materialization_state,
+    )
+    .expect("driver should expand struct initializer");
+
+    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+        panic!("struct binding must materialize a TypeObject");
+    };
+    let owner_head = type_object
+        .owner_pattern_head
+        .expect("TypeObject stores owner PatternHeadId");
+    let field_head = type_object.fields[0]
+        .pattern_head
+        .expect("TypeField stores field PatternHeadId");
+    assert_eq!(
+        materialization_state
+            .pattern_heads
+            .lookup_child(owner_head, "a"),
+        Some(field_head)
+    );
+    let extraction = type_object
+        .extraction_interface
+        .as_ref()
+        .expect("generated type has extraction interface");
+    assert_eq!(extraction.owner_pattern_head, Some(owner_head));
+    assert_eq!(
+        extraction.exposed_view.fields[0].field_pattern_head,
+        Some(field_head)
+    );
+}
+
+#[test]
+fn source_struct_materialization_updates_world_pattern_head_registry() {
+    let world = build_single_fixture_world("v08_struct_uint8", "app");
+    let resolved = world.resolve("T").expect("T resolves");
+    let SymbolPayload::Type(type_object) = &resolved.payload else {
+        panic!("T must be a generated TypeObject");
+    };
+    let owner_head = type_object
+        .owner_pattern_head
+        .expect("source-built TypeObject records owner PatternHeadId");
+    let field_head = type_object.fields[0]
+        .pattern_head
+        .expect("source-built TypeField records field PatternHeadId");
+
+    assert_eq!(
+        world
+            .type_materialization_state()
+            .pattern_heads
+            .lookup_child(owner_head, "a"),
+        Some(field_head)
+    );
 }
 
 #[test]
