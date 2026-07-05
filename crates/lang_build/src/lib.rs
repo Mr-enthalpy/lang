@@ -5,6 +5,7 @@
 
 pub mod build;
 pub mod call_target;
+pub mod construction_value;
 pub mod control_flow_end;
 pub mod control_flow_meta;
 pub mod core;
@@ -42,6 +43,11 @@ pub use build::{
     StaticDependencySpec, SyntheticSymbolBuildMetadata,
 };
 pub use call_target::{resolve_call_target, ResolvedCallTarget};
+pub use construction_value::{
+    construct_field_value, construct_owner_value, constructed_question_view, has_question_view,
+    leaf_value, resolve_field_constructor, resolve_owner_constructor, ConstructedValue,
+    ConstructorHead,
+};
 pub use control_flow_end::{
     compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,
     ControlFlowTerminal,
