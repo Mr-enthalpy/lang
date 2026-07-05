@@ -239,13 +239,7 @@ fn parse_postfix_expr(
             } else if parser.is_nav_termination_boundary() {
                 expr = terminate_operator_nav_path(parser, expr);
             } else {
-                let span = parser.cursor.current_span();
-                parser.error(
-                    DiagnosticCode::ExpectedName,
-                    "expected navigation component after `::`",
-                    span,
-                );
-                break;
+                expr = terminate_operator_nav_path(parser, expr);
             }
         } else if parser.cursor.at_symbol(Symbol::Dot) {
             let dot_token = parser.cursor.bump_non_trivia();
