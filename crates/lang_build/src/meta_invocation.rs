@@ -75,6 +75,42 @@ impl MetaInvocationInput {
     }
 }
 
+impl MetaInvocationValue {
+    /// Semantic equality: compares identity material without provenance.
+    ///
+    /// Two invocation values with the same semantic identity but
+    /// different provenance compare equal here. This is distinct
+    /// from `PartialEq` which includes provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                MetaInvocationValue::ForwardedValue(lhs),
+                MetaInvocationValue::ForwardedValue(rhs),
+            ) => lhs.target == rhs.target && lhs.return_view == rhs.return_view,
+            (
+                MetaInvocationValue::GeneratedConstructionValue(lhs),
+                MetaInvocationValue::GeneratedConstructionValue(rhs),
+            ) => {
+                lhs.construction_instance_id == rhs.construction_instance_id
+                    && lhs.identity_material == rhs.identity_material
+                    && lhs.return_view == rhs.return_view
+            }
+            (
+                MetaInvocationValue::GeneratedTypeDefinitionValue(lhs),
+                MetaInvocationValue::GeneratedTypeDefinitionValue(rhs),
+            ) => {
+                lhs.type_definition_id == rhs.type_definition_id
+                    && lhs.identity_material == rhs.identity_material
+                    && lhs.fields == rhs.fields
+                    && lhs.return_view == rhs.return_view
+                    && lhs.type_pattern_expr == rhs.type_pattern_expr
+                    && lhs.sum_pattern_space == rhs.sum_pattern_space
+            }
+            _ => false,
+        }
+    }
+}
+
 /// Result of formal meta invocation.
 #[derive(Clone, Debug)]
 pub enum MetaInvocationResult {

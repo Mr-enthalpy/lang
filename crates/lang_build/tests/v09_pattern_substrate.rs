@@ -245,7 +245,35 @@ fn into_leaf_value_for_lowering_unwraps_payload() {
         provenance("1 inner::TB"),
     );
     let owner = construct_owner_value(bounded_symbol(), field_pat, provenance("(1 inner::TB) TB"));
-    assert_eq!(owner.into_leaf_value_for_lowering(), inner_meta_clone);
+    assert_eq!(
+        owner.into_leaf_value_for_internal_lowering_only(),
+        inner_meta_clone
+    );
+}
+
+#[test]
+fn leaf_semantic_eq_ignores_inner_meta_value_provenance() {
+    let leaf1 = leaf_value(
+        MetaInvocationValue::ForwardedValue(ForwardedValue {
+            target: MetaValueTarget::TypeSymbol(uint8_symbol()),
+            return_view: ReturnViewShape::Leaf,
+            provenance: Provenance::new("leaf1 provenance"),
+        }),
+        provenance("outer leaf1"),
+    );
+    let leaf2 = leaf_value(
+        MetaInvocationValue::ForwardedValue(ForwardedValue {
+            target: MetaValueTarget::TypeSymbol(uint8_symbol()),
+            return_view: ReturnViewShape::Leaf,
+            provenance: Provenance::new("leaf2 provenance — different from leaf1"),
+        }),
+        provenance("outer leaf2 — also different"),
+    );
+
+    // Semantic equality: ignores provenance at both levels
+    assert_eq!(leaf1, leaf2);
+    // Exact object identity: both levels' provenance differ
+    assert!(!leaf1.exact_eq_with_provenance(&leaf2));
 }
 
 #[test]
