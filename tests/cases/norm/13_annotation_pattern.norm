@@ -30,7 +30,7 @@ NormProgram origin=Source@1:1[0..46]
               PatternSequence origin=Generated(PatternNormalize)@2:12[29..42]
                 elements:
                   HoleRef "T" origin=Source@2:12[29..30]
-                  PatternNav origin=Source@2:14[31..42]
+                  PatternNav terminated=false origin=Source@2:14[31..42]
                     components:
                       Name "Option" origin=Source@2:14[31..37]
                       Name "std" origin=Source@2:22[39..42]

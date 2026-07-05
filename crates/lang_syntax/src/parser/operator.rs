@@ -329,6 +329,7 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
         span: operator.span,
     })];
     let mut span = operator.span;
+    let mut explicit_terminated = false;
 
     while parser.cursor.consume_symbol(Symbol::ColonColon).is_some() {
         if let Some(component) = parse_nav_outer_component(parser) {
@@ -336,13 +337,7 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
             span = span.join(component_span);
             components.push(component);
         } else {
-            let error_span = parser.cursor.current_span();
-            parser.error(
-                DiagnosticCode::ExpectedName,
-                "expected navigation component after `::`",
-                error_span,
-            );
-            span = span.join(error_span);
+            explicit_terminated = true;
             break;
         }
     }
@@ -351,7 +346,7 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
         kind: OperatorExprKind::NavPath {
             components,
             span,
-            explicit_terminated: false,
+            explicit_terminated,
         },
         span,
     }
