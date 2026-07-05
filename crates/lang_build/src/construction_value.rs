@@ -15,15 +15,21 @@ use crate::{
 ///
 /// # Equality
 ///
-/// `PartialEq` (the `==` operator) compares the full structural value
-/// including `Provenance`. Two values reconstructed from the same
-/// constructor and payload but with different provenance strings will
-/// compare unequal under `==`.
+/// `==` (`PartialEq`) compares constructor identity and payload only;
+/// provenance is excluded from semantic equality. Two values
+/// reconstructed from the same constructor and payload but with
+/// different provenance strings compare equal.
 ///
-/// For semantic roundtrip verification (e.g., construct → peel →
-/// reconstruct), use [`ConstructedValue::semantic_eq`] which compares
-/// only constructor identity and payload, ignoring provenance.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// For exact object-identity comparison including provenance, use
+/// [`ConstructedValue::exact_eq_with_provenance`].
+///
+/// # Integration test gap
+///
+/// The `(t inner) |> struct` group-lift path through the struct
+/// decoder is not yet tested end-to-end through this substrate.
+/// Future work must verify that the decoder reads `(t inner)` as a
+/// group-lifted source-product leaf entry, not as a raw unary Product.
+#[derive(Clone, Debug, Eq)]
 pub enum ConstructedValue {
     /// Owner wrapper: `(payload TB)` where TB is an owner type.
     /// Question view peels to the payload.
@@ -77,6 +83,12 @@ pub enum ConstructorHead {
     },
 }
 
+impl PartialEq for ConstructedValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.semantic_eq(other)
+    }
+}
+
 impl ConstructedValue {
     /// Extract the constructor head for this constructed value.
     pub fn constructor_head(&self) -> Option<ConstructorHead> {
@@ -118,6 +130,7 @@ impl ConstructedValue {
     /// Two values reconstructed from the same constructor and payload
     /// but with different provenance strings are semantically equal.
     /// This is the correct comparison for roundtrip verification.
+    /// This is also what `==` (`PartialEq`) delegates to.
     pub fn semantic_eq(&self, other: &Self) -> bool {
         match (self, other) {
             (
@@ -158,17 +171,75 @@ impl ConstructedValue {
         }
     }
 
-    /// Unwrap to the innermost leaf MetaInvocationValue.
+    /// Exact object-identity comparison including provenance.
+    ///
+    /// Returns true only if constructor identity, payload, AND
+    /// provenance all match. Use for debugging or exact identity
+    /// checks; use `==` (or [`semantic_eq`]) for semantic equality.
+    pub fn exact_eq_with_provenance(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                ConstructedValue::Owner {
+                    owner_type_symbol_id: o1,
+                    payload: p1,
+                    provenance: prov1,
+                },
+                ConstructedValue::Owner {
+                    owner_type_symbol_id: o2,
+                    payload: p2,
+                    provenance: prov2,
+                },
+            ) => o1 == o2 && p1.exact_eq_with_provenance(p2) && prov1 == prov2,
+            (
+                ConstructedValue::Field {
+                    owner_type_symbol_id: o1,
+                    field_name: f1,
+                    field_type_symbol_id: t1,
+                    projection: pr1,
+                    payload: p1,
+                    provenance: prov1,
+                },
+                ConstructedValue::Field {
+                    owner_type_symbol_id: o2,
+                    field_name: f2,
+                    field_type_symbol_id: t2,
+                    projection: pr2,
+                    payload: p2,
+                    provenance: prov2,
+                },
+            ) => {
+                o1 == o2
+                    && f1 == f2
+                    && t1 == t2
+                    && pr1 == pr2
+                    && p1.exact_eq_with_provenance(p2)
+                    && prov1 == prov2
+            }
+            (
+                ConstructedValue::Leaf {
+                    value: v1,
+                    provenance: prov1,
+                },
+                ConstructedValue::Leaf {
+                    value: v2,
+                    provenance: prov2,
+                },
+            ) => v1 == v2 && prov1 == prov2,
+            _ => false,
+        }
+    }
+
+    /// Unwrap to the innermost leaf MetaInvocationValue for lowering.
     ///
     /// **Not question-view semantics.** This is an internal inspection
     /// / lowering helper. It recursively peels all Owner and Field
     /// layers. It must NOT be used by equality, pattern matching, or
     /// ordinary extraction — those must use [`constructed_question_view`]
     /// which peels exactly one layer.
-    pub fn into_leaf_value(self) -> MetaInvocationValue {
+    pub fn into_leaf_value_for_lowering(self) -> MetaInvocationValue {
         match self {
             ConstructedValue::Owner { payload, .. } | ConstructedValue::Field { payload, .. } => {
-                payload.into_leaf_value()
+                payload.into_leaf_value_for_lowering()
             }
             ConstructedValue::Leaf { value, .. } => value,
         }
@@ -226,9 +297,12 @@ pub fn constructed_question_view(cv: &ConstructedValue) -> ConstructedValue {
     }
 }
 
-/// Report whether this ConstructedValue exposes a non-leaf extraction interface
-/// (i.e., `?` would peel a layer).
-pub fn has_question_view(cv: &ConstructedValue) -> bool {
+/// Report whether `?` would peel one layer of this ConstructedValue.
+///
+/// Returns true for Owner and Field (non-leaf extraction interface).
+/// Returns false for Leaf (`?` is idempotent — the leaf value itself
+/// is the result).
+pub fn question_view_peels(cv: &ConstructedValue) -> bool {
     matches!(
         cv,
         ConstructedValue::Owner { .. } | ConstructedValue::Field { .. }

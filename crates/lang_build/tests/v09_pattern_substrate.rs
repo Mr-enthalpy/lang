@@ -1,8 +1,8 @@
 mod support;
 
 use lang_build::{
-    construct_field_value, construct_owner_value, constructed_question_view, has_question_view,
-    leaf_value, placeholder_field_constructor_head, ConstructorHead, FieldProjection,
+    construct_field_value, construct_owner_value, constructed_question_view, leaf_value,
+    placeholder_field_constructor_head, question_view_peels, ConstructorHead, FieldProjection,
     ForwardedValue, MetaInvocationValue, MetaValueTarget, Provenance, ReturnViewShape,
 };
 
@@ -108,11 +108,10 @@ fn field_pattern_reconstruction_roundtrip() {
         peeled.clone(),
         provenance("reconstructed"),
     );
-    // reconstructed field-pattern has same constructor head shape
-    assert_eq!(
-        reconstructed.constructor_head().map(|h| format!("{:?}", h)),
-        field_pat.constructor_head().map(|h| format!("{:?}", h))
-    );
+    // semantic equality: same constructor + payload
+    assert_eq!(reconstructed, field_pat);
+    // but exact object identity differs because provenance is different
+    assert!(!reconstructed.exact_eq_with_provenance(&field_pat));
 }
 
 #[test]
@@ -173,7 +172,7 @@ fn equality_does_not_insert_question() {
 #[test]
 fn has_question_view_distinguishes_peelable_from_leaf() {
     let leaf = leaf_value(leaf_meta_value("x", uint8_symbol()), provenance("x"));
-    assert!(!has_question_view(&leaf));
+    assert!(!question_view_peels(&leaf));
 
     let field_pat = construct_field_value(
         bounded_symbol(),
@@ -183,10 +182,10 @@ fn has_question_view_distinguishes_peelable_from_leaf() {
         leaf.clone(),
         provenance("x inner::TB"),
     );
-    assert!(has_question_view(&field_pat));
+    assert!(question_view_peels(&field_pat));
 
     let owner = construct_owner_value(bounded_symbol(), field_pat, provenance("x inner::TB TB"));
-    assert!(has_question_view(&owner));
+    assert!(question_view_peels(&owner));
 }
 
 #[test]
@@ -233,7 +232,7 @@ fn struct_type_records_field_constructor_placeholder() {
 }
 
 #[test]
-fn into_leaf_value_unwraps_payload() {
+fn into_leaf_value_for_lowering_unwraps_payload() {
     let inner_meta = leaf_meta_value("1", uint8_symbol());
     let inner_meta_clone = inner_meta.clone();
     let leaf = leaf_value(inner_meta, provenance("1"));
@@ -246,7 +245,7 @@ fn into_leaf_value_unwraps_payload() {
         provenance("1 inner::TB"),
     );
     let owner = construct_owner_value(bounded_symbol(), field_pat, provenance("(1 inner::TB) TB"));
-    assert_eq!(owner.into_leaf_value(), inner_meta_clone);
+    assert_eq!(owner.into_leaf_value_for_lowering(), inner_meta_clone);
 }
 
 #[test]
@@ -273,9 +272,9 @@ fn reconstructed_field_pattern_semantic_eq_original() {
     );
 
     // structural equality fails because provenance differs
-    assert_ne!(reconstructed, field_pat);
-    // semantic equality succeeds
-    assert!(reconstructed.semantic_eq(&field_pat));
+    assert_eq!(reconstructed, field_pat);
+    // exact object identity differs because provenance differs
+    assert!(!reconstructed.exact_eq_with_provenance(&field_pat));
 }
 
 #[test]
@@ -299,6 +298,6 @@ fn reconstructed_owner_semantic_eq_original() {
     let reconstructed =
         construct_owner_value(bounded_symbol(), peeled, provenance("owner reconst"));
 
-    assert_ne!(reconstructed, owner);
-    assert!(reconstructed.semantic_eq(&owner));
+    assert_eq!(reconstructed, owner);
+    assert!(!reconstructed.exact_eq_with_provenance(&owner));
 }
