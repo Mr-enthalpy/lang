@@ -121,6 +121,7 @@ fn nav_expr(segments: Vec<&str>) -> NormExpr {
                 origin: fake_origin(),
             })
             .collect(),
+        explicit_terminated: false,
         origin: fake_origin(),
     }
 }

@@ -237,13 +237,7 @@ fn parse_postfix_expr(
             if let Some(component) = parse_nav_outer_component(parser) {
                 expr = extend_operator_nav_path(expr, component);
             } else {
-                let span = parser.cursor.current_span();
-                parser.error(
-                    DiagnosticCode::ExpectedName,
-                    "expected navigation component after `::`",
-                    span,
-                );
-                break;
+                expr = terminate_operator_nav_path(parser, expr);
             }
         } else if parser.cursor.at_symbol(Symbol::Dot) {
             let dot_token = parser.cursor.bump_non_trivia();
@@ -354,7 +348,11 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
     }
 
     OperatorExprAst {
-        kind: OperatorExprKind::NavPath { components, span },
+        kind: OperatorExprKind::NavPath {
+            components,
+            span,
+            explicit_terminated: false,
+        },
         span,
     }
 }
@@ -374,11 +372,16 @@ fn extend_operator_nav_path(expr: OperatorExprAst, component: NavComponentAst) -
         OperatorExprKind::NavPath {
             mut components,
             span,
+            ..
         } => {
             let span = span.join(component_span);
             components.push(component);
             OperatorExprAst {
-                kind: OperatorExprKind::NavPath { components, span },
+                kind: OperatorExprKind::NavPath {
+                    components,
+                    span,
+                    explicit_terminated: false,
+                },
                 span,
             }
         }
@@ -394,10 +397,37 @@ fn extend_operator_nav_path(expr: OperatorExprAst, component: NavComponentAst) -
                         component,
                     ],
                     span,
+                    explicit_terminated: false,
                 },
                 span,
             }
         }
+    }
+}
+
+fn terminate_operator_nav_path(_parser: &mut Parser<'_>, expr: OperatorExprAst) -> OperatorExprAst {
+    match expr.kind {
+        OperatorExprKind::NavPath {
+            components, span, ..
+        } => OperatorExprAst {
+            kind: OperatorExprKind::NavPath {
+                components,
+                span,
+                explicit_terminated: true,
+            },
+            span,
+        },
+        _ => OperatorExprAst {
+            kind: OperatorExprKind::NavPath {
+                components: vec![NavComponentAst::Error(crate::ErrorAst {
+                    message: "invalid navigation component".to_string(),
+                    span: expr.span,
+                })],
+                span: expr.span,
+                explicit_terminated: true,
+            },
+            span: expr.span,
+        },
     }
 }
 

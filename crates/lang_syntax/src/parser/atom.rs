@@ -26,13 +26,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             if let Some(component) = parse_nav_outer_component(parser) {
                 atom = extend_or_create_nav_path(parser, atom, component);
             } else {
-                let span = parser.cursor.current_span();
-                parser.error(
-                    DiagnosticCode::ExpectedName,
-                    "expected navigation component after `::`",
-                    span,
-                );
-                break;
+                atom = terminate_nav_path(parser, atom);
             }
         } else if parser.cursor.at_symbol(Symbol::Dot) {
             let dot_token = parser.cursor.bump_non_trivia();
@@ -291,11 +285,14 @@ fn extend_or_create_nav_path(
 ) -> AtomAst {
     let component_span = nav_component_span(&component);
     match atom.kind {
-        AtomKind::NavPath { mut components } => {
+        AtomKind::NavPath { mut components, .. } => {
             let span = atom.span.join(component_span);
             components.push(component);
             AtomAst {
-                kind: AtomKind::NavPath { components },
+                kind: AtomKind::NavPath {
+                    components,
+                    explicit_terminated: false,
+                },
                 span,
             }
         }
@@ -304,10 +301,31 @@ fn extend_or_create_nav_path(
             AtomAst {
                 kind: AtomKind::NavPath {
                     components: vec![atom_to_nav_component(parser, atom), component],
+                    explicit_terminated: false,
                 },
                 span,
             }
         }
+    }
+}
+
+fn terminate_nav_path(parser: &mut Parser<'_>, atom: AtomAst) -> AtomAst {
+    let span = atom.span;
+    match atom.kind {
+        AtomKind::NavPath { components, .. } => AtomAst {
+            kind: AtomKind::NavPath {
+                components,
+                explicit_terminated: true,
+            },
+            span,
+        },
+        _ => AtomAst {
+            kind: AtomKind::NavPath {
+                components: vec![atom_to_nav_component(parser, atom)],
+                explicit_terminated: true,
+            },
+            span,
+        },
     }
 }
 

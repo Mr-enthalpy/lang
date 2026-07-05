@@ -222,6 +222,7 @@ pub enum OperatorExprKind {
     NavPath {
         components: Vec<NavComponentAst>,
         span: Span,
+        explicit_terminated: bool,
     },
     MemberSugar {
         object: Box<OperatorExprAst>,
@@ -290,6 +291,7 @@ pub enum AtomKind {
     Group(Box<ExprAst>),
     NavPath {
         components: Vec<NavComponentAst>,
+        explicit_terminated: bool,
     },
     MemberSugar {
         object: Box<AtomAst>,

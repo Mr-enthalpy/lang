@@ -658,7 +658,9 @@ impl VerificationArg {
     fn from_expr(expr: &NormExpr) -> Self {
         match expr {
             NormExpr::Name { text, origin } => Self::Name(text.clone(), origin.clone()),
-            NormExpr::Nav { components, origin } => {
+            NormExpr::Nav {
+                components, origin, ..
+            } => {
                 let path = components_to_path(components);
                 match path {
                     Some(path) => Self::Path(path, origin.clone()),

@@ -5,11 +5,9 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              MemberSugar
-                object:
-                  IntLiteral 1
-                selector:
-                  TextName x
+              NavPath
+                components:
+                  component Error "invalid navigation component"
           OperatorExpr
             Atom
               IntLiteral 2

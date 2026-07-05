@@ -166,7 +166,7 @@ impl ConstructedValue {
             (
                 ConstructedValue::Leaf { value: v1, .. },
                 ConstructedValue::Leaf { value: v2, .. },
-            ) => v1 == v2,
+            ) => v1.semantic_eq(v2),
             _ => false,
         }
     }
@@ -229,17 +229,17 @@ impl ConstructedValue {
         }
     }
 
-    /// Unwrap to the innermost leaf MetaInvocationValue for lowering.
+    /// Unwrap to the innermost leaf MetaInvocationValue for internal lowering.
     ///
-    /// **Not question-view semantics.** This is an internal inspection
-    /// / lowering helper. It recursively peels all Owner and Field
-    /// layers. It must NOT be used by equality, pattern matching, or
-    /// ordinary extraction — those must use [`constructed_question_view`]
-    /// which peels exactly one layer.
-    pub fn into_leaf_value_for_lowering(self) -> MetaInvocationValue {
+    /// **Not question-view semantics.** This recursively peels all
+    /// Owner and Field layers. Must NOT be used by equality, pattern
+    /// matching, ordinary extraction, or overload selection — those
+    /// must use [`constructed_question_view`] which peels exactly
+    /// one layer.
+    pub fn into_leaf_value_for_internal_lowering_only(self) -> MetaInvocationValue {
         match self {
             ConstructedValue::Owner { payload, .. } | ConstructedValue::Field { payload, .. } => {
-                payload.into_leaf_value_for_lowering()
+                payload.into_leaf_value_for_internal_lowering_only()
             }
             ConstructedValue::Leaf { value, .. } => value,
         }

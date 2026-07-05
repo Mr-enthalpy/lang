@@ -80,6 +80,7 @@ pub enum NormExpr {
     },
     Nav {
         components: Vec<NormNavComponent>,
+        explicit_terminated: bool,
         origin: NormOrigin,
     },
     Closure(NormClosure),
@@ -303,7 +304,8 @@ pub enum NormSkeleton {
         origin: NormOrigin,
     },
     Nav {
-        names: Vec<String>,
+        components: Vec<NormNavComponent>,
+        explicit_terminated: bool,
         origin: NormOrigin,
     },
     Literal {
@@ -758,8 +760,13 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
             args,
             span,
         } => normalize_operator_sugar(operator, *fixity, args, *span),
-        OperatorExprKind::NavPath { components, span } => NormExpr::Nav {
+        OperatorExprKind::NavPath {
+            components,
+            span,
+            explicit_terminated,
+        } => NormExpr::Nav {
             components: components.iter().map(normalize_nav_component).collect(),
+            explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(*span),
         },
         OperatorExprKind::MemberSugar {
@@ -805,8 +812,12 @@ fn normalize_atom(atom: &AtomAst) -> NormExpr {
             origin: NormOrigin::Source(atom.span),
         },
         AtomKind::Group(expr) => normalize_expr(expr),
-        AtomKind::NavPath { components } => NormExpr::Nav {
+        AtomKind::NavPath {
+            components,
+            explicit_terminated,
+        } => NormExpr::Nav {
             components: components.iter().map(normalize_nav_component).collect(),
+            explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
         AtomKind::MemberSugar { object, selector } => {
@@ -1467,7 +1478,9 @@ fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) 
             },
             holes,
         ),
-        OperatorExprKind::NavPath { components, span } => NormPattern::Nav {
+        OperatorExprKind::NavPath {
+            components, span, ..
+        } => NormPattern::Nav {
             components: components.iter().map(normalize_nav_component).collect(),
             origin: NormOrigin::Source(*span),
         },
@@ -1504,7 +1517,7 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[String]) -> NormPattern {
             origin: NormOrigin::Source(atom.span),
         },
         AtomKind::Group(expr) => normalize_expr_as_pattern(expr, holes),
-        AtomKind::NavPath { components } => NormPattern::Nav {
+        AtomKind::NavPath { components, .. } => NormPattern::Nav {
             components: components.iter().map(normalize_nav_component).collect(),
             origin: NormOrigin::Source(atom.span),
         },
@@ -1571,7 +1584,14 @@ fn normalize_canonical_skeleton(skeleton: &CanonicalSkeletonAst) -> NormSkeleton
             origin: NormOrigin::Source(*span),
         },
         CanonicalSkeletonAst::NavPath { names, span } => NormSkeleton::Nav {
-            names: names.iter().map(|name| name.text.clone()).collect(),
+            components: names
+                .iter()
+                .map(|name| NormNavComponent::Name {
+                    name: name.text.clone(),
+                    origin: NormOrigin::Source(name.span),
+                })
+                .collect(),
+            explicit_terminated: false,
             origin: NormOrigin::Source(*span),
         },
         CanonicalSkeletonAst::Literal { text, span } => NormSkeleton::Literal {
@@ -1723,6 +1743,7 @@ fn generated_nav(names: &[&str], span: Span, rule: NormRule) -> NormExpr {
                 origin: NormOrigin::Generated { rule, span },
             })
             .collect(),
+        explicit_terminated: false,
         origin: NormOrigin::Generated { rule, span },
     }
 }
@@ -1906,7 +1927,9 @@ fn dump_norm_expr(output: &mut String, expr: &NormExpr, indent: usize) {
                 origin_inline(origin)
             ),
         ),
-        NormExpr::Nav { components, origin } => {
+        NormExpr::Nav {
+            components, origin, ..
+        } => {
             line(output, indent, &format!("Nav {}", origin_inline(origin)));
             line(output, indent + 1, "components:");
             for component in components {
@@ -2223,14 +2246,23 @@ fn dump_skeleton(output: &mut String, skeleton: &NormSkeleton, indent: usize) {
                 origin_inline(origin)
             ),
         ),
-        NormSkeleton::Nav { names, origin } => line(
+        NormSkeleton::Nav {
+            components,
+            explicit_terminated: _et,
+            origin,
+        } => line(
             output,
             indent,
             &format!(
                 "SkeletonNav [{}] {}",
-                names
+                components
                     .iter()
-                    .map(|name| format!("\"{}\"", escape_text(name)))
+                    .map(|c| match c {
+                        NormNavComponent::Name { name, .. } => format!("\"{}\"", escape_text(name)),
+                        NormNavComponent::Operator { spelling, .. } => spelling.clone(),
+                        NormNavComponent::Group { .. } => "(...)".to_string(),
+                        NormNavComponent::Error(_) => "<?>".to_string(),
+                    })
                     .collect::<Vec<_>>()
                     .join(", "),
                 origin_inline(origin)
