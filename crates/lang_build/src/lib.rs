@@ -26,6 +26,7 @@ pub mod model;
 pub mod normalized_call;
 pub mod overload_pattern;
 pub mod overload_set;
+pub mod pattern_head;
 pub mod pattern_space;
 pub mod policy_expr;
 pub mod product_shape;
@@ -134,6 +135,11 @@ pub use overload_set::{
     OverloadCandidateSet, OverloadSelectionInput, RestrictedMetaInvocationOutcome,
     RestrictedOverloadFailure, RestrictedOverloadFailureKind, SelectedOverloadCandidate,
     VisibilityView,
+};
+pub use pattern_head::{
+    nav_component_name, LocalPatternPlaceId, PatternExpectation, PatternFieldMaterialization,
+    PatternHead, PatternHeadId, PatternHeadKind, PatternHeadMaterialization, PatternHeadOrigin,
+    PatternHeadRegistry, PatternLookupInput, PatternMaterializationContext,
 };
 pub use pattern_space::{
     bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,

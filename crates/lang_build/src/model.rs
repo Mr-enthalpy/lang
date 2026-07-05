@@ -582,7 +582,7 @@ pub struct FieldObject {
 }
 
 /// Projection flavor for generated field functions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FieldProjection {
     Value,
     Ref,
