@@ -152,6 +152,57 @@ arbitrary local names that merely look like pattern heads
 
 There is no fallback from pattern-head lookup to ordinary function-call lookup. If a pattern head cannot be found in the current bounded extraction interface, this is a no-matching-extractor or no-candidate error in a later checking phase.
 
+Current v0.9 implementation provides the minimal identity/lookup substrate for
+this rule:
+
+```text
+PatternHeadRegistry
+  owner PatternHeadId
+  field PatternHeadId
+  ExtractionChildScope(owner_head)[child_name] = field_head
+```
+
+This registry is part of the struct/type materialization state. Formal
+`struct` invocation calls `PatternHeadRegistry::materialize_struct_pattern_heads`
+and records the resulting owner/field heads in `GeneratedTypeDefinitionValue`.
+Binding projects those heads into `TypeObject`, `TypeField`, the extraction
+interface, and generated field functions. The registry is therefore the
+materialization boundary for current source-driven struct type definitions,
+not only a hand-built test substrate.
+
+Cached struct meta invocation values are rehydrated into the current
+`TypeMaterializationState`. The cache does not store concrete pattern-head
+assignments from a prior registry, so a cache hit cannot return a
+`GeneratedTypeDefinitionValue` whose `owner_head` is absent from the current
+registry.
+
+In pattern-side extraction context, a bare name is resolved against the
+current owner `PatternHeadId`:
+
+```text
+AutoName("inner", current_scope = TB) -> inner::TB
+```
+
+Explicit navigation bypasses this bounded completion:
+
+```text
+inner::        does not become inner::TB
+inner::Other   does not become (inner::Other)::TB
+```
+
+Value-side lookup does not use the extraction child scope. `PatternHeadId`
+exists to identify resolved pattern heads and constructor heads; display names
+are not semantic identity.
+
+Registration and lookup are intentionally bounded in this slice:
+
+```text
+same explicit path + different head -> diagnostic
+same owner + same field name + different material -> diagnostic
+AutoName with non-ExtractionChild expectation -> diagnostic
+ExplicitNav -> explicit path table only, no bounded fallback
+```
+
 ### 2.5 Behavior comes from locatable code, not compiler oracle knowledge
 
 Operations such as `+`, `-`, `?`, and closed control-pattern behavior are not compiler-intrinsic mathematical truths. They come from locatable, auditable meta-operation implementations in libraries or built-in packages.

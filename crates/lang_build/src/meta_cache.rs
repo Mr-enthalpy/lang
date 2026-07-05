@@ -1,14 +1,18 @@
 //! Minimal in-memory meta instance cache.
 //!
-//! Stores `MetaInvocationValue` keyed by `MetaInstanceKey`. Does **not** store
-//! `NamespaceDelta`, `MetaExpansionResult`, declared symbols, or binding names.
+//! Stores replayable `MetaInvocationValue` material keyed by `MetaInstanceKey`.
+//! Does **not** store `NamespaceDelta`, `MetaExpansionResult`, declared
+//! symbols, binding names, or concrete registry-backed `PatternHeadId`
+//! material.
 //!
 //! ## Separation of concerns
 //!
-//! The cache stores only pure invocation results. Declaration binding
+//! The cache stores only pure invocation material. Declaration binding
 //! (`bind_meta_invocation_value_result`) remains outside the cache — duplicate
 //! invocation material can be reused, but each distinct binding still installs
-//! its own declared symbol via `NamespaceDelta`.
+//! its own declared symbol via `NamespaceDelta`. Values that require
+//! `TypeMaterializationState` are rehydrated in the caller's current state on
+//! cache hit.
 
 use std::collections::BTreeMap;
 

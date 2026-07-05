@@ -6,7 +6,7 @@ use std::{
 
 use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
-use crate::extraction_view::TypeExtractionInterface;
+use crate::{extraction_view::TypeExtractionInterface, pattern_head::PatternHeadId};
 
 /// Stable identity for a namespace node inside one graph snapshot.
 ///
@@ -320,6 +320,8 @@ pub enum ResolverCode {
     UnsupportedCanonicalSumPatternValue,
     UnsupportedSelectedMetaBody,
     UnsupportedSelectedMetaBodyLocalBinding,
+    PatternHeadConflict,
+    UnsupportedPatternExpectation,
     UnsupportedExternalVisibility,
     UnsupportedOverloadTarget,
     UnsupportedCandidateShape,
@@ -539,6 +541,7 @@ pub enum SymbolPayload {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeObject {
     pub type_symbol_id: SymbolId,
+    pub owner_pattern_head: Option<PatternHeadId>,
     pub fields: Vec<TypeField>,
     pub field_names: Vec<String>,
     pub field_type_symbol_ids: Vec<SymbolId>,
@@ -555,6 +558,7 @@ pub struct TypeObject {
 pub struct TypeField {
     pub name: String,
     pub type_symbol_id: SymbolId,
+    pub pattern_head: Option<PatternHeadId>,
     pub provenance: Provenance,
 }
 
@@ -574,15 +578,17 @@ pub struct CallablePolicyMetadata {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldObject {
     pub owner_type_symbol_id: SymbolId,
+    pub owner_pattern_head: Option<PatternHeadId>,
     pub field_name: String,
     pub field_type_symbol_id: SymbolId,
+    pub field_pattern_head: Option<PatternHeadId>,
     pub projection: FieldProjection,
     pub callable_policy: CallablePolicyMetadata,
     pub provenance: Provenance,
 }
 
 /// Projection flavor for generated field functions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FieldProjection {
     Value,
     Ref,

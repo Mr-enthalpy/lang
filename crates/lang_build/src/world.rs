@@ -13,12 +13,16 @@ use crate::{
     },
     initializer_eval::{evaluate_initializer_best_effort, EvalMode, EvalOutcome},
     manifest::{BuildManifest, NamespaceMount},
-    meta::{bind_meta_invocation_value_result, try_expand_early_meta_initializer},
+    meta::{
+        bind_meta_invocation_value_result,
+        try_expand_early_meta_initializer_with_materialization_state,
+    },
     model::{
         Diagnostic, DiagnosticSeverity, MetaFunctionObject, NamespaceDelta, NamespaceNode,
         NamespaceNodeId, NamespaceNodeKind, PolicyFlag, PolicySet, Provenance, ResolverCode,
         SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
     },
+    pattern_head::TypeMaterializationState,
     policy_expr::elaborate_declaration_policy_expr,
     policy_metadata, policy_set_meta, policy_set_meta_runtime, policy_set_runtime,
     return_target::{
@@ -38,6 +42,7 @@ pub struct CompilationWorld {
     snapshot: NamespaceGraphSnapshot,
     package_root_node: NamespaceNodeId,
     core_node: NamespaceNodeId,
+    type_materialization_state: TypeMaterializationState,
     source_fragments: Vec<SourceFragment>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -61,6 +66,7 @@ impl CompilationWorld {
             snapshot,
             package_root_node,
             core_node,
+            type_materialization_state: TypeMaterializationState::default(),
             source_fragments: Vec::new(),
             diagnostics: Vec::new(),
         };
@@ -98,6 +104,10 @@ impl CompilationWorld {
 
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
+    }
+
+    pub fn type_materialization_state(&self) -> &TypeMaterializationState {
+        &self.type_materialization_state
     }
 
     pub fn package_context(&self) -> ResolverContext {
@@ -348,14 +358,17 @@ impl CompilationWorld {
             .map_err(BuildError::single)?;
 
         if let Some(initializer) = slot.initializer.as_deref() {
-            if let Some(mut expansion) = try_expand_early_meta_initializer(
-                &self.snapshot,
-                namespace,
-                &binder_name,
-                initializer,
-                &context,
-                declaration_provenance.clone(),
-            )? {
+            if let Some(mut expansion) =
+                try_expand_early_meta_initializer_with_materialization_state(
+                    &self.snapshot,
+                    namespace,
+                    &binder_name,
+                    initializer,
+                    &context,
+                    declaration_provenance.clone(),
+                    &mut self.type_materialization_state,
+                )?
+            {
                 assert_expansion_satisfies_annotation(
                     slot.annotation.as_ref(),
                     &expansion.replacement_object,
@@ -726,6 +739,7 @@ fn declared_type_placeholder_delta(
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::Type(TypeObject {
         type_symbol_id,
+        owner_pattern_head: None,
         fields: Vec::new(),
         field_names: Vec::new(),
         field_type_symbol_ids: Vec::new(),

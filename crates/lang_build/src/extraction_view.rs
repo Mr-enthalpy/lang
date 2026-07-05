@@ -7,6 +7,7 @@
 use crate::{
     meta_invocation::{ConstructionInstanceId, MetaValueTarget, TypeDefinitionInstanceId},
     model::{Diagnostic, FieldProjection, Provenance, SymbolId},
+    pattern_head::PatternHeadId,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,6 +73,7 @@ pub enum ExposedExtractionInterface {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamedProductExtractionShape {
     pub owner_type_symbol_id: SymbolId,
+    pub owner_pattern_head: Option<PatternHeadId>,
     pub fields: Vec<NamedExtractionField>,
     pub provenance: Provenance,
 }
@@ -80,6 +82,7 @@ pub struct NamedProductExtractionShape {
 pub struct NamedExtractionField {
     pub label: String,
     pub field_type_symbol_id: SymbolId,
+    pub field_pattern_head: Option<PatternHeadId>,
     pub field_index: usize,
     pub projection: FieldProjection,
     pub provenance: Provenance,
@@ -88,6 +91,7 @@ pub struct NamedExtractionField {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeExtractionInterface {
     pub owner_type_symbol_id: SymbolId,
+    pub owner_pattern_head: Option<PatternHeadId>,
     pub exposed_view: NamedProductExtractionShape,
     pub provenance: Provenance,
 }
@@ -286,6 +290,7 @@ impl ProductNormalFormElem {
 impl NamedProductExtractionShape {
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.owner_type_symbol_id == other.owner_type_symbol_id
+            && self.owner_pattern_head == other.owner_pattern_head
             && self.fields.len() == other.fields.len()
             && self
                 .fields
@@ -299,6 +304,7 @@ impl NamedExtractionField {
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.label == other.label
             && self.field_type_symbol_id == other.field_type_symbol_id
+            && self.field_pattern_head == other.field_pattern_head
             && self.field_index == other.field_index
             && self.projection == other.projection
     }
