@@ -2,8 +2,8 @@ mod support;
 
 use lang_build::{
     construct_field_value, construct_owner_value, constructed_question_view, has_question_view,
-    leaf_value, resolve_field_constructor, ConstructorHead, FieldProjection, ForwardedValue,
-    MetaInvocationValue, MetaValueTarget, Provenance, ReturnViewShape,
+    leaf_value, placeholder_field_constructor_head, ConstructorHead, FieldProjection,
+    ForwardedValue, MetaInvocationValue, MetaValueTarget, Provenance, ReturnViewShape,
 };
 
 fn leaf_meta_value(name: &str, symbol_id: lang_build::SymbolId) -> MetaInvocationValue {
@@ -210,7 +210,7 @@ fn constructor_head_is_extractable() {
 
 #[test]
 fn struct_type_records_field_constructor_placeholder() {
-    let head = resolve_field_constructor(
+    let head = placeholder_field_constructor_head(
         bounded_symbol(),
         "inner",
         uint8_symbol(),
@@ -247,4 +247,58 @@ fn into_leaf_value_unwraps_payload() {
     );
     let owner = construct_owner_value(bounded_symbol(), field_pat, provenance("(1 inner::TB) TB"));
     assert_eq!(owner.into_leaf_value(), inner_meta_clone);
+}
+
+#[test]
+fn reconstructed_field_pattern_semantic_eq_original() {
+    let payload = leaf_value(leaf_meta_value("1", uint8_symbol()), provenance("1"));
+    let field_pat = construct_field_value(
+        bounded_symbol(),
+        "inner".to_string(),
+        uint8_symbol(),
+        FieldProjection::Value,
+        payload,
+        provenance("original field-pat"),
+    );
+    let peeled = constructed_question_view(&field_pat);
+
+    // Reconstruct with different provenance
+    let reconstructed = construct_field_value(
+        bounded_symbol(),
+        "inner".to_string(),
+        uint8_symbol(),
+        FieldProjection::Value,
+        peeled,
+        provenance("reconstructed field-pat"),
+    );
+
+    // structural equality fails because provenance differs
+    assert_ne!(reconstructed, field_pat);
+    // semantic equality succeeds
+    assert!(reconstructed.semantic_eq(&field_pat));
+}
+
+#[test]
+fn reconstructed_owner_semantic_eq_original() {
+    let payload = leaf_value(leaf_meta_value("1", uint8_symbol()), provenance("1"));
+    let field_pat = construct_field_value(
+        bounded_symbol(),
+        "inner".to_string(),
+        uint8_symbol(),
+        FieldProjection::Value,
+        payload,
+        provenance("fp"),
+    );
+    let owner = construct_owner_value(
+        bounded_symbol(),
+        field_pat.clone(),
+        provenance("owner orig"),
+    );
+    let peeled = constructed_question_view(&owner);
+
+    let reconstructed =
+        construct_owner_value(bounded_symbol(), peeled, provenance("owner reconst"));
+
+    assert_ne!(reconstructed, owner);
+    assert!(reconstructed.semantic_eq(&owner));
 }

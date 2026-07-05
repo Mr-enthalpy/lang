@@ -45,8 +45,8 @@ pub use build::{
 pub use call_target::{resolve_call_target, ResolvedCallTarget};
 pub use construction_value::{
     construct_field_value, construct_owner_value, constructed_question_view, has_question_view,
-    leaf_value, resolve_field_constructor, resolve_owner_constructor, ConstructedValue,
-    ConstructorHead,
+    leaf_value, placeholder_field_constructor_head, placeholder_owner_constructor_head,
+    ConstructedValue, ConstructorHead,
 };
 pub use control_flow_end::{
     compute_control_flow_end_report, ControlFlowEndDiagnostic, ControlFlowEndReport,

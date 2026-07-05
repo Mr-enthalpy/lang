@@ -12,11 +12,24 @@ use crate::{
 ///
 /// This is a pattern semantic substrate, not a pattern-space calculus.
 /// D/Done, packs, borrow/access-tree, and layout are not implemented.
+///
+/// # Equality
+///
+/// `PartialEq` (the `==` operator) compares the full structural value
+/// including `Provenance`. Two values reconstructed from the same
+/// constructor and payload but with different provenance strings will
+/// compare unequal under `==`.
+///
+/// For semantic roundtrip verification (e.g., construct → peel →
+/// reconstruct), use [`ConstructedValue::semantic_eq`] which compares
+/// only constructor identity and payload, ignoring provenance.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConstructedValue {
     /// Owner wrapper: `(payload TB)` where TB is an owner type.
     /// Question view peels to the payload.
     Owner {
+        /// Placeholder type identity. v0.9 uses SymbolId; future must
+        /// distinguish TypeValueId, PlaceId, and SymbolId.
         owner_type_symbol_id: SymbolId,
         payload: Box<ConstructedValue>,
         provenance: Provenance,
@@ -25,8 +38,11 @@ pub enum ConstructedValue {
     /// Field-pattern wrapper: `(payload field::TB)`.
     /// Question view peels to the payload.
     Field {
+        /// Placeholder type identity. v0.9 uses SymbolId; future must
+        /// distinguish TypeValueId, PlaceId, and SymbolId.
         owner_type_symbol_id: SymbolId,
         field_name: String,
+        /// Placeholder field type identity. Future: TypeValueId.
         field_type_symbol_id: SymbolId,
         projection: FieldProjection,
         payload: Box<ConstructedValue>,
@@ -96,7 +112,59 @@ impl ConstructedValue {
         }
     }
 
+    /// Semantic equality: compares constructor identity and payload
+    /// without considering provenance.
+    ///
+    /// Two values reconstructed from the same constructor and payload
+    /// but with different provenance strings are semantically equal.
+    /// This is the correct comparison for roundtrip verification.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                ConstructedValue::Owner {
+                    owner_type_symbol_id: o1,
+                    payload: p1,
+                    ..
+                },
+                ConstructedValue::Owner {
+                    owner_type_symbol_id: o2,
+                    payload: p2,
+                    ..
+                },
+            ) => o1 == o2 && p1.semantic_eq(p2),
+            (
+                ConstructedValue::Field {
+                    owner_type_symbol_id: o1,
+                    field_name: f1,
+                    field_type_symbol_id: t1,
+                    projection: pr1,
+                    payload: p1,
+                    ..
+                },
+                ConstructedValue::Field {
+                    owner_type_symbol_id: o2,
+                    field_name: f2,
+                    field_type_symbol_id: t2,
+                    projection: pr2,
+                    payload: p2,
+                    ..
+                },
+            ) => o1 == o2 && f1 == f2 && t1 == t2 && pr1 == pr2 && p1.semantic_eq(p2),
+            (
+                ConstructedValue::Leaf { value: v1, .. },
+                ConstructedValue::Leaf { value: v2, .. },
+            ) => v1 == v2,
+            _ => false,
+        }
+    }
+
     /// Unwrap to the innermost leaf MetaInvocationValue.
+    ///
+    /// **Not question-view semantics.** This is an internal inspection
+    /// / lowering helper. It recursively peels all Owner and Field
+    /// layers. It must NOT be used by equality, pattern matching, or
+    /// ordinary extraction — those must use [`constructed_question_view`]
+    /// which peels exactly one layer.
     pub fn into_leaf_value(self) -> MetaInvocationValue {
         match self {
             ConstructedValue::Owner { payload, .. } | ConstructedValue::Field { payload, .. } => {
@@ -167,11 +235,12 @@ pub fn has_question_view(cv: &ConstructedValue) -> bool {
     )
 }
 
-/// Locate a field constructor in the type-associated namespace.
+/// Restricted v0.9 placeholder for field constructor head.
 ///
-/// Looks up `field_name` under the virtual namespace of the owner type.
-/// Returns the `ConstructorHead::Field` if a `FieldObject` symbol is found.
-pub fn resolve_field_constructor(
+/// Does NOT query the namespace graph. Returns a `ConstructorHead::Field`
+/// with the given metadata directly. Future implementation must use a
+/// role-aware resolver under the owner type's companion namespace.
+pub fn placeholder_field_constructor_head(
     owner_type_symbol_id: SymbolId,
     field_name: &str,
     field_type_symbol_id: SymbolId,
@@ -185,8 +254,11 @@ pub fn resolve_field_constructor(
     }
 }
 
-/// Locate an owner constructor.
-pub fn resolve_owner_constructor(owner_type_symbol_id: SymbolId) -> ConstructorHead {
+/// Restricted v0.9 placeholder for owner constructor head.
+///
+/// Does NOT query the namespace graph. Future implementation must use
+/// a role-aware resolver.
+pub fn placeholder_owner_constructor_head(owner_type_symbol_id: SymbolId) -> ConstructorHead {
     ConstructorHead::Owner {
         owner_type_symbol_id,
     }
