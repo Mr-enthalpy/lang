@@ -72,6 +72,18 @@ impl StructLeafTypeExprShape {
     pub fn path(path: SymbolPathShape) -> Self {
         Self::Path(path)
     }
+
+    /// Semantic equality: compares structural identity without provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Path(a), Self::Path(b)) => a == b,
+            (
+                Self::NormalizedAst { description: a, .. },
+                Self::NormalizedAst { description: b, .. },
+            ) => a == b,
+            _ => false,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -183,7 +195,7 @@ impl TypePatternExprShape {
                     local_pattern_name: n2,
                     ..
                 },
-            ) => e1 == e2 && n1 == n2,
+            ) => e1.semantic_eq(e2) && n1 == n2,
             (
                 TypePatternExprShape::Product { elements: es1, .. },
                 TypePatternExprShape::Product { elements: es2, .. },
