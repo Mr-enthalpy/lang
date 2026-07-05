@@ -28,6 +28,7 @@ pub mod overload_set;
 pub mod pattern_space;
 pub mod policy_expr;
 pub mod product_shape;
+pub mod return_target;
 pub mod source;
 pub mod struct_decoder;
 pub mod type_argument;
@@ -138,6 +139,13 @@ pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,
     RawArgValueClass,
+};
+pub use return_target::{
+    elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
+    BoundReturnEvent, PreservedReturnReason, PreservedUnboundReturnEvent, ResolvedReturnTarget,
+    ReturnFrameId, ReturnFrameOwner, ReturnSelfIdentity, ReturnSlotRef, ReturnTargetBinder,
+    ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
+    UnresolvedReturnTargetForm,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{decode_struct_type_pattern_expr, DecodedStructPattern};

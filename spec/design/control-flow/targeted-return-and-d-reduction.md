@@ -1,15 +1,30 @@
 # Targeted Return and D-Reduction
 
-**Status: Design only. Not implemented current behavior.**
+**Status: Partially implemented.**
 
 This document describes future semantic lowering for targeted return
-syntax and D-reduction. None of the semantics described here are
-implemented in the current parser, normalizer, or build stages.
+syntax and D-reduction. The current implementation deliberately stops
+at return target binding.
 
-The current implementation (v0.9, PR86) provides only the structural
-syntax and normalized AST: `ReturnEvent`, `TailValue`, and unresolved
-return target syntax. Target resolution, D-reduction, and execution
-semantics are deferred.
+The current implementation provides the structural syntax and normalized
+AST (`ReturnEvent`, `TailValue`, and unresolved return target syntax) plus
+a minimal semantic return-target binding pass. D-reduction, completion
+propagation, and execution/lowering semantics remain deferred.
+
+The current return-target binding substrate adds one semantic pass after
+normalization:
+
+```text
+Raw AST
+  -> Normalized AST
+  -> ReturnTargetBinding
+  -> later result/completion semantics
+```
+
+This pass resolves a normalized return event to an active
+`ReturnTargetFrame` when possible. It does not type-check the return value,
+assign a return slot, propagate non-local control flow, insert drops, check
+lifetime postconditions, lower to HIR/ABI, or create `Done_Return`.
 
 ## 1. Targeted Return Core Idea
 
@@ -30,18 +45,27 @@ where `Self₀` is the current enclosing function-object self,
 obtained from the active return-target context at the point
 where the return event is lowered.
 
-The implicit return spelling `E return;` is sugar for targeted
-return to the nearest enclosing self.
+The implicit return spelling `E return;` binds to the nearest active
+return frame in the current substrate. Future completion semantics may
+then treat that frame as the enclosing self capability.
 
-## 2. Intrinsic Return Action
+## 2. Return Capability Completion
 
-Future semantic core: `E |> (Self return)` is a built-in /
-intrinsic control meta-action, not ordinary overload lookup.
+Future return completion is mediated by the function object's return
+capability. That capability is exposed through the function object's
+type-associated namespace as an ordinary callable capability value under the
+anonymous type of `self`, as described in
+`spec/design/symbol-world/function-object-self-and-return-capability.md`.
 
-It is **not** dispatched through the call-entry mechanism
-described in `spec/design/symbol-world/function-object-call-model.md`.
-It is a direct control-flow action implemented by the meta-function
-evaluation layer.
+Return is therefore not a parser keyword escape hatch, not an operator, and
+not a compiler-intrinsic control action. The target-binding pass in this PR
+does not execute or invoke that return capability. It only identifies the
+active frame that future completion semantics will use to reach the
+appropriate function-object return capability.
+
+The current target-binding pass records a `BoundReturnEvent` containing the
+return value expression, the unresolved target form, the resolved frame id,
+and provenance.
 
 ## 3. Future Return Completion
 
@@ -112,19 +136,62 @@ When Selfᵢ is reached:
 If no matching active target exists at any reachable boundary,
 a semantic diagnostic is emitted.
 
-This behavior is **not** implemented. No current code
-checks target validity, propagates completions, or performs
-D-reduction.
+The current implementation checks only whether the requested target is
+active in the current `ReturnTargetStack`. It does not propagate
+completions or perform D-reduction.
 
 ## 7. Relationship to Current Implementation
 
 | Concept | Current (v0.9) | Future (design) |
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
-| Target syntax | Preserved unresolved (`Explicit(NormExpr)`) | Resolved to active self |
-| Implicit return | Normalized as `ReturnEvent(ImplicitNearest)` | Lowered to `Explicit(Self₀)` |
+| Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full function-object self capability |
+| Implicit return | Binds to nearest active `ReturnTargetFrame` | Lowered/completed through enclosing self capability |
+| Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
+| Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
 | `Done_Return` | Not represented | Semantic IR concept |
 | D-reduction | Not implemented | Future boundary action |
 | `Done(unit)` contribution | Not implemented | Local pattern completeness |
 | Target propagation | Not implemented | Future traversal |
-| Target validity check | Not implemented | Future semantic diagnostic |
+| Target validity check | Minimal active-frame diagnostics | Full target reachability diagnostics |
+
+## 8. Current Return Target Binding Substrate
+
+The implemented substrate defines these semantic objects:
+
+```text
+ReturnTargetFrame
+ReturnTargetStack
+UnboundReturnEvent
+BoundReturnEvent
+ResolvedReturnTarget
+```
+
+Entering a body that the pass is explicitly elaborating pushes a
+`ReturnTargetFrame`; leaving that body pops it. A nested closure literal is
+preserved as value material unless that closure is explicitly elaborated as
+its own returnable body. Therefore a return inside an unmaterialized nested
+closure is not bound to the outer frame.
+
+The current `ReturnSelfIdentity` is a placeholder derived from normalized
+binder spelling because full lexical self-slot / function-object identity is
+not wired into this substrate yet. Future explicit self-target resolution
+must use lexical slot identity, not text equality on the spelling `self`.
+
+The build-layer source callable hook currently runs this pass as validation.
+It rejects malformed return targets but does not store bound events in
+`SourceCallableObject`; later body evaluators may re-run target binding when
+they need the bound return-event stream for completion/result semantics.
+
+Diagnostics are structured:
+
+```text
+ReturnOutsideReturnableContext
+ReturnTargetNotActive
+AmbiguousReturnTarget
+UnsupportedReturnTargetForm
+```
+
+Each diagnostic carries provenance. These diagnostics are target-binding
+diagnostics only; they do not imply return value type failure, lifetime
+failure, or lowering failure.

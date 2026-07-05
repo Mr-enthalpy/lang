@@ -1,17 +1,22 @@
 # Control-Flow Design Block
 
 Forward-looking design material for targeted return, D-reduction,
-Done_Return, and control-flow lowering. Not implemented current
-behavior.
+Done_Return, and control-flow lowering.
+
+The current implemented slice is intentionally narrow: normalized
+`ReturnEvent` material can be bound to an active return target frame by the
+build-layer return-target binding substrate. Completion propagation,
+D/Done, lifetime postconditions, HIR lowering, and runtime execution remain
+future work.
 
 ## Documents
 
 | Document | Purpose |
 |---|---|
-| `targeted-return-and-d-reduction.md` | Targeted return semantics, D-reduction, Done_Return, local unit contribution — design only |
+| `targeted-return-and-d-reduction.md` | Current return-target binding substrate plus future targeted return completion, D-reduction, Done_Return, and local unit contribution |
 
 ## Status
 
-All documents in this directory are **design only**. They describe
-future planned behavior. No content here is implemented in current
-parser, normalizer, or build stages.
+Return target binding is partially implemented after normalized AST.
+Everything beyond binding the target frame remains design-only in this
+directory.

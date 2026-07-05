@@ -324,6 +324,10 @@ pub enum ResolverCode {
     UnsupportedOverloadTarget,
     UnsupportedCandidateShape,
     UnsupportedParameterPattern,
+    ReturnOutsideReturnableContext,
+    ReturnTargetNotActive,
+    AmbiguousReturnTarget,
+    UnsupportedReturnTargetForm,
 }
 
 /// Build/namespace diagnostic with optional provenance and graph context.
