@@ -263,12 +263,12 @@ fn sum_payload_shape_semantic_eq(
             (SumPatternPayloadShape::Unit, SumPatternPayloadShape::Unit) => true,
             (SumPatternPayloadShape::ValuePoint, SumPatternPayloadShape::ValuePoint) => true,
             (SumPatternPayloadShape::Product(p1), SumPatternPayloadShape::Product(p2)) => {
-                p1.elements.len() == p2.elements.len()
+                p1.semantic_eq(p2)
             }
             (
                 SumPatternPayloadShape::NamedProduct(n1),
                 SumPatternPayloadShape::NamedProduct(n2),
-            ) => n1.fields.len() == n2.fields.len(),
+            ) => n1.semantic_eq(n2),
             _ => false,
         },
         (None, None) => true,
