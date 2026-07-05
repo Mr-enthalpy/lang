@@ -108,6 +108,29 @@ impl<'tokens> Parser<'tokens> {
         self.cursor.is_form_boundary()
     }
 
+    /// Whether the pending token is a legal boundary for terminating
+    /// a `P1::` nav path. Includes local expression/pattern boundaries
+    /// (`)`, `]`, `,`, `|>`, `=>`, `:=`, `=`) in addition to form boundaries.
+    pub fn is_nav_termination_boundary(&mut self) -> bool {
+        if self.is_form_boundary() {
+            return true;
+        }
+        matches!(
+            self.cursor.peek_non_trivia().kind,
+            TokenKind::Eof
+                | TokenKind::Symbol(
+                    Symbol::RParen
+                        | Symbol::RBracket
+                        | Symbol::Comma
+                        | Symbol::PipeGreater
+                        | Symbol::FatArrow
+                        | Symbol::ThinArrow
+                        | Symbol::Equal
+                        | Symbol::Colon
+                )
+        )
+    }
+
     pub fn is_alias_rhs_boundary(&mut self) -> bool {
         self.is_alias_rhs_hard_boundary()
     }

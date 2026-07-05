@@ -25,7 +25,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
             parser.cursor.bump_non_trivia();
             if let Some(component) = parse_nav_outer_component(parser) {
                 atom = extend_or_create_nav_path(parser, atom, component);
-            } else if parser.is_form_boundary() {
+            } else if parser.is_nav_termination_boundary() {
                 atom = terminate_nav_path(parser, atom);
             } else {
                 let span = parser.cursor.current_span();

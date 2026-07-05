@@ -1653,6 +1653,21 @@ fn return_in_group_adjacent() {
 }
 
 #[test]
+fn nav_terminated_group() {
+    assert_parser_case("nav_terminated_group", false);
+}
+
+#[test]
+fn nav_terminated_semicolon() {
+    assert_parser_case("nav_terminated_semicolon", false);
+}
+
+#[test]
+fn nav_explicit_non_terminated() {
+    assert_parser_case("nav_explicit_non_terminated", false);
+}
+
+#[test]
 fn return_in_operator() {
     assert_parser_case("return_in_operator", true);
 }
