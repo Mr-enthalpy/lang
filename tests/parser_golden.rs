@@ -349,7 +349,7 @@ fn mixed_suffixes() {
 
 #[test]
 fn mixed_numeric() {
-    assert_parser_case("mixed_numeric", false);
+    assert_parser_case("mixed_numeric", true);
 }
 
 #[test]

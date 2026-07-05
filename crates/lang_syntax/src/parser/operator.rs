@@ -236,8 +236,16 @@ fn parse_postfix_expr(
             parser.cursor.bump_non_trivia();
             if let Some(component) = parse_nav_outer_component(parser) {
                 expr = extend_operator_nav_path(expr, component);
-            } else {
+            } else if parser.is_form_boundary() {
                 expr = terminate_operator_nav_path(parser, expr);
+            } else {
+                let span = parser.cursor.current_span();
+                parser.error(
+                    DiagnosticCode::ExpectedName,
+                    "expected navigation component after `::`",
+                    span,
+                );
+                break;
             }
         } else if parser.cursor.at_symbol(Symbol::Dot) {
             let dot_token = parser.cursor.bump_non_trivia();
@@ -336,8 +344,17 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
             let component_span = nav_component_span(&component);
             span = span.join(component_span);
             components.push(component);
-        } else {
+        } else if parser.is_form_boundary() {
             explicit_terminated = true;
+            break;
+        } else {
+            let error_span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::ExpectedName,
+                "expected navigation component after `::`",
+                error_span,
+            );
+            span = span.join(error_span);
             break;
         }
     }
