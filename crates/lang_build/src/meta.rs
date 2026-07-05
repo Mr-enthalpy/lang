@@ -47,6 +47,10 @@ pub fn try_expand_early_meta_initializer(
     context: &ResolverContext,
     provenance: Provenance,
 ) -> Result<Option<MetaExpansionResult>, BuildError> {
+    // Standalone compatibility wrapper. It may return values that contain
+    // PatternHeadId material, but the temporary registry used to create those
+    // heads is not retained. Source build paths that need registry continuity
+    // must call `try_expand_early_meta_initializer_with_materialization_state`.
     let mut materialization_state = TypeMaterializationState::default();
     try_expand_early_meta_initializer_with_materialization_state(
         snapshot,
@@ -130,6 +134,10 @@ pub fn expand_meta_initializer_via_invocation(
     provenance: Provenance,
     cache: Option<&mut MetaInstanceCache>,
 ) -> Result<MetaExpansionResult, BuildError> {
+    // Standalone compatibility wrapper. It does not preserve
+    // PatternHeadRegistry continuity across calls. Use the
+    // `_with_materialization_state` variant when the caller must later query
+    // owner/field PatternHeadId registrations.
     let mut materialization_state = TypeMaterializationState::default();
     expand_meta_initializer_via_invocation_with_materialization_state(
         initializer,

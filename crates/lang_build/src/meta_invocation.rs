@@ -18,6 +18,13 @@
 //!   → MetaExpansionResult  (declaration binding, with NamespaceDelta)
 //! ```
 //!
+//! `invoke_meta_callable_with_materialization_state` may populate
+//! `TypeMaterializationState` for values whose semantic identity is
+//! registry-backed, such as `GeneratedTypeDefinitionValue`. This is still
+//! pure with respect to the namespace graph. The cache stores only replayable
+//! value material and strips concrete registry-backed `PatternHeadId`s before
+//! insertion; cache hits rematerialize heads in the caller's current state.
+//!
 //! ## Relation to v0.8 shortcut
 //!
 //! Under the current v0.8 `temporary_direct_callable_shortcut`, the candidate's
@@ -522,6 +529,10 @@ pub enum ReturnViewShape {
 /// Reads `callee_primitive` from the candidate itself. Invocation is pure
 /// — no graph mutation, no `NamespaceDelta` installation.
 pub fn invoke_meta_callable(input: MetaInvocationInput) -> MetaInvocationResult {
+    // Standalone compatibility entry point. It is suitable for one-off formal
+    // invocation tests but does not preserve PatternHeadRegistry continuity
+    // across calls. Callers that need registry-backed identity continuity must
+    // use `invoke_meta_callable_with_materialization_state`.
     let mut materialization_state = TypeMaterializationState::default();
     invoke_meta_callable_with_materialization_state(input, &mut materialization_state)
 }
@@ -573,6 +584,10 @@ pub fn invoke_meta_callable_cached(
     input: MetaInvocationInput,
     cache: &mut MetaInstanceCache,
 ) -> MetaInvocationResult {
+    // Standalone compatibility entry point. Cache hits for registry-backed
+    // values are rehydrated into this temporary state only; callers that need
+    // to query the registry later must use the `_with_materialization_state`
+    // variant.
     let mut materialization_state = TypeMaterializationState::default();
     invoke_meta_callable_cached_with_materialization_state(input, cache, &mut materialization_state)
 }
@@ -598,13 +613,17 @@ pub fn invoke_meta_callable_cached_with_materialization_state(
     }
     let key = input.compute_key();
     if let Some(cached) = cache.lookup(&key) {
-        return MetaInvocationResult::Value(cached.result.clone());
+        return cached_value_for_current_materialization_state(
+            cached.result.clone(),
+            materialization_state,
+            input.provenance,
+        );
     }
     let result = invoke_meta_callable_with_materialization_state(input, materialization_state);
     if let MetaInvocationResult::Value(ref val) = result {
         cache.insert(
             key,
-            val.clone(),
+            cacheable_invocation_value(val.clone()),
             Provenance::new("cached meta invocation result"),
         );
     }
@@ -743,12 +762,93 @@ fn invoke_struct_type_definition(
         provenance: input.provenance.clone(),
     };
     let type_definition_id = compute_type_definition_instance_id(&identity_material);
-    let owner_display_name = input
-        .struct_decoded_pattern
+    let fields = field_signature_material
+        .iter()
+        .map(|field| GeneratedFieldDefinition {
+            name: field.field_name.clone(),
+            type_symbol_id: field.field_type_symbol_id,
+            index: field.field_index,
+            pattern_head: None,
+            provenance: field.provenance.clone(),
+        })
+        .collect();
+    let value = GeneratedTypeDefinitionValue {
+        type_definition_id,
+        identity_material,
+        fields,
+        pattern_heads: None,
+        return_view: ReturnViewShape::Leaf,
+        type_pattern_expr: input
+            .struct_decoded_pattern
+            .as_ref()
+            .map(|p| p.type_pattern_expr.clone()),
+        sum_pattern_space: input
+            .struct_decoded_pattern
+            .as_ref()
+            .and_then(|p| derive_sum_pattern_space(&p.type_pattern_expr)),
+        provenance: input.provenance.clone(),
+    };
+    match attach_type_definition_pattern_heads(
+        value,
+        materialization_state,
+        input.provenance.clone(),
+    ) {
+        Ok(value) => {
+            MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(value))
+        }
+        Err(diagnostic) => MetaInvocationResult::Diagnostic(diagnostic),
+    }
+}
+
+fn cached_value_for_current_materialization_state(
+    value: MetaInvocationValue,
+    materialization_state: &mut TypeMaterializationState,
+    provenance: Provenance,
+) -> MetaInvocationResult {
+    match value {
+        MetaInvocationValue::GeneratedTypeDefinitionValue(value) => {
+            match attach_type_definition_pattern_heads(value, materialization_state, provenance) {
+                Ok(value) => MetaInvocationResult::Value(
+                    MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+                ),
+                Err(diagnostic) => MetaInvocationResult::Diagnostic(diagnostic),
+            }
+        }
+        other => MetaInvocationResult::Value(other),
+    }
+}
+
+fn cacheable_invocation_value(value: MetaInvocationValue) -> MetaInvocationValue {
+    match value {
+        MetaInvocationValue::GeneratedTypeDefinitionValue(mut value) => {
+            value.pattern_heads = None;
+            for field in &mut value.fields {
+                field.pattern_head = None;
+            }
+            MetaInvocationValue::GeneratedTypeDefinitionValue(value)
+        }
+        other => other,
+    }
+}
+
+fn attach_type_definition_pattern_heads(
+    mut value: GeneratedTypeDefinitionValue,
+    materialization_state: &mut TypeMaterializationState,
+    provenance: Provenance,
+) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
+    let owner_display_name = value
+        .type_pattern_expr
         .as_ref()
-        .and_then(|decoded| owner_display_name_from_type_pattern_expr(&decoded.type_pattern_expr))
-        .unwrap_or_else(|| format!("generated-type-definition-{}", type_definition_id.as_u64()));
-    let pattern_fields = field_signature_material
+        .and_then(owner_display_name_from_type_pattern_expr)
+        .unwrap_or_else(|| {
+            format!(
+                "generated-type-definition-{}",
+                value.type_definition_id.as_u64()
+            )
+        });
+    let pattern_fields = value
+        .identity_material
+        .field_signature_material
         .iter()
         .map(|field| PatternFieldMaterialization {
             field_name: field.field_name.clone(),
@@ -756,33 +856,25 @@ fn invoke_struct_type_definition(
             projection: crate::model::FieldProjection::Value,
             provenance: field.provenance.clone(),
         });
-    let pattern_materialization = match materialization_state
+    let pattern_materialization = materialization_state
         .pattern_heads
         .materialize_struct_pattern_heads(
-            PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id },
+            PatternMaterializationContext::GeneratedTypeDefinition {
+                type_definition_id: value.type_definition_id,
+            },
             owner_display_name,
             pattern_fields,
-            input.provenance.clone(),
-        ) {
-        Ok(materialization) => materialization,
-        Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
-    };
+            provenance,
+        )?;
     let pattern_head_by_name = pattern_materialization
         .field_heads
         .iter()
         .cloned()
         .collect::<std::collections::BTreeMap<_, _>>();
-    let fields = field_signature_material
-        .iter()
-        .map(|field| GeneratedFieldDefinition {
-            name: field.field_name.clone(),
-            type_symbol_id: field.field_type_symbol_id,
-            index: field.field_index,
-            pattern_head: pattern_head_by_name.get(&field.field_name).copied(),
-            provenance: field.provenance.clone(),
-        })
-        .collect();
-    let pattern_heads = Some(TypeDefinitionPatternHeads {
+    for field in &mut value.fields {
+        field.pattern_head = pattern_head_by_name.get(&field.name).copied();
+    }
+    value.pattern_heads = Some(TypeDefinitionPatternHeads {
         owner_head: pattern_materialization.owner_head,
         field_heads: pattern_materialization
             .field_heads
@@ -793,25 +885,7 @@ fn invoke_struct_type_definition(
             })
             .collect(),
     });
-
-    MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(
-        GeneratedTypeDefinitionValue {
-            type_definition_id,
-            identity_material,
-            fields,
-            pattern_heads,
-            return_view: ReturnViewShape::Leaf,
-            type_pattern_expr: input
-                .struct_decoded_pattern
-                .as_ref()
-                .map(|p| p.type_pattern_expr.clone()),
-            sum_pattern_space: input
-                .struct_decoded_pattern
-                .as_ref()
-                .and_then(|p| derive_sum_pattern_space(&p.type_pattern_expr)),
-            provenance: input.provenance.clone(),
-        },
-    ))
+    Ok(value)
 }
 
 fn owner_display_name_from_type_pattern_expr(expr: &TypePatternExprShape) -> Option<String> {

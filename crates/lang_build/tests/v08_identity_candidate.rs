@@ -8,6 +8,7 @@ use lang_build::{
     expand_meta_initializer_via_invocation,
     expand_meta_initializer_via_invocation_with_materialization_state, extract_single_call_site,
     invoke_meta_callable, invoke_meta_callable_cached,
+    invoke_meta_callable_cached_with_materialization_state,
     invoke_meta_callable_with_materialization_state, prepare_meta_callable_candidate,
     prepare_meta_callable_candidate_from_input, resolve_call_target,
     type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
@@ -1861,6 +1862,91 @@ fn meta_instance_cache_reuses_generated_type_definition_value() {
 
     assert_eq!(gtdv1.type_definition_id, gtdv2.type_definition_id);
     assert_eq!(cache.len(), 1);
+}
+
+#[test]
+fn cached_struct_invocation_rematerializes_pattern_heads_in_current_state() {
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let initializer = parse_and_normalize_fixture_let_initializer(
+        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
+    );
+    let invocation_input = struct_invocation_input(
+        &world,
+        &initializer,
+        "uint8",
+        "generated type definition cache state miss",
+    );
+    let key = invocation_input.compute_key();
+    let mut cache = MetaInstanceCache::new();
+    let mut miss_state = TypeMaterializationState::default();
+
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv1)) =
+        invoke_meta_callable_cached_with_materialization_state(
+            invocation_input,
+            &mut cache,
+            &mut miss_state,
+        )
+    else {
+        panic!("first invocation should yield GeneratedTypeDefinitionValue");
+    };
+    let cached = cache
+        .lookup(&key)
+        .expect("cache stores replayable pure invocation material");
+    let MetaInvocationValue::GeneratedTypeDefinitionValue(cached_gtdv) = &cached.result else {
+        panic!("cached result should be a generated type definition");
+    };
+    assert!(
+        cached_gtdv.pattern_heads.is_none(),
+        "cache must not store concrete registry-backed PatternHeadId material"
+    );
+    assert!(
+        cached_gtdv
+            .fields
+            .iter()
+            .all(|field| field.pattern_head.is_none()),
+        "cache must not store concrete field PatternHeadId material"
+    );
+
+    let invocation_input2 = struct_invocation_input(
+        &world,
+        &initializer,
+        "uint8",
+        "generated type definition cache state hit",
+    );
+    let mut hit_state = TypeMaterializationState::default();
+    hit_state.pattern_heads.allocate_external_forward_head(
+        SymbolId(999),
+        "preexisting",
+        Provenance::new("preexisting pattern head"),
+    );
+
+    let MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv2)) =
+        invoke_meta_callable_cached_with_materialization_state(
+            invocation_input2,
+            &mut cache,
+            &mut hit_state,
+        )
+    else {
+        panic!("cache hit should yield GeneratedTypeDefinitionValue");
+    };
+
+    let heads1 = gtdv1.pattern_heads.as_ref().expect("miss result has heads");
+    let heads2 = gtdv2
+        .pattern_heads
+        .as_ref()
+        .expect("hit result rematerializes heads");
+    assert_eq!(gtdv1.type_definition_id, gtdv2.type_definition_id);
+    assert_ne!(
+        heads1.owner_head, heads2.owner_head,
+        "cache hit must use current registry materialization, not stale cached PatternHeadId"
+    );
+    let field_head2 = heads2.field_heads[0].field_head;
+    assert_eq!(
+        hit_state.pattern_heads.lookup_child(heads2.owner_head, "a"),
+        Some(field_head2),
+        "current materialization state must contain replayed extraction child scope"
+    );
 }
 
 fn struct_invocation_input(

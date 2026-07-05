@@ -170,6 +170,12 @@ interface, and generated field functions. The registry is therefore the
 materialization boundary for current source-driven struct type definitions,
 not only a hand-built test substrate.
 
+Cached struct meta invocation values are rehydrated into the current
+`TypeMaterializationState`. The cache does not store concrete pattern-head
+assignments from a prior registry, so a cache hit cannot return a
+`GeneratedTypeDefinitionValue` whose `owner_head` is absent from the current
+registry.
+
 In pattern-side extraction context, a bare name is resolved against the
 current owner `PatternHeadId`:
 
