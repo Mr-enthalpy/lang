@@ -1,0 +1,255 @@
+use lang_build::{
+    elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
+    BoundReturnEvent, PreservedReturnReason, ResolvedReturnTarget, ResolverCode, ReturnFrameOwner,
+    ReturnTargetBindingReport,
+};
+use lang_syntax::{
+    NormClosure, NormDecl, NormExpr, NormForm, NormLiteralKind, NormOrigin, NormProgram,
+    NormReturnEvent, NormReturnTargetSyntax, NormRule, Span,
+};
+
+mod support;
+
+fn normalize_source(source: &str) -> NormProgram {
+    let parsed = lang_syntax::parse(source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "unexpected parse diagnostics:\n{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
+    );
+    lang_syntax::normalize_program(&parsed.program)
+}
+
+fn closure_initializer(source: &str) -> NormClosure {
+    let normalized = normalize_source(source);
+    match normalized.forms.as_slice() {
+        [NormForm::Let(NormDecl::Let { slot, .. })] => match slot.initializer.as_deref() {
+            Some(NormExpr::Closure(closure)) => closure.clone(),
+            other => panic!("expected closure initializer, got {other:#?}"),
+        },
+        other => panic!("expected single let closure declaration, got {other:#?}"),
+    }
+}
+
+fn bind_closure(source: &str) -> ReturnTargetBindingReport {
+    let closure = closure_initializer(source);
+    elaborate_return_targets_in_returnable_closure(
+        &closure,
+        ReturnFrameOwner::SourceCallable {
+            symbol_id: None,
+            name: Some("f".to_string()),
+        },
+    )
+}
+
+fn active_frame_id(event: &BoundReturnEvent) -> usize {
+    match event.resolved_target {
+        ResolvedReturnTarget::ActiveFrame(frame_id) => frame_id.0,
+        ResolvedReturnTarget::DiagnosticTarget => panic!("expected active frame"),
+    }
+}
+
+fn is_int_literal(expr: &NormExpr, expected: &str) -> bool {
+    matches!(
+        expr,
+        NormExpr::Literal {
+            kind: NormLiteralKind::Int,
+            text,
+            ..
+        } if text == expected
+    )
+}
+
+#[test]
+fn implicit_return_binds_to_nearest_active_return_frame() {
+    let report = bind_closure(
+        r#"
+let f = (self, x: int): runtime -> r: int => {
+    x return;
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    assert_eq!(report.frames.len(), 1);
+    assert_eq!(report.frames[0].return_slot.name.as_deref(), Some("r"));
+    assert_eq!(
+        report.frames[0].self_identity.as_ref().unwrap().name,
+        "self"
+    );
+    assert_eq!(report.bound_events.len(), 1);
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
+    assert_eq!(
+        report.bound_events[0].unresolved_target,
+        lang_build::UnresolvedReturnTargetForm::ImplicitNearest
+    );
+}
+
+#[test]
+fn return_outside_returnable_body_is_diagnostic() {
+    let normalized = normalize_source("1 return;");
+    let report = elaborate_return_targets_in_program(&normalized);
+
+    assert!(report.bound_events.is_empty());
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(
+        report.diagnostics[0].code,
+        Some(ResolverCode::ReturnOutsideReturnableContext)
+    );
+    assert!(report.diagnostics[0].provenance.is_some());
+}
+
+#[test]
+fn nested_unmaterialized_closure_return_does_not_bind_to_outer_frame() {
+    let report = bind_closure(
+        r#"
+let f = (self): runtime -> r: int => {
+    let g = () => {
+        1 return;
+    };
+    2 return;
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    assert_eq!(report.frames.len(), 1);
+    assert_eq!(report.bound_events.len(), 1);
+    assert!(is_int_literal(&report.bound_events[0].value, "2"));
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
+    assert_eq!(report.preserved_unbound_events.len(), 1);
+    assert_eq!(
+        report.preserved_unbound_events[0].reason,
+        PreservedReturnReason::UnmaterializedClosureLiteral
+    );
+    assert!(is_int_literal(
+        &report.preserved_unbound_events[0].event.value,
+        "1"
+    ));
+}
+
+#[test]
+fn closure_literal_inside_return_value_is_preserved_not_bound_to_outer_frame() {
+    let report = bind_closure(
+        r#"
+let f = (self): runtime -> r: _ => {
+    () => {
+        1 return;
+    } return;
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    assert_eq!(report.frames.len(), 1);
+    assert_eq!(report.bound_events.len(), 1);
+    assert!(matches!(report.bound_events[0].value, NormExpr::Closure(_)));
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
+    assert_eq!(report.preserved_unbound_events.len(), 1);
+    assert_eq!(
+        report.preserved_unbound_events[0].reason,
+        PreservedReturnReason::UnmaterializedClosureLiteral
+    );
+    assert!(is_int_literal(
+        &report.preserved_unbound_events[0].event.value,
+        "1"
+    ));
+}
+
+#[test]
+fn explicit_self_return_matches_active_self_frame() {
+    let report = bind_closure(
+        r#"
+let f = (self): runtime -> r: int => {
+    1 |> (self return);
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    assert_eq!(report.bound_events.len(), 1);
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
+    assert!(matches!(
+        &report.bound_events[0].unresolved_target,
+        lang_build::UnresolvedReturnTargetForm::Explicit(NormExpr::Name { text, .. })
+            if text == "self"
+    ));
+}
+
+#[test]
+fn explicit_self_return_does_not_fall_back_to_nearest_without_matching_self() {
+    let report = bind_closure(
+        r#"
+let f = (): runtime -> r: int => {
+    1 |> (self return);
+};
+"#,
+    );
+
+    assert!(report.bound_events.is_empty());
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(
+        report.diagnostics[0].code,
+        Some(ResolverCode::ReturnTargetNotActive)
+    );
+    assert!(report.diagnostics[0].provenance.is_some());
+}
+
+#[test]
+fn unsupported_explicit_return_target_form_is_diagnostic() {
+    let origin = NormOrigin::Generated {
+        rule: NormRule::Unsupported,
+        span: Span::at(0, 1, 1),
+    };
+    let normalized = NormProgram {
+        forms: vec![NormForm::ReturnEvent(NormReturnEvent {
+            value: NormExpr::Name {
+                text: "x".to_string(),
+                origin: origin.clone(),
+            },
+            target: NormReturnTargetSyntax::Explicit(NormExpr::Literal {
+                kind: NormLiteralKind::Int,
+                text: "1".to_string(),
+                origin: origin.clone(),
+            }),
+            origin,
+        })],
+        origin: NormOrigin::Generated {
+            rule: NormRule::Unsupported,
+            span: Span::at(0, 1, 1),
+        },
+    };
+
+    let report = elaborate_return_targets_in_program(&normalized);
+
+    assert!(report.bound_events.is_empty());
+    assert_eq!(report.diagnostics.len(), 1);
+    assert_eq!(
+        report.diagnostics[0].code,
+        Some(ResolverCode::UnsupportedReturnTargetForm)
+    );
+    assert!(report.diagnostics[0].provenance.is_some());
+}
+
+#[test]
+fn top_level_return_reports_structured_diagnostic_through_build_pipeline() {
+    let error = support::build_fixture_error("v09_return_outside", "app");
+    assert_eq!(error.diagnostics.len(), 1);
+    assert_eq!(
+        error.diagnostics[0].code,
+        Some(ResolverCode::ReturnOutsideReturnableContext)
+    );
+    assert!(error.diagnostics[0].provenance.is_some());
+}

@@ -21,6 +21,10 @@ use crate::{
     },
     policy_expr::elaborate_declaration_policy_expr,
     policy_metadata, policy_set_meta, policy_set_meta_runtime, policy_set_runtime,
+    return_target::{
+        elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
+        ReturnFrameOwner,
+    },
     source::SourceFragment,
     verify::evaluate_source_verifications as evaluate_verify_forms,
 };
@@ -238,6 +242,13 @@ impl CompilationWorld {
         normalized: &NormProgram,
         file: &Path,
     ) -> Result<(), BuildError> {
+        let return_target_report = elaborate_return_targets_in_program(normalized);
+        if !return_target_report.diagnostics.is_empty() {
+            return Err(BuildError {
+                diagnostics: return_target_report.diagnostics,
+            });
+        }
+
         for form in &normalized.forms {
             match form {
                 NormForm::Let(decl) => self.harvest_let(namespace, decl, file)?,
@@ -245,7 +256,7 @@ impl CompilationWorld {
                 NormForm::Expr(_) | NormForm::TailValue(_) => {}
                 NormForm::ReturnEvent(return_ev) => {
                     return Err(BuildError::single(Diagnostic::hard_error(
-                        "source contribution error: return event is not allowed at the top level",
+                        "source contribution error: unbound return event reached declaration harvesting after return target binding",
                         Some(Provenance::from_norm_origin(
                             "normalized return event",
                             &return_ev.origin,
@@ -745,6 +756,23 @@ fn source_callable_delta(
 
     let mut delta = snapshot.empty_delta();
     let symbol_id = delta.allocate_symbol_id();
+    // Current v0.9 integration is validation-only at source harvesting time.
+    // Bound return events are not stored in SourceCallableObject yet; later
+    // evaluators may re-run the return-target binder when they need the bound
+    // event stream for completion/result semantics.
+    let return_target_report = elaborate_return_targets_in_returnable_closure(
+        closure,
+        ReturnFrameOwner::SourceCallable {
+            symbol_id: Some(symbol_id),
+            name: Some(name.to_string()),
+        },
+    );
+    if !return_target_report.diagnostics.is_empty() {
+        return Err(BuildError {
+            diagnostics: return_target_report.diagnostics,
+        });
+    }
+
     let mut symbol = SymbolObject::placeholder(
         symbol_id,
         name,
