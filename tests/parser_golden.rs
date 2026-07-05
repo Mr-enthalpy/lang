@@ -349,7 +349,7 @@ fn mixed_suffixes() {
 
 #[test]
 fn mixed_numeric() {
-    assert_parser_case("mixed_numeric", false);
+    assert_parser_case("mixed_numeric", true);
 }
 
 #[test]
@@ -1650,6 +1650,21 @@ fn return_embedded_in_operator() {
 #[test]
 fn return_in_group_adjacent() {
     assert_parser_case("return_in_group_adjacent", true);
+}
+
+#[test]
+fn nav_terminated_group() {
+    assert_parser_case("nav_terminated_group", false);
+}
+
+#[test]
+fn nav_terminated_semicolon() {
+    assert_parser_case("nav_terminated_semicolon", false);
+}
+
+#[test]
+fn nav_explicit_non_terminated() {
+    assert_parser_case("nav_explicit_non_terminated", false);
 }
 
 #[test]

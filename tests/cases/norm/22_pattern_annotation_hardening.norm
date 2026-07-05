@@ -30,7 +30,7 @@ NormProgram origin=Source@1:1[0..297]
               PatternSequence origin=Generated(PatternNormalize)@2:12[29..42]
                 elements:
                   HoleRef "T" origin=Source@2:12[29..30]
-                  PatternNav origin=Source@2:14[31..42]
+                  PatternNav terminated=false origin=Source@2:14[31..42]
                     components:
                       Name "Option" origin=Source@2:14[31..37]
                       Name "std" origin=Source@2:22[39..42]
@@ -70,7 +70,7 @@ NormProgram origin=Source@1:1[0..297]
               PatternSequence origin=Generated(PatternNormalize)@4:18[89..102]
                 elements:
                   HoleRef "T" origin=Source@4:18[89..90]
-                  PatternNav origin=Source@4:20[91..102]
+                  PatternNav terminated=false origin=Source@4:20[91..102]
                     components:
                       Name "Option" origin=Source@4:20[91..97]
                       Name "std" origin=Source@4:28[99..102]
@@ -139,7 +139,7 @@ NormProgram origin=Source@1:1[0..297]
               PatternSequence origin=Generated(PatternNormalize)@6:17[147..158]
                 elements:
                   HoleRef "T" origin=Source@6:17[147..148]
-                  PatternNav origin=Source@6:19[149..158]
+                  PatternNav terminated=false origin=Source@6:19[149..158]
                     components:
                       Name "Pair" origin=Source@6:19[149..153]
                       Name "std" origin=Source@6:25[155..158]
@@ -177,7 +177,7 @@ NormProgram origin=Source@1:1[0..297]
               PatternSequence origin=Generated(PatternNormalize)@8:12[193..206]
                 elements:
                   PatternName "U" origin=Source@8:12[193..194]
-                  PatternNav origin=Source@8:14[195..206]
+                  PatternNav terminated=false origin=Source@8:14[195..206]
                     components:
                       Name "Option" origin=Source@8:14[195..201]
                       Name "std" origin=Source@8:22[203..206]

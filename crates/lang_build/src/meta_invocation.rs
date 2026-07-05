@@ -101,13 +101,40 @@ impl MetaInvocationValue {
             ) => {
                 lhs.type_definition_id == rhs.type_definition_id
                     && lhs.identity_material == rhs.identity_material
-                    && lhs.fields == rhs.fields
+                    && lhs.fields.len() == rhs.fields.len()
+                    && lhs
+                        .fields
+                        .iter()
+                        .zip(rhs.fields.iter())
+                        .all(|(a, b)| a.semantic_eq(b))
                     && lhs.return_view == rhs.return_view
-                    && lhs.type_pattern_expr == rhs.type_pattern_expr
-                    && lhs.sum_pattern_space == rhs.sum_pattern_space
+                    && type_pattern_expr_semantic_eq(&lhs.type_pattern_expr, &rhs.type_pattern_expr)
+                    && sum_pattern_space_semantic_eq(&lhs.sum_pattern_space, &rhs.sum_pattern_space)
             }
             _ => false,
         }
+    }
+}
+
+fn type_pattern_expr_semantic_eq(
+    lhs: &Option<crate::pattern_space::TypePatternExprShape>,
+    rhs: &Option<crate::pattern_space::TypePatternExprShape>,
+) -> bool {
+    match (lhs, rhs) {
+        (Some(l), Some(r)) => l.semantic_eq(r),
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+fn sum_pattern_space_semantic_eq(
+    lhs: &Option<crate::pattern_space::SumPatternSpaceShape>,
+    rhs: &Option<crate::pattern_space::SumPatternSpaceShape>,
+) -> bool {
+    match (lhs, rhs) {
+        (Some(l), Some(r)) => l.semantic_eq(r),
+        (None, None) => true,
+        _ => false,
     }
 }
 
@@ -335,6 +362,15 @@ pub struct GeneratedFieldDefinition {
     pub type_symbol_id: SymbolId,
     pub index: usize,
     pub provenance: Provenance,
+}
+
+impl GeneratedFieldDefinition {
+    /// Semantic equality: compares field identity material without provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.type_symbol_id == other.type_symbol_id
+            && self.index == other.index
+    }
 }
 
 /// Compute a deterministic build-local `ConstructionInstanceId` from identity

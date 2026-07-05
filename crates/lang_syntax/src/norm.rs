@@ -140,6 +140,7 @@ pub enum NormPattern {
     },
     Nav {
         components: Vec<NormNavComponent>,
+        explicit_terminated: bool,
         origin: NormOrigin,
     },
     Sequence {
@@ -1479,9 +1480,12 @@ fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) 
             holes,
         ),
         OperatorExprKind::NavPath {
-            components, span, ..
+            components,
+            span,
+            explicit_terminated,
         } => NormPattern::Nav {
             components: components.iter().map(normalize_nav_component).collect(),
+            explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(*span),
         },
         OperatorExprKind::Error(error) => NormPattern::Error(normalize_error(error)),
@@ -1517,8 +1521,12 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[String]) -> NormPattern {
             origin: NormOrigin::Source(atom.span),
         },
         AtomKind::Group(expr) => normalize_expr_as_pattern(expr, holes),
-        AtomKind::NavPath { components, .. } => NormPattern::Nav {
+        AtomKind::NavPath {
+            components,
+            explicit_terminated,
+        } => NormPattern::Nav {
             components: components.iter().map(normalize_nav_component).collect(),
+            explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
         AtomKind::Error(error) => NormPattern::Error(normalize_error(error)),
@@ -1928,9 +1936,19 @@ fn dump_norm_expr(output: &mut String, expr: &NormExpr, indent: usize) {
             ),
         ),
         NormExpr::Nav {
-            components, origin, ..
+            components,
+            origin,
+            explicit_terminated,
         } => {
-            line(output, indent, &format!("Nav {}", origin_inline(origin)));
+            if *explicit_terminated {
+                line(
+                    output,
+                    indent,
+                    &format!("Nav terminated {}", origin_inline(origin)),
+                );
+            } else {
+                line(output, indent, &format!("Nav {}", origin_inline(origin)));
+            }
             line(output, indent + 1, "components:");
             for component in components {
                 dump_nav_component(output, component, indent + 2);
@@ -2126,11 +2144,19 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 origin_inline(origin)
             ),
         ),
-        NormPattern::Nav { components, origin } => {
+        NormPattern::Nav {
+            components,
+            explicit_terminated,
+            origin,
+        } => {
             line(
                 output,
                 indent,
-                &format!("PatternNav {}", origin_inline(origin)),
+                &format!(
+                    "PatternNav terminated={} {}",
+                    explicit_terminated,
+                    origin_inline(origin)
+                ),
             );
             line(output, indent + 1, "components:");
             for component in components {

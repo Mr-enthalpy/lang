@@ -533,8 +533,15 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent, "Group");
             dump_expr(output, expr, indent + 1);
         }
-        AtomKind::NavPath { components, .. } => {
-            line(output, indent, "NavPath");
+        AtomKind::NavPath {
+            components,
+            explicit_terminated,
+        } => {
+            if *explicit_terminated {
+                line(output, indent, "NavPath terminated");
+            } else {
+                line(output, indent, "NavPath");
+            }
             line(output, indent + 1, "components:");
             for component in components {
                 dump_nav_component(output, component, indent + 2);

@@ -236,6 +236,8 @@ fn parse_postfix_expr(
             parser.cursor.bump_non_trivia();
             if let Some(component) = parse_nav_outer_component(parser) {
                 expr = extend_operator_nav_path(expr, component);
+            } else if parser.is_nav_termination_boundary() {
+                expr = terminate_operator_nav_path(parser, expr);
             } else {
                 expr = terminate_operator_nav_path(parser, expr);
             }
@@ -329,12 +331,16 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
         span: operator.span,
     })];
     let mut span = operator.span;
+    let mut explicit_terminated = false;
 
     while parser.cursor.consume_symbol(Symbol::ColonColon).is_some() {
         if let Some(component) = parse_nav_outer_component(parser) {
             let component_span = nav_component_span(&component);
             span = span.join(component_span);
             components.push(component);
+        } else if parser.is_nav_termination_boundary() {
+            explicit_terminated = true;
+            break;
         } else {
             let error_span = parser.cursor.current_span();
             parser.error(
@@ -351,7 +357,7 @@ fn parse_operator_nav_path(parser: &mut Parser<'_>, current: CurrentOperator) ->
         kind: OperatorExprKind::NavPath {
             components,
             span,
-            explicit_terminated: false,
+            explicit_terminated,
         },
         span,
     }

@@ -219,3 +219,87 @@ fn product_matches_pattern(
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Semantic equality helpers — compare shape identity without provenance
+// ---------------------------------------------------------------------------
+
+impl EvalResultNormalForm {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (EvalResultNormalForm::ValuePoint(v1), EvalResultNormalForm::ValuePoint(v2)) => {
+                v1.semantic_eq(v2)
+            }
+            (EvalResultNormalForm::Product(p1), EvalResultNormalForm::Product(p2)) => {
+                p1.semantic_eq(p2)
+            }
+            _ => false,
+        }
+    }
+}
+
+impl ValuePointShape {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.value_kind == other.value_kind
+            && self
+                .extraction_interface
+                .semantic_eq(&other.extraction_interface)
+    }
+}
+
+impl ExposedExtractionInterface {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ExposedExtractionInterface::Leaf, ExposedExtractionInterface::Leaf) => true,
+            (ExposedExtractionInterface::Product(p1), ExposedExtractionInterface::Product(p2)) => {
+                p1.semantic_eq(p2)
+            }
+            (
+                ExposedExtractionInterface::NamedProduct(n1),
+                ExposedExtractionInterface::NamedProduct(n2),
+            ) => n1.semantic_eq(n2),
+            _ => false,
+        }
+    }
+}
+
+impl ProductNormalFormShape {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.product_kind == other.product_kind
+            && self.elements.len() == other.elements.len()
+            && self
+                .elements
+                .iter()
+                .zip(other.elements.iter())
+                .all(|(a, b)| a.semantic_eq(b))
+    }
+}
+
+impl ProductNormalFormElem {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.label == other.label
+            && self.value_shape.semantic_eq(&other.value_shape)
+            && self.type_symbol_id == other.type_symbol_id
+    }
+}
+
+impl NamedProductExtractionShape {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.owner_type_symbol_id == other.owner_type_symbol_id
+            && self.fields.len() == other.fields.len()
+            && self
+                .fields
+                .iter()
+                .zip(other.fields.iter())
+                .all(|(a, b)| a.semantic_eq(b))
+    }
+}
+
+impl NamedExtractionField {
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.label == other.label
+            && self.field_type_symbol_id == other.field_type_symbol_id
+            && self.field_index == other.field_index
+            && self.projection == other.projection
+    }
+}

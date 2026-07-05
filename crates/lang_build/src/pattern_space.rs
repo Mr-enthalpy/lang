@@ -72,6 +72,18 @@ impl StructLeafTypeExprShape {
     pub fn path(path: SymbolPathShape) -> Self {
         Self::Path(path)
     }
+
+    /// Semantic equality: compares structural identity without provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Path(a), Self::Path(b)) => a == b,
+            (
+                Self::NormalizedAst { description: a, .. },
+                Self::NormalizedAst { description: b, .. },
+            ) => a == b,
+            _ => false,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +180,53 @@ impl TypePatternExprShape {
             provenance,
         }
     }
+
+    /// Semantic equality: compares structural identity without provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                TypePatternExprShape::Leaf {
+                    external_type_expr: e1,
+                    local_pattern_name: n1,
+                    ..
+                },
+                TypePatternExprShape::Leaf {
+                    external_type_expr: e2,
+                    local_pattern_name: n2,
+                    ..
+                },
+            ) => e1.semantic_eq(e2) && n1 == n2,
+            (
+                TypePatternExprShape::Product { elements: es1, .. },
+                TypePatternExprShape::Product { elements: es2, .. },
+            ) => {
+                es1.len() == es2.len() && es1.iter().zip(es2.iter()).all(|(a, b)| a.semantic_eq(b))
+            }
+            (
+                TypePatternExprShape::Sum {
+                    alternatives: as1, ..
+                },
+                TypePatternExprShape::Sum {
+                    alternatives: as2, ..
+                },
+            ) => {
+                as1.len() == as2.len() && as1.iter().zip(as2.iter()).all(|(a, b)| a.semantic_eq(b))
+            }
+            (
+                TypePatternExprShape::Named {
+                    child: c1,
+                    pattern_name: n1,
+                    ..
+                },
+                TypePatternExprShape::Named {
+                    child: c2,
+                    pattern_name: n2,
+                    ..
+                },
+            ) => c1.semantic_eq(c2) && n1 == n2,
+            _ => false,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +244,48 @@ impl TypePatternExprShape {
 pub struct SumPatternSpaceShape {
     pub alternatives: Vec<SumPatternAlternative>,
     pub provenance: Provenance,
+}
+
+impl SumPatternSpaceShape {
+    /// Semantic equality: compares alternatives without provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.alternatives.len() == other.alternatives.len()
+            && self
+                .alternatives
+                .iter()
+                .zip(other.alternatives.iter())
+                .all(|(a, b)| a.semantic_eq(b))
+    }
+}
+
+impl SumPatternAlternative {
+    /// Semantic equality: compares label and payload without provenance.
+    pub fn semantic_eq(&self, other: &Self) -> bool {
+        self.label == other.label
+            && sum_payload_shape_semantic_eq(&self.payload_shape, &other.payload_shape)
+    }
+}
+
+fn sum_payload_shape_semantic_eq(
+    lhs: &Option<SumPatternPayloadShape>,
+    rhs: &Option<SumPatternPayloadShape>,
+) -> bool {
+    match (lhs, rhs) {
+        (Some(l), Some(r)) => match (l, r) {
+            (SumPatternPayloadShape::Unit, SumPatternPayloadShape::Unit) => true,
+            (SumPatternPayloadShape::ValuePoint, SumPatternPayloadShape::ValuePoint) => true,
+            (SumPatternPayloadShape::Product(p1), SumPatternPayloadShape::Product(p2)) => {
+                p1.semantic_eq(p2)
+            }
+            (
+                SumPatternPayloadShape::NamedProduct(n1),
+                SumPatternPayloadShape::NamedProduct(n2),
+            ) => n1.semantic_eq(n2),
+            _ => false,
+        },
+        (None, None) => true,
+        _ => false,
+    }
 }
 
 /// One alternative inside a closed sum pattern space.

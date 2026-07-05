@@ -28,7 +28,7 @@ NormProgram origin=Source@1:1[0..210]
               PatternSequence origin=Generated(PatternNormalize)@1:15[14..25]
                 elements:
                   HoleRef "T" origin=Source@1:15[14..15]
-                  PatternNav origin=Source@1:17[16..25]
+                  PatternNav terminated=false origin=Source@1:17[16..25]
                     components:
                       Name "Pair" origin=Source@1:17[16..20]
                       Name "std" origin=Source@1:23[22..25]
@@ -64,7 +64,7 @@ NormProgram origin=Source@1:1[0..210]
               PatternSequence origin=Generated(PatternNormalize)@2:15[45..56]
                 elements:
                   HoleRef "T" origin=Source@2:15[45..46]
-                  PatternNav origin=Source@2:17[47..56]
+                  PatternNav terminated=false origin=Source@2:17[47..56]
                     components:
                       Name "Pair" origin=Source@2:17[47..51]
                       Name "std" origin=Source@2:23[53..56]
@@ -112,7 +112,7 @@ NormProgram origin=Source@1:1[0..210]
               PatternSequence origin=Generated(PatternNormalize)@3:17[78..89]
                 elements:
                   HoleRef "T" origin=Source@3:17[78..79]
-                  PatternNav origin=Source@3:19[80..89]
+                  PatternNav terminated=false origin=Source@3:19[80..89]
                     components:
                       Name "Pair" origin=Source@3:19[80..84]
                       Name "std" origin=Source@3:25[86..89]
