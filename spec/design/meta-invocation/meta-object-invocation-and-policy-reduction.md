@@ -357,6 +357,58 @@ for the function-object self-position and slots 1..n for user parameters.
 arity, product flattening, canonical argument products, or meta instance keys is
 a boundary violation.
 
+### 3.1 InvocationFrame and CallableFrameShape substrate
+
+The first implementation substrate for this boundary is:
+
+```text
+ProductObject / ArgProductShape
+  -> InvocationFrame
+  -> CallableFrameShape
+  -> later callable body entry
+```
+
+The explicit argument product is shaped first as `ProductObject` /
+`ArgProductShape`. The invocation frame then injects `self` into formal slot 0.
+`self` is not part of `ArgProductShape`, `RawArgShape`, product arity, product
+flattening, or canonical meta instance keys.
+
+Zero-user-argument callables still have self slot 0 and an empty explicit
+argument product. Declaration-context `()` call-entry definitions, such as:
+
+```lang
+let ()::ref::T = (self: T ref) => { ... }
+```
+
+use the same frame model as ordinary function values. They are symbol/overload
+injections into an associated space, not a separate call mechanism. In that
+shape, `self: T ref` still occupies formal slot 0, and the explicit user
+argument product starts after self.
+
+Closure/function body syntax is not immediately forced to materialize an object.
+In value/call context it may materialize as a lambda / function-object value. In
+declaration / symbol-injection context it may elaborate as a call-entry
+definition or overload candidate.
+
+A function-value binding such as:
+
+```lang
+let name = (self) => { ... }
+```
+
+can be modeled as synthesizing an anonymous function-object type, injecting `()`
+into that type's associated space, and then binding the resulting
+function-object value to `name`. This is a future elaboration direction, not
+implemented by the current substrate.
+
+The current v0.8 direct-callable shortcut may use a placeholder
+`InvocationFrame` until full target value → target type → `()` call-entry
+resolution exists. The current `InvocationFrame` substrate also does not
+elaborate declaration-context `()` call-entry forms. It only records the frame
+invariant: self is slot 0 and the explicit user argument product remains
+separate. It does not implement runtime invocation, full overload resolution,
+return execution, D/Done, lifetime checking, or implicit `?`.
+
 ## 4. Partial meta reduction versus strict meta execution
 
 This is the central section. A call site is reduced in one of two contexts, and

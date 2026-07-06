@@ -36,6 +36,8 @@
 //!
 //! The implicit `self` belongs to the invocation frame, **not** to
 //! `ProductObject` / `ArgProductShape` / `RawArgShape`.
+//! `MetaInvocationInput::placeholder_invocation_frame` records this boundary
+//! without replacing the shortcut with full call-entry resolution.
 
 use std::collections::BTreeSet;
 
@@ -44,6 +46,10 @@ use lang_syntax::{NormExpr, NormProductElem};
 use crate::{
     extraction_view::{
         EvalResultNormalForm, ExposedExtractionInterface, ValuePointKind, ValuePointShape,
+    },
+    invocation_frame::{
+        InvocationCallableRef, InvocationExecutionEnv, InvocationFrame, InvocationLookupEnv,
+        SelfPosition,
     },
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
@@ -83,6 +89,28 @@ impl MetaInvocationInput {
 
     pub fn compute_key(&self) -> MetaInstanceKey {
         compute_meta_instance_key(&self.candidate)
+    }
+
+    /// Build the current placeholder invocation frame for substrate continuity.
+    ///
+    /// This does not change meta invocation behavior. Under the v0.8
+    /// `temporary_direct_callable_shortcut`, the selected candidate symbol is
+    /// used only as placeholder material for the invocation frame. Full target
+    /// value → target type → `()` call-entry resolution is deferred. This does
+    /// not claim that the callee symbol is the final self-object identity. This
+    /// frame records the correct self/product boundary in the meantime.
+    pub fn placeholder_invocation_frame(&self) -> Result<InvocationFrame, Diagnostic> {
+        InvocationFrame::new(
+            InvocationCallableRef::Symbol(self.candidate.callee_symbol_id),
+            SelfPosition::placeholder_from_callable_symbol(
+                self.candidate.callee_symbol_id,
+                self.candidate.provenance.clone(),
+            ),
+            self.candidate.arg_product_shape.clone(),
+            InvocationLookupEnv::new(self.candidate.policy_planes.lookup_env),
+            InvocationExecutionEnv::new(self.candidate.policy_planes.demanded_execution),
+            self.provenance.clone(),
+        )
     }
 }
 

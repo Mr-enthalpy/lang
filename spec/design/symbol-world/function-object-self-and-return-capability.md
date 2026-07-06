@@ -58,10 +58,20 @@ invocation frame:
 
 The first written formal position denotes the function-object self-position,
 not an ordinary user parameter. A zero-user-argument callable still has slot 0
-as its self-position and has no user argument slots. User-defined `()` callable
-objects follow the same invocation model: `()` is the call entry, the explicit
-user product is empty, and the invocation frame injects the function object into
-slot 0.
+as its self-position and has no user argument slots. Declaration-context `()`
+call-entry definitions follow the same invocation model: `()` is the call
+entry, the explicit user product is empty, and the invocation frame injects the
+function object into slot 0.
+
+For declaration-context call-entry injection, the self-position may have a
+non-anonymous type such as `T ref` in:
+
+```lang
+let ()::ref::T = (self: T ref) => { ... }
+```
+
+The same rule still holds: self is slot 0 and is not part of the explicit
+argument product.
 
 `self` is not an invisible ambient environment and not an ordinary
 user-supplied argument. It belongs to the invocation / callable frame boundary,

@@ -15,6 +15,7 @@ pub mod fingerprint;
 pub mod graph;
 pub mod identity;
 pub mod initializer_eval;
+pub mod invocation_frame;
 pub mod manifest;
 pub mod meta;
 pub mod meta_body;
@@ -86,6 +87,11 @@ pub use identity::{
 pub use initializer_eval::{
     binding_assertion_annotation_context, evaluate_initializer_best_effort, residual_diagnostic,
     AnnotationContext, EvalMode, EvalOutcome, ResidualReason,
+};
+pub use invocation_frame::{
+    CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationExecutionEnv,
+    InvocationFrame, InvocationLookupEnv, ReturnTargetShape, SelfPosition, SelfPositionSource,
+    SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
