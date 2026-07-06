@@ -37,6 +37,37 @@ after the call entry `()` has been resolved.
 `RawArgShape`. These represent only the explicit user-supplied argument
 product.
 
+### 2.1 Implicit Passing, Explicit Formal Position
+
+`self` is implicitly passed but occupies an explicit formal position.
+
+```text
+call-site explicit product:
+  contains only user-supplied explicit arguments
+  does not contain self
+
+callable formal frame:
+  slot 0 = function-object self-position
+  slot 1..n = user parameter positions
+
+invocation frame:
+  resolves the callable / call entry
+  injects the function object itself into slot 0
+  passes the explicit user product into slots 1..n
+```
+
+The first written formal position denotes the function-object self-position,
+not an ordinary user parameter. A zero-user-argument callable still has slot 0
+as its self-position and has no user argument slots. User-defined `()` callable
+objects follow the same invocation model: `()` is the call entry, the explicit
+user product is empty, and the invocation frame injects the function object into
+slot 0.
+
+`self` is not an invisible ambient environment and not an ordinary
+user-supplied argument. It belongs to the invocation / callable frame boundary,
+not product arity, product flattening, canonical argument products, or meta
+instance keys.
+
 ## 3. Implicit self borrow
 
 Normal continuation within a function body implicitly requires the current
@@ -61,6 +92,23 @@ This capability is lookupable under the anonymous type of `self`. It is not an
 operator, not a keyword, and not a compiler intrinsic escape hatch. It is an
 ordinary callable value exposed by the function object's type-associated
 namespace.
+
+`self` itself is not a user-visible source name and should not be modeled as a
+path segment. It is a positional slot. The corresponding function-object type
+anchor may be described as `Self` when discussing type-associated lookup or
+diagnostic rendering.
+
+The return capability is associated with the function-object type / self-frame.
+A targeted return form such as:
+
+```text
+t return
+```
+
+selects the return capability associated with the callable frame whose
+self-position / type anchor is `t`. This is the semantic basis for
+specified-level return; it is not syntax magic, an operator, or a compiler
+escape hatch.
 
 ## 5. `self..return(d)` — semantics
 

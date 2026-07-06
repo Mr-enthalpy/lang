@@ -64,6 +64,12 @@ return-object policy `{ Meta, Runtime }` by default. Runtime lookup may see the
 symbol metadata if that lookup phase is requested, but runtime execution must
 not enter this meta-only body.
 
+The written `self` formal denotes the callable frame's explicit slot 0
+self-position. It is injected by invocation after callable resolution; it is not
+part of the call-site explicit product, `ProductObject`, `ArgProductShape`, or
+`RawArgShape`. The explicit user product for the example contains only the
+user-supplied positions after slot 0.
+
 ## 0.2 v0.8 default initializer evaluation
 
 Ordinary initializer evaluation is policy-inferred, not annotation-triggered.
@@ -335,15 +341,21 @@ A formal sketch of the intended end-to-end frame:
 
 ```text
 Γ; LookupEnv ⊢ callee_path ⇓ C_symbol
-Γ ⊢ args ⇓ ArgShapes
+Γ ⊢ explicit_user_product ⇓ ArgShapes
 Γ ⊢ C_symbol × ArgShapes ⇓ C_applicable
 Γ; ExecutionEnv ⊢ C_applicable ⇓ selected_callable
-Γ; ExecutionEnv ⊢ invoke(selected_callable, args) ⇓ InvocationResult
+Γ; ExecutionEnv ⊢ invoke(selected_callable, explicit_user_product) ⇓ InvocationResult
 ```
 
 This sketch is the target for general invocation. v0.8 proves the path for a
 restricted source-declared meta-overload subset and leaves the omitted layers
 explicitly deferred.
+
+The invocation frame owns self injection. The callable formal frame has slot 0
+for the function-object self-position and slots 1..n for user parameters.
+`ArgShapes` describe only the explicit user product; adding self to product
+arity, product flattening, canonical argument products, or meta instance keys is
+a boundary violation.
 
 ## 4. Partial meta reduction versus strict meta execution
 
@@ -583,8 +595,10 @@ This is why the front end must stay neutral:
 
 ```text
 Parser and normalizer should not special-case names like `struct`, `verify`, `cond`,
-or future predicate operators. They should preserve normalized structure. Later graph
-lookup and policy-governed invocation decide what those names do.
+`self`, `Self`, `return`, or future predicate operators. They should preserve
+normalized structure, including `()` call-entry material. Later graph lookup,
+invocation-frame construction, and policy-governed invocation decide what those
+names or call entries do.
 ```
 
 Two consequences follow. Closure-like source material remains syntax /
@@ -651,6 +665,10 @@ first-order `TypeValueId` argument compatibility are established. The detailed
 construction guardrails live in
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`.
 
+This argument shape is only the explicit user-supplied product. Function-object
+self belongs to `InvocationFrame` / callable-frame slot 0 and is not a product
+atom.
+
 ```text
 Planned companion documents:
 - `pattern-normalization-and-first-order-overload.md`
@@ -716,7 +734,7 @@ and meta-invocation machinery exists.
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
 2. Introduce ProductObject / ArgProductShape and normalized pattern /
-   argument-shape objects.
+   argument-shape objects, with implicit self kept out of product shape.
 3. Introduce first-order TypeValueId and callable signature objects.
 4. Introduce canonical meta instance keys for type-to-type meta construction.
 5. Introduce candidate-set construction for meta invocation.
