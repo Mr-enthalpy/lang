@@ -671,6 +671,13 @@ fn insert_field_projection_layer(
 ///   that forwards the target type's symbol identity.
 /// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
 /// - `GeneratedTypeDefinitionValue`: materialized by `bind_generated_type_definition_value`.
+///
+/// Compatibility helper only. This creates a temporary
+/// `TypeMaterializationState`, so it is not suitable for registry-backed world
+/// binding of generated type definitions. Callers that install generated type
+/// definitions into a `CompilationWorld` must use
+/// `bind_meta_invocation_value_result_with_materialization_state` so the
+/// world-owned `PatternHeadRegistry` remains authoritative.
 pub fn bind_meta_invocation_value_result(
     value: MetaInvocationValue,
     snapshot: &NamespaceGraphSnapshot,
