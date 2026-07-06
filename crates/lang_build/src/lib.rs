@@ -95,7 +95,9 @@ pub use invocation_frame::{
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
-    bind_meta_invocation_value_result, expand_meta_initializer_via_invocation,
+    bind_meta_invocation_value_result,
+    bind_meta_invocation_value_result_with_materialization_state,
+    expand_meta_initializer_via_invocation,
     expand_meta_initializer_via_invocation_with_materialization_state, MetaExpansionResult,
 };
 pub use meta_body::{
@@ -112,6 +114,7 @@ pub use meta_candidate::{
     PreparedCallableCandidate,
 };
 pub use meta_invocation::{
+    attach_type_definition_pattern_heads, attach_type_definition_pattern_heads_with_context,
     compute_construction_instance_id, compute_type_definition_instance_id, invoke_meta_callable,
     invoke_meta_callable_cached, invoke_meta_callable_cached_with_materialization_state,
     invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,

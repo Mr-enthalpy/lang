@@ -676,6 +676,10 @@ Current state:
   verification operations installed below it as core symbols.
 - Source-declared callable/meta-function overloads can be harvested into graph
   symbols and selected by the restricted v0.8 overload path.
+- Formal `struct` invocation still produces anonymous
+  `GeneratedTypeDefinitionValue` pattern heads; the binding/materialization
+  layer can reattach those heads under an explicit generated, global, or
+  namespace context when that binding context is available.
 - `PolicyEnv::Meta` and `PolicyEnv::Runtime` support visibility metadata; the
   restricted overload selector also checks selected body-entry policy before
   meta execution.

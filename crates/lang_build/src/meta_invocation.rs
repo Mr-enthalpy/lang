@@ -859,11 +859,17 @@ fn cacheable_invocation_value(value: MetaInvocationValue) -> MetaInvocationValue
     }
 }
 
-fn attach_type_definition_pattern_heads(
-    mut value: GeneratedTypeDefinitionValue,
+/// Attach pattern heads for a generated type definition under its anonymous
+/// generated fallback context.
+///
+/// Formal `struct` invocation remains pure and may use this fallback before a
+/// concrete binding/materialization context is available.
+pub fn attach_type_definition_pattern_heads(
+    value: GeneratedTypeDefinitionValue,
     materialization_state: &mut TypeMaterializationState,
     provenance: Provenance,
 ) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
+    let type_definition_id = value.type_definition_id;
     let owner_display_name = value
         .type_pattern_expr
         .as_ref()
@@ -874,6 +880,28 @@ fn attach_type_definition_pattern_heads(
                 value.type_definition_id.as_u64()
             )
         });
+    attach_type_definition_pattern_heads_with_context(
+        value,
+        materialization_state,
+        PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id },
+        owner_display_name,
+        provenance,
+    )
+}
+
+/// Attach pattern heads for a generated type definition under an explicit
+/// materialization context.
+///
+/// The display name is diagnostic material only. The owner `PatternHeadId`
+/// identity comes from `context`; callers must not derive identity from the
+/// bare source spelling.
+pub fn attach_type_definition_pattern_heads_with_context(
+    mut value: GeneratedTypeDefinitionValue,
+    materialization_state: &mut TypeMaterializationState,
+    context: PatternMaterializationContext,
+    owner_display_name: impl Into<String>,
+    provenance: Provenance,
+) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
     let pattern_fields = value
         .identity_material
         .field_signature_material
@@ -887,10 +915,8 @@ fn attach_type_definition_pattern_heads(
     let pattern_materialization = materialization_state
         .pattern_heads
         .materialize_struct_pattern_heads(
-            PatternMaterializationContext::GeneratedTypeDefinition {
-                type_definition_id: value.type_definition_id,
-            },
-            owner_display_name,
+            context,
+            owner_display_name.into(),
             pattern_fields,
             provenance,
         )?;

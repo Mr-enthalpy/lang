@@ -11,7 +11,7 @@ use crate::{
         CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        compute_type_definition_instance_id,
+        attach_type_definition_pattern_heads_with_context, compute_type_definition_instance_id,
         invoke_meta_callable_cached_with_materialization_state,
         invoke_meta_callable_with_materialization_state, GeneratedFieldDefinition,
         GeneratedTypeDefinitionValue, MetaInvocationInput, MetaInvocationResult,
@@ -24,7 +24,7 @@ use crate::{
         TypeField, TypeObject,
     },
     normalized_call::extract_single_call_site,
-    pattern_head::TypeMaterializationState,
+    pattern_head::{PatternMaterializationContext, TypeMaterializationState},
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
     product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
@@ -352,12 +352,13 @@ pub fn expand_meta_initializer_via_invocation_with_materialization_state(
         }
     };
 
-    bind_meta_invocation_value_result(
+    bind_meta_invocation_value_result_with_materialization_state(
         invocation_value,
         snapshot,
         parent_namespace,
         binding_name,
         provenance,
+        materialization_state,
     )
 }
 
@@ -677,6 +678,25 @@ pub fn bind_meta_invocation_value_result(
     binding_name: &str,
     provenance: Provenance,
 ) -> Result<MetaExpansionResult, BuildError> {
+    let mut materialization_state = TypeMaterializationState::default();
+    bind_meta_invocation_value_result_with_materialization_state(
+        value,
+        snapshot,
+        parent_namespace,
+        binding_name,
+        provenance,
+        &mut materialization_state,
+    )
+}
+
+pub fn bind_meta_invocation_value_result_with_materialization_state(
+    value: MetaInvocationValue,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    provenance: Provenance,
+    materialization_state: &mut TypeMaterializationState,
+) -> Result<MetaExpansionResult, BuildError> {
     match value {
         MetaInvocationValue::ForwardedValue(fv) => match fv.target {
             MetaValueTarget::TypeSymbol(type_symbol_id) => {
@@ -749,22 +769,24 @@ pub fn bind_meta_invocation_value_result(
         ),
         MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv) => {
             bind_generated_type_definition_value(
-                &gtdv,
+                gtdv,
                 snapshot,
                 parent_namespace,
                 binding_name,
                 provenance,
+                materialization_state,
             )
         }
     }
 }
 
 fn bind_generated_type_definition_value(
-    value: &GeneratedTypeDefinitionValue,
+    value: GeneratedTypeDefinitionValue,
     snapshot: &NamespaceGraphSnapshot,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
+    materialization_state: &mut TypeMaterializationState,
 ) -> Result<MetaExpansionResult, BuildError> {
     let expected = compute_type_definition_instance_id(&value.identity_material);
     if expected != value.type_definition_id {
@@ -787,6 +809,20 @@ fn bind_generated_type_definition_value(
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();
+    let attachment_context = type_definition_pattern_attachment_context(
+        snapshot,
+        parent_namespace,
+        type_symbol_id,
+        value.type_definition_id,
+    );
+    let value = attach_type_definition_pattern_heads_with_context(
+        value,
+        materialization_state,
+        attachment_context,
+        binding_name.to_string(),
+        provenance.clone(),
+    )
+    .map_err(BuildError::single)?;
     delta.insert_node(NamespaceNode::new(
         type_namespace_id,
         format!("{binding_name}<type-associated>"),
@@ -887,6 +923,38 @@ fn bind_generated_type_definition_value(
         diagnostics: Vec::new(),
         provenance,
     })
+}
+
+fn type_definition_pattern_attachment_context(
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    symbol_id: SymbolId,
+    type_definition_id: crate::meta_invocation::TypeDefinitionInstanceId,
+) -> PatternMaterializationContext {
+    if parent_namespace == snapshot.root_node() {
+        return PatternMaterializationContext::Global { symbol_id };
+    }
+
+    if let Some(namespace_symbol_id) =
+        namespace_symbol_for_node(snapshot, parent_namespace).map(|symbol| symbol.id)
+    {
+        return PatternMaterializationContext::Namespace {
+            namespace_symbol_id,
+            symbol_id,
+        };
+    }
+
+    PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id }
+}
+
+fn namespace_symbol_for_node(
+    snapshot: &NamespaceGraphSnapshot,
+    namespace: NamespaceNodeId,
+) -> Option<&SymbolObject> {
+    snapshot
+        .symbols()
+        .values()
+        .find(|symbol| symbol.namespace_node() == Some(namespace))
 }
 
 fn generated_type_extraction_interface(

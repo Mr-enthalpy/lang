@@ -14,7 +14,7 @@ use crate::{
     initializer_eval::{evaluate_initializer_best_effort, EvalMode, EvalOutcome},
     manifest::{BuildManifest, NamespaceMount},
     meta::{
-        bind_meta_invocation_value_result,
+        bind_meta_invocation_value_result_with_materialization_state,
         try_expand_early_meta_initializer_with_materialization_state,
     },
     model::{
@@ -422,13 +422,15 @@ impl CompilationWorld {
                     )?;
                     let final_binding_policy =
                         final_binding_policy(explicit_policy.as_ref(), &result_policy);
-                    let mut expansion = bind_meta_invocation_value_result(
-                        value,
-                        &self.snapshot,
-                        namespace,
-                        &binder_name,
-                        declaration_provenance.clone(),
-                    )?;
+                    let mut expansion =
+                        bind_meta_invocation_value_result_with_materialization_state(
+                            value,
+                            &self.snapshot,
+                            namespace,
+                            &binder_name,
+                            declaration_provenance.clone(),
+                            &mut self.type_materialization_state,
+                        )?;
                     override_delta_binding_policy(
                         &mut expansion.namespace_delta,
                         &binder_name,
