@@ -45,8 +45,10 @@ Product |> Expr
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
 When `Expr` is a name/path, resolution first produces a symbol and projects its
-heterogeneous value facet. Steps 2–5 run independently for each value entry;
-entries without an applicable `()` call entry are discarded.
+heterogeneous value facet. Each enumerated object is filtered by its own `P1`
+before type-associated call lookup. The remaining steps run independently for
+each surviving value entry; entries without an applicable `()` call entry are
+discarded.
 
 ## 3. `()` is not an operator
 
@@ -116,22 +118,26 @@ If a function object captures state, it may be non-ZST and follows ordinary valu
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol and project its heterogeneous value facet
-3. For each value entry, obtain its type / TypeValueId
-4. Find call entry: type(value).associated_namespace → lookup `()`
-5. Discard non-callable/non-applicable entries
+2. Resolve a name/path to Symbol and project/enumerate its heterogeneous value facet
+3. Filter each Val2 object by its own P1 for the current lookup stage
+4. For each surviving value entry, obtain its type / TypeValueId
+5. Find call entry: type(value).associated_namespace → lookup `()`
+6. Discard non-callable/non-applicable entries
    and include any visible first-class derived entries
-6. Determine self mode: () :: F / () :: ref::T / () :: share::T
-7. Build invocation frame: implicit self + explicit shaped product args
-8. Filter callable objects by P1; form qualified set Q by structure, P2,
+7. Determine self mode: () :: F / () :: ref::T / () :: share::T
+8. Build invocation frame: implicit self + explicit shaped product args
+9. Form qualified set Q by structure, P2,
    and exact argument-symbol total policy
-9. Apply ordinary linear filters and the must-select final consistency check
-10. Enter the unique selected invocation or defer according to demand
+10. Apply ordinary linear filters in fixed normative order, then the must-select check
+11. Enter the unique selected invocation or defer according to demand
 ```
 
 A derived compile companion is prepared as an ordinary identified call entry
 with an origin; it is not a lookup-failure fallback. If it enters `Q`, its
 must-select property requires it to be the final unique candidate.
+Compile projection does not choose that entry: it carries an
+`UnresolvedCallFamily` plus any `DerivedCompanionCallFamily`, and normal compile
+evaluation later enumerates and selects candidates.
 
 ## 9. Relation to v0.8 substrate
 

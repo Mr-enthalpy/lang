@@ -57,11 +57,11 @@ Implemented for this slice:
   forwarding-body substrate.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
-symbol, projects its heterogeneous value facet, obtains each value's type,
-resolves each type-associated `()` entry, discards non-callable entries, and
-then performs applicability/policy/result filtering to a unique maximal
-candidate. Same-name value entries are not assumed to be same-type function
-overloads. See
+symbol, projects and enumerates its heterogeneous value facet, filters each
+object by its own `P1`, obtains each surviving value's type, resolves each
+type-associated `()` entry, discards non-callable entries, and then performs
+applicability/`P2`/result filtering to a unique maximal candidate. Same-name
+value entries are not assumed to be same-type function overloads. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 Explicitly not implemented in v0.8:
@@ -93,9 +93,11 @@ return-object policy metadata
 ```
 
 They are not three final source-level policy positions. In the final model,
-symbol lookup is governed by `P1`, entry execution and exact argument total
-policy by `P2`, and there is no independent `P3`. The current return-object
-field is provisional transport until layered result-symbol facets exist.
+base path resolution produces `Symbol` before `P1`; each enumerated `Val2`
+object's lookup participation is governed by its own `P1`, entry execution and
+exact argument total policy by `P2`, and there is no independent `P3`. The
+current return-object field is provisional transport until layered
+result-symbol facets exist.
 
 For:
 
@@ -161,14 +163,16 @@ This document does **not** define:
 
 ### 2.1 Lookup-stage separation
 
-Symbol lookup is **not** a single pass that merges both external stages. The
-final external lookup stage is:
+After a callee path has resolved to `Symbol`, callable-object lookup is **not**
+a single pass that merges both external stages. The final external object
+lookup stage is:
 
 ```text
 LookupStage ::= compile | runtime
 ```
 
-A callable object enters the visible candidate set only when:
+A `Val2` callable object from the resolved symbol's heterogeneous value facet
+enters the stage-visible candidate set only when:
 
 ```text
 current_lookup_stage in P1(candidate)
@@ -188,6 +192,9 @@ and `RuntimeBinding`-shaped query paths over `PolicyFlag` sets. Those are
 transitional resolver mechanics, not a third external flow. Compile-flow
 projection may preserve unresolved compile and meta call families; normal
 compile evaluation later distinguishes their capabilities.
+
+`P1` does not control the preceding path-to-`Symbol` resolution. One symbol may
+hold heterogeneous objects with different `P1` sets, each filtered separately.
 
 ### 2.2 Visibility and export
 
@@ -225,6 +232,8 @@ The final candidate source is symbol-first:
 resolve callee path
   -> Symbol
   -> project heterogeneous value facet
+  -> enumerate heterogeneous Val2 objects
+  -> filter each object by P1 for the current lookup stage
   -> obtain each value's type
   -> resolve its type-associated `()` entry
   -> discard non-callable entries
@@ -234,19 +243,28 @@ The current same-name namespace bucket is only a restricted precursor to this
 flow. Derived compile companions are inserted as first-class entries during
 candidate preparation, not after ordinary overload resolution fails.
 
+During compile projection, the call remains an `UnresolvedCallFamily`. Runtime
+origin candidates are projected as a `DerivedCompanionCallFamily`; no concrete
+origin entry is selected at that point. Normal compile evaluation enumerates
+the family and gives each derived entry its stable
+`DerivedCallableEntryId(origin_runtime_entry, CompileCompanion)` before forming
+`Q`. The family objects are defined canonically in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md` §4.1.
+
 ```text
-C0 = RawChildren by name, role, arity, and syntactic callable shape
-C1 = Visible(C0, V)
+C0 = EnumerateValueObjects(Symbol)
+C1 = VisibleObjects(C0, V)
 C2 = UsableByP1(C1, current_lookup_stage)
-C3 = ShapeAndTypeMatch(C2, E)
+C3 = AssociatedCallEntryAndShapeMatch(C2, E)
 Q  = P2Qualified(C3, current_lookup_stage, arguments)
 ```
 
-- `C0`: all same-named symbols in the namespace graph matching the call's
-  syntactic shape and expected arity / role.
-- `C1`: filtered by visibility view (internal or external).
-- `C2`: filtered by callable-object `P1` visibility.
-- `C3`: structurally applicable entries.
+- `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
+  callee symbol.
+- `C1`: filtered by object-level visibility view (internal or external).
+- `C2`: filtered independently by each object's `P1` lookup-stage policy.
+- `C3`: objects whose type-associated `()` entry exists and is structurally
+  applicable to the call.
 - `Q`: entries whose `P2` has the demanded external stage and whose arguments
   all have exactly that total policy.
 
@@ -269,8 +287,9 @@ usable(c, lookup_stage) := lookup_stage in P1(c)
 ```
 
 `P1` currently admits `compile`, `runtime`, or `compile | runtime`. It says
-where the object can be found; it says nothing about argument policy or body
-execution.
+whether this already-enumerated object participates in the current external
+lookup stage; it does not govern base symbol resolution, argument policy, or
+body execution.
 
 ### 3.2 P2 qualified-candidate boundary
 
@@ -315,9 +334,12 @@ also carries `must_select_if_qualified`. This is not a hidden fallback and is
 not a normal overload that a more specific candidate may silently replace.
 
 The same postcondition is available to future user declarations through a
-conceptual `@must_select_if_qualified` annotation. It permits non-overlapping
+conceptual `@must_select_if_qualified` notation. It permits non-overlapping
 same-name overloads. A future `sealed_overload_name` or `closed_overload_set`
 would instead forbid any additional same-name entry and is a separate feature.
+The `@...` spelling is not a lexer/parser/AST commitment; an initial
+implementation may use compiler-known metadata or another internal semantic
+marker, as required by the canonical policy note.
 
 ---
 
@@ -423,10 +445,10 @@ be a type-rank object. This node's depth contributes to specificity.
 ### 5.1 Notation
 
 ```text
-C0  = RawChildren by name, role, arity, and syntactic callable shape
-C1  = Visible(C0, V)                        -- V ∈ {Internal, External}
+C0  = EnumerateValueObjects(Symbol)
+C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
 C2  = UsableByP1(C1, lookup_stage)
-C3  = ShapeAndTypeMatch(C2, E)              -- structural pattern + type matching
+C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 Q   = P2Qualified(C3, lookup_stage, args)    -- exact argument total policy
 C4  = MaxEntryPreference(Q)                  -- ordinary linear filter, if configured
 C5  = ConceptLegal(C4, E)                   -- remove concept-violating candidates
@@ -458,10 +480,20 @@ f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-### 5.3 C0: RawChildren
+The named filters execute in exactly the normative `C4` through `C10` order
+shown in §5.1. Candidate iteration and source declaration order do not affect
+the result of an individual filter, but the filters are not assumed to commute
+with one another.
 
-Initial candidates are drawn from the namespace graph children at the lookup
-site, matching by:
+### 5.3 C0: heterogeneous value objects
+
+After path resolution has produced the callee `Symbol`, `C0` enumerates its
+heterogeneous value/`Val2` objects. These objects may have unrelated types and
+different `P1` sets. The final model does not treat same-name namespace
+children as already-formed callable overloads.
+
+The current implementation's restricted same-name child bucket may still
+pre-filter by:
 
 - **name**: same textual name (or operator-identity equivalence)
 - **role**: object-role symbols for callable targets; namespace-subspace for
@@ -479,11 +511,13 @@ symbol is not visible in the lookup view, its policy is not checked.
 
 ### 5.5 C3–Q–C4: Matching, qualification, then preference
 
-**Structural matching (C3)** precedes policy qualification. A candidate cannot
+**Associated-call and structural matching (C3)** precedes policy qualification.
+For every object surviving `P1`, obtain its type, resolve its type-associated
+`()` entry, discard non-callable objects, and match that entry against `E`. A candidate cannot
 win on entry preference if its pattern or type signature does not match the
 call operand.
 
-`ShapeAndTypeMatch(C2, E)` removes candidates whose:
+`AssociatedCallEntryAndShapeMatch(C2, E)` removes candidates whose:
 
 - extraction pattern is structurally inapplicable to `E`
 - type signature is incompatible with the argument types
@@ -620,10 +654,11 @@ to overload candidate `f`.
 Derivation:
 
 ```text
-C0  = RawChildren(Γ, name, role, arity, shape)
-C1  = Visible(C0, V)
+CalleeSymbol = ResolveSymbol(Γ, name)
+C0  = EnumerateValueObjects(CalleeSymbol)
+C1  = VisibleObjects(C0, V)
 C2  = UsableByP1(C1, lookup_stage)
-C3  = ShapeAndTypeMatch(C2, E)
+C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 Q   = P2Qualified(C3, lookup_stage, args)
 C4  = MaxEntryPreference(Q)
 C5  = ConceptLegal(C4, E)
@@ -688,6 +723,9 @@ explicit @no_compile_companion suppression
 closed overload-name declarations
 ```
 
+The `@...` spellings above are conceptual semantic notation only. They are not
+parser or AST implementation prerequisites.
+
 ---
 
 ## 9. Relationship to Other Documents
@@ -700,7 +738,7 @@ closed overload-name declarations
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
 | `../policy-capability/policy-visibility-symbols.md` | Implementation mapping for current policy metadata |
 | `../symbol-world/symbol-policy-and-compile-flow-projection.md` | Canonical `P1` / `P2`, companion, and must-select semantics |
-| `early-meta-functions-and-namespace-graph.md` | Namespace graph provides the `RawChildren` (C0) layer |
+| `early-meta-functions-and-namespace-graph.md` | Namespace graph resolves the callee `Symbol`; the current same-name child bucket is only transitional candidate substrate |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |
 | `glossary.md` | Defines OverloadCandidate, OverloadSpecificity, OverloadResolutionPipeline |
 | `roadmap.md` | v0.8 non-goal, v0.10+ gating phase |

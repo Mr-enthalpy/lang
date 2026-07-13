@@ -9,10 +9,12 @@ This note is the normative owner for:
 - callable policy positions `P1` and `P2`;
 - removal of an independent `P3` return-policy position;
 - mechanical compile-flow projection;
+- unresolved call families and derived companion families;
 - runtime callable compile companions;
 - `must_select_if_qualified` overload consistency;
 - policy-directed match staging;
 - automatic `require` extraction and synthesis;
+- finite local flow, recursive call-summary boundaries, and guarded require atoms;
 - shared evaluation identity between require and body continuation.
 
 It builds on two sibling canonical notes:
@@ -154,9 +156,22 @@ It does not request a parser change in the current PR.
 
 ### 3.1 `P1`: callable-object lookup policy
 
-`P1` is the external lookup policy of the callable object. It controls the
-symbol-flow stages in which that object may participate in name/value/callable
-lookup.
+`P1` is the external lookup policy of one callable object or other `Val2`
+object. It does not control whether a source path resolves to its containing
+`Symbol`. The required order is:
+
+```text
+path
+  -> resolve Symbol
+  -> project heterogeneous value facet
+  -> enumerate Val2 objects
+  -> filter each object by P1 for the current lookup stage
+```
+
+Export, access, or namespace visibility may independently restrict path
+resolution, but `P1` is not one of those base symbol-resolution gates. A single
+symbol may carry heterogeneous objects with different `P1` sets; there is no
+requirement that the whole symbol have one uniform callable policy.
 
 The current permitted forms are:
 
@@ -170,7 +185,8 @@ The equivalent source ordering `runtime | compile` is permitted only in `P1`.
 `P1` is not an argument policy and does not grant permission to execute the
 callable body.
 
-Call lookup first requires:
+After the symbol and its value facet have been obtained, a particular object is
+externally usable only when:
 
 ```text
 current_lookup_stage in P1
@@ -261,15 +277,19 @@ Val1 x Pattern x Val2
 and each layer retains its own policy. A single `P3` would flatten those layers
 back into one result-policy label and contradict the symbol model.
 
-The result symbol's external lookup policy inherits `P1`:
+The result symbol's external lookup policy inherits the policy of the selected
+callable object:
 
 ```text
-lookup_policy(result_symbol) = P1
+lookup_policy(result_symbol_of(call))
+  = P1(selected_callable_object)
 ```
 
-This does not assign `P1` to every internal leaf, pattern, or `Val2` object.
-Their policies remain independently represented and contribute according to the
-rules in §2.
+It does not inherit a hypothetical policy of the callee symbol as a whole; a
+heterogeneous callee symbol may have no such single policy. Nor does this assign
+the selected object's `P1` to every internal leaf, pattern, or later `Val2`
+object in the result. Their policies remain independently represented and
+contribute according to the rules in §2.
 
 Policy changes must not be hidden at the return position. A future operation
 that closes, projects, or changes policy requires an explicit mechanism. It must
@@ -361,6 +381,83 @@ computation.
 Projection is not approximate evaluation and not global stage-constraint
 solving. It is a structural graph operation over already formed symbol flow.
 
+### 4.1 Unresolved call families
+
+Because projection does not select an overload, every projected call retains a
+family object rather than a selected entry:
+
+```text
+UnresolvedCallFamily {
+    callee_symbol,
+    argument_symbol_flows,
+    lookup_stage,
+    expected_rank_or_facet,
+    candidate_family_identity,
+}
+```
+
+`callee_symbol` records completed symbol resolution. Candidate preparation may
+still need to project its heterogeneous value facet, obtain each value's type,
+resolve type-associated `()` entries, and perform qualification. The stable
+`candidate_family_identity` identifies that unresolved preparation family; it
+does not assert that any member is applicable or selected.
+
+For an unresolved origin candidate family `C`, the mechanical runtime-entry
+projection is:
+
+```text
+CompanionFamily(C)
+  = {
+      companion(e)
+      |
+      e in C
+      and P2(e) = runtime
+      and compile in P1(e)
+    }
+```
+
+Each `companion(e)` has the stable origin-entry identity defined in §5, but the
+family as a whole remains unresolved:
+
+```text
+DerivedCompanionCallFamily {
+    origin_call_family,
+    projected_argument_symbol_flows,
+    companion_candidate_family = CompanionFamily(C),
+    expected_rank_or_facet,
+}
+```
+
+Projection may retain direct compile/meta candidates and this derived companion
+family under the same projected call site. Normal compile evaluation then runs
+candidate preparation, per-object `P1` filtering, `P2` qualification, the fixed
+linear-filter pipeline, must-select consistency, and final selection. Thus
+projection does not choose a runtime entry, while every derived companion still
+has a precise origin when candidates are later enumerated.
+
+### 4.2 Finite local flow and recursive call boundaries
+
+The language has no source loop construct and no inline-for node. Repetition is
+expressed through callable recursion. The mechanical-lowering `loop` call mode
+is a lowering mode for recursive calls, not a source `LocalSymbolFlow` loop
+node.
+
+For one callable body, treat every call as an opaque `UnresolvedCallFamily`
+node. Under that treatment:
+
+```text
+LocalSymbolFlow(callable_body)
+  is finite, bounded, and control-flow-acyclic
+```
+
+The cross-call graph may contain cycles because callables may recurse directly
+or mutually. `compile_projection` does not unfold those calls. It projects the
+call node, argument symbol flows, result flow, and a reference to the callee's
+contract/require summary. Consequently there is no projection-time recursion
+expansion, source-loop fixed point, inline-for elaboration, or loop-invariant
+obligation. Local require slicing operates on a finite graph; recursion remains
+represented by call and summary-reference edges.
+
 ## 5. Runtime Entries Have Derived Compile Companions
 
 For a runtime entry that remains externally visible to compile lookup:
@@ -445,10 +542,11 @@ The projected argument is compile-policy pattern material. It does not mutate
 the original runtime symbol's total policy and does not make that original
 symbol directly qualify for a compile entry.
 
-The rewrite may remain an unresolved derived-companion call-family node until
-normal compile evaluation. The existence of a direct compile/meta entry can
-affect ordinary candidate qualification, but default companion generation is not
-a post-failure fallback and cannot be silently disabled by overload priority.
+The rewrite forms the `DerivedCompanionCallFamily` of §4.1 and remains unresolved
+until normal compile evaluation. The existence of a direct compile/meta entry
+can affect ordinary candidate qualification, but default companion generation
+is not a post-failure fallback and cannot be silently disabled by overload
+priority.
 
 ## 6. Companion Overload Consistency
 
@@ -482,7 +580,7 @@ for every argument a:
 structural pattern/arity applicability
 ```
 
-The existing side-effect-free, order-independent linear filters then operate:
+The ordinary linear filters then operate in one fixed normative order:
 
 ```text
 C1 = F1(Q)
@@ -490,6 +588,11 @@ C2 = F2(C1)
 ...
 Cn = Fn(Cn-1)
 ```
+
+Each filter is side-effect-free, and each filter's result is independent of
+candidate enumeration and source declaration order. The filters themselves are
+not assumed to commute: exchanging `Fi` and `Fj` may change the result and is a
+specification error unless a separate proof establishes equivalence.
 
 Ordinary success still requires:
 
@@ -526,7 +629,7 @@ qualified companion. If two runtime overloads erase their runtime leaves into
 two simultaneously qualified compile companions, the call is rejected: the
 runtime overload family has no unique compile projection.
 
-### 6.1 User-visible must-select annotation
+### 6.1 User-accessible must-select capability
 
 The mechanism is not compiler-private. A future user-facing annotation or trait
 may be spelled conceptually as:
@@ -542,6 +645,14 @@ Its meaning is:
 
 This allows user-authored constraint callables to request the same overlap
 consistency as a derived companion.
+
+All `@...` spellings in this section are conceptual notation only. They do not
+request a lexer, parser, Raw AST, or Normalized AST change. An initial
+implementation may use compiler-known metadata, a derived-entry origin tag, a
+core symbol identity, an internal semantic attribute, build metadata, or
+another built-in marker. Public source syntax, if later justified, need not use
+these spellings. The implementation order is semantic object first and optional
+surface syntax only after usage experience.
 
 It is not equivalent to closing an overload name:
 
@@ -574,15 +685,20 @@ the declared entry owns the CompileCompanion relation
 the declared entry inherits must_select_if_qualified
 ```
 
-A runtime entry may explicitly opt out:
+A runtime entry may explicitly opt out of the exported derived interface:
 
 ```text
 @no_compile_companion
 ```
 
-This suppresses automatic companion derivation and automatic require extraction
-for that runtime entry. It is an explicit interface decision, not an accidental
-result of another overload winning.
+This suppresses discovery of an automatic companion at call sites, the
+caller-visible inferred-require interface derived through that companion, and
+the default runtime-call compile-projection interface exported by that entry.
+It does not suppress compile-flow analysis of the callable definition, skip
+definition-time static assertions, or disable ordinary compile checking inside
+the body. The body remains valid only if its own static computation and
+verification succeed. Suppression is an explicit interface decision, not an
+accidental result of another overload winning.
 
 ## 7. Match, `if`, and Stage Selection
 
@@ -661,26 +777,93 @@ must not reinterpret arbitrary CFG edges as pattern alternatives.
 
 ## 9. Automatic Require Extraction
 
-Automatic require is defined as:
+Automatic require is defined over a callable's finite `LocalSymbolFlow` after
+compile projection and D/Done normalization. The old shorthand
+“parameter-dominated assertion slice” is insufficient because data dependency,
+control dominance, and backward slicing are different relations.
 
-> In compile-projected symbol flow, select every computation flow dominated by
-> the callable's formal inputs that ultimately terminates in an explicit
-> assertion/verification structure.
+Use the following conceptual graph:
 
-The pipeline is:
+```text
+LocalCompileFlow = (
+    nodes,
+    data_dependency_edges,
+    control_edges,
+    pattern_guard_edges,
+    call_summary_edges,
+)
+```
+
+For a node `n` and formal projection `p`:
+
+```text
+parameter-dependent(n, p):
+  a data-dependency path exists from p to n
+
+parameter-guarded(n, p):
+  n lies in a D/Done-normalized pattern domain whose guard or scrutinee
+  is parameter-dependent on p
+
+parameter-dominated(n, p):
+  every local control path from body entry to n passes through a
+  parameter-derived control/guard gate associated with p
+```
+
+`parameter-dominated` is the ordinary graph-theoretic control property. It may
+support diagnostics or optimizations, but it is not a synonym for data
+dependency and is not by itself the require-inclusion criterion.
+
+Let `A` be an explicit assertion sink. Define:
+
+```text
+FormalDeps(A)
+  = { p | parameter-dependent(A, p) or parameter-guarded(A, p) }
+
+EligibleRequireSink(A)
+  iff A is an assertion/verification endpoint
+      and FormalDeps(A) is non-empty
+```
+
+Multiple parameters participate by appearing together in `FormalDeps(A)`; the
+slice retains every contributing projection rather than choosing one dominant
+parameter. The inferred slice is:
+
+```text
+InferredRequireSlice(A)
+  = the least backward dependency cone from A that retains:
+      all data dependencies back to FormalDeps(A),
+      parameter-controlled pattern guards and D/Done residual domains,
+      required call-summary references,
+      closed compile constants and global pure symbols used as side inputs,
+      provenance and semantic ordering edges
+```
+
+The full pipeline is therefore:
 
 ```text
 CompleteSymbolFlow
   -> compile_projection
-CompileFlow
-  -> parameter-dominated assertion slice
+LocalCompileFlow
+  -> D/Done normalization
+  -> union of InferredRequireSlice(A) for every EligibleRequireSink(A)
 InferredRequireFlow
 ```
 
-“Parameter dominated” means the relevant flow originates from, or cannot reach
-its assertion endpoint without passing through, one or more formal-argument
-symbol projections. Unrelated global verification is not automatically turned
-into the callable's require contract.
+Pattern guards are explicit control-dependency edges whose scrutinees may carry
+data dependency on formal projections. They are not erased into ordinary data
+edges. A compile helper call contributes an instantiated contract-summary
+reference at its call node; helper assertions propagate through that summary
+rather than by recursively inlining the helper body. Recursive and mutually
+recursive calls likewise retain canonical summary references and are never
+expanded by slicing.
+
+A closed compile constant, global pure symbol, or helper result may be a side
+input to an eligible cone without becoming a formal dependency itself. An
+unrelated global assertion does not enter the function contract merely because
+it shares a compilation or construction unit. A function with no formal
+arguments therefore has no mechanically inferred caller precondition from a
+purely global assertion; that assertion remains definition-time verification,
+or it may be exposed deliberately through a manual contract.
 
 Assertion endpoints include:
 
@@ -701,7 +884,43 @@ the callable's actual static preconditions.
 
 ## 10. Require Synthesis
 
-### 10.1 Serial flow
+### 10.1 Guarded require atoms
+
+The contract layer has an explicit structured atom:
+
+```text
+GuardedRequireAtom {
+    normalized_pattern_domain,
+    guarded_alternatives,
+    assertion_flow,
+    provenance,
+}
+```
+
+Its semantic identity is canonical over the normalized pattern domain,
+semantically ordered guarded alternatives, and assertion-flow node identities.
+Provenance is retained for diagnostics but does not by itself change equality.
+A guarded atom is therefore cacheable, comparable, and inlineable by semantic
+identity rather than by source spelling.
+
+“Semantically ordered” follows `PatternValue` normalization: ordered layers
+preserve position, while fully named `Set<PatternValue>` layers use canonical
+set representation. Source branch spelling order is not reintroduced where the
+underlying normalized pattern domain is unordered.
+
+The external contract remains:
+
+```text
+RequireContract
+  = GuardedRequireAtom1 && GuardedRequireAtom2 && ... && GuardedRequireAtomN
+```
+
+Top-level disjunction is never introduced. A compile match produces one
+`GuardedRequireAtom` whose `guarded_alternatives` contains the normalized branch
+alternatives. A runtime match produces multiple pattern-guarded atoms combined
+by top-level conjunction.
+
+### 10.2 Serial flow
 
 For serial blocks:
 
@@ -713,15 +932,19 @@ Req(A; B; C)
 This conjunction preserves computation order. It is not an unordered Boolean
 set and cannot be freely permuted when nodes carry dependency/provenance order.
 
-### 10.2 Compile match
+### 10.3 Compile match
 
 For a compile-policy scrutinee:
 
 ```text
 Req(compile match)
-  = GuardedReq(branch1, domain1)
-    || GuardedReq(branch2, domain2)
-    || ...
+  = one GuardedRequireAtom {
+      guarded_alternatives = [
+        (domain1, Req(branch1)),
+        (domain2, Req(branch2)),
+        ...
+      ]
+    }
 ```
 
 Each branch term carries:
@@ -732,19 +955,19 @@ its D-normalized residual domain
 its branch assertion flow
 ```
 
-The `||` describes the internal normalized alternatives of one guarded require
-structure. It is not permission to extend the external contract surface with
-arbitrary top-level disjunction.
+The alternatives encode the internal normalized disjunction of one guarded
+atom. They do not extend the external contract surface with arbitrary top-level
+disjunction.
 
-### 10.3 Runtime match
+### 10.4 Runtime match
 
 For a runtime-policy scrutinee, every runtime-reachable branch must have a legal
 compile precondition flow:
 
 ```text
 Req(runtime match)
-  = GuardedReq(branch1, pattern1)
-    && GuardedReq(branch2, pattern2)
+  = GuardedRequireAtom(pattern1, Req(branch1))
+    && GuardedRequireAtom(pattern2, Req(branch2))
     && ...
 ```
 
@@ -764,20 +987,21 @@ The guarded contract is:
 
 so the pattern domains remain part of each assertion atom.
 
-### 10.4 External contract conjunction boundary
+### 10.5 External contract conjunction boundary
 
 The external contract form remains a sequence/conjunction of contract atoms:
 
 ```text
-RequireContract = Atom1 && Atom2 && ... && AtomN
+RequireContract
+  = GuardedRequireAtom1 && GuardedRequireAtom2 && ... && GuardedRequireAtomN
 ```
 
-Complex compile alternatives are represented inside a single parenthesized,
-pattern-guarded assertion atom using existing pattern, overload, and normalized
-branch structure. This note does not add arbitrary top-level contract
-disjunction or a new Boolean theorem language.
+Complex compile alternatives are represented inside one
+`GuardedRequireAtom.guarded_alternatives` value using existing pattern,
+overload, and normalized branch structure. This note does not add arbitrary
+top-level contract disjunction or a new Boolean theorem language.
 
-### 10.5 Inferred and manual require
+### 10.6 Inferred and manual require
 
 The total contract is:
 
@@ -883,13 +1107,15 @@ total_policy computation
 P1/P2 declaration and call well-formedness checking
 removal/migration of transitional return-object-policy storage
 CompleteSymbolFlow or compile_projection
+UnresolvedCallFamily or DerivedCompanionCallFamily
 derived CompileCompanion entries
 DerivedCallableEntryId
 must_select_if_qualified
-@companion_of or @no_compile_companion
+semantic companion replacement/suppression metadata
 sealed_overload_name / closed_overload_set
 policy-directed compile/runtime match elaboration
-D/Done-normalized require slicing
+D/Done-normalized formal-dependent/guarded require slicing
+GuardedRequireAtom and canonical atom identity
 automatic inferred require
 shared RequireView / BodyContinuationView node identity
 future P2 = runtime | compile
@@ -908,17 +1134,29 @@ Future implementation must preserve:
 1. Programs form CompleteSymbolFlow, not separate type/value flows.
 2. total_policy uses Val1 and Pattern, never Val2.
 3. Pattern policy is compile until an explicit seal design changes it.
-4. P1 controls lookup; P2 controls entry execution and exact argument policy.
-5. external(P2) must be included in P1.
-6. There is no independent P3; result-symbol lookup policy inherits P1.
-7. compile_projection is structural and does not evaluate or select overloads.
-8. Runtime symbols retain their compile Pattern projection.
-9. Compile companions are first-class derived entries, not hidden fallbacks.
-10. Qualified must-select entries must be the final unique candidate.
-11. Explicit companion replacement/suppression is never inferred from priority.
-12. Match staging follows scrutinee total_policy; no constexpr match family exists.
-13. Require slicing consumes D/Done-normalized pattern flow.
-14. Runtime branch requires are a conjunction of pattern-guarded contracts.
-15. Require_total is inferred && manual.
-16. Require and body continuation share one static evaluation graph.
+4. Path resolution reaches Symbol before per-Val2-object P1 filtering.
+5. P1 controls one callable/value object's lookup participation; P2 controls
+   callable-entry execution and exact argument policy.
+6. external(P2) must be included in the selected object's P1.
+7. There is no independent P3; result-symbol lookup policy inherits the
+   selected callable object's P1.
+8. compile_projection is structural and retains unresolved call families; it
+   does not evaluate or select overloads.
+9. A local callable flow is finite when call-family nodes are opaque; recursion
+   remains on cross-call and summary-reference edges.
+10. Runtime symbols retain their compile Pattern projection.
+11. Compile companions are first-class derived entries, not hidden fallbacks.
+12. Qualified must-select entries must be the final unique candidate.
+13. Linear filters run in fixed normative order and are only internally
+    independent of candidate enumeration order.
+14. Explicit companion replacement/suppression is never inferred from priority.
+15. Companion suppression closes an exported derived interface, not body checks.
+16. Match staging follows scrutinee total_policy; no constexpr match family exists.
+17. Require slicing distinguishes data dependency, control dominance, guarded
+    domains, and backward assertion cones.
+18. Require slicing consumes D/Done-normalized pattern flow.
+19. GuardedRequireAtom gives branch contracts canonical structured identity.
+20. Runtime branch requires are a conjunction of pattern-guarded atoms.
+21. Require_total is inferred && manual.
+22. Require and body continuation share one static evaluation graph.
 ```

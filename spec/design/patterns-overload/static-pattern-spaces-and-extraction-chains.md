@@ -728,9 +728,11 @@ current pattern space A
   -> completed results enter Done
 ```
 
-Only after this normalization does compile-flow projection take the
-parameter-dominated assertion slice. The synthesis, guarded branch contracts,
-manual-require conjunction, and shared-evaluation rules are canonical in
+Only after this normalization does compile-flow projection take the canonical
+formal-dependent/parameter-guarded backward assertion slices. Data dependency,
+control dominance, and backward slicing remain distinct. The synthesis,
+guarded branch atoms, manual-require conjunction, and shared-evaluation rules
+are canonical in
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 `D` residual domains and `Done` isolation therefore remain the sole
@@ -1163,11 +1165,11 @@ total_policy(scrutinee) = runtime
   -> runtime selects the concrete branch
 ```
 
-For inferred require, a compile match forms guarded alternatives selected in
-compile evaluation. A runtime match contributes a conjunction of
-pattern-guarded branch contracts, because every runtime-reachable branch must
-have a valid compile prerequisite. The guards may not be erased into a bare
-conjunction of branch assertions.
+For inferred require, a compile match forms one `GuardedRequireAtom` containing
+guarded alternatives selected in compile evaluation. A runtime match contributes
+a conjunction of separate pattern-guarded atoms, because every
+runtime-reachable branch must have a valid compile prerequisite. The guards may
+not be erased into a bare conjunction of branch assertions.
 
 ## 10. Closed Control-Pattern Spaces
 
@@ -1269,9 +1271,10 @@ Extraction participates in overload candidate filtering and resolution. A candid
 ### 12.1 Overload Set Construction
 
 Final candidate preparation first resolves a `Symbol`, projects its
-heterogeneous value facet, obtains each value's type, resolves the
-type-associated `()` entry, and discards non-callable entries. The current
-same-name namespace bucket is only transitional substrate.
+heterogeneous value facet, enumerates and filters each `Val2` object by its own
+`P1`, obtains each surviving value's type, resolves the type-associated `()`
+entry, and discards non-callable entries. The current same-name namespace bucket
+is only transitional substrate.
 
 `P1` filters callable-object visibility at the external `compile` or `runtime`
 lookup stage. `P2` then qualifies structurally applicable entries and requires
@@ -1291,6 +1294,10 @@ repeatable
 independent of candidate-checking order
 globally non-observable
 ```
+
+These properties apply within each filter. The filters themselves execute in
+the fixed normative order defined by `overload-resolution-design.md`; they are
+not assumed to commute.
 
 ### 12.2 Overload Specificity: Extraction-Pattern Depth
 
@@ -1536,8 +1543,8 @@ invocation, or NamespaceDelta obligation.
 This invariant describes compile evaluation after a compile-policy scrutinee is
 known. It does not mean runtime alternatives disappear from compile-flow
 projection. For a runtime-policy scrutinee, automatic require retains every
-runtime-reachable branch as a pattern-guarded contract and conjoins those
-contracts after D/Done normalization.
+runtime-reachable branch as a `GuardedRequireAtom` and conjoins those atoms
+after D/Done normalization.
 
 This substrate is shape-level. It does not execute arbitrary user meta-function
 bodies, loops, full pattern matching, or full type solving.

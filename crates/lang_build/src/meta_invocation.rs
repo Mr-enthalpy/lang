@@ -898,9 +898,16 @@ pub fn attach_type_definition_pattern_heads(
 /// Attach pattern heads for a generated type definition under an explicit
 /// materialization context.
 ///
+/// This is a doc-hidden transitional test-support API. It remains public only
+/// so integration tests can exercise categorical registry identity. It is not
+/// a stable pattern-owner construction capability, and production semantic
+/// callers must not treat `Global`, `Namespace`, `Local`, or `Generated`
+/// contexts as final `ResolvedPatternScope` identities.
+///
 /// The display name is diagnostic material only. The owner `PatternHeadId`
 /// identity comes from `context`; callers must not derive identity from the
 /// bare source spelling.
+#[doc(hidden)]
 pub fn attach_type_definition_pattern_heads_with_context(
     mut value: GeneratedTypeDefinitionValue,
     materialization_state: &mut TypeMaterializationState,

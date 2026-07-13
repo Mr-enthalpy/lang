@@ -458,10 +458,18 @@ construction with value-directed control flow beyond the v0.8 restricted
 bootstrap.
 
 This later track also owns implementation planning for mechanical
-compile-flow projection, derived runtime-entry compile companions,
-`must_select_if_qualified`, explicit companion replacement/suppression, and
-D/Done-based automatic require. The design is already canonical; the
-implementation sequence remains deferred.
+compile-flow projection, unresolved call/derived-companion families, derived
+runtime-entry compile companions, `must_select_if_qualified`, explicit
+companion replacement/suppression, finite local-flow slicing with recursive
+contract-summary edges, guarded require atoms, and D/Done-based automatic
+require. The design is already canonical; the implementation sequence remains
+deferred.
+
+The current `@must_select_if_qualified`, `@companion_of(...)`, and
+`@no_compile_companion` spellings are conceptual notation only. Lexer, parser,
+Raw AST, and Normalized AST support is not an implementation prerequisite.
+Build the semantic objects and compiler-known metadata first; decide any public
+surface syntax separately after implementation experience.
 
 #### Later stages
 

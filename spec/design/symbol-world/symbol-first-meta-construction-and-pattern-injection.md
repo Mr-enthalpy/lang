@@ -311,10 +311,10 @@ A call position performs the following conceptual flow:
 resolve symbol
   -> project value facet
   -> enumerate heterogeneous values
+  -> filter each Val2 object by its own P1 for the current lookup stage
   -> obtain each value's type
   -> resolve the type-associated `()` call entry
   -> discard non-callable or non-applicable entries
-  -> filter callable objects by P1
   -> form qualified set Q by structure, P2, and exact argument total policy
   -> apply ordinary linear filters
   -> enforce must-select consistency and require one final candidate
@@ -1550,8 +1550,8 @@ Graph installation always occurs in the outer declaration/binding layer.
 The PR #94 implementation remains a neutral transitional
 identity/materialization substrate. It currently provides:
 
-- an explicit context attachment helper for generated type-definition pattern
-  heads;
+- a doc-hidden explicit context attachment helper for generated type-definition
+  pattern heads, retained publicly only for integration-test support;
 - categorical `Generated`, `GeneratedTypeDefinition`, `Global`, `Namespace`,
   and `Local` materialization contexts as low-level registry test/materialization
   categories, not final language owner scopes;
@@ -1587,8 +1587,9 @@ This substrate does **not** implement:
 - graph installation from the construction model in this document.
 
 The categorical global/namespace/local contexts remain available only to the
-explicit low-level attachment helper and registry tests. The ordinary binding
-path does not select among them: it preserves attached provisional owner
+doc-hidden low-level attachment helper and registry tests. They are not a
+stable external owner-construction capability. The ordinary binding path does
+not select among them: it preserves attached provisional owner
 material, or restores stripped material under the anonymous
 `GeneratedTypeDefinition(type_definition_id)` fallback. It must not be
 described as determining or rerooting `struct` pattern-owner identity or a meta

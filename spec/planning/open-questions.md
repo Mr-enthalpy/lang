@@ -88,8 +88,10 @@ here. Their normative future-design owners are:
   cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
   `Val1 x Pattern x Val2`, layered policy, `P1` / `P2` and no `P3`, mechanical
-  compile-flow projection, derived compile companions, must-select consistency,
-  policy-staged match, and D/Done-based automatic require.
+  compile-flow projection, unresolved call/companion families, finite local
+  flow with recursive summary edges, derived compile companions, must-select
+  consistency, policy-staged match, guarded require atoms, and D/Done-based
+  automatic require.
 
 Unimplemented portions remain roadmap work, not reopened design questions.
 
@@ -115,7 +117,8 @@ track:
 
 Resolved future-design decisions:
 
-- callable-object `P1` controls external compile/runtime lookup;
+- path resolution reaches `Symbol` before each heterogeneous `Val2` object is
+  filtered by its own callable-object `P1` for external compile/runtime lookup;
 - entry `P2` controls compile/meta/runtime execution and exact argument-symbol
   total policy;
 - compile and meta share external compile flow but retain different internal
@@ -126,15 +129,21 @@ Resolved future-design decisions:
 - eligible runtime entries may have first-class derived compile companions;
 - a qualified companion is `must_select_if_qualified`, not a hidden fallback;
 - match/if share one pattern mechanism and stage by scrutinee total policy;
-- inferred require is a D/Done-normalized assertion slice conjoined with manual
-  require and sharing one compile-evaluation graph with body continuation.
+- inferred require is a D/Done-normalized formal-dependent/parameter-guarded
+  backward assertion slice, represented by guarded atoms, conjoined with manual
+  require, and sharing one compile-evaluation graph with body continuation;
+- one callable body has finite local flow when call families are opaque;
+  recursion is the only repetition mechanism and remains on call/summary edges.
 
 Not implemented after this correction:
 
 - Layered symbol total-policy accounting and final `P1` / `P2` checking.
 - Compile-flow projection and shared compile-evaluation graph.
 - Derived compile companions and must-select enforcement.
-- Explicit companion replacement/suppression annotations.
+- Explicit companion replacement/suppression semantic markers; current
+  `@...` spellings are conceptual and do not require parser support.
+- Unresolved call-family/derived-companion-family flow nodes.
+- Guarded require atoms and contract-summary references for recursive calls.
 - Automatic inferred require.
 - Full orthogonal access/effect policy lattice.
 - Alias forwarding resolution under policy filtering.

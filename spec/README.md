@@ -231,6 +231,11 @@ Then read
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
 for namespace creation origin, physical authority, and source/meta construction
 ownership.
+Then read
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
+layered policy, P1/P2 object filtering, unresolved call families, compile
+companions, finite local flow, guarded require atoms, and inferred-require
+slicing.
 
 Then read within each block as needed. Scope boundaries are in
 `spec/planning/roadmap.md`, and known gaps in `spec/planning/open-questions.md`.

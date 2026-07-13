@@ -32,7 +32,7 @@ Their meanings are different:
 
 ```text
 P1:
-  external lookup policy of the callable object
+  external lookup policy of one callable/Val2 object after Symbol resolution
 
 P2:
   execution policy of this callable entry
@@ -64,8 +64,11 @@ for every argument a:
   total_policy(a) = external(P2)
 ```
 
-`P1` is not an argument policy. `P2` is not the callable symbol's lookup
-range. The union `runtime | compile` is currently meaningful only at `P1`;
+The containing path is resolved to `Symbol` before this check; its
+heterogeneous value facet is then projected and each object is filtered by its
+own `P1`. One symbol may therefore carry objects with different `P1` sets.
+`P1` is not a base symbol-resolution policy or an argument policy. `P2` is not
+the callable object's lookup range. The union `runtime | compile` is currently meaningful only at `P1`;
 `P2 = runtime | compile` is reserved for a future two-stage binding and
 evaluation model.
 
@@ -91,10 +94,12 @@ Val1 x Pattern x Val2
 
 Each layer retains its own policy. A single `P3` would flatten those policies
 back into one result annotation and contradict the layered model. The result
-symbol's external lookup policy instead inherits `P1`:
+symbol's external lookup policy instead inherits the selected callable
+object's `P1`:
 
 ```text
-lookup_policy(result_symbol) = P1
+lookup_policy(result_symbol_of(call))
+  = P1(selected_callable_object)
 ```
 
 This inheritance does not assign `P1` to every value leaf or layer object.
@@ -266,8 +271,10 @@ Not yet implemented:
 
 ## 8. Overload and Invocation Boundaries
 
-Overload resolution first uses `P1` to determine visibility, then forms a
-qualified candidate set using structural applicability and `P2`. The
+After path resolution has produced `Symbol` and enumerated its heterogeneous
+objects, overload resolution uses each object's `P1` to determine stage
+participation, then forms a qualified candidate set using structural
+applicability and `P2`. The
 `must_select_if_qualified` postcondition is evaluated only after the ordinary
 linear filters. The canonical rules are in:
 

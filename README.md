@@ -330,10 +330,11 @@ Read these only when working on future design topics.
 
 1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` — Canonical symbol facets, compile/meta, pattern scope, struct/inject, and install boundary.
 2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md` — Canonical namespace origin, physical authority, and source/meta construction ownership.
-3. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
-4. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-5. `spec/planning/roadmap.md` — Understand scope boundaries.
-6. `spec/planning/open-questions.md` — Recognize known gaps.
+3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` — Canonical layered policy, P1/P2, unresolved call families, compile companions, match staging, and inferred require.
+4. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
+5. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+6. `spec/planning/roadmap.md` — Understand scope boundaries.
+7. `spec/planning/open-questions.md` — Recognize known gaps.
 
 Other future design documents (build, package, namespace assembly, library namespace)
 are listed in the Documentation map above under Build / package / namespace (future notes).

@@ -147,8 +147,9 @@ The current verifier consumes provisional RHS result-policy metadata. Direct
 type-name forwarding uses the forwarded type symbol's current policy, while
 restricted source-callable invocation uses the selected callable's
 transitional `return_object_policy` field. This describes v0.8 transport only;
-it is not a final `P3` rule. Final result-symbol lookup policy inherits `P1`,
-while the result's `Val1`, `Pattern`, and `Val2` layers retain their own policy.
+it is not a final `P3` rule. Final result-symbol lookup policy inherits
+`P1(selected_callable_object)`, while the result's `Val1`, `Pattern`, and
+`Val2` layers retain their own policy.
 
 When binding policy is omitted and RHS evaluation succeeds with a value, the
 binding policy is inferred from that RHS result policy and written onto the
@@ -281,8 +282,16 @@ It has two distinct judgments:
 ```text
 Gamma; lookup_stage |- path => Symbol
 
-Gamma; P2 |- call(Symbol, arguments) => result
+Gamma; lookup_stage |- value_facet(Symbol) => Val2*
+
+Gamma; lookup_stage |- P1_filter(Val2*) => stage-visible objects
+
+Gamma; P2 |- call(selected object, arguments) => result
 ```
+
+The first judgment is base symbol resolution. `P1` is not consulted until the
+resolved symbol's heterogeneous value objects have been enumerated. Different
+objects stored by the same symbol may have different `P1` sets.
 
 `P1` is the callable object's externally visible lookup-stage set:
 
@@ -331,8 +340,9 @@ a `MetaConstructionUnit`. They are grouped only by their shared external
 compile stage.
 
 There is no independent final return-policy `P3`. Result-symbol lookup policy
-inherits `P1`, while the result's layered symbol material retains its own
-policy. Current `self_policy`, `body_entry_policy`, and
+inherits `P1(selected_callable_object)`, while the result's layered symbol
+material retains its own policy. It does not inherit a uniform policy from the
+heterogeneous callee symbol. Current `self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional implementation substrate for
 parts of this model, not three normative source positions.
 
@@ -352,15 +362,21 @@ resolve name/path:
 project value facet:
   -> zero or more heterogeneous values
 
+stage-visible object pool:
+  filter each enumerated Val2 object by its own P1
+
 call-entry candidate pool:
-  obtain each value's type
+  obtain each stage-visible value's type
   -> resolve the type-associated `()` entry
   -> discard non-callable entries
   -> include stable derived callable entries
 
+compile-projected call site:
+  retain UnresolvedCallFamily and any DerivedCompanionCallFamily
+  -> do not select a concrete entry
+
 qualified candidate set Q:
   call-entry pool + argument shape + normalized pattern compatibility
-  + P1 lookup-stage visibility
   + P2 execution-stage compatibility
   + exact argument total-policy equality
 
@@ -372,18 +388,20 @@ selected result:
 Reading the layers from the top:
 
 - **Symbol resolution** produces a first-class symbol, then projects its value
-  facet under visibility policy. The facet may contain heterogeneous callable
-  and non-callable values.
+  facet. The facet may contain heterogeneous callable and non-callable values.
+- The **stage-visible object pool** filters each enumerated `Val2` object by its
+  own `P1`; this does not rerun or condition base symbol resolution.
 - The **call-entry candidate pool** obtains each value's type and resolves the
   type-associated `()` entry. Non-callable values are valid facet material but
   are discarded for this call position.
 - The **qualified set `Q`** keeps only those callables whose parameter
   patterns and rank-directed symbol/type/pattern-value expectations are
-  compatible with the actual argument shapes, whose object is visible through
-  `P1`, whose `P2` has the demanded external stage, and whose arguments have
-  exactly that total policy.
+  compatible with the actual argument shapes, whose `P2` has the demanded
+  external stage, and whose arguments have exactly that total policy.
 - The **linear filters** apply concept, specificity, instantiation, lifetime,
-  and any configured entry-preference ordering only after qualification.
+  and any configured entry-preference ordering only after qualification and in
+  one fixed normative order. Each filter is independent of candidate
+  enumeration/source declaration order; filters are not assumed to commute.
 - The **must-select postcondition** is computed from `Q`. A qualified derived
   compile companion must be the final unique survivor; a more specific normal
   overload cannot silently replace it.
@@ -406,7 +424,8 @@ A formal sketch of the intended end-to-end frame:
 ```text
 Gamma; lookup_stage |- callee_path => Symbol
 Gamma; lookup_stage |- value_facet(Symbol) => V*
-Gamma; lookup_stage |- type(V*) / () => C0
+Gamma; lookup_stage |- P1_filter(V*) => V_stage*
+Gamma; lookup_stage |- type(V_stage*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
 Gamma; lookup_stage |- Qualified(C0, ArgShapes) => Q
 Gamma |- LinearFilters(Q) => C_final
@@ -597,8 +616,8 @@ or declaration context. This includes:
 - installing a NamespaceDelta atomically;
 - binding the declared target (e.g. `let T: type = ...`);
 - exposing an extraction-facing interface on the constructed value;
-- assigning result-symbol lookup policy from callable `P1` while preserving
-  each result layer's own policy.
+- assigning result-symbol lookup policy from the selected callable object's
+  `P1` while preserving each result layer's own policy.
 ```
 
 This separation is intentional: invocation produces an uninstalled value, and
@@ -682,9 +701,9 @@ require then consumes that D/Done-normalized flow as specified in
 
 For a compile-policy scrutinee, only the selected guarded branch is evaluated
 in normal compile evaluation. For a runtime-policy scrutinee, each possible
-runtime branch retains a pattern-guarded compile contract; automatic require
-conjoins those guarded contracts rather than evaluating an unguarded Boolean
-conjunction of branch bodies.
+runtime branch retains a `GuardedRequireAtom`; automatic require conjoins those
+guarded atoms rather than evaluating an unguarded Boolean conjunction of branch
+bodies.
 
 `partial` versus `strict` still controls whether an unresolved runtime boundary
 may residualize. It does not create a separate constexpr control language.
@@ -783,8 +802,9 @@ Current state:
   `GeneratedTypeDefinitionValue` pattern heads. Ordinary binding preserves those
   provisional heads or restores stripped material under the anonymous
   `GeneratedTypeDefinition` fallback; it does not derive owner context from the
-  destination. The explicit helper still exposes generated/global/namespace/
-  local categories as transitional registry and test substrate.
+  destination. The doc-hidden explicit helper still exposes
+  generated/global/namespace/local categories only as transitional registry and
+  integration-test substrate, not as a stable owner-construction API.
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with
   `r = ...` producing a `SymbolConstructionValue`; ordinary `let ===` aliasing

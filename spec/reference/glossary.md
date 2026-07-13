@@ -272,11 +272,14 @@ _See also: OperatorName, Fixity, Arity._
 ## Overload Candidate
 
 A callable entry prepared for a given call. Final preparation first resolves a
-symbol, projects its heterogeneous value facet, obtains each value's type, and
-resolves that type's associated `()` entry. Non-callable values are discarded.
+symbol, projects and enumerates its heterogeneous value facet, filters each
+`Val2` object by its own `P1`, obtains each surviving value's type, and resolves
+that type's associated `()` entry. Non-callable values are discarded.
 First-class derived entries such as a compile companion may join the prepared
-set with stable origin identity. A same-name namespace bucket is only current
-transitional substrate, not the final candidate definition.
+set with stable origin identity. During compile projection they remain an
+unresolved companion family rather than a selected entry. A same-name namespace
+bucket is only current transitional substrate, not the final candidate
+definition.
 
 _See also: OverloadSpecificity, OverloadResolutionPipeline,
 `spec/design/patterns-overload/overload-resolution-design.md`,
@@ -302,13 +305,15 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 ## Overload Resolution Pipeline
 
 The fixed process that selects a unique overload candidate. Callable-object
-`P1` first filters external lookup visibility. Structural matching and entry
-`P2` exact argument-total-policy checking then form the qualified set `Q`.
-Order-independent linear filters apply entry preference, concepts, extraction
-specificity, first-order preference, and lifetime rules. Ordinary uniqueness is
-then constrained by `must_select_if_qualified`: a qualified must-select entry
-must be the sole final survivor, and multiple qualified must-select entries are
-an error.
+`P1` filters each `Val2` object after path-to-`Symbol` resolution and value-facet
+enumeration. Structural matching and entry `P2` exact argument-total-policy
+checking then form the qualified set `Q`. Side-effect-free linear filters apply
+entry preference, concepts, extraction specificity, first-order preference,
+and lifetime rules in a fixed normative order. Each filter is independent of
+candidate enumeration order; the filters are not assumed to commute. Ordinary
+uniqueness is then constrained by `must_select_if_qualified`: a qualified
+must-select entry must be the sole final survivor, and multiple qualified
+must-select entries are an error.
 
 Full overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure. The formal specification is in
