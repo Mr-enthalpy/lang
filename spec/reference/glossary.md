@@ -271,14 +271,16 @@ _See also: OperatorName, Fixity, Arity._
 
 ## Overload Candidate
 
-A same-named symbol in the current namespace context that may be selected for a
-given call. Overload candidates are drawn from the set of symbols visible under
-the current policy environment. The candidate set is constructed by namespace-
-level symbol lookup, filtered by policy, and then ranked by the overload
-resolution pipeline.
+A callable entry prepared for a given call. Final preparation first resolves a
+symbol, projects its heterogeneous value facet, obtains each value's type, and
+resolves that type's associated `()` entry. Non-callable values are discarded.
+First-class derived entries such as a compile companion may join the prepared
+set with stable origin identity. A same-name namespace bucket is only current
+transitional substrate, not the final candidate definition.
 
-_See also: OverloadSpecificity, OverloadResolutionPipeline, PolicyEnv,
-`spec/design/patterns-overload/overload-resolution-design.md`._
+_See also: OverloadSpecificity, OverloadResolutionPipeline,
+`spec/design/patterns-overload/overload-resolution-design.md`,
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
 
 ---
 
@@ -299,18 +301,21 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 
 ## Overload Resolution Pipeline
 
-The fixed multi-pass process that selects a unique overload candidate. The
-pipeline runs in order: policy filter → pattern + type matching → body-entry
-policy partial order → concept legality → concept partial order →
-extraction-pattern specificity → first-order priority → lifetime pre-condition
-check → uniqueness. If zero or more than one candidate survive the pipeline,
-the program is rejected.
+The fixed process that selects a unique overload candidate. Callable-object
+`P1` first filters external lookup visibility. Structural matching and entry
+`P2` exact argument-total-policy checking then form the qualified set `Q`.
+Order-independent linear filters apply entry preference, concepts, extraction
+specificity, first-order preference, and lifetime rules. Ordinary uniqueness is
+then constrained by `must_select_if_qualified`: a qualified must-select entry
+must be the sole final survivor, and multiple qualified must-select entries are
+an error.
 
-Overload resolution is deferred to v0.10+ and depends on the pattern-space
+Full overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure. The formal specification is in
 `spec/design/patterns-overload/overload-resolution-design.md` §5.
 
-_See also: OverloadCandidate, OverloadSpecificity, PolicyEnv, Concept._
+_See also: OverloadCandidate, OverloadSpecificity, Concept,
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
 
 ---
 

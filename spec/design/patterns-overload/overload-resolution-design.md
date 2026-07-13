@@ -12,6 +12,13 @@ and a constrained specificity ordering — that the meta invocation engine needs
 it is **not** equivalent to full runtime overload resolution, which this document
 continues to specify.
 
+The canonical definitions of symbol total policy, callable `P1` / `P2`,
+compile-flow projection, derived compile companions, and
+`must_select_if_qualified` are in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`. This document
+owns how those entries participate in the overload pipeline; it does not
+redefine their staging semantics.
+
 ---
 
 ## 0.1 v0.8 restricted implemented slice
@@ -33,16 +40,17 @@ Implemented for this slice:
 
 - multiple same-name callable object-role children under one namespace node;
 - non-call lookup of a same-name overload set as ambiguity, not silent choice;
-- `meta | runtime` declaration-policy elaboration to symbol self-policy
-  `{ Meta, Runtime }`;
-- `: meta ->` body-entry policy as `{ Meta }`;
-- return-object policy defaulting to the symbol self-policy;
+- `meta | runtime` declaration-policy elaboration to the current transitional
+  symbol-policy metadata `{ Meta, Runtime }`;
+- `: meta ->` elaboration to the current `body_entry_policy` `{ Meta }`;
+- transitional return-object policy transport defaulting to the current symbol
+  policy;
 - C0 from selected namespace graph children by name, role, arity, and
   source-callable shape;
-- C2 self-policy filtering for `MetaAction` and metadata for
+- transitional self-policy filtering for `MetaAction` and metadata for
   `RuntimeBinding`;
-- C3 restricted parameter extraction-pattern applicability;
-- C4 body-entry eligibility for demanded meta execution;
+- restricted parameter extraction-pattern applicability;
+- current body-entry eligibility for demanded meta execution;
 - C7' extraction-pattern specificity with the lexicographic tuple in §4;
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
@@ -76,13 +84,18 @@ expression-level operator lookup, and not evidence that the body may execute
 under runtime policy. Pattern-side forms such as `_ if | else: type` are parsed
 and interpreted in parameter-pattern context only.
 
-Three policy planes remain separate:
+The implementation currently stores three metadata fields:
 
 ```text
-symbol self-policy  -> lookup visibility
-body-entry policy   -> execution permission
-return-object policy -> result object capability
+symbol policy metadata
+body-entry policy metadata
+return-object policy metadata
 ```
+
+They are not three final source-level policy positions. In the final model,
+symbol lookup is governed by `P1`, entry execution and exact argument total
+policy by `P2`, and there is no independent `P3`. The current return-object
+field is provisional transport until layered result-symbol facets exist.
 
 For:
 
@@ -94,13 +107,16 @@ meta | runtime let + =
 };
 ```
 
-v0.8 elaborates:
+v0.8 currently elaborates:
 
 ```text
 symbol self-policy = { Meta, Runtime }
 body-entry policy = { Meta }
 return-object policy = { Meta, Runtime }
 ```
+
+This block records implementation behavior only; it must not be used to infer
+a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
 meta-return semantics. Final meta construction uses `r = ...` to produce
@@ -121,11 +137,12 @@ language. It defines:
 
 - how overload candidate sets are constructed from namespace graph children
 - how visibility and export rules gate internal vs external lookup
-- how self-policy filtering removes candidates inapplicable to the current phase
-- the distinction between self-policy (visibility) and body-entry policy
-  (execution priority)
+- how callable-object `P1` filters lookup-stage visibility
+- how entry `P2` and argument total policy form the qualified candidate set
 - the extraction-pattern specificity rule as a stable lexicographic rank
 - the full overload resolution pipeline from raw symbol lookup to uniqueness
+- how `must_select_if_qualified` constrains the final result without closing an
+  entire overload name
 - a compact judgment form
 
 This document does **not** define:
@@ -142,34 +159,35 @@ This document does **not** define:
 
 ## 2. Overload Set Construction
 
-### 2.1 Per-policy-pass separation
+### 2.1 Lookup-stage separation
 
-Symbol lookup is **not** a single pass that merges all policy environments.
-Different compiler phases operate under different `LookupPhase` values:
-
-```text
-LookupPhase ::=
-  | CompileEval       -- compile-time value evaluation
-  | MetaAction        -- AST-level meta-function expansion
-  | RuntimeBinding    -- runtime symbol binding
-```
-
-Each phase specifies which self-policy flags are admissible. A symbol whose
-`self_policy` does not intersect the phase's admissible policy set is excluded
-from the candidate set at step C2.
+Symbol lookup is **not** a single pass that merges both external stages. The
+final external lookup stage is:
 
 ```text
-admissible(CompileEval)    = { Compile, Meta }
-admissible(MetaAction)     = { Meta }
-admissible(RuntimeBinding) = { Runtime }
+LookupStage ::= compile | runtime
 ```
 
-A runtime-only symbol is never a candidate in `CompileEval` or `MetaAction`
-phases. A compile-only symbol is never a candidate in `RuntimeBinding`.
+A callable object enters the visible candidate set only when:
 
-This means the body-entry priority `compile > meta > runtime` (§5.5) operates
-**within** a phase, after the candidate set has already been filtered by
-self-policy. It does not merge all phases into one pool.
+```text
+current_lookup_stage in P1(candidate)
+```
+
+`compile` and `meta` remain distinct `P2` execution capabilities, but both have
+external stage `compile`:
+
+```text
+external(compile) = compile
+external(meta)    = compile
+external(runtime) = runtime
+```
+
+The current Rust implementation instead exposes `CompileEval`, `MetaAction`,
+and `RuntimeBinding`-shaped query paths over `PolicyFlag` sets. Those are
+transitional resolver mechanics, not a third external flow. Compile-flow
+projection may preserve unresolved compile and meta call families; normal
+compile evaluation later distinguishes their capabilities.
 
 ### 2.2 Visibility and export
 
@@ -199,58 +217,107 @@ users cannot retroactively add candidates to an already-visible namespace node,
 and meta-generated injection occurs only through explicit parent-to-child
 namespace-delta boundaries.
 
-### 2.3 Candidate set notation
+### 2.3 Candidate preparation and qualification
+
+The final candidate source is symbol-first:
+
+```text
+resolve callee path
+  -> Symbol
+  -> project heterogeneous value facet
+  -> obtain each value's type
+  -> resolve its type-associated `()` entry
+  -> discard non-callable entries
+```
+
+The current same-name namespace bucket is only a restricted precursor to this
+flow. Derived compile companions are inserted as first-class entries during
+candidate preparation, not after ordinary overload resolution fails.
 
 ```text
 C0 = RawChildren by name, role, arity, and syntactic callable shape
 C1 = Visible(C0, V)
-C2 = UsableBySelfPolicy(C1, ρ)
+C2 = UsableByP1(C1, current_lookup_stage)
+C3 = ShapeAndTypeMatch(C2, E)
+Q  = P2Qualified(C3, current_lookup_stage, arguments)
 ```
 
 - `C0`: all same-named symbols in the namespace graph matching the call's
   syntactic shape and expected arity / role.
 - `C1`: filtered by visibility view (internal or external).
-- `C2`: filtered by self-policy compatibility with the current `LookupPhase`.
+- `C2`: filtered by callable-object `P1` visibility.
+- `C3`: structurally applicable entries.
+- `Q`: entries whose `P2` has the demanded external stage and whose arguments
+  all have exactly that total policy.
 
 ---
 
-## 3. Self-Policy vs Body-Entry Policy
+## 3. P1 Visibility and P2 Qualification
 
-Two distinct policy dimensions operate at different stages:
-
-| Dimension | Field | Controls | Pipeline step |
-|---|---|---|---|
-| **Self-policy** | `SymbolObject.policy_metadata.policy_set` | Whether the symbol is visible as a candidate in the current phase | C2 |
-| **Body-entry policy** | `MetaFunctionObject.body_entry_policy` | Execution priority of the function's body (compile > meta > runtime) | C4 |
-
-### 3.1 Self-policy (C2)
-
-A symbol is usable in lookup phase `ρ` iff:
+The callable shape is:
 
 ```text
-usable(c, ρ) := self_policy(c) ∩ admissible(ρ) ≠ ∅
+P1 let F = (...): P2 -> let r => { ... }
 ```
 
-where `self_policy(c)` is the set of `PolicyFlag` values on the symbol.
+### 3.1 P1 lookup visibility
 
-### 3.2 Body-entry policy (C4)
-
-After pattern and type matching (C3), candidates are ranked by their body-entry
-policy. The rank is:
+A callable object is usable at C2 iff:
 
 ```text
-body_entry_rank ::= compile > meta > runtime
+usable(c, lookup_stage) := lookup_stage in P1(c)
 ```
 
-Given matched candidates C3:
+`P1` currently admits `compile`, `runtime`, or `compile | runtime`. It says
+where the object can be found; it says nothing about argument policy or body
+execution.
+
+### 3.2 P2 qualified-candidate boundary
+
+After structural applicability, an entry belongs to `Q` exactly when:
 
 ```text
-C4 = { c ∈ C3 | body_entry_rank(c) is maximal in C3 }
+external(P2(c)) = current_lookup_stage
+
+and
+
+for every argument a:
+  total_policy(a) = external(P2(c))
 ```
 
-A `compile`-entry candidate is eligible **only if** all required arguments are
-available as compile-time values. If this condition is not satisfied, the
-candidate is not merely lower priority — it is not eligible at all.
+`P2` currently admits `compile`, `meta`, or `runtime`; it does not admit
+`runtime | compile`. `compile` computes static values and `PatternValue`, while
+`meta` constructs `SymbolConstructionValue` in a `MetaConstructionUnit`.
+Their shared external stage does not erase that capability distinction.
+
+If the overload design applies an entry preference such as:
+
+```text
+compile > meta > runtime
+```
+
+that preference is an ordinary linear filter over `Q`; it is not the meaning of
+`P2`, and it cannot rescue an unqualified candidate.
+
+### 3.3 Derived entries and must-select
+
+A mechanically derived compile companion has a stable identity and origin:
+
+```text
+DerivedCallableEntryId {
+  origin_runtime_entry,
+  derivation_kind = CompileCompanion
+}
+```
+
+It participates in `C0`, qualification, and every ordinary linear filter. It
+also carries `must_select_if_qualified`. This is not a hidden fallback and is
+not a normal overload that a more specific candidate may silently replace.
+
+The same postcondition is available to future user declarations through a
+conceptual `@must_select_if_qualified` annotation. It permits non-overlapping
+same-name overloads. A future `sealed_overload_name` or `closed_overload_set`
+would instead forbid any additional same-name entry and is a separate feature.
 
 ---
 
@@ -358,9 +425,10 @@ be a type-rank object. This node's depth contributes to specificity.
 ```text
 C0  = RawChildren by name, role, arity, and syntactic callable shape
 C1  = Visible(C0, V)                        -- V ∈ {Internal, External}
-C2  = UsableBySelfPolicy(C1, ρ)             -- ρ ∈ LookupPhase
+C2  = UsableByP1(C1, lookup_stage)
 C3  = ShapeAndTypeMatch(C2, E)              -- structural pattern + type matching
-C4  = MaxBodyEntryPolicy(C3, ρ)             -- body-entry rank: compile > meta > runtime
+Q   = P2Qualified(C3, lookup_stage, args)    -- exact argument total policy
+C4  = MaxEntryPreference(Q)                  -- ordinary linear filter, if configured
 C5  = ConceptLegal(C4, E)                   -- remove concept-violating candidates
 C6  = MaxConceptOrder(C5, E)                -- keep maximal under concept poset
 C7  = MaxExtractionSpecificity(C6, E)       -- lexicographic specificity (§4)
@@ -368,10 +436,16 @@ C8  = PreferFirstOrderOverInstantiated(C7)  -- first-order before instantiated
 C9  = LifetimePreSatisfied(C8)              -- remove candidates failing lifetime pre
 C10 = MaxLifetimeSpecificity(C9)            -- origin-path extraction specificity
 
-select unique element of C10
-  if |C10| = 1 → selected
-  if |C10| = 0 → error: no matching overload
-  if |C10| > 1 → error: ambiguous overload
+E_must = { e in Q | e has must_select_if_qualified }
+
+if E_must = empty:
+  select the unique element of C10
+
+if E_must = {e}:
+  succeed only when C10 = {e}
+
+if |E_must| > 1:
+  error: inconsistent qualified must-select entries
 ```
 
 ### 5.2 Pipeline invariants
@@ -396,31 +470,34 @@ site, matching by:
 - **syntactic callable shape**: operator identity (`spelling + fixity + arity`)
   for operator calls, ordinary name for ordinary calls
 
-### 5.4 C1–C2: Visibility and self-policy
+### 5.4 C1–C2: Visibility and P1
 
 Defined in §2 and §3 respectively.
 
-**Ordering constraint**: visibility (C1) precedes self-policy (C2). If a
+**Ordering constraint**: export visibility (C1) precedes `P1` (C2). If a
 symbol is not visible in the lookup view, its policy is not checked.
 
-### 5.5 C3–C4: Pattern/type matching, then body-entry policy
+### 5.5 C3–Q–C4: Matching, qualification, then preference
 
-**Structural matching (C3)** must precede body-entry policy (C4). A
-`compile`-body candidate cannot win on policy alone if its pattern or
-type signature does not match the call operand.
+**Structural matching (C3)** precedes policy qualification. A candidate cannot
+win on entry preference if its pattern or type signature does not match the
+call operand.
 
 `ShapeAndTypeMatch(C2, E)` removes candidates whose:
 
 - extraction pattern is structurally inapplicable to `E`
 - type signature is incompatible with the argument types
 
-**Body-entry policy (C4)** applies after matching: among matched candidates,
-keep those with maximal `body_entry_rank` (compile > meta > runtime), subject
-to the current `LookupPhase` admitting that entry policy.
+**P2 qualification (Q)** then requires the entry's external stage to equal the
+current lookup stage and every argument symbol's total policy to equal that
+same stage. Merely having compile-time type metadata for a runtime symbol does
+not make the original runtime argument a compile-policy argument; projection
+uses a distinct projected symbol value.
 
-A `compile`-entry candidate is eligible only if all required arguments are
-available as compile-time values. If this condition is not met, the candidate
-is not eligible — it does not merely lose to meta.
+**Entry preference (C4)** is a normal linear filter over `Q`. Where the existing
+ordering `compile > meta > runtime` is retained, it compares only already
+qualified entries. It does not define `P2` and does not run before exact
+argument-policy qualification.
 
 ### 5.6 C5–C6: Concept layer (deferred)
 
@@ -484,74 +561,108 @@ candidate's concrete type or instantiation result. C9 therefore follows C8
 
 ### 5.10 Uniqueness
 
+First compute the ordinary final survivor set `C10`. Then compute the
+must-select subset from the qualified set, not from the same-name or merely
+visible set:
+
 ```text
-if |C10| = 1 → select the unique candidate
-if |C10| = 0 → error: no matching overload
-if |C10| > 1 → error: ambiguous overload
+E_must = {
+  e in Q
+  |
+  e has must_select_if_qualified
+}
+
+E_must = empty:
+  |C10| = 1 -> select the unique candidate
+  |C10| = 0 -> error: no matching overload
+  |C10| > 1 -> error: ambiguous overload
+
+E_must = {e}:
+  C10 = {e} -> select e
+  otherwise -> error: qualified must-select entry was not uniquely selected
+
+|E_must| > 1:
+  error: multiple qualified must-select entries
 ```
 
-Neither zero nor multiple candidates are acceptable. There is no fallback to
-where a declaration was written. The written listing may be used for diagnostic
-message presentation only.
+Qualification is the boundary for "participates in this call." A same-name
+entry in `C0` that fails visibility, structure, `P2`, or exact argument policy
+does not enter `E_must`.
+
+This rule makes a qualified derived compile companion non-overridable by
+ordinary specificity. If another candidate wins the linear filters, the call
+fails rather than silently choosing that candidate. If two runtime entries
+project to two simultaneously qualified companions, the call also fails: the
+runtime overload family has no unique compile projection.
+
+Neither zero nor multiple final candidates are otherwise acceptable. There is
+no declaration-order fallback; written order is diagnostic presentation only.
 
 ---
 
 ## 6. Judgment Form
 
 ```text
-Γ; V; ρ ⊢ name(args) ⇓ f
+Γ; V; lookup_stage ⊢ name(args) ⇓ f
 
 where:
   Γ  = namespace graph + type / concept / lifetime environment
   V  = lookup visibility view (Internal | External)
-  ρ  = LookupPhase (CompileEval | MetaAction | RuntimeBinding)
+  lookup_stage = compile | runtime
   E  = normalized extraction tree of the call operand name(args)
   f  = the selected unique overload candidate
 ```
 
 The judgment reads: in environment `Γ`, under visibility view `V` and lookup
-phase `ρ`, the call `name(args)` with extraction tree `E` resolves to overload
-candidate `f`.
+stage `lookup_stage`, the call `name(args)` with extraction tree `E` resolves
+to overload candidate `f`.
 
 Derivation:
 
 ```text
 C0  = RawChildren(Γ, name, role, arity, shape)
 C1  = Visible(C0, V)
-C2  = UsableBySelfPolicy(C1, ρ)
+C2  = UsableByP1(C1, lookup_stage)
 C3  = ShapeAndTypeMatch(C2, E)
-C4  = MaxBodyEntryPolicy(C3, ρ)
+Q   = P2Qualified(C3, lookup_stage, args)
+C4  = MaxEntryPreference(Q)
 C5  = ConceptLegal(C4, E)
 C6  = MaxConceptOrder(C5, E)
 C7  = MaxExtractionSpecificity(C6, E)
 C8  = PreferFirstOrderOverInstantiated(C7)
 C9  = LifetimePreSatisfied(C8)
 C10 = MaxLifetimeSpecificity(C9)
+E_must = MustSelectMembers(Q)
 
-|C10| = 1       C10 = { f }
-───────────────────────────
-  Γ; V; ρ ⊢ name(args) ⇓ f
+OrdinaryUnique(C10, f)
+MustSelectConsistent(E_must, C10, f)
+────────────────────────────────────
+  Γ; V; lookup_stage ⊢ name(args) ⇓ f
 ```
 
 ---
 
 ## 7. Relationship to v0.7-prep Implementation
 
-The v0.7-prep work (PR #56) provides the self-policy filtering layer (step C2)
-that future overload resolution will invoke:
+The v0.7-prep work (PR #56) provides a transitional symbol-policy filtering
+layer that approximates part of future C2:
 
 - `PolicyFlag::Export`, `PolicyFlag::Meta`, `PolicyFlag::Runtime` — symbol policy
   flags carried on `PolicyMetadata.policy_set`
 - `PolicySet` — bit-set of flags
-- `PolicyEnv::Meta` — the `MetaAction` lookup phase with `admissible = { Meta }`
+- `PolicyEnv::Meta` — the current early/meta query environment
 - `ResolverCode` — miss vs ambiguity discriminator
 
 These are used in early-meta expansion (`try_expand_early_meta_initializer`)
 which performs a per-policy-pass lookup of meta-function targets. This is
-step C2 in the overload pipeline: `UsableBySelfPolicy(C1, MetaAction)`.
+current substrate for, but not a complete implementation of, final C2
+`UsableByP1(C1, compile)`.
 
-No other overload resolution steps are implemented. Steps C3–C10 are deferred
-to v0.10+.
+The later restricted v0.8 path implements bounded structural applicability,
+meta body-entry checking, and extraction specificity for selected source
+callables. It does not implement exact `P2` argument-total-policy
+qualification, compile companion derivation, `must_select_if_qualified`, or the
+complete C5–C10 pipeline.
 
 ---
 
@@ -570,6 +681,11 @@ full lifetime / origin-path graph construction
 operator identity disambiguation (spelling + fixity + arity is presumed)
 implicit discard as a candidate-selection mechanism
 declaration-order fallback
+compile companion derivation
+must_select_if_qualified enforcement
+explicit @companion_of replacement
+explicit @no_compile_companion suppression
+closed overload-name declarations
 ```
 
 ---
@@ -582,7 +698,8 @@ declaration-order fallback
 | `pattern-normalization-and-first-order-overload.md` | Earlier, narrower candidate-preparation subset (pattern normalization + first-order type-value candidate model) feeding meta object invocation; not full runtime overload resolution |
 | `mechanical-argument-passing-and-move-fixed-point.md` | Pass-mode adaptation (move/ref/share/copy/in) is separate from type/rank compatibility; `move` does not create a new type value |
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
-| `policy-visibility-symbols.md` §12.1 | Policy-filtered namespace lookup feeds overload set construction |
+| `../policy-capability/policy-visibility-symbols.md` | Implementation mapping for current policy metadata |
+| `../symbol-world/symbol-policy-and-compile-flow-projection.md` | Canonical `P1` / `P2`, companion, and must-select semantics |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph provides the `RawChildren` (C0) layer |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |
 | `glossary.md` | Defines OverloadCandidate, OverloadSpecificity, OverloadResolutionPipeline |

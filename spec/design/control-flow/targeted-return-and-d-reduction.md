@@ -11,6 +11,13 @@ AST (`ReturnEvent`, `TailValue`, and unresolved return target syntax) plus
 a minimal semantic return-target binding pass. D-reduction, completion
 propagation, and execution/lowering semantics remain deferred.
 
+This document owns targeted-return completion and its D-reduction boundary.
+Automatic require does not define a second return/control algebra: it consumes
+the D/Done-normalized compile flow defined here and in
+`../patterns-overload/static-pattern-spaces-and-extraction-chains.md`. The
+compile projection and require slicing rules are canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
 The current return-target binding substrate adds one semantic pass after
 normalization:
 

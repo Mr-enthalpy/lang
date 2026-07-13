@@ -354,21 +354,23 @@ Three stable cases summarize the model:
    function still satisfies noerror
 ```
 
-## 10. Policy Planes Involved
+## 10. Policy Dimensions Involved
 
 This design depends on future policy checking; it does not assume a complete
-error-policy checker exists. The relevant policy planes:
+error-policy checker exists. The relevant dimensions are:
 
-- **Symbol visibility policy** controls whether the `Error` branch predicate and
-  carrier shape can be found.
-- **Body-entry policy** controls whether any factored callable handler may
-  execute.
-- **Return-object policy** describes the produced object.
+- callable **P1** controls whether an `Error` branch predicate or handler object
+  is visible in the current external lookup stage;
+- callable-entry **P2** controls whether a handler can execute and whether its
+  argument symbols have the exact required total policy;
+- the produced result remains layered `Val1 x Pattern x Val2` material; there is
+  no independent return-policy `P3`;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
 These are future design statements, not a description of an implemented policy
-checker.
+checker. Canonical symbol-flow policy is defined in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 ## 11. Relation to Meta Object Invocation
 
@@ -431,8 +433,11 @@ model specified here, and this document does not depend on them for its meaning.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the argument-slot
   counterpart of this return-slot normalization; both are mechanical source-level
   lowering actions.
-- `policy-visibility-symbols.md` — the overall policy model whose visibility /
-  body-entry / return-object planes gate Error branch lookup and execution.
+- `../symbol-world/symbol-policy-and-compile-flow-projection.md` — the final
+  `P1` lookup / `P2` execution boundary and layered result policy that gate
+  Error branch lookup and execution.
+- `../policy-capability/policy-visibility-symbols.md` — mapping from current
+  policy metadata to that final boundary and future orthogonal error policy.
 - `return-value-extraction-and-implicit-decomposition.md` — defines the
   extraction-view `?` operator as a one-step declared top-pattern-layer
   transition. Although Error carrier handling also uses pattern-shaped branches,

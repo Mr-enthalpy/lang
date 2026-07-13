@@ -27,7 +27,10 @@ This document builds on, without replacing:
   namespace-graph assembly and physical source contributions;
 - `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
   for namespace-facet origin, source/meta construction ownership, physical
-  authority, and cross-file closure.
+  authority, and cross-file closure;
+- `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
+  `Val1 x Pattern x Val2`, layered policy, callable `P1` / `P2`, compile-flow
+  projection, derived compile companions, match staging, and automatic require.
 
 ## 1. Canonical Boundaries
 
@@ -311,8 +314,10 @@ resolve symbol
   -> obtain each value's type
   -> resolve the type-associated `()` call entry
   -> discard non-callable or non-applicable entries
-  -> perform policy, argument, and result filtering
-  -> require a unique maximal candidate
+  -> filter callable objects by P1
+  -> form qualified set Q by structure, P2, and exact argument total policy
+  -> apply ordinary linear filters
+  -> enforce must-select consistency and require one final candidate
 ```
 
 An uncallable value is valid value-facet material. It is discarded only while
@@ -321,7 +326,9 @@ invalid and does not turn it into a function overload.
 
 Candidate identity and applicability belong to the candidate/invocation model;
 symbol-first resolution only establishes where the heterogeneous values come
-from.
+from. Derived compile companions are first-class candidate entries, not a
+post-failure fallback; their policy and overload obligations are defined in
+`symbol-policy-and-compile-flow-projection.md`.
 
 ## 4. `compile`, `meta`, and Evaluation Demand
 

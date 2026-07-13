@@ -2,6 +2,10 @@
 
 **Status: Future design boundary. Not current implementation behavior.**
 
+Policy staging of this extraction flow, including runtime Pattern retention and
+automatic require, is canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
 An evaluation returns one result object. The result object's value normal form is
 one of two shapes:
 
@@ -506,3 +510,8 @@ substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection materia
 It enforces that only the selected branch may perform lookup, policy check, meta
 invocation, or local symbol construction. Unselected branches have no lookup,
 policy, invocation, or `NamespaceDelta` obligation.
+
+That invariant applies when a compile-policy scrutinee has been evaluated and a
+single branch is selected. For a runtime-policy scrutinee, compile-flow
+projection retains the Pattern and inferred require retains all
+runtime-reachable alternatives as pattern-guarded contracts.

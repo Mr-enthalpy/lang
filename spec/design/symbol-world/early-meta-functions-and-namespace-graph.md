@@ -38,6 +38,10 @@ directory contribution authority, and current cross-file closure are canonical
 in
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
+Layered symbol policy, final callable `P1` / `P2`, compile-flow projection,
+compile companions, and automatic require are canonical in
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
 ## v0.7 implementation additions
 
 v0.7 introduces early policy-aware resolution with three policy flags:
@@ -110,15 +114,20 @@ call modes; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-l
 | Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `meta | runtime` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
 
-Generated `struct` expansion currently assigns these policy planes:
+Generated `struct` expansion currently assigns these transitional metadata
+fields:
 
-| Generated object | Policy plane |
+| Generated object | Current metadata |
 |---|---|
 | Generated `TypeObject` | symbol policy = `meta | runtime` |
 | Projection namespace `ref` / `share` | symbol policy = `meta | runtime` |
 | Generated field function | symbol policy = `meta | runtime` |
 | Generated field function | body entry policy = `runtime` |
-| Generated field function | return object policy = `runtime` |
+| Generated field function | transitional return object policy = `runtime` |
+
+These fields are implementation substrate. They do not establish three final
+source policy positions: the future model has callable-object `P1`, entry `P2`,
+and no independent `P3`.
 
 ### Policy-aware resolver
 
@@ -565,7 +574,8 @@ Test targets should include:
 - missing mount is a build/resolver error;
 - meta expansion delta is atomic;
 - failed `struct` expansion leaves no partial generated subtree;
-- minimal `PolicyEnv::Meta` resolver visibility filtering is implemented, while
+- minimal `PolicyEnv::Meta` / `PolicyEnv::Runtime` resolver visibility filtering
+  is implemented, while
   full policy checking and callable execution checking remain deferred.
 
 ## 3. Symbol source and child-role model
@@ -641,8 +651,8 @@ field::share::T : T share -> field share
 
 Their symbol policy is `meta | runtime`, so the compiler can resolve and inspect
 them during meta/type-checking phases and can construct residual runtime calls
-that reference them. Their callable body-entry policy is `runtime`, and their
-return-object policy is `runtime`; meta lookup visibility does not permit a meta
+that reference them. Their current callable body-entry policy is `runtime`, and
+their transitional return-object field is `runtime`; meta lookup visibility does not permit a meta
 evaluator to enter their bodies.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
@@ -841,7 +851,8 @@ local-construction rules (§4); `NamespaceOrigin`, physical contribution
 authority, and source construction ownership as future contracts; no
 source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
-with minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
+with minimal `PolicyEnv::Meta` / `PolicyEnv::Runtime` resolver visibility
+filtering; full policy
 checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`).
 
 Non-goals: full version solving; remote package retrieval; lockfile
@@ -853,9 +864,10 @@ lattice; full policy checking; full type checking; full meta-function execution.
 Must cover: early meta-function lookup from the namespace graph; closed
 `SyntaxObject` passing; `assert`; `struct` as the first real core-namespace
 meta-function object; meta call replacement; `MetaExpansionResult`
-(replacement / namespace delta / diagnostics / provenance); policy fields on
-callable objects — distinct symbol visibility, body-entry, and return-object
-policy planes (no full projection or execution checker — see
+(replacement / namespace delta / diagnostics / provenance); current symbol,
+body-entry, and return-object metadata retained as transitional substrate for
+future `P1` / `P2`, not a normative `P3` (no full projection or execution
+checker — see
 `spec/design/policy-capability/policy-visibility-symbols.md`); source/meta
 construction-unit ownership and physical contribution authority (§4);
 generated child namespace installation; no arbitrary rewrite of parent /

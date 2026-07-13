@@ -7,7 +7,9 @@ narrow namespace-graph / resolver / early-meta slice exists in
 `ResolvedPatternScope`, `MetaInstanceScopeId`, meta type self-root checking,
 functional `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
-access-tree construction are not implemented.**
+access-tree construction are not implemented. Layered symbol policy,
+compile-flow projection, compile companions, must-select overload consistency,
+and automatic require are also not implemented.**
 
 ## Scope
 
@@ -17,6 +19,8 @@ The namespace graph world model and symbol-level identity:
 - symbol-first `SymbolCell` facets and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
+- `Val1 x Pattern x Val2`, layered policy, callable `P1` / `P2`, compile-flow
+  projection, derived compile companions, and automatic require
 - resolved pattern scopes, `struct` ownership, functional child-only `inject`,
   and binding/install separation
 - meta-return type self-root identity and complete meta-instance navigation atoms
@@ -43,6 +47,11 @@ policy checker (referenced from the other blocks).
   namespace-origin, source/meta construction-unit ownership, physical-directory
   authority, type/namespace facet inclusion, value-member/pattern-material
   separation, and current cross-file closure.
+- `symbol-policy-and-compile-flow-projection.md` — canonical future layered
+  symbol policy, `P1` / `P2` and no `P3`, mechanical compile projection,
+  derived compile companions, must-select overload consistency,
+  policy-staged match, D/Done-based inferred require, and shared compile
+  evaluation nodes.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.
@@ -60,7 +69,9 @@ policy checker (referenced from the other blocks).
 Read `symbol-first-meta-construction-and-pattern-injection.md` first for the
 canonical future semantic boundary. Then read
 `symbol-construction-units-and-namespace-origin.md` for creation/ownership and
-cross-file rules. Read `early-meta-functions-and-namespace-graph.md` next for
+cross-file rules. Then read `symbol-policy-and-compile-flow-projection.md` for
+policy, staging, companion, and require semantics. Read
+`early-meta-functions-and-namespace-graph.md` next for
 the current bootstrap route, followed by the type-value/place/alias and
 field-function documents.
 
@@ -74,5 +85,6 @@ type-style meta construction, not optional future commentary.
 ## Dependencies
 
 Builds on `build-package/` (roots, mounts, provenance). Provides `TypeValueId`
-to `patterns-overload/` and the symbol world to `meta-invocation/`. Policy
-planes are defined in `policy-capability/`.
+to `patterns-overload/` and the symbol world to `meta-invocation/`. Final
+symbol-flow policy is defined here; `policy-capability/` maps current metadata
+and owns future orthogonal policy dimensions.

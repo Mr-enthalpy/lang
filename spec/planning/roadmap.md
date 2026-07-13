@@ -359,9 +359,10 @@ Must cover:
   sibling / global namespace
 - `struct` consumes AST by a private checker; failure is a meta hard error, not
   a parser / normalizer error
-- policy fields on callable objects — symbol visibility policy, body-entry
-  policy, and return-object policy represented distinctly; full projection and
-  execution checking remain future work (see
+- policy fields on callable objects retained as transitional symbol,
+  body-entry, and result metadata; final source semantics use `P1` / `P2` and
+  no independent `P3`; full projection and execution checking remain future
+  work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 
 Non-goals: general `compile` PatternValue execution; value-directed meta construction;
@@ -381,12 +382,16 @@ Must cover:
   `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`;
 - implement namespace origin and construction ownership in the order defined by
   `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`;
-- keep normalized body material, policy planes, canonical instance keys, and
+- preserve the future layered-policy boundary defined in
+  `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` while
+  deferring full compile-flow projection, companions, and automatic require;
+- keep normalized body material, current policy metadata, canonical instance keys, and
   outer atomic installation as explicit stage boundaries;
 - first-class generic classes such as `(T Vec)`, `(T Option)`, `(A, B Pair)`
-- awareness that meta body execution policy differs from function symbol policy
-  and return-object policy; implement only the minimum checks needed to avoid
-  misrepresenting meta-functions as runtime functions
+- awareness that callable-object `P1` differs from entry `P2`, while current
+  Rust symbol/body/result policy fields are transitional; implement only the
+  minimum checks needed to avoid misrepresenting meta-functions as runtime
+  functions
 
 Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
@@ -394,7 +399,8 @@ construction contract must be absorbed:
 preconditions, not optional local conveniences: `ProductObject` /
 `ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / `AliasChain`,
 `SymbolConstructionValue` / `ResolvedPatternScope`, policy-aware
-lookup with distinct symbol visibility / body-entry / return-object planes,
+lookup with distinct final `P1` / `P2` responsibilities while preserving
+current metadata transport,
 canonical meta instance key, and `NamespaceDelta` atomic install. This does not
 make a full generic system, full overload resolution, or full type checker a
 v0.8 requirement.
@@ -451,6 +457,12 @@ Extend `compile` PatternValue computation and `meta` SymbolConstructionValue
 construction with value-directed control flow beyond the v0.8 restricted
 bootstrap.
 
+This later track also owns implementation planning for mechanical
+compile-flow projection, derived runtime-entry compile companions,
+`must_select_if_qualified`, explicit companion replacement/suppression, and
+D/Done-based automatic require. The design is already canonical; the
+implementation sequence remains deferred.
+
 #### Later stages
 
 The following remain deferred and are not numbered precisely here:
@@ -460,7 +472,8 @@ The following remain deferred and are not numbered precisely here:
 - closure materialization model (ClosureAST → ClosureObject; capture rules)
 - ownership / NLL / drop / lifetime design (including any future semantics for
   `with { ... }`)
-- full policy inference, projection checking, compile / runtime / seal semantics,
+- full policy inference and `P1` / `P2` checking; compile / runtime / seal semantics,
+  including any post-`seal` extension of Pattern policy,
   const / mut policy, effect / error / panic policy, and resource capability
   policy (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes

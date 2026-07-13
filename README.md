@@ -105,10 +105,10 @@ design-fusion staging area; non-normative, not current behavior). Start at
 | Block | Purpose |
 |---|---|
 | `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, physical contribution authority, export surface, provenance |
-| `spec/design/symbol-world/` | Canonical symbol-first facets, PatternValue/SymbolConstructionValue, meta type self-root, pattern scopes, struct/inject, namespace origin/construction ownership, SymbolId/PlaceId/TypeValueId, alias forwarding, and early-meta bootstrap |
+| `spec/design/symbol-world/` | Canonical symbol-first facets, layered symbol policy, `P1` / `P2`, compile-flow projection, compile companions, automatic require, `PatternValue` / `SymbolConstructionValue`, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, and identity/alias foundations |
 | `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
-| `spec/design/meta-invocation/` | Policy-governed meta object invocation, partial/strict reduction, guarded invocation |
-| `spec/design/policy-capability/` | Visibility / body-entry / return-object policy, meta/runtime filtering, future error policy |
+| `spec/design/meta-invocation/` | Symbol-first callable invocation, `P1` / `P2` qualification handoff, partial/strict demand, and residualization |
+| `spec/design/policy-capability/` | Current policy-metadata mapping, lookup/entry separation, and future orthogonal access/effect policy |
 | `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
 
 | Directory | Document | Purpose |

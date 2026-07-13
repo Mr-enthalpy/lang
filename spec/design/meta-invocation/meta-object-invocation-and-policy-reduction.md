@@ -12,6 +12,9 @@ for generation and `r === ...` for forwarding. References to that split below
 are explicitly current transitional implementation notes, not final semantics.
 Namespace-origin and `MetaConstructionUnit` ownership are canonical in
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
+The canonical symbol-flow policy model, callable `P1` / `P2` boundary,
+compile-flow projection, compile companions, and automatic require are in
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 This document specifies a single invocation model for the language. Its claim is
 that compile-time, meta-time, and runtime behavior are not separate languages
@@ -73,10 +76,12 @@ meta | runtime let + =
 };
 ```
 
-has symbol self-policy `{ Meta, Runtime }`, body-entry policy `{ Meta }`, and
-return-object policy `{ Meta, Runtime }` by default. Runtime lookup may see the
-symbol metadata if that lookup phase is requested, but runtime execution must
-not enter this meta-only body.
+currently has symbol policy metadata `{ Meta, Runtime }`, body-entry metadata
+`{ Meta }`, and transitional return-object metadata `{ Meta, Runtime }` by
+default. Runtime lookup may see the symbol metadata if that lookup phase is
+requested, but runtime execution must not enter this meta-only body. These are
+current implementation fields, not three final source-level policy positions;
+the final form has `P1`, `P2`, and no independent `P3`.
 
 The written `self` formal denotes the callable frame's explicit slot 0
 self-position. It is injected by invocation after callable resolution; it is not
@@ -138,17 +143,19 @@ verification because no meta-visible value was produced. Ambiguous
 meta-visible candidates remain hard diagnostics in both `MetaPartial` and
 `MetaStrict`; ambiguity is not residualized.
 
-Verification consumes the RHS result policy. Direct type-name forwarding uses
-the forwarded type symbol's own policy. Restricted source-callable invocation
-uses the selected callable's return-object policy. This keeps binding policy
-inference and explicit policy verification from collapsing every successful
-meta value to `meta | runtime`.
+The current verifier consumes provisional RHS result-policy metadata. Direct
+type-name forwarding uses the forwarded type symbol's current policy, while
+restricted source-callable invocation uses the selected callable's
+transitional `return_object_policy` field. This describes v0.8 transport only;
+it is not a final `P3` rule. Final result-symbol lookup policy inherits `P1`,
+while the result's `Val1`, `Pattern`, and `Val2` layers retain their own policy.
 
 When binding policy is omitted and RHS evaluation succeeds with a value, the
 binding policy is inferred from that RHS result policy and written onto the
 materialized binding. For example, a `meta let + = ...` source callable whose
-return-object policy is meta-only produces a meta-only `let X: type = int +
-unit;` binding when no explicit policy is written. Explicit policy annotations
+transitional return-object field is meta-only produces a meta-only
+`let X: type = int + unit;` binding when no explicit policy is written.
+Explicit policy annotations
 still use the same result policy for shrink-only verification. Inference does
 not implicitly copy export visibility from a forwarded dependency or core
 object; it uses the phase capability portion of the result policy for the new
@@ -226,7 +233,7 @@ The language wants exactly one invocation model. The same mechanism must serve:
 - ordinary functions,
 - meta functions,
 - verification operations,
-- future control predicates,
+- future pattern-match consumers and predicates,
 - operators,
 - type constructors,
 - source-level meta actions.
@@ -244,9 +251,10 @@ There is no macro expansion layer that rewrites syntax by textual privilege.
 Meta behavior is ordinary callable behavior observed under a stricter policy environment.
 ```
 
-Concretely, `struct`, `verify`, a future `cond`, and the future predicate
-operators `&&`, `||`, `==`, and `!=` should all eventually be ordinary callable
-symbols selected by the same lookup-and-invocation mechanism. They are not
+Concretely, `struct`, `verify`, match-closing consumers, and predicate operators
+such as `&&`, `||`, `==`, and `!=` should all eventually be ordinary callable
+symbols selected by the same lookup-and-invocation mechanism. None introduces
+a second branch semantics beyond policy-staged pattern matching. They are not
 parser keywords and not normalizer special cases. Whatever specialness they
 have lives in:
 
@@ -260,57 +268,76 @@ normalized structure; the meaning of `struct`, `verify`, `cond`, or `==` is
 decided by graph lookup and policy-governed invocation, not by the spelling of
 the name.
 
-## 2. Lookup visibility is not execution permission
+## 2. P1 Lookup Visibility Is Not P2 Execution Permission
 
-The model keeps two judgments strictly separate. One judgment decides whether a
-symbol is *visible* to a query; the other decides whether a resolved callable
-may be *executed*.
+The final callable form is:
 
 ```text
-Γ; LookupEnv ⊢ path ⇓ symbol
-
-Γ; ExecutionEnv ⊢ call(symbol, args) ⇓ result
+P1 let F = (...): P2 -> let r => { ... }
 ```
 
-Three policy planes participate, and they answer three different questions:
-
-- **Symbol policy** controls whether a symbol appears in a candidate set for a
-  lookup environment. It is a *visibility* filter on resolution.
-- **Body-entry policy** controls whether a callable body may be *entered* in an
-  execution environment. It is an *execution* gate.
-- **Return-object policy** controls the policy of the object the callable
-  *produces*. It describes the result, not the call.
-
-Because these are different planes, visibility never implies executability. The
-following inference is invalid:
+It has two distinct judgments:
 
 ```text
-symbol visible under PolicyEnv::Meta
-⇒ callable executable under meta
+Gamma; lookup_stage |- path => Symbol
+
+Gamma; P2 |- call(Symbol, arguments) => result
 ```
 
-The correct distinction is:
+`P1` is the callable object's externally visible lookup-stage set:
 
 ```text
-symbol visible under PolicyEnv::Meta
-⇒ the compiler/meta pass may resolve, inspect, classify, or residualize it
-
-callable body-entry policy admits Meta
-⇒ the compiler/meta pass may enter or evaluate the callable body
+P1 ::= compile
+     | runtime
+     | (compile | runtime)
 ```
 
-A meta pass may therefore resolve a symbol whose body is runtime-only: it can
-see it, inspect its object, classify it, type-check against it, and build a
-residual runtime call that defers the actual execution. What it may not do is
-*enter the body* under a meta execution environment when the callable's
-body-entry policy does not admit meta. Seeing a symbol and running its body are
-distinct permissions governed by distinct policy planes.
+`P2` is an individual callable entry's execution capability and exact argument
+total-policy requirement:
 
-This separation is the load-bearing invariant of the whole model. Candidate
-construction (Section 3), partial vs strict reduction (Section 4), guarded
-invocation (Section 5), and residualization (Section 6) all rely on the fact
-that a symbol's presence in a candidate set says nothing, by itself, about
-whether its body can run here and now.
+```text
+P2 ::= compile | meta | runtime
+
+external(compile) = compile
+external(meta)    = compile
+external(runtime) = runtime
+```
+
+A declaration is well formed only when:
+
+```text
+external(P2) subset-of P1
+```
+
+A call entry is policy-qualified only when:
+
+```text
+current_lookup_stage in P1
+
+and
+
+for every argument a:
+  total_policy(a) = external(P2)
+```
+
+Visibility therefore never implies executability. A compile lookup may see a
+runtime entry whose object has `compile | runtime` `P1`, inspect it, preserve
+its pattern projection, or prepare its derived compile companion. It may not
+execute the original runtime body as a compile or meta entry.
+
+`compile` and `meta` remain different internal capabilities: compile computes
+static values and `PatternValue`; meta constructs `SymbolConstructionValue` in
+a `MetaConstructionUnit`. They are grouped only by their shared external
+compile stage.
+
+There is no independent final return-policy `P3`. Result-symbol lookup policy
+inherits `P1`, while the result's layered symbol material retains its own
+policy. Current `self_policy`, `body_entry_policy`, and
+`return_object_policy` fields are transitional implementation substrate for
+parts of this model, not three normative source positions.
+
+This lookup/entry separation is load-bearing for candidate qualification,
+partial versus strict demand, compile-flow projection, and residualization.
 
 ## 3. Candidate pipeline
 
@@ -329,17 +356,17 @@ call-entry candidate pool:
   obtain each value's type
   -> resolve the type-associated `()` entry
   -> discard non-callable entries
+  -> include stable derived callable entries
 
-applicable candidate pool:
+qualified candidate set Q:
   call-entry pool + argument shape + normalized pattern compatibility
-  + rank-directed value compatibility
-
-executable candidate pool:
-  applicable candidate pool + body-entry policy compatible with demanded execution environment
+  + P1 lookup-stage visibility
+  + P2 execution-stage compatibility
+  + exact argument total-policy equality
 
 selected result:
-  policy + argument + result filtering
-  -> unique maximal candidate
+  Q -> ordinary linear filters -> final survivor set
+  -> unique candidate satisfying must-select postconditions
 ```
 
 Reading the layers from the top:
@@ -350,12 +377,16 @@ Reading the layers from the top:
 - The **call-entry candidate pool** obtains each value's type and resolves the
   type-associated `()` entry. Non-callable values are valid facet material but
   are discarded for this call position.
-- The **applicable candidate pool** keeps only those callables whose parameter
+- The **qualified set `Q`** keeps only those callables whose parameter
   patterns and rank-directed symbol/type/pattern-value expectations are
-  compatible with the actual argument shapes.
-- The **executable candidate pool** keeps only those applicable callables whose
-  body-entry policy is compatible with the execution environment the call site
-  demands.
+  compatible with the actual argument shapes, whose object is visible through
+  `P1`, whose `P2` has the demanded external stage, and whose arguments have
+  exactly that total policy.
+- The **linear filters** apply concept, specificity, instantiation, lifetime,
+  and any configured entry-preference ordering only after qualification.
+- The **must-select postcondition** is computed from `Q`. A qualified derived
+  compile companion must be the final unique survivor; a more specific normal
+  overload cannot silently replace it.
 
 Same-name value entries are not assumed to be same-type function overloads.
 They may have unrelated types and become comparable only after their own
@@ -366,19 +397,21 @@ the earlier core-meta/source-verification path, and the v0.8 restricted
 source-declared meta-overload path. The v0.8 path has argument-shape matching,
 restricted parameter-pattern applicability, body-entry filtering, and selected
 simple-body evaluation, but not full runtime overload resolution, concepts,
-lifetime preconditions, guarded branch execution, or arbitrary meta block
-interpretation.
+lifetime preconditions, exact `P2` argument-total-policy checks, compile
+companions, must-select enforcement, guarded branch execution, or arbitrary
+meta block interpretation.
 
 A formal sketch of the intended end-to-end frame:
 
 ```text
-Γ; LookupEnv ⊢ callee_path ⇓ Symbol
-Γ; LookupEnv ⊢ value_facet(Symbol) ⇓ V*
-Γ; LookupEnv ⊢ type(V*) / () ⇓ C_call_entries
-Γ ⊢ explicit_user_product ⇓ ArgShapes
-Γ ⊢ C_call_entries × ArgShapes ⇓ C_applicable
-Γ; ExecutionEnv ⊢ C_applicable ⇓ selected_callable
-Γ; ExecutionEnv ⊢ invoke(selected_callable, explicit_user_product) ⇓ InvocationResult
+Gamma; lookup_stage |- callee_path => Symbol
+Gamma; lookup_stage |- value_facet(Symbol) => V*
+Gamma; lookup_stage |- type(V*) / () => C0
+Gamma |- explicit_user_product => ArgShapes
+Gamma; lookup_stage |- Qualified(C0, ArgShapes) => Q
+Gamma |- LinearFilters(Q) => C_final
+Gamma |- MustSelectConsistent(Q, C_final) => selected_callable
+Gamma; P2(selected_callable) |- invoke(...) => InvocationResult
 ```
 
 This sketch is the target for general invocation. v0.8 proves the path for a
@@ -545,7 +578,8 @@ No admissible compile/meta candidate:
 Visible ambiguity or construction conflict:
   both demands => error
 
-Candidate exists but body-entry policy rejects demanded capability:
+Candidate exists but final P2 (current substrate: body-entry policy) rejects
+the demanded capability:
   partial => residualize when legal
   strict  => error
 ```
@@ -563,7 +597,8 @@ or declaration context. This includes:
 - installing a NamespaceDelta atomically;
 - binding the declared target (e.g. `let T: type = ...`);
 - exposing an extraction-facing interface on the constructed value;
-- applying the return-object policy of the callee.
+- assigning result-symbol lookup policy from callable `P1` while preserving
+  each result layer's own policy.
 ```
 
 This separation is intentional: invocation produces an uninstalled value, and
@@ -604,61 +639,55 @@ Any implementation, test, or document that uses `IdentityType` as evidence that
 ordinary `PatternValue` / `SymbolConstructionValue` semantics have been
 implemented is incorrect.
 
-## 5. No `if constexpr`: guarded invocation instead
+## 5. Match and If Share One Pattern Mechanism
 
-The language does not introduce an `if constexpr` versus `if` split. Control-like
-constructs are not privileged compile-time syntax. `cond`, `&&`, `||`, equality
-predicates, inequality predicates, and similar constructs are ordinary callable
-objects, distinguished only by their invocation strategy.
-
-An invocation strategy is metadata and semantics attached to a callable object.
-It describes how arguments are evaluated and how branches are selected:
+The language has no semantic split among:
 
 ```text
-InvocationStrategy =
-  | Eager
-  | Lazy
-  | GuardedBranch
-  | ShortCircuit
-  | PatternDirected
+match
+constexpr match
+if
+if constexpr
 ```
 
-How the strategies are intended to be used:
-
-- Ordinary functions default to **eager** argument evaluation.
-- `cond` uses **guarded branch** evaluation: it evaluates a predicate and then
-  selects a single branch.
-- `&&` and `||` use **short-circuit** evaluation.
-- Operators such as `==` and `!=` may have meta-visible overloads, selected and
-  invoked through the same pipeline as any other callable.
-- If all needed components are meta-visible and meta-executable, the expression
-  reduces at meta time to a meta value.
-- If any required component is runtime-only, partial meta reduction suspends
-  into a residual, or strict meta execution reports an error.
-
-The key example is guarded branch selection:
+There is one pattern-matching mechanism. `if` / `else` is the two-pattern case:
 
 ```text
-cond(pred, then_branch, else_branch)
+match cond {
+  true  => ...
+  false => ...
+}
 ```
 
-If `pred` reduces to a meta boolean, only the selected branch is resolved and
-evaluated. The unselected branch does not create lookup obligations. This is the
-crucial property of guarded invocation: a branch that is **not entered must not
-force policy lookup of any symbol inside it**. The unselected branch is not
-required to resolve, not required to type-check at meta time, and not required
-to have meta-visible callees.
+Surface spellings remain ordinary syntax/call material until later semantic
+interpretation; this does not require parser keywords or a privileged
+`IfExpr`. The stage of branch selection follows the matched symbol's total
+policy:
 
-This property is also the foundation for future `noerror` behavior and error
-propagation. Because an unentered branch imposes no lookup or execution
-obligation, a guarded construct can route around a failing or runtime-only
-branch without that branch contaminating the meta reduction of the taken path.
-Guarded invocation, not a privileged `if constexpr`, is what gives the language
-compile-time branch selection.
+```text
+total_policy(scrutinee) = compile
+  -> normal compile evaluation selects the branch
 
-The same rule applies to match-like control forms: a `match`-like consumer is
-an ordinary meta-callable over pattern spaces / extraction results, not a
-parser-level privileged node.
+total_policy(scrutinee) = runtime
+  -> the Pattern projection remains in CompileFlow
+  -> actual branch selection remains runtime
+```
+
+Pattern-space subtraction and completed-result isolation are not invocation
+strategies invented here. Branch chains first use the canonical extraction
+residual `D(A, S)` and `Done` semantics in
+`../patterns-overload/static-pattern-spaces-and-extraction-chains.md`. Automatic
+require then consumes that D/Done-normalized flow as specified in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
+For a compile-policy scrutinee, only the selected guarded branch is evaluated
+in normal compile evaluation. For a runtime-policy scrutinee, each possible
+runtime branch retains a pattern-guarded compile contract; automatic require
+conjoins those guarded contracts rather than evaluating an unguarded Boolean
+conjunction of branch bodies.
+
+`partial` versus `strict` still controls whether an unresolved runtime boundary
+may residualize. It does not create a separate constexpr control language.
 
 ## 6. Residual runtime expressions
 
@@ -761,7 +790,7 @@ Current state:
   `r = ...` producing a `SymbolConstructionValue`; ordinary `let ===` aliasing
   remains separate.
 - `PolicyEnv::Meta` and `PolicyEnv::Runtime` support visibility metadata; the
-  restricted overload selector also checks selected body-entry policy before
+  restricted overload selector also checks the selected current body-entry field before
   meta execution.
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
@@ -791,7 +820,7 @@ not exist yet.
 
 ## 9. Relation to pattern normalization and first-order type values
 
-Full candidate selection — the applicable and executable layers of Section 3 —
+Full candidate selection — the qualified set and linear filters of Section 3 —
 depends on machinery that this document does not define. Argument shape,
 normalized parameter pattern compatibility, and first-order type-value
 compatibility are prerequisites for real overload selection. This document
@@ -818,6 +847,9 @@ symbol/facet + compile/meta + pattern-owner construction:
 
 candidate pattern normalization:
   `pattern-normalization-and-first-order-overload.md`
+
+layered policy / compile projection / companions / automatic require:
+  `../symbol-world/symbol-policy-and-compile-flow-projection.md`
 
 type/place/alias identity:
   `type-values-places-and-alias-forwarding.md`
@@ -881,12 +913,14 @@ and meta-invocation machinery exists.
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.
 5. Introduce SymbolConstructionValue and rank-directed canonical instance keys.
-6. Introduce candidate-set construction for compile/meta invocation.
+6. Introduce final P1/P2 candidate qualification for compile/meta invocation.
 7. Introduce ResolvedPatternScope and binding-independent `struct` ownership.
 8. Move `struct` and `verify` dispatch behind the common invocation engine.
 9. Add functional child-only `inject` without graph installation.
-10. Add partial versus strict reduction modes and guarded strategies.
-11. Only after this, introduce runtime lookup over residual expressions.
+10. Add partial versus strict reduction over D/Done-normalized match flow.
+11. Add mechanical compile-flow projection, derived companions, must-select,
+    and shared inferred-require/body evaluation nodes.
+12. Only after this, introduce runtime lookup over residual expressions.
 ```
 
 Runtime lookup is deliberately listed last. It must not be pulled earlier than

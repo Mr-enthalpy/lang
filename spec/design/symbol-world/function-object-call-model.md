@@ -6,6 +6,8 @@ The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
 resolves to a symbol and heterogeneous value facet.
+Layered policy, `P1` / `P2`, compile companions, and must-select consistency
+are canonical in `symbol-policy-and-compile-flow-projection.md`.
 
 ## 1. Basic thesis
 
@@ -118,11 +120,18 @@ Product |> Expr
 3. For each value entry, obtain its type / TypeValueId
 4. Find call entry: type(value).associated_namespace → lookup `()`
 5. Discard non-callable/non-applicable entries
+   and include any visible first-class derived entries
 6. Determine self mode: () :: F / () :: ref::T / () :: share::T
 7. Build invocation frame: implicit self + explicit shaped product args
-8. Apply callable-entry policy plus argument/result filtering
-9. Require a unique maximal candidate; enter invocation or defer
+8. Filter callable objects by P1; form qualified set Q by structure, P2,
+   and exact argument-symbol total policy
+9. Apply ordinary linear filters and the must-select final consistency check
+10. Enter the unique selected invocation or defer according to demand
 ```
+
+A derived compile companion is prepared as an ordinary identified call entry
+with an origin; it is not a lookup-failure fallback. If it enters `Q`, its
+must-select property requires it to be the final unique candidate.
 
 ## 9. Relation to v0.8 substrate
 

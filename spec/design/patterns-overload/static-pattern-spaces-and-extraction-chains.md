@@ -27,6 +27,12 @@ canonicalized in
 This document consumes those resolved scopes and pattern values; it does not
 derive owner identity from a later binding destination.
 
+Symbol total policy, compile-flow projection, compile companions,
+policy-directed match staging, and automatic require are canonicalized in
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`. This
+document owns the pattern-space residual and `Done` algebra that those flows
+consume; it does not define a parallel control-flow system for require.
+
 ## 0.1 v0.8 boundary
 
 v0.8 does not implement the full pattern-space and extraction-chain model in
@@ -708,6 +714,28 @@ match's return boundary reduces one Done layer, then re-wraps the result.
 The following operator+ reduction performs closure / exhaustiveness checking.
 ```
 
+### 6.5 Automatic require consumes D/Done-normalized flow
+
+Automatic require does not inspect an unrelated traditional CFG and does not
+invent a second branch algebra. A branch chain first performs the transformations
+defined in this document:
+
+```text
+current pattern space A
+  -> extract S1
+  -> matching material enters branch1
+  -> D(A, S1) continues to later branches
+  -> completed results enter Done
+```
+
+Only after this normalization does compile-flow projection take the
+parameter-dominated assertion slice. The synthesis, guarded branch contracts,
+manual-require conjunction, and shared-evaluation rules are canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
+`D` residual domains and `Done` isolation therefore remain the sole
+pattern-control basis for both body continuation and inferred require.
+
 ## 7. Result Consumption, Block Return, and Call Result Semantics
 
 Expression results must never be silently discarded.
@@ -1089,7 +1117,10 @@ under the bool-protected result `(if | else) bool`. Logical, predicate, and
 guard expressions do not produce naked `if | else` pattern space; they produce
 the wrapped bool result, and `?` explicitly exposes the extraction view.
 
-Here `if` and `else` are not lexer keywords and not built-in control-flow syntax. They are mutually exclusive branch names in the pattern space produced by `?`.
+Here `if` and `else` are not lexer keywords and not built-in control-flow
+syntax. They are conventional mutually exclusive arm labels for the two
+bool-pattern alternatives (`true` and `false`) exposed by `?`; they do not
+introduce matching semantics distinct from ordinary pattern extraction.
 
 Traditional if / else can therefore be expressed as an ordinary extraction chain:
 
@@ -1119,6 +1150,24 @@ match explicitly closing the chain
 operator+ reducing result spaces
 result-consumption rules enforcing exhaustiveness
 ```
+
+There is no separate `if constexpr` or `constexpr match` mechanism. The same
+pattern chain is staged by the scrutinee symbol's total policy:
+
+```text
+total_policy(scrutinee) = compile
+  -> compile evaluation selects one D/Done-normalized branch
+
+total_policy(scrutinee) = runtime
+  -> Pattern remains in compile projection
+  -> runtime selects the concrete branch
+```
+
+For inferred require, a compile match forms guarded alternatives selected in
+compile evaluation. A runtime match contributes a conjunction of
+pattern-guarded branch contracts, because every runtime-reachable branch must
+have a valid compile prerequisite. The guards may not be erased into a bare
+conjunction of branch assertions.
 
 ## 10. Closed Control-Pattern Spaces
 
@@ -1210,16 +1259,29 @@ By default, binding extraction is total consumption of the current static patter
 
 > **Formal specification**: `spec/design/patterns-overload/overload-resolution-design.md`.
 > This section is a summary overview; the formal document defines the
-> lexicographic extraction-pattern specificity rule, the full 11-step
-> resolution pipeline with set notation (C0–C10), and the judgment form.
+> lexicographic extraction-pattern specificity rule, the `C0 -> Q -> linear
+> filters` pipeline, and the must-select postcondition. Symbol policy and
+> compile companion semantics are canonical in
+> `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 Extraction participates in overload candidate filtering and resolution. A candidate may carry an extraction pattern. If that pattern is not applicable to the current call pattern space, the candidate is skipped.
 
 ### 12.1 Overload Set Construction
 
-An overload set is built from the symbols visible in the current namespace context, filtered by the current policy environment. `export` controls cross-package boundary visibility: only `export`-bearing symbols are visible to other packages for overload construction. Internal overload resolution (within the owning package) ignores `export`.
+Final candidate preparation first resolves a `Symbol`, projects its
+heterogeneous value facet, obtains each value's type, resolves the
+type-associated `()` entry, and discards non-callable entries. The current
+same-name namespace bucket is only transitional substrate.
 
-Namespace-level symbol lookup produces the initial candidate set. This lookup is **per-policy-pass**, not merged: meta/compile symbol lookup and runtime symbol lookup are separate passes with separate overload sets. Meta passes resolve only `Meta`-bearing symbols; runtime passes resolve only `Runtime`-bearing symbols. They are not searched together in one overload set.
+`P1` filters callable-object visibility at the external `compile` or `runtime`
+lookup stage. `P2` then qualifies structurally applicable entries and requires
+every argument symbol's total policy to equal `external(P2)`. Compile and meta
+entries share external compile visibility but retain different internal
+capabilities.
+
+Derived compile companions enter the prepared candidate set as first-class
+entries. They are not added after overload failure. `export` remains an
+independent cross-package visibility filter.
 
 All candidate filtering operations must be:
 
@@ -1285,23 +1347,31 @@ When multiple candidates survive initial filtering, they are ranked by a fixed m
 
 | Step | Operation | Outcome |
 |---|---|---|
-| 1 | **Policy filter** | Remove candidates whose policy prevents use in the current context. A `runtime`-only candidate is removed from a meta pass. |
-| 2 | **Pattern + type matching** | Remove candidates whose extraction pattern and type signature are structurally inapplicable to the call operand. |
-| 3 | **Body-entry policy partial order** | `compile` > `meta` > `runtime` within the body of the function. `compile`-body candidates are preferred because they operate on fully value-materialized arguments; `meta`-body candidates follow; `runtime`-body candidates last. |
-| 4 | **Concept legality** | Reject candidates whose concept constraints are violated by the call site. |
-| 5 | **Concept partial order** | A stable partial-order projection over concept relationships. More constrained concepts outrank less constrained ones. |
-| 6 | **Extraction-pattern specificity** | Depth-based scoring (§12.2). Larger total depth contribution → higher priority. Excludes candidates with equal maximal score. |
-| 7 | **First-order before instantiated** | A first-order candidate (no type-parameter instantiation needed) outranks a candidate that requires instantiation. |
-| 8 | **Lifetime pre-condition check** | Reject candidates failing `pre` / `lifetime pre` origin-path matching. This matching is structurally analogous to extraction scoring. |
-| 9 | **Uniqueness** | If zero candidates remain → error. If more than one candidate remains → ambiguity error. If exactly one → select it. |
+| 1 | **P1 visibility** | Keep callable objects visible in the current external lookup stage. |
+| 2 | **Pattern + type matching** | Remove structurally inapplicable call entries. |
+| 3 | **P2 qualification** | Form `Q` using execution stage and exact argument-symbol total policy. |
+| 4 | **Linear filters** | Apply configured entry preference, concept legality/order, extraction specificity, first-order preference, and lifetime filters. |
+| 5 | **Ordinary uniqueness** | Produce the ordinary final survivor set. |
+| 6 | **Must-select consistency** | If `Q` contains a must-select entry, it must be the sole final survivor; multiple qualified must-select entries fail. |
 
-Because there is no unrestricted lookup, candidates do not appear from nowhere. ADL-like behavior only appears through explicit forwarding code.
+Because there is no unrestricted lookup, candidates do not appear from
+nowhere. ADL-like behavior only appears through explicit forwarding code.
+Qualification, not merely the same name or initial visibility, is the boundary
+for `must_select_if_qualified`.
 
 ### 12.4 Relationship to Policy and Namespace
 
-Overload set construction is gated on policy-aware namespace lookup (§12.1). Meta-looking passes see only `Meta`-bearing candidates; runtime passes see `Runtime`-bearing candidates. This ensures that symbol lookup order does not leak between passes — a meta pass never accidentally resolves a runtime-only overload.
+Overload set construction is gated by `P1` (§12.1). Compile and meta entries
+share the external compile lookup stage, but `P2` qualification retains their
+different execution capabilities. Runtime entries can contribute derived
+compile companions only when `compile` belongs to the origin callable's `P1`.
+The original runtime entry does not itself become compile-executable.
 
-`export` controls the cross-package visibility boundary for overload construction. Within a package, `export` is irrelevant to overload resolution. Across packages, only `export`-bearing symbols appear in the namespace-wide candidate pool. Full `export` access control is deferred to later phases; the overload resolution pipeline assumes the candidate set has already been filtered by namespace visibility.
+`export` controls the cross-package visibility boundary for overload
+construction. Within a package, `export` is irrelevant to overload resolution.
+Across packages, only exported symbols appear in the visible pool. Full export
+access control is deferred; the formal pipeline assumes namespace visibility
+has already been applied.
 
 ## 13. The Status of `match`
 
@@ -1462,6 +1532,12 @@ Only the selected branch may perform lookup, policy check, meta invocation, or
 local symbol construction. Unselected branches have no lookup, policy,
 invocation, or NamespaceDelta obligation.
 ```
+
+This invariant describes compile evaluation after a compile-policy scrutinee is
+known. It does not mean runtime alternatives disappear from compile-flow
+projection. For a runtime-policy scrutinee, automatic require retains every
+runtime-reachable branch as a pattern-guarded contract and conjoins those
+contracts after D/Done normalization.
 
 This substrate is shape-level. It does not execute arbitrary user meta-function
 bodies, loops, full pattern matching, or full type solving.

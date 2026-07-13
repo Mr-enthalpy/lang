@@ -19,6 +19,9 @@ Resolved pattern owners, `struct` / functional `inject`, and the rule that fully
 named direct-child layers normalize to `Set<PatternValue>` while any bare child
 makes the whole layer positional are owned by
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+Layered policy, compile-flow projection, derived compile companions,
+must-select semantics, match staging, and automatic require are owned by
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 This block distinguishes two layers explicitly:
 
@@ -50,7 +53,7 @@ candidate preparation, not runtime overload resolution.
 - `pattern-normalization-and-first-order-overload.md` — the earlier
   candidate-preparation subset.
 - `overload-resolution-design.md` — the broader, later full overload-resolution
-  vision.
+  vision, including `Q`, linear filters, and must-select consistency.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   extraction-chain semantics.
 

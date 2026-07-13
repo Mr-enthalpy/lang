@@ -85,7 +85,11 @@ here. Their normative future-design owners are:
   `inject`, ordering, extraction handoff, and binding/install boundaries;
 - `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
   for namespace origin, construction ownership, physical authority, and
-  cross-file closure.
+  cross-file closure;
+- `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
+  `Val1 x Pattern x Val2`, layered policy, `P1` / `P2` and no `P3`, mechanical
+  compile-flow projection, derived compile companions, must-select consistency,
+  policy-staged match, and D/Done-based automatic require.
 
 Unimplemented portions remain roadmap work, not reopened design questions.
 
@@ -105,14 +109,34 @@ track:
   permission.
 - Generated field functions are `meta+runtime` visible symbols but runtime-entry
   callables.
+- `PolicyEnv::Runtime` and the restricted `RuntimeBinding` lookup path now
+  provide runtime-flag visibility substrate; they are not final `P1` semantics
+  or runtime execution.
 
-Still open after this correction:
+Resolved future-design decisions:
 
-- `PolicyEnv::Runtime` resolver mode. The `Runtime` flag is reserved but no
-  runtime lookup pass is implemented.
-- Full policy lattice.
-- Policy projection checking and conformance checking.
-- Ordinary function object policy model.
+- callable-object `P1` controls external compile/runtime lookup;
+- entry `P2` controls compile/meta/runtime execution and exact argument-symbol
+  total policy;
+- compile and meta share external compile flow but retain different internal
+  capabilities;
+- there is no independent return-policy `P3`;
+- compile flow is a mechanical projection of complete symbol flow, not a stage
+  constraint solver or eager overload evaluator;
+- eligible runtime entries may have first-class derived compile companions;
+- a qualified companion is `must_select_if_qualified`, not a hidden fallback;
+- match/if share one pattern mechanism and stage by scrutinee total policy;
+- inferred require is a D/Done-normalized assertion slice conjoined with manual
+  require and sharing one compile-evaluation graph with body continuation.
+
+Not implemented after this correction:
+
+- Layered symbol total-policy accounting and final `P1` / `P2` checking.
+- Compile-flow projection and shared compile-evaluation graph.
+- Derived compile companions and must-select enforcement.
+- Explicit companion replacement/suppression annotations.
+- Automatic inferred require.
+- Full orthogonal access/effect policy lattice.
 - Alias forwarding resolution under policy filtering.
 - Overload buckets and per-policy-pass overload set construction.
 - Call execution checker.
@@ -259,7 +283,7 @@ construct a control-flow graph.
 
 ### Later: Control-flow and effect semantics
 
-#### How should `return`, `else`, `match`, `effect`, `sync` be semanticized?
+#### How should `return`, `effect`, and `sync` be semanticized?
 
 **Status:** Open (active at later stages)
 
@@ -267,6 +291,11 @@ construct a control-flow graph.
 These are ordinary `Name` tokens at the lexical and parser level. No special
 AST nodes exist for them. The v0.1 frontend faithfully preserves these names
 in expression AST.
+
+Future `match` / `if` staging is no longer open: both use the same
+pattern-matching mechanism and select compile versus runtime branching from the
+scrutinee symbol's total policy. That semantic decision does not change the
+current lexer/parser boundary.
 
 ---
 

@@ -1,25 +1,29 @@
 # policy-capability
 
-**Status: Non-normative future design with a partial implementation note. v0.7-prep
-provides policy metadata and `PolicyEnv::Meta` lookup filtering; full policy
+**Status: Non-normative future design with a partial implementation note. The
+current substrate provides policy metadata and `PolicyEnv::Meta` /
+`PolicyEnv::Runtime` lookup filtering; full policy
 checking (lattice, projection, conformance, effect/error/panic policy) is not
 implemented.**
 
 ## Scope
 
-Policy as visibility symbols and capability strategy:
+Policy implementation mapping and orthogonal future dimensions:
 
-- symbol visibility policy (which symbols a lookup may find)
-- callable body-entry policy (whether a found callable may execute)
-- return-object policy (the policy of the produced object)
-- context policy and meta/runtime policy filtering
-- future error/panic policy
+- mapping current symbol/body/result metadata to final callable `P1` / `P2`;
+- lookup visibility versus entry execution and exact argument policy;
+- explicit retirement of an independent return-policy `P3`;
+- current `PolicyEnv::Meta` / `PolicyEnv::Runtime` filtering substrate;
+- future access, error/panic, const/mut, and resource policy.
+
+Layered symbol policy, compile-flow projection, compile companions, match
+staging, and automatic require are canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 ## Not in scope
 
 Mechanical return normalization itself. The return-normalization / `noerror`
-design lives in `mechanical-lowering/` and only references the policy planes
-defined here; do not move it into this block.
+design lives in `mechanical-lowering/`; do not move it into this block.
 
 ## Documents
 
@@ -31,5 +35,6 @@ Read `policy-visibility-symbols.md`.
 
 ## Dependencies
 
-Provides the policy planes used by `symbol-world/` lookup, `meta-invocation/`
-execution gating, and the `Error`-handler lookup in `mechanical-lowering/`.
+Maps current policy metadata used by `symbol-world/` lookup and
+`meta-invocation/` execution gating. The final symbol-flow policy owner is
+`symbol-world/`; mechanical error-handler policy remains separate.

@@ -10,11 +10,15 @@ exist before a formal meta object invocation model can select callables. It is a
 future design note. It is not current public language behavior, not an
 implemented pass, and not a parser or normalizer rule.
 
-The document is self-contained. It does not require the reader to assemble its
-meaning from `overload-resolution-design.md`,
-`static-pattern-spaces-and-extraction-chains.md`, or
-`early-meta-functions-and-namespace-graph.md`. Those documents are background
-context only; the design here stands on its own.
+The document is self-contained for pattern and argument-shape preparation. It
+does not restate final overload ordering, pattern-space algebra, or symbol
+policy; those boundaries remain owned by their canonical documents.
+
+Callable `P1` / `P2`, exact argument total-policy qualification, compile
+companions, and must-select consistency are canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`. This document
+supplies structural candidate material to that policy boundary; it does not
+define a competing body-entry or return-policy model.
 
 ## 0.1 v0.8 restricted subset
 
@@ -160,13 +164,15 @@ lookup callee name
 It must be at least:
 
 ```text
-lookup callee name
-collect candidates
+resolve callee Symbol and project heterogeneous value entries
+prepare type-associated `()` entries, including derived entries
 normalize argument shapes
 match candidate parameter patterns
 check first-order type-value compatibility
-filter by policy/body-entry
-select callable
+filter callable objects by P1
+form qualified set Q using P2 and exact argument total policy
+apply linear filters and must-select consistency
+select one callable
 ```
 
 The "overload" introduced at this layer serves meta object invocation first. It
@@ -453,18 +459,20 @@ formal meta object invocation engine. The end-to-end pipeline is:
 
 ```text
 normalized call
-  -> callee lookup under policy
-  -> candidate collection
+  -> callee Symbol / heterogeneous value projection
+  -> type-associated `()` candidate preparation
   -> argument shape formation
   -> parameter pattern normalization
   -> first-order type-value compatibility
-  -> applicable candidate set
+  -> P1 visibility and P2 qualification set Q
+  -> overload linear filters and must-select check
   -> meta object invocation
 ```
 
 This document covers only the preparation portion — from argument shape to the
-applicable candidate set. It stops at the boundary where the meta object
-invocation engine takes over. The invocation engine itself (policy-governed
+qualified candidate material. It stops at the boundary where the overload
+filters and meta object invocation engine take over. The invocation engine
+itself (policy-governed
 execution, partial vs strict reduction, residualization) is specified in
 `meta-object-invocation-and-policy-reduction.md`.
 

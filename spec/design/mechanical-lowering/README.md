@@ -63,6 +63,6 @@ Read in order: argument passing, then return normalization, then call modes.
 
 ## Dependencies
 
-Consumes `RawArgShape` / `ParameterShape` from `patterns-overload/`, the `Error`
-policy planes from `policy-capability/`, and reuses the unified invocation from
-`meta-invocation/`.
+Consumes `RawArgShape` / `ParameterShape` from `patterns-overload/`, the layered
+symbol policy from `symbol-world/`, orthogonal error-policy mapping from
+`policy-capability/`, and the unified invocation from `meta-invocation/`.

@@ -1,482 +1,293 @@
-# Policy as Visibility Symbols and Capability Strategy
+# Policy Visibility and Capability Mapping
 
-**Status: Non-normative future design. v0.6 reserved metadata slots and
-architectural placeholders. v0.7 adds `PolicyFlag` / `PolicySet` / `PolicyEnv`
-types, assigns policy flags to core and user-declared symbols, and implements
-`PolicyEnv::Meta` filtering in the resolver and early-meta expansion. Full
-policy lattice, projection, conformance checking, and additional policy
-environments remain future work.**
+**Status: Mixed implementation note and future-design satellite.** The final
+symbol-flow policy model is canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`. This document
+records how that model relates to the policy metadata already present in
+`lang_build` and to policy dimensions that remain intentionally orthogonal.
 
-## 1. Scope
+This document does not define a third return-policy position, compile-flow
+projection, compile companions, or automatic require. Those rules have one
+normative owner: the canonical symbol-policy document above.
 
-This is a future design note. It is not a current parser rule, not a current
-normalizer rule, and not a v0.6–v0.8 implementation requirement.
+## 1. Canonical Policy Shape
 
-The immediate, narrow objective for v0.6–v0.8 is:
-
-- Reserve symbol policy metadata on `SymbolObject`.
-- Reserve current-policy context slots on resolver / meta-function object /
-  namespace node.
-- Reserve policy fields on function signatures, return-object slots, and
-  namespace graph injection / meta expansion results.
-- Ensure `meta`, `compile`, `runtime`, `seal`, `const`, and `mut` are not
-  introduced as lexer keywords, parser special forms, or hardcoded compiler
-  branches.
-- Prevent agents and implementations from inventing a full policy lattice ad-hoc.
-
-Current implementation note: `lang_build` reserves `PolicyMetadata` and
-`VisibilityMetadata` slots on `SymbolObject` and `NamespaceNode`, a
-current-policy slot on `ResolverContext`, and function/body/return policy slots
-on `MetaFunctionObject`. Generated `FieldObject` payloads also carry callable
-body-entry and return-object policy slots. These slots are preserved through
-namespace deltas. v0.7-prep implements only `PolicyEnv::Meta` resolver
-visibility filtering. This is not full policy checking: policy lattice,
-projection rules, conformance checking, and callable execution checking remain
-deferred.
-
-Non-goals for v0.6–v0.8:
-
-- full policy lattice implementation
-- full policy inference
-- full projection / conformance checker
-- full effect checking
-- full const / mut checking
-- full error / panic policy checking
-- full seal-stage execution
-- compile-time IR interpreter
-- value-to-value compile-time execution
-
-## 2. Core Principle
-
-Policy is a visibility symbol and capability strategy.
-
-Policy should not be understood first as a subtype in a type system, nor as an
-ordinary annotation. It is a set of **traits** with partial-order, composition,
-and mutual-orthogonality relations, used to constrain:
-
-- which symbols the current context may import or resolve;
-- under which contexts a given symbol is visible;
-- in what policy environment a function body executes;
-- how policy inference or projection checking applies to parameters, return
-  values, and local bindings;
-- whether a meta-function has the capability to construct types, inject symbols,
-  or interpret AST;
-- whether a compile-time computation is restricted to value semantics only;
-- whether a seal-stage operation may only scan frozen symbols and register
-  runtime metadata.
-
-Where a partial order is noted, the "parent-child" or "⊑" relationship records
-a trait partial order, **not** a traditional subtype in the type-system sense.
-
-## 3. Basic Syntax Direction
+The future callable form has two policy positions:
 
 ```text
-policy let ...
+P1 let F = (...): P2 -> let r => { ... }
 ```
-
-For example:
 
 ```text
-runtime | meta let Vec: _: fn = ...
+P1 ::= compile
+     | runtime
+     | (compile | runtime)
+
+P2 ::= compile
+     | meta
+     | runtime
 ```
 
-Here the leftmost `runtime | meta` annotates the symbol `Vec`'s own policy —
-not the function body's entry policy, and not the return-value policy.
-
-The function body's entry policy is specified through the function arrow or
-function trait annotation:
+Their meanings are different:
 
 ```text
-(T: type): meta -> meta | runtime let r: symbol => { ... }
+P1:
+  external lookup policy of the callable object
+
+P2:
+  execution policy of this callable entry
+  plus an exact total-policy requirement on every argument symbol
 ```
 
-- `meta` describes the function body execution environment.
-- The environment begins at the parameter binding; policy is not computed only
-  from the `{ ... }` body.
-- The return slot `meta | runtime let r: symbol` annotates the returned symbol
-  construction's own policy. If that symbol has a `TypeFacet`, the facet must
-  satisfy the canonical meta-instance self-root invariant; policy does not
-  relax construction identity.
-
-## 3.1 Symbol visibility policy vs callable execution policy
-
-The policy model has separate judgments for lookup visibility and callable
-execution. A symbol may be visible to a resolver query without granting
-permission to enter its function body.
+The external stage of an entry is:
 
 ```text
-Symbol visibility judgment:
-
-  Γ; LookupEnv ⊢ path ⇓ symbol
-
-Callable execution judgment:
-
-  Γ; ExecutionEnv ⊢ call(symbol, args) ⇓ value
+external(compile) = compile
+external(meta)    = compile
+external(runtime) = runtime
 ```
 
-The symbol policy on `SymbolObject.policy_metadata.policy_set` controls whether
-the resolver can see a symbol in a lookup environment. In v0.7-prep, the only
-implemented policy-aware lookup environment is `PolicyEnv::Meta`, which admits
-symbols carrying `Meta`.
-
-The body-entry policy on a callable payload controls whether a callable body may
-be entered in an execution environment. The return-object policy records the
-policy of the object produced by that callable. These policies are not resolver
-visibility filters.
-
-Therefore:
+A declaration is well formed only when:
 
 ```text
-symbol visible under PolicyEnv::Meta
-  ⇒ the meta pass may resolve the symbol, inspect its object, use it for
-     checking, and build a residual runtime call.
-
-callable body_entry_policy contains Meta
-  ⇒ the meta pass may enter/evaluate the callable body.
+external(P2) subset-of P1
 ```
 
-The following inference is invalid:
+A call is policy-applicable only when:
 
 ```text
-symbol visible under PolicyEnv::Meta
-⇒ callable executable under meta
+current_lookup_stage in P1
+
+and
+
+for every argument a:
+  total_policy(a) = external(P2)
 ```
 
-Generated field functions are the key v0.7-prep example:
+`P1` is not an argument policy. `P2` is not the callable symbol's lookup
+range. The union `runtime | compile` is currently meaningful only at `P1`;
+`P2 = runtime | compile` is reserved for a future two-stage binding and
+evaluation model.
+
+## 2. There Is No Final P3
+
+There is no independent final return-policy position:
 
 ```text
-meta | runtime let field::ref::T =
-  (self, object: T ref): runtime -> runtime let r: field_type ref => { ... }
+P1 let F = (...): P2 -> let r => { ... }
 ```
 
-This records three distinct planes:
+not:
 
 ```text
-field::ref::T symbol policy:
-  meta | runtime
-
-field::ref::T function body entry policy:
-  runtime
-
-field::ref::T return object policy:
-  runtime
+P1 let F = (...): P2 -> P3 let r => { ... }
 ```
 
-The compiler can resolve and inspect `field::ref::T` during meta/type-checking
-phases because the symbol itself is visible under `PolicyEnv::Meta`. It must not
-execute the field function body while acting in a meta execution environment,
-because the body-entry policy is runtime-only. This is ordinary compiler
-reasoning over symbol objects, not reflection.
-
-For the future invocation pipeline that uses these policy planes to perform
-partial or strict meta reduction, see
-`meta-object-invocation-and-policy-reduction.md`.
-
-## 4. Context Policy and Import Rule
-
-Every context carries a **current policy**.
-
-A symbol that is to be imported or resolved in that context must have its own
-policy be a child-policy of, or identical to, the current context policy:
+A returned symbol remains layered symbol material:
 
 ```text
-symbol.policy ⊑ context.policy
+Val1 x Pattern x Val2
 ```
 
-(where `⊑` is the policy partial order, not a traditional subtype.)
-
-If the relation fails, a later phase would emit a policy visibility error. v0.6–
-v0.8 only reserve the metadata slots; full checking is deferred.
-
-## 5. Binding-Side Policy Rule
-
-The policy written on the **left side of `let`** may only be the **parent** of,
-or identical to, the policy of the overall expression on the right:
+Each layer retains its own policy. A single `P3` would flatten those policies
+back into one result annotation and contradict the layered model. The result
+symbol's external lookup policy instead inherits `P1`:
 
 ```text
-expr.policy ⊑ binder.policy
+lookup_policy(result_symbol) = P1
 ```
 
-(The final direction may adjust, but the design intent is preserved.)
+This inheritance does not assign `P1` to every value leaf or layer object.
+Future policy closure or transformation must use an explicit mechanism; it
+must not be hidden in a revived return-policy slot.
 
-A function's parameter position is equivalent to a binding position. Therefore
-future function parameters require an explicit `let` to separate the policy
-dimension from the parameter itself. This is a **future** syntax constraint, not
-a current parser special case.
+## 3. Symbol Policy Is Layered
 
-## 6. Orthogonality of compile and runtime
-
-`compile` and `runtime` must not default to:
+The canonical flow model is:
 
 ```text
-compile ⊑ runtime
+Symbol = Val1 x Pattern x Val2
 ```
 
-Instead they are orthogonal dimensions:
+Until `seal` is introduced:
 
 ```text
-compile ∧ runtime == ∅
+policy(Pattern) = compile
+compile < runtime
+
+total_policy(Symbol)
+  = policy(Val1) join policy(Pattern)
 ```
 
-A symbol intended to be visible in **both** phases must be written:
+`Val2` is deliberately excluded from this total-policy calculation. It is the
+object layer used for later lookup and invocation, commonly containing
+callable objects.
+
+A pure type is the degenerate case with no `Val1` leaves and therefore has
+compile total policy. An ordinary value is the degenerate case with no `Val2`
+object. These are not two disconnected semantic worlds.
+
+The policy expression attached to an object answers a lookup question. The
+entry policy answers an execution and argument-qualification question:
 
 ```text
-compile + runtime
+Gamma; lookup_stage |- path => symbol
+
+Gamma; P2 |- call(symbol, arguments) => result
 ```
 
-Traditional partial-order (parent-child-like) relationships belong primarily to
-visibility-access-control policy dimensions such as `public ⊑ package ⊑ private`
-or `friend`-like grants. `compile` / `runtime` / `meta` / `seal` are stage and
-capability policies, not access-visibility policies, and do not necessarily form
-a simple parent-child chain.
+Visibility never implies entry permission.
 
-## 7. meta as Function Trait, Not let-side Policy
+## 4. Compile and Meta
 
-`meta` is a **function trait**. It describes what environment the function body
-enters. It is not a general `let`-side policy annotation.
+`compile` and `meta` have different internal capabilities:
 
 ```text
-runtime | meta let Vec: _: fn =
-  (T: type): meta -> meta | runtime let r: symbol => { ... }
+compile:
+  compute ordinary static values and PatternValue
+
+meta:
+  construct SymbolConstructionValue inside a MetaConstructionUnit
 ```
 
-- `runtime | meta` — `Vec`'s own symbol policy.
-- `meta` — function body execution policy.
-- The parameter `T` is already in the `meta` environment from its binding point.
-- The return slot `r` has policy `meta | runtime`.
-- The entry policy and the exit policy are not required to be identical.
-- When not explicit, inference or explicit projection checking determines legality
-  (deferred to a later stage).
-
-Do not interpret `meta` as source-level `import`, as a parser keyword, as a
-namespace keyword, or as a runtime effect.
-
-## 8. meta and compile
+They share an external stage:
 
 ```text
-compile capability:
-  compute PatternValue
-
-meta capability:
-  create or transform SymbolConstructionValue : symbol
+external(compile) = compile
+external(meta)    = compile
 ```
 
-Meanings:
+Consequently compile-flow projection keeps both compile and meta invocation
+edges as early flow, while normal compile evaluation still checks which
+internal capability the selected entry requires. Grouping them in an external
+projection does not grant compile code meta construction capability.
 
-- `compile` may serve as a function entry capability and returns a
-  `PatternValue`: an ordinary compile-time value, type value, or structured
-  pattern value.
-- Computing a type value does not create or install a type symbol.
-- `compile` cannot produce `SymbolConstructionValue`, open/install symbol
-  facets, or mutate the namespace graph.
-- `meta` may invoke admissible `compile` computation while constructing symbol
-  material; `compile` cannot escalate into `meta` construction capability.
-- `meta` produces an uninstalled `SymbolConstructionValue`; outer `let`
-  binding/injection remains the graph-installation boundary.
-- `compile` can ultimately execute on a stable IR.
-- `meta` must be able to process AST / Normalized AST and the symbol graph, because
-  many meta-actions occur before IR formation.
-
-Evaluation demand remains orthogonal:
+Evaluation demand remains a separate axis:
 
 ```text
-execution capability: compile | meta | runtime
-evaluation demand:     partial | strict
-result rank:           PatternValue | SymbolConstructionValue | runtime value
+execution capability:
+  compile | meta | runtime
+
+evaluation demand:
+  partial | strict
+
+result rank:
+  PatternValue | SymbolConstructionValue | runtime value
 ```
 
-Why not merge compile and meta into a single trait:
+`partial` and `strict` do not replace `P1` or `P2`, and the compile/meta split
+does not replace partial/strict reduction.
 
-- If everything were absorbed into `meta`, ordinary compile-time value computation
-  would be forced to carry the full meta capability: symbol construction,
-  injection, AST interpretation. This would expand the checking surface, enlarge
-  the trusted surface, and turn "just computing a value" into a meta-world entry.
-- If everything were absorbed into `compile`, symbol/facet construction,
-  generic-class generation, symbol shielding, and returning stable symbol
-  constructions would either be
-  inexpressible or would stretch `compile` into a de facto `meta`, distorting the
-  name and the separation.
+## 5. Orthogonal Policy Dimensions
 
-The canonical construction and result-rank model is
-`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+The symbol-flow stage policy above must not be overloaded with unrelated
+capabilities. Future access and effect dimensions may include:
 
-## 9. seal
+```text
+public / package / private / friend
+const / mut
+error / panic / noerror
+resource capabilities
+```
 
-`seal` represents a restricted stage after the compiler has created all symbols
-and before runtime execution begins. It permits limited but targeted compile-time
-capabilities to register metadata for the runtime.
+These dimensions may have their own partial orders or composition rules. They
+do not change the present two-stage total-policy relation merely because all
+of them use the general word "policy".
 
-Properties of `seal`:
+In particular, `compile | runtime` at `P1` is a lookup-stage set. It is not a
+claim that a single callable entry executes simultaneously under both stages.
 
-- It may read the frozen version of the symbol graph.
-- It may call specific built-in APIs whose policy requires `seal`.
-- It must not create new symbols in public, navigable namespace layers.
-- Symbols created in `seal` must be limited to the local lexical scope, or be
-  symbols that the meta-function naturally returns after leaving that scope.
-- Built-in APIs only scan the frozen version; they do not observe seal-stage
-  additions.
-- `seal → runtime` is a legal projection direction.
-- `runtime → seal` is not legal.
-- Projections from `compile` / `meta` to `seal` are subject to future constraint;
-  they are not disallowed a priori but require explicit semantics.
-- `compile + seal` and `meta + seal` as direct combination pairs should default
-  to **error**, unless a specific, tightly-constrained function is explicitly
-  defined to work across them.
-- Functions like `sizeof` that might conceptually span both `meta` and `seal`
-  should express this through ordinary policy trait inference and constraints,
-  not through hardcoded special rules.
+## 6. Seal Boundary
 
-seal does not require a separate processing backend:
+`seal` is not yet part of the active symbol policy calculation. Therefore the
+current invariant remains:
 
-- `seal`'s characteristic work is symbol scanning, metadata organization, and
-  dispatch — not type computation or general value computation. The task profile
-  is sufficiently uniform not to justify a separate DSL.
-- `seal` may locally open restricted `meta` / `compile` sub-contexts.
-- `seal` may safely call `compile` functions, because `compile` is defined to
-  register no new symbols, interpret no source structure, and construct no type
-  objects.
-- `seal` defaults to reusing the `meta` processing backend, but with policy-level
-  restriction on external-namespace symbol creation.
-- The additional built-in APIs exposed in `seal` are normal products of policy
-  checking, not indicative of an independent processing DSL.
+```text
+policy(Pattern) = compile
+```
 
-## 10. Type Return with runtime-only Policy
+A future `seal` design may allow a frozen-pattern or registration stage, but it
+must specify explicitly:
 
-A type-typed return value may carry `runtime`-only policy. This is not a
-contradiction. In the `seal` stage, after all compiler-visible symbols have been
-created and before runtime execution, a seal-context function may use restricted
-compile-time capabilities to register richer metadata for the runtime, and return
-type metadata or type-related objects that are visible at runtime.
+- whether and how Pattern policy can change;
+- which frozen graph material is readable;
+- whether any local construction is permitted;
+- how seal projection composes with compile and runtime;
+- how the extension affects `total_policy(Symbol)`.
 
-Distinguish explicitly:
+No present document may infer these answers from the transitional
+`PolicyFlag::Meta` / `PolicyFlag::Runtime` representation.
 
-- the function symbol's own policy;
-- the function body entry policy;
-- the return-value object's policy.
+## 7. Current Implementation Substrate
 
-`runtime`-only return does not mean `runtime` can construct type objects. It only
-means the returned object is visible at `runtime`.
+The current Rust implementation predates the final `P1` / `P2` model. It
+contains useful but transitional metadata:
 
-## 11. Const / Mut Motivation and C++ Boundary
+- `PolicyFlag`, `PolicySet`, and `PolicyEnv`;
+- symbol policy metadata used by resolver filtering;
+- callable `body_entry_policy` fields;
+- `return_object_policy` fields on callable and generated-field payloads;
+- `PolicyEnv::Meta` / `PolicyEnv::Runtime` lookup filtering;
+- policy transport through namespace deltas and selected early-meta paths.
 
-C++ discussions of deep `const` can be re-interpreted through this design. The
-difficulty is not primarily a memory-model problem; it arises from two path
-dependencies:
+These fields establish storage and filtering substrate only. In particular:
 
-1. the implicit assumption that `compile` flows into `runtime`, which creates
-   cross-boundary conflicts, and
-2. the embedding of `const` inside the type identity, so that `constexpr`
-   dynamic-allocation crossing into runtime cannot propagate `const`-ness past
-   the shallow level.
+```text
+current symbol policy metadata
+  != complete P1 semantics
 
-This language tends to treat `const` / `mut` as policy dimensions extracted from
-standard type identity, so that the "should `constexpr`/`const` enter the type"
-path dependency is avoided.
+current body_entry_policy
+  != complete P2 qualification semantics
 
-A C++ note for context (not a critique): `const` in C++ does not affect the API
-at parameter positions; as a return type it has documented effects on RVO/NRVO
-whose behaviour is implementation-dependent, and the recommended practice
-discourages return-by-const. This suggests that `const` is a policy-like
-attribute weaker than a standard type identity, and that it need not be coerced
-into the type system unconditionally.
+current return_object_policy
+  != a final P3 language position
+```
 
-C++ is chosen as the reference because it is the mainstream engineering language
-that has pushed compile-time evaluation and metaprogramming furthest while
-carrying the largest historical weight and the broadest genealogical influence.
-Analysing it exposes the problem prototype; this design note is not written as a
-reaction against C++.
+The current return-object field may continue to transport provisional result
+metadata until result symbols and their layered facets are represented. It
+must not be cited as evidence that a third policy plane remains normative.
 
-## 12. Relationship to v0.6–v0.8 Roadmap
+Generated field callables illustrate only the current lookup/entry separation:
+their symbols may be visible to an early resolver while their bodies remain
+runtime-entered. Their current return-object metadata is an implementation
+fact, not the final source model.
 
-v0.6 (Build / Namespace Graph Bootstrap):
-  Preserve policy metadata on symbols, contexts, and namespace graph nodes, but
-  must not implement full policy checking.
+Not yet implemented:
 
-v0.7 (Early Meta-Function Bootstrap):
-  Expose meta-function policy fields and reserve body-entry-policy /
-  return-object-policy, but must not implement full meta / compile / seal
-  projection.
-  Implemented: `PolicyFlag` / `PolicySet` / `PolicyEnv` types; `PolicyEnv::Meta`
-  lookup-visibility filtering in resolver and early-meta expansion;
-  `ResolverCode` discriminator for miss vs ambiguity; policy flags assigned to
-  core symbols (`export+meta` for meta-functions, `export+meta+runtime` for
-  built-in types and the core namespace symbol), all namespace symbols
-  (`meta+runtime` for declared, physical, dependency, type-projection, and
-  generated namespaces), source-contributed symbols (`runtime` for values,
-  `meta+runtime` for type-annotated declarations), and struct-generated type
-  objects and generated field-function symbols (`meta+runtime`). Generated field
-  function payloads carry runtime-only body-entry and return-object policies.
-  Policy filtering is per-component — namespace intermediaries must carry
-  traversal flags. `PolicyEnv::Runtime` is not implemented; the `Runtime` flag is
-  reserved for future runtime lookup. Runtime-only symbols are excluded from
-  `PolicyEnv::Meta` lookup.
+- `Val1 x Pattern x Val2` policy accounting;
+- exact argument `total_policy` checks for `P2`;
+- complete `P1` lookup projection;
+- compile-flow projection;
+- runtime-entry compile companions;
+- `must_select_if_qualified`;
+- automatic inferred require;
+- shared require/body compile-evaluation nodes;
+- `seal` and any Pattern-policy extension.
 
-v0.8 (Compile / Symbol Construction Interpreter Bootstrap):
-  Understand that meta body execution policy differs from function symbol policy
-  and return-object policy. Implement only the minimum checks needed to avoid
-  misrepresenting meta-functions as runtime functions. Every v0.8 compile/meta
-  construction plan must carry all three planes explicitly: symbol
-  visibility, body-entry, and return-object policy. The cross-block construction
-  gate is `spec/contracts/v0.8-meta-construction-agent-constraints.md`.
+## 8. Overload and Invocation Boundaries
 
-Later stages will implement policy inference, projection checking, compile /
-runtime / seal semantics, const / mut policy, effect policy, error / panic
-policy, and resource capability policy.
+Overload resolution first uses `P1` to determine visibility, then forms a
+qualified candidate set using structural applicability and `P2`. The
+`must_select_if_qualified` postcondition is evaluated only after the ordinary
+linear filters. The canonical rules are in:
 
-The future mechanical return-normalization and noerror/Error-handler design is
-described separately in `mechanical-return-normalization-and-error-policy.md`.
-That design still depends on future policy checking and is not implemented by
-the current v0.7-prep policy metadata.
+- `../symbol-world/symbol-policy-and-compile-flow-projection.md`
+- `../patterns-overload/overload-resolution-design.md`
+- `../meta-invocation/meta-object-invocation-and-policy-reduction.md`
 
-### 12.1 Relationship to Overload Resolution
+Compile companions are first-class derived entries in that same pipeline. They
+are not hidden fallback calls and cannot be replaced by an unrelated,
+higher-priority compile overload.
 
-> **Formal specification**: `spec/design/patterns-overload/overload-resolution-design.md` §2–§3,
-> §5.4.
+## 9. Guardrails
 
-Overload-set visibility is built on top of policy-filtered namespace symbol
-lookup. The overload candidate pool for a given call is the set of same-named
-symbols visible in the current namespace context, further filtered by the
-current policy environment.
-
-- **`export`** controls cross-package visibility for overload construction.
-  Symbols without `export` are not visible to other packages and do not appear
-  in external overload sets. Within the owning package, `export` is irrelevant
-  to overload resolution — internal overloads resolve all package-local symbols.
-
-- **Per-policy-pass lookup:** The canonical overload pipeline (see
-  `static-pattern-spaces-and-extraction-chains.md` §12.3) is built on per-
-  policy-pass candidate selection. Meta/compile symbol lookup and runtime symbol
-  lookup are **separate passes** with separate overload sets. A meta pass never
-  sees `Runtime`-only candidates; a runtime pass never sees `Meta`-only
-  candidates. This separation is enforced at the namespace graph lookup level,
-  not re-checked inside the overload pipeline.
-
-- **Policy-aware namespace traversal:** Because `resolve_from_internal` applies
-  policy filtering to every path component, namespace symbols that form
-  traversal containers must carry sufficient policy flags. The `meta+runtime`
-  default on all namespace symbols ensures that overload candidates in nested
-  namespaces are reachable under both meta and runtime environments.
-
-Full overload resolution specification is deferred to later phases (v0.10+);
-the overload resolution pipeline defined in
-`spec/design/patterns-overload/overload-resolution-design.md` documents the intended design
-direction for how policies feed into overload candidate construction.
-
-## 13. Explicit Non-Goals / Guardrails
-
-- Do not turn `policy`, `meta`, `compile`, `runtime`, `seal`, `const`, or `mut`
-  into lexer keywords.
-- Do not introduce source-level import/use/include/module syntax.
-- Do not implement a full policy lattice in v0.6–v0.8.
-- Do not make `compile` a subtype or sub-phase of `runtime`.
-- Do not merge `compile` and `meta` into a single trait or stage.
-- Do not treat a `compile`-computed type value as an installed type symbol;
-  `compile` must not construct/install symbol facets or inject namespace symbols.
-- Do not allow `seal` to create new public navigable symbols after the graph
-  freeze.
-- Do not make `const` / `mut` part of ordinary type identity in this design note.
-- Do not implement deep `const` or C++ `constexpr` compatibility.
-- Do not introduce a second compile-time DSL.
-- Do not conflate function symbol policy, function body policy, and return object
-  policy.
-- Do not claim policy checking is complete.
+- Do not introduce `policy`, `meta`, `compile`, `runtime`, or `seal` as lexer
+  keywords merely to implement this future design.
+- Do not treat a compile-computed type value as an installed type symbol.
+- Do not grant compile code symbol-construction capability.
+- Do not infer callable entry permission from symbol visibility.
+- Do not reintroduce an independent `P3` return-policy position.
+- Do not include `Val2` in the current symbol total-policy calculation.
+- Do not describe compile-flow projection as policy-constraint solving or
+  eager overload evaluation.
+- Do not claim the current Rust metadata implements this final policy model.
