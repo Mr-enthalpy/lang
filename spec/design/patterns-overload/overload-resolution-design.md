@@ -45,7 +45,16 @@ Implemented for this slice:
 - C4 body-entry eligibility for demanded meta execution;
 - C7' extraction-pattern specificity with the lexicographic tuple in §4;
 - unique selection or hard ambiguity diagnostics;
-- selected delete-body diagnostics and simple `r === x` forwarding bodies.
+- selected delete-body diagnostics and the current legacy `r === x`
+  forwarding-body substrate.
+
+This implemented C0 bucket is transitional. Final call preparation resolves one
+symbol, projects its heterogeneous value facet, obtains each value's type,
+resolves each type-associated `()` entry, discards non-callable entries, and
+then performs applicability/policy/result filtering to a unique maximal
+candidate. Same-name value entries are not assumed to be same-type function
+overloads. See
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 Explicitly not implemented in v0.8:
 
@@ -92,6 +101,12 @@ symbol self-policy = { Meta, Runtime }
 body-entry policy = { Meta }
 return-object policy = { Meta, Runtime }
 ```
+
+The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
+meta-return semantics. Final meta construction uses `r = ...` to produce
+`SymbolConstructionValue`; ordinary declaration `let ===` aliasing remains
+separate. See
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
 remains a source-declared locatable operator/callable symbol, and candidate

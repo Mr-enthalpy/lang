@@ -5,7 +5,7 @@
 > This design is now the active v0.6 track: Build / Namespace Graph Bootstrap.
 > The first vertical slice is implemented in `crates/lang_build`. The broader
 > v0.6–v0.8 direction (NamespaceGraph Capability Layer, early meta-functions,
-> type-to-type meta construction) is detailed in
+> compile/meta symbol construction) is detailed in
 > `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`.
 
 The build system produces a **namespace graph world model** — a persistent,
@@ -38,7 +38,12 @@ direct top-level declarations needed by the vertical slice.
 The implementation remains narrower than this design. It does not implement a
 manifest file parser, dependency solving, remote package retrieval, lockfile
 validation, overlays, access-control checking, source-level import syntax, or a
-complete build CLI.
+complete build CLI. It also does not implement final `NamespaceOrigin`
+uniqueness, source/meta construction-unit ownership, physical-directory
+contribution authority, cross-file reopening diagnostics, or the
+`TypeFacet`-implies-`NamespaceFacet` model. The canonical future contract for
+those rules is
+`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
 ## 1. Scope
 
@@ -305,20 +310,23 @@ path contributes namespace segments.
 
 Implementation file names do **not** contribute namespace segments.
 
-Implementation files are source fragments. They may be split, merged, renamed,
-or generated without changing the external namespace API, as long as the
-declarations contributed to the namespace remain compatible.
+Implementation files are source fragments. Their filenames do not affect the
+external namespace path, so a file may be renamed while preserving its
+construction identity/provenance. Splitting or merging files is not
+semantically free under the current construction-ownership rule: each file is
+one closed `SourceConstructionUnit`, and moving declarations across files may
+change subtree ownership and therefore requires revalidation.
 
 ## 7. Namespace graph node kinds
 
-The full namespace graph may contain several kinds of nodes:
+The current namespace-graph substrate records several node origins/categories:
 
 - **Physical namespace nodes**: provided by package roots, source roots, and
   directory structure.
 - **Declared namespace objects**: produced by language declarations such as
   `let ns1: namespace = ...`.
-- **Virtual namespace nodes**: produced by instantiation, metaprogramming, or
-  other future semantic mechanisms.
+- **Virtual namespace nodes**: produced by canonical meta construction and
+  installed by the namespace assembler.
 
 `namespace` remains meaningful as a source-level kind/rank name. Namespace is
 not only a build-system concept.
@@ -327,10 +335,19 @@ The build system mounts physical namespace skeletons. The language and
 metaprogramming system may extend the namespace graph with declared and virtual
 namespace nodes.
 
+In the final symbol-first model these are not mutually exclusive `SymbolKind`s.
+They describe namespace-facet origin/provenance on a `SymbolCell`. Every
+namespace facet has one creation origin:
+
+```text
+PhysicalDirectory(path)
+SourceConstruction(source_construction_unit, construction_id)
+MetaConstruction(meta_construction_unit, construction_id)
+```
+
 ### 7.1 Role-aware child names
 
-The namespace graph no longer treats a textual child name as exactly one
-symbol. A child name is role-aware:
+The current v0.6 `SymbolObject` substrate stores role-aware child buckets:
 
 ```text
 textual child name -> object/function role + namespace-subspace role
@@ -348,6 +365,11 @@ namespace subspace of the same textual name in the same parent. That case would
 make intermediate path traversal ambiguous before the resolver expectation API
 is fully designed.
 
+This bucket representation is transitional. In the final symbol-first model a
+name first resolves to one `SymbolCell`, and namespace/type/heterogeneous value
+facets may coexist on that symbol. Role-aware current lookup must not be
+generalized into final mutually exclusive `SymbolKind`s.
+
 ### 7.2 Type-associated namespace
 
 A **type-associated namespace** is the namespace space associated with a type
@@ -357,6 +379,18 @@ not by origin: its members may be declared, generated, or virtual. For a
 `struct`-generated type, it is a virtual / generated child namespace attached to
 the type node. It is therefore not equivalent to the "declared namespace
 objects" node kind alone.
+
+The final structural relationship is:
+
+```text
+has TypeFacet => has NamespaceFacet
+has NamespaceFacet ⇏ has TypeFacet
+```
+
+A type symbol therefore combines a namespace facet with a
+`TypeFacet(PatternValue)` and an optional value facet. A pure namespace may have
+ordinary value members but has no type `PatternValue`. This is facet inclusion,
+not type-system subtyping.
 
 See `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §3 for the full
 model.
@@ -378,26 +412,50 @@ continue into virtual namespace nodes.
 ## 9. Namespace contribution and injection rule
 
 Declarations enter the namespace graph under a depth and context restriction.
-The detailed model (rationale, diagnostic, examples) is in
+The detailed model is canonical in
+`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`;
+the bootstrap application is summarized in
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4.
 
-**No ordinary parent-to-descendant injection. Only ordinary
-parent-to-direct-child contribution is allowed.**
+Physical source fragments and meta-produced symbol constructions share the
+same symbol-world capability base: declare facet material, add direct children,
+open namespace facets, form replayable contributions/deltas, and install a
+validated `NamespaceDelta` atomically. For example, `ns/impl.lang` and
+`ns/export.lang` may create distinct same-level children of `ns` through
+independently derived contribution values. They do not acquire meta-body
+pipeline order from filename or discovery order. Distinct children may be
+assembled transactionally; the files may not reopen one another's child
+subtrees.
 
-1. **Ordinary physical/file contribution context**: a source fragment may
-   contribute only the directly indexable children of its current namespace node
-   (e.g. `f::ns`, `g::ns`). It must not inject into grandchildren or deeper
-   descendants (e.g. `x::f::ns`, `y::x::f::ns`).
-2. **Direct-child local construction**: a direct child object constructs its own
-   internal / associated namespace; deeper structure is owned by the immediate
-   parent object and built once by that object's local construction, not
-   scattered across sibling files.
-3. **Meta-function instantiation (exception)**: a closed instantiation may
-   generate a parent-to-descendant virtual subtree, exposed as one virtual
-   layer, because the instantiation is closed, globally consistent, and
-   cacheable. Allowed but not encouraged; the generator bears the
-   implementation / cache-key / diagnostic complexity. This exception does not
-   apply to ordinary physical/file contribution.
+The future source-level `inject` built-in is functional and returns an
+uninstalled `SymbolConstructionValue`. Formal `struct` and `inject` do not
+install the graph; the outer namespace assembler or `let` binding does. See
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+
+Core rules:
+
+1. **Unique namespace origin**: under one parent, one child namespace path is
+   created by exactly one physical directory, source construction, or meta
+   construction origin.
+2. **Source construction ownership**: one implementation file may create a
+   direct child and fully construct its new subtree in one delta. A parallel
+   file may not reopen that subtree, even to add an absent child.
+3. **Physical authority**: direct contents of a physical directory namespace
+   come only from files in that directory. If `ns/ns1/` exists, files in `ns/`
+   may read but may not inject into `ns1::ns`.
+4. **Meta transaction**: one canonical meta invocation may construct a complete
+   virtual subtree because all actions belong to one `MetaConstructionUnit` and
+   transaction. A helper invocation owns a separate unit.
+5. **Current cross-file closure**: cross-file type-child, namespace-child,
+   ordinary value-member, and overload-entry injection are forbidden.
+
+The overload/value restriction may be relaxed later only with explicit merge
+authority and stable, commutative candidate identity. It is not justified
+merely by saying that physical file contributions are unordered.
+
+Ordinary namespace value members modify the namespace/value graph only. They do
+not modify a type's `PatternValue`, normalized pattern set/sequence, or
+extraction behavior.
 
 In all contexts, a generated node may not inject into a parent, sibling, or
 unrelated global namespace. The namespace graph grows downward from known
@@ -498,7 +556,7 @@ It increases the importance and complexity of the build system, namespace
 resolver, lockfile, metadata format, and IDE integration.
 
 The benefits are: simpler source language, stable namespace paths across
-distribution forms, free splitting/merging of implementation files,
+distribution forms, filename-independent namespace identity,
 centralized dependency/version/access control, clear separation between package
 mechanics and language syntax, room for virtual namespace nodes, controlled
 parent-to-child metaprogramming injection.

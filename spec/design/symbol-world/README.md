@@ -3,14 +3,25 @@
 **Status: Non-normative future design with a partial implementation note. A
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, alias forwarding, writable-place checking,
-field-access evaluation, and access-tree construction are not implemented.**
+`SymbolCell` facets, `PatternValue`, `SymbolConstructionValue`,
+`ResolvedPatternScope`, `MetaInstanceScopeId`, meta type self-root checking,
+functional `inject`, `NamespaceOrigin`, construction-unit ownership,
+physical/cross-file contribution authority, field-access evaluation, and
+access-tree construction are not implemented.**
 
 ## Scope
 
 The namespace graph world model and symbol-level identity:
 
 - `SymbolObject` and the namespace graph world model
+- symbol-first `SymbolCell` facets and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
+- `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
+- resolved pattern scopes, `struct` ownership, functional child-only `inject`,
+  and binding/install separation
+- meta-return type self-root identity and complete meta-instance navigation atoms
+- namespace-facet origin, source/meta construction-unit ownership, physical
+  contribution authority, and cross-file closure
 - alias forwarding (`AliasChain`) and writable-place checking
 - field functions, `ref` / `share` projection namespaces
 - type-associated function objects and namespace injection targets
@@ -23,6 +34,15 @@ policy checker (referenced from the other blocks).
 
 ## Documents
 
+- `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
+  direction for SymbolCell facets, heterogeneous value/call candidates,
+  `compile` / `meta`, meta type self-root, resolved pattern scopes, `struct`,
+  functional `inject`, pattern-layer ordering, uniqueness/replay, and outer
+  graph installation.
+- `symbol-construction-units-and-namespace-origin.md` — canonical future
+  namespace-origin, source/meta construction-unit ownership, physical-directory
+  authority, type/namespace facet inclusion, value-member/pattern-material
+  separation, and current cross-file closure.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.
@@ -37,8 +57,12 @@ policy checker (referenced from the other blocks).
 
 ## Reading order
 
-Read `early-meta-functions-and-namespace-graph.md` first for the bootstrap, then
-the type-value/place/alias and field-function documents.
+Read `symbol-first-meta-construction-and-pattern-injection.md` first for the
+canonical future semantic boundary. Then read
+`symbol-construction-units-and-namespace-origin.md` for creation/ownership and
+cross-file rules. Read `early-meta-functions-and-namespace-graph.md` next for
+the current bootstrap route, followed by the type-value/place/alias and
+field-function documents.
 
 For v0.8-adjacent work that touches `TypeValueId`, `PlaceId`, `AliasChain`,
 generated meta instances, injection-place checking, or the current `struct`

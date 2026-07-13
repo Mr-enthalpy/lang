@@ -9,7 +9,7 @@ This document is the canonical direction for the v0.6–v0.8 sequence:
 
 - v0.6 — Build / Namespace Graph Bootstrap
 - v0.7 — Early Meta-Function Bootstrap
-- v0.8 — Type-to-Type Meta Construction Interpreter
+- v0.8 — Compile / Symbol Construction Interpreter Bootstrap
 
 It builds on, and does not replace, the build/package architecture in
 `spec/design/build-package/build-system-design.md`, the assembly pipeline in
@@ -25,6 +25,18 @@ covering ordinary functions, meta functions, verification, control predicates,
 operators, and type constructors, together with partial/strict meta reduction
 and residualization — are specified in
 `spec/design/meta-invocation/meta-object-invocation-and-policy-reduction.md`.
+
+The canonical future symbol-facet, `compile` / `meta`, pattern-owner,
+`struct`, and functional `inject` boundaries are specified in
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+That document supersedes the older formal return-slot split between `r = ...`
+and `r === ...` and the transitional idea that a binding destination determines
+the final `struct` owner identity.
+
+Namespace-facet origin, source/meta construction-unit ownership, physical
+directory contribution authority, and current cross-file closure are canonical
+in
+`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
 ## v0.7 implementation additions
 
@@ -181,6 +193,12 @@ model boundary:
   symbols. These field-function symbols are visible under `PolicyEnv::Meta`
   because their symbol policy is `meta | runtime`, but their callable
   body-entry and return-object policies are runtime-only.
+- PR #94 adds an explicit pattern-head attachment helper with generated,
+  global, namespace, and local categorical contexts. Formal `struct` uses the
+  `GeneratedTypeDefinition` fallback; binding/materialization may reattach
+  owner/field heads under a destination global or namespace context. This is
+  transitional `PatternHeadId` registry substrate, not final
+  `ResolvedPatternScope` or binding-independent owner resolution.
 - Namespace child lookup is role-aware. Object/function symbols and pure
   namespace subspaces can share the same textual child name. Terminal lookup
   without an expected role reports ambiguity when both roles are present.
@@ -190,9 +208,13 @@ model boundary:
   `share` are allowed because fields are unary function objects while
   `ref` / `share` are namespace subspaces.
 - v0.8 ordinary initializer evaluation can materialize
-  `let T: type = uint8` as a forwarding type-value binding: `T` is a fresh
-  symbol/place whose type value is the existing type value `uint8`. This is not
-  symbol aliasing and does not canonicalize namespace injection targets.
+  `let T: type = uint8` as an ordinary type-value binding: resolve
+  `symbol(uint8)`, read its type value, and bind that value to fresh
+  symbol/place `T`. This is not symbol aliasing and does not canonicalize
+  namespace injection targets.
+- The current slice does not implement `NamespaceOrigin`, source/meta
+  construction-unit ownership, physical contribution authority, cross-file
+  reopening diagnostics, or meta return type self-root checking.
 - v0.8 source-declared callable overload selection reports structured failure
   kinds. Initializer MetaPartial residualization is driven by those kinds, not
   by diagnostic message text. Ambiguity remains a hard diagnostic; no
@@ -225,7 +247,7 @@ build system / package layer
             -> resolver (returns SymbolObject)
                  -> early meta-function lookup (assert, struct, ...)
                       -> meta expansion (MetaExpansionResult)
-                           -> type-to-type meta construction interpreter
+                           -> compile / symbol construction interpreter bootstrap
 ```
 
 ## 2. NamespaceGraph Capability Layer
@@ -237,12 +259,14 @@ behind named operations, at least:
 
 - **resolve** — resolve a navigation path to a `SymbolObject`.
 - **declare** — introduce a declared symbol under a node.
-- **inject child** — attach a generated child under a legal parent / instance
-  node (see §4 for the contribution rules).
+- **inject child material** — add a direct child to a contribution or
+  construction under a legal owner (see §4). The future source-level `inject`
+  built-in is functional and returns a new `SymbolConstructionValue`; only the
+  outer binding/assembly layer installs the resulting delta.
 - **alias** — forward a name to an existing globally visible symbol.
 - **open virtual node** — open a virtual namespace node for generated structure.
-- **install namespace delta** — apply a set of generated declarations as one
-  unit under a legal node.
+- **install namespace delta** — apply a set of physical, declared, or generated
+  contributions as one unit under a legal node.
 - **canonical meta instance key** — compute the stable identity of a meta
   instantiation (see §6).
 - **diagnostic** — attach a diagnostic with provenance to a node / operation.
@@ -258,6 +282,18 @@ carries the resolved identity, its source category (§3), its node kind, and its
 provenance / diagnostics. Source code navigates names; the resolver answers with
 objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
+
+`SymbolObject` is the current implementation substrate. The final conceptual
+model is a symbol-first `SymbolCell` with one `SymbolId`, one `PlaceId`, and
+optional namespace/type plus heterogeneous value facets:
+
+```text
+path/name -> Symbol -> context-directed facet projection
+```
+
+This document does not require an immediate Rust refactor. It does require that
+new design text avoid treating namespace/type/value/callable as disjoint
+first-resolution result categories.
 
 Policy metadata (see `spec/design/policy-capability/policy-visibility-symbols.md`) should be
 reserved as a slot on `SymbolObject`, the context, and the capability layer, but
@@ -353,6 +389,12 @@ object/function child without namespace_node
 = allowed
 ```
 
+This is the conservative current v0.6 bucket model. The canonical future
+`SymbolCell` model permits one symbol's value facet to contain multiple
+heterogeneous value entries. That future same-symbol facet rule is not the same
+as silently merging two independently declared `SymbolObject`s today; it
+requires facet-aware declaration identity and conflict checking first.
+
 This is required for fields named `ref` or `share`: the field is an object
 symbol, while `ref` / `share` projection spaces are namespace subspaces.
 
@@ -424,7 +466,8 @@ Disallowed bootstrap shortcuts:
 
 ### Meta expansion is atomic
 
-`MetaExpansionResult` is transaction-like.
+`MetaExpansionResult` is the current transaction-like transport between
+invocation and binding.
 
 It may contain:
 
@@ -439,7 +482,20 @@ cache_key_fragment
 Atomicity rule: success installs the replacement and namespace delta as one unit;
 failure installs no generated symbols; diagnostics are retained; partial
 type-associated namespace construction is forbidden. This applies to `struct`
-and later type-to-type meta-functions.
+and later compile/meta construction callables.
+
+The final boundary is sharper:
+
+```text
+compile -> PatternValue
+meta -> SymbolConstructionValue
+let binding/injection -> NamespaceDelta atomic install
+```
+
+Formal `struct`, formal meta invocation, and functional `inject` do not install
+the graph. `MetaExpansionResult` may remain an implementation adapter, but it
+must not erase the distinction between an uninstalled construction value and
+the outer installation operation.
 
 ### Phase names and freeze points
 
@@ -498,8 +554,10 @@ Test targets should include:
 - no source-level `import/use/include/module`;
 - file names do not contribute namespace segments;
 - directories contribute physical namespace skeleton;
-- source fragments contribute only direct children;
-- ordinary parent-to-descendant injection is rejected;
+- source fragments root contributions at direct children and own any complete
+  new subtree included in the same source construction;
+- cross-file reopening and parent-file injection into physical child
+  directories are rejected;
 - all name conflicts are hard errors by default;
 - resolver returns symbol objects, not strings;
 - core symbols resolve through namespace graph;
@@ -638,12 +696,12 @@ may own a fresh current-level companion namespace place. Future namespace
 injection through `T` targets that place; future type/rank evaluation of `T`
 returns the existing type value `uint8`.
 
-Future generic/meta-generated types such as `(int)Vec::std` return stable type
-values. Therefore:
+Future generic/meta symbol constructions such as `(int Vec::std)` expose stable
+type-facet values after binding. Therefore:
 
 ```text
-let A: type = (int)Vec::std
-let B: type = (int)Vec::std
+let A: type = (int Vec::std)
+let B: type = (int Vec::std)
 ```
 
 means `A == B` by type-value equality while `A` and `B` remain distinct symbols
@@ -656,6 +714,31 @@ between type values, symbol places, alias forwarding, and writable injection
 targets is documented in
 `spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
 
+### 3.5 Final facet inclusion and value-member boundary
+
+The role-aware `SymbolObject` buckets above describe the current substrate. The
+final `SymbolCell` model uses structural facet inclusion:
+
+```text
+has TypeFacet => has NamespaceFacet
+has NamespaceFacet ⇏ has TypeFacet
+```
+
+This is not type-system subtyping. A type symbol has a namespace facet, a
+`TypeFacet(PatternValue)`, and optionally a heterogeneous value facet. A pure
+namespace has no type `PatternValue` but may still contain ordinary value
+members.
+
+Pattern-material leaves belong to the `PatternValue` in a type facet and affect
+normalization, matching, and extraction. Ordinary namespace value members alter
+only the namespace/value graph. They do not enter `Set<PatternValue>`, do not
+change ordered pattern material, and do not participate in extraction. A value
+projection is terminal for the current lookup; it does not prevent the same
+symbol from also owning namespace children.
+
+The complete origin and ownership rules for these facets are in
+`symbol-construction-units-and-namespace-origin.md`.
+
 ## 4. Namespace contribution rules
 
 These rules constrain how declarations enter the namespace graph. They protect
@@ -663,52 +746,74 @@ the intuition that the physical directory hierarchy explains the namespace
 shape: when you open a directory level, the files there contribute the directly
 indexable objects **at that level**, not deep virtual structure.
 
-### 4.1 No ordinary parent-to-descendant injection
+### 4.0 Shared physical/meta capability substrate
 
-> **No ordinary parent-to-descendant injection. Only ordinary
-> parent-to-direct-child contribution is allowed.**
+Physical source fragments and meta-produced symbol constructions use the same
+declare / inject-child / open-namespace / delta-install capability base.
 
-1. **Ordinary physical / file contribution context:** a source fragment may
-   contribute only the directly indexable children of its current namespace
-   node. Under `ns`, files may contribute `f::ns`, `g::ns` (direct children).
-   They must **not** inject into grandchildren or deeper descendants such as
-   `x::f::ns` or `y::x::f::ns`.
+For example:
 
-2. **Direct-child local construction:** a direct child object may construct its
-   own internal / associated namespace structure. Deeper structure must be
-   **owned by the immediate parent object** and built once by that object's
-   local construction — not scattered across sibling files. So `x::f::ns` must
-   come from `f`'s own local / associated construction, not from an unrelated
-   file under `ns` injecting across the level.
+```text
+ns/
+  impl.lang
+  export.lang
+```
 
-3. **Meta-function instantiation context (exception):** a closed instantiation
-   may generate a parent-to-descendant virtual subtree, because the
-   instantiation is a closed, globally consistent, cacheable generation process
-   whose result is exposed as a whole as a virtual layer (not a to-be-merged
-   physical directory layer). This exception **does not** apply to ordinary
-   physical / file contribution. Even in meta context this is **allowed but not
-   encouraged**: the generator bears the implementation, cache-key, and
-   diagnostic complexity, so scattered deep generation is discouraged.
+Both files may create distinct same-level children of `ns`. Each file is one
+closed `SourceConstructionUnit`; it may fully construct a child subtree that it
+creates, but it may not reopen a subtree created by the other file. A canonical
+meta invocation similarly owns one closed `MetaConstructionUnit`. In both cases
+the outer assembler or `let` binding forms a conflict-checked `NamespaceDelta`
+and installs it atomically.
+
+The common capability base does not give physical source fragments meta-body
+pipeline order. Physical contributions are independently derived, replayable
+contribution/delta values. Distinct direct-child contributions may be combined
+transactionally; filename, filesystem traversal, and source discovery order
+have no semantic effect. Same-child reopening, duplicate names, or facet
+conflicts remain hard errors.
+
+The future source-level `inject` operation is also functional: it transforms a
+symbol/construction value and returns a new uninstalled construction. It does
+not directly mutate the namespace graph.
+
+### 4.1 Direct-child roots; no cross-unit descendant reopening
+
+> **An ordinary source contribution begins by creating a direct child. The same
+> source unit may construct that new child's subtree, but it may not target an
+> already existing descendant owned by another unit.**
+
+1. **Direct-child authority:** a source file may create direct children of its
+   current physical directory namespace. A direct child it creates may include
+   a complete descendant subtree inside that same source delta.
+2. **No reopening:** the complete subtree remains owned by that source file.
+   Another file may not target a grandchild of the already-created child, even
+   if the requested grandchild name is absent.
+3. **Meta transaction:** one canonical meta invocation may build a complete
+   virtual subtree because all actions belong to one `MetaConstructionUnit` and
+   one transaction. The reason is construction-unit identity, not merely that a
+   meta callable has one body.
+4. **Helper isolation:** a helper meta invocation has its own construction unit.
+   A caller may compose its uninstalled result but may not mutate the helper's
+   already installed subtree.
 
 ### 4.2 Rationale
 
-Filesystem directories provide the physical namespace skeleton, and multiple
-implementation files may merge-contribute to the current namespace level. The
-readability of this depends on the intuition that the files at a level
-contribute that level's direct objects. If ordinary files could inject into
-grandchild / great-grandchild levels, directory structure would lose its
-explanatory power: a user could see the directories yet be unable to infer the
-real namespace shape, because any file might secretly stack up multi-level
-virtual structure. In the multi-file "merge-contribute a type object" case this
-is especially unintuitive, and same-level files could otherwise stack arbitrary
-depth that does not appear in the directory hierarchy, so the namespace graph's
-shape would only be recoverable by a whole-project scan. The rule also preserves
-the locality of type-associated namespaces: `x::f::ns` belongs to `f`'s
-associated space, not to an unrelated file under `ns`.
+Filesystem directories provide the physical namespace skeleton and the
+authority boundary for direct source contributions. Multiple implementation
+files at one level may create different direct objects; they do not co-own those
+objects. A single owner keeps partial declaration, reopening, visibility,
+diagnostic ownership, and merge authority out of the current model.
 
 This is **not** a prohibition on multi-level structure. Deep structure may
-exist; construction responsibility is localized — each level is built by its
-immediate parent object.
+exist; one source construction or one meta construction may build the complete
+new subtree it owns.
+
+The restriction is not derived solely from unordered file contributions.
+Cross-file overload-entry union could be relaxed later if the language defines
+stable entry identity and explicit merge authority. It is forbidden now along
+with cross-file type-child, namespace-child, and ordinary value-member
+injection.
 
 ### 4.3 Diagnostic
 
@@ -722,28 +827,56 @@ attempted target:
     x::f::ns
 
 ordinary source fragments may contribute only direct children of their current
-namespace. Declare `f` as a direct child, then define `x` inside `f`'s own local
-or associated namespace.
+namespace and may fully construct only children they create. Define `x` in the
+same construction unit that owns `f`, or use an explicitly designed future
+reopening facility.
 ```
 
-### 4.4 Combined rules
+### 4.4 Namespace origin and physical authority
+
+Every namespace facet has exactly one creation origin:
 
 ```text
-Source uniqueness:
-    a child name comes from exactly one of physical directory / type-associated
-    namespace / meta-instantiation virtual layer.
-
-Direct contribution:
-    ordinary source fragments contribute only direct children of the current
-    namespace.
-
-Local construction:
-    deeper levels must be built by their immediate direct child object.
-
-Meta exception:
-    a closed instantiation may generate a multi-level virtual subtree, exposed
-    as one instantiation virtual layer.
+NamespaceOrigin =
+    PhysicalDirectory(path)
+  | SourceConstruction(source_construction_unit, construction_id)
+  | MetaConstruction(meta_construction_unit, construction_id)
 ```
+
+Under one parent, one child namespace path may be created by only one of those
+origins. If `ns/ns1/` exists physically, source in `ns/` cannot create or
+upgrade `ns1::ns`, and cannot contribute `x::ns1::ns`. Direct content of the
+physical child must come from implementation files in `ns/ns1/`. Parent files
+may navigate/read the child but cannot reopen it.
+
+Because `has TypeFacet => has NamespaceFacet`, a physical namespace also cannot
+be upgraded into a source-created type at the same path.
+
+### 4.5 Combined rules
+
+```text
+Origin uniqueness:
+    one child NamespaceFacet has one physical/source/meta creation origin.
+
+Physical authority:
+    direct content of a physical directory namespace comes only from files in
+    that directory.
+
+Construction ownership:
+    one source/meta unit may fully construct its new subtree; parallel units may
+    not reopen it.
+
+Current cross-file closure:
+    no type child, namespace child, ordinary value member, or overload-entry
+    injection into a symbol owned by another file.
+
+Meta transaction:
+    one canonical invocation may build a multi-level virtual subtree inside its
+    own MetaConstructionUnit.
+```
+
+The canonical details are in
+`symbol-construction-units-and-namespace-origin.md`.
 
 ## 5. Early meta-function bootstrap (v0.7)
 
@@ -759,9 +892,9 @@ special case.
 - **`struct`** as the first real, globally visible meta-function object resolved
   from the core namespace. `struct` consumes AST through a private checker; a
   failure is a meta hard error, not a parser / normalizer error.
-- **Meta call replacement model** — a meta call is replaced by its expansion
-  result.
-- **`MetaExpansionResult`** carries:
+- **Current meta call replacement model** — the implemented slice replaces a
+  meta call through a `MetaExpansionResult` adapter.
+- **Current `MetaExpansionResult`** carries:
   - replacement object,
   - namespace delta,
   - diagnostics,
@@ -770,47 +903,77 @@ special case.
   namespaces are installed only under a legal parent / instance node; no
   arbitrary rewrite of parent / sibling / global namespace.
 
-## 6. Type-to-type meta construction interpreter (v0.8)
+The future public boundary is `struct: normalized pattern material ->
+SymbolConstructionValue : symbol`; AST remains an internal carrier, and graph
+installation remains in the outer binding layer.
 
-The earliest, most restricted meta-function body execution model is **type ->
-type**: a single entry, single exit, no intermediate control flow, pure
-streaming structure. A meta-function body is **not** a separate DSL and **not** a
-text macro: it is the ordinary parsed and normalized language AST (Raw AST /
-Normalized AST) the source file already produced, executed under a meta policy by
-a **type-object construction interpreter**.
+## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 
-- **Meta body as normalized AST** — executed by the type-object construction
-  interpreter.
-- **Declaration-as-assignment / assignment-as-injection** — a `let` inside the
-  meta body creates symbols through the NamespaceGraph Capability Layer.
-- **`===`** is symbol alias / forwarding, not a copy.
-- **Explicit return object slot**, e.g. `meta | runtime let r: type`:
-  - `r = t` returns the generated object,
-  - `r === t` forwards an existing globally visible symbol.
-- **Generative meta identity** is based on the function symbol + canonical
-  arguments + build/config fingerprint.
-- **Symbol shielding** — the externally visible result name is determined by the
-  meta-function name + arguments, not by internal temporary names; the generated
-  result has a globally consistent symbol identity.
-- **Installation** — generated declarations are installed only under a legal
-  parent / instance node (per §4).
-- **First-class generic classes** such as `(T)Vec`, `(T)Option`, `(A, B)Pair` are
-  expressible in this type-to-type form.
+The implemented v0.8 slice is a restricted type-shaped evaluator. The final
+model separates two capabilities that the older type-to-type narrative mixed:
+
+```text
+compile:
+  compute PatternValue
+  (ordinary compile-time value, type value, or structured pattern value)
+
+meta:
+  create or transform SymbolConstructionValue
+  public successful result rank = symbol
+```
+
+Both execute ordinary parsed/normalized structured material under policy. They
+are not separate syntax languages or text-macro systems.
+
+- **Compile result** — a `PatternValue`; a type value is not an installed type
+  symbol. Compile creates no `MetaInstanceScope`, may return an existing type
+  value, and uses the ordinary function-object Self frame for local `struct`.
+- **Meta result** — an uninstalled `SymbolConstructionValue` carrying return
+  pattern/facet material under a canonical `MetaInstanceScope`.
+- **Meta type self-root** — if the return symbol has a `TypeFacet`, its outer
+  pattern root is the canonical meta-instance scope. Direct `r = t` or
+  `r = uint8` meta type returns are invalid when they would install an external
+  root; external values may be members beneath the self-rooted type.
+- **Formal meta return slot** — `r = ...` populates the construction's return
+  layer. The old `r === ...` forwarding interpretation is superseded.
+- **Ordinary alias declaration** — `let a === b` remains symbol/place forwarding
+  and is not a formal meta return operation.
+- **Rank-directed canonical arguments** — symbol parameters use symbol/place
+  identity, type parameters use `TypeValueId`, and ordinary value parameters use
+  `PatternValue` identity.
+- **Complete navigation atom** — a namespaced instance is `(int Vec::std)` and
+  a child is `child::(int Vec::std)`; `(int Vec)::std` and unparenthesized
+  `int Vec::std` do not denote that instance.
+- **Installation** — only an outer `let` binding/injection resolves a writable
+  place and installs a `NamespaceDelta`.
+- **Pattern ownership** — `struct` resolves its owner from input navigation plus
+  ambient pattern scope; the binding target never reroots it.
+- **Functional extension** — future `inject` selects the input symbol's internal
+  pattern scope and returns a new uninstalled construction with direct children.
+- **Single type installation** — an ordinary type facet is installed once;
+  duplicate definitions do not form an implicit sum.
+- **Construction ownership** — each source file or canonical meta invocation
+  owns the complete subtree it creates; parallel files do not reopen it.
+
+The current `ForwardedValue`, `GeneratedConstructionValue`, and
+`GeneratedTypeDefinitionValue` enums remain transitional implementation
+transport until these final objects exist.
 
 Before ordinary generic type-style meta-functions are implemented, the
 construction contract in
 `spec/contracts/v0.8-meta-construction-agent-constraints.md` must be absorbed.
-Do not expand the bespoke `struct` path for `(T)Vec`, `(T)Option`, `(A, B)Pair`,
-or other type-to-type meta construction. New work must follow the shared route:
+Do not expand the bespoke `struct` path for `(T Vec)`, `(T Option)`,
+`(A, B Pair)`,
+or other compile/meta construction. New work must follow the shared route:
 
 ```text
 resolve callee
   -> ProductObject / ArgProductShape
   -> RawArgShape / ParameterShape
-  -> TypeSymbol argument classification
+  -> rank-directed Symbol / TypeValueId / PatternValue classification
   -> policy body-entry check
-  -> MetaInvocationValue
-  -> binding-layer MetaExpansionResult
+  -> PatternValue or SymbolConstructionValue
+  -> binding-layer installation adapter
   -> NamespaceDelta atomic install
 ```
 
@@ -825,7 +988,9 @@ contribute a namespace segment); declared symbol harvesting; SymbolObject model;
 physical / declared / virtual `NamespaceNode` kind; resolver returning a
 `SymbolObject`, not a string path; provenance and diagnostic attachment; the
 role-aware child-name model (§3) and the ordinary direct-child contribution /
-local-construction rules (§4); no source-level import/use/include/module;
+local-construction rules (§4); `NamespaceOrigin`, physical contribution
+authority, and source construction ownership as future contracts; no
+source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
 with minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
 checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`).
@@ -842,30 +1007,30 @@ meta-function object; meta call replacement; `MetaExpansionResult`
 (replacement / namespace delta / diagnostics / provenance); policy fields on
 callable objects — distinct symbol visibility, body-entry, and return-object
 policy planes (no full projection or execution checker — see
-`spec/design/policy-capability/policy-visibility-symbols.md`); the parent-to-child injection rule,
-with parent-to-descendant generation only as the closed meta exception (§4);
+`spec/design/policy-capability/policy-visibility-symbols.md`); source/meta
+construction-unit ownership and physical contribution authority (§4);
 generated child namespace installation; no arbitrary rewrite of parent /
 sibling / global namespace; `struct` consumes AST by a private checker, failure
 is a meta hard error.
 
-Non-goals: general compile-time value execution; value-to-value meta-functions;
+Non-goals: general `compile` PatternValue execution; value-directed meta construction;
 arbitrary control flow in meta bodies; full generic system; full pattern-space
 semantics; HIR/codegen integration beyond placeholder nodes.
 
-### v0.8 — Type-to-Type Meta Construction Interpreter
+### v0.8 — Compile / Symbol Construction Interpreter Bootstrap
 
-Must cover: meta body as normalized AST; type-object construction interpreter;
-declaration-as-assignment / assignment-as-injection; `let` inside a meta body
-creating symbols through the capability layer; `===` as alias / forwarding;
-explicit return object slot; `r = t` (generated) vs `r === t` (forwarded);
-generative meta identity (function symbol + canonical args + build/config
-fingerprint); symbol shielding; installation under a legal parent / instance
-node; first-class `(T)Vec` / `(T)Option` / `(A, B)Pair`.
+Must cover the transition from the restricted type-shaped evaluator toward:
+ordinary normalized structured input; `compile` producing `PatternValue`;
+`meta` producing `SymbolConstructionValue : symbol`; rank-directed canonical
+argument identity; `r = ...` assigning return-layer pattern/facet material;
+ordinary `let ===` alias forwarding remaining separate; binding-layer
+installation under a legal writable place; and first-class `(T Vec)` /
+`(T Option)` / `(A, B Pair)` construction through the shared invocation frame.
 
-Non-goals: value-to-type control flow; value-to-value compile-time world;
-unrestricted compile-time IO; runtime execution; full borrow/lifetime checking;
-full pattern-space subtraction / exhaustiveness; complete operator overload
-semantics.
+Non-goals: unrestricted compile-time IO; runtime execution; full
+borrow/lifetime checking; full pattern-space subtraction / exhaustiveness;
+complete operator overload semantics; general macros; direct graph mutation
+inside formal `struct` or `inject` invocation.
 
 ## 8. Conceptual constraints
 
@@ -877,14 +1042,23 @@ semantics.
 - Namespace is not equal to filesystem path. Directory paths provide only the
   physical skeleton; the full graph includes physical, declared, and virtual
   nodes.
-- Metaprogramming may not inject into unrelated global namespaces. Only
-  parent-to-direct-child contribution (ordinary) or parent-to-descendant
-  generation inside a closed instantiation (meta) is allowed.
-- Meta bodies are ordinary parsed and normalized language AST executed by a
-  restricted meta construction interpreter — not a separate compile-time DSL.
-- Generative and forwarding meta-functions are distinct: `r = t` returns a
-  generated object; `r === t` forwards / aliases an existing globally visible
-  symbol.
+- Metaprogramming may not inject into unrelated global namespaces. One source
+  unit may fully construct a direct child subtree that it creates; one meta unit
+  may fully construct its virtual subtree. Neither may reopen a subtree owned by
+  another construction unit.
+- Compile/meta bodies consume ordinary parsed and normalized structured material
+  under capability policy — not a separate compile-time DSL or text macro.
+- `compile` computes `PatternValue`; `meta` creates or transforms
+  `SymbolConstructionValue : symbol`. Formal meta return material uses
+  `r = ...`; ordinary `let a === b` remains the separate alias/place-forwarding
+  operation.
+- `compile` creates no meta-instance scope. A canonical meta invocation does,
+  and any return `TypeFacet` is rooted in that scope rather than in an external
+  `PatternValue` or a later binding destination.
+- `struct` owner identity comes from input pattern navigation plus ambient
+  `ResolvedPatternScope`, never from the later binding destination.
+- Functional `inject` selects an input symbol's internal pattern scope and adds
+  direct children without installing the graph.
 - v0.6–v0.8 do not claim full policy checking, full type checking, full pattern
   checking, or full value-level compile-time evaluation. Those remain later
   stages.
@@ -895,6 +1069,8 @@ semantics.
 - Assembly pipeline phases: `namespace-assembly-v0.md`.
 - Manifest surface: `package-manifest-v0.md`.
 - Library/namespace overview: `library-namespace-design-note.md`.
+- Namespace origin and construction-unit ownership:
+  `symbol-construction-units-and-namespace-origin.md`.
 - Later pattern-space / extraction-chain semantics (v0.10+):
   `static-pattern-spaces-and-extraction-chains.md`.
 

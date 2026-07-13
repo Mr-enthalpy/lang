@@ -20,6 +20,13 @@ This design is not an arbitrary set-theoretic pattern algebra. It does not make 
 
 This file is the fuller, later pattern-space / extraction-chain design. The earlier pattern normalization / candidate-shape layer used to prepare meta-invocation candidates is a different, earlier layer, documented in `spec/design/patterns-overload/pattern-normalization-and-first-order-overload.md`.
 
+Resolved pattern ownership, symbol-first facets, `struct`, functional `inject`,
+and the fully named `Set<PatternValue>` versus ordered-layer rule are
+canonicalized in
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+This document consumes those resolved scopes and pattern values; it does not
+derive owner identity from a later binding destination.
+
 ## 0.1 v0.8 boundary
 
 v0.8 does not implement the full pattern-space and extraction-chain model in
@@ -54,11 +61,16 @@ let X: type = int + unit;
 ```
 
 This succeeds by selecting a source-declared `+` overload whose body is
-`r === t`. It does not require canonical sum-pattern value construction.
-If the selected body is the generic fallback `r === t | u`, the implementation
+the current legacy `r === t` forwarding form. It does not require canonical
+sum-pattern value construction. If the selected body is the current generic
+fallback `r === t | u`, the implementation
 must either construct a real canonical sum-pattern value with commutative,
 associative, and idempotent identity, or report an explicit unsupported
 diagnostic. The current restricted slice reports the diagnostic.
+
+This paragraph describes the implemented v0.8 evaluator only. Final formal meta
+return uses `r = ...` to build `SymbolConstructionValue`; ordinary `let ===`
+aliasing remains separate.
 
 ## 2. Core Principles
 
@@ -144,7 +156,7 @@ explicit extractor declarations
 A pattern head must not come from:
 
 ```text
-ordinary local value bindings
+ordinary local value bindings that expose no PatternValue/pattern interface
 ordinary function bindings
 ordinary overloaded call targets
 arbitrary local names that merely look like pattern heads
@@ -152,8 +164,40 @@ arbitrary local names that merely look like pattern heads
 
 There is no fallback from pattern-head lookup to ordinary function-call lookup. If a pattern head cannot be found in the current bounded extraction interface, this is a no-matching-extractor or no-candidate error in a later checking phase.
 
-Current v0.9 implementation provides the minimal identity/lookup substrate for
-this rule:
+The final model performs bounded completion in a `ResolvedPatternScope`:
+
+```text
+bare child + current parent PatternScopeId
+  -> completed child Symbol path
+  -> resolve Symbol
+  -> read PatternValue from Symbol
+  -> enter the value's resolved pattern scope
+
+explicit `::`
+  -> externally specified Symbol path; no parent completion
+  -> resolve Symbol
+  -> read PatternValue from Symbol
+```
+
+Inherited and explicit navigation therefore differ in symbol-path formation,
+not in direct versus indirect value access. Program text names a symbol first;
+the evaluator sees the pattern value through that symbol. A pattern's
+diagnostic navigation may share the symbol's spelling without sharing identity.
+
+When the current normalized layer has no bare values, it is
+`S: Set<PatternValue>`, so extraction continues with value lookup:
+
+```text
+extract(path, S)
+  = lookup(value(resolve_symbol(path)), S)
+```
+
+It is not `lookup(resolve_symbol(path), S)`: symbols are not elements of the
+normalized pattern set. Construction origin may remain provenance, but does not
+participate in set equality or extraction semantics.
+
+The current v0.9 implementation provides only the minimal registry-backed
+identity/lookup substrate for this rule:
 
 ```text
 PatternHeadRegistry
@@ -162,13 +206,13 @@ PatternHeadRegistry
   ExtractionChildScope(owner_head)[child_name] = field_head
 ```
 
-This registry is part of the struct/type materialization state. Formal
+This registry is part of the struct/type materialization state. Current formal
 `struct` invocation calls `PatternHeadRegistry::materialize_struct_pattern_heads`
 and records the resulting owner/field heads in `GeneratedTypeDefinitionValue`.
-Binding projects those heads into `TypeObject`, `TypeField`, the extraction
-interface, and generated field functions. The registry is therefore the
-materialization boundary for current source-driven struct type definitions,
-not only a hand-built test substrate.
+PR #94 binding/materialization may reattach stripped heads under a destination
+global or namespace context before projecting them into `TypeObject`,
+`TypeField`, the extraction interface, and generated field functions. This is a
+transitional attachment strategy, not the final owner-resolution rule.
 
 Cached struct meta invocation values are rehydrated into the current
 `TypeMaterializationState`. The cache does not store concrete pattern-head
@@ -176,8 +220,8 @@ assignments from a prior registry, so a cache hit cannot return a
 `GeneratedTypeDefinitionValue` whose `owner_head` is absent from the current
 registry.
 
-In pattern-side extraction context, a bare name is resolved against the
-current owner `PatternHeadId`:
+In the current registry substrate, a bare name is resolved against the current
+owner `PatternHeadId`:
 
 ```text
 AutoName("inner", current_scope = TB) -> inner::TB
@@ -190,9 +234,24 @@ inner::        does not become inner::TB
 inner::Other   does not become (inner::Other)::TB
 ```
 
+This direct registry-head result is a transitional implementation shortcut for
+resolved pattern identity. It does not replace the final
+`completed symbol path -> resolve Symbol -> read PatternValue` sequence.
+
 Value-side lookup does not use the extraction child scope. `PatternHeadId`
 exists to identify resolved pattern heads and constructor heads; display names
 are not semantic identity.
+
+In final semantics, `struct` resolves its owner from input navigation plus the
+ambient pattern scope before binding. The later `let` installation path does not
+reroot that owner. Functional `inject` is the explicit operation that selects an
+input symbol's internal pattern scope and returns a new child-extended,
+uninstalled construction.
+
+The canonical `let bool = ((if | else) bool) |> struct;`,
+`let t1::t = bool;`, and inherited/explicit extraction equivalence are specified
+in `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` §4.1
+and the symbol-first canonical document §11.
 
 Registration and lookup are intentionally bounded in this slice:
 
@@ -314,7 +373,40 @@ A - S
 
 can remove known branches from a known sum pattern. This is still structural removal over a static object, not arbitrary set difference.
 
-### 3.4 `|` and `+`
+### 3.4 Direct-child layer ordering
+
+Pattern-layer order is decided for the complete current sibling layer, not per
+child in isolation:
+
+```text
+all direct children have top-pattern navigation names:
+  normalize to Set<PatternValue>
+  elements are evaluated and fully navigation-qualified
+  set equality uses PatternValue identity
+  symbols and source-origin categories are not elements
+
+at least one direct child is a bare value:
+  the whole layer is position-preserving and order-sensitive
+  positions participate in identity
+```
+
+Thus different-name functional `inject` operations commute in a fully named
+layer. A layer such as `{bool::, t1::t, t2::t}` contains `PatternValue`s, even
+when an element's navigation spelling matches the symbol path that carries it.
+Inherited/explicit navigation, ordinary binding, and `inject` are
+pre-normalization production routes; provenance may retain them for diagnostics
+but they do not affect value identity or extraction.
+
+If any sibling is bare, a set or name map cannot replace the ordered layer. A
+canonical serializer may sort a fully named set only as representation; the
+sorting is not source-order semantics.
+
+The canonical owner, injection, uniqueness, and replay rules are in
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+§8–§10. This section
+reuses that decided rule and does not leave pattern-layer ordering open.
+
+### 3.5 `|` and `+`
 
 `|` and `+` are distinct.
 
@@ -863,52 +955,56 @@ the combination rule absorbed it.
 Result production, result consumption, and result-space reduction are separate
 semantic events.
 
-### 7.7 Meta-function return is an instance of the general rule
+### 7.7 Compile/meta return is an instance of the general rule
 
 A meta-function body is not a special return world.
 
-Inside a meta-function body, assignments or aliases to the return object slot
-define what value the meta-function body will return, but the body itself still
-uses the same block-local result rule as every other block.
+Inside a compile/meta body, assignment to the return slot defines the value or
+construction layer the body will return, but the body itself still uses the
+same block-local result rule as every other block.
 
 For example:
 
 ```lang
-meta+ runtime let id = (self, t: type): meta -> r: type => {
+let id = (t: type): compile -> r: type => {
     r = t;
     r;
 };
 ```
 
-The final expression:
+This compile body computes a `PatternValue`. A meta body instead constructs a
+`SymbolConstructionValue`, for example:
+
+```lang
+let box = (t: type): meta -> r: symbol => {
+    r = (t inner) |> struct;
+    r;
+};
+```
+
+If a meta return symbol has a type facet, its root must be the canonical
+`MetaInstanceScope`; direct `r = t` or `r = uint8` meta type returns are
+invalid. This additional construction invariant does not alter the ordinary
+block-result rule. In both examples the final expression:
 
 ```text
 r
 ```
 
-is the current block result of the meta-function body. It is not a special
-meta-only return form.
+is the current block result of the callable body. It is not a special
+compile/meta-only return form.
 
-Likewise:
+Formal meta return has no separate `r === ...` forwarding category. `r = ...`
+populates the return layer of the `SymbolConstructionValue`. Ordinary
+declaration aliasing remains `let a === b` at the symbol/place binding layer.
 
-```lang
-meta+ runtime let id = (self, t: type): meta -> r: type => {
-    r === t;
-    r;
-};
-```
-
-also returns by the same block-local result rule. The difference between `r = t`
-and `r === t` belongs to return-object construction / forwarding semantics, not
-to a separate meta-function return mechanism.
-
-Thus meta-function return behavior is a normal consequence of:
+Thus compile/meta return behavior is a normal consequence of:
 
 ```text
 call result semantics
 block-local return boundaries
 result consumption
-symbol / place / value construction rules
+symbol / place / PatternValue / SymbolConstructionValue rules
 ```
 
 not a special exception to them.
@@ -1433,6 +1529,12 @@ expression. The final bare Name in the application chain is the local field /
 pattern name; the prefix is the type expression. This rule is local to struct
 leaf decoding and is not a general expression or normalizer rule.
 
+Under the symbol-first semantic boundary, this is the leaf rule `E name`:
+`name` is the pattern name, while `E` is independently resolved/evaluated
+through external symbol bindings. Different leaves may use unrelated `E`
+sources, as in `t first` and `u second`; matching pattern-name structure does not
+require matching leaf-value origin.
+
 ### Examples
 
 ```lang
@@ -1460,15 +1562,18 @@ form uses `|`, the sum-pattern result form.
 
 The decoder lives in `struct_decoder.rs` and is called from the `core::struct`
 invocation path. It produces `TypePatternExprShape`, which is attached to
-`GeneratedTypeDefinitionValue`. The decoder does not install symbols into the
-namespace graph — only binding/materialization installs `NamespaceDelta`.
+the current `GeneratedTypeDefinitionValue` substrate. This remains private
+structured carrier material; final public `struct` result rank is
+`SymbolConstructionValue : symbol`, not AST. The decoder does not install
+symbols into the namespace graph — only binding/materialization installs
+`NamespaceDelta`.
 
 ## 19. `delete` — Meta-Stage Non-Constructible Branch
 
 A `delete` body terminates an explicit closure with a non-constructible result:
 
 ```lang
-(<...> (params)): meta -> let r: type
+(<...> (params)): meta -> let r: symbol
   => ("reason message") delete
 ```
 

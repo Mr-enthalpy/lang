@@ -87,14 +87,16 @@ The function body's entry policy is specified through the function arrow or
 function trait annotation:
 
 ```text
-(T: type): meta -> meta | runtime let r: type => { ... }
+(T: type): meta -> meta | runtime let r: symbol => { ... }
 ```
 
 - `meta` describes the function body execution environment.
 - The environment begins at the parameter binding; policy is not computed only
   from the `{ ... }` body.
-- The return slot `meta | runtime let r: type` annotates the returned object
-  `r`'s own policy.
+- The return slot `meta | runtime let r: symbol` annotates the returned symbol
+  construction's own policy. If that symbol has a `TypeFacet`, the facet must
+  satisfy the canonical meta-instance self-root invariant; policy does not
+  relax construction identity.
 
 ## 3.1 Symbol visibility policy vs callable execution policy
 
@@ -235,7 +237,7 @@ enters. It is not a general `let`-side policy annotation.
 
 ```text
 runtime | meta let Vec: _: fn =
-  (T: type): meta -> meta | runtime let r: type => { ... }
+  (T: type): meta -> meta | runtime let r: symbol => { ... }
 ```
 
 - `runtime | meta` — `Vec`'s own symbol policy.
@@ -252,36 +254,51 @@ namespace keyword, or as a runtime effect.
 ## 8. meta and compile
 
 ```text
-meta  →  compile       (meta can project to compile)
+compile capability:
+  compute PatternValue
 
-compile  ↛  meta       (compile cannot project to meta)
+meta capability:
+  create or transform SymbolConstructionValue : symbol
 ```
 
 Meanings:
 
-- `meta` can project to `compile`.
-- `compile` cannot project to `meta`.
-- `compile` may serve as a function entry policy, but the allowed actions are
-  narrower.
-- `compile` only permits value-in and value-out.
-- `compile` cannot execute `val -> type`, because producing a type object requires
-  a meta-function, and meta-functions require the `meta` context.
-- `compile` does not promise to create type objects, modify or construct symbol
-  hierarchies, or interpret source structure.
+- `compile` may serve as a function entry capability and returns a
+  `PatternValue`: an ordinary compile-time value, type value, or structured
+  pattern value.
+- Computing a type value does not create or install a type symbol.
+- `compile` cannot produce `SymbolConstructionValue`, open/install symbol
+  facets, or mutate the namespace graph.
+- `meta` may invoke admissible `compile` computation while constructing symbol
+  material; `compile` cannot escalate into `meta` construction capability.
+- `meta` produces an uninstalled `SymbolConstructionValue`; outer `let`
+  binding/injection remains the graph-installation boundary.
 - `compile` can ultimately execute on a stable IR.
 - `meta` must be able to process AST / Normalized AST and the symbol graph, because
   many meta-actions occur before IR formation.
 
+Evaluation demand remains orthogonal:
+
+```text
+execution capability: compile | meta | runtime
+evaluation demand:     partial | strict
+result rank:           PatternValue | SymbolConstructionValue | runtime value
+```
+
 Why not merge compile and meta into a single trait:
 
 - If everything were absorbed into `meta`, ordinary compile-time value computation
-  would be forced to carry the full meta capability: type construction, symbol
+  would be forced to carry the full meta capability: symbol construction,
   injection, AST interpretation. This would expand the checking surface, enlarge
   the trusted surface, and turn "just computing a value" into a meta-world entry.
-- If everything were absorbed into `compile`, type construction, generic-class
-  generation, symbol shielding, and returning stable type objects would either be
+- If everything were absorbed into `compile`, symbol/facet construction,
+  generic-class generation, symbol shielding, and returning stable symbol
+  constructions would either be
   inexpressible or would stretch `compile` into a de facto `meta`, distorting the
   name and the separation.
+
+The canonical construction and result-rank model is
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 ## 9. seal
 
@@ -394,11 +411,11 @@ v0.7 (Early Meta-Function Bootstrap):
   reserved for future runtime lookup. Runtime-only symbols are excluded from
   `PolicyEnv::Meta` lookup.
 
-v0.8 (Type-to-Type Meta Construction Interpreter):
+v0.8 (Compile / Symbol Construction Interpreter Bootstrap):
   Understand that meta body execution policy differs from function symbol policy
   and return-object policy. Implement only the minimum checks needed to avoid
-  misrepresenting meta-functions as runtime functions. Every v0.8 type-to-type
-  meta constructor plan must carry all three planes explicitly: symbol
+  misrepresenting meta-functions as runtime functions. Every v0.8 compile/meta
+  construction plan must carry all three planes explicitly: symbol
   visibility, body-entry, and return-object policy. The cross-block construction
   gate is `spec/contracts/v0.8-meta-construction-agent-constraints.md`.
 
@@ -453,7 +470,8 @@ direction for how policies feed into overload candidate construction.
 - Do not implement a full policy lattice in v0.6–v0.8.
 - Do not make `compile` a subtype or sub-phase of `runtime`.
 - Do not merge `compile` and `meta` into a single trait or stage.
-- Do not allow `compile` to construct type objects or inject namespace symbols.
+- Do not treat a `compile`-computed type value as an installed type symbol;
+  `compile` must not construct/install symbol facets or inject namespace symbols.
 - Do not allow `seal` to create new public navigable symbols after the graph
   freeze.
 - Do not make `const` / `mut` part of ordinary type identity in this design note.

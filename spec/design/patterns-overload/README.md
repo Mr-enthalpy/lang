@@ -15,6 +15,11 @@ Pattern normalization and the candidate model that feeds invocation:
 - the full overload-resolution vision
 - static pattern spaces and extraction chains
 
+Resolved pattern owners, `struct` / functional `inject`, and the rule that fully
+named direct-child layers normalize to `Set<PatternValue>` while any bare child
+makes the whole layer positional are owned by
+`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+
 This block distinguishes two layers explicitly:
 
 - the **earlier, narrower** candidate-preparation subset that serves formal meta

@@ -13,6 +13,7 @@ cacheable namespace-graph objects:
 
 - package identity (`PackageId`), package kind, source roots
 - dependency edges, mount paths, mount table
+- physical directory namespace origin and contribution-authority projection
 - export surface (cross-package visibility boundary)
 - feature/configuration set, distribution form, entry point
 - cache / fingerprint / provenance
@@ -39,9 +40,17 @@ into a separate repository remains possible only after those APIs stabilize.
 - `namespace-assembly-v0.md` — assembly pipeline and phase split.
 - `library-namespace-design-note.md` — library/namespace/no-import model.
 
+Cross-block canonical construction contract:
+
+- `../symbol-world/symbol-construction-units-and-namespace-origin.md` —
+  namespace-facet origin uniqueness, source/meta construction ownership,
+  physical directory authority, and cross-file closure.
+
 ## Reading order
 
-Read in the listed order, starting with `build-system-design.md`.
+Read in the listed order, starting with `build-system-design.md`, then read the
+cross-block construction contract before changing source-file or meta-produced
+namespace assembly.
 
 ## Dependencies
 

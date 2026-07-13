@@ -57,12 +57,14 @@ Still open after this correction:
 - Exact representation of `TypeValueId` and canonical type-value equality.
 - Exact representation of symbol/place identity.
 - Exact future lowering of generic/meta-generated type expressions such as
-  `(int)Vec::std`.
+  `(int Vec::std)`.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of writable-place checking.
 - Exact future implementation of alias forwarding resolution.
-- How meta-function return values expose or hide injection places.
+- Exact Rust/IR representation of `SymbolConstructionValue` facet exposure;
+  semantically, formal invocation remains uninstalled and outer binding resolves
+  the installation place.
 - Interaction between graph freeze, seal phase, and injection-place mutability.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
@@ -72,6 +74,57 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
+
+### Resolved symbol-first construction direction
+
+The following are resolved at the future-design level and are not open
+questions:
+
+- Every path/name first resolves to a symbol, then projects namespace, type, or
+  heterogeneous value facets.
+- `let destination = source` resolves the source symbol, reads its value, and
+  binds that value to the destination; it does not reroot patterns, alias
+  symbols, or merge places.
+- `compile` computes `PatternValue`; `meta` creates or transforms an uninstalled
+  `SymbolConstructionValue` whose public successful rank is `symbol`.
+- `compile` creates no `MetaInstanceScope`, may return an existing type value,
+  and uses the ordinary function-object Self frame for local `struct`.
+- Every canonical meta invocation creates a `MetaInstanceScope`; if its return
+  symbol has a type facet, that type's outer pattern root is the meta-instance
+  scope. Direct meta type returns `r = t` and `r = uint8` are invalid when they
+  would substitute an external pattern root.
+- `MetaPartial` / `MetaStrict` are evaluation-demand modes orthogonal to
+  execution capability and result rank.
+- Formal meta return material uses `r = ...`; the old formal `r === ...`
+  forwarding category is removed. Ordinary `let a === b` aliasing remains.
+- `struct` resolves pattern ownership from input navigation plus ambient
+  `ResolvedPatternScope`; a later binding target never reroots it.
+- Functional `inject` explicitly selects an input symbol's internal pattern
+  scope, adds direct children, and returns an uninstalled construction.
+- A fully named direct-child pattern layer normalizes to
+  `Set<PatternValue>`; symbols and production provenance do not participate in
+  set identity. If any direct child is bare, the entire layer is positional and
+  order-sensitive.
+- Graph installation always belongs to outer `let` binding/injection or physical
+  namespace assembly, never formal `struct` / `inject` invocation.
+- A namespace facet has one creation origin: physical directory, one source
+  construction unit, or one meta construction unit.
+- A source file owns each subtree it creates. Parallel files may create distinct
+  direct children under an authorized physical directory but may not reopen one
+  another's namespace/type/pattern/value or overload subtrees.
+- A physical child directory can receive direct source contributions only from
+  files inside that child directory; parent files may navigate it but not inject
+  into it.
+- `has TypeFacet => has NamespaceFacet`; a physical namespace cannot be upgraded
+  into a source-created type at the same path.
+- Ordinary namespace value members do not change a type's `PatternValue`.
+- Ordinary type-facet installation is single-write; duplicate definitions do
+  not implicitly form a sum.
+
+Canonical note:
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+Construction-origin note:
+`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
 ---
 
@@ -192,25 +245,25 @@ model: local branch produces `Done(unit)`, and the final return accumulator
 receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
 pattern-space reduction, not silent discard.
 
-#### Resolved: r = t and r === t produce different meta return values
+#### Resolved: formal meta return has one construction form
 
-Status: **Resolved at future-design level** (see the meta-construction value/pattern
-clarifications document).
+Status: **Resolved at future-design level** (see the canonical symbol-first
+construction note).
 
-`r = t` produces a generative construction value (`GeneratedConstructionValue`)
-whose external identity is shielded by callee + canonical args + build identity.
-`r === t` produces a forwarding value (`ForwardedValue`) that shares the target's
-existing identity. These are not implementation variants of the same behavior.
+`r = ...` assigns pattern/facet material to the return layer of a
+`SymbolConstructionValue`. The former formal `r === ...` forwarding category is
+superseded. Ordinary declaration aliasing remains `let a === b` and continues to
+forward symbol/place lookup according to the alias model.
 
 #### Resolved: TypeValueId is projection material only
 
 Status: **Resolved at future-design level**.
 
 `TypeValueId` is a derived first-order type-value projection material. It is not
-an invocation result, binding source, construction identity, or type-definition
-identity. Graph-resolved invocation plumbing must return `MetaInvocationValue`
-cases such as `ForwardedValue(TypeSymbol)`, `GeneratedConstructionValue`, or
-`GeneratedTypeDefinitionValue`.
+a symbol, binding source, installation place, construction identity, or
+type-definition identity. Final invocation plumbing returns `PatternValue` for
+`compile` and `SymbolConstructionValue` for `meta`. Current
+`MetaInvocationValue` variants are transitional implementation transport.
 
 #### Still open
 

@@ -68,14 +68,14 @@ Equality never inserts `?`. Binding may request `?` only as pattern-directed
 repair.
 
 A leaf is any value whose current extraction interface does not permit further
-decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std` are
+decomposition by that same interface. `1uint8`, `uint8`, and `(int Vec::std)` are
 all leaves in ordinary value context. Thus:
 
 ```text
-((int)Vec::std)? == (int)Vec::std
+(int Vec::std)? == (int Vec::std)
 ```
 
-This is not a claim that `Vec::std` has no argument. It says `(int)Vec::std`
+This is not a claim that `Vec::std` has no argument. It says `(int Vec::std)`
 carries no product extraction interface in ordinary value context. Extraction of
 the type parameter requires an explicit rank-pattern context.
 
@@ -126,7 +126,7 @@ Examples:
 - `()single_return` may evaluate to a leaf `e`; `e? = e`.
 - `()two_return` may evaluate directly to product normal form `P`; `P? = P`.
 - `val : t` is a non-leaf `e`; `val?` enters the named-field product view.
-- `(int)Vec::std` is a leaf in ordinary value context; `?` is idempotent.
+- `(int Vec::std)` is a leaf in ordinary value context; `?` is idempotent.
 
 This is why `?` must not be understood as "inverse constructor." It goes
 downward into the next exposed extraction view. The upward

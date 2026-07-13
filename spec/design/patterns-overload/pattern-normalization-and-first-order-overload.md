@@ -67,11 +67,16 @@ overload `(self, t: type, _ unit: type): meta -> ...`, and the selected body
 forwards `t`. The left-hand `: type` annotation is only checked after this RHS
 result exists; it does not cause the RHS meta evaluation.
 
-The generic fallback body `r === t | u` is not part of the implemented value
-model unless canonical sum-pattern values are added. If that body is selected,
+The current legacy generic fallback body `r === t | u` is not part of the
+implemented value model unless canonical sum-pattern values are added. If that
+body is selected,
 the restricted evaluator reports the structured
 `UnsupportedCanonicalSumPatternValue` diagnostic instead of treating `|` as
 policy union, expression-level operator lookup, or `+` reduction.
+
+This is an implementation-substrate note. Final formal meta return uses
+`r = ...` to build `SymbolConstructionValue`; `r === ...` is not a future
+formal-return category.
 
 Restricted overload failure is structured in v0.8. Ambiguous candidates,
 missing source-declared callables, lookup-phase visibility misses,
@@ -244,7 +249,7 @@ Only a future explicit parameter expectation / extraction rule may consume
 `Unit`; product semantic normalization itself does not delete it.
 
 This layer prohibits callee-specific AST argument parsing, special handling of
-`(T)Vec` / `(T)Option` / `(A, B)Pair`, flattening through Expression nodes, and
+`(T Vec)` / `(T Option)` / `(A, B Pair)`, flattening through Expression nodes, and
 dropping `Unit` during product normalization.
 
 ## 3. PatternObject

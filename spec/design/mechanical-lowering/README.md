@@ -38,7 +38,7 @@ Thus `cond |> if { ... } |> else { ... }` is not the canonical form when
 `cond` is a bool value. Mechanical-lowering examples in this block use the
 correct `?`-preceded form.
 
-## For v0.8-adjacent type-to-type meta construction work, read
+## For v0.8-adjacent compile/meta construction work, read
 `spec/contracts/v0.8-meta-construction-agent-constraints.md` first. Its
 non-value argument boundary applies here: type objects, rank objects, namespace
 objects, meta objects, and pattern objects are not value arguments and must not
