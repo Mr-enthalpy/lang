@@ -140,7 +140,7 @@ fn generated_fallback_attaches_generated_type_definition_origin() {
 }
 
 #[test]
-fn global_binding_context_attaches_global_owner_origin() {
+fn explicit_global_registry_context_attaches_global_owner_origin() {
     let mut state = TypeMaterializationState::default();
     let symbol_id = SymbolId(20);
     let value = attach_type_definition_pattern_heads_with_context(
@@ -168,7 +168,7 @@ fn global_binding_context_attaches_global_owner_origin() {
 }
 
 #[test]
-fn namespace_binding_context_attaches_namespace_owner_origin() {
+fn explicit_namespace_registry_context_attaches_namespace_owner_origin() {
     let mut state = TypeMaterializationState::default();
     let symbol_id = SymbolId(30);
     let namespace_a = SymbolId(300);
@@ -277,7 +277,7 @@ fn same_display_spelling_different_contexts_have_distinct_identities() {
 }
 
 #[test]
-fn stripped_values_reattach_under_current_context() {
+fn stripped_values_reattach_under_explicit_registry_context() {
     let mut state = TypeMaterializationState::default();
     let type_definition_id = TypeDefinitionInstanceId(105);
     let generated = attach_type_definition_pattern_heads(
@@ -288,8 +288,8 @@ fn stripped_values_reattach_under_current_context() {
     .expect("generated attachment succeeds");
 
     // Cacheable generated type-definition values strip concrete PatternHeadId
-    // material. Reattachment must follow the current materialization context,
-    // not stale heads from the first attachment.
+    // material. The low-level helper may reattach them under an explicitly
+    // supplied transitional registry context.
     let replayable = stripped(generated);
     let global = attach_type_definition_pattern_heads_with_context(
         replayable.clone(),
@@ -364,13 +364,13 @@ fn local_context_uses_place_identity_not_rendered_path_identity() {
 }
 
 #[test]
-fn binding_generated_type_at_root_derives_global_pattern_context() {
+fn binding_generated_type_at_root_uses_generated_fallback() {
     let snapshot = NamespaceGraphSnapshot::new();
     let mut state = TypeMaterializationState::default();
+    let value = generated_struct_value_for_binding();
+    let type_definition_id = value.type_definition_id;
     let expansion = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(
-            generated_struct_value_for_binding(),
-        ),
+        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(value),
         &snapshot,
         snapshot.root_node(),
         "Name",
@@ -386,9 +386,7 @@ fn binding_generated_type_at_root_derives_global_pattern_context() {
     assert_eq!(type_object.type_symbol_id, expansion.replacement_object.id);
     assert_eq!(
         state.pattern_heads.get(owner_head).unwrap().origin,
-        PatternHeadOrigin::GlobalBinding {
-            symbol_id: type_object.type_symbol_id,
-        }
+        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
     );
     assert_eq!(
         type_object.fields[0].pattern_head,
@@ -405,18 +403,16 @@ fn binding_generated_type_at_root_derives_global_pattern_context() {
 }
 
 #[test]
-fn binding_generated_type_inside_namespace_derives_namespace_pattern_context() {
+fn binding_destination_does_not_select_or_reroot_owner_head() {
     let snapshot = NamespaceGraphSnapshot::new();
-    let (snapshot, namespace_a_symbol_id, namespace_a_node_id) =
-        install_test_namespace(snapshot, "ns_a");
-    let (snapshot, namespace_b_symbol_id, namespace_b_node_id) =
-        install_test_namespace(snapshot, "ns_b");
+    let (snapshot, _, namespace_a_node_id) = install_test_namespace(snapshot, "ns_a");
+    let (snapshot, _, namespace_b_node_id) = install_test_namespace(snapshot, "ns_b");
     let mut state = TypeMaterializationState::default();
+    let replayable = stripped(generated_struct_value_for_binding());
+    let type_definition_id = replayable.type_definition_id;
 
     let expansion_a = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(
-            generated_struct_value_for_binding(),
-        ),
+        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(replayable.clone()),
         &snapshot,
         namespace_a_node_id,
         "Name",
@@ -428,9 +424,7 @@ fn binding_generated_type_inside_namespace_derives_namespace_pattern_context() {
         .install_delta(expansion_a.namespace_delta.clone())
         .expect("namespace a binding delta installs");
     let expansion_b = bind_meta_invocation_value_result_with_materialization_state(
-        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(
-            generated_struct_value_for_binding(),
-        ),
+        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(replayable),
         &snapshot,
         namespace_b_node_id,
         "Name",
@@ -448,28 +442,22 @@ fn binding_generated_type_inside_namespace_derives_namespace_pattern_context() {
         .owner_pattern_head
         .expect("namespace b binding attaches owner pattern head");
 
-    assert_ne!(owner_a, owner_b);
+    assert_eq!(owner_a, owner_b);
     assert_eq!(
         state.pattern_heads.get(owner_a).unwrap().origin,
-        PatternHeadOrigin::NamespaceBinding {
-            namespace_symbol_id: namespace_a_symbol_id,
-            symbol_id: type_a.type_symbol_id,
-        }
+        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
     );
     assert_eq!(
         state.pattern_heads.get(owner_b).unwrap().origin,
-        PatternHeadOrigin::NamespaceBinding {
-            namespace_symbol_id: namespace_b_symbol_id,
-            symbol_id: type_b.type_symbol_id,
-        }
+        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
     );
     assert_eq!(
         state.pattern_heads.get(owner_a).unwrap().display_name,
-        "Name"
+        format!("generated-type-definition-{}", type_definition_id.as_u64())
     );
     assert_eq!(
         state.pattern_heads.get(owner_b).unwrap().display_name,
-        "Name"
+        format!("generated-type-definition-{}", type_definition_id.as_u64())
     );
     assert_eq!(
         type_a.fields[0].pattern_head,
@@ -482,42 +470,46 @@ fn binding_generated_type_inside_namespace_derives_namespace_pattern_context() {
 }
 
 #[test]
-fn binding_generated_type_without_namespace_owner_uses_generated_fallback_context() {
+fn binding_preserves_pre_attached_provisional_owner_material() {
     let snapshot = NamespaceGraphSnapshot::new();
-    let root = snapshot.root_node();
-    let mut delta = snapshot.empty_delta();
-    let orphan_node_id = delta.allocate_node_id();
-    delta.insert_node(NamespaceNode::new(
-        orphan_node_id,
-        "orphan<namespace>",
-        NamespaceNodeKind::Virtual,
-        SourceCategory::DeclaredSymbol,
-        Some(root),
-        provenance("orphan namespace node"),
-    ));
-    let snapshot = snapshot
-        .install_delta(delta)
-        .expect("orphan namespace node installs");
     let mut state = TypeMaterializationState::default();
-    let value = generated_struct_value_for_binding();
-    let type_definition_id = value.type_definition_id;
+    let provisional_symbol_id = SymbolId(900);
+    let value = attach_type_definition_pattern_heads_with_context(
+        generated_struct_value_for_binding(),
+        &mut state,
+        PatternMaterializationContext::Global {
+            symbol_id: provisional_symbol_id,
+        },
+        "provisional-owner",
+        provenance("attach provisional owner"),
+    )
+    .expect("provisional attachment succeeds");
+    let provisional_owner = owner_head(&value);
 
     let expansion = bind_meta_invocation_value_result_with_materialization_state(
         lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(value),
         &snapshot,
-        orphan_node_id,
-        "Name",
-        provenance("bind orphan generated type"),
+        snapshot.root_node(),
+        "Destination",
+        provenance("bind pre-attached generated type"),
         &mut state,
     )
-    .expect("orphan binding succeeds with generated fallback");
+    .expect("binding preserves provisional material");
 
     let type_object = type_payload(&expansion.replacement_object);
-    let owner_head = type_object
+    let bound_owner = type_object
         .owner_pattern_head
-        .expect("fallback binding attaches owner pattern head");
+        .expect("binding preserves owner pattern head");
+    assert_eq!(bound_owner, provisional_owner);
+    assert_ne!(type_object.type_symbol_id, provisional_symbol_id);
     assert_eq!(
-        state.pattern_heads.get(owner_head).unwrap().origin,
-        PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
+        state.pattern_heads.get(bound_owner).unwrap().origin,
+        PatternHeadOrigin::GlobalBinding {
+            symbol_id: provisional_symbol_id,
+        }
+    );
+    assert_eq!(
+        state.pattern_heads.get(bound_owner).unwrap().display_name,
+        "provisional-owner"
     );
 }

@@ -31,7 +31,7 @@ This document builds on, without replacing:
 
 ## 1. Canonical Boundaries
 
-The design has four load-bearing boundaries:
+The design has five load-bearing boundaries:
 
 ```text
 name/path resolution:
@@ -425,6 +425,21 @@ participates in default pattern navigation and name shadowing, may carry
 namespace, type, and value facets, anchors cache/incremental identity, and owns
 the return construction transaction. A meta invocation must therefore establish
 its own symbol layer rather than act as a value-level forwarding function.
+
+The externally navigable result symbol is `M` itself. The declared return slot
+is only a lexical construction handle to that symbol:
+
+```text
+symbol_of_result(invoke_meta(callee, canonical_arguments)) = M
+return_slot(r) = lexical_handle(M)
+```
+
+The slot name `r` does not add another component to the final navigation path.
+Material written through `r` contributes facets or children to `M`; it does not
+create `r::M` or place an extra symbol named `r` beneath `M`. For example, a
+pattern-child contribution written as `let t1::r = bool;` inside the invocation
+targets `t1::M` under the applicable pattern-construction expectation, not
+`t1::r::M`.
 
 Canonical argument identity follows parameter rank:
 
@@ -831,13 +846,20 @@ The operation is functional:
 
 ```text
 inject:
-  Symbol or SymbolConstructionValue
-  x child pattern material
-  -> SymbolConstructionValue
+  OpenOwnedConstructionHandle
+  x ChildPatternMaterial
+  -> OpenOwnedConstructionHandle
+
+preconditions:
+  construction_owner(input) = current construction unit
+  construction_state(input) = open / uninstalled
 ```
 
-It returns a new, uninstalled construction value. It does not mutate an already
-installed graph object and does not install a namespace delta.
+`OpenOwnedConstructionHandle` is a capability-bearing view of an uninstalled
+`SymbolConstructionValue : symbol`; it is not an arbitrary resolved `Symbol`.
+Each successful call returns the next functional version of the same owned,
+open construction. It does not mutate an already installed graph object and
+does not install a namespace delta.
 
 Only an outer binding/injection installs the result:
 
@@ -857,7 +879,7 @@ struct:
   resolve owner by ordinary input navigation + ambient scope
 
 inject:
-  explicitly select the input symbol's internal pattern scope as owner
+  explicitly select the owned construction handle's symbol scope as owner
 ```
 
 Example:
@@ -868,6 +890,13 @@ let t1::r =
     |> inject(t first)
     |> inject(u second);
 ```
+
+Here `r` and `t1::r` are handles into the construction currently owned by the
+same `MetaConstructionUnit`; the example is not permission to resolve and
+reopen an arbitrary installed symbol. A handle returned by another construction
+unit may be composed only while an explicit composition rule preserves
+ownership and open state. An installed result, or a subtree owned by another
+unit, cannot be passed to `inject` for reopening.
 
 The resulting pattern is:
 
@@ -915,7 +944,7 @@ leaves would obscure this distinction.
 
 `inject` may only:
 
-- open or continue the input symbol's internal pattern construction;
+- continue the current unit's owned, still-open pattern construction;
 - add direct children;
 - preserve the selected owner.
 
@@ -926,6 +955,8 @@ It may not:
 - delete an existing child;
 - implicitly reroot an arbitrary external pattern value;
 - directly mutate the installed namespace graph;
+- accept an arbitrary installed `Symbol` as reopening authority;
+- cross a `SourceConstructionUnit` or `MetaConstructionUnit` ownership boundary;
 - bypass place writability or delta installation;
 - grant a general macro or arbitrary AST-rewrite capability.
 
@@ -1000,6 +1031,27 @@ set equality, or extraction semantics.
 An implementation may retain source symbol, inherited/explicit navigation,
 binding origin, or injection origin as provenance for diagnostics and replay.
 That provenance must not affect `PatternValue` equality.
+
+Because the normalized layer is a mathematical set, insertion is idempotent by
+`PatternValue` equality. Distinct source symbols may remain distinct extraction
+entry paths while contributing only one set element:
+
+```lang
+let a::t = bool;
+let b::t = bool;
+```
+
+```text
+value(symbol(a::t)) = bool::
+value(symbol(b::t)) = bool::
+
+{ value(symbol(a::t)), value(symbol(b::t)) }
+  = { bool:: }
+```
+
+Both `a::t` and `b::t` may be used as source navigation paths. After symbol
+resolution and value read, both look up the single `bool::` member. The layer
+is therefore neither a multiset nor a name-keyed relation.
 
 Symbol paths and `PatternValue` navigation names may coincide or differ. For
 example, the same spelling may describe:
@@ -1348,7 +1400,48 @@ omitted.
 
 ## 12. Facet Conflicts and Installation
 
-### 12.1 Same-symbol facet rules
+### 12.1 Contribution expectation selects the facet
+
+A navigated child binder does not determine its contribution facet from the
+runtime shape of the right side. The enclosing semantic position supplies a
+construction expectation, optionally made explicit by a rank/facet annotation:
+
+```text
+ContributionExpectation =
+    PatternChild
+  | NamespaceValueMember
+```
+
+Under `PatternChild`, the source path is resolved to a symbol and projected to
+its type/pattern value. The resulting `PatternValue` is installed as a child of
+the owner's type construction and participates in normalization and extraction:
+
+```text
+resolve source Symbol
+  -> project/read PatternValue
+  -> contribute to owner TypeFacet(PatternValue)
+```
+
+The earlier `let t1::r = bool;` meta example is interpreted under this
+expectation, so `bool::` becomes a member below the self-rooted meta result.
+
+Under `NamespaceValueMember`, the source is projected through its ordinary
+value facet and a namespace value symbol is constructed. This changes only the
+namespace graph/value facet; it does not enter or change the owner's
+`PatternValue`:
+
+```text
+resolve source Symbol
+  -> project/read ordinary value
+  -> construct namespace value member
+```
+
+The language must select the expectation from semantic context or an explicit
+rank/facet annotation. It must not guess `PatternChild` merely because the
+right side happens to carry a type or `PatternValue`. Both paths still obey the
+general symbol-resolution-then-facet-projection rule.
+
+### 12.2 Same-symbol facet rules
 
 The future symbol-facet direction is:
 
@@ -1413,7 +1506,7 @@ value. Whether that writeback spelling is permitted is reserved for later
 place/update rules. It does not make two unrelated ordinary definitions
 mergeable.
 
-### 12.2 Value identity does not multiply with names
+### 12.3 Value identity does not multiply with names
 
 Do not infer three type values from:
 
@@ -1427,7 +1520,7 @@ If the bindings expose the same pattern/type value, the value identity is the
 same. Their `SymbolId`, `PlaceId`, and alias/provenance relations remain
 separately observable according to their declaration forms.
 
-### 12.3 Installation is always outer-layer work
+### 12.4 Installation is always outer-layer work
 
 The installation flow is:
 
@@ -1447,17 +1540,18 @@ Graph installation always occurs in the outer declaration/binding layer.
 
 ## 13. Current Implementation Substrate
 
-The PR #94 implementation remains a transitional identity/materialization
-substrate. It currently provides:
+The PR #94 implementation remains a neutral transitional
+identity/materialization substrate. It currently provides:
 
 - an explicit context attachment helper for generated type-definition pattern
   heads;
 - categorical `Generated`, `GeneratedTypeDefinition`, `Global`, `Namespace`,
-  and `Local` materialization contexts in the registry substrate;
-- binding/materialization code that may reattach stripped/generated pattern-head
-  material under the destination symbol's global or namespace context;
-- `GeneratedTypeDefinition` as the formal-invocation fallback and cache-safe
-  anonymous context;
+  and `Local` materialization contexts as low-level registry test/materialization
+  categories, not final language owner scopes;
+- `GeneratedTypeDefinition` as the formal-invocation and binding-time fallback
+  for cache-safe anonymous reattachment;
+- binding that preserves already attached provisional material and does not
+  derive owner identity from the destination global/namespace path;
 - registry-backed owner/field `PatternHeadId` allocation and bounded child
   lookup.
 
@@ -1471,6 +1565,9 @@ This substrate does **not** implement:
 - the `compile` / `meta` capability split specified here;
 - `SymbolConstructionValue` as the public meta result model;
 - functional `inject`;
+- `OpenOwnedConstructionHandle` ownership/open-state enforcement;
+- contribution-expectation-driven pattern-child versus namespace-value facet
+  selection;
 - an explicit sum construction/extension API;
 - the final owner-resolution rule for `struct`;
 - fully named `Set<PatternValue>` versus ordered pattern-layer representation;
@@ -1482,12 +1579,14 @@ This substrate does **not** implement:
 - full alias/place/writability checking;
 - graph installation from the construction model in this document.
 
-The current binding/materialization path can use the destination symbol context
-when attaching registry-backed `PatternHeadId`s. That behavior is a temporary
-attachment strategy. It must not be described as the final rule that the
-binding destination determines `struct` pattern-owner identity or a meta return
-type's root. In final semantics, the meta instance's own symbol scope anchors
-that root.
+The categorical global/namespace/local contexts remain available only to the
+explicit low-level attachment helper and registry tests. The ordinary binding
+path does not select among them: it preserves attached provisional owner
+material, or restores stripped material under the anonymous
+`GeneratedTypeDefinition(type_definition_id)` fallback. It must not be
+described as determining or rerooting `struct` pattern-owner identity or a meta
+return type's root. In final semantics, the meta instance's own symbol scope
+anchors that root.
 
 Formal `struct` invocation currently may allocate or attach registry material
 under `GeneratedTypeDefinition`. It remains graph-installation-free and
@@ -1506,7 +1605,8 @@ This document does not:
   execution, extraction execution, D/Done, ownership, runtime evaluation, or
   code generation;
 - require the current Rust `SymbolObject`, `PatternHeadId`, or meta invocation
-  enums to be refactored in this documentation-only correction.
+  enums to implement the future objects defined here. PR #94 only neutralizes
+  destination-derived owner attachment in the existing substrate.
 
 ## 15. Required Direction for Later Implementation
 

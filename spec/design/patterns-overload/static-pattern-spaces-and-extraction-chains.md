@@ -209,10 +209,11 @@ PatternHeadRegistry
 This registry is part of the struct/type materialization state. Current formal
 `struct` invocation calls `PatternHeadRegistry::materialize_struct_pattern_heads`
 and records the resulting owner/field heads in `GeneratedTypeDefinitionValue`.
-PR #94 binding/materialization may reattach stripped heads under a destination
-global or namespace context before projecting them into `TypeObject`,
-`TypeField`, the extraction interface, and generated field functions. This is a
-transitional attachment strategy, not the final owner-resolution rule.
+PR #94 binding/materialization preserves attached provisional heads and restores
+stripped heads only under the anonymous `GeneratedTypeDefinition` fallback
+before projecting them into `TypeObject`, `TypeField`, the extraction interface,
+and generated field functions. Binding destination paths do not select or
+reroot those heads.
 
 Cached struct meta invocation values are rehydrated into the current
 `TypeMaterializationState`. The cache does not store concrete pattern-head

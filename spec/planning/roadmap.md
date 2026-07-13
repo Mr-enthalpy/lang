@@ -371,47 +371,18 @@ semantics; HIR/codegen integration beyond placeholder nodes.
 #### v0.8 — Compile / Symbol Construction Interpreter Bootstrap
 
 **Goal**: evolve the earliest restricted type-shaped evaluator toward the
-canonical capability split. `compile` computes `PatternValue`; `meta` creates or
-transforms an uninstalled `SymbolConstructionValue : symbol`. Bodies consume the
-source file's already-produced structured AST/Normalized AST under policy; this
-is not a separate DSL or text macro.
+canonical value-level `compile` and symbol-level `meta` capabilities. Bodies
+consume the source file's already-produced structured AST/Normalized AST under
+policy; this is not a separate DSL or text macro.
 
 Must cover:
 
-- compile/meta body as normalized structured material
-- `compile` result model: ordinary/type/structured `PatternValue`
-- `meta` result model: `SymbolConstructionValue : symbol`
-- declaration-as-assignment / assignment-as-injection
-- `let` inside a meta body creates symbols through the namespace graph capability
-- ordinary `let a === b` remains symbol/place alias forwarding, not copy
-- formal return object slot uses `r = ...` to populate construction material;
-  no formal `r === ...` forwarding category
-- every canonical meta invocation establishes a `MetaInstanceScope`; if its
-  return symbol has a type facet, that type's outer pattern root is the
-  meta-instance scope
-- direct identity-style meta type returns such as `r = t` or `r = uint8` are
-  invalid when they would install an externally rooted `PatternValue`; external
-  values may instead be members under the self-rooted type
-- `compile` creates no `MetaInstanceScope`, may return an existing type value,
-  and uses the ordinary function-object Self frame for local `struct`
-- canonical argument identity follows parameter rank: symbol/place identity,
-  `TypeValueId`, or `PatternValue` identity
-- meta instance identity = function symbol + rank-directed canonical args +
-  build/config fingerprint
-- symbol shielding: the externally visible result name is determined by the meta
-  function name + arguments, not internal temporary names
-- `struct` pattern owner resolved from input navigation plus ambient
-  `ResolvedPatternScope`, independent of binding target
-- future functional `inject` selects an input symbol's internal pattern scope,
-  adds direct children, and returns an uninstalled construction
-- ordinary type-facet installation occurs once; duplicate type definitions do
-  not implicitly form a sum, and sum extension requires an explicit future API
-- canonical invocation navigation uses one complete atom such as
-  `(int Vec::std)` and children such as `child::(int Vec::std)`
-- fully named pattern layers normalize to `Set<PatternValue>`; extraction
-  resolves a source symbol, reads its value, then performs set lookup
-- generated declarations installed only by outer binding/injection under a legal
-  writable place
+- implement the symbol-first construction boundary defined in
+  `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`;
+- implement namespace origin and construction ownership in the order defined by
+  `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`;
+- keep normalized body material, policy planes, canonical instance keys, and
+  outer atomic installation as explicit stage boundaries;
 - first-class generic classes such as `(T Vec)`, `(T Option)`, `(A, B Pair)`
 - awareness that meta body execution policy differs from function symbol policy
   and return-object policy; implement only the minimum checks needed to avoid

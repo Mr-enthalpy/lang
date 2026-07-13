@@ -23,6 +23,24 @@ should migrate into `spec/public/`, `spec/contracts/`, `spec/planning/`, and
 - Accepted ADR constraints have been absorbed into the relevant design blocks;
   they constrain direction but do not override `spec/public/`.
 
+### Topic owners
+
+To prevent parallel future-design texts from drifting, each cross-cutting topic
+has one normative owner inside the staging area:
+
+| Topic | Normative owner | Other documents retain only |
+|---|---|---|
+| Symbol-first resolution, facets, `compile` / `meta`, `struct` / `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
+| Namespace origin, construction-unit ownership, physical contribution authority, cross-file closure | `symbol-world/symbol-construction-units-and-namespace-origin.md` | Build-phase application, implementation gap, and link |
+| Current `PatternHeadId` registry/materialization substrate | `../contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` | No claim of final owner resolution |
+| Candidate preparation, policy filtering, partial/strict reduction | `meta-invocation/meta-object-invocation-and-policy-reduction.md` | References to symbol-world result ranks |
+| Pattern-space and extraction algebra | `patterns-overload/static-pattern-spaces-and-extraction-chains.md` | References to canonical symbol-to-value lookup |
+| Stage ordering and implementation dependencies | `../planning/roadmap.md` | Links to semantic owners rather than duplicated rules |
+
+If a satellite summary conflicts with its listed owner, the owner controls the
+future-design direction. Current implemented behavior remains governed by
+`spec/public/` and the applicable stage contract.
+
 ## Current staging route
 
 The current staging route (not a permanent design reading order) is:

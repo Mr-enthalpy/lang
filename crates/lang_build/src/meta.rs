@@ -11,7 +11,7 @@ use crate::{
         CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        attach_type_definition_pattern_heads_with_context, compute_type_definition_instance_id,
+        attach_type_definition_pattern_heads, compute_type_definition_instance_id,
         invoke_meta_callable_cached_with_materialization_state,
         invoke_meta_callable_with_materialization_state, GeneratedFieldDefinition,
         GeneratedTypeDefinitionValue, MetaInvocationInput, MetaInvocationResult,
@@ -24,7 +24,7 @@ use crate::{
         TypeField, TypeObject,
     },
     normalized_call::extract_single_call_site,
-    pattern_head::{PatternMaterializationContext, TypeMaterializationState},
+    pattern_head::TypeMaterializationState,
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
     product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
@@ -816,20 +816,12 @@ fn bind_generated_type_definition_value(
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();
-    let attachment_context = type_definition_pattern_attachment_context(
-        snapshot,
-        parent_namespace,
-        type_symbol_id,
-        value.type_definition_id,
-    );
-    let value = attach_type_definition_pattern_heads_with_context(
-        value,
-        materialization_state,
-        attachment_context,
-        binding_name.to_string(),
-        provenance.clone(),
-    )
-    .map_err(BuildError::single)?;
+    let value = if value.pattern_heads.is_some() {
+        value
+    } else {
+        attach_type_definition_pattern_heads(value, materialization_state, provenance.clone())
+            .map_err(BuildError::single)?
+    };
     delta.insert_node(NamespaceNode::new(
         type_namespace_id,
         format!("{binding_name}<type-associated>"),
@@ -930,38 +922,6 @@ fn bind_generated_type_definition_value(
         diagnostics: Vec::new(),
         provenance,
     })
-}
-
-fn type_definition_pattern_attachment_context(
-    snapshot: &NamespaceGraphSnapshot,
-    parent_namespace: NamespaceNodeId,
-    symbol_id: SymbolId,
-    type_definition_id: crate::meta_invocation::TypeDefinitionInstanceId,
-) -> PatternMaterializationContext {
-    if parent_namespace == snapshot.root_node() {
-        return PatternMaterializationContext::Global { symbol_id };
-    }
-
-    if let Some(namespace_symbol_id) =
-        namespace_symbol_for_node(snapshot, parent_namespace).map(|symbol| symbol.id)
-    {
-        return PatternMaterializationContext::Namespace {
-            namespace_symbol_id,
-            symbol_id,
-        };
-    }
-
-    PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id }
-}
-
-fn namespace_symbol_for_node(
-    snapshot: &NamespaceGraphSnapshot,
-    namespace: NamespaceNodeId,
-) -> Option<&SymbolObject> {
-    snapshot
-        .symbols()
-        .values()
-        .find(|symbol| symbol.namespace_node() == Some(namespace))
 }
 
 fn generated_type_extraction_interface(

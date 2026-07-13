@@ -77,54 +77,17 @@ Still open after this correction:
 
 ### Resolved symbol-first construction direction
 
-The following are resolved at the future-design level and are not open
-questions:
+These decisions are no longer open questions and are intentionally not repeated
+here. Their normative future-design owners are:
 
-- Every path/name first resolves to a symbol, then projects namespace, type, or
-  heterogeneous value facets.
-- `let destination = source` resolves the source symbol, reads its value, and
-  binds that value to the destination; it does not reroot patterns, alias
-  symbols, or merge places.
-- `compile` computes `PatternValue`; `meta` creates or transforms an uninstalled
-  `SymbolConstructionValue` whose public successful rank is `symbol`.
-- `compile` creates no `MetaInstanceScope`, may return an existing type value,
-  and uses the ordinary function-object Self frame for local `struct`.
-- Every canonical meta invocation creates a `MetaInstanceScope`; if its return
-  symbol has a type facet, that type's outer pattern root is the meta-instance
-  scope. Direct meta type returns `r = t` and `r = uint8` are invalid when they
-  would substitute an external pattern root.
-- `MetaPartial` / `MetaStrict` are evaluation-demand modes orthogonal to
-  execution capability and result rank.
-- Formal meta return material uses `r = ...`; the old formal `r === ...`
-  forwarding category is removed. Ordinary `let a === b` aliasing remains.
-- `struct` resolves pattern ownership from input navigation plus ambient
-  `ResolvedPatternScope`; a later binding target never reroots it.
-- Functional `inject` explicitly selects an input symbol's internal pattern
-  scope, adds direct children, and returns an uninstalled construction.
-- A fully named direct-child pattern layer normalizes to
-  `Set<PatternValue>`; symbols and production provenance do not participate in
-  set identity. If any direct child is bare, the entire layer is positional and
-  order-sensitive.
-- Graph installation always belongs to outer `let` binding/injection or physical
-  namespace assembly, never formal `struct` / `inject` invocation.
-- A namespace facet has one creation origin: physical directory, one source
-  construction unit, or one meta construction unit.
-- A source file owns each subtree it creates. Parallel files may create distinct
-  direct children under an authorized physical directory but may not reopen one
-  another's namespace/type/pattern/value or overload subtrees.
-- A physical child directory can receive direct source contributions only from
-  files inside that child directory; parent files may navigate it but not inject
-  into it.
-- `has TypeFacet => has NamespaceFacet`; a physical namespace cannot be upgraded
-  into a source-created type at the same path.
-- Ordinary namespace value members do not change a type's `PatternValue`.
-- Ordinary type-facet installation is single-write; duplicate definitions do
-  not implicitly form a sum.
+- `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+  for symbol-first facets, `compile` / `meta`, pattern scopes, owned-open
+  `inject`, ordering, extraction handoff, and binding/install boundaries;
+- `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
+  for namespace origin, construction ownership, physical authority, and
+  cross-file closure.
 
-Canonical note:
-`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-Construction-origin note:
-`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
+Unimplemented portions remain roadmap work, not reopened design questions.
 
 ---
 

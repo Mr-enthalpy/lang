@@ -140,7 +140,12 @@ MetaConstructionUnit =
 
 Stable implementations will assign identities such as
 `SourceConstructionUnitId` and `MetaConstructionUnitId`; exact Rust storage is
-not fixed here.
+not fixed here. An implementation filename does not enter the external
+namespace path, but this does not yet imply that renaming a file preserves its
+construction-unit identity, cache identity, or provenance. Such preservation
+requires a future stable logical-file identity independent of the physical
+path. At this stage only the namespace API is guaranteed to remain unchanged
+by a filename-only rename.
 
 When a unit creates a namespace/type/pattern child subtree, structural
 construction ownership belongs to that unit:
@@ -254,7 +259,9 @@ all symbol construction performed by that invocation
 
 Within that transaction, the meta body may:
 
-- chain functional `inject` operations for different children;
+- chain functional `inject` operations for different children through an
+  `OpenOwnedConstructionHandle` whose owner is this `MetaConstructionUnit` and
+  whose state remains open/uninstalled;
 - construct a complete type/pattern subtree;
 - establish multiple heterogeneous value entries;
 - call `compile` helpers to obtain `PatternValue`s;
@@ -263,6 +270,9 @@ Within that transaction, the meta body may:
   binding/assembly layer may form one `NamespaceDelta` candidate.
 
 These operations are not cross-file or cross-construction-unit reopening.
+They do not make arbitrary installed symbols injectable. The canonical
+`inject` input and ownership preconditions are defined in
+`symbol-first-meta-construction-and-pattern-injection.md`.
 
 A helper meta invocation with its own canonical instance has a separate
 `MetaConstructionUnit`. The caller may compose the helper's returned,
@@ -380,10 +390,12 @@ installation, provenance slots, and a conservative direct-child harvesting
 restriction. Those are useful prerequisites, not an implementation of this
 document.
 
-PR #94 remains a context-injected `PatternHeadId` attachment substrate. Its
-`GeneratedTypeDefinition` fallback, generated/global/namespace/local
-materialization contexts, and binding-time reattachment may use a destination
-context for registry material. They do not establish final namespace origin,
+PR #94 remains a neutral `PatternHeadId` registry/materialization substrate.
+Its generated/global/namespace/local contexts are transitional categorical
+registry inputs for explicit low-level attachment and tests. Ordinary binding
+preserves attached provisional material or restores stripped material through
+the `GeneratedTypeDefinition` fallback; it does not derive a context from the
+destination path. None of this establishes final namespace origin,
 construction ownership, or meta return root identity.
 
 Not implemented:
@@ -414,5 +426,5 @@ This document does not:
 - define source syntax for partial declarations or reopening;
 - implement `compile`, `inject`, or a sum API;
 - define final overload-entry identity or future mergeable-value syntax;
-- change current Rust behavior, tests, or PR metadata;
+- implement namespace-origin or construction-unit enforcement in Rust;
 - turn physical files or internal AST carriers into a macro system.

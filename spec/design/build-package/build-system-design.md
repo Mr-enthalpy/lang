@@ -311,8 +311,10 @@ path contributes namespace segments.
 Implementation file names do **not** contribute namespace segments.
 
 Implementation files are source fragments. Their filenames do not affect the
-external namespace path, so a file may be renamed while preserving its
-construction identity/provenance. Splitting or merging files is not
+external namespace path. A filename-only rename therefore preserves the
+namespace API, but preservation of `SourceConstructionUnitId`, cache identity,
+or provenance requires a future stable logical-file identity independent of
+the physical path and is not guaranteed yet. Splitting or merging files is not
 semantically free under the current construction-ownership rule: each file is
 one closed `SourceConstructionUnit`, and moving declarations across files may
 change subtree ownership and therefore requires revalidation.

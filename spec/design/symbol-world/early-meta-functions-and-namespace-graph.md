@@ -195,10 +195,11 @@ model boundary:
   body-entry and return-object policies are runtime-only.
 - PR #94 adds an explicit pattern-head attachment helper with generated,
   global, namespace, and local categorical contexts. Formal `struct` uses the
-  `GeneratedTypeDefinition` fallback; binding/materialization may reattach
-  owner/field heads under a destination global or namespace context. This is
+  `GeneratedTypeDefinition` fallback; ordinary binding preserves attached
+  provisional heads or restores stripped heads under that same anonymous
+  fallback. It does not derive a context from the destination. This is
   transitional `PatternHeadId` registry substrate, not final
-  `ResolvedPatternScope` or binding-independent owner resolution.
+  `ResolvedPatternScope` owner resolution.
 - Namespace child lookup is role-aware. Object/function symbols and pure
   namespace subspaces can share the same textual child name. Terminal lookup
   without an expected role reports ambiguity when both roles are present.
@@ -741,142 +742,23 @@ The complete origin and ownership rules for these facets are in
 
 ## 4. Namespace contribution rules
 
-These rules constrain how declarations enter the namespace graph. They protect
-the intuition that the physical directory hierarchy explains the namespace
-shape: when you open a directory level, the files there contribute the directly
-indexable objects **at that level**, not deep virtual structure.
-
-### 4.0 Shared physical/meta capability substrate
-
-Physical source fragments and meta-produced symbol constructions use the same
-declare / inject-child / open-namespace / delta-install capability base.
-
-For example:
+This bootstrap document applies, but does not redefine, the namespace-origin and
+construction-unit contract in
+`symbol-construction-units-and-namespace-origin.md`. The v0.6/v0.7 architecture
+must leave room for:
 
 ```text
-ns/
-  impl.lang
-  export.lang
+physical directory -> contribution authority
+source file         -> one closed SourceConstructionUnit
+meta invocation     -> one closed MetaConstructionUnit
+outer assembler     -> conflict-checked atomic NamespaceDelta install
 ```
 
-Both files may create distinct same-level children of `ns`. Each file is one
-closed `SourceConstructionUnit`; it may fully construct a child subtree that it
-creates, but it may not reopen a subtree created by the other file. A canonical
-meta invocation similarly owns one closed `MetaConstructionUnit`. In both cases
-the outer assembler or `let` binding forms a conflict-checked `NamespaceDelta`
-and installs it atomically.
-
-The common capability base does not give physical source fragments meta-body
-pipeline order. Physical contributions are independently derived, replayable
-contribution/delta values. Distinct direct-child contributions may be combined
-transactionally; filename, filesystem traversal, and source discovery order
-have no semantic effect. Same-child reopening, duplicate names, or facet
-conflicts remain hard errors.
-
-The future source-level `inject` operation is also functional: it transforms a
-symbol/construction value and returns a new uninstalled construction. It does
-not directly mutate the namespace graph.
-
-### 4.1 Direct-child roots; no cross-unit descendant reopening
-
-> **An ordinary source contribution begins by creating a direct child. The same
-> source unit may construct that new child's subtree, but it may not target an
-> already existing descendant owned by another unit.**
-
-1. **Direct-child authority:** a source file may create direct children of its
-   current physical directory namespace. A direct child it creates may include
-   a complete descendant subtree inside that same source delta.
-2. **No reopening:** the complete subtree remains owned by that source file.
-   Another file may not target a grandchild of the already-created child, even
-   if the requested grandchild name is absent.
-3. **Meta transaction:** one canonical meta invocation may build a complete
-   virtual subtree because all actions belong to one `MetaConstructionUnit` and
-   one transaction. The reason is construction-unit identity, not merely that a
-   meta callable has one body.
-4. **Helper isolation:** a helper meta invocation has its own construction unit.
-   A caller may compose its uninstalled result but may not mutate the helper's
-   already installed subtree.
-
-### 4.2 Rationale
-
-Filesystem directories provide the physical namespace skeleton and the
-authority boundary for direct source contributions. Multiple implementation
-files at one level may create different direct objects; they do not co-own those
-objects. A single owner keeps partial declaration, reopening, visibility,
-diagnostic ownership, and merge authority out of the current model.
-
-This is **not** a prohibition on multi-level structure. Deep structure may
-exist; one source construction or one meta construction may build the complete
-new subtree it owns.
-
-The restriction is not derived solely from unordered file contributions.
-Cross-file overload-entry union could be relaxed later if the language defines
-stable entry identity and explicit merge authority. It is forbidden now along
-with cross-file type-child, namespace-child, and ordinary value-member
-injection.
-
-### 4.3 Diagnostic
-
-```text
-ordinary descendant injection is not allowed
-
-current contribution namespace:
-    ns
-
-attempted target:
-    x::f::ns
-
-ordinary source fragments may contribute only direct children of their current
-namespace and may fully construct only children they create. Define `x` in the
-same construction unit that owns `f`, or use an explicitly designed future
-reopening facility.
-```
-
-### 4.4 Namespace origin and physical authority
-
-Every namespace facet has exactly one creation origin:
-
-```text
-NamespaceOrigin =
-    PhysicalDirectory(path)
-  | SourceConstruction(source_construction_unit, construction_id)
-  | MetaConstruction(meta_construction_unit, construction_id)
-```
-
-Under one parent, one child namespace path may be created by only one of those
-origins. If `ns/ns1/` exists physically, source in `ns/` cannot create or
-upgrade `ns1::ns`, and cannot contribute `x::ns1::ns`. Direct content of the
-physical child must come from implementation files in `ns/ns1/`. Parent files
-may navigate/read the child but cannot reopen it.
-
-Because `has TypeFacet => has NamespaceFacet`, a physical namespace also cannot
-be upgraded into a source-created type at the same path.
-
-### 4.5 Combined rules
-
-```text
-Origin uniqueness:
-    one child NamespaceFacet has one physical/source/meta creation origin.
-
-Physical authority:
-    direct content of a physical directory namespace comes only from files in
-    that directory.
-
-Construction ownership:
-    one source/meta unit may fully construct its new subtree; parallel units may
-    not reopen it.
-
-Current cross-file closure:
-    no type child, namespace child, ordinary value member, or overload-entry
-    injection into a symbol owned by another file.
-
-Meta transaction:
-    one canonical invocation may build a multi-level virtual subtree inside its
-    own MetaConstructionUnit.
-```
-
-The canonical details are in
-`symbol-construction-units-and-namespace-origin.md`.
+The current direct-child harvesting restriction is a conservative precursor,
+not a complete implementation of origin uniqueness, subtree ownership, or
+cross-file reopening diagnostics. Detailed physical/source/meta conflict rules,
+future value-merge relaxations, and diagnostic ownership belong to the canonical
+construction-unit note.
 
 ## 5. Early meta-function bootstrap (v0.7)
 
@@ -910,54 +792,21 @@ installation remains in the outer binding layer.
 ## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 
 The implemented v0.8 slice is a restricted type-shaped evaluator. The final
-model separates two capabilities that the older type-to-type narrative mixed:
+capability and ownership model is canonical in
+`symbol-first-meta-construction-and-pattern-injection.md`; this bootstrap only
+records the migration boundary:
 
 ```text
-compile:
-  compute PatternValue
-  (ordinary compile-time value, type value, or structured pattern value)
-
-meta:
-  create or transform SymbolConstructionValue
-  public successful result rank = symbol
+restricted evaluator
+  -> shared invocation frame and policy checks
+  -> PatternValue or SymbolConstructionValue result rank
+  -> outer binding/NamespaceDelta installation
 ```
-
-Both execute ordinary parsed/normalized structured material under policy. They
-are not separate syntax languages or text-macro systems.
-
-- **Compile result** — a `PatternValue`; a type value is not an installed type
-  symbol. Compile creates no `MetaInstanceScope`, may return an existing type
-  value, and uses the ordinary function-object Self frame for local `struct`.
-- **Meta result** — an uninstalled `SymbolConstructionValue` carrying return
-  pattern/facet material under a canonical `MetaInstanceScope`.
-- **Meta type self-root** — if the return symbol has a `TypeFacet`, its outer
-  pattern root is the canonical meta-instance scope. Direct `r = t` or
-  `r = uint8` meta type returns are invalid when they would install an external
-  root; external values may be members beneath the self-rooted type.
-- **Formal meta return slot** — `r = ...` populates the construction's return
-  layer. The old `r === ...` forwarding interpretation is superseded.
-- **Ordinary alias declaration** — `let a === b` remains symbol/place forwarding
-  and is not a formal meta return operation.
-- **Rank-directed canonical arguments** — symbol parameters use symbol/place
-  identity, type parameters use `TypeValueId`, and ordinary value parameters use
-  `PatternValue` identity.
-- **Complete navigation atom** — a namespaced instance is `(int Vec::std)` and
-  a child is `child::(int Vec::std)`; `(int Vec)::std` and unparenthesized
-  `int Vec::std` do not denote that instance.
-- **Installation** — only an outer `let` binding/injection resolves a writable
-  place and installs a `NamespaceDelta`.
-- **Pattern ownership** — `struct` resolves its owner from input navigation plus
-  ambient pattern scope; the binding target never reroots it.
-- **Functional extension** — future `inject` selects the input symbol's internal
-  pattern scope and returns a new uninstalled construction with direct children.
-- **Single type installation** — an ordinary type facet is installed once;
-  duplicate definitions do not form an implicit sum.
-- **Construction ownership** — each source file or canonical meta invocation
-  owns the complete subtree it creates; parallel files do not reopen it.
 
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
-transport until these final objects exist.
+transport. They do not implement canonical facets, `MetaInstanceScope`, owned-
+open `inject`, type self-root validation, or construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the
 construction contract in
@@ -1057,8 +906,9 @@ inside formal `struct` or `inject` invocation.
   `PatternValue` or a later binding destination.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
-- Functional `inject` selects an input symbol's internal pattern scope and adds
-  direct children without installing the graph.
+- Functional `inject` accepts only the current construction unit's owned,
+  open/uninstalled construction handle and adds direct children without
+  installing the graph.
 - v0.6–v0.8 do not claim full policy checking, full type checking, full pattern
   checking, or full value-level compile-time evaluation. Those remain later
   stages.

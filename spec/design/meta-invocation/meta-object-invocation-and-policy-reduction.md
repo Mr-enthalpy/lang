@@ -489,117 +489,13 @@ structured pattern values. A type value is not thereby an installed type
 symbol. `SymbolConstructionValue` carries symbol/facet/pattern construction
 material but remains uninstalled.
 
-`compile` is value-level staging. It does not create a
-`MetaInstanceScope`, does not add a meta-style name-shadowing layer, and may
-return an existing type value directly:
-
-```lang
-let identity = (t: type): compile -> r: type => {
-    r = t;
-    r;
-};
-```
-
-If a `compile` body evaluates a local `struct`, the ambient owner is the
-ordinary function-object Self frame (`topname::__inner_space::Self`, or its
-eventual canonical identity), not a canonical meta instance.
-
-`meta` is symbol-level staging. Every canonical invocation establishes:
-
-```text
-M = MetaInstanceScope(callee_symbol, canonical_arguments)
-```
-
-`M` is a virtual symbol/namespace construction layer, a pattern-navigation and
-name-shadowing scope, a cache/incremental candidate, and the identity anchor for
-the return symbol. `SymbolConstructionValue` is not restricted to one newly
-generated structure definition; it may carry namespace/type/value facets,
-existing values as members, multiple value entries, and owned child
-contributions:
-
-```text
-SymbolConstructionValue {
-  return_symbol_identity,
-  assigned_facets_or_values,
-  optional_child_contributions,
-  provenance,
-}
-```
-
-If the return symbol has a type facet, its outermost pattern root must be `M`:
-
-```text
-type_facet(r) = tau
-  => root_pattern_scope(tau) = M
-```
-
-This compares identities, not rendered strings. Therefore direct identity-style
-meta type returns are invalid:
-
-```lang
-let f = (t: type): meta -> r: symbol => {
-    r = t;
-    r;
-};
-
-let fn = (t: type): meta -> r: symbol => {
-    r = uint8;
-    r;
-};
-```
-
-Both right sides resolve a symbol and read an external type value, but neither
-external `PatternValue` root can replace `(t f)` or `(t fn)`.
-
-A legal construction creates its type under the meta-instance root:
-
-```lang
-let f = (t: type): meta -> r: symbol => {
-    r = (t inner) |> struct;
-    r;
-};
-```
-
-with complete pattern:
-
-```text
-(t inner::(t f))::(t f)
-```
-
-An external value may instead be a member beneath the self-rooted construction:
-
-```lang
-let fn = (t: type): meta -> r: symbol => {
-    let t1::r = bool;
-    r;
-};
-```
-
-Here `(t fn)` remains the root and `bool::` is a member. A return symbol with no
-type facet is not subject to this type-root check.
-
-Meta parameter keys are rank-directed:
-
-```text
-symbol parameter -> SymbolId / symbol-place identity
-type parameter   -> TypeValueId
-value parameter  -> PatternValue identity
-```
-
-Formal meta return construction uses:
-
-```lang
-r = ...;
-```
-
-to populate the return layer of the `SymbolConstructionValue`. The old formal
-`r === ...` forwarding interpretation is superseded. Ordinary declaration alias
-syntax (`let a === b`) remains symbol/place forwarding at the binding layer.
-
-The ordinary symbol-first value-read sequence still applies to the right side,
-but it does not override facet validation. In particular, `r = uint8` as a
-direct meta return type installation is rejected by the self-root invariant; it
-is neither accepted as forwarding nor reinterpreted as declaration aliasing.
+The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
+slot relation, rank-directed identity, type self-root validation, and complete
+navigation atom belong to
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+This document consumes those result ranks only to define candidate preparation,
+policy filtering, and partial/strict reduction; it does not restate their
+construction semantics.
 
 The public future boundary is conceptually:
 
@@ -619,26 +515,9 @@ implementation transport, not the final public rank model. It also does not
 implement `MetaInstanceScopeId`, meta return type self-root checking, complete
 `compile`/`meta` separation, or the canonical meta-instance navigation atom.
 
-#### Complete meta-instance navigation atom
-
-If `Vec` is resolved under `std`, its `int` instance is written:
-
-```text
-(int Vec::std)
-```
-
-The evaluator resolves callee path `Vec::std`, resolves argument `int`, forms
-the canonical invocation, and exposes the complete parenthesized invocation as
-one navigable symbol atom. A child is `child::(int Vec::std)`. Neither
-`(int Vec)::std` nor unparenthesized `int Vec::std` denotes that atom. A future
-semantic grammar may use:
-
-```text
-MetaInstanceNavigationAtom :=
-    '(' ArgumentProduct MetaCalleePath ')'
-```
-
-This future rule does not require a parser change in the current PR.
+The canonical note also owns the complete invocation navigation atom; this
+document assumes that atom has already been resolved before candidate identity
+and caching are finalized.
 
 Namespace graph installation is not part of formal invocation. Binding or
 injection consumes a construction value, resolves a writable `PlaceId`, forms a
@@ -872,11 +751,11 @@ Current state:
 - Source-declared callable/meta-function overloads can be harvested into graph
   symbols and selected by the restricted v0.8 overload path.
 - Formal `struct` invocation still produces anonymous
-  `GeneratedTypeDefinitionValue` pattern heads; the binding/materialization
-  layer can reattach those heads under an explicit generated, global, or
-  namespace context when that binding context is available. The helper substrate
-  also represents a local context category. This destination-context
-  reattachment is transitional and is not the final `struct` owner rule.
+  `GeneratedTypeDefinitionValue` pattern heads. Ordinary binding preserves those
+  provisional heads or restores stripped material under the anonymous
+  `GeneratedTypeDefinition` fallback; it does not derive owner context from the
+  destination. The explicit helper still exposes generated/global/namespace/
+  local categories as transitional registry and test substrate.
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with
   `r = ...` producing a `SymbolConstructionValue`; ordinary `let ===` aliasing
