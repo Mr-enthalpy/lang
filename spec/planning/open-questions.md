@@ -125,6 +125,9 @@ Resolved future-design decisions:
 - callable-object `P1` is `compile` or `compile | runtime`, never runtime-only;
 - entry `P2` controls compile/meta/runtime execution and exact total policy for
   the complete invocation frame, including implicit self;
+- general policy binding uses `P_e ⊑ P`; runtime is a legal destination policy,
+  while any `P_src ≠ runtime` premise is local to the compile-determined
+  projection rule that declares it and is unrelated to callable-object `P1`;
 - compile and meta share external compile flow but retain different internal
   capabilities;
 - there is no independent return-policy `P3` or scalar result-symbol policy;
@@ -152,6 +155,8 @@ Resolved future-design decisions:
 Not implemented after this correction:
 
 - Layered symbol total-policy accounting and final `P1` / `P2` checking.
+- Final general policy-binding inference/checking for `P_e ⊑ P`; the current
+  explicit exact-flag verifier remains transitional.
 - Compile-flow projection and shared compile-evaluation graph.
 - Complete derived `Val2` compile-companion objects and must-select enforcement.
 - Explicit companion replacement association and any public overload-strategy

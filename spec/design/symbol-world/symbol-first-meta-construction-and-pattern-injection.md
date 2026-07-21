@@ -195,7 +195,33 @@ confuse. The language still resolves the source path as a symbol first.
 
 ### 2.5 General `let` value binding
 
-The ordinary binding rule is uniform:
+The ordinary binding rule is uniform. With an explicit destination policy:
+
+```lang
+P let r = expr;
+```
+
+write `P_e` for the evaluated RHS policy. Binding is legal when:
+
+```text
+Gamma |- expr : tau @ P_e
+P_e ⊑ P
+-------------------------------
+Gamma |- P let r = expr
+```
+
+`P_e ⊑ P` means that the expression policy is the same as, or a child of, the
+destination policy. There is no general `P ≠ runtime` condition. Therefore a
+normal runtime binding is legal:
+
+```lang
+runtime let x = runtime_value;
+```
+
+An omitted policy is inferred by the applicable policy-binding rules; omission
+does not make runtime the only way to obtain a runtime binding.
+
+The unannotated form:
 
 ```lang
 let r = expr;
@@ -262,6 +288,12 @@ let destination = source
 uniformly reads source's value and binds it to destination. It does not reroot
 patterns, perform symbol aliasing, or merge place identity.
 ```
+
+Any separate rule that requires a compile-determined projection source to have
+non-runtime policy constrains that rule's source policy only. It does not
+constrain the destination `P` of this general `let` judgment. In particular, an
+implementation must not reject a binding merely because
+`binding_policy == runtime`.
 
 ### 2.6 Ordinary aliases remain aliases
 

@@ -143,6 +143,33 @@ Future `seal` work may extend `policy(Pattern)`. Until an explicit seal design i
 adopted, documents and implementations must not infer a seal-pattern policy or
 change the equations above.
 
+### 2.1 General binding policy is not a projection-source restriction
+
+Policy-bearing `let` uses a general parent-policy relation. Write `P` for the
+policy installed on the destination binding and `P_e` for the policy of the
+evaluated right-hand side:
+
+```text
+Gamma |- e : tau @ P_e
+P_e ⊑ P
+----------------------------
+Gamma |- P let x = e
+```
+
+Here `⊑` denotes the policy parent/admission relation (`P_e` is the same as or a
+child of `P`). There is no general premise `P ≠ runtime`. In particular:
+
+```lang
+runtime let x = runtime_value;          // legal when policy(runtime_value) = runtime
+compile let x = compile_value;          // legal when policy(compile_value) = compile
+P let x = value_at_child_of_P;          // legal when P_e ⊑ P
+```
+
+This binding `P` is also distinct from callable-object `P1` in §3.1. To avoid a
+typographic collision, this note writes the source policy of a particular
+projection rule as `P_src`, even if another presentation locally names that
+premise `P1` or `P_1`.
+
 ## 3. Callable Policy Positions
 
 The future semantic callable form is:
@@ -415,7 +442,45 @@ lookup, candidate admissibility/preference filtering, and value computation.
 Projection is not approximate evaluation and not global stage-constraint
 solving. It is a structural graph operation over already formed symbol flow.
 
-### 4.1 Calls project homomorphically
+### 4.1 Projection-source restrictions are local
+
+A compile-determined projection rule may impose a source-side premise such as:
+
+```text
+Gamma |- source : tau @ P_src
+P_src ≠ runtime
+----------------------------------------
+Gamma |- compile_determined_view(source) : ...
+```
+
+That premise belongs only to the source operand of that specific rule. It must
+not be rewritten as `P ≠ runtime` on an enclosing `P let x = ...` binding, and
+must not be implemented as:
+
+```text
+reject if binding_policy == runtime
+```
+
+The check, when a particular projection requires it, belongs on `P_src` (the
+locally named `P₁` in presentations that use that notation). This `P₁` is not
+callable-object policy position `P1` and is not destination binding policy `P`.
+Runtime values still form runtime symbols, runtime bindings, and runtime data
+flow. Moreover, the general compile projection of a runtime symbol still
+retains its compile Pattern layer as specified above. The local restriction
+only prevents a runtime-policy value leaf from being used as the
+compile-determined source of the rule that states the premise.
+
+Minimal semantic regression matrix:
+
+```text
+runtime let x = runtime_value                -> legal general binding
+compile let x = compile_value                -> legal general binding
+P let x = value_at_child_of_P                -> legal when P_e ⊑ P
+projection(source_policy = runtime)          -> illegal only for a rule whose
+                                                source premise forbids runtime
+```
+
+### 4.2 Calls project homomorphically
 
 An ordinary call is already unresolved before normal overload evaluation.
 Compile projection therefore preserves ordinary call syntax/flow rather than
@@ -450,7 +515,7 @@ An implementation may use an internal unresolved-call IR node, candidate-family
 key, or projection provenance to preserve bookkeeping. Those are implementation
 choices, not required public language identities.
 
-### 4.2 Finite local flow and ordinary recursion
+### 4.3 Finite local flow and ordinary recursion
 
 The language has no source loop construct and no inline-for node. Repetition is
 expressed through callable recursion. The mechanical-lowering `loop` call mode

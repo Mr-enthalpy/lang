@@ -393,7 +393,11 @@ Must cover:
 - awareness that callable-object `P1` differs from entry `P2`, while current
   Rust symbol/body/result policy fields are transitional; implement only the
   minimum checks needed to avoid misrepresenting meta-functions as runtime
-  functions
+  functions;
+- preserve general policy binding as `P_e ⊑ P`, including legal runtime
+  destinations, and keep any non-runtime projection-source premise local to
+  its specific compile-determined rule; the current exact-flag verifier is
+  transitional
 
 Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
@@ -490,7 +494,8 @@ The following remain deferred and are not numbered precisely here:
   `with { ... }`); lifetime-policy checking/refinement is after first-order
   type/compile overload selection and is bounded by
   `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`
-- full policy inference and `P1` / `P2` checking; compile / runtime / seal semantics,
+- full policy-binding inference/checking (`P_e ⊑ P`) and `P1` / `P2` checking;
+  compile / runtime / seal semantics,
   including any post-`seal` extension of Pattern policy,
   const / mut policy, effect / error / panic policy, and resource capability
   policy (see `spec/design/policy-capability/policy-visibility-symbols.md`)

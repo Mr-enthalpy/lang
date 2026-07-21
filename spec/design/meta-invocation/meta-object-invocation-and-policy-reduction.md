@@ -129,17 +129,32 @@ on all meta actions in the body. The restricted v0.8 implementation only proves
 that runtime-body declarations may contain such local meta-shaped initializers;
 full runtime-body execution and local binding materialization are deferred.
 
-Omitted binding policy introduces an inference variable. Explicit policy turns
-that inference into verification:
+Final policy-binding semantics distinguishes destination policy `P` from RHS
+policy `P_e`:
 
-```lang
-let x = expr;                 // infer from Value or Residual
-meta | runtime let x = expr;  // verify RHS result can satisfy both flags
-runtime let x = expr;         // verify runtime-only visibility is enough
+```text
+Gamma |- expr : tau @ P_e
+P_e ⊑ P
+-------------------------------
+Gamma |- P let x = expr
 ```
 
-If `expr` only residualizes to runtime, `meta | runtime let x = expr` fails
-verification because no meta-visible value was produced. Ambiguous
+Omitting `P` requests inference. Writing `P` constrains the destination through
+the same parent/admission relation; it does not add a universal non-runtime
+condition:
+
+```lang
+let x = expr;                 // infer P from the evaluated RHS
+meta | runtime let x = expr;  // legal when P_e ⊑ (meta | runtime)
+runtime let x = expr;         // legal when P_e = runtime
+```
+
+The current v0.8 verifier does not yet implement that final relation. It treats
+each written flag as an independently required result flag, so an expression
+that only residualizes to runtime currently makes
+`meta | runtime let x = expr` fail because no meta-visible value was produced.
+This is a transitional implementation limitation, not final policy-binding
+semantics and not evidence for a general `P ≠ runtime` rule. Ambiguous
 meta-visible candidates remain hard diagnostics in both `MetaPartial` and
 `MetaStrict`; ambiguity is not residualized.
 
@@ -157,11 +172,11 @@ binding policy is inferred from that RHS result policy and written onto the
 materialized binding. For example, a `meta let + = ...` source callable whose
 transitional return-object field is meta-only produces a meta-only
 `let X: type = int + unit;` binding when no explicit policy is written.
-Explicit policy annotations
-still use the same result policy for shrink-only verification. Inference does
-not implicitly copy export visibility from a forwarded dependency or core
-object; it uses the phase capability portion of the result policy for the new
-binding.
+Explicit policy annotations still use that provisional result metadata in the
+current exact-flag verifier. This transport behavior must migrate to `P_e ⊑ P`;
+it is not the final binding judgment. Inference does not implicitly copy export
+visibility from a forwarded dependency or core object; it uses the phase
+capability portion of the result policy for the new binding.
 
 If any initializer residualizes and the binding has an assertion annotation
 such as `: type`, the assertion is not considered proven or failed. It is

@@ -746,6 +746,29 @@ _See also: Let binding, BindingAnnotation, CanonicalSkeleton._
 
 ---
 
+## Policy Binding
+
+The future semantic judgment for a policy-bearing binding. If the RHS has
+policy `P_e` and the destination binder writes policy `P`, the binding is legal
+when:
+
+```text
+P_e ⊑ P
+```
+
+`P` is the destination binding policy. It is distinct from callable-object
+`P1` and from a specific compile-projection rule's source policy `P_src`
+(sometimes locally written `P₁`). There is no general `P ≠ runtime` premise;
+`runtime let x = runtime_value;` is a legal general binding. A non-runtime
+source premise constrains only the projection rule that declares it. The
+current parser merely preserves policy syntax, and the current v0.8 exact-flag
+verifier is transitional rather than this final judgment.
+
+_See also: BindingSlot,
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
 ## BindingAnnotation
 
 The annotation following `:` in a `BindingSlot`. It preserves the written

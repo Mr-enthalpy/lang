@@ -12,6 +12,27 @@ normative owner: the canonical symbol-policy document above.
 
 ## 1. Canonical Policy Shape
 
+### 1.1 General binding policy
+
+The `P` in a general policy-bearing binding is the destination policy, not a
+callable-object `P1` and not the source policy of a particular projection rule:
+
+```text
+Gamma |- e : tau @ P_e
+P_e ⊑ P
+----------------------------
+Gamma |- P let x = e
+```
+
+There is no general `P ≠ runtime` side condition. In particular,
+`runtime let x = runtime_value;` is a legal binding when the RHS has runtime
+policy. A compile-determined projection may separately require its local source
+policy `P_src` (sometimes written `P₁`) to be non-runtime. That premise applies
+only to that projection operand; it must not be moved to the enclosing binder
+or implemented as `reject if binding_policy == runtime`.
+
+### 1.2 Callable-object and entry policies
+
 The future callable form has two policy positions:
 
 ```text
@@ -255,6 +276,8 @@ contains useful but transitional metadata:
 - `return_object_policy` fields on callable and generated-field payloads;
 - `PolicyEnv::Meta` / `PolicyEnv::Runtime` lookup filtering;
 - policy transport through namespace deltas and selected early-meta paths.
+- an explicit initializer-policy verifier that currently treats every written
+  policy flag as independently required rather than implementing `P_e ⊑ P`.
 
 These fields establish storage and filtering substrate only. In particular:
 
@@ -267,6 +290,9 @@ current body_entry_policy
 
 current return_object_policy
   != a final P3 language position
+
+current explicit-policy flag verification
+  != the final general policy-binding relation
 ```
 
 The current return-object field may continue to transport provisional result
@@ -278,10 +304,16 @@ their symbols may be visible to an early resolver while their bodies remain
 runtime-entered. Their current return-object metadata is an implementation
 fact, not the final source model.
 
+The current explicit initializer verifier can reject a runtime residual under a
+written combined policy because it expects every written flag to be evidenced.
+That behavior is transitional. It must not be generalized into a language rule
+that forbids runtime destination bindings or requires exact policy equality.
+
 Not yet implemented:
 
 - `Val1 x Pattern x Val2` policy accounting;
 - exact invocation-frame `total_policy` checks for `P2`, including `self`;
+- the final general `P_e ⊑ P` binding check and inference model;
 - complete `P1` lookup projection;
 - compile-flow projection;
 - complete derived `Val2` compile-companion objects;
@@ -321,6 +353,10 @@ canonical in
 - Do not treat a compile-computed type value as an installed type symbol.
 - Do not grant compile code symbol-construction capability.
 - Do not infer callable entry permission from symbol visibility.
+- Do not turn a projection-local `P_src ≠ runtime` premise into a general
+  `P ≠ runtime` binder restriction.
+- Do not reject a general binding merely because its destination policy is
+  runtime.
 - Do not reintroduce an independent `P3` return-policy position.
 - Do not include `Val2` in the current symbol total-policy calculation.
 - Do not describe compile-flow projection as policy-constraint solving or
