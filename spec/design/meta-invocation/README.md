@@ -9,8 +9,10 @@ The policy-governed meta object invocation model:
 
 - symbol-first heterogeneous value-facet candidate preparation
 - orthogonal execution capability / evaluation demand / result rank
-- canonical `MetaInstanceScope`, return type self-root validation, and complete
-  invocation navigation atom
+- ordinary-meta `MetaInstanceScope`, return type self-root validation, and
+  complete invocation navigation atom
+- bounded compiler-defined `BuiltinPrivilegedAstMetaFunction` invocation,
+  including `struct` / `inject` special scope and owner rules
 - the dual judgment of symbol lookup vs callable execution
 - callable `P1` visibility and `P2` qualification handoff
 - partial meta reduction vs strict meta execution
@@ -20,8 +22,9 @@ The policy-governed meta object invocation model:
 ## Not in scope
 
 This block references, and does not redefine, the symbol world, the
-pattern/overload candidate model, and layered policy. It consumes the
-applicable candidate set; it does not specify how that set is built.
+pattern/overload candidate model, and layered policy. It consumes the fully
+admissible set and preference result; it does not specify how those sets are
+built.
 
 ## Documents
 

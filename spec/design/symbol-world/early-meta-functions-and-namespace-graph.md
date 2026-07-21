@@ -184,9 +184,11 @@ model boundary:
   Implementation file names remain source-fragment names only and do not
   contribute namespace segments.
 - Core bootstrap installs `struct`, `assert`, `type`, `namespace`, `uint8`,
-  `ref`, and `share` as `SymbolObject`s in the namespace graph. `struct` and
-  `assert` are meta-function symbols; parser and normalizer do not special-case
-  either name.
+  `ref`, and `share` as `SymbolObject`s in the namespace graph. `struct` is the
+  current compiler-defined `BuiltinPrivilegedAstMetaFunction` slice; `assert`
+  is a compiler-known verification callable. Parser and normalizer do not
+  special-case either name, and users do not gain authority to define new
+  privileged AST meta functions.
 - Declaration harvesting supports the narrow top-level direct-child form needed
   by the slice, especially `let T: type = ...`. Ordinary file contributions
   that attempt parent-to-descendant injection are rejected.
@@ -781,9 +783,10 @@ special case.
 - **Closed `SyntaxObject` passing** — the meta target receives a closed syntax
   object; the call process is opaque to outside observers.
 - **`assert`** as a compile-time hard-check primitive.
-- **`struct`** as the first real, globally visible meta-function object resolved
-  from the core namespace. `struct` consumes AST through a private checker; a
-  failure is a meta hard error, not a parser / normalizer error.
+- **`struct`** as the first real, globally visible
+  `BuiltinPrivilegedAstMetaFunction` object resolved from the core namespace.
+  It consumes bounded AST material through a private checker; a failure is a
+  meta hard error, not a parser / normalizer error.
 - **Current meta call replacement model** — the implemented slice replaces a
   meta call through a `MetaExpansionResult` adapter.
 - **Current `MetaExpansionResult`** carries:
@@ -896,10 +899,11 @@ inside formal `struct` or `inject` invocation.
 ## 8. Conceptual constraints
 
 - No source-level `import` / `use` / `include` / `module` syntax.
-- `struct` is not a keyword and not a parser special form; it is not a hardcoded
-  compiler branch. It is a core-namespace meta-function object resolved through
-  the same resolver path as other symbols, even if the first implementation
-  internally bootstraps it.
+- `struct` is not a keyword or parser special form. It is a compiler-defined
+  `BuiltinPrivilegedAstMetaFunction` object resolved through the same
+  symbol-first/function-object call framework as other callables. Its bounded
+  AST capability is compiler-known and bootstrap-backed, not user-definable or
+  a general macro facility.
 - Namespace is not equal to filesystem path. Directory paths provide only the
   physical skeleton; the full graph includes physical, declared, and virtual
   nodes.
@@ -913,9 +917,10 @@ inside formal `struct` or `inject` invocation.
   `SymbolConstructionValue : symbol`. Formal meta return material uses
   `r = ...`; ordinary `let a === b` remains the separate alias/place-forwarding
   operation.
-- `compile` creates no meta-instance scope. A canonical meta invocation does,
-  and any return `TypeFacet` is rooted in that scope rather than in an external
-  `PatternValue` or a later binding destination.
+- `compile` creates no meta-instance scope. An ordinary canonical meta
+  invocation does, and any return `TypeFacet` is rooted in that scope rather
+  than in an external `PatternValue` or a later binding destination. Privileged
+  AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
 - Functional `inject` accepts only the current construction unit's owned,

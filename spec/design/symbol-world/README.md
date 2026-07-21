@@ -8,9 +8,9 @@ narrow namespace-graph / resolver / early-meta slice exists in
 functional `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
 access-tree construction are not implemented. Layered symbol policy,
-compile-flow projection, compile companions, must-select overload consistency,
-unresolved call families, recursive contract summaries, guarded require atoms,
-and automatic require are also not implemented.**
+compile-flow projection, complete derived compile-companion objects,
+must-select overload consistency, coarse inferred require, and shared compile
+evaluation are also not implemented.**
 
 ## Scope
 
@@ -21,9 +21,9 @@ The namespace graph world model and symbol-level identity:
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
 - `Val1 x Pattern x Val2`, layered policy, callable `P1` / `P2`, compile-flow
-  projection, unresolved call/companion families, finite local flow with
-  recursive summary edges, derived compile companions, guarded atoms, and
-  automatic require
+  projection over ordinary call nodes, finite local flow with opaque calls,
+  complete derived compile-companion objects, coarse inferred require, and
+  shared compile evaluation
 - resolved pattern scopes, `struct` ownership, functional child-only `inject`,
   and binding/install separation
 - meta-return type self-root identity and complete meta-instance navigation atoms
@@ -52,10 +52,10 @@ policy checker (referenced from the other blocks).
   separation, and current cross-file closure.
 - `symbol-policy-and-compile-flow-projection.md` — canonical future layered
   symbol policy, per-`Val2` `P1`, `P2` and no `P3`, mechanical compile
-  projection, unresolved call/companion families, finite local flow and
-  recursive summaries, derived compile companions, must-select overload
-  consistency, policy-staged match, guarded atoms, D/Done-based inferred
-  require, and shared compile evaluation nodes.
+  projection over ordinary calls, finite local flow with opaque calls,
+  complete derived compile-companion objects, must-select overload consistency,
+  policy-staged match, intrinsic D/Done flow, coarse inferred require, and
+  shared compile evaluation nodes.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.

@@ -65,9 +65,10 @@ NamespaceDelta atomicity
 ```
 
 One source unit may fully construct a new direct-child subtree in its own delta.
-One canonical meta invocation is one `MetaConstructionUnit` and may fully
-construct its virtual subtree. Parallel units may not reopen either subtree.
-This is post-v0.1 semantic work.
+One ordinary canonical meta invocation is one `MetaConstructionUnit` and may
+fully construct its virtual subtree. Compiler-defined privileged AST meta
+functions operate only through their bounded current-unit capability. Parallel
+units may not reopen either subtree. This is post-v0.1 semantic work.
 
 At the current specification stage, cross-file type-child, namespace-child,
 ordinary value-member, and overload-entry injection are all forbidden. A future

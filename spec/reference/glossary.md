@@ -274,16 +274,59 @@ _See also: OperatorName, Fixity, Arity._
 A callable entry prepared for a given call. Final preparation first resolves a
 symbol, projects and enumerates its heterogeneous value facet, filters each
 `Val2` object by its own `P1`, obtains each surviving value's type, and resolves
-that type's associated `()` entry. Non-callable values are discarded.
-First-class derived entries such as a compile companion may join the prepared
-set with stable origin identity. During compile projection they remain an
-unresolved companion family rather than a selected entry. A same-name namespace
+that type's associated `()` entry. Non-callable values are discarded. A derived
+compile companion is itself a complete `Val2` function object with stable
+object identity, origin runtime object, its own function-object type, and its
+own associated compile `()`; it enters candidate preparation through the same
+path. Compile projection leaves the projected invocation as an ordinary call
+until normal compile lookup and overload resolution. A same-name namespace
 bucket is only current transitional substrate, not the final candidate
 definition.
 
 _See also: OverloadSpecificity, OverloadResolutionPipeline,
 `spec/design/patterns-overload/overload-resolution-design.md`,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
+## Fully Admissible Candidate
+
+An overload candidate that has passed every hard legality check for the current
+call: visibility, object `P1`, associated `()`, argument/Pattern shape, entry
+`P2`, exact total policy for implicit self and explicit arguments, expected
+result rank/facet, concept and ordinary require satisfaction, and other
+compile/type prerequisites. The set of all such candidates is `A`.
+
+Preference survivors are not a second meaning of "qualified." They are the
+successive subsets obtained by applying the fixed ordered preference filters to
+`A`.
+
+_See also: OverloadCandidate, OverloadResolutionPipeline, MustSelectStrategy._
+
+---
+
+## Derived Compile Companion Object
+
+A complete compile-policy `Val2` function object mechanically derived from an
+eligible runtime function object. It has its own object and type identity, an
+associated compile `()` entry, stable provenance back to the origin runtime
+object, and the `must_select_if_qualified` overload strategy. It is not a hidden
+fallback or an identity-less extra call entry.
+
+_See also: OverloadCandidate, MustSelectStrategy._
+
+---
+
+## Must-Select Strategy
+
+An overload strategy carried by a `Val2` function object and propagated to its
+prepared call candidate. It activates only when that candidate belongs to the
+fully admissible set `A`. One admissible must-select candidate must be the sole
+final preference survivor; several admissible must-select candidates conflict.
+The strategy is not infinite priority and does not forbid non-overlapping
+same-name overloads. No `@`-prefixed source spelling is frozen for it.
+
+_See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
 
 ---
 
@@ -306,14 +349,19 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 
 The fixed process that selects a unique overload candidate. Callable-object
 `P1` filters each `Val2` object after path-to-`Symbol` resolution and value-facet
-enumeration. Structural matching and entry `P2` exact argument-total-policy
-checking then form the qualified set `Q`. Side-effect-free linear filters apply
-entry preference, concepts, extraction specificity, first-order preference,
-and lifetime rules in a fixed normative order. Each filter is independent of
-candidate enumeration order; the filters are not assumed to commute. Ordinary
-uniqueness is then constrained by `must_select_if_qualified`: a qualified
-must-select entry must be the sole final survivor, and multiple qualified
-must-select entries are an error.
+enumeration. Associated-call preparation and every hard structural, Pattern,
+entry-`P2`, full-frame policy, result-expectation, concept, and ordinary require
+check first form fully admissible set `A`. Side-effect-free preference filters
+then apply entry preference, concept ordering, extraction specificity, and
+first-order preference in one fixed normative order. Each filter is independent
+of candidate enumeration order; filters are not assumed to commute. Ordinary
+uniqueness is constrained by `must_select_if_qualified` strategies activated
+from `A`.
+
+Lifetime policy is not a type/compile candidate filter. Any future lifetime
+checking or refinement occurs after type/compile selection and first-order
+instantiation, under the boundary in
+`spec/design/lifetime/lifetime-policy-and-overload-boundary.md`.
 
 Full overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure. The formal specification is in
@@ -321,6 +369,19 @@ and extraction-chain infrastructure. The formal specification is in
 
 _See also: OverloadCandidate, OverloadSpecificity, Concept,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
+## Lifetime Policy Boundary
+
+The stage boundary after sealing and before runtime at which future lifetime
+predicates may check or refine already first-order callable objects. Lifetime
+algebra is not type-value identity, lifetime policy is not compile policy, and
+lifetime refinement is not part of the type/compile fully admissible set `A`.
+The current design freezes only this negative boundary, not region/origin
+algebra or a refinement algorithm.
+
+_See also: `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
 
 ---
 
@@ -623,15 +684,21 @@ _See also: ClosureAST, ClosureObject._
 
 ## Meta-function
 
-A compiler-provided function that operates on AST or normalized syntax forms
-rather than on runtime values. Examples (future): `match`, `struct`, `effect`,
-`sync`. Some future built-in meta-functions may consume raw AST directly;
-this is a built-in privilege, not unrestricted user macro power.
+A callable whose entry executes with `P2 = meta` and constructs
+`SymbolConstructionValue` under symbol-world construction capability. An
+ordinary user meta-function receives rank-constrained semantic values, creates
+an ordinary canonical `MetaInstanceScope`, and has no unrestricted AST access.
 
-> **Distinction**: `match` is a name at the parser level, not syntax. A future
-> meta-function named `match` may consume closure AST arms, but parser code
-> must not special-case the name `match`. `struct` may be such a future
-> built-in meta-function.
+Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
+subclass. A member such as `struct` or `inject` may accept one specifically
+bounded Normalized-AST/pattern carrier and use a member-specific scope/owner
+rule. Users may call these objects but cannot define new privileged members;
+the privilege does not imply text substitution, parser re-entry, or a general
+macro system.
+
+> **Distinction**: meta execution capability is not AST privilege. Names such
+> as `match` and `struct` remain ordinary parser-level names; parser code does
+> not special-case them.
 
 _See also: Name, Strong context._
 

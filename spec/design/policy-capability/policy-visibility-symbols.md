@@ -20,7 +20,6 @@ P1 let F = (...): P2 -> let r => { ... }
 
 ```text
 P1 ::= compile
-     | runtime
      | (compile | runtime)
 
 P2 ::= compile
@@ -36,7 +35,7 @@ P1:
 
 P2:
   execution policy of this callable entry
-  plus an exact total-policy requirement on every argument symbol
+  plus an exact total-policy requirement on every invocation-frame slot
 ```
 
 The external stage of an entry is:
@@ -60,16 +59,26 @@ current_lookup_stage in P1
 
 and
 
-for every argument a:
+for every invocation-frame slot a:
   total_policy(a) = external(P2)
 ```
+
+The frame includes slot 0, the implicit `self` view of the selected `Val2`
+function object, followed by all explicit source arguments. Declaration
+well-formedness establishes that the object is visible at `external(P2)`;
+invocation records the same stage requirement uniformly for `self` and the
+explicit arguments.
 
 The containing path is resolved to `Symbol` before this check; its
 heterogeneous value facet is then projected and each object is filtered by its
 own `P1`. One symbol may therefore carry objects with different `P1` sets.
-`P1` is not a base symbol-resolution policy or an argument policy. `P2` is not
-the callable object's lookup range. The union `runtime | compile` is currently meaningful only at `P1`;
-`P2 = runtime | compile` is reserved for a future two-stage binding and
+`P1` is not a base symbol-resolution policy or an argument policy. Every
+callable `Val2` object is compile-visible so its Pattern, parameter and result
+patterns, constraints, and compile projection can participate in symbol flow;
+runtime-only execution is represented by `P2 = runtime` on an object whose
+`P1 = compile | runtime`. `P2` is not the callable object's lookup range. The
+set `compile | runtime` is currently meaningful only at `P1`;
+composite-stage `P2` is reserved for a future two-stage binding and
 evaluation model.
 
 ## 2. There Is No Final P3
@@ -93,18 +102,30 @@ Val1 x Pattern x Val2
 ```
 
 Each layer retains its own policy. A single `P3` would flatten those policies
-back into one result annotation and contradict the layered model. The result
-symbol's external lookup policy instead inherits the selected callable
-object's `P1`:
+back into one result annotation and contradict the layered model. Apply the
+selected callable object's `P1` to result material layer by layer:
 
 ```text
-lookup_policy(result_symbol_of(call))
-  = P1(selected_callable_object)
+result_projection_by_P1(Result, P1)
+
+Result.Pattern:
+  retain stages admitted by P1 and supported by Pattern
+  currently policy(Pattern) = compile, so only its compile projection exists
+
+Result.Val1 when P1 = compile:
+  retain compile-policy leaves
+
+Result.Val1 when P1 = compile | runtime:
+  retain compile- and runtime-policy leaves
+
+Result.Val2:
+  each exposed object retains its own P1
 ```
 
-This inheritance does not assign `P1` to every value leaf or layer object.
-Future policy closure or transformation must use an explicit mechanism; it
-must not be hidden in a revived return-policy slot.
+The result symbol does not receive one scalar lookup policy, and returned
+`Val2` objects do not inherit the caller object's `P1`. Future policy closure
+or transformation must use an explicit mechanism; it must not be hidden in a
+revived return-policy slot.
 
 ## 3. Symbol Policy Is Layered
 
@@ -138,7 +159,7 @@ entry policy answers an execution and argument-qualification question:
 ```text
 Gamma; lookup_stage |- path => symbol
 
-Gamma; P2 |- call(symbol, arguments) => result
+Gamma; P2 |- call(selected_Val2_object, InvocationFrame) => result
 ```
 
 Visibility never implies entry permission.
@@ -260,10 +281,10 @@ fact, not the final source model.
 Not yet implemented:
 
 - `Val1 x Pattern x Val2` policy accounting;
-- exact argument `total_policy` checks for `P2`;
+- exact invocation-frame `total_policy` checks for `P2`, including `self`;
 - complete `P1` lookup projection;
 - compile-flow projection;
-- runtime-entry compile companions;
+- complete derived `Val2` compile-companion objects;
 - `must_select_if_qualified`;
 - automatic inferred require;
 - shared require/body compile-evaluation nodes;
@@ -272,19 +293,26 @@ Not yet implemented:
 ## 8. Overload and Invocation Boundaries
 
 After path resolution has produced `Symbol` and enumerated its heterogeneous
-objects, overload resolution uses each object's `P1` to determine stage
-participation, then forms a qualified candidate set using structural
-applicability and `P2`. The
-`must_select_if_qualified` postcondition is evaluated only after the ordinary
-linear filters. The canonical rules are in:
+objects, overload resolution uses each object's `P1`, resolves its type-
+associated `()`, and applies every hard shape, Pattern, `P2`, frame-policy,
+result-expectation, concept, and require check to form the fully admissible set
+`A`. Pure preference filters run only after `A` exists. A
+`must_select_if_qualified` strategy activates from `A` and is checked against
+the final preference survivor set. The canonical rules are in:
 
 - `../symbol-world/symbol-policy-and-compile-flow-projection.md`
 - `../patterns-overload/overload-resolution-design.md`
 - `../meta-invocation/meta-object-invocation-and-policy-reduction.md`
 
-Compile companions are first-class derived entries in that same pipeline. They
-are not hidden fallback calls and cannot be replaced by an unrelated,
-higher-priority compile overload.
+Compile companions are complete derived `Val2` function objects in that same
+pipeline. Each has its own object identity, function-object type, associated
+compile `()`, origin runtime object, and overload strategy. They are not hidden
+fallback calls and cannot be replaced by an unrelated, higher-priority compile
+overload.
+
+Lifetime policy is outside this type/compile pipeline. Its negative boundary is
+canonical in
+[`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md).
 
 ## 9. Guardrails
 

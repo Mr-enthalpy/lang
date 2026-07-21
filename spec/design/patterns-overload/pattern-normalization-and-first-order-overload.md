@@ -14,8 +14,9 @@ The document is self-contained for pattern and argument-shape preparation. It
 does not restate final overload ordering, pattern-space algebra, or symbol
 policy; those boundaries remain owned by their canonical documents.
 
-Callable `P1` / `P2`, exact argument total-policy qualification, compile
-companions, and must-select consistency are canonical in
+Callable `P1` / `P2`, exact invocation-frame total-policy qualification
+including implicit self, complete derived compile-companion objects, and
+must-select consistency are canonical in
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`. This document
 supplies structural candidate material to that policy boundary; it does not
 define a competing body-entry or return-policy model.
@@ -165,13 +166,14 @@ It must be at least:
 
 ```text
 resolve callee Symbol and project heterogeneous value entries
-prepare type-associated `()` entries, including derived entries
+prepare type-associated `()` entries, including entries of derived companion objects
 normalize argument shapes
 match candidate parameter patterns
 check first-order type-value compatibility
 filter callable objects by P1
-form qualified set Q using P2 and exact argument total policy
-apply linear filters and must-select consistency
+form fully admissible set A using P2, full-frame policy, result expectation,
+concept/ordinary require legality, and all other hard checks
+apply fixed-order preference filters and must-select consistency
 select one callable
 ```
 
@@ -464,13 +466,14 @@ normalized call
   -> argument shape formation
   -> parameter pattern normalization
   -> first-order type-value compatibility
-  -> P1 visibility and P2 qualification set Q
-  -> overload linear filters and must-select check
+  -> fully admissible set A after P1, P2/full-frame policy,
+     result-expectation, concept/require, and other hard checks
+  -> fixed-order overload preference filters and must-select check
   -> meta object invocation
 ```
 
 This document covers only the preparation portion — from argument shape to the
-qualified candidate material. It stops at the boundary where the overload
+hard-admissibility input material. It stops at the boundary where the overload
 filters and meta object invocation engine take over. The invocation engine
 itself (policy-governed
 execution, partial vs strict reduction, residualization) is specified in

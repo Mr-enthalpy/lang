@@ -445,9 +445,11 @@ Core rules:
 3. **Physical authority**: direct contents of a physical directory namespace
    come only from files in that directory. If `ns/ns1/` exists, files in `ns/`
    may read but may not inject into `ns1::ns`.
-4. **Meta transaction**: one canonical meta invocation may construct a complete
-   virtual subtree because all actions belong to one `MetaConstructionUnit` and
-   transaction. A helper invocation owns a separate unit.
+4. **Meta transaction**: one ordinary canonical meta invocation may construct a
+   complete virtual subtree because all actions belong to one
+   `MetaConstructionUnit` and transaction. A helper ordinary-meta invocation
+   owns a separate unit. Privileged AST meta functions use their bounded
+   current-unit capability instead of silently opening another unit's subtree.
 5. **Current cross-file closure**: cross-file type-child, namespace-child,
    ordinary value-member, and overload-entry injection are forbidden.
 

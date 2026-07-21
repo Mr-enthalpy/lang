@@ -33,7 +33,8 @@ This block distinguishes two layers explicitly:
 ## Not in scope
 
 Runtime overload resolution implementation, full pattern-space algebra, and
-match/exhaustiveness checking.
+match/exhaustiveness checking. Lifetime checking/refinement is later than this
+type/compile pipeline and is bounded separately in `../lifetime/`.
 
 ## Product semantic normalization bridge
 
@@ -53,7 +54,8 @@ candidate preparation, not runtime overload resolution.
 - `pattern-normalization-and-first-order-overload.md` — the earlier
   candidate-preparation subset.
 - `overload-resolution-design.md` — the broader, later full overload-resolution
-  vision, including `Q`, linear filters, and must-select consistency.
+  vision, including fully admissible set `A`, ordered preference filters, and
+  must-select consistency.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   extraction-chain semantics.
 

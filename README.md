@@ -109,7 +109,17 @@ design-fusion staging area; non-normative, not current behavior). Start at
 | `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
 | `spec/design/meta-invocation/` | Symbol-first callable invocation, `P1` / `P2` qualification handoff, partial/strict demand, and residualization |
 | `spec/design/policy-capability/` | Current policy-metadata mapping, lookup/entry separation, and future orthogonal access/effect policy |
+| `spec/design/lifetime/` | Negative boundary separating future lifetime policy/refinement from type/compile overload selection |
 | `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
+
+For the current future semantic baseline, read these canonical construction and
+flow documents in order:
+
+1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
+3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`
+
+They describe intended semantics, not currently implemented public behavior.
 
 | Directory | Document | Purpose |
 |---|---|---|
@@ -330,7 +340,7 @@ Read these only when working on future design topics.
 
 1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` — Canonical symbol facets, compile/meta, pattern scope, struct/inject, and install boundary.
 2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md` — Canonical namespace origin, physical authority, and source/meta construction ownership.
-3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` — Canonical layered policy, P1/P2, unresolved call families, compile companions, match staging, and inferred require.
+3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` — Canonical layered policy, full-frame P1/P2, mechanical call projection, derived compile-companion objects, match staging, and coarse inferred require.
 4. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
 5. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
 6. `spec/planning/roadmap.md` — Understand scope boundaries.

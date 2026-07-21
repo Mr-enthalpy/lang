@@ -27,16 +27,16 @@ pattern space. They produce a bool-protected control result:
 ```
 
 The `bool` construction prevents naked control-pattern material from being
-combined as an ordinary result pattern. To use such a value as an extraction
-chain input, the code must explicitly expose its extraction view with `?`:
+combined as an ordinary result pattern. Pattern matching reads the bool
+symbol's Pattern layer directly:
 
 ```text
-cond? |> if { ... } |> else { ... }
+cond |> if { ... } |> else { ... }
 ```
 
-Thus `cond |> if { ... } |> else { ... }` is not the canonical form when
-`cond` is a bool value. Mechanical-lowering examples in this block use the
-correct `?`-preceded form.
+Explicit `cond?` is also valid when one top Pattern peel is desired, but `?` is
+not required to begin extraction and is not a special conditional entrance.
+Older examples in this block that spell `?` use that optional explicit view.
 
 ## For v0.8-adjacent compile/meta construction work, read
 `spec/contracts/v0.8-meta-construction-agent-constraints.md` first. Its

@@ -151,11 +151,13 @@ graph and resolver concern, not source-level syntax.
 
 Ordinary source fragments may contribute only the direct children of their
 current physical directory namespace. One file may fully construct the new
-direct-child subtree it creates, but a parallel file may not reopen it. A
-canonical meta invocation may construct a complete virtual subtree because all
-actions belong to one `MetaConstructionUnit` transaction. In all contexts,
-generated nodes must not inject into parents, siblings, unrelated globals, or
-subtrees owned by another construction unit.
+direct-child subtree it creates, but a parallel file may not reopen it. An
+ordinary canonical meta invocation may construct a complete virtual subtree
+because all actions belong to one `MetaConstructionUnit` transaction.
+Compiler-defined privileged AST meta functions use only their bounded
+current-unit capability. In all contexts, generated nodes must not inject into
+parents, siblings, unrelated globals, or subtrees owned by another construction
+unit.
 
 If `ns/ns1/` physically exists, only files inside `ns/ns1/` may create direct
 contents of `ns1::ns`; parent files may navigate/read that child but cannot

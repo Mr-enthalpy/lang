@@ -89,9 +89,9 @@ language-shaped form:
 
 Semantic points:
 
-1. `(r: type)? |> if { r; }` means: the guard `r: type` produces a
-   bool-protected result `(if | else) bool`; `?` exposes the bool extraction
-   view before the `if` / `else` heads are applied. If `r` is non-value
+1. `(r: type)? |> if { r; }` uses an optional explicit one-layer top Pattern
+   view. The guard `r: type` produces a bool symbol whose Pattern carries the
+   `if` / `else` alternatives; matching does not require `?`. If `r` is non-value
    material — type-rank material, a type object, meta material, namespace
    material, pattern material, or similar — the `if` branch returns `r`
    unchanged. It does not enter automatic error normalization.
@@ -101,9 +101,9 @@ Semantic points:
 3. `r |> <T: type>(r: T) { ... }` is rank-pattern / type-binding shape. It binds
    the first-order type `T` of value `r`, then runs guarded predicates over `T`.
 
-4. `(T |> has(Error))? |> if { ... }` means: `T |> has(Error)` produces a
-   bool-protected result `(if | else) bool`. Only after `?` exposes the
-   control-pattern view does the branch chain select `if` or `else`. The
+4. `(T |> has(Error))? |> if { ... }` explicitly peels one top Pattern layer
+   from the bool result. The branch chain could also read the bool Pattern
+   directly without `?`. The
    predicate is evaluated at compile time. Only when the predicate is true
    does the error branch run. The branch that is not entered creates no
    `Error` lookup obligation.

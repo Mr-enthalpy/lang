@@ -11,8 +11,10 @@ implemented.**
 Policy implementation mapping and orthogonal future dimensions:
 
 - mapping current symbol/body/result metadata to final callable `P1` / `P2`;
-- lookup visibility versus entry execution and exact argument policy;
+- lookup visibility versus entry execution and exact invocation-frame policy,
+  including implicit self;
 - explicit retirement of an independent return-policy `P3`;
+- layer-wise result projection rather than a scalar result-symbol policy;
 - current `PolicyEnv::Meta` / `PolicyEnv::Runtime` filtering substrate;
 - future access, error/panic, const/mut, and resource policy.
 
@@ -24,6 +26,8 @@ staging, and automatic require are canonical in
 
 Mechanical return normalization itself. The return-normalization / `noerror`
 design lives in `mechanical-lowering/`; do not move it into this block.
+Lifetime policy/refinement is also outside the type/compile policy pipeline; its
+negative boundary lives in `../lifetime/`.
 
 ## Documents
 

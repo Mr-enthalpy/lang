@@ -315,8 +315,10 @@ resolve symbol
   -> obtain each value's type
   -> resolve the type-associated `()` call entry
   -> discard non-callable or non-applicable entries
-  -> form qualified set Q by structure, P2, and exact argument total policy
-  -> apply ordinary linear filters
+  -> form fully admissible set A using structure, Pattern/type/result checks,
+     P2, exact total policy for implicit self and explicit arguments,
+     and concept/ordinary require legality
+  -> apply fixed-order preference filters
   -> enforce must-select consistency and require one final candidate
 ```
 
@@ -326,8 +328,9 @@ invalid and does not turn it into a function overload.
 
 Candidate identity and applicability belong to the candidate/invocation model;
 symbol-first resolution only establishes where the heterogeneous values come
-from. Derived compile companions are first-class candidate entries, not a
-post-failure fallback; their policy and overload obligations are defined in
+from. Derived compile companions are complete first-class `Val2` function
+objects, not post-failure fallback entries; their policy and overload
+obligations are defined in
 `symbol-policy-and-compile-flow-projection.md`.
 
 ## 4. `compile`, `meta`, and Evaluation Demand
@@ -394,7 +397,7 @@ topname::__inner_space::Self
 or the eventual canonical identity chosen for that Self frame. It is not a
 meta-instance scope such as `(canonical_arguments meta_function_name)`.
 
-### 4.3 `meta`
+### 4.3 Ordinary `meta`
 
 `meta` is symbol-level staging. It creates or transforms a symbol construction:
 
@@ -408,8 +411,16 @@ The public successful return rank is always `symbol`. A meta callable may accept
 a `symbol` parameter, or constrain a parameter to a narrower `type` or ordinary
 pattern-value rank. That does not change its public construction result rank.
 
-Every canonical meta invocation establishes a virtual symbol-construction
-scope:
+Meta functions are divided into two semantic classes:
+
+```text
+MetaFunction
+  |- OrdinaryMetaFunction
+  `- BuiltinPrivilegedAstMetaFunction
+```
+
+Every ordinary canonical meta-function invocation establishes a virtual
+symbol-construction scope:
 
 ```text
 M = MetaInstanceScope(callee_symbol, canonical_arguments)
@@ -430,8 +441,9 @@ the diagnostic navigation projection of `M` is:
 This is not merely a folder analogy. `M` is a symbol/namespace layer that
 participates in default pattern navigation and name shadowing, may carry
 namespace, type, and value facets, anchors cache/incremental identity, and owns
-the return construction transaction. A meta invocation must therefore establish
-its own symbol layer rather than act as a value-level forwarding function.
+the return construction transaction. An ordinary meta invocation must therefore
+establish its own symbol layer rather than act as a value-level forwarding
+function.
 
 The externally navigable result symbol is `M` itself. The declared return slot
 is only a lexical construction handle to that symbol:
@@ -460,10 +472,10 @@ The exact inclusion of `PlaceId` in a symbol-parameter key depends on whether
 the callable observes the symbol's installation place. A key must not silently
 replace symbol identity with type-value equality.
 
-### 4.4 Meta return type self-root invariant
+### 4.4 Ordinary meta return type self-root invariant
 
-If the return symbol of a canonical meta invocation has a type facet, the
-outermost pattern root of that facet must be the invocation's own `M`:
+If the return symbol of an ordinary canonical meta invocation has a type facet,
+the outermost pattern root of that facet must be the invocation's own `M`:
 
 ```text
 type_facet(r) = tau
@@ -574,6 +586,46 @@ let a === b;
 
 Formal return construction and ordinary symbol aliasing are different semantic
 layers.
+
+### 4.6 Built-in privileged AST meta functions
+
+A compiler-defined privileged family uses the general function-object and meta
+invocation framework without becoming user-definable macro capability:
+
+```text
+BuiltinPrivilegedAstMetaFunction {
+    compiler_known_identity,
+    accepted_normalized_ast_or_pattern_rank,
+    required_ambient_construction_capability,
+    result_rank,
+    special_scope_rule,
+    special_owner_rule,
+    bounded_privileged_behavior,
+}
+```
+
+These objects:
+
+```text
+participate in ordinary symbol-first lookup;
+have function-object, type, and associated () identity;
+use the ordinary invocation frame, including implicit self;
+may accept a bounded Normalized-AST or pattern carrier;
+remain graph-installation-free and binding-free;
+return SymbolConstructionValue or an owned construction handle;
+leave graph installation to an outer binding.
+```
+
+Unlike an `OrdinaryMetaFunction`, an individual built-in may define a special
+scope/owner rule and need not create an independently navigable
+`MetaInstanceScope M`. Users may call compiler-provided members but cannot
+define new privileged AST meta functions. Privilege is member-specific: one
+built-in's accepted carrier and bounded transformation do not imply a general
+macro system or arbitrary AST rewriting.
+
+`struct` and `inject` are the first specified members. Future candidates may
+include explicit sum construction/extension, bounded AST injection, or a
+facet-construction primitive, but each must receive its own capability boundary.
 
 ## 5. Physical Namespace Contributions and Meta Construction
 
@@ -712,9 +764,10 @@ projections. `ResolvedPatternScope` identity is not raw string concatenation.
 Implementations may eventually represent it with a `PatternScopeId` plus
 structured owner/child relations.
 
-### 6.3 A meta invocation is one navigation atom
+### 6.3 An ordinary meta invocation is one navigation atom
 
-When a meta callee has an outer namespace path, the complete invocation remains
+When an ordinary meta callee has an outer namespace path, the complete
+invocation remains
 one navigable symbol atom. If `Vec` is found under `std` and the argument is
 `int`, the canonical form is:
 
@@ -757,6 +810,10 @@ parser, Raw AST, or Normalized AST in this PR.
 ## 7. `struct`
 
 ### 7.1 Public boundary
+
+`struct` is a `BuiltinPrivilegedAstMetaFunction`, not an ordinary user-definable
+meta function. It uses the general function-object/meta call framework but does
+not create its own ordinary externally navigable `MetaInstanceScope M`.
 
 The public semantic boundary is:
 
@@ -834,8 +891,9 @@ pure. Graph installation remains outside formal invocation.
 
 ### 8.1 Privileged built-in
 
-`inject` is a future privileged compile-time meta-function, parallel to
-`struct` in trust boundary:
+`inject` is a future `BuiltinPrivilegedAstMetaFunction`, parallel to `struct` in
+trust boundary. It does not create an ordinary externally navigable
+`MetaInstanceScope M`:
 
 - it accepts normalized pattern syntax or an equivalent internal AST carrier;
 - its public successful return rank is `symbol`;
@@ -1608,6 +1666,7 @@ This document does not:
 - introduce traditional call syntax;
 - implement `inject`;
 - define a general macro system;
+- allow users to define new `BuiltinPrivilegedAstMetaFunction` members;
 - expose arbitrary AST or token rewriting;
 - implement type checking, name resolution, overload resolution, pattern-space
   execution, extraction execution, D/Done, ownership, runtime evaluation, or

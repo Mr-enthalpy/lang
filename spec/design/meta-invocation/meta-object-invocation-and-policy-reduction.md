@@ -147,9 +147,10 @@ The current verifier consumes provisional RHS result-policy metadata. Direct
 type-name forwarding uses the forwarded type symbol's current policy, while
 restricted source-callable invocation uses the selected callable's
 transitional `return_object_policy` field. This describes v0.8 transport only;
-it is not a final `P3` rule. Final result-symbol lookup policy inherits
-`P1(selected_callable_object)`, while the result's `Val1`, `Pattern`, and
-`Val2` layers retain their own policy.
+it is not a final `P3` rule or whole-result policy. Final semantics applies
+layer-directed `result_projection_by_P1`: Pattern retains its supported compile
+part, Val1 retains stages admitted by the selected object's P1, and every
+returned Val2 object keeps its own P1.
 
 When binding policy is omitted and RHS evaluation succeeds with a value, the
 binding policy is inferred from that RHS result policy and written onto the
@@ -286,7 +287,7 @@ Gamma; lookup_stage |- value_facet(Symbol) => Val2*
 
 Gamma; lookup_stage |- P1_filter(Val2*) => stage-visible objects
 
-Gamma; P2 |- call(selected object, arguments) => result
+Gamma; P2 |- call(selected object, InvocationFrame) => result
 ```
 
 The first judgment is base symbol resolution. `P1` is not consulted until the
@@ -297,12 +298,14 @@ objects stored by the same symbol may have different `P1` sets.
 
 ```text
 P1 ::= compile
-     | runtime
      | (compile | runtime)
 ```
 
-`P2` is an individual callable entry's execution capability and exact argument
-total-policy requirement:
+A callable function object is always compile-visible. Runtime body execution is
+expressed by `P2 = runtime` on an object whose `P1 = compile | runtime`.
+
+`P2` is an individual callable entry's execution capability and exact
+invocation-frame total-policy requirement:
 
 ```text
 P2 ::= compile | meta | runtime
@@ -325,9 +328,15 @@ current_lookup_stage in P1
 
 and
 
-for every argument a:
+for every invocation-frame slot a:
   total_policy(a) = external(P2)
 ```
+
+Slot 0 is the implicit `self` view of the selected `Val2` function object;
+slots 1..n are the explicit source arguments. The declaration condition
+`external(P2) subset-of P1` guarantees that `self` is available at the entry's
+stage, and the invocation frame records the same exact stage requirement for
+all slots.
 
 Visibility therefore never implies executability. A compile lookup may see a
 runtime entry whose object has `compile | runtime` `P1`, inspect it, preserve
@@ -339,12 +348,14 @@ static values and `PatternValue`; meta constructs `SymbolConstructionValue` in
 a `MetaConstructionUnit`. They are grouped only by their shared external
 compile stage.
 
-There is no independent final return-policy `P3`. Result-symbol lookup policy
-inherits `P1(selected_callable_object)`, while the result's layered symbol
-material retains its own policy. It does not inherit a uniform policy from the
-heterogeneous callee symbol. Current `self_policy`, `body_entry_policy`, and
-`return_object_policy` fields are transitional implementation substrate for
-parts of this model, not three normative source positions.
+There is no independent final return-policy `P3` and no scalar lookup policy
+for the whole result symbol. The selected object's `P1` projects result material
+layer by layer: Pattern currently contributes only its compile projection;
+`Val1` contributes the compile leaves, and also runtime leaves when `P1` admits
+runtime; every returned `Val2` object keeps its own `P1`. Current `self_policy`,
+`body_entry_policy`, and `return_object_policy` fields are transitional
+implementation substrate for parts of this model, not three normative source
+positions.
 
 This lookup/entry separation is load-bearing for candidate qualification,
 partial versus strict demand, compile-flow projection, and residualization.
@@ -372,16 +383,17 @@ call-entry candidate pool:
   -> include stable derived callable entries
 
 compile-projected call site:
-  retain UnresolvedCallFamily and any DerivedCompanionCallFamily
-  -> do not select a concrete entry
+  retain an ordinary projected call
+  -> do not select a concrete object
 
-qualified candidate set Q:
-  call-entry pool + argument shape + normalized pattern compatibility
+fully admissible candidate set A:
+  call-entry pool + every hard structural/Pattern/type/require check
   + P2 execution-stage compatibility
-  + exact argument total-policy equality
+  + exact total-policy equality for self and explicit arguments
+  + expected result rank/facet compatibility
 
 selected result:
-  Q -> ordinary linear filters -> final survivor set
+  A -> ordinary preference filters -> final survivor set
   -> unique candidate satisfying must-select postconditions
 ```
 
@@ -394,15 +406,17 @@ Reading the layers from the top:
 - The **call-entry candidate pool** obtains each value's type and resolves the
   type-associated `()` entry. Non-callable values are valid facet material but
   are discarded for this call position.
-- The **qualified set `Q`** keeps only those callables whose parameter
+- The **fully admissible set `A`** keeps only those callables whose parameter
   patterns and rank-directed symbol/type/pattern-value expectations are
   compatible with the actual argument shapes, whose `P2` has the demanded
-  external stage, and whose arguments have exactly that total policy.
-- The **linear filters** apply concept, specificity, instantiation, lifetime,
-  and any configured entry-preference ordering only after qualification and in
-  one fixed normative order. Each filter is independent of candidate
-  enumeration/source declaration order; filters are not assumed to commute.
-- The **must-select postcondition** is computed from `Q`. A qualified derived
+  external stage, whose implicit self and explicit arguments have exactly that
+  total policy, and whose hard concept/require/result checks pass.
+- The **preference filters** apply entry preference, concept ordering,
+  extraction specificity, and first-order preference only after full
+  admissibility and in one fixed normative order. Each filter is independent
+  of candidate enumeration/source declaration order; filters are not assumed
+  to commute.
+- The **must-select postcondition** is computed from `A`. An admissible derived
   compile companion must be the final unique survivor; a more specific normal
   overload cannot silently replace it.
 
@@ -415,7 +429,7 @@ the earlier core-meta/source-verification path, and the v0.8 restricted
 source-declared meta-overload path. The v0.8 path has argument-shape matching,
 restricted parameter-pattern applicability, body-entry filtering, and selected
 simple-body evaluation, but not full runtime overload resolution, concepts,
-lifetime preconditions, exact `P2` argument-total-policy checks, compile
+exact `P2` invocation-frame policy checks, compile
 companions, must-select enforcement, guarded branch execution, or arbitrary
 meta block interpretation.
 
@@ -427,9 +441,10 @@ Gamma; lookup_stage |- value_facet(Symbol) => V*
 Gamma; lookup_stage |- P1_filter(V*) => V_stage*
 Gamma; lookup_stage |- type(V_stage*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
-Gamma; lookup_stage |- Qualified(C0, ArgShapes) => Q
-Gamma |- LinearFilters(Q) => C_final
-Gamma |- MustSelectConsistent(Q, C_final) => selected_callable
+Gamma |- InvocationFrame(self, ArgShapes) => Frame
+Gamma; lookup_stage |- FullyAdmissible(C0, Frame, expectation) => A
+Gamma |- PreferenceFilters(A) => B_final
+Gamma |- MustSelectConsistent(A, B_final) => selected_callable
 Gamma; P2(selected_callable) |- invoke(...) => InvocationResult
 ```
 
@@ -616,8 +631,8 @@ or declaration context. This includes:
 - installing a NamespaceDelta atomically;
 - binding the declared target (e.g. `let T: type = ...`);
 - exposing an extraction-facing interface on the constructed value;
-- assigning result-symbol lookup policy from the selected callable object's
-  `P1` while preserving each result layer's own policy.
+- applying layer-directed `result_projection_by_P1` without assigning one
+  scalar policy to the result symbol.
 ```
 
 This separation is intentional: invocation produces an uninstalled value, and
@@ -693,17 +708,18 @@ total_policy(scrutinee) = runtime
 ```
 
 Pattern-space subtraction and completed-result isolation are not invocation
-strategies invented here. Branch chains first use the canonical extraction
-residual `D(A, S)` and `Done` semantics in
-`../patterns-overload/static-pattern-spaces-and-extraction-chains.md`. Automatic
-require then consumes that D/Done-normalized flow as specified in
+strategies invented here. Complete symbol flow already represents match through
+the canonical extraction residual `D(A, S)` and `Done` semantics in
+`../patterns-overload/static-pattern-spaces-and-extraction-chains.md`. Compile
+projection preserves those constructors homomorphically, and automatic require
+consumes the retained structure as specified in
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 For a compile-policy scrutinee, only the selected guarded branch is evaluated
 in normal compile evaluation. For a runtime-policy scrutinee, each possible
-runtime branch retains a `GuardedRequireAtom`; automatic require conjoins those
-guarded atoms rather than evaluating an unguarded Boolean conjunction of branch
-bodies.
+runtime branch retains a guarded complete block; automatic require conjoins
+those guarded contracts rather than evaluating an unguarded Boolean conjunction
+of branch bodies. Exact guarded-atom fields and identity are not frozen.
 
 `partial` versus `strict` still controls whether an unresolved runtime boundary
 may residualize. It does not create a separate constexpr control language.
@@ -734,14 +750,30 @@ prepares residuals and guarantees they are well-identified deferred calls, but
 it does not decide all runtime correctness. The residual is a handoff, and the
 runtime phase that consumes it is specified separately and afterward.
 
-## 7. Meta object invocation is not macro expansion
+## 7. Ordinary meta and privileged AST meta are not macro expansion
 
-Meta object invocation operates on structured objects, not on text. A meta
-object is invoked like any other callable and receives structured inputs:
+Meta callable objects operate on structured objects, not on text. The semantic
+classification is:
 
 ```text
-A meta object receives normalized objects, pattern objects, type values, graph objects,
-or argument shapes. It does not receive raw text by default.
+MetaFunction
+  |- OrdinaryMetaFunction
+  `- BuiltinPrivilegedAstMetaFunction
+```
+
+An ordinary user meta function is invoked like any other callable and receives
+ordinary symbol, type, PatternValue, or other rank-constrained inputs. It does
+not acquire unrestricted AST-consuming capability merely because `P2 = meta`.
+
+A compiler-defined `BuiltinPrivilegedAstMetaFunction` may additionally accept
+a specifically bounded normalized-AST or pattern-material rank under an
+explicit ambient construction capability. Each built-in defines its own scope,
+owner, input, and result rules. Users may call such an object but cannot define
+new privileged members or infer a general rewrite facility from one built-in.
+
+```text
+Neither class receives raw text by default.
+Neither class grants arbitrary token splicing or parser re-entry.
 ```
 
 A meta object may produce:
@@ -759,11 +791,11 @@ A `compile` callable uses the same invocation framework but produces a
 `PatternValue`, not symbol construction. The distinction is an execution
 capability/result-rank boundary, not a second parser or expression language.
 
-But the mechanism producing those results is still ordinary invocation through
-graph-resolved callable objects. There is no separate expansion phase, no
-textual substitution, and no privileged rewriting step. A meta object is a
-callable selected by the candidate pipeline, executed under an execution
-environment, returning an invocation result.
+Both classes still participate in symbol-first lookup, function-object/type/
+associated-`()` preparation, and the general invocation framework. There is no
+textual substitution or general macro expansion. The bounded behavior of a
+privileged built-in is a compiler-known semantic capability, not permission for
+arbitrary AST rewriting.
 
 This is why the front end must stay neutral:
 
@@ -792,8 +824,9 @@ Current state:
 
 - `crates/lang_build` implements a narrow early-meta slice over the namespace
   graph.
-- `struct` is a core meta-function symbol resolved through the namespace graph,
-  not a parser keyword.
+- `struct` is a core `BuiltinPrivilegedAstMetaFunction` symbol resolved through
+  the namespace graph, not a parser keyword or an ordinary user-definable meta
+  function.
 - `verify` is a core meta-visible verification namespace/object, with
   verification operations installed below it as core symbols.
 - Source-declared callable/meta-function overloads can be harvested into graph
@@ -840,7 +873,8 @@ not exist yet.
 
 ## 9. Relation to pattern normalization and first-order type values
 
-Full candidate selection — the qualified set and linear filters of Section 3 —
+Full candidate selection — fully admissible set `A` and preference filters of
+Section 3 —
 depends on machinery that this document does not define. Argument shape,
 normalized parameter pattern compatibility, and first-order type-value
 compatibility are prerequisites for real overload selection. This document
@@ -937,7 +971,7 @@ and meta-invocation machinery exists.
 7. Introduce ResolvedPatternScope and binding-independent `struct` ownership.
 8. Move `struct` and `verify` dispatch behind the common invocation engine.
 9. Add functional child-only `inject` without graph installation.
-10. Add partial versus strict reduction over D/Done-normalized match flow.
+10. Add partial versus strict reduction over the intrinsic D/Done match flow.
 11. Add mechanical compile-flow projection, derived companions, must-select,
     and shared inferred-require/body evaluation nodes.
 12. Only after this, introduce runtime lookup over residual expressions.

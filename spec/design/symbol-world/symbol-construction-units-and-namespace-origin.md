@@ -30,7 +30,7 @@ or cross-unit reopening rules.
 
 ## 1. One Construction Capability Substrate
 
-Physical source assembly and meta invocation use the same symbol-world
+Physical source assembly and ordinary meta invocation use the same symbol-world
 construction capabilities:
 
 ```text
@@ -50,18 +50,21 @@ system of the resulting symbol graph:
 physical directory
   -> physical namespace construction scope
 
-canonical meta invocation
+ordinary canonical meta invocation
   -> virtual symbol construction scope
 ```
 
-A meta instance is therefore not merely “like a folder.” It is a real virtual
-symbol layer: it participates in navigation, may carry namespace/type/value
-facets, anchors its returned type root, and is a candidate cache/incremental
-unit.
+An ordinary meta instance is therefore not merely “like a folder.” It is a real
+virtual symbol layer: it participates in navigation, may carry namespace/type/
+value facets, anchors its returned type root, and is a candidate cache/
+incremental unit.
 
-Formal `struct`, formal meta invocation, and functional `inject` produce
-uninstalled material. Physical assembly or an outer `let` binding/injection
-performs `NamespaceDelta` validation and installation.
+Formal ordinary meta invocation produces uninstalled construction material.
+Compiler-defined privileged AST meta functions such as `struct` and `inject`
+also remain graph-installation-free, but use their individually bounded ambient
+scope/owner and current-unit capability rather than creating an ordinary meta
+instance. Physical assembly or an outer `let` binding/injection performs
+`NamespaceDelta` validation and installation.
 
 ## 2. Namespace Origin Is Unique
 
@@ -88,7 +91,8 @@ by exactly one of:
 2. one implementation file physically in `ns/`, as a source-owned direct-child
    construction that may include its complete new subtree (for example, a
    `struct` whose resolved top owner is `ns1::ns`);
-3. one canonical meta invocation in `ns`, as a meta-owned virtual node.
+3. one ordinary canonical meta invocation in `ns`, as a meta-owned virtual
+   node.
 
 The three sources are mutually exclusive creators of that namespace facet.
 This does **not** mean that a physical directory may contain only one
@@ -141,7 +145,7 @@ SourceConstructionUnit =
     one physical implementation file's closed source contribution
 
 MetaConstructionUnit =
-    one canonical meta invocation transaction
+    one ordinary canonical meta invocation transaction
 ```
 
 Stable implementations will assign identities such as
@@ -252,10 +256,10 @@ closed under the same cross-file ownership rule as namespace/type children.
 Distinct direct child symbols created by distinct files remain legal; reopening
 one symbol is not.
 
-## 7. Meta Construction Is One Transaction
+## 7. Ordinary Meta Construction Is One Transaction
 
-A canonical meta invocation is exempt from the *cross-unit* restriction for a
-precise reason:
+An ordinary canonical meta invocation is exempt from the *cross-unit*
+restriction for a precise reason:
 
 ```text
 all symbol construction performed by that invocation
@@ -280,14 +284,17 @@ They do not make arbitrary installed symbols injectable. The canonical
 `inject` input and ownership preconditions are defined in
 `symbol-first-meta-construction-and-pattern-injection.md`.
 
-A helper meta invocation with its own canonical instance has a separate
+A helper ordinary-meta invocation with its own canonical instance has a separate
 `MetaConstructionUnit`. The caller may compose the helper's returned,
 uninstalled construction value according to explicit composition rules. It may
 not directly mutate an already installed subtree owned by the helper instance.
 
-The meta return symbol's type self-root invariant follows from this ownership:
-the invocation's `MetaInstanceScope` is the type root identity anchor. An
-external type value may be a member under that root but cannot replace it.
+The ordinary-meta return symbol's type self-root invariant follows from this
+ownership: the invocation's `MetaInstanceScope` is the type root identity
+anchor. An external type value may be a member under that root but cannot
+replace it. Compiler-defined privileged AST meta functions such as `struct` and
+`inject` use their separately specified scope/owner rule and do not acquire an
+ordinary externally navigable instance root merely by being called.
 
 ## 8. Pattern Material and Namespace Values Are Orthogonal
 
@@ -355,10 +362,10 @@ The sum API's final spelling is undecided. Neither duplicate declaration nor
 read-transform-bind operation may be considered by later place/update rules,
 but unrelated repeated definitions remain conflicts.
 
-## 10. Meta Invocation Navigation Atom
+## 10. Ordinary Meta Invocation Navigation Atom
 
-A canonical meta invocation is one navigation atom. If `Vec` is in `std` and
-the argument is `int`, the correct form is:
+An ordinary canonical meta invocation is one navigation atom. If `Vec` is in
+`std` and the argument is `int`, the correct form is:
 
 ```text
 (int Vec::std)
@@ -410,7 +417,7 @@ Not implemented:
 meta result type self-root checking
 complete compile/meta language-level separation
 MetaInstanceScopeId
-canonical meta invocation navigation atom
+ordinary canonical meta invocation navigation atom
 NamespaceOrigin uniqueness checking
 SourceConstructionUnit / MetaConstructionUnit ownership
 physical directory contribution authority checking

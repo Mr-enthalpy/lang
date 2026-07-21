@@ -88,10 +88,13 @@ here. Their normative future-design owners are:
   cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
   `Val1 x Pattern x Val2`, layered policy, `P1` / `P2` and no `P3`, mechanical
-  compile-flow projection, unresolved call/companion families, finite local
-  flow with recursive summary edges, derived compile companions, must-select
-  consistency, policy-staged match, guarded require atoms, and D/Done-based
-  automatic require.
+  compile-flow projection over ordinary call nodes, complete derived `Val2`
+  compile-companion objects, must-select consistency, policy-staged match,
+  intrinsic D/Done flow, coarse automatic require, and shared compile
+  evaluation;
+- `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
+  negative boundary separating later lifetime policy/refinement from the
+  type/compile overload pipeline.
 
 Unimplemented portions remain roadmap work, not reopened design questions.
 
@@ -119,32 +122,43 @@ Resolved future-design decisions:
 
 - path resolution reaches `Symbol` before each heterogeneous `Val2` object is
   filtered by its own callable-object `P1` for external compile/runtime lookup;
-- entry `P2` controls compile/meta/runtime execution and exact argument-symbol
-  total policy;
+- callable-object `P1` is `compile` or `compile | runtime`, never runtime-only;
+- entry `P2` controls compile/meta/runtime execution and exact total policy for
+  the complete invocation frame, including implicit self;
 - compile and meta share external compile flow but retain different internal
   capabilities;
-- there is no independent return-policy `P3`;
+- there is no independent return-policy `P3` or scalar result-symbol policy;
+  result Pattern/`Val1` material is projected layer by layer and returned
+  `Val2` objects retain their own `P1`;
 - compile flow is a mechanical projection of complete symbol flow, not a stage
   constraint solver or eager overload evaluator;
-- eligible runtime entries may have first-class derived compile companions;
-- a qualified companion is `must_select_if_qualified`, not a hidden fallback;
+- projected calls remain ordinary calls; any unresolved-call-family IR is an
+  implementation choice rather than required public semantics;
+- eligible runtime function objects have complete first-class derived `Val2`
+  compile-companion objects with their own type and associated `()`;
+- overload resolution forms a fully admissible set before preference filters,
+  and an admissible companion carries the `must_select_if_qualified` strategy
+  rather than acting as a hidden fallback;
 - match/if share one pattern mechanism and stage by scrutinee total policy;
-- inferred require is a D/Done-normalized formal-dependent/parameter-guarded
-  backward assertion slice, represented by guarded atoms, conjoined with manual
-  require, and sharing one compile-evaluation graph with body continuation;
-- one callable body has finite local flow when call families are opaque;
-  recursion is the only repetition mechanism and remains on call/summary edges.
+- D residual and Done completion are intrinsic to CompleteSymbolFlow match
+  structure and compile projection preserves them homomorphically;
+- inferred require initially retains coarse formal-dependent or guarded
+  complete blocks ending in verification, conjoins them with manual require,
+  and shares one compile-evaluation graph with body continuation;
+- one callable body has finite local flow when calls remain opaque nodes;
+  recursion is the only repetition mechanism and stays ordinary call
+  evaluation.
 
 Not implemented after this correction:
 
 - Layered symbol total-policy accounting and final `P1` / `P2` checking.
 - Compile-flow projection and shared compile-evaluation graph.
-- Derived compile companions and must-select enforcement.
-- Explicit companion replacement/suppression semantic markers; current
-  `@...` spellings are conceptual and do not require parser support.
-- Unresolved call-family/derived-companion-family flow nodes.
-- Guarded require atoms and contract-summary references for recursive calls.
+- Complete derived `Val2` compile-companion objects and must-select enforcement.
+- Explicit companion replacement association and any public overload-strategy
+  spelling.
 - Automatic inferred require.
+- Later lifetime-policy checking/refinement after first-order type/compile
+  selection.
 - Full orthogonal access/effect policy lattice.
 - Alias forwarding resolution under policy filtering.
 - Overload buckets and per-policy-pass overload set construction.
@@ -152,6 +166,21 @@ Not implemented after this correction:
 - Type checker.
 - Runtime residual call construction.
 - IR/HIR lowering.
+
+Still open for later design:
+
+- the final public spelling for overload-strategy metadata, whether
+  `[[...]]`, `#...`, or another form;
+- how source code precisely references a derived compile-companion object;
+- the final association mechanism for an explicit replacement companion;
+- whether default companion suppression is allowed and, if so, what equivalent
+  compile Pattern/contract interface must be supplied;
+- finer-grained require atomization and any canonical identity for complex
+  grouped require structures;
+- how a future `seal` phase changes Pattern policy;
+- complete lifetime region/origin/Horae algebra and refinement rules;
+- the future member set of `BuiltinPrivilegedAstMetaFunction` and each member's
+  bounded capability.
 
 ---
 

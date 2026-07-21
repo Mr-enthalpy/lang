@@ -146,6 +146,7 @@ into contracts, moved into planning, or archived into history. Start at
 | `spec/design/patterns-overload/` | Pattern normalization, occurrence roles, argument/parameter shapes, first-order type-value candidate adaptation, applicability, specificity, the full overload-resolution vision, static pattern spaces, and extraction chains. |
 | `spec/design/meta-invocation/` | Policy-governed invocation: heterogeneous value candidates, `P1` lookup and `P2` qualification handoff, partial vs strict demand, residualization, and policy-staged pattern matching. |
 | `spec/design/policy-capability/` | Mapping from current policy metadata to final `P1` / `P2`, lookup/entry separation, and future orthogonal access/effect policy; no final `P3`. |
+| `spec/design/lifetime/` | Negative boundary placing lifetime policy/refinement after completed first-order type/compile overload selection; no lifetime algorithm is frozen. |
 | `spec/design/control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only |
 | `spec/design/mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes with no loop core. |
 
@@ -233,9 +234,9 @@ for namespace creation origin, physical authority, and source/meta construction
 ownership.
 Then read
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
-layered policy, P1/P2 object filtering, unresolved call families, compile
-companions, finite local flow, guarded require atoms, and inferred-require
-slicing.
+layered policy, P1/P2 object and full-frame filtering, mechanical projection of
+ordinary calls, complete derived compile-companion objects, finite local flow,
+and coarse inferred-require slicing.
 
 Then read within each block as needed. Scope boundaries are in
 `spec/planning/roadmap.md`, and known gaps in `spec/planning/open-questions.md`.

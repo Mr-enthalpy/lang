@@ -85,6 +85,17 @@ The source product contains only the explicit user arguments. `ProductObject`, `
 
 The implicit `self` belongs to the callable-entry invocation frame, not to the source product.
 
+`P2` applies uniformly to that complete frame:
+
+```text
+for every invocation-frame slot a, including slot 0 self:
+  total_policy(a) = external(P2)
+```
+
+No separate self-policy plane is required. Declaration well-formedness
+`external(P2) ⊆ P1` guarantees that the selected function object is visible at
+the stage inherited by its self view.
+
 ### 6.1 Internal Self frame and local pattern construction
 
 An ordinary function object owns an internal symbol/pattern space for local
@@ -100,11 +111,15 @@ function-object internal scope as its ambient pattern owner. A `compile`
 invocation does not manufacture a meta-style `(canonical_arguments name)`
 symbol layer.
 
-A canonical `meta` invocation is different: symbol construction is anchored by
-its own `MetaInstanceScope(callee_symbol, canonical_arguments)`. Meta callables
-still use the ordinary implicit-self invocation mechanics described above, but
-their returned type construction is rooted in the meta-instance symbol scope,
-not in the ordinary function-object Self frame.
+An ordinary canonical `meta` invocation is different: symbol construction is
+anchored by its own `MetaInstanceScope(callee_symbol, canonical_arguments)`.
+Ordinary meta callables still use the implicit-self mechanics described above,
+but their returned type construction is rooted in the meta-instance scope.
+
+A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct` or
+`inject`, also has a function object, type, associated `()`, and implicit self,
+but may use its specified special owner/scope rule instead of creating an
+ordinary externally navigable `MetaInstanceScope`.
 
 ## 7. ZST function objects
 
@@ -123,21 +138,21 @@ Product |> Expr
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
-   and include any visible first-class derived entries
+   while retaining visible derived companion objects
 7. Determine self mode: () :: F / () :: ref::T / () :: share::T
 8. Build invocation frame: implicit self + explicit shaped product args
-9. Form qualified set Q by structure, P2,
-   and exact argument-symbol total policy
-10. Apply ordinary linear filters in fixed normative order, then the must-select check
+9. Form fully admissible set A using all hard checks, including P2,
+   full-frame policy (self plus explicit args), result expectation, and require legality
+10. Apply ordinary preference filters in fixed normative order, then the must-select check
 11. Enter the unique selected invocation or defer according to demand
 ```
 
-A derived compile companion is prepared as an ordinary identified call entry
-with an origin; it is not a lookup-failure fallback. If it enters `Q`, its
-must-select property requires it to be the final unique candidate.
-Compile projection does not choose that entry: it carries an
-`UnresolvedCallFamily` plus any `DerivedCompanionCallFamily`, and normal compile
-evaluation later enumerates and selects candidates.
+A derived compile companion is a complete `Val2` function object with stable
+origin, its own type, and its own associated compile `()`. It is not a
+lookup-failure fallback. If its prepared candidate enters fully admissible set
+`A`, its must-select strategy requires it to be the final unique candidate.
+Compile projection preserves an ordinary projected call; normal compile
+evaluation later enumerates and selects objects.
 
 ## 9. Relation to v0.8 substrate
 
@@ -166,8 +181,10 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
-- Meta functions follow the same function-object and implicit-self model.
+- Ordinary and built-in privileged meta functions follow the same
+  function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal
   Self frame; compile does not create a MetaInstanceScope.
-- Meta symbol construction is anchored by the canonical MetaInstanceScope even
-  though invocation still passes implicit self.
+- Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
+  built-in privileged AST meta functions may instead use their declared special
+  scope/owner rule.

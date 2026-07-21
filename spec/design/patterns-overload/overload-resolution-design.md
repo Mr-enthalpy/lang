@@ -51,7 +51,7 @@ Implemented for this slice:
   `RuntimeBinding`;
 - restricted parameter extraction-pattern applicability;
 - current body-entry eligibility for demanded meta execution;
-- C7' extraction-pattern specificity with the lexicographic tuple in §4;
+- a restricted extraction-pattern specificity prototype using the tuple in §4;
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
@@ -67,9 +67,8 @@ value entries are not assumed to be same-type function overloads. See
 Explicitly not implemented in v0.8:
 
 - full runtime overload resolution;
-- concept legality or concept ordering (`C5`, `C6`);
-- first-order instantiation preference (`C8`);
-- lifetime precondition matching or lifetime specificity (`C9`, `C10`);
+- concept legality or concept ordering;
+- first-order instantiation preference;
 - ADL, unrestricted lookup, or global search for all symbols of a name;
 - D/Done reduction or control-flow pattern transformation;
 - guarded branch invocation, short-circuit invocation, or full meta block
@@ -95,9 +94,10 @@ return-object policy metadata
 They are not three final source-level policy positions. In the final model,
 base path resolution produces `Symbol` before `P1`; each enumerated `Val2`
 object's lookup participation is governed by its own `P1`, entry execution and
-exact argument total policy by `P2`, and there is no independent `P3`. The
-current return-object field is provisional transport until layered
-result-symbol facets exist.
+exact total policy for implicit self plus explicit arguments by `P2`, and there
+is no independent `P3`. The
+current return-object field is provisional transport until layer-directed
+result projection exists.
 
 For:
 
@@ -137,13 +137,16 @@ sets come from the selected namespace graph view.
 This document is the formal specification of overload resolution for the lang
 language. It defines:
 
-- how overload candidate sets are constructed from namespace graph children
+- how overload candidate sets are constructed from a resolved Symbol's `Val2`
+  objects
 - how visibility and export rules gate internal vs external lookup
 - how callable-object `P1` filters lookup-stage visibility
-- how entry `P2` and argument total policy form the qualified candidate set
+- how hard legality, including `P2` and complete invocation-frame policy, forms
+  the fully admissible candidate set `A`
 - the extraction-pattern specificity rule as a stable lexicographic rank
 - the full overload resolution pipeline from raw symbol lookup to uniqueness
-- how `must_select_if_qualified` constrains the final result without closing an
+- how `must_select_if_qualified` activates from `A` and constrains the final
+  result without closing an
   entire overload name
 - a compact judgment form
 
@@ -151,7 +154,8 @@ This document does **not** define:
 
 - concept semantics (only the interface: `concept_projection` must produce a
   stable poset element)
-- lifetime / origin-path graph construction
+- lifetime checking or lifetime-driven refinement; see
+  `../lifetime/lifetime-policy-and-overload-boundary.md`
 - ADL or unrestricted symbol search
 - implicit type conversion or coercion
 - partial-application overloads
@@ -190,8 +194,8 @@ external(runtime) = runtime
 The current Rust implementation instead exposes `CompileEval`, `MetaAction`,
 and `RuntimeBinding`-shaped query paths over `PolicyFlag` sets. Those are
 transitional resolver mechanics, not a third external flow. Compile-flow
-projection may preserve unresolved compile and meta call families; normal
-compile evaluation later distinguishes their capabilities.
+projection preserves ordinary calls; normal compile evaluation later
+distinguishes direct compile/meta objects and derived companion objects.
 
 `P1` does not control the preceding path-to-`Symbol` resolution. One symbol may
 hold heterogeneous objects with different `P1` sets, each filtered separately.
@@ -215,8 +219,9 @@ Visible(C, External) = { c ∈ C | export(c) }
 - **External** lookup: only `export`-bearing symbols are visible. External
   path traversal must be export-gated segment-by-segment.
 
-The overload set is always built from the visible child set, never from raw
-graph children directly.
+Path traversal is always built from the visibility-filtered graph view, never
+from raw graph children directly. Once it resolves the callee `Symbol`, object
+candidate construction proceeds from that symbol's value facet.
 
 Candidate construction is closed over the namespace-graph view selected for the
 query: it performs no ADL-like expansion and no external scope search, external
@@ -240,23 +245,16 @@ resolve callee path
 ```
 
 The current same-name namespace bucket is only a restricted precursor to this
-flow. Derived compile companions are inserted as first-class entries during
-candidate preparation, not after ordinary overload resolution fails.
-
-During compile projection, the call remains an `UnresolvedCallFamily`. Runtime
-origin candidates are projected as a `DerivedCompanionCallFamily`; no concrete
-origin entry is selected at that point. Normal compile evaluation enumerates
-the family and gives each derived entry its stable
-`DerivedCallableEntryId(origin_runtime_entry, CompileCompanion)` before forming
-`Q`. The family objects are defined canonically in
-`../symbol-world/symbol-policy-and-compile-flow-projection.md` §4.1.
+flow. A derived compile companion is a complete `Val2` function object with its
+own type and associated compile `()`. It is inserted into the symbol value
+facet before ordinary candidate preparation, not after overload failure.
 
 ```text
 C0 = EnumerateValueObjects(Symbol)
 C1 = VisibleObjects(C0, V)
 C2 = UsableByP1(C1, current_lookup_stage)
 C3 = AssociatedCallEntryAndShapeMatch(C2, E)
-Q  = P2Qualified(C3, current_lookup_stage, arguments)
+A  = FullyAdmissible(C3, current_lookup_stage, invocation_frame, expectation)
 ```
 
 - `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
@@ -265,12 +263,13 @@ Q  = P2Qualified(C3, current_lookup_stage, arguments)
 - `C2`: filtered independently by each object's `P1` lookup-stage policy.
 - `C3`: objects whose type-associated `()` entry exists and is structurally
   applicable to the call.
-- `Q`: entries whose `P2` has the demanded external stage and whose arguments
-  all have exactly that total policy.
+- `A`: candidates that satisfy every hard precondition, including `P2`, exact
+  total policy for implicit self and explicit arguments, expected result
+  rank/facet, concept/ordinary-require legality, and other compile/type checks.
 
 ---
 
-## 3. P1 Visibility and P2 Qualification
+## 3. P1 Visibility and P2 Admissibility
 
 The callable shape is:
 
@@ -286,28 +285,35 @@ A callable object is usable at C2 iff:
 usable(c, lookup_stage) := lookup_stage in P1(c)
 ```
 
-`P1` currently admits `compile`, `runtime`, or `compile | runtime`. It says
+`P1` currently admits `compile` or `compile | runtime`. A callable function
+object is always compile-visible; runtime-only `P1` is invalid. `P1` says
 whether this already-enumerated object participates in the current external
 lookup stage; it does not govern base symbol resolution, argument policy, or
 body execution.
 
-### 3.2 P2 qualified-candidate boundary
+### 3.2 P2 fully admissible boundary
 
-After structural applicability, an entry belongs to `Q` exactly when:
+After structural applicability, a candidate can enter `A` only when:
 
 ```text
 external(P2(c)) = current_lookup_stage
 
 and
 
-for every argument a:
+InvocationFrame(c):
+  slot 0 = implicit self
+  slot 1..n = explicit source arguments
+
+for every frame slot a:
   total_policy(a) = external(P2(c))
 ```
 
 `P2` currently admits `compile`, `meta`, or `runtime`; it does not admit
 `runtime | compile`. `compile` computes static values and `PatternValue`, while
 `meta` constructs `SymbolConstructionValue` in a `MetaConstructionUnit`.
-Their shared external stage does not erase that capability distinction.
+Their shared external stage does not erase that capability distinction. The
+slot-0 self view uses the same `P2` stage requirement; no separate self-policy
+plane is introduced.
 
 If the overload design applies an entry preference such as:
 
@@ -315,31 +321,31 @@ If the overload design applies an entry preference such as:
 compile > meta > runtime
 ```
 
-that preference is an ordinary linear filter over `Q`; it is not the meaning of
-`P2`, and it cannot rescue an unqualified candidate.
+that preference is an ordinary linear filter over `A`; it is not the meaning of
+`P2`, and it cannot rescue a hard-inadmissible candidate.
 
-### 3.3 Derived entries and must-select
+### 3.3 Derived objects and must-select
 
-A mechanically derived compile companion has a stable identity and origin:
+A mechanically derived compile companion is a complete function object:
 
 ```text
-DerivedCallableEntryId {
-  origin_runtime_entry,
-  derivation_kind = CompileCompanion
+DerivedCompileCompanionObject {
+  object_id,
+  origin_runtime_object_id,
+  function_object_type,
+  associated_namespace,
+  associated_call_entry,
+  overload_strategy = must_select_if_qualified,
+  provenance,
 }
 ```
 
-It participates in `C0`, qualification, and every ordinary linear filter. It
-also carries `must_select_if_qualified`. This is not a hidden fallback and is
-not a normal overload that a more specific candidate may silently replace.
-
-The same postcondition is available to future user declarations through a
-conceptual `@must_select_if_qualified` notation. It permits non-overlapping
-same-name overloads. A future `sealed_overload_name` or `closed_overload_set`
-would instead forbid any additional same-name entry and is a separate feature.
-The `@...` spelling is not a lexer/parser/AST commitment; an initial
-implementation may use compiler-known metadata or another internal semantic
-marker, as required by the canonical policy note.
+It participates in `C0`, hard admissibility, and every ordinary preference
+filter. Preparing its associated `()` propagates the object strategy into the
+candidate. Must-select is not a hidden fallback, infinite priority, or a rule
+that closes the entire overload name. Candidate source spelling for the
+strategy is deliberately unresolved; `@` is not available as a generic
+annotation prefix because it belongs to lifetime-policy operations.
 
 ---
 
@@ -449,41 +455,39 @@ C0  = EnumerateValueObjects(Symbol)
 C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
 C2  = UsableByP1(C1, lookup_stage)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
-Q   = P2Qualified(C3, lookup_stage, args)    -- exact argument total policy
-C4  = MaxEntryPreference(Q)                  -- ordinary linear filter, if configured
-C5  = ConceptLegal(C4, E)                   -- remove concept-violating candidates
-C6  = MaxConceptOrder(C5, E)                -- keep maximal under concept poset
-C7  = MaxExtractionSpecificity(C6, E)       -- lexicographic specificity (§4)
-C8  = PreferFirstOrderOverInstantiated(C7)  -- first-order before instantiated
-C9  = LifetimePreSatisfied(C8)              -- remove candidates failing lifetime pre
-C10 = MaxLifetimeSpecificity(C9)            -- origin-path extraction specificity
+A   = FullyAdmissible(
+        C3,
+        lookup_stage,
+        invocation_frame,
+        expected_result,
+        compile_type_requirements
+      )
 
-E_must = { e in Q | e has must_select_if_qualified }
+B1  = MaxEntryPreference(A)
+B2  = MaxConceptOrder(B1, E)
+B3  = MaxExtractionSpecificity(B2, E)
+B4  = PreferFirstOrderOverInstantiated(B3)
 
-if E_must = empty:
-  select the unique element of C10
-
-if E_must = {e}:
-  succeed only when C10 = {e}
-
-if |E_must| > 1:
-  error: inconsistent qualified must-select entries
+M = {
+  c in A
+  |
+  overload_strategy(c) = must_select_if_qualified
+}
 ```
 
 ### 5.2 Pipeline invariants
 
-Each step `Ci+1 = f(Ci, ...)` satisfies:
+Every `Bi+1 = f(Bi, ...)` preference step satisfies:
 
 ```text
-Ci+1 ⊆ Ci                              -- monotonic filtering
+B1 ⊆ A and Bi+1 ⊆ Bi                  -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-The named filters execute in exactly the normative `C4` through `C10` order
-shown in §5.1. Candidate iteration and source declaration order do not affect
-the result of an individual filter, but the filters are not assumed to commute
-with one another.
+The named filters execute in exactly the normative `B1` through `B4` order.
+Candidate iteration and source declaration order do not affect an individual
+filter, but filters are not assumed to commute.
 
 ### 5.3 C0: heterogeneous value objects
 
@@ -509,124 +513,96 @@ Defined in §2 and §3 respectively.
 **Ordering constraint**: export visibility (C1) precedes `P1` (C2). If a
 symbol is not visible in the lookup view, its policy is not checked.
 
-### 5.5 C3–Q–C4: Matching, qualification, then preference
+### 5.5 C3: Associated call entry and basic applicability
 
-**Associated-call and structural matching (C3)** precedes policy qualification.
+Associated-call and structural matching precedes full admissibility.
 For every object surviving `P1`, obtain its type, resolve its type-associated
-`()` entry, discard non-callable objects, and match that entry against `E`. A candidate cannot
-win on entry preference if its pattern or type signature does not match the
-call operand.
+`()` entry, discard non-callable objects, and match that entry against `E`. A
+candidate cannot win on preference if its pattern or type signature does not
+match the call operand.
 
 `AssociatedCallEntryAndShapeMatch(C2, E)` removes candidates whose:
 
 - extraction pattern is structurally inapplicable to `E`
 - type signature is incompatible with the argument types
 
-**P2 qualification (Q)** then requires the entry's external stage to equal the
-current lookup stage and every argument symbol's total policy to equal that
-same stage. Merely having compile-time type metadata for a runtime symbol does
-not make the original runtime argument a compile-policy argument; projection
-uses a distinct projected symbol value.
+### 5.6 A: Fully admissible candidates
 
-**Entry preference (C4)** is a normal linear filter over `Q`. Where the existing
-ordering `compile > meta > runtime` is retained, it compares only already
-qualified entries. It does not define `P2` and does not run before exact
-argument-policy qualification.
-
-### 5.6 C5–C6: Concept layer (deferred)
-
-Full concept design is deferred to later phases. This section defines only the
-interface that overload resolution depends on.
-
-**Concept legality (C5)**: remove candidates whose concept constraints are
-violated by the call site.
-
-**Concept poset ordering (C6)**: given a function `concept_projection(c, E)`
-that maps each surviving candidate to an element of a `ConceptOrder` poset,
-keep candidates with maximal concept order.
-
-If multiple candidates have incomparable maximal concept orders, they all
-survive into C6 and proceed to extraction specificity (C7).
-
-### 5.7 C7: Extraction-pattern specificity
-
-Defined in §4. Among the surviving candidates, compute `specificity(P, E)` for
-each and keep those with maximal specificity (lexicographically).
-
-### 5.8 C8: First-order before instantiated
-
-If candidates are otherwise equal under all preceding steps, prefer a
-first-order (non-instantiated) candidate over a candidate obtained by first-order
-instantiation.
-
-This is a **tie-breaker only**. It does not override extraction specificity
-(C7). A deep generic pattern outranks a shallow monomorphic pattern.
-
-### 5.9 C9–C10: Lifetime layer (deferred)
-
-Full lifetime / origin-path design is deferred to later phases. This section
-defines the interface.
-
-**Lifetime pre-check (C9)**: remove candidates whose `pre` / `lifetime pre`
-conditions cannot be satisfied. Since origin-path matching is structurally
-analogous to extraction matching, this check uses the same pattern-matching
-primitives.
-
-**Lifetime specificity (C10)**: among viable candidates, compare origin-path
-extraction specificity. Define `L(P_life, O)` where `O` is the lifetime /
-origin graph normalized into an origin-path tree, and `P_life` is the candidate's
-lifetime pre-pattern:
+`A` removes every hard-illegal candidate before any preference filter runs.
+Hard admissibility includes, at minimum:
 
 ```text
-L(P_life, O) =
-  (
-    max explicit origin-path depth,
-    total explicit origin-path depth,
-    non_discard_origin_node_count
-  )
+path and object visibility
+P1 admission for the current lookup stage
+existence of associated ()
+parameter count and structural shape
+Pattern/extraction applicability
+P2 equality with the call stage
+total_policy(slot) = external(P2) for implicit self and every explicit argument
+expected result rank/facet compatibility
+concept and ordinary require legality
+other compile/type-stage hard preconditions
 ```
 
-Candidates with maximal `L(P_life, O)` survive. The comparison rule is the
-same lexicographic order as §4.3.
+Merely having compile-time type metadata for a runtime symbol does not make the
+original runtime value a compile-policy argument; compile projection supplies
+the Pattern projection as a distinct argument view.
 
-**Ordering constraint**: lifetime pre-check (C9) may depend on the selected
-candidate's concrete type or instantiation result. C9 therefore follows C8
-(first-order instantiation).
+Concept legality belongs here. A concept-violating candidate never reaches a
+preference filter. Full concept semantics remain deferred, but the legality
+boundary is fixed.
 
-### 5.10 Uniqueness
+Lifetime policy does not belong to `A`. Lifetime checking/refinement occurs
+after type/compile overload selection and first-order instantiation, as bounded
+by `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-First compute the ordinary final survivor set `C10`. Then compute the
-must-select subset from the qualified set, not from the same-name or merely
-visible set:
+### 5.7 B1–B4: Preference filters
+
+Only fully admissible candidates enter preference filtering:
+
+- **B1 Entry preference**: apply any configured entry-policy preference.
+- **B2 Concept ordering**: keep maximal legal candidates under the future
+  concept-order poset.
+- **B3 Extraction specificity**: apply the lexicographic rank from §4.
+- **B4 First-order preference**: if otherwise tied, prefer a first-order object
+  over an instantiated object.
+
+Each stage only removes candidates. First-order preference does not override
+extraction specificity; a deeper applicable generic pattern may outrank a
+shallower monomorphic pattern before B4 is reached.
+
+### 5.8 Must-select consistency and uniqueness
+
+Compute must-select membership from `A`, not from `C0`, `C2`, `C3`, or an
+earlier set that has not passed concept/require legality:
 
 ```text
-E_must = {
-  e in Q
+M = {
+  c in A
   |
-  e has must_select_if_qualified
+  overload_strategy(c) = must_select_if_qualified
 }
 
-E_must = empty:
-  |C10| = 1 -> select the unique candidate
-  |C10| = 0 -> error: no matching overload
-  |C10| > 1 -> error: ambiguous overload
+M is empty:
+  |B4| = 1 -> select the unique candidate
+  |B4| = 0 -> error: no matching overload
+  |B4| > 1 -> error: ambiguous overload
 
-E_must = {e}:
-  C10 = {e} -> select e
-  otherwise -> error: qualified must-select entry was not uniquely selected
+M = {m}:
+  B4 = {m} -> select m
+  otherwise -> error: admissible must-select object was not uniquely selected
 
-|E_must| > 1:
-  error: multiple qualified must-select entries
+|M| > 1:
+  error: multiple admissible must-select objects
 ```
 
-Qualification is the boundary for "participates in this call." A same-name
-entry in `C0` that fails visibility, structure, `P2`, or exact argument policy
-does not enter `E_must`.
+Full admissibility is the boundary for “participates in this call.” A same-name
+object that fails any hard check does not activate must-select.
 
-This rule makes a qualified derived compile companion non-overridable by
+This rule makes an admissible derived compile companion non-overridable by
 ordinary specificity. If another candidate wins the linear filters, the call
 fails rather than silently choosing that candidate. If two runtime entries
-project to two simultaneously qualified companions, the call also fails: the
+produce two simultaneously admissible companions, the call also fails: the
 runtime overload family has no unique compile projection.
 
 Neither zero nor multiple final candidates are otherwise acceptable. There is
@@ -640,7 +616,7 @@ no declaration-order fallback; written order is diagnostic presentation only.
 Γ; V; lookup_stage ⊢ name(args) ⇓ f
 
 where:
-  Γ  = namespace graph + type / concept / lifetime environment
+  Γ  = namespace graph + type / concept environment
   V  = lookup visibility view (Internal | External)
   lookup_stage = compile | runtime
   E  = normalized extraction tree of the call operand name(args)
@@ -659,18 +635,15 @@ C0  = EnumerateValueObjects(CalleeSymbol)
 C1  = VisibleObjects(C0, V)
 C2  = UsableByP1(C1, lookup_stage)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
-Q   = P2Qualified(C3, lookup_stage, args)
-C4  = MaxEntryPreference(Q)
-C5  = ConceptLegal(C4, E)
-C6  = MaxConceptOrder(C5, E)
-C7  = MaxExtractionSpecificity(C6, E)
-C8  = PreferFirstOrderOverInstantiated(C7)
-C9  = LifetimePreSatisfied(C8)
-C10 = MaxLifetimeSpecificity(C9)
-E_must = MustSelectMembers(Q)
+A   = FullyAdmissible(C3, lookup_stage, invocation_frame, expected_result, Γ)
+B1  = MaxEntryPreference(A)
+B2  = MaxConceptOrder(B1, E)
+B3  = MaxExtractionSpecificity(B2, E)
+B4  = PreferFirstOrderOverInstantiated(B3)
+M   = MustSelectMembers(A)
 
-OrdinaryUnique(C10, f)
-MustSelectConsistent(E_must, C10, f)
+OrdinaryUnique(B4, f)
+MustSelectConsistent(M, B4, f)
 ────────────────────────────────────
   Γ; V; lookup_stage ⊢ name(args) ⇓ f
 ```
@@ -695,9 +668,9 @@ current substrate for, but not a complete implementation of, final C2
 
 The later restricted v0.8 path implements bounded structural applicability,
 meta body-entry checking, and extraction specificity for selected source
-callables. It does not implement exact `P2` argument-total-policy
-qualification, compile companion derivation, `must_select_if_qualified`, or the
-complete C5–C10 pipeline.
+callables. It does not implement exact `P2` invocation-frame policy
+admissibility, compile companion derivation, `must_select_if_qualified`, or the
+complete fully-admissible/preference pipeline.
 
 ---
 
@@ -712,19 +685,19 @@ implicit type conversion / coercion ranks
 partial-application overloads (curried candidate matching)
 package-internal symbol aliases as overload carriers
 concept inference and concept lattice construction
-full lifetime / origin-path graph construction
 operator identity disambiguation (spelling + fixity + arity is presumed)
 implicit discard as a candidate-selection mechanism
 declaration-order fallback
 compile companion derivation
 must_select_if_qualified enforcement
-explicit @companion_of replacement
-explicit @no_compile_companion suppression
+explicit companion_of replacement mechanism
+whether default companion suppression is permitted
 closed overload-name declarations
 ```
 
-The `@...` spellings above are conceptual semantic notation only. They are not
-parser or AST implementation prerequisites.
+Lifetime checking and lifetime-driven refinement are separately deferred by
+`../lifetime/lifetime-policy-and-overload-boundary.md`; they are not stages in
+this type/compile overload pipeline.
 
 ---
 
@@ -738,6 +711,7 @@ parser or AST implementation prerequisites.
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
 | `../policy-capability/policy-visibility-symbols.md` | Implementation mapping for current policy metadata |
 | `../symbol-world/symbol-policy-and-compile-flow-projection.md` | Canonical `P1` / `P2`, companion, and must-select semantics |
+| `../lifetime/lifetime-policy-and-overload-boundary.md` | Negative boundary separating lifetime policy/refinement from this type/compile pipeline |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph resolves the callee `Symbol`; the current same-name child bucket is only transitional candidate substrate |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |
 | `glossary.md` | Defines OverloadCandidate, OverloadSpecificity, OverloadResolutionPipeline |
