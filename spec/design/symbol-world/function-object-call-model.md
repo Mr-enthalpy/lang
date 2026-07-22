@@ -6,7 +6,7 @@ The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
 resolves to a symbol and heterogeneous value facet.
-Layered policy, `P1` / `P2`, compile companions, and must-select consistency
+Policy pairs, binding P1, result P2, compile companions, and must-select consistency
 are canonical in `symbol-policy-and-compile-flow-projection.md`.
 
 ## 1. Basic thesis
@@ -45,10 +45,10 @@ Product |> Expr
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
 When `Expr` is a name/path, resolution first produces a symbol and projects its
-heterogeneous value facet. Each enumerated object is filtered by its own `P1`
-before type-associated call lookup. The remaining steps run independently for
-each surviving value entry; entries without an applicable `()` call entry are
-discarded.
+heterogeneous value facet. Candidate preparation observes each enumerated
+object's `Pv:Pp` view for the current lookup domain before type-associated call
+lookup. The remaining steps run independently for each surviving value entry;
+entries without an applicable `()` call entry are discarded.
 
 ## 3. `()` is not an operator
 
@@ -85,16 +85,27 @@ The source product contains only the explicit user arguments. `ProductObject`, `
 
 The implicit `self` belongs to the callable-entry invocation frame, not to the source product.
 
-`P2` applies uniformly to that complete frame:
+Declared receiver/parameter policy-pair compatibility applies uniformly to
+that complete frame:
 
 ```text
-for every invocation-frame slot a, including slot 0 self:
-  total_policy(a) = external(P2)
+InvocationFrame:
+  slot 0 = selected function-object self view
+  slot 1..n = explicit argument symbol views
+
+every slot must satisfy its selected associated () entry policy pattern
 ```
 
-No separate self-policy plane is required. Declaration well-formedness
-`external(P2) ⊆ P1` guarantees that the selected function object is visible at
-the stage inherited by its self view.
+No separate self-policy plane is required. Independently, the function
+object's available stage view is derived from its result P2:
+
+```text
+Stage(P1p) = Stage(P2p)
+Stage(P1v) = Stage(P2v) union Stage(P2p)
+```
+
+Thus the selected object has the static/runtime view required to supply self;
+an optional written P1 prefix merely projects that derived view.
 
 ### 6.1 Internal Self frame and local pattern construction
 
@@ -134,21 +145,24 @@ Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
 2. Resolve a name/path to Symbol and project/enumerate its heterogeneous value facet
-3. Filter each Val2 object by its own P1 for the current lookup stage
+3. Observe each Val2 object's policy-pair view for the current lookup stage
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
    while retaining visible derived companion objects
 7. Determine self mode: () :: F / () :: ref::T / () :: share::T
 8. Build invocation frame: implicit self + explicit shaped product args
-9. Form fully admissible set A using all hard checks, including P2,
-   full-frame policy (self plus explicit args), result expectation, and require legality
-10. Apply ordinary preference filters in fixed normative order, then the must-select check
+9. Form fully admissible set A using all hard checks, including receiver and
+   parameter pair compatibility, P2 result compatibility with any target
+   expectation, stage legality, and require legality
+10. Apply const/mut product-maximal filtering and the remaining fixed-order
+    preference filters, then the must-select check
 11. Enter the unique selected invocation or defer according to demand
 ```
 
 A derived compile companion is a complete `Val2` function object with stable
-origin, its own type, and its own associated compile `()`. It is not a
+origin, its own type, and its own associated static `()`. For origin result
+`runtime:Qstatic`, that result pair is `Qstatic:Qstatic`. It is not a
 lookup-failure fallback. If its prepared candidate enters fully admissible set
 `A`, its must-select strategy requires it to be the final unique candidate.
 Compile projection preserves an ordinary projected call; normal compile

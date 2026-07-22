@@ -359,12 +359,12 @@ Three stable cases summarize the model:
 This design depends on future policy checking; it does not assume a complete
 error-policy checker exists. The relevant dimensions are:
 
-- callable **P1** controls whether an `Error` branch predicate or handler object
-  is visible in the current external lookup stage;
-- callable-entry **P2** controls whether a handler can execute and whether its
-  argument symbols have the exact required total policy;
+- the current P1-projected value view and namespace visibility determine which
+  `Error` branch predicate or handler objects are available;
+- receiver/parameter policy pairs and stage constraints determine whether a
+  handler call is admissible, while P2 describes its result pair;
 - the produced result remains layered `Val1 x Pattern x Val2` material; there is
-  no independent return-policy `P3`;
+  no independent return-policy `P3` or scalar whole-result policy;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
@@ -433,9 +433,9 @@ model specified here, and this document does not depend on them for its meaning.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the argument-slot
   counterpart of this return-slot normalization; both are mechanical source-level
   lowering actions.
-- `../symbol-world/symbol-policy-and-compile-flow-projection.md` — the final
-  `P1` lookup / `P2` execution boundary and layered result policy that gate
-  Error branch lookup and execution.
+- `../symbol-world/symbol-policy-and-compile-flow-projection.md` — canonical
+  `Pv:Pp`, contextual P1/P2 elaboration, and stage views that gate Error branch
+  lookup and execution.
 - `../policy-capability/policy-visibility-symbols.md` — mapping from current
   policy metadata to that final boundary and future orthogonal error policy.
 - `return-value-extraction-and-implicit-decomposition.md` — defines the

@@ -29,7 +29,7 @@ This document builds on, without replacing:
   for namespace-facet origin, source/meta construction ownership, physical
   authority, and cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
-  `Val1 x Pattern x Val2`, layered policy, callable `P1` / `P2`, compile-flow
+  `Val1 x Pattern x Val2`, `Pv:Pp`, binding `P1`, result `P2`, compile-flow
   projection, derived compile companions, match staging, and automatic require.
 
 ## 1. Canonical Boundaries
@@ -195,31 +195,33 @@ confuse. The language still resolves the source path as a symbol first.
 
 ### 2.5 General `let` value binding
 
-The ordinary binding rule is uniform. With an explicit destination policy:
+The ordinary binding rule is uniform. Its optional policy prefix is P1:
 
 ```lang
-P let r = expr;
+P1 let r = expr;
 ```
 
-write `P_e` for the evaluated RHS policy. Binding is legal when:
+Evaluation first produces policy-indexed value/pattern entries:
 
 ```text
-Gamma |- expr : tau @ P_e
-P_e ⊑ P
--------------------------------
-Gamma |- P let r = expr
+Gamma |- expr : (tau, Pv:Pp)
+Gamma |- ProjectP1(P1, result(expr)) = selected
+selected is non-empty
+------------------------------------------------
+Gamma |- P1 let r = expr
 ```
 
-`P_e ⊑ P` means that the expression policy is the same as, or a child of, the
-destination policy. There is no general `P ≠ runtime` condition. Therefore a
-normal runtime binding is legal:
+A single P1 `Q` selects RHS value entries visible under Q and follows each
+selected value's associated pattern/type component. A pair P1 `Qv:Qp` filters
+both components. Single P1 is not `Q:Q`. There is no general
+`binding_policy != runtime` condition, so a normal runtime binding is legal:
 
 ```lang
 runtime let x = runtime_value;
 ```
 
-An omitted policy is inferred by the applicable policy-binding rules; omission
-does not make runtime the only way to obtain a runtime binding.
+An omitted P1 retains and infers the complete RHS result; it does not make
+runtime the only way to obtain a runtime binding.
 
 The unannotated form:
 
@@ -290,8 +292,8 @@ patterns, perform symbol aliasing, or merge place identity.
 ```
 
 Any separate rule that requires a compile-determined projection source to have
-non-runtime policy constrains that rule's source policy only. It does not
-constrain the destination `P` of this general `let` judgment. In particular, an
+non-runtime policy constrains that rule's `Psrc` only. It does not constrain
+the P1 binding destination. In particular, an
 implementation must not reject a binding merely because
 `binding_policy == runtime`.
 
@@ -343,14 +345,15 @@ A call position performs the following conceptual flow:
 resolve symbol
   -> project value facet
   -> enumerate heterogeneous values
-  -> filter each Val2 object by its own P1 for the current lookup stage
+  -> observe each Val2 object's Pv:Pp view for the current lookup stage
   -> obtain each value's type
   -> resolve the type-associated `()` call entry
   -> discard non-callable or non-applicable entries
   -> form fully admissible set A using structure, Pattern/type/result checks,
-     P2, exact total policy for implicit self and explicit arguments,
-     and concept/ordinary require legality
-  -> apply fixed-order preference filters
+     receiver/parameter policy-pair compatibility, P2 target-result
+     compatibility when constrained, stage legality, and concept/require legality
+  -> retain const/mut product-maximal candidates
+  -> apply the remaining fixed-order preference filters
   -> enforce must-select consistency and require one final candidate
 ```
 
@@ -373,7 +376,7 @@ The model has three independent dimensions:
 
 ```text
 execution capability:
-    compile | meta | runtime
+    meta | compile | seal | runtime
 
 evaluation demand:
     partial | strict

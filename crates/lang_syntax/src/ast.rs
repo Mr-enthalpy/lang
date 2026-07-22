@@ -54,10 +54,11 @@ pub enum WithClauseKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BindingSlotAst {
-    // Optional policy expression written before `let`. `None` means the policy
-    // was not written (implicit / to be inferred later), not "no policy". The
-    // parser preserves the expression shape only; it performs no validation.
-    pub policy: Option<ExprAst>,
+    // Optional policy specification written before `let`. `None` means the
+    // policy was not written (implicit / to be inferred later), not "no
+    // policy". The parser preserves component shape only; semantic validation
+    // belongs to later elaboration.
+    pub policy: Option<PolicySpecAst>,
     pub has_let: bool,
     pub deduce: Option<DeduceListAst>,
     pub pattern: BindingPatternAst,
@@ -65,6 +66,21 @@ pub struct BindingSlotAst {
     pub with_clause: Option<WithClauseAst>,
     pub initializer: Option<ExprAst>,
     pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicySpecAst {
+    pub value_policy: ValuePolicyPatternAst,
+    pub type_policy: Option<Box<ExprAst>>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ValuePolicyPatternAst {
+    Expr(Box<ExprAst>),
+    // Reserved semantic shape for a missing value component. No source token
+    // spelling is frozen for this variant.
+    Absent { span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -357,7 +373,7 @@ pub struct FnHeadPrefixAst {
     pub deduce: Option<DeduceListAst>,
     pub captures: Option<CaptureClauseAst>,
     pub params: Option<ParamClauseAst>,
-    pub fn_item_trait: Option<ExprAst>,
+    pub call_policy: Option<PolicySpecAst>,
     pub returns: Option<ReturnClauseAst>,
     pub clauses: Vec<HeadClauseAst>,
     pub span: Span,
@@ -429,8 +445,9 @@ pub struct ErrorAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LetAliasAst {
-    // Optional policy expression written before `let` (see `BindingSlotAst`).
-    pub policy: Option<ExprAst>,
+    // Optional policy specification written before `let` (see
+    // `BindingSlotAst`).
+    pub policy: Option<PolicySpecAst>,
     pub binder: AliasBinderAst,
     pub target: EntityRefAst,
     pub span: Span,

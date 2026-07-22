@@ -44,13 +44,17 @@ compile companions, and automatic require are canonical in
 
 ## v0.7 implementation additions
 
-v0.7 introduces early policy-aware resolution with three policy flags:
+v0.7 introduced early policy-aware resolution; the current branch carries five
+flat compatibility flags:
 
-- `PolicyFlag::Export`, `PolicyFlag::Meta`, `PolicyFlag::Runtime`
+- `PolicyFlag::Export`, `PolicyFlag::Meta`, `PolicyFlag::Compile`,
+  `PolicyFlag::Seal`, `PolicyFlag::Runtime`
 - `PolicySet` — bit-set of flags carried on `PolicyMetadata.policy_set`
-- `PolicyEnv::Meta` — resolver lookup visibility environment; only symbols
-  carrying the `Meta` flag are visible to this lookup query. This does not grant
-  permission to enter or evaluate a callable body.
+- `PolicyEnv::{Meta, Compile, Seal, PostSealCompile, Runtime}` — flat resolver
+  visibility environments. Open meta/compile lookup, seal/post-seal lookup, and
+  runtime lookup use the visibility-domain rules summarized by the canonical
+  pair document. These do not grant permission to enter a callable body or scan
+  the pre-seal world.
 
 ### Source verification forms
 
@@ -125,9 +129,10 @@ fields:
 | Generated field function | body entry policy = `runtime` |
 | Generated field function | transitional return object policy = `runtime` |
 
-These fields are implementation substrate. They do not establish three final
-source policy positions: the future model has callable-object `P1`, entry `P2`,
-and no independent `P3`.
+These fields are implementation substrate. They do not establish final scalar
+policy planes. The future model stores `Pv:Pp`, elaborates P1 as a binding/view
+projection, normalizes P2 as the call-result pair, derives function-object stage
+views from P2, and has no independent P3.
 
 ### Policy-aware resolver
 
@@ -576,8 +581,8 @@ Test targets should include:
 - missing mount is a build/resolver error;
 - meta expansion delta is atomic;
 - failed `struct` expansion leaves no partial generated subtree;
-- minimal `PolicyEnv::Meta` / `PolicyEnv::Runtime` resolver visibility filtering
-  is implemented, while
+- flat meta/compile/seal/post-seal/runtime resolver visibility filtering is
+  implemented, while
   full policy checking and callable execution checking remain deferred.
 
 ## 3. Symbol source and child-role model
@@ -854,8 +859,8 @@ local-construction rules (§4); `NamespaceOrigin`, physical contribution
 authority, and source construction ownership as future contracts; no
 source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
-with minimal `PolicyEnv::Meta` / `PolicyEnv::Runtime` resolver visibility
-filtering; full policy
+with flat meta/compile/seal/post-seal/runtime resolver visibility filtering;
+full pair policy
 checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`).
 
 Non-goals: full version solving; remote package retrieval; lockfile
@@ -868,9 +873,9 @@ Must cover: early meta-function lookup from the namespace graph; closed
 `SyntaxObject` passing; `assert`; `struct` as the first real core-namespace
 meta-function object; meta call replacement; `MetaExpansionResult`
 (replacement / namespace delta / diagnostics / provenance); current symbol,
-body-entry, and return-object metadata retained as transitional substrate for
-future `P1` / `P2`, not a normative `P3` (no full projection or execution
-checker — see
+  body-entry, and return-object metadata retained as transitional substrate for
+  future `Pv:Pp`, contextual P1 projection, and P2 result normalization, not a
+  normative P3 (no full pair checker — see
 `spec/design/policy-capability/policy-visibility-symbols.md`); source/meta
 construction-unit ownership and physical contribution authority (§4);
 generated child namespace installation; no arbitrary rewrite of parent /

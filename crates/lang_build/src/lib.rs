@@ -30,6 +30,8 @@ pub mod overload_set;
 pub mod pattern_head;
 pub mod pattern_space;
 pub mod policy_expr;
+pub mod policy_overload;
+pub mod policy_pair;
 pub mod product_shape;
 pub mod return_target;
 pub mod source;
@@ -127,14 +129,14 @@ pub use meta_invocation::{
 pub use meta_key::{compute_meta_instance_key, CanonicalFingerprint, MetaInstanceKey};
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
-    policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
-    policy_set_meta_runtime, policy_set_runtime, CallablePolicyMetadata, ChildBucket, ChildLink,
-    ChildNameRole, CoreMetaFunction, Diagnostic, DiagnosticSeverity, ExecutionEnv, FieldObject,
-    FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-    NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet, Provenance, ResolverCode,
-    SourceCallableObject, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-    SyntaxObject, SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive,
-    VisibilityMetadata,
+    policy_set_compile, policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
+    policy_set_meta_runtime, policy_set_runtime, policy_set_seal, CallablePolicyMetadata,
+    ChildBucket, ChildLink, ChildNameRole, CoreMetaFunction, Diagnostic, DiagnosticSeverity,
+    ExecutionEnv, FieldObject, FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode,
+    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet,
+    Provenance, ResolverCode, SourceCallableObject, SourceCategory, SymbolId, SymbolKind,
+    SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+    VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use overload_pattern::{
@@ -160,6 +162,17 @@ pub use pattern_space::{
     SymbolPathShape, TypePatternExprShape,
 };
 pub use policy_expr::elaborate_declaration_policy_expr;
+pub use policy_overload::{
+    select_by_mutability_product, MutabilityPattern, PolicyOverloadCandidate,
+    PolicyOverloadSelection,
+};
+pub use policy_pair::{
+    derive_function_object_p1, elaborate_p1_projection, normalize_p2_policy, project_p1,
+    FunctionMember, FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy,
+    FunctionObjectView, FunctionSliceStage, NamespaceVisibility, P1Projection,
+    PatternComponentPolicy, PolicyLookupStage, PolicyPair, PolicyResultEntry, PolicyStage,
+    SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence,
+};
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,

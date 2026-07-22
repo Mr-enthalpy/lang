@@ -815,7 +815,28 @@ impl<'snapshot> NamespaceGraphCapability<'snapshot> {
         match policy_env {
             None => true,
             Some(env) => match env {
-                PolicyEnv::Meta => symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta),
+                PolicyEnv::Meta => {
+                    symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta)
+                        || symbol
+                            .policy_metadata
+                            .policy_set
+                            .contains(PolicyFlag::Compile)
+                }
+                PolicyEnv::Compile => {
+                    symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta)
+                        || symbol
+                            .policy_metadata
+                            .policy_set
+                            .contains(PolicyFlag::Compile)
+                        || symbol.policy_metadata.policy_set.contains(PolicyFlag::Seal)
+                }
+                PolicyEnv::Seal | PolicyEnv::PostSealCompile => {
+                    symbol
+                        .policy_metadata
+                        .policy_set
+                        .contains(PolicyFlag::Compile)
+                        || symbol.policy_metadata.policy_set.contains(PolicyFlag::Seal)
+                }
                 PolicyEnv::Runtime => symbol
                     .policy_metadata
                     .policy_set

@@ -297,7 +297,8 @@ Must cover:
   reopen that subtree
 - no source-level import/use/include/module
 - policy metadata slots on symbols, contexts, and namespace graph nodes,
-  including minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
+  including flat meta/compile/seal/post-seal/runtime resolver visibility
+  filtering; full pair policy
   checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
@@ -326,8 +327,8 @@ harvesting, role-aware child buckets, expectation-aware resolver lookup, core
 bootstrap symbols, and invariant tests. It also includes a minimal early-meta
 closure for `core::struct` / `core::assert` lookup so the world model can prove
 generated type-associated namespaces are installed atomically. v0.7-prep has
-implemented minimal policy-aware early-meta lookup and callable policy-plane
-clarification: `PolicyEnv::Meta` is resolver visibility, not callable execution
+implemented policy-aware resolver visibility and callable policy-plane
+clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. Fields named `ref` / `share` are accepted as
 object-role field functions that coexist with projection namespace subspaces.
@@ -362,8 +363,9 @@ Must cover:
 - `struct` consumes AST by a private checker; failure is a meta hard error, not
   a parser / normalizer error
 - policy fields on callable objects retained as transitional symbol,
-  body-entry, and result metadata; final source semantics use `P1` / `P2` and
-  no independent `P3`; full projection and execution checking remain future
+  body-entry, and result metadata; final source semantics use canonical
+  `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
+  `P3`; full pair storage and execution checking remain future
   work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 
@@ -390,22 +392,24 @@ Must cover:
 - keep normalized body material, current policy metadata, canonical instance keys, and
   outer atomic installation as explicit stage boundaries;
 - first-class generic classes such as `(T Vec)`, `(T Option)`, `(A, B Pair)`
-- awareness that callable-object `P1` differs from entry `P2`, while current
-  Rust symbol/body/result policy fields are transitional; implement only the
-  minimum checks needed to avoid misrepresenting meta-functions as runtime
-  functions;
-- preserve general policy binding as `P_e ⊑ P`, including legal runtime
-  destinations, and keep any non-runtime projection-source premise local to
-  its specific compile-determined rule; the current exact-flag verifier is
-  transitional
+- preserve canonical policy as `Pv:Pp`: `P1` is contextual binding projection,
+  `P2` is result-pair normalization, and function-object stage views are
+  derived from `P2`; current flat symbol/body/result fields remain transitional;
+- preserve legal runtime bindings and keep any non-runtime
+  projection-source premise local to its specific compile-determined rule;
+- preserve typed policy dimensions (stage, value mutability, namespace
+  visibility, and value presence) rather than flattening all atoms into one set;
+- preserve the seal boundary: ordinary seal lookup does not expose open-meta
+  objects, compile visibility includes seal/post-seal compile, and privileged
+  scans consume a frozen pre-seal world rather than seal-generated symbols
 
 Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`. The following are
 preconditions, not optional local conveniences: `ProductObject` /
 `ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / `AliasChain`,
-`SymbolConstructionValue` / `ResolvedPatternScope`, policy-aware
-lookup with distinct final `P1` / `P2` responsibilities while preserving
+`SymbolConstructionValue` / `ResolvedPatternScope`, contextual P1 projection,
+P2 pair normalization and function-object stage derivation while preserving
 current metadata transport,
 canonical meta instance key, and `NamespaceDelta` atomic install. This does not
 make a full generic system, full overload resolution, or full type checker a
@@ -494,11 +498,14 @@ The following remain deferred and are not numbered precisely here:
   `with { ... }`); lifetime-policy checking/refinement is after first-order
   type/compile overload selection and is bounded by
   `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`
-- full policy-binding inference/checking (`P_e ⊑ P`) and `P1` / `P2` checking;
-  compile / runtime / seal semantics,
-  including any post-`seal` extension of Pattern policy,
-  const / mut policy, effect / error / panic policy, and resource capability
-  policy (see `spec/design/policy-capability/policy-visibility-symbols.md`)
+- storing canonical `Pv:Pp` on every semantic object and wiring full P1
+  projection, P2 result validation, function-object views, and compile/runtime/
+  seal namespace lookup;
+- seal dependency ordering, complete reflection objects, and any future
+  post-seal extension of Pattern policy;
+- integrating const/mut product order into the complete overload resolver, plus
+  effect/error/panic and resource-capability policy
+  (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes
 - public syntax and precise source-level selection for overload strategies and
   explicit compile-companion replacement

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use lang_syntax::{
     norm::NormNavComponent, NormAliasBinder, NormAnnotation, NormClosure, NormDecl, NormExpr,
-    NormForm, NormOrigin, NormPattern, NormProgram,
+    NormForm, NormOrigin, NormPattern, NormPolicySpec, NormProgram,
 };
 
 use crate::{
@@ -23,8 +23,13 @@ use crate::{
         SourceCallableObject, SourceCategory, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
     },
     pattern_head::TypeMaterializationState,
-    policy_expr::elaborate_declaration_policy_expr,
-    policy_metadata, policy_set_meta, policy_set_meta_runtime, policy_set_runtime,
+    policy_expr::{elaborate_declaration_policy_expr, legacy_policy_set_from_pair},
+    policy_metadata,
+    policy_pair::{
+        derive_function_object_p1, elaborate_p1_projection, normalize_p2_policy,
+        FunctionObjectDeclarationPolicy, P1Projection,
+    },
+    policy_set_meta_runtime, policy_set_runtime,
     return_target::{
         elaborate_return_targets_in_program, elaborate_return_targets_in_returnable_closure,
         ReturnFrameOwner,
@@ -336,7 +341,7 @@ impl CompilationWorld {
                     &self.snapshot,
                     namespace,
                     &binder_name,
-                    slot.policy.as_deref(),
+                    slot.policy.as_ref(),
                     closure,
                     declaration_provenance.clone(),
                 )?;
@@ -350,12 +355,13 @@ impl CompilationWorld {
 
         let explicit_policy = slot
             .policy
-            .as_deref()
+            .as_ref()
             .map(|policy_expr| {
                 elaborate_declaration_policy_expr(Some(policy_expr), declaration_provenance.clone())
             })
             .transpose()
             .map_err(BuildError::single)?;
+        let mut residual_binding_policy = None;
 
         if let Some(initializer) = slot.initializer.as_deref() {
             if let Some(mut expansion) =
@@ -452,6 +458,10 @@ impl CompilationWorld {
                         &reason,
                         provenance.clone(),
                     )?;
+                    if let Some(explicit_policy) = explicit_policy.as_ref() {
+                        residual_binding_policy =
+                            policy_projection(explicit_policy, &policy_set_runtime());
+                    }
                     if is_type_annotation(slot.annotation.as_ref()) {
                         return Err(BuildError::single(Diagnostic::hard_error(
                             "UnsupportedDeferredTypeAssertion: `: type` assertion is deferred for a residual initializer, and deferred type assertions are not implemented in the restricted v0.8 initializer evaluator",
@@ -483,13 +493,16 @@ impl CompilationWorld {
             )
         };
         {
-            let policy_set = explicit_policy.clone().unwrap_or_else(|| {
-                if is_type_annotation(slot.annotation.as_ref()) {
-                    policy_set_meta_runtime()
-                } else {
-                    policy_set_runtime()
-                }
-            });
+            let policy_set = residual_binding_policy
+                .clone()
+                .or_else(|| explicit_policy.clone())
+                .unwrap_or_else(|| {
+                    if is_type_annotation(slot.annotation.as_ref()) {
+                        policy_set_meta_runtime()
+                    } else {
+                        policy_set_runtime()
+                    }
+                });
             for symbol in delta.symbols.values_mut() {
                 if symbol.name == binder_name {
                     symbol.policy_metadata.policy_set = policy_set.clone();
@@ -760,14 +773,29 @@ fn source_callable_delta(
     snapshot: &NamespaceGraphSnapshot,
     parent: NamespaceNodeId,
     name: &str,
-    policy_expr: Option<&NormExpr>,
+    policy_expr: Option<&NormPolicySpec>,
     closure: &NormClosure,
     provenance: Provenance,
 ) -> Result<NamespaceDelta, BuildError> {
-    let symbol_policy = elaborate_declaration_policy_expr(policy_expr, provenance.clone())
+    let result_p2 =
+        result_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
+    let declaration_projection =
+        elaborate_p1_projection(policy_expr, provenance.clone()).map_err(BuildError::single)?;
+    let declaration_policy = function_object_declaration_policy(&declaration_projection);
+    let derived_function_p1 = derive_function_object_p1(&result_p2, &declaration_policy);
+    let derived_symbol_policy = legacy_policy_set_from_pair(&derived_function_p1);
+    let explicit_symbol_policy = policy_expr
+        .map(|policy| elaborate_declaration_policy_expr(Some(policy), provenance.clone()))
+        .transpose()
         .map_err(BuildError::single)?;
-    let body_entry_policy =
-        body_entry_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
+    verify_explicit_policy_compatible(
+        explicit_symbol_policy.as_ref(),
+        &derived_symbol_policy,
+        provenance.clone(),
+    )?;
+    let symbol_policy =
+        final_binding_policy(explicit_symbol_policy.as_ref(), &derived_symbol_policy);
+    let body_entry_policy = legacy_policy_set_from_pair(&result_p2);
     ensure_return_policy_supported(closure, provenance.clone()).map_err(BuildError::single)?;
 
     let mut delta = snapshot.empty_delta();
@@ -806,36 +834,48 @@ fn source_callable_delta(
             provenance: provenance.clone(),
         }),
         function_policy: policy_metadata(symbol_policy.clone()),
-        body_entry_policy: policy_metadata(body_entry_policy),
-        return_object_policy: policy_metadata(symbol_policy),
+        body_entry_policy: policy_metadata(body_entry_policy.clone()),
+        return_object_policy: policy_metadata(body_entry_policy),
     });
     delta.insert_symbol(parent, symbol);
     Ok(delta)
 }
 
-fn body_entry_policy_from_closure(
+fn result_policy_from_closure(
     closure: &NormClosure,
     provenance: Provenance,
-) -> Result<PolicySet, Diagnostic> {
+) -> Result<crate::PolicyPair, Diagnostic> {
     let Some(head) = &closure.head else {
         return Err(Diagnostic::hard_error(
             "source callable declaration requires an explicit closure head",
             Some(provenance),
         ));
     };
-    let Some(annotation) = &head.fn_item_trait else {
+    let Some(annotation) = &head.call_policy else {
         return Err(Diagnostic::hard_error(
-            "source callable declaration requires a body-entry annotation such as `: meta ->`",
+            "source callable declaration requires a P2 annotation such as `: meta ->`",
             Some(provenance),
         ));
     };
-    match &annotation.pattern {
-        NormPattern::Name { name, .. } if name == "meta" => Ok(policy_set_meta()),
-        NormPattern::Name { name, .. } if name == "runtime" => Ok(policy_set_runtime()),
-        _ => Err(Diagnostic::hard_error(
-            "source callable body-entry policy must currently be `meta` or `runtime`",
-            Some(provenance),
-        )),
+    normalize_p2_policy(annotation, provenance)
+}
+
+fn function_object_declaration_policy(
+    projection: &P1Projection,
+) -> FunctionObjectDeclarationPolicy {
+    match projection {
+        P1Projection::Infer => FunctionObjectDeclarationPolicy::default(),
+        P1Projection::ValueDominant {
+            value,
+            namespace_visibility,
+        } => FunctionObjectDeclarationPolicy {
+            mutability: value.mutability.clone(),
+            namespace_visibility: *namespace_visibility,
+        },
+        P1Projection::Pair(pair) => FunctionObjectDeclarationPolicy {
+            mutability: pair.value.mutability.clone(),
+            namespace_visibility: pair.namespace_visibility,
+        },
     }
 }
 
@@ -912,11 +952,11 @@ fn verify_explicit_policy_compatible(
     let Some(explicit_policy) = explicit_policy else {
         return Ok(());
     };
-    if policy_subset(explicit_policy, result_policy) {
+    if policy_projection(explicit_policy, result_policy).is_some() {
         Ok(())
     } else {
         Err(BuildError::single(Diagnostic::hard_error(
-            "ExplicitPolicyVerificationFailed: explicit binding policy is not compatible with RHS result policy",
+            "ExplicitPolicyProjectionFailed: explicit binding policy selects an empty RHS slice",
             Some(provenance),
         )
         .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
@@ -931,21 +971,56 @@ fn verify_residual_policy_compatible(
     let Some(explicit_policy) = explicit_policy else {
         return Ok(());
     };
-    if explicit_policy.contains(PolicyFlag::Meta) {
-        Err(BuildError::single(Diagnostic::hard_error(
-            format!(
-                "ExplicitPolicyVerificationFailed: RHS residualized to runtime ({reason:?}) and cannot satisfy explicit meta-visible binding policy"
-            ),
-            Some(provenance),
-        )
-        .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
-    } else {
-        Ok(())
+    let runtime = policy_set_runtime();
+    if policy_projection(explicit_policy, &runtime).is_some() {
+        return Ok(());
     }
+    Err(BuildError::single(Diagnostic::hard_error(
+        format!(
+            "ExplicitPolicyProjectionFailed: RHS residualized to runtime ({reason:?}) and the requested binding policy selects no runtime value slice"
+        ),
+        Some(provenance),
+    )
+    .with_code(ResolverCode::ExplicitPolicyVerificationFailed)))
 }
 
-fn policy_subset(requested: &PolicySet, available: &PolicySet) -> bool {
-    requested.flags.iter().all(|flag| available.contains(*flag))
+fn is_stage_flag(flag: PolicyFlag) -> bool {
+    matches!(
+        flag,
+        PolicyFlag::Meta | PolicyFlag::Compile | PolicyFlag::Seal | PolicyFlag::Runtime
+    )
+}
+
+fn policy_projection(requested: &PolicySet, available: &PolicySet) -> Option<PolicySet> {
+    let requested_stages = requested
+        .flags
+        .iter()
+        .copied()
+        .filter(|flag| is_stage_flag(*flag))
+        .collect::<Vec<_>>();
+    let mut selected = PolicySet::new();
+    if requested_stages.is_empty() {
+        selected.flags.extend(
+            available
+                .flags
+                .iter()
+                .copied()
+                .filter(|flag| is_stage_flag(*flag)),
+        );
+    } else {
+        selected.flags.extend(
+            requested_stages
+                .into_iter()
+                .filter(|flag| available.contains(*flag)),
+        );
+        if selected.flags.is_empty() {
+            return None;
+        }
+    }
+    if requested.contains(PolicyFlag::Export) {
+        selected.insert(PolicyFlag::Export);
+    }
+    Some(selected)
 }
 
 fn final_binding_policy(
@@ -953,7 +1028,8 @@ fn final_binding_policy(
     result_policy: &PolicySet,
 ) -> PolicySet {
     if let Some(explicit_policy) = explicit_policy {
-        return explicit_policy.clone();
+        return policy_projection(explicit_policy, result_policy)
+            .expect("explicit policy was verified before final binding projection");
     }
     let mut inferred = result_policy.clone();
     inferred.flags.remove(&PolicyFlag::Export);

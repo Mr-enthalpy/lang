@@ -10,6 +10,7 @@ use super::{
     expr::parse_expr_until,
     form::Parser,
     let_stmt::{parse_binding_slot, parse_product_extract, BindingSlotContext},
+    policy::parse_policy_spec_until,
     product::error_expr,
 };
 
@@ -278,30 +279,22 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
-    let fn_item_trait = if params.is_some() && parser.cursor.consume_symbol(Symbol::Colon).is_some()
-    {
-        if at_fn_item_trait_boundary(parser) {
+    let call_policy = if params.is_some() && parser.cursor.consume_symbol(Symbol::Colon).is_some() {
+        if at_call_policy_boundary(parser) {
             let span = parser.cursor.current_span();
             parser.error(
                 DiagnosticCode::InvalidClosureHead,
-                "expected function item trait after `:`",
+                "expected call-result policy after `:`",
                 span,
             );
         }
-        let expr = parse_expr_until(parser, |p| {
+        let policy = parse_policy_spec_until(parser, |p| {
             p.cursor.at_symbol(Symbol::ThinArrow)
                 || p.cursor.at_symbol(Symbol::FatArrow)
                 || p.cursor.at_symbol(Symbol::LBrace)
                 || p.is_form_boundary()
         });
-        if super::form::expression_contains_name(&expr, "return") {
-            parser.error(
-                DiagnosticCode::ReturnExpressionNotAllowed,
-                "return is only allowed as a block terminal form",
-                expr.span,
-            );
-        }
-        Some(expr)
+        Some(policy)
     } else {
         None
     };
@@ -325,7 +318,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         deduce,
         captures,
         params,
-        fn_item_trait,
+        call_policy,
         returns,
         clauses,
         span,
@@ -530,7 +523,7 @@ fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
     }
 }
 
-fn at_fn_item_trait_boundary(parser: &mut Parser<'_>) -> bool {
+fn at_call_policy_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::ThinArrow)
         || parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)

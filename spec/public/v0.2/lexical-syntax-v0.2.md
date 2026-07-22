@@ -57,7 +57,8 @@ tokens at the lexer level:
 
 ```text
 return  else  match  drop  move  ref
-sync  effect  fn  type  meta  runtime  compile
+sync  effect  fn  type  meta  runtime  compile  seal
+const  mut  public  private  export
 namespace  struct  guard  acquire  delete
 ```
 
@@ -69,6 +70,11 @@ because they look word-like to a human reader. Lexical classification as
 The parser may later recognize selected names structurally in strong contexts
 (see `spec/implementation/v0.1/ast-construction-v0.1.md`). Outside those contexts the same names
 remain ordinary expression atoms.
+
+Policy-pair syntax does not add lexical keywords. Policy atoms remain `Name`
+tokens; `:` is the existing structural colon token, while `+` and `|` retain
+their existing operator tokenization. Only a strong parser policy position
+interprets those tokens as `PolicySpec` structure.
 
 ## 5. Names
 

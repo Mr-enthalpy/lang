@@ -2,10 +2,10 @@ mod support;
 use support::*;
 
 use lang_build::{
-    callable_body_allows_execution, policy_metadata, policy_set_meta, policy_set_runtime,
-    CompilationWorld, CoreMetaFunction, ExecutionEnv, MetaFunctionObject, PolicyEnv,
-    PolicyMetadata, Provenance, ResolveExpectation, ResolverCode, SourceCategory, SymbolKind,
-    SymbolObject, SymbolPayload,
+    callable_body_allows_execution, policy_metadata, policy_set_compile, policy_set_meta,
+    policy_set_runtime, policy_set_seal, CompilationWorld, CoreMetaFunction, ExecutionEnv,
+    MetaFunctionObject, PolicyEnv, PolicyMetadata, Provenance, ResolveExpectation, ResolverCode,
+    SourceCategory, SymbolKind, SymbolObject, SymbolPayload,
 };
 
 #[test]
@@ -112,4 +112,46 @@ fn runtime_only_meta_function_is_filtered_under_meta_policy() {
         symbol.provenance.description.contains("core"),
         "should resolve to core's struct, not the local runtime-only one"
     );
+}
+
+#[test]
+fn seal_lookup_uses_visibility_domains_without_granting_execution() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
+    let mut delta = world.snapshot().empty_delta();
+    for (name, policy_set) in [
+        ("meta_only", policy_set_meta()),
+        ("compile_only", policy_set_compile()),
+        ("seal_only", policy_set_seal()),
+    ] {
+        let symbol_id = delta.allocate_symbol_id();
+        let mut symbol = SymbolObject::placeholder(
+            symbol_id,
+            name,
+            SymbolKind::Placeholder,
+            SourceCategory::DeclaredSymbol,
+            Some(world.package_root_node()),
+            Provenance::new(name),
+        );
+        symbol.policy_metadata.policy_set = policy_set;
+        delta.insert_symbol(world.package_root_node(), symbol);
+    }
+    let snapshot = world
+        .snapshot()
+        .install_delta(delta)
+        .expect("install policy fixtures");
+    let context = world.package_context();
+    let resolve = |name: &str, env| {
+        snapshot.capability().resolve_with_policy(
+            &[name.to_string()],
+            &context,
+            ResolveExpectation::Object,
+            env,
+        )
+    };
+
+    assert!(resolve("meta_only", PolicyEnv::Seal).is_err());
+    assert!(resolve("compile_only", PolicyEnv::Seal).is_ok());
+    assert!(resolve("seal_only", PolicyEnv::Compile).is_ok());
+    assert!(resolve("seal_only", PolicyEnv::PostSealCompile).is_ok());
+    assert!(resolve("seal_only", PolicyEnv::Meta).is_err());
 }

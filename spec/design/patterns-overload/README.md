@@ -19,8 +19,9 @@ Resolved pattern owners, `struct` / functional `inject`, and the rule that fully
 named direct-child layers normalize to `Set<PatternValue>` while any bare child
 makes the whole layer positional are owned by
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-Layered policy, compile-flow projection, derived compile companions,
-must-select semantics, match staging, and automatic require are owned by
+Canonical policy pairs, seal visibility, const/mut product order, compile-flow
+projection, derived compile companions, must-select semantics, match staging,
+and automatic require are owned by
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 This block distinguishes two layers explicitly:

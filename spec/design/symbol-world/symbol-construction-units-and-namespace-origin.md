@@ -22,7 +22,7 @@ and assembly phases are described in
 `../build-package/namespace-assembly-v0.md`. This note supplies the shared
 construction-origin contract used by both tracks.
 
-Layered symbol policy, callable `P1` / `P2`, compile-flow projection, derived
+Policy pairs, binding `P1`, result `P2`, seal visibility, compile-flow projection, derived
 compile companions, match staging, and automatic require are canonical in
 `symbol-policy-and-compile-flow-projection.md`. Those flows may reuse material
 owned by a construction unit, but they do not relax namespace-origin uniqueness

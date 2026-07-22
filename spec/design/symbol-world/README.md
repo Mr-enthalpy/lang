@@ -20,8 +20,9 @@ The namespace graph world model and symbol-level identity:
 - symbol-first `SymbolCell` facets and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
-- `Val1 x Pattern x Val2`, layered policy, callable `P1` / `P2`, compile-flow
-  projection over ordinary call nodes, finite local flow with opaque calls,
+- `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
+  result normalization, derived function-object stage views, seal visibility,
+  const/mut product order, compile-flow projection over ordinary call nodes,
   complete derived compile-companion objects, coarse inferred require, and
   shared compile evaluation
 - resolved pattern scopes, `struct` ownership, functional child-only `inject`,
@@ -50,12 +51,11 @@ policy checker (referenced from the other blocks).
   namespace-origin, source/meta construction-unit ownership, physical-directory
   authority, type/namespace facet inclusion, value-member/pattern-material
   separation, and current cross-file closure.
-- `symbol-policy-and-compile-flow-projection.md` — canonical future layered
-  symbol policy, per-`Val2` `P1`, `P2` and no `P3`, mechanical compile
-  projection over ordinary calls, finite local flow with opaque calls,
-  complete derived compile-companion objects, must-select overload consistency,
-  policy-staged match, intrinsic D/Done flow, coarse inferred require, and
-  shared compile evaluation nodes.
+- `symbol-policy-and-compile-flow-projection.md` — canonical future `Pv:Pp`,
+  P1/P2 contextual elaboration, function-object stage derivation, seal
+  visibility and pre-seal scanning, namespace-policy sharing, const/mut product
+  order, no `P3`, mechanical compile projection, derived companion objects,
+  must-select consistency, match/D/Done, coarse require, and shared evaluation.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.

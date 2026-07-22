@@ -12,9 +12,9 @@ use crate::{
     CanonicalProductElementAst, CanonicalSkeletonAst, ClosureAst, ClosureBodyAst, DeduceListAst,
     EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst,
     LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind, OperatorFixity,
-    OperatorNameAst, ParamClauseAst, PipeExprAst, ProductElementAst, ProductExprAst,
+    OperatorNameAst, ParamClauseAst, PipeExprAst, PolicySpecAst, ProductElementAst, ProductExprAst,
     ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst,
-    SegmentElementAst, SelectorAst, Span, WithClauseAst, WithClauseKind,
+    SegmentElementAst, SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,7 +53,7 @@ pub enum NormDecl {
         origin: NormOrigin,
     },
     Alias {
-        policy: Option<Box<NormExpr>>,
+        policy: Option<NormPolicySpec>,
         binder: NormAliasBinder,
         target: NormEntityRef,
         origin: NormOrigin,
@@ -177,7 +177,7 @@ pub struct NormAnnotation {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormBindingSlot {
-    pub policy: Option<Box<NormExpr>>,
+    pub policy: Option<NormPolicySpec>,
     pub has_let: bool,
     pub deduce: Vec<NormHoleDecl>,
     pub value_pattern: NormPattern,
@@ -185,6 +185,19 @@ pub struct NormBindingSlot {
     pub with_clause: Option<NormWithClause>,
     pub initializer: Option<Box<NormExpr>>,
     pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormPolicySpec {
+    pub value_policy: NormValuePolicyPattern,
+    pub type_policy: Option<Box<NormExpr>>,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NormValuePolicyPattern {
+    Expr(Box<NormExpr>),
+    Absent { origin: NormOrigin },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -234,7 +247,7 @@ pub struct NormClosureHead {
     pub deduce: Vec<NormHoleDecl>,
     pub captures: Vec<NormExpr>,
     pub params: Vec<NormPatternElem>,
-    pub fn_item_trait: Option<NormAnnotation>,
+    pub call_policy: Option<NormPolicySpec>,
     pub returns: Option<NormBindingSlot>,
     pub clauses: Vec<NormHeadClause>,
     pub origin: NormOrigin,
@@ -436,10 +449,7 @@ fn normalize_let_decl(let_ast: &LetAst) -> NormDecl {
 }
 
 fn normalize_alias_decl(alias: &LetAliasAst) -> NormDecl {
-    let policy = alias
-        .policy
-        .as_ref()
-        .map(|policy| Box::new(normalize_expr(policy)));
+    let policy = alias.policy.as_ref().map(normalize_policy_spec);
     let binder = match &alias.binder {
         AliasBinderAst::Name(name) => NormAliasBinder::Name {
             name: name.text.clone(),
@@ -460,6 +470,25 @@ fn normalize_alias_decl(alias: &LetAliasAst) -> NormDecl {
             rule: NormRule::AliasPreserve,
             span: alias.span,
         },
+    }
+}
+
+fn normalize_policy_spec(policy: &PolicySpecAst) -> NormPolicySpec {
+    let value_policy = match &policy.value_policy {
+        ValuePolicyPatternAst::Expr(expr) => {
+            NormValuePolicyPattern::Expr(Box::new(normalize_expr(expr)))
+        }
+        ValuePolicyPatternAst::Absent { span } => NormValuePolicyPattern::Absent {
+            origin: NormOrigin::Source(*span),
+        },
+    };
+    NormPolicySpec {
+        value_policy,
+        type_policy: policy
+            .type_policy
+            .as_ref()
+            .map(|type_policy| Box::new(normalize_expr(type_policy))),
+        origin: NormOrigin::Source(policy.span),
     }
 }
 
@@ -1163,10 +1192,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
                 .collect()
         })
         .unwrap_or_default();
-    let fn_item_trait = head
-        .fn_item_trait
-        .as_ref()
-        .map(|expr| normalize_annotation_expr(expr, &hole_names));
+    let call_policy = head.call_policy.as_ref().map(normalize_policy_spec);
     let returns = head
         .returns
         .as_ref()
@@ -1177,7 +1203,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
         deduce,
         captures,
         params,
-        fn_item_trait,
+        call_policy,
         returns,
         clauses,
         origin: NormOrigin::Generated {
@@ -1239,10 +1265,7 @@ fn normalize_binding_slot(slot: &BindingSlotAst, inherited_holes: &[String]) -> 
     hole_names.extend(deduce.iter().map(|hole| hole.name.clone()));
 
     NormBindingSlot {
-        policy: slot
-            .policy
-            .as_ref()
-            .map(|policy| Box::new(normalize_expr(policy))),
+        policy: slot.policy.as_ref().map(normalize_policy_spec),
         has_let: slot.has_let,
         deduce,
         value_pattern: normalize_binding_pattern(&slot.pattern, &hole_names),
@@ -1722,7 +1745,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                 initializer: None,
                 origin: NormOrigin::Generated { rule, span },
             })],
-            fn_item_trait: None,
+            call_policy: None,
             returns: None,
             clauses: Vec::new(),
             origin: NormOrigin::Generated { rule, span },
@@ -1892,7 +1915,7 @@ fn dump_norm_decl(output: &mut String, decl: &NormDecl, indent: usize) {
             );
             if let Some(policy) = policy {
                 line(output, indent + 1, "policy:");
-                dump_norm_expr(output, policy, indent + 2);
+                dump_norm_policy_spec(output, policy, indent + 2);
             }
             line(output, indent + 1, "binder:");
             dump_alias_binder(output, binder, indent + 2);
@@ -2017,6 +2040,20 @@ fn dump_product(output: &mut String, product: &NormProduct, indent: usize) {
     }
 }
 
+fn dump_norm_policy_spec(output: &mut String, policy: &NormPolicySpec, indent: usize) {
+    line(output, indent, "PolicySpec");
+    line(output, indent + 1, "value_policy:");
+    match &policy.value_policy {
+        NormValuePolicyPattern::Expr(expr) => dump_norm_expr(output, expr, indent + 2),
+        NormValuePolicyPattern::Absent { .. } => line(output, indent + 2, "Absent"),
+    }
+    line(output, indent + 1, "type_policy:");
+    match &policy.type_policy {
+        Some(type_policy) => dump_norm_expr(output, type_policy, indent + 2),
+        None => line(output, indent + 2, "None"),
+    }
+}
+
 fn dump_binding_slot(output: &mut String, slot: &NormBindingSlot, indent: usize) {
     line(
         output,
@@ -2029,7 +2066,7 @@ fn dump_binding_slot(output: &mut String, slot: &NormBindingSlot, indent: usize)
     );
     if let Some(policy) = &slot.policy {
         line(output, indent + 1, "policy:");
-        dump_norm_expr(output, policy, indent + 2);
+        dump_norm_policy_spec(output, policy, indent + 2);
     }
     line(output, indent + 1, "deduce:");
     if slot.deduce.is_empty() {
@@ -2390,9 +2427,9 @@ fn dump_closure_head(output: &mut String, head: &NormClosureHead, indent: usize)
             dump_pattern_elem(output, param, indent + 2);
         }
     }
-    if let Some(annotation) = &head.fn_item_trait {
-        line(output, indent + 1, "fn_item_trait:");
-        dump_annotation(output, annotation, indent + 2);
+    if let Some(policy) = &head.call_policy {
+        line(output, indent + 1, "call_policy:");
+        dump_norm_policy_spec(output, policy, indent + 2);
     }
     if let Some(returns) = &head.returns {
         line(output, indent + 1, "returns:");

@@ -14,7 +14,7 @@ The policy-governed meta object invocation model:
 - bounded compiler-defined `BuiltinPrivilegedAstMetaFunction` invocation,
   including `struct` / `inject` special scope and owner rules
 - the dual judgment of symbol lookup vs callable execution
-- callable `P1` visibility and `P2` qualification handoff
+- canonical pair views, parameter-policy qualification, and P2 result handoff
 - partial meta reduction vs strict meta execution
 - residualization at runtime-only boundaries
 - unified pattern-match staging rather than `if constexpr` / `if` families

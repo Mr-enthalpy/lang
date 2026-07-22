@@ -1,8 +1,8 @@
 # policy-capability
 
 **Status: Non-normative future design with a partial implementation note. The
-current substrate provides policy metadata and `PolicyEnv::Meta` /
-`PolicyEnv::Runtime` lookup filtering; full policy
+current substrate provides policy metadata and flat meta/compile/seal/
+post-seal/runtime `PolicyEnv` lookup filtering; full policy
 checking (lattice, projection, conformance, effect/error/panic policy) is not
 implemented.**
 
@@ -10,13 +10,14 @@ implemented.**
 
 Policy implementation mapping and orthogonal future dimensions:
 
-- mapping current symbol/body/result metadata to final callable `P1` / `P2`;
-- lookup visibility versus entry execution and exact invocation-frame policy,
-  including implicit self;
+- mapping current flat symbol/body/result metadata to canonical `Pv:Pp`;
+- contextual P1 binding/view projection, P2 result normalization, and
+  function-object stage-view derivation;
+- meta/compile/seal visibility and the pre-seal snapshot boundary;
 - explicit retirement of an independent return-policy `P3`;
-- layer-wise result projection rather than a scalar result-symbol policy;
-- current `PolicyEnv::Meta` / `PolicyEnv::Runtime` filtering substrate;
-- future access, error/panic, const/mut, and resource policy.
+- component-preserving results rather than a scalar result-symbol policy;
+- current flat `PolicyEnv` filtering substrate;
+- typed namespace, const/mut, value-presence, error/panic, and resource policy.
 
 Layered symbol policy, compile-flow projection, compile companions, match
 staging, and automatic require are canonical in

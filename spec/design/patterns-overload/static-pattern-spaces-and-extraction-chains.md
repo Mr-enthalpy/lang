@@ -33,8 +33,8 @@ canonicalized in
 This document consumes those resolved scopes and pattern values; it does not
 derive owner identity from a later binding destination.
 
-Symbol total policy, compile-flow projection, compile companions,
-policy-directed match staging, and automatic require are canonicalized in
+Canonical policy pairs, value-stage-directed match staging, compile-flow
+projection, compile companions, and automatic require are canonicalized in
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`. This
 document owns the pattern-space residual and `Done` algebra that those flows
 consume; it does not define a parallel control-flow system for require.
@@ -1167,13 +1167,14 @@ must not imply arbitrary multi-layer search, unrestricted AST rewriting, or
 macro capability.
 
 There is no separate `if constexpr` or `constexpr match` mechanism. The same
-pattern chain is staged by the scrutinee symbol's total policy:
+pattern chain is staged by the scrutinee value component `Pv`; its Pattern
+component remains statically available:
 
 ```text
-total_policy(scrutinee) = compile
+scrutinee Pv selects a compile/static value slice
   -> compile evaluation selects one guarded branch in the intrinsic D/Done flow
 
-total_policy(scrutinee) = runtime
+scrutinee Pv selects a runtime value slice
   -> Pattern remains in compile projection
   -> runtime selects the concrete branch
 ```
@@ -1273,7 +1274,7 @@ By default, binding extraction is total consumption of the current static patter
 
 > **Formal specification**: `spec/design/patterns-overload/overload-resolution-design.md`.
 > This section is a summary overview; the formal document defines the
-> lexicographic extraction-pattern specificity rule, the `C0 -> A -> Bn`
+> extraction-pattern specificity rule, the `C0 -> A -> Bn`
 > pipeline, and the must-select postcondition. Symbol policy and
 > compile companion semantics are canonical in
 > `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
@@ -1283,17 +1284,16 @@ Extraction participates in overload candidate filtering and resolution. A candid
 ### 12.1 Overload Set Construction
 
 Final candidate preparation first resolves a `Symbol`, projects its
-heterogeneous value facet, enumerates and filters each `Val2` object by its own
-`P1`, obtains each surviving value's type, resolves the type-associated `()`
-entry, and discards non-callable entries. The current same-name namespace bucket
-is only transitional substrate.
+heterogeneous value facet for the current policy view, enumerates `Val2`
+objects, obtains each surviving object's type, resolves the type-associated
+`()` entry, and discards non-callable entries. The current same-name namespace
+bucket is only transitional substrate.
 
-`P1` filters callable-object visibility at the external `compile` or `runtime`
-lookup stage. Callable-object `P1` is `compile` or `compile | runtime`, never
-runtime alone. `P2` contributes hard admissibility and requires every
-invocation-frame slot, including implicit self, to have total policy exactly
-equal to `external(P2)`. Compile and meta entries share external compile
-visibility but retain different internal capabilities.
+Canonical policy is the pair `Pv:Pp`. `P1` is contextual binding/view
+projection, `P2` is call-result pair normalization, and function-object stage
+views are derived from `P2`. Candidate hard legality checks the actual
+parameter, receiver, target-result, stage, concept, and require constraints; it
+does not reconstruct one scalar total policy or apply `external(P2) subset P1`.
 
 Derived compile companions enter the symbol value facet as complete first-class
 `Val2` function objects with their own types and associated compile `()`
@@ -1329,26 +1329,27 @@ multi-pass preference pipeline eliminate candidates:
 
 | Step | Operation | Outcome |
 |---|---|---|
-| 1 | **P1 visibility** | Keep callable objects visible in the current external lookup stage. |
+| 1 | **Policy view + visibility** | Keep `Val2` objects present in the current projected value view and namespace visibility domain. |
 | 2 | **Pattern + type matching** | Remove structurally inapplicable call entries. |
-| 3 | **Full admissibility** | Form `A` using P2, full invocation-frame policy including self, expected result rank/facet, concept/require legality, and other hard compile/type checks. |
-| 4 | **Preference filters** | Apply configured entry preference, concept ordering, extraction specificity, and first-order preference in fixed order. |
-| 5 | **Ordinary uniqueness** | Produce the ordinary final survivor set. |
-| 6 | **Must-select consistency** | If `A` contains a strategy-bearing candidate, it must be the sole final survivor; multiple admissible must-select candidates fail. |
+| 3 | **Full admissibility** | Form `A` using parameter/receiver policy pairs, target-result constraints when present, stage legality, expected result rank/facet, concept/require legality, and other hard compile/type checks. |
+| 4 | **Const/mut maxima** | Apply the product partial order across all constrained positions; no score or lexicographic fallback is allowed. |
+| 5 | **Preference filters** | Apply configured entry preference, concept ordering, extraction specificity, and first-order preference in fixed order. |
+| 6 | **Ordinary uniqueness** | Produce the ordinary final survivor set. |
+| 7 | **Must-select consistency** | If `A` contains a strategy-bearing candidate, it must be the sole final survivor; multiple admissible must-select candidates fail. |
 
 Because there is no unrestricted lookup, candidates do not appear from
 nowhere. ADL-like behavior only appears through explicit forwarding code.
-Full admissibility, not merely the same name, initial visibility, or partial P2
-checking, is the activation boundary for `must_select_if_qualified`.
+Full admissibility, not merely the same name, initial visibility, or a partial
+policy check, is the activation boundary for `must_select_if_qualified`.
 
 ### 12.4 Relationship to Policy and Namespace
 
-Overload set construction is gated by `P1` (§12.1). Compile and meta entries
-share the external compile lookup stage, but `P2` qualification retains their
-different execution capabilities. Runtime entries can contribute derived
-compile companions because an origin object with `P2 = runtime` is well formed
-only with `P1 = compile | runtime`. The original runtime entry does not itself
-become compile-executable.
+Overload set construction observes the current P1-projected object view
+(§12.1). Meta remains open-world construction capability, compile visibility
+includes seal/post-seal compile, and the two are not semantically merged.
+Runtime-result function objects contribute complete derived static companion
+objects according to the canonical pair rules; the original runtime body does
+not itself become statically executable.
 
 `export` controls the cross-package visibility boundary for overload
 construction. Within a package, `export` is irrelevant to overload resolution.

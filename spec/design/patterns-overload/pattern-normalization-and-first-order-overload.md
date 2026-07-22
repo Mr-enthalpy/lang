@@ -14,9 +14,9 @@ The document is self-contained for pattern and argument-shape preparation. It
 does not restate final overload ordering, pattern-space algebra, or symbol
 policy; those boundaries remain owned by their canonical documents.
 
-Callable `P1` / `P2`, exact invocation-frame total-policy qualification
-including implicit self, complete derived compile-companion objects, and
-must-select consistency are canonical in
+Canonical `Pv:Pp`, contextual P1 projection, P2 result normalization,
+function-object stage-view derivation, complete derived compile-companion
+objects, and must-select consistency are canonical in
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`. This document
 supplies structural candidate material to that policy boundary; it does not
 define a competing body-entry or return-policy model.
@@ -170,9 +170,9 @@ prepare type-associated `()` entries, including entries of derived companion obj
 normalize argument shapes
 match candidate parameter patterns
 check first-order type-value compatibility
-filter callable objects by P1
-form fully admissible set A using P2, full-frame policy, result expectation,
-concept/ordinary require legality, and all other hard checks
+project the current Val2 object view and namespace visibility
+form fully admissible set A using parameter/receiver policy pairs, any target
+result constraint, stage legality, concept/ordinary require, and all other hard checks
 apply fixed-order preference filters and must-select consistency
 select one callable
 ```
@@ -466,8 +466,8 @@ normalized call
   -> argument shape formation
   -> parameter pattern normalization
   -> first-order type-value compatibility
-  -> fully admissible set A after P1, P2/full-frame policy,
-     result-expectation, concept/require, and other hard checks
+  -> fully admissible set A after policy-pair, target-result,
+     stage, concept/require, and other hard checks
   -> fixed-order overload preference filters and must-select check
   -> meta object invocation
 ```

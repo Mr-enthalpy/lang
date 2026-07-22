@@ -1,83 +1,59 @@
-use lang_syntax::{NormExpr, NormProductElem};
+use lang_syntax::NormPolicySpec;
 
 use crate::{
+    elaborate_p1_projection,
     model::{Diagnostic, PolicyFlag, PolicySet, Provenance},
-    policy_set_runtime,
+    NamespaceVisibility, P1Projection, PolicyPair, PolicyStage, StageSet,
 };
 
-/// Elaborate a declaration-policy expression into a symbol self-policy set.
+/// Elaborate a declaration-prefix policy as a P1 projection and expose its
+/// stage/legacy-export portion to the current flat resolver substrate.
 ///
-/// This is intentionally restricted to declaration-policy context. `|` means
-/// policy-set union here; no pattern-space or expression-level operator
-/// semantics are invoked.
+/// The canonical result is [`P1Projection`]. This adapter must not be used to
+/// reconstruct value mutability, value presence, or the pattern component.
 pub fn elaborate_declaration_policy_expr(
-    policy: Option<&NormExpr>,
+    policy: Option<&NormPolicySpec>,
     fallback_provenance: Provenance,
 ) -> Result<PolicySet, Diagnostic> {
-    let Some(policy) = policy else {
-        return Ok(policy_set_runtime());
-    };
-
-    let mut set = PolicySet::new();
-    collect_policy_flags(policy, &mut set, fallback_provenance)?;
-    Ok(set)
+    let projection = elaborate_p1_projection(policy, fallback_provenance)?;
+    Ok(legacy_policy_set_from_p1(&projection))
 }
 
-fn collect_policy_flags(
-    expr: &NormExpr,
-    set: &mut PolicySet,
-    fallback_provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    match expr {
-        NormExpr::Name { text, .. } => match text.as_str() {
-            "meta" => {
-                set.insert(PolicyFlag::Meta);
-                Ok(())
-            }
-            "runtime" => {
-                set.insert(PolicyFlag::Runtime);
-                Ok(())
-            }
-            "export" => {
-                set.insert(PolicyFlag::Export);
-                Ok(())
-            }
-            other => Err(Diagnostic::hard_error(
-                format!(
-                    "invalid policy expression in declaration prefix: unknown policy `{other}`"
-                ),
-                Some(fallback_provenance),
-            )),
-        },
-        NormExpr::Call { source, target, .. } => {
-            let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
-                return Err(Diagnostic::hard_error(
-                    "invalid policy expression in declaration prefix: expected policy union `|`",
-                    Some(fallback_provenance),
-                ));
-            };
-            if spelling != "|" {
-                return Err(Diagnostic::hard_error(
-                    format!(
-                        "policy expression attempted to use pattern-space operator semantics `{spelling}`; declaration policy union uses `|`"
-                    ),
-                    Some(fallback_provenance),
-                ));
-            }
-            for element in &source.elements {
-                let NormProductElem::Expr(expr) = element else {
-                    return Err(Diagnostic::hard_error(
-                        "invalid policy expression in declaration prefix: policy union operands must be names",
-                        Some(fallback_provenance),
-                    ));
-                };
-                collect_policy_flags(expr, set, fallback_provenance.clone())?;
-            }
-            Ok(())
-        }
-        _ => Err(Diagnostic::hard_error(
-            "invalid policy expression in declaration prefix",
-            Some(fallback_provenance),
-        )),
+pub fn legacy_policy_set_from_p1(projection: &P1Projection) -> PolicySet {
+    match projection {
+        P1Projection::Infer => PolicySet::new(),
+        P1Projection::ValueDominant {
+            value,
+            namespace_visibility,
+        } => legacy_policy_set(&value.stages, *namespace_visibility),
+        P1Projection::Pair(pair) => legacy_policy_set_from_pair(pair),
     }
+}
+
+pub fn legacy_policy_set_from_pair(pair: &PolicyPair) -> PolicySet {
+    let stages = if pair.value.stages.is_empty() {
+        &pair.pattern.stages
+    } else {
+        &pair.value.stages
+    };
+    legacy_policy_set(stages, pair.namespace_visibility)
+}
+
+fn legacy_policy_set(
+    stages: &StageSet,
+    namespace_visibility: Option<NamespaceVisibility>,
+) -> PolicySet {
+    let mut set = PolicySet::new();
+    for stage in stages.iter() {
+        set.insert(match stage {
+            PolicyStage::Meta => PolicyFlag::Meta,
+            PolicyStage::Compile => PolicyFlag::Compile,
+            PolicyStage::Seal => PolicyFlag::Seal,
+            PolicyStage::Runtime => PolicyFlag::Runtime,
+        });
+    }
+    if namespace_visibility == Some(NamespaceVisibility::Export) {
+        set.insert(PolicyFlag::Export);
+    }
+    set
 }

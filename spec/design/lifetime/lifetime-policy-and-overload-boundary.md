@@ -77,7 +77,7 @@ whose rules cannot change the completed type/compile overload result.
 
 - Type/compile overload admissibility and preference:
   [`../patterns-overload/overload-resolution-design.md`](../patterns-overload/overload-resolution-design.md)
-- Layered symbol policy and compile projection:
+- `Pv:Pp` symbol policy, seal visibility, and compile projection:
   [`../symbol-world/symbol-policy-and-compile-flow-projection.md`](../symbol-world/symbol-policy-and-compile-flow-projection.md)
 - Current policy metadata mapping:
   [`../policy-capability/policy-visibility-symbols.md`](../policy-capability/policy-visibility-symbols.md)

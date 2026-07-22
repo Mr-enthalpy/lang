@@ -1,0 +1,1 @@
+error InvalidClosureHead "expected call-result policy after `:`" @ 1:6 [5..7]

@@ -566,6 +566,24 @@ There is no type checking, kind checking, or hole-validity checking beyond local
 DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and
 whether `T Option::std` is a legal type pattern is not decided.
 
+### Policy pair preservation
+
+Binding prefixes and callable-head P2 positions normalize to:
+
+```text
+NormPolicySpec {
+  value_policy: NormValuePolicyPattern,
+  type_policy: Option<NormExpr>
+}
+```
+
+The single-component and `value:type` pair shapes are preserved. The explicit
+`Absent` value-policy variant reserves pure-type/value-optional elaboration but
+has no frozen source token. Normalization does not decide whether a single
+component is P1 value-dominant projection or P2 shorthand, validate pair stage
+rules, or interpret const/mut/namespace atoms. Those are semantic policy
+elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
 ## 10. Alias Preservation
 
 ```text
@@ -611,8 +629,8 @@ let + === Add::std
     target: EntityRef[ "Add", "std" ]
 ```
 
-The binder may be a `Name` or an `Operator`, and an optional policy prefix is
-preserved. No alias target resolution, scope semantics, namespace resolution,
+The binder may be a `Name` or an `Operator`, and an optional `NormPolicySpec`
+prefix is preserved. No alias target resolution, scope semantics, namespace resolution,
 operator-alias identity validation, or runtime behavior occurs at the normalized
 layer. (A hypothetical target such as `operators::plus` would be preserved the
 same way; only forms covered by the parser / normalizer / golden tests are used

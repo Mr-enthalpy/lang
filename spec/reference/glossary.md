@@ -57,8 +57,9 @@ _See also: Token._
 A token class representing an identifier. Names include what traditional languages
 call keywords. In v0.1, `return` (contextually recognized in return terminal
 forms at the form level; remains a `Name` token lexically), `else`, `match`, `drop`, `move`, `sync`,
-`effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `namespace`, and
-`struct` are all ordinary `Name` tokens at the lexical level.
+`effect`, `fn`, `type`, `meta`, `runtime`, `compile`, `seal`, `const`, `mut`,
+`public`, `private`, `export`, `namespace`, and `struct` are all ordinary
+`Name` tokens at the lexical level.
 
 > **Distinction**: A `Name` token is not a keyword. Semantic strength does not
 > imply lexical keyword status.
@@ -272,8 +273,8 @@ _See also: OperatorName, Fixity, Arity._
 ## Overload Candidate
 
 A callable entry prepared for a given call. Final preparation first resolves a
-symbol, projects and enumerates its heterogeneous value facet, filters each
-`Val2` object by its own `P1`, obtains each surviving value's type, and resolves
+symbol, projects its heterogeneous value facet for the current policy view,
+enumerates `Val2` objects, obtains each surviving value's type, and resolves
 that type's associated `()` entry. Non-callable values are discarded. A derived
 compile companion is itself a complete `Val2` function object with stable
 object identity, origin runtime object, its own function-object type, and its
@@ -292,10 +293,11 @@ _See also: OverloadSpecificity, OverloadResolutionPipeline,
 ## Fully Admissible Candidate
 
 An overload candidate that has passed every hard legality check for the current
-call: visibility, object `P1`, associated `()`, argument/Pattern shape, entry
-`P2`, exact total policy for implicit self and explicit arguments, expected
-result rank/facet, concept and ordinary require satisfaction, and other
-compile/type prerequisites. The set of all such candidates is `A`.
+call: namespace/policy-view visibility, associated `()`, argument/Pattern shape,
+receiver and parameter policy pairs, stage legality, any target-result policy
+constraint, expected result rank/facet, concept and ordinary require
+satisfaction, and other compile/type prerequisites. The set of all such
+candidates is `A`.
 
 Preference survivors are not a second meaning of "qualified." They are the
 successive subsets obtained by applying the fixed ordered preference filters to
@@ -330,6 +332,35 @@ _See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
 
 ---
 
+## Const/Mut Product Order
+
+The overload preference relation for value mutability. At one constrained
+position, a const actual prefers `const`, then unspecified, then `mut`; a mut
+actual reverses the endpoints. Across receiver, parameters, and a target-result
+constraint when present, candidates are compared by product partial order. A
+candidate dominates only when it is no worse everywhere and strictly better
+somewhere. Incomparable maxima remain ambiguous; there is no score,
+exact-match count, position weight, or lexicographic fallback. Delete members
+participate in the same comparison.
+
+_See also: FullyAdmissibleCandidate, OverloadResolutionPipeline._
+
+---
+
+## Seal Visibility
+
+The static visibility domain excluded from open-meta lookup. Compile visibility
+contains open, seal, and post-seal compile domains; seal does not imply that a
+symbol ceased to exist. Seal policy alone grants no global scan capability.
+Compiler-known privileged seal operations may inspect exactly the frozen
+pre-seal world `Wpre`; symbols generated during seal are not added to that scan
+domain.
+
+_See also: PolicyPair,
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
 ## Overload Specificity
 
 The priority rule that determines which overload candidate is selected when
@@ -338,7 +369,9 @@ specificity is **extraction-pattern specificity**: candidates are ranked by
 how deeply their extraction pattern penetrates the unified construction-
 expression tree of the call operand. A larger total depth score means a more
 specific candidate. Specificity does not depend on declaration order or an
-ad-hoc conversion-rank table.
+ad-hoc conversion-rank table. This extraction-only rank is not a const/mut
+fitness score and never resolves candidates that remain incomparable under the
+const/mut product order.
 
 _See also: OverloadCandidate, OverloadResolutionPipeline,
 `spec/design/patterns-overload/overload-resolution-design.md` §4._
@@ -347,16 +380,16 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 
 ## Overload Resolution Pipeline
 
-The fixed process that selects a unique overload candidate. Callable-object
-`P1` filters each `Val2` object after path-to-`Symbol` resolution and value-facet
-enumeration. Associated-call preparation and every hard structural, Pattern,
-entry-`P2`, full-frame policy, result-expectation, concept, and ordinary require
-check first form fully admissible set `A`. Side-effect-free preference filters
-then apply entry preference, concept ordering, extraction specificity, and
-first-order preference in one fixed normative order. Each filter is independent
-of candidate enumeration order; filters are not assumed to commute. Ordinary
-uniqueness is constrained by `must_select_if_qualified` strategies activated
-from `A`.
+The fixed process that selects a unique overload candidate. Path resolution and
+the current policy view enumerate `Val2` objects. Associated-call preparation
+and every hard structural, Pattern, policy-pair, stage, target-result, concept,
+and ordinary-require check first form fully admissible set `A`. Const/mut then
+uses product partial order across all constrained positions; no total score or
+lexicographic fallback resolves incomparable candidates. Remaining
+side-effect-free preference filters apply in one fixed normative order. Each
+filter is independent of candidate enumeration order; filters are not assumed
+to commute. Delete members participate normally, and ordinary uniqueness is
+constrained by `must_select_if_qualified` strategies activated from `A`.
 
 Lifetime policy is not a type/compile candidate filter. Any future lifetime
 checking or refinement occurs after type/compile selection and first-order
@@ -651,8 +684,8 @@ _See also: ClosureAST, ExplicitClosureAST._
 ## ExplicitClosureAST
 
 A closure literal with an explicit head and `=>`: `FnHeadPrefix => BodyBlock`.
-The head may contain deduce list, capture clause, parameter clause, trait clause,
-return clause, and head clauses. The body is a form block. Headed closures
+The head may contain deduce list, capture clause, parameter clause, call-result
+policy clause, return clause, and head clauses. The body is a form block. Headed closures
 without `=>` (e.g., `[](){}` or `(x){x}`) are rejected.
 
 _See also: ClosureAST, InPlaceClosureAST, FnHeadPrefix._
@@ -730,41 +763,66 @@ _See also: Declaration, BindingSlot, BindingAnnotation._
 ## BindingSlot
 
 A parser-level binding-site shape reused by let bindings, closure parameters,
-and closure returns. It preserves an optional policy expression, optional `let`,
+and closure returns. It preserves an optional `PolicySpec`, optional `let`,
 optional `DeduceList`, a binding pattern, optional binding annotation, optional
 `with { ... }`, and an optional initializer where the surrounding context allows
 one.
 
-The optional **policy** is recognized only by the contextual shape `Expr let`:
-an expression written immediately before `let`. Without the trailing `let`, the
-same tokens stay in the binding pattern / canonical skeleton. A `policy` of
-`None` means the policy was unwritten (implicit / inferred later), not that the
-binding has no policy. The parser preserves the expression shape only and
-performs no policy validation.
+The optional policy is recognized only in the strong policy position before
+`let`. It is either one policy expression or an explicit pair separated by
+`:`. Without the trailing `let`, the same tokens stay in the binding pattern /
+canonical skeleton. `None` means unwritten and later inferred. The parser
+preserves syntax and does not perform semantic pair validation.
 
 _See also: Let binding, BindingAnnotation, CanonicalSkeleton._
 
 ---
 
-## Policy Binding
+## Policy Pair
 
-The future semantic judgment for a policy-bearing binding. If the RHS has
-policy `P_e` and the destination binder writes policy `P`, the binding is legal
-when:
+The canonical internal policy representation:
 
 ```text
-P_e ⊑ P
+Π = Pv:Pp
 ```
 
-`P` is the destination binding policy. It is distinct from callable-object
-`P1` and from a specific compile-projection rule's source policy `P_src`
-(sometimes locally written `P₁`). There is no general `P ≠ runtime` premise;
-`runtime let x = runtime_value;` is a legal general binding. A non-runtime
-source premise constrains only the projection rule that declares it. The
-current parser merely preserves policy syntax, and the current v0.8 exact-flag
-verifier is transitional rather than this final judgment.
+`Pv` describes the `Val1`/value component; `Pp` describes its carried
+Pattern/anonymous-type component. Stage, value mutability, namespace
+visibility, and value presence are typed orthogonal dimensions. A scalar policy
+is surface shorthand or a derived summary and cannot reconstruct the pair.
+Ordinary policy notation does not use `@`, which remains reserved for lifetime
+policy syntax.
 
-_See also: BindingSlot,
+_See also: PolicyBinding,
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
+## Policy Binding
+
+The future P1 projection judgment for a binding:
+
+```text
+[P1] let x = expr
+```
+
+Omitted P1 keeps the fully inferred result. A single `Q` selects values visible
+under `Q` and retains each value's associated Pattern component. An explicit
+`Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
+The selected slice must be non-empty and admitted by the destination binding.
+
+There is no general prohibition on runtime bindings:
+
+```text
+runtime let x = runtime_value
+```
+
+is legal when the runtime value slice exists. A `Psrc != runtime` premise may
+belong to one compile-flow projection rule, but never to general let lowering.
+In P2 context, unlike P1, a single policy is normalized into a result pair; in
+particular current `runtime` means `runtime:seal`.
+
+_See also: BindingSlot, PolicyPair,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
 
 ---

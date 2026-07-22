@@ -65,8 +65,9 @@ short-circuit behavior, D/Done reduction, or a full meta block interpreter is
 outside this v0.8 slice. `delete` is not a value and there is no
 `CoreMetaFunction::Delete`.
 
-The body-entry policy is derived from the selected closure/function head, not
-from symbol visibility. For example:
+The callable result policy pair is read from the selected closure/function
+head. The function-object stage view is then derived from that P2 pair, and an
+explicit declaration prefix performs ordinary P1 projection. For example:
 
 ```lang
 meta | runtime let + =
@@ -76,12 +77,16 @@ meta | runtime let + =
 };
 ```
 
-currently has symbol policy metadata `{ Meta, Runtime }`, body-entry metadata
-`{ Meta }`, and transitional return-object metadata `{ Meta, Runtime }` by
-default. Runtime lookup may see the symbol metadata if that lookup phase is
-requested, but runtime execution must not enter this meta-only body. These are
-current implementation fields, not three final source-level policy positions;
-the final form has `P1`, `P2`, and no independent `P3`.
+has canonical `P2 = meta:meta`. Its derived function-object stage view is meta,
+so the written P1 query `meta | runtime` selects only the available meta slice;
+it does not manufacture runtime visibility. Current flat symbol,
+`body_entry_policy`, and `return_object_policy` metadata therefore all carry
+the selected meta compatibility projection for this example. These fields are
+transitional transport, not three final source-level policy positions.
+
+Conversely, a single P2 `runtime` normalizes canonically to `runtime:seal`.
+Current flat transport records the runtime value stage but does not yet install
+the seal pattern stage into the namespace resolver.
 
 The written `self` formal denotes the callable frame's explicit slot 0
 self-position. It is injected by invocation after callable resolution; it is not
@@ -129,54 +134,46 @@ on all meta actions in the body. The restricted v0.8 implementation only proves
 that runtime-body declarations may contain such local meta-shaped initializers;
 full runtime-body execution and local binding materialization are deferred.
 
-Final policy-binding semantics distinguishes destination policy `P` from RHS
-policy `P_e`:
+Final policy-binding semantics uses the pair carried by RHS result entries:
 
 ```text
-Gamma |- expr : tau @ P_e
-P_e ⊑ P
--------------------------------
-Gamma |- P let x = expr
+Gamma |- expr : (tau, Pv:Pp)
+Gamma |- ProjectP1(P1, result(expr)) = selected
+selected is non-empty
+------------------------------------------------
+Gamma |- P1 let x = expr
 ```
 
-Omitting `P` requests inference. Writing `P` constrains the destination through
-the same parent/admission relation; it does not add a universal non-runtime
+Omitting P1 requests full inference. A single written P1 queries the value
+component and follows each selected value's associated pattern component. A
+pair P1 filters both components. No form adds a universal non-runtime
 condition:
 
 ```lang
-let x = expr;                 // infer P from the evaluated RHS
-meta | runtime let x = expr;  // legal when P_e ⊑ (meta | runtime)
-runtime let x = expr;         // legal when P_e = runtime
+let x = expr;                 // retain the inferred complete result
+meta | runtime let x = expr;  // select available meta/runtime value slices
+runtime let x = expr;         // select runtime values and follow their types
 ```
 
-The current v0.8 verifier does not yet implement that final relation. It treats
-each written flag as an independently required result flag, so an expression
-that only residualizes to runtime currently makes
-`meta | runtime let x = expr` fail because no meta-visible value was produced.
-This is a transitional implementation limitation, not final policy-binding
-semantics and not evidence for a general `P ≠ runtime` rule. Ambiguous
-meta-visible candidates remain hard diagnostics in both `MetaPartial` and
-`MetaStrict`; ambiguity is not residualized.
+The current binding substrate applies a non-empty stage-slice projection rather
+than exact flat-flag verification. Thus an expression that residualizes only to
+runtime may satisfy `meta | runtime let x = expr` by selecting its runtime
+slice. Full `Pv:Pp`, const/mut, namespace, and value-presence transport through
+the namespace graph remains future work. Ambiguous meta-visible candidates
+remain hard diagnostics in both `MetaPartial` and `MetaStrict`; ambiguity is
+not residualized.
 
-The current verifier consumes provisional RHS result-policy metadata. Direct
-type-name forwarding uses the forwarded type symbol's current policy, while
-restricted source-callable invocation uses the selected callable's
-transitional `return_object_policy` field. This describes v0.8 transport only;
-it is not a final `P3` rule or whole-result policy. Final semantics applies
-layer-directed `result_projection_by_P1`: Pattern retains its supported compile
-part, Val1 retains stages admitted by the selected object's P1, and every
-returned Val2 object keeps its own P1.
+The current adapter consumes provisional RHS result-stage metadata. Direct
+type-name forwarding uses the forwarded symbol's current metadata, while
+restricted source-callable invocation uses transitional
+`return_object_policy` transport. This is neither P3 nor a whole-result
+policy. Final semantics retains each value/pattern entry's `Pv:Pp`, and every
+returned Val2 object retains its own pair.
 
-When binding policy is omitted and RHS evaluation succeeds with a value, the
-binding policy is inferred from that RHS result policy and written onto the
-materialized binding. For example, a `meta let + = ...` source callable whose
-transitional return-object field is meta-only produces a meta-only
-`let X: type = int + unit;` binding when no explicit policy is written.
-Explicit policy annotations still use that provisional result metadata in the
-current exact-flag verifier. This transport behavior must migrate to `P_e ⊑ P`;
-it is not the final binding judgment. Inference does not implicitly copy export
-visibility from a forwarded dependency or core object; it uses the phase
-capability portion of the result policy for the new binding.
+When P1 is omitted and RHS evaluation succeeds, the current adapter infers its
+available stage slice for the materialized binding. Namespace export visibility
+is not copied from a forwarded dependency; namespace visibility belongs to the
+destination's namespace-scoped P1 declaration.
 
 If any initializer residualizes and the binding has an assertion annotation
 such as `: type`, the assertion is not considered proven or failed. It is
@@ -285,95 +282,84 @@ normalized structure; the meaning of `struct`, `verify`, `cond`, or `==` is
 decided by graph lookup and policy-governed invocation, not by the spelling of
 the name.
 
-## 2. P1 Lookup Visibility Is Not P2 Execution Permission
+## 2. P1 Binding Projection and P2 Result Pair
 
 The final callable form is:
 
 ```text
-P1 let F = (...): P2 -> let r => { ... }
+[P1] let F = (...): P2 -> let r => { ... }
 ```
 
-It has two distinct judgments:
+P1 is the optional general binding projection. P2 is the call/expression result
+pair. The causal direction is:
+
+```text
+P2 -> derived function-object P1
+```
+
+The judgments are:
 
 ```text
 Gamma; lookup_stage |- path => Symbol
-
 Gamma; lookup_stage |- value_facet(Symbol) => Val2*
 
-Gamma; lookup_stage |- P1_filter(Val2*) => stage-visible objects
+Gamma |- invoke(selected object, InvocationFrame)
+      => result(P2v:P2p)
 
-Gamma; P2 |- call(selected object, InvocationFrame) => result
+Gamma |- derive_function_object_P1(P2v:P2p) => P1base
+Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 ```
 
-The first judgment is base symbol resolution. `P1` is not consulted until the
-resolved symbol's heterogeneous value objects have been enumerated. Different
-objects stored by the same symbol may have different `P1` sets.
+Omitted P1 keeps the complete result. Single P1 `Q` selects values visible
+under Q and follows their associated pattern components. Pair P1 `Qv:Qp`
+filters both. Single P1 is not normalized to `Q:Q`.
 
-`P1` is the callable object's externally visible lookup-stage set:
+P2 is an explicit pair or a context-specific single-policy shorthand:
 
 ```text
-P1 ::= compile
-     | (compile | runtime)
+P2 = Pv:Pp
+
+N2(P) = P:(P-runtime), when P-runtime is non-empty
+N2(runtime) = runtime:seal
 ```
 
-A callable function object is always compile-visible. Runtime body execution is
-expressed by `P2 = runtime` on an object whose `P1 = compile | runtime`.
-
-`P2` is an individual callable entry's execution capability and exact
-invocation-frame total-policy requirement:
+P2 pair validity requires:
 
 ```text
-P2 ::= compile | meta | runtime
-
-external(compile) = compile
-external(meta)    = compile
-external(runtime) = runtime
+runtime not in Stage(Pp)
+Static(Pv) is empty or Static(Pv) = Stage(Pp)
 ```
 
-A declaration is well formed only when:
+Function-object stages follow:
 
 ```text
-external(P2) subset-of P1
+Stage(P1p) = Stage(P2p)
+Stage(P1v) = Stage(P2v) union Stage(P2p)
 ```
 
-A call entry is policy-qualified only when:
+Only stages are lifted. Returned const/mut and namespace visibility do not
+propagate to the function object. Slot 0 remains implicit `self`; slots 1..n
+remain explicit source arguments. Declared parameter/receiver pair patterns are
+checked across the full invocation frame without inventing an independent self
+policy plane.
 
-```text
-current_lookup_stage in P1
+Visibility does not imply executability. A static view may inspect a
+runtime-capable object's pattern component or derived companion, but may not
+execute the original runtime value body as compile/meta.
 
-and
+`compile` and `meta` remain different capabilities: compile computes static
+values and PatternValue; meta constructs SymbolConstructionValue in a
+MetaConstructionUnit. Seal is a static visibility domain excluded from open
+meta lookup. A single P2 runtime defaults to `runtime:seal`, not
+`runtime:compile`.
 
-for every invocation-frame slot a:
-  total_policy(a) = external(P2)
-```
+There is no independent P3 and no scalar policy for the whole result symbol.
+Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
+retains its own pair. Current `self_policy`, `body_entry_policy`, and
+`return_object_policy` fields are transitional compatibility transport.
 
-Slot 0 is the implicit `self` view of the selected `Val2` function object;
-slots 1..n are the explicit source arguments. The declaration condition
-`external(P2) subset-of P1` guarantees that `self` is available at the entry's
-stage, and the invocation frame records the same exact stage requirement for
-all slots.
-
-Visibility therefore never implies executability. A compile lookup may see a
-runtime entry whose object has `compile | runtime` `P1`, inspect it, preserve
-its pattern projection, or prepare its derived compile companion. It may not
-execute the original runtime body as a compile or meta entry.
-
-`compile` and `meta` remain different internal capabilities: compile computes
-static values and `PatternValue`; meta constructs `SymbolConstructionValue` in
-a `MetaConstructionUnit`. They are grouped only by their shared external
-compile stage.
-
-There is no independent final return-policy `P3` and no scalar lookup policy
-for the whole result symbol. The selected object's `P1` projects result material
-layer by layer: Pattern currently contributes only its compile projection;
-`Val1` contributes the compile leaves, and also runtime leaves when `P1` admits
-runtime; every returned `Val2` object keeps its own `P1`. Current `self_policy`,
-`body_entry_policy`, and `return_object_policy` fields are transitional
-implementation substrate for parts of this model, not three normative source
-positions.
-
-This lookup/entry separation is load-bearing for candidate qualification,
-partial versus strict demand, compile-flow projection, and residualization.
+This separation is load-bearing for candidate qualification, partial versus
+strict demand, compile-flow projection, and residualization.
 
 ## 3. Candidate pipeline
 
@@ -389,7 +375,7 @@ project value facet:
   -> zero or more heterogeneous values
 
 stage-visible object pool:
-  filter each enumerated Val2 object by its own P1
+  observe the policy-projected view of each enumerated Val2 object
 
 call-entry candidate pool:
   obtain each stage-visible value's type
@@ -403,8 +389,8 @@ compile-projected call site:
 
 fully admissible candidate set A:
   call-entry pool + every hard structural/Pattern/type/require check
-  + P2 execution-stage compatibility
-  + exact total-policy equality for self and explicit arguments
+  + declared receiver/parameter pair compatibility for self and explicit arguments
+  + P2 result compatibility with any target-result expectation
   + expected result rank/facet compatibility
 
 selected result:
@@ -416,16 +402,16 @@ Reading the layers from the top:
 
 - **Symbol resolution** produces a first-class symbol, then projects its value
   facet. The facet may contain heterogeneous callable and non-callable values.
-- The **stage-visible object pool** filters each enumerated `Val2` object by its
-  own `P1`; this does not rerun or condition base symbol resolution.
+- The **stage-visible object pool** observes each enumerated `Val2` object's
+  available pair-projected view; this does not rerun base symbol resolution.
 - The **call-entry candidate pool** obtains each value's type and resolves the
   type-associated `()` entry. Non-callable values are valid facet material but
   are discarded for this call position.
 - The **fully admissible set `A`** keeps only those callables whose parameter
   patterns and rank-directed symbol/type/pattern-value expectations are
-  compatible with the actual argument shapes, whose `P2` has the demanded
-  external stage, whose implicit self and explicit arguments have exactly that
-  total policy, and whose hard concept/require/result checks pass.
+  compatible with the actual argument shapes, whose P2 pair admits the
+  invocation frame (implicit self plus explicit arguments), and whose hard
+  concept/require/result checks pass.
 - The **preference filters** apply entry preference, concept ordering,
   extraction specificity, and first-order preference only after full
   admissibility and in one fixed normative order. Each filter is independent
@@ -453,14 +439,14 @@ A formal sketch of the intended end-to-end frame:
 ```text
 Gamma; lookup_stage |- callee_path => Symbol
 Gamma; lookup_stage |- value_facet(Symbol) => V*
-Gamma; lookup_stage |- P1_filter(V*) => V_stage*
+Gamma; lookup_stage |- policy_views(V*) => V_stage*
 Gamma; lookup_stage |- type(V_stage*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
 Gamma |- InvocationFrame(self, ArgShapes) => Frame
 Gamma; lookup_stage |- FullyAdmissible(C0, Frame, expectation) => A
 Gamma |- PreferenceFilters(A) => B_final
 Gamma |- MustSelectConsistent(A, B_final) => selected_callable
-Gamma; P2(selected_callable) |- invoke(...) => InvocationResult
+Gamma; P2pair(selected_callable) |- invoke(...) => InvocationResult
 ```
 
 This sketch is the target for general invocation. v0.8 proves the path for a
@@ -468,51 +454,7 @@ restricted source-declared meta-overload subset and leaves the omitted layers
 explicitly deferred.
 
 The invocation frame owns self injection. The callable formal frame has slot 0
-for the function-object self-position and slots 1..n for user parameters.
-`ArgShapes` describe only the explicit user product; adding self to product
-arity, product flattening, canonical argument products, or meta instance keys is
-a boundary violation.
-
-### 3.1 InvocationFrame and CallableFrameShape substrate
-
-The first implementation substrate for this boundary is:
-
-```text
-ProductObject / ArgProductShape
-  -> InvocationFrame
-  -> CallableFrameShape
-  -> later callable body entry
-```
-
-The explicit argument product is shaped first as `ProductObject` /
-`ArgProductShape`. The invocation frame then injects `self` into formal slot 0.
-`self` is not part of `ArgProductShape`, `RawArgShape`, product arity, product
-flattening, or canonical meta instance keys.
-
-Zero-user-argument callables still have self slot 0 and an empty explicit
-argument product. Declaration-context `()` call-entry definitions, such as:
-
-```lang
-let ()::ref::T = (self: T ref) => { ... }
-```
-
-use the same frame model as ordinary function values. They are symbol/overload
-injections into an associated space, not a separate call mechanism. In that
-shape, `self: T ref` still occupies formal slot 0, and the explicit user
-argument product starts after self.
-
-Closure/function body syntax is not immediately forced to materialize an object.
-In value/call context it may materialize as a lambda / function-object value. In
-declaration / symbol-injection context it may elaborate as a call-entry
-definition or overload candidate.
-
-A function-value binding such as:
-
-```lang
-let name = (self) => { ... }
-```
-
-can be modeled as synthesizing an anonymous function-object type, injecting `()`
+for the function-object self-position and slots…388 tokens truncated…synthesizing an anonymous function-object type, injecting `()`
 into that type's associated space, and then binding the resulting
 function-object value to `name`. This is a future elaboration direction, not
 implemented by the current substrate.
@@ -530,7 +472,7 @@ return execution, D/Done, lifetime checking, or implicit `?`.
 Evaluation demand is orthogonal to execution capability and result rank:
 
 ```text
-execution capability: compile | meta | runtime
+execution capability: compile | meta | seal | runtime
 evaluation demand:     partial | strict
 result rank:           PatternValue | SymbolConstructionValue | runtime value
 ```
@@ -627,8 +569,8 @@ No admissible compile/meta candidate:
 Visible ambiguity or construction conflict:
   both demands => error
 
-Candidate exists but final P2 (current substrate: body-entry policy) rejects
-the demanded capability:
+Candidate exists but current transitional body-entry metadata rejects the
+demanded capability:
   partial => residualize when legal
   strict  => error
 ```
@@ -646,8 +588,8 @@ or declaration context. This includes:
 - installing a NamespaceDelta atomically;
 - binding the declared target (e.g. `let T: type = ...`);
 - exposing an extraction-facing interface on the constructed value;
-- applying layer-directed `result_projection_by_P1` without assigning one
-  scalar policy to the result symbol.
+- applying context-directed `ProjectP1` to value/pattern result entries without
+  assigning one scalar policy to the result symbol.
 ```
 
 This separation is intentional: invocation produces an uninstalled value, and
@@ -710,15 +652,15 @@ match cond {
 
 Surface spellings remain ordinary syntax/call material until later semantic
 interpretation; this does not require parser keywords or a privileged
-`IfExpr`. The stage of branch selection follows the matched symbol's total
-policy:
+`IfExpr`. The stage of branch selection follows the selected scrutinee value
+component, while its pattern component remains statically available:
 
 ```text
-total_policy(scrutinee) = compile
+Pv(scrutinee) selects a static value stage
   -> normal compile evaluation selects the branch
 
-total_policy(scrutinee) = runtime
-  -> the Pattern projection remains in CompileFlow
+Pv(scrutinee) selects a runtime value stage
+  -> Pp/Pattern remains in CompileFlow
   -> actual branch selection remains runtime
 ```
 
@@ -857,9 +799,10 @@ Current state:
   forwarding body. The final model replaces that formal return split with
   `r = ...` producing a `SymbolConstructionValue`; ordinary `let ===` aliasing
   remains separate.
-- `PolicyEnv::Meta` and `PolicyEnv::Runtime` support visibility metadata; the
-  restricted overload selector also checks the selected current body-entry field before
-  meta execution.
+- Flat meta/compile/seal/post-seal/runtime `PolicyEnv` variants support resolver
+  visibility metadata; the restricted overload selector also checks the
+  selected current body-entry field before meta execution. These environments
+  are not canonical pair projection or execution permission.
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
@@ -960,7 +903,7 @@ This document does not define:
 - full overload resolution
 - full pattern-space extraction
 - macro expansion
-- parser syntax changes
+- further parser-semantic special cases
 - complete policy lattice
 - effect checking
 - borrow checking
@@ -982,7 +925,8 @@ and meta-invocation machinery exists.
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.
 5. Introduce SymbolConstructionValue and rank-directed canonical instance keys.
-6. Introduce final P1/P2 candidate qualification for compile/meta invocation.
+6. Carry canonical `Pv:Pp` through candidate qualification and every
+   invocation-frame slot.
 7. Introduce ResolvedPatternScope and binding-independent `struct` ownership.
 8. Move `struct` and `verify` dispatch behind the common invocation engine.
 9. Add functional child-only `inject` without graph installation.

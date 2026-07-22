@@ -23,10 +23,14 @@ Program
                               None
                             initializer:
                               None
-                  fn_item_trait:
-                    Expr
-                      Pipe
-                        Segment has_incoming=false
+                  call_policy:
+                    PolicySpec
+                      value_policy:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                      type_policy:
+                        None
                 BodyBlock
                   forms:
                     ExprForm

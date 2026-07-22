@@ -89,13 +89,13 @@ diagnostic rules, or golden snapshots.
 | Field | Value |
 |---|---|
 | Raw construct family | Binding slot |
-| AST / token shape | `BindingSlotAst { policy: Option<ExprAst>, has_let: bool, deduce: Option<DeduceListAst>, pattern: BindingPatternAst, annotation: Option<BindingAnnotationAst>, with_clause: Option<WithClauseAst>, initializer: Option<ExprAst>, span: Span }` |
+| AST / token shape | `BindingSlotAst { policy: Option<PolicySpecAst>, has_let: bool, deduce: Option<DeduceListAst>, pattern: BindingPatternAst, annotation: Option<BindingAnnotationAst>, with_clause: Option<WithClauseAst>, initializer: Option<ExprAst>, span: Span }`; `PolicySpecAst { value_policy: ValuePolicyPatternAst, type_policy: Option<ExprAst>, span }`; `ValuePolicyPatternAst::Expr | Absent` |
 | Implementation file(s) | `ast.rs`, `parser/let_stmt.rs`, `parser/closure.rs`, `parser/deduce.rs`, `parser/canonical.rs` |
 | Spec source | `ast-construction-v0.1.md` §4 |
-| Frozen guarantee | The binding slot shape is reused across let bindings, parameter slots, and return slots. Optional `policy` is recognized only by the `Expr let` syntactic shape; `policy = None` means unwritten (implicit/inferred later). Initializer is required only in let-binding context. `with { ... }` is rejected in return slots. |
+| Frozen guarantee | The binding slot shape is reused across let bindings, parameter slots, and return slots. Optional `policy` is recognized only by the `PolicySpec let` syntactic shape; `PolicySpec` preserves either one policy expression or a value/type pair separated by `:`. `policy = None` means unwritten (implicit/inferred later). `Absent` reserves normalized/constructed empty-value capability without freezing a source token. Initializer is required only in let-binding context. `with { ... }` is rejected in return slots. |
 | Non-semantic boundary | The parser preserves the slot shape but performs no policy validation, annotation type-checking, or `with` dependency/lifetime analysis. |
 | v0.3 obligation | v0.3 must normalize binding slots into a unified declaration/pattern shape. Optional `with` clauses must be preserved. |
-| Forbidden assumption | v0.3 must not assume the policy expression denotes a valid accessibility/visibility/capability condition. v0.3 must not assume the annotation denotes a valid type, rank, or classifier. |
+| Forbidden assumption | v0.3 must not assume the policy specification is semantically valid or elaborate a single P1 and single P2 identically. v0.3 must not assume the annotation denotes a valid type, rank, or classifier. |
 
 ## 8. Binding pattern family
 
@@ -203,10 +203,10 @@ diagnostic rules, or golden snapshots.
 | Field | Value |
 |---|---|
 | Raw construct family | Closure head |
-| AST / token shape | `FnHeadPrefixAst { deduce: Option<DeduceListAst>, captures: Option<CaptureClauseAst>, params: Option<ParamClauseAst>, fn_item_trait: Option<ExprAst>, returns: Option<ReturnClauseAst>, clauses: Vec<HeadClauseAst>, span }` |
+| AST / token shape | `FnHeadPrefixAst { deduce: Option<DeduceListAst>, captures: Option<CaptureClauseAst>, params: Option<ParamClauseAst>, call_policy: Option<PolicySpecAst>, returns: Option<ReturnClauseAst>, clauses: Vec<HeadClauseAst>, span }` |
 | Implementation file(s) | `ast.rs`, `parser/closure.rs`, `parser/deduce.rs`, `parser/canonical.rs` |
 | Spec source | `ast-construction-v0.1.md` §11 |
-| Frozen guarantee | Fixed clause order: deduce list, capture clause, parameter clause, trait clause, return clause, head clause tail. `CaptureItemAst` stores full `ExprAst` (not name-only). `ParamClause` is one `ProductExtractAst`. `ReturnClause` is one `BindingSlotAst`. Active head clauses: `Require`, `Pre`, `Post`, `LifetimePre`, `LifetimePost` (each holds one `ExprAst`). `acquire` is an ordinary name. |
+| Frozen guarantee | Fixed clause order: deduce list, capture clause, parameter clause, call-result P2 `PolicySpec`, return clause, head clause tail. `CaptureItemAst` stores full `ExprAst` (not name-only). `ParamClause` is one `ProductExtractAst`. `ReturnClause` is one `BindingSlotAst`. Active head clauses: `Require`, `Pre`, `Post`, `LifetimePre`, `LifetimePost` (each holds one `ExprAst`). `acquire` is an ordinary name. |
 | Non-semantic boundary | The parser preserves clause shape but performs no capture validation (move/ref/copy), parameter type-checking, return-type checking, contract/lifetime/resource validation, or rank/type/predicate checking. |
 | v0.3 obligation | v0.3 must preserve clause order and shape through normalization. |
 | Forbidden assumption | v0.3 must not interpret head clauses as semantic contracts, lifetime conditions, resource conditions, type-level objects, rank-level objects, or predicates. |
@@ -229,7 +229,7 @@ diagnostic rules, or golden snapshots.
 | Field | Value |
 |---|---|
 | Raw construct family | Alias binding and EntityRef |
-| AST / token shape | `LetAliasAst { policy: Option<ExprAst>, binder: AliasBinderAst, target: EntityRefAst, span }`; `AliasBinderAst::Name | Operator | Error`; `EntityRefAst { components: Vec<NavComponentAst>, span }` |
+| AST / token shape | `LetAliasAst { policy: Option<PolicySpecAst>, binder: AliasBinderAst, target: EntityRefAst, span }`; `AliasBinderAst::Name | Operator | Error`; `EntityRefAst { components: Vec<NavComponentAst>, span }` |
 | Implementation file(s) | `ast.rs`, `parser/let_stmt.rs`, `parser/form.rs` |
 | Spec source | `ast-construction-v0.1.md` §16; `entity-alias-design.md`; `entity-ref-design.md` |
 | Frozen guarantee | `let binder === EntityRef` is a form-level construct. `EntityRef` is parsed only inside alias-let RHS (not a general expression parser mode). Optional `policy` prefix preserved. Alias binding must be bounded by `;`, `}`, or EOF. `with { ... }` is not accepted in alias binding. |

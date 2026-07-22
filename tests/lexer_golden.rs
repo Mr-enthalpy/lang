@@ -90,6 +90,11 @@ fn operators() {
 }
 
 #[test]
+fn policy_pair() {
+    assert_lexer_case("policy_pair", false);
+}
+
+#[test]
 fn structural_with_operators() {
     assert_lexer_case("structural_with_operators", false);
 }

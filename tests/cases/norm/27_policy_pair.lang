@@ -1,0 +1,2 @@
+(runtime|compile):compile let x = value;
+let f = (a): runtime:seal -> _ => { a return; };

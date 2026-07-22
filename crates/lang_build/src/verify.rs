@@ -869,6 +869,8 @@ fn parse_policy_flag(name: &str) -> Option<PolicyFlag> {
     match name {
         "export" => Some(PolicyFlag::Export),
         "meta" => Some(PolicyFlag::Meta),
+        "compile" => Some(PolicyFlag::Compile),
+        "seal" => Some(PolicyFlag::Seal),
         "runtime" => Some(PolicyFlag::Runtime),
         _ => None,
     }
@@ -878,6 +880,8 @@ fn policy_flag_label(flag: PolicyFlag) -> &'static str {
     match flag {
         PolicyFlag::Export => "export",
         PolicyFlag::Meta => "meta",
+        PolicyFlag::Compile => "compile",
+        PolicyFlag::Seal => "seal",
         PolicyFlag::Runtime => "runtime",
     }
 }

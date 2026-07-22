@@ -32,7 +32,7 @@ has one normative owner inside the staging area:
 |---|---|---|
 | Symbol-first resolution, facets, `compile` / `meta`, `struct` / `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
 | Namespace origin, construction-unit ownership, physical contribution authority, cross-file closure | `symbol-world/symbol-construction-units-and-namespace-origin.md` | Build-phase application, implementation gap, and link |
-| Layered symbol policy, per-object `P1`, full-frame `P2`, no scalar result policy, mechanical compile projection, derived companion objects, match staging, and coarse automatic require | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Implementation mapping, invocation handoff, pattern algebra, and links |
+| Canonical `Pv:Pp`, contextual binding `P1`, result `P2`, function-object stage derivation, seal visibility/snapshot, const/mut product order, no scalar result policy, mechanical compile projection, companions, match staging, and coarse automatic require | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Implementation mapping, invocation handoff, pattern algebra, and links |
 | Current `PatternHeadId` registry/materialization substrate | `../contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` | No claim of final owner resolution |
 | Pattern/argument shape adaptation before overload qualification | `patterns-overload/pattern-normalization-and-first-order-overload.md` | Structural handoff only; no competing policy or final selection rules |
 | Overload candidate preparation, linear filters, qualification boundary, must-select final check | `patterns-overload/overload-resolution-design.md` | Invocation consumes the selected entry; policy definition stays in symbol-world |
@@ -67,7 +67,7 @@ reading order is:
 ```text
 1. symbol-first-meta-construction-and-pattern-injection.md — canonical symbol/construction boundary
 2. symbol-construction-units-and-namespace-origin.md — namespace origin and construction ownership
-3. symbol-policy-and-compile-flow-projection.md — layered policy, compile projection, companions, require
+3. symbol-policy-and-compile-flow-projection.md — policy pairs, seal, compile projection, companions, require
 4. v0.8-semantic-spine.md — value/extraction narrative
 5. return-value-extraction-and-implicit-decomposition.md — extraction view
 6. v0.8-symbolic-construction-values-and-extraction-interfaces.md — transitional construction/extraction contract
@@ -101,10 +101,10 @@ implementation guardrail, not the semantic entry point.
 | Block | Responsibility | Not responsible for |
 |---|---|---|
 | `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, physical-directory contribution authority, export surface, cache/fingerprint/provenance. | Language expression semantics. |
-| `symbol-world/` | Namespace graph world model: symbol-first facets and identities, `compile` / `meta`, layered symbol policy, `P1` / `P2`, compile-flow projection and companions, automatic require, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, full alias resolver, access-tree construction, lifetime checking implementation. |
+| `symbol-world/` | Namespace graph world model: symbol-first facets and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut product order, compile-flow projection and companions, automatic require, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, full alias resolver, access-tree construction, lifetime checking implementation. |
 | `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and pattern-directed decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
 | `meta-invocation/` | Symbol-first invocation frames, candidate-selection handoff, partial vs strict demand, residualization, and policy-staged pattern matching. | Defining symbol construction, layered policy, overload ordering, or pattern algebra (it references their canonical owners). |
-| `policy-capability/` | Current metadata-to-`P1`/`P2` mapping, lookup/entry separation, and future orthogonal access/effect policy. | Compile-flow/require semantics and mechanical return normalization. |
+| `policy-capability/` | Current flat-metadata mapping to canonical `Pv:Pp`, P1/P2 contextual elaboration, and orthogonal policy dimensions. | Compile-flow/require semantics and mechanical return normalization. |
 | `lifetime/` | Negative stage boundary separating lifetime policy/refinement from completed first-order type/compile overload selection. | Region/origin algebra, lifetime checking, specificity, Horae logic, or implementation. |
 | `control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only | Implemented parser / normalizer return syntax (lives in `spec/public/` and `spec/contracts/`); runtime return execution semantics. |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |
@@ -126,8 +126,8 @@ implementation guardrail, not the semantic entry point.
 - Partial implementation (a narrow vertical slice in `crates/lang_build`):
   `build-package/` (API-level build/namespace graph) and parts of
   `symbol-world/` (namespace graph, resolver, early-meta `struct`/`verify`
-  slice, `PolicyEnv::Meta` lookup filtering) and `policy-capability/` (policy
-  metadata).
+  slice, flat policy lookup environments) and `policy-capability/` (policy
+  metadata and pair helpers).
 - Future design only (not implemented): `patterns-overload/`,
   `meta-invocation/`, `mechanical-lowering/`, `lifetime/`, and the remaining
   `symbol-world/` and `policy-capability/` semantics (TypeValueId, alias

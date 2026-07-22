@@ -124,11 +124,16 @@ impl ChildBucket {
     }
 }
 
-/// Early policy flag for v0.7 policy-aware resolution.
+/// Transitional flat policy flag used by the current resolver substrate.
+///
+/// Canonical policy semantics use `PolicyPair`; this enum only transports the
+/// stage/legacy export projection through code that has not migrated yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PolicyFlag {
     Export,
     Meta,
+    Compile,
+    Seal,
     Runtime,
 }
 
@@ -159,11 +164,15 @@ impl PolicySet {
 /// This controls whether a symbol is visible to a resolver query. It does not
 /// grant permission to enter or evaluate a callable body.
 ///
-/// Only `Meta` lookup visibility is needed for v0.7-prep. Additional resolver
-/// environments will be added as the policy lattice and lookup passes expand.
+/// These variants are a flat compatibility projection of the canonical
+/// `Pv:Pp` visibility domains. They do not grant body execution or privileged
+/// pre-seal scanning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyEnv {
     Meta,
+    Compile,
+    Seal,
+    PostSealCompile,
     Runtime,
 }
 
@@ -199,6 +208,18 @@ pub fn policy_set_export_meta_runtime() -> PolicySet {
 pub fn policy_set_runtime() -> PolicySet {
     let mut set = PolicySet::new();
     set.insert(PolicyFlag::Runtime);
+    set
+}
+
+pub fn policy_set_compile() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Compile);
+    set
+}
+
+pub fn policy_set_seal() -> PolicySet {
+    let mut set = PolicySet::new();
+    set.insert(PolicyFlag::Seal);
     set
 }
 

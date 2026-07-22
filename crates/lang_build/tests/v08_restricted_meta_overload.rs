@@ -176,13 +176,13 @@ fn plus_overload_set_is_not_hand_constructed_in_test() {
 }
 
 #[test]
-fn meta_or_runtime_policy_prefix_sets_symbol_policy_meta_runtime() {
+fn meta_or_runtime_p1_query_selects_only_available_meta_slice() {
     let world = world();
     let node = world.snapshot().node(world.package_root_node()).unwrap();
     for id in node.children.get("+").unwrap().object_symbols() {
         let symbol = world.snapshot().symbol(*id).unwrap();
         assert!(symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
-        assert!(symbol
+        assert!(!symbol
             .policy_metadata
             .policy_set
             .contains(PolicyFlag::Runtime));
@@ -346,7 +346,7 @@ fn if_else_delete_overloads_outrank_generic_binder() {
 }
 
 #[test]
-fn specificity_uses_lexicographic_tuple_not_declaration_order() {
+fn extraction_specificity_uses_lexicographic_tuple_not_declaration_order() {
     let selected = plus_selection("unit + unit").expect("unit exact selected");
     assert_eq!(selected.specificity.max_depth, 1);
     assert_eq!(selected.specificity.sum_depth, 4);
@@ -418,11 +418,12 @@ fn runtime_execution_must_not_enter_meta_only_body() {
         provenance: Provenance::new("runtime execution"),
     })
     .expect_err("runtime execution cannot enter meta body");
-    assert!(err.message.contains("body-entry policy"));
+    assert_eq!(err.code, Some(ResolverCode::NoMetaVisibleCandidate));
+    assert!(err.message.contains("not visible to RuntimeBinding"));
 }
 
 #[test]
-fn runtime_binding_lookup_can_see_meta_or_runtime_symbol_metadata() {
+fn p1_query_does_not_make_meta_callable_runtime_visible() {
     let world = world();
     let site = call_site("unit + unit");
     let shape = lang_build::classify_type_arguments(
@@ -430,7 +431,7 @@ fn runtime_binding_lookup_can_see_meta_or_runtime_symbol_metadata() {
         &world.snapshot().capability(),
         &world.package_context(),
     );
-    let selected = select_restricted_meta_overload(OverloadSelectionInput {
+    let diagnostic = select_restricted_meta_overload(OverloadSelectionInput {
         snapshot: world.snapshot(),
         namespace: world.package_root_node(),
         callable_name: "+".to_string(),
@@ -440,16 +441,12 @@ fn runtime_binding_lookup_can_see_meta_or_runtime_symbol_metadata() {
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("runtime lookup metadata"),
     })
-    .expect("runtime lookup phase sees runtime-visible symbol metadata");
-    assert!(selected
-        .symbol
-        .policy_metadata
-        .policy_set
-        .contains(PolicyFlag::Runtime));
+    .expect_err("meta P2 provides no runtime value slice for P1 to select");
+    assert_eq!(diagnostic.code, Some(ResolverCode::NoMetaVisibleCandidate));
 }
 
 #[test]
-fn symbol_visibility_policy_is_not_body_entry_permission() {
+fn runtime_p2_derives_runtime_visible_function_object_slice() {
     let world = world();
     let symbol = world
         .snapshot()
@@ -460,7 +457,11 @@ fn symbol_visibility_policy_is_not_body_entry_permission() {
             ResolveExpectation::MetaFunction,
         )
         .expect("runtime body symbol");
-    assert!(symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
+    assert!(!symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
+    assert!(symbol
+        .policy_metadata
+        .policy_set
+        .contains(PolicyFlag::Runtime));
     let lang_build::SymbolPayload::MetaFunction(meta_function) = symbol.payload else {
         panic!("meta payload");
     };

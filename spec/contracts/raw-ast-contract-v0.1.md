@@ -72,9 +72,9 @@ Normalization must **not** assume:
   are not checked by the parser or normalization; they belong to later name-
   resolution / ownership / lifetime phases.
 - `WithClauseKind::Error` preserves malformed `with` syntax without making it AST-equivalent to valid `with {}`.
-- `BindingSlotAst` preserves an optional `policy` expression, optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`. A policy is recognized only by the shape `Expr let`; `policy = None` means the policy was unwritten (implicit / inferred later), not "no policy". The parser performs no policy validation.
+- `BindingSlotAst` preserves an optional `PolicySpecAst`, optional `let`, optional `DeduceListAst`, `BindingPatternAst`, optional `BindingAnnotationAst`, optional `WithClauseAst`, optional initializer, and `span`. A policy is recognized only by the shape `PolicySpec let`; `PolicySpecAst` preserves a value expression and optional type expression separated by `:`. `policy = None` means the policy was unwritten (implicit / inferred later), not "no policy". The parser performs no policy validation.
 - `BindingPatternAst` distinguishes `Binder`, `Product`, `Skeleton`, and `Error`.
-- `LetAliasAst` preserves an optional `policy` expression (same `Expr let` rule as `BindingSlotAst`), `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
+- `LetAliasAst` preserves an optional `PolicySpecAst` (same `PolicySpec let` rule as `BindingSlotAst`), `binder` (`AliasBinderAst`), `target` (`EntityRefAst`), and `span`.
 - `AliasBinderAst` distinguishes `Name`, `Operator`, and `Error`.
 - `BindingAnnotationAst` distinguishes a single preserved expression, an explicit compound annotation, and `Error`.
 - `AnnotationTermAst` distinguishes `Expr` and `Hole`.
@@ -173,7 +173,7 @@ Normalization must **not** assume:
   closure with a unit extraction pattern and must not be treated as accepting
   implicit unit input.
 - `ExplicitClosureAst` requires a non-optional `FnHeadPrefixAst` and a body. Headed closures without `=>` (e.g., `[](){}`) are syntax errors, not valid closure AST.
-- `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `fn_item_trait`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
+- `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `call_policy: Option<PolicySpecAst>`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries. Each `CaptureItemAst` holds a full `ExprAst`, not a name or token tree. The parser does not validate whether a capture expression is movable, borrowable, copyable, lifetime-safe, or admissible as a capture.
 - `ParamClauseAst` preserves one `ProductExtractAst`, not a parameter-slot list.
 - `ProductExtractAst` preserves ordered `ProductExtractElementAst` elements and span. A parenthesized top-level-comma form in binding / extraction context is product extraction.

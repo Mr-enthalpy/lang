@@ -1,0 +1,6 @@
+runtime:compile let runtime_compile = value;
+runtime:seal let runtime_seal = value;
+(runtime|compile):compile let runtime_compile_union = value;
+(runtime|seal):seal let runtime_seal_union = value;
+const+(compile|runtime):compile let mixed = value;
+let callable = (x): runtime:seal -> _ => { x return; };

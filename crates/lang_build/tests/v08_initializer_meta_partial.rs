@@ -129,21 +129,29 @@ fn missing_meta_visible_candidate_residualizes_under_meta_partial() {
 }
 
 #[test]
-fn explicit_policy_is_verification_for_residual_initializer() {
-    let err = build_fixture_error("v08_initializer_explicit_policy_fail", "app");
-    assert!(has_code(
-        &err,
-        ResolverCode::ExplicitPolicyVerificationFailed
-    ));
+fn explicit_p1_projects_runtime_slice_from_residual_initializer() {
+    let world = build_single_fixture_world("v08_initializer_explicit_policy_fail", "app");
+    let symbol = world
+        .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
+        .expect("runtime P1 slice");
+    assert!(symbol
+        .policy_metadata
+        .policy_set
+        .contains(PolicyFlag::Runtime));
+    assert!(!symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
 }
 
 #[test]
-fn explicit_policy_verification_uses_selected_callable_return_policy() {
-    let err = build_fixture_error("v08_initializer_return_policy_verification", "app");
-    assert!(has_code(
-        &err,
-        ResolverCode::ExplicitPolicyVerificationFailed
-    ));
+fn explicit_p1_projects_selected_callable_result_slice() {
+    let world = build_single_fixture_world("v08_initializer_return_policy_verification", "app");
+    let symbol = world
+        .resolve_with_expectation("X", lang_build::ResolveExpectation::TypeObject)
+        .expect("meta result slice");
+    assert!(symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
+    assert!(!symbol
+        .policy_metadata
+        .policy_set
+        .contains(PolicyFlag::Runtime));
 }
 
 #[test]
@@ -220,7 +228,7 @@ fn ambiguity_does_not_residualize_under_meta_partial() {
 }
 
 #[test]
-fn body_entry_mismatch_residualizes_from_structured_failure_kind() {
+fn p1_projection_does_not_expand_runtime_callable_into_meta_visibility() {
     let world = build_single_fixture_world("v08_initializer_body_entry_mismatch_residual", "app");
     let symbol = world
         .resolve_with_expectation("x", lang_build::ResolveExpectation::Object)
@@ -247,15 +255,16 @@ fn body_entry_mismatch_residualizes_from_structured_failure_kind() {
         failure_kind,
     } = outcome
     else {
-        panic!("body-entry mismatch should not invoke under Meta");
+        panic!("runtime-only P1 slice should not invoke under Meta");
     };
     assert_eq!(
         failure_kind,
-        RestrictedOverloadFailureKind::BodyEntryPolicyMismatch {
-            demanded_execution: ExecutionEnv::Meta
+        RestrictedOverloadFailureKind::NotVisibleToLookupPhase {
+            callable_name: "f".to_string(),
+            lookup_phase: LookupPhase::MetaAction,
         }
     );
-    assert_eq!(diagnostic.code, Some(ResolverCode::BodyEntryPolicyMismatch));
+    assert_eq!(diagnostic.code, Some(ResolverCode::NoMetaVisibleCandidate));
 }
 
 #[test]

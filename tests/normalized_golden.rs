@@ -259,6 +259,11 @@ fn annotation_pattern() {
 }
 
 #[test]
+fn policy_pair_preservation() {
+    assert_norm_case("27_policy_pair", false);
+}
+
+#[test]
 fn closure_head() {
     assert_norm_case("14_closure_head", false);
 }

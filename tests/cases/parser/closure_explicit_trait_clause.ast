@@ -23,13 +23,17 @@ Program
                               None
                             initializer:
                               None
-                  fn_item_trait:
-                    Expr
-                      Pipe
-                        Segment has_incoming=false
-                          OperatorExpr
-                            Atom
-                              Name runtime
+                  call_policy:
+                    PolicySpec
+                      value_policy:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name runtime
+                      type_policy:
+                        None
                 BodyBlock
                   forms:
                     ExprForm
