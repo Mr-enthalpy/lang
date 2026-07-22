@@ -16,12 +16,13 @@ Program
                       slot:
                         BindingSlot let=true
                           policy:
-                            Expr
-                              Pipe
-                                Segment has_incoming=false
-                                  OperatorExpr
-                                    Atom
-                                      Name policy
+                            PolicySpec
+                              value_policy:
+                                PolicyConjunction
+                                  PolicyChoice
+                                    PolicyAtom Name "policy"
+                              pattern_policy:
+                                None
                           deduce:
                             None
                           pattern:

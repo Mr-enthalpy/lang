@@ -48,7 +48,7 @@ fn plus_selection(source: &str) -> Result<lang_build::SelectedOverloadCandidate,
         callable_name: "+".to_string(),
         arg_product_shape: classified.classified_shape,
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new(source),
     })
@@ -63,7 +63,7 @@ fn invoke(source: &str) -> MetaInvocationResult {
         &site,
         &world.package_context(),
         LookupPhase::MetaAction,
-        ExecutionEnv::Meta,
+        ExecutionEnv::OpenStatic,
         VisibilityView::Internal,
         Provenance::new(source),
     )
@@ -79,7 +79,7 @@ fn invoke_named(source: &str, name: &str) -> MetaInvocationResult {
         &site,
         &world.package_context(),
         LookupPhase::MetaAction,
-        ExecutionEnv::Meta,
+        ExecutionEnv::OpenStatic,
         VisibilityView::Internal,
         Provenance::new(source),
     )
@@ -114,7 +114,7 @@ fn source_declares_multiple_same_name_plus_overloads() {
         callable_name: "+".to_string(),
         arg_product_shape: classified,
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("c0"),
     };
@@ -153,7 +153,7 @@ fn plus_overload_set_is_built_from_namespace_graph_children() {
         callable_name: "+".to_string(),
         arg_product_shape: classified,
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("namespace child c0"),
     });
@@ -166,7 +166,7 @@ fn plus_overload_set_is_built_from_namespace_graph_children() {
 fn plus_overload_set_is_not_hand_constructed_in_test() {
     let source_path = fixture_source_root("v08_meta_overload", "app").join("main.lang");
     let source = std::fs::read_to_string(source_path).expect("read fixture");
-    assert!(source.contains("meta | runtime let +"));
+    assert!(source.contains("meta || runtime let +"));
     assert!(world()
         .snapshot()
         .node(world().package_root_node())
@@ -176,13 +176,13 @@ fn plus_overload_set_is_not_hand_constructed_in_test() {
 }
 
 #[test]
-fn meta_or_runtime_policy_prefix_sets_symbol_policy_meta_runtime() {
+fn meta_or_runtime_p1_query_selects_only_available_meta_slice() {
     let world = world();
     let node = world.snapshot().node(world.package_root_node()).unwrap();
     for id in node.children.get("+").unwrap().object_symbols() {
         let symbol = world.snapshot().symbol(*id).unwrap();
         assert!(symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
-        assert!(symbol
+        assert!(!symbol
             .policy_metadata
             .policy_set
             .contains(PolicyFlag::Runtime));
@@ -256,7 +256,7 @@ fn candidate_set_does_not_global_search_all_plus_symbols() {
         callable_name: "+".to_string(),
         arg_product_shape: root_shape,
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("root c0"),
     });
@@ -281,7 +281,7 @@ fn candidate_set_does_not_global_search_all_plus_symbols() {
         callable_name: "+".to_string(),
         arg_product_shape: other_shape,
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("other c0"),
     });
@@ -346,7 +346,7 @@ fn if_else_delete_overloads_outrank_generic_binder() {
 }
 
 #[test]
-fn specificity_uses_lexicographic_tuple_not_declaration_order() {
+fn extraction_specificity_uses_lexicographic_tuple_not_declaration_order() {
     let selected = plus_selection("unit + unit").expect("unit exact selected");
     assert_eq!(selected.specificity.max_depth, 1);
     assert_eq!(selected.specificity.sum_depth, 4);
@@ -368,7 +368,7 @@ fn ambiguous_equal_specificity_candidates_are_diagnostic() {
         callable_name: "+".to_string(),
         arg_product_shape: shape,
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("ambiguous"),
     })
@@ -418,11 +418,12 @@ fn runtime_execution_must_not_enter_meta_only_body() {
         provenance: Provenance::new("runtime execution"),
     })
     .expect_err("runtime execution cannot enter meta body");
-    assert!(err.message.contains("body-entry policy"));
+    assert_eq!(err.code, Some(ResolverCode::NoMetaVisibleCandidate));
+    assert!(err.message.contains("not visible to RuntimeBinding"));
 }
 
 #[test]
-fn runtime_binding_lookup_can_see_meta_or_runtime_symbol_metadata() {
+fn p1_query_does_not_make_meta_callable_runtime_visible() {
     let world = world();
     let site = call_site("unit + unit");
     let shape = lang_build::classify_type_arguments(
@@ -430,26 +431,22 @@ fn runtime_binding_lookup_can_see_meta_or_runtime_symbol_metadata() {
         &world.snapshot().capability(),
         &world.package_context(),
     );
-    let selected = select_restricted_meta_overload(OverloadSelectionInput {
+    let diagnostic = select_restricted_meta_overload(OverloadSelectionInput {
         snapshot: world.snapshot(),
         namespace: world.package_root_node(),
         callable_name: "+".to_string(),
         arg_product_shape: shape,
         lookup_phase: LookupPhase::RuntimeBinding,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("runtime lookup metadata"),
     })
-    .expect("runtime lookup phase sees runtime-visible symbol metadata");
-    assert!(selected
-        .symbol
-        .policy_metadata
-        .policy_set
-        .contains(PolicyFlag::Runtime));
+    .expect_err("meta P2 provides no runtime value slice for P1 to select");
+    assert_eq!(diagnostic.code, Some(ResolverCode::NoMetaVisibleCandidate));
 }
 
 #[test]
-fn symbol_visibility_policy_is_not_body_entry_permission() {
+fn runtime_p2_derives_runtime_visible_function_object_slice() {
     let world = world();
     let symbol = world
         .snapshot()
@@ -460,7 +457,11 @@ fn symbol_visibility_policy_is_not_body_entry_permission() {
             ResolveExpectation::MetaFunction,
         )
         .expect("runtime body symbol");
-    assert!(symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
+    assert!(!symbol.policy_metadata.policy_set.contains(PolicyFlag::Meta));
+    assert!(symbol
+        .policy_metadata
+        .policy_set
+        .contains(PolicyFlag::Runtime));
     let lang_build::SymbolPayload::MetaFunction(meta_function) = symbol.payload else {
         panic!("meta payload");
     };
@@ -494,7 +495,7 @@ fn done_is_not_special_cased_inside_plus_selection() {
 }
 
 #[test]
-fn policy_bar_is_not_pattern_sum_bar_and_pattern_bar_is_not_policy_bar() {
+fn policy_choice_is_not_pattern_alternative_and_pattern_bar_stays_pattern_only() {
     assert!(plus_selection("unit + unit").is_ok());
     assert_eq!(
         forwarded_type_name(invoke_named("(if, int) either", "either")),
@@ -528,7 +529,7 @@ fn invoke_with_policy(world: &CompilationWorld, source: &str) -> RestrictedMetaI
         &site,
         &world.package_context(),
         LookupPhase::MetaAction,
-        ExecutionEnv::Meta,
+        ExecutionEnv::OpenStatic,
         VisibilityView::Internal,
         Provenance::new(source),
     )
@@ -610,7 +611,7 @@ fn selected_body_return_event_is_unsupported() {
         &site,
         &world.package_context(),
         LookupPhase::MetaAction,
-        ExecutionEnv::Meta,
+        ExecutionEnv::OpenStatic,
         VisibilityView::Internal,
         Provenance::new("selected body return event test"),
     );
@@ -637,7 +638,7 @@ fn return_is_not_overload_target_named_return() {
         arg_product_shape: call_site("unit + unit")
             .to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct),
         lookup_phase: LookupPhase::MetaAction,
-        demanded_execution: ExecutionEnv::Meta,
+        demanded_execution: ExecutionEnv::OpenStatic,
         visibility: VisibilityView::Internal,
         provenance: Provenance::new("return is not an overload target"),
     });

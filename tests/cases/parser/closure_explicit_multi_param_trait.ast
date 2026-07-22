@@ -41,13 +41,14 @@ Program
                               None
                             initializer:
                               None
-                  fn_item_trait:
-                    Expr
-                      Pipe
-                        Segment has_incoming=false
-                          OperatorExpr
-                            Atom
-                              Name meta
+                  call_policy:
+                    PolicySpec
+                      value_policy:
+                        PolicyConjunction
+                          PolicyChoice
+                            PolicyAtom Name "meta"
+                      pattern_policy:
+                        None
                   returns:
                     ReturnClause
                       slot:

@@ -57,12 +57,14 @@ Still open after this correction:
 - Exact representation of `TypeValueId` and canonical type-value equality.
 - Exact representation of symbol/place identity.
 - Exact future lowering of generic/meta-generated type expressions such as
-  `(int)Vec::std`.
+  `(int Vec::std)`.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of writable-place checking.
 - Exact future implementation of alias forwarding resolution.
-- How meta-function return values expose or hide injection places.
+- Exact Rust/IR representation of `SymbolConstructionValue` facet exposure;
+  semantically, formal invocation remains uninstalled and outer binding resolves
+  the installation place.
 - Interaction between graph freeze, seal phase, and injection-place mutability.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
@@ -73,36 +75,116 @@ Still open after this correction:
 - Interaction between type-value equality and type-associated namespace
   traversal.
 
+### Resolved symbol-first construction direction
+
+These decisions are no longer open questions and are intentionally not repeated
+here. Their normative future-design owners are:
+
+- `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+  for symbol-first facets, `compile` / `meta`, pattern scopes, owned-open
+  `inject`, ordering, extraction handoff, and binding/install boundaries;
+- `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
+  for namespace origin, construction ownership, physical authority, and
+  cross-file closure;
+- `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
+  `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1/P2 elaboration,
+  three-phase visibility, seal/const-mut boundaries, mechanical
+  compile-flow projection over ordinary call nodes, complete derived `Val2`
+  compile-companion objects, must-select consistency, policy-staged match,
+  intrinsic D/Done flow, coarse automatic require, and shared compile
+  evaluation;
+- `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
+  negative rule that lifetime syntax cannot reopen the unique ordinary
+  overload result.
+
+Unimplemented portions remain roadmap work, not reopened design questions.
+
 ---
 
 ## v0.7-prep policy correction record
 
-The following point is resolved for the v0.7-prep policy-aware early-meta
-track:
+Minimal policy-aware lookup remains implemented through transitional
+`PolicyFlag`, `PolicySet`, and `PolicyEnv` metadata. The future semantic model is
+now the typed pair:
 
-- Minimal policy-aware early meta lookup is implemented: `PolicyFlag` /
-  `PolicySet` / `PolicyEnv::Meta`, with per-component `Meta` filtering applied
-  in the resolver (`resolve_with_policy`) and in early-meta expansion. Core,
-  namespace, source-contributed, struct-generated type, and generated
-  field-function symbols carry explicit policy flags.
-- `PolicyEnv::Meta` is lookup visibility, not callable body execution
-  permission.
-- Generated field functions are `meta+runtime` visible symbols but runtime-entry
-  callables.
+```text
+Π = Pv:Pp
+```
 
-Still open after this correction:
+Resolved future-design decisions:
 
-- `PolicyEnv::Runtime` resolver mode. The `Runtime` flag is reserved but no
-  runtime lookup pass is implemented.
-- Full policy lattice.
-- Policy projection checking and conformance checking.
-- Ordinary function object policy model.
-- Alias forwarding resolution under policy filtering.
-- Overload buckets and per-policy-pass overload set construction.
-- Call execution checker.
-- Type checker.
-- Runtime residual call construction.
-- IR/HIR lowering.
+- `P1` is the optional projection on any binding, not a function-object-only
+  scalar. Omitted `P1` infers the complete result, a single `P1` is a
+  value-dominant projection, and a pair `P1` filters value and Pattern
+  components independently.
+- A general `runtime let` is legal. A source-side non-runtime premise belongs
+  only to the particular compile-flow projection rule that declares it.
+- `P2` describes a call/expression result pair. Single-policy `P2` uses
+  `P:(P-runtime)` and supplies `compile` when only `runtime` remains.
+- Function-object stage views are derived from `P2`:
+  `Stage(P1p) = Stage(P2p)` and
+  `Stage(P1v) = Stage(P2v) union Stage(P2p)`. Mutability, namespace
+  visibility, and value presence are not copied by this stage derivation.
+- The only execution phases are OpenStatic, SealStatic, and Runtime. `meta` is
+  exposed only in OpenStatic, `seal` only in SealStatic, `compile` in both
+  static phases, and runtime values only in Runtime.
+- Privileged seal scans read the frozen pre-seal world `Wpre`, never symbols
+  generated during seal.
+- Results retain component policy pairs and returned `Val2` objects retain
+  their own policy; no whole-result scalar policy is inferred.
+- Compile flow is a mechanical projection of complete symbol flow. Calls stay
+  ordinary unresolved call nodes, D/Done structure is intrinsic, and recursive
+  evaluation is not replaced by summary/fixed-point machinery.
+- Eligible runtime function objects have complete derived `Val2` compile
+  companion objects. Overload resolution forms a fully admissible set before
+  preference, and must-select is an object strategy rather than a fallback.
+- `const`/`mut` is a `Pv` dimension. Multi-position preference uses product
+  partial order; delete members remain candidates and may be the unique maximal
+  rejection.
+- Inferred require retains coarse complete blocks and guarded branch groups,
+  conjoins with manual require, and shares one compile-evaluation graph with
+  body continuation.
+
+Implemented substrate after this correction:
+
+- Raw and Normalized AST preserve dedicated conjunction, choice, atom, pair,
+  and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
+- `lang_build` provides typed pair normalization and true slice restriction,
+  three contextual P1 elaborators, three-phase exposure, structural compile
+  flow projection, Wpre/export closure, and phase/const-mut product-order test
+  substrate.
+- Flat policy flags remain compatibility transport, while lookup and execution
+  environments use the same three canonical phases.
+
+Not implemented after this correction:
+
+- Storing and checking canonical `Pv:Pp` on every symbol/value object.
+- Storing policy-pair views on every namespace entry and routing every build
+  operation through the typed P1 projection.
+- Integrating structural compile-flow projection with the complete evaluator.
+- Materialized derived companion objects and must-select enforcement.
+- Automatic inferred require, a complete overload resolver, and a call
+  execution checker.
+- Any positive lifetime/Horae design.
+- Alias forwarding under policy projection, type checking, and runtime IR.
+
+Still open for later design:
+
+- the final source token for the absent-value policy pattern (`S`, `null`, or
+  another spelling);
+- the complete runtime reflection object model;
+- the semantics of any additional future policy stage;
+- the final public spelling for overload-strategy metadata;
+- how source code references a derived compile companion and associates an
+  explicit replacement;
+- whether default companion suppression is permitted and which equivalent
+  compile Pattern/contract interface would be mandatory;
+- finer-grained require atomization and canonical identities for grouped
+  require structures;
+- future Pattern policy after an explicit sealing mechanism;
+- complete lifetime region/origin/Horae algebra;
+- the future member set of `BuiltinPrivilegedAstMetaFunction` and each member's
+  bounded capability.
 
 ---
 
@@ -192,25 +274,25 @@ model: local branch produces `Done(unit)`, and the final return accumulator
 receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
 pattern-space reduction, not silent discard.
 
-#### Resolved: r = t and r === t produce different meta return values
+#### Resolved: formal meta return has one construction form
 
-Status: **Resolved at future-design level** (see the meta-construction value/pattern
-clarifications document).
+Status: **Resolved at future-design level** (see the canonical symbol-first
+construction note).
 
-`r = t` produces a generative construction value (`GeneratedConstructionValue`)
-whose external identity is shielded by callee + canonical args + build identity.
-`r === t` produces a forwarding value (`ForwardedValue`) that shares the target's
-existing identity. These are not implementation variants of the same behavior.
+`r = ...` assigns pattern/facet material to the return layer of a
+`SymbolConstructionValue`. The former formal `r === ...` forwarding category is
+superseded. Ordinary declaration aliasing remains `let a === b` and continues to
+forward symbol/place lookup according to the alias model.
 
 #### Resolved: TypeValueId is projection material only
 
 Status: **Resolved at future-design level**.
 
 `TypeValueId` is a derived first-order type-value projection material. It is not
-an invocation result, binding source, construction identity, or type-definition
-identity. Graph-resolved invocation plumbing must return `MetaInvocationValue`
-cases such as `ForwardedValue(TypeSymbol)`, `GeneratedConstructionValue`, or
-`GeneratedTypeDefinitionValue`.
+a symbol, binding source, installation place, construction identity, or
+type-definition identity. Final invocation plumbing returns `PatternValue` for
+`compile` and `SymbolConstructionValue` for `meta`. Current
+`MetaInvocationValue` variants are transitional implementation transport.
 
 #### Still open
 
@@ -243,7 +325,7 @@ construct a control-flow graph.
 
 ### Later: Control-flow and effect semantics
 
-#### How should `return`, `else`, `match`, `effect`, `sync` be semanticized?
+#### How should `return`, `effect`, and `sync` be semanticized?
 
 **Status:** Open (active at later stages)
 
@@ -251,6 +333,11 @@ construct a control-flow graph.
 These are ordinary `Name` tokens at the lexical and parser level. No special
 AST nodes exist for them. The v0.1 frontend faithfully preserves these names
 in expression AST.
+
+Future `match` / `if` staging is no longer open: both use the same
+pattern-matching mechanism and select static versus runtime branching from the
+scrutinee value component `Pv`, while the Pattern component remains in static
+flow. That semantic decision does not change the current lexer/parser boundary.
 
 ---
 

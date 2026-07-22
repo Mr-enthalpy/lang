@@ -3,15 +3,15 @@ Program
     slot:
       BindingSlot let=true
         policy:
-          Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name public
-                OperatorExpr
-                  Atom
-                    Name policy
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "public"
+                PolicyChoice
+                  PolicyAtom Name "compile"
+            pattern_policy:
+              None
         deduce:
           None
         pattern:

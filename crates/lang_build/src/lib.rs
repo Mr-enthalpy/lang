@@ -29,7 +29,10 @@ pub mod overload_pattern;
 pub mod overload_set;
 pub mod pattern_head;
 pub mod pattern_space;
+pub mod phase_flow;
 pub mod policy_expr;
+pub mod policy_overload;
+pub mod policy_pair;
 pub mod product_shape;
 pub mod return_target;
 pub mod source;
@@ -95,7 +98,9 @@ pub use invocation_frame::{
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
-    bind_meta_invocation_value_result, expand_meta_initializer_via_invocation,
+    bind_meta_invocation_value_result,
+    bind_meta_invocation_value_result_with_materialization_state,
+    expand_meta_initializer_via_invocation,
     expand_meta_initializer_via_invocation_with_materialization_state, MetaExpansionResult,
 };
 pub use meta_body::{
@@ -112,6 +117,7 @@ pub use meta_candidate::{
     PreparedCallableCandidate,
 };
 pub use meta_invocation::{
+    attach_type_definition_pattern_heads, attach_type_definition_pattern_heads_with_context,
     compute_construction_instance_id, compute_type_definition_instance_id, invoke_meta_callable,
     invoke_meta_callable_cached, invoke_meta_callable_cached_with_materialization_state,
     invoke_meta_callable_with_materialization_state, ConstructionIdentityMaterial,
@@ -124,14 +130,14 @@ pub use meta_invocation::{
 pub use meta_key::{compute_meta_instance_key, CanonicalFingerprint, MetaInstanceKey};
 pub use model::{
     callable_body_allows_execution, policy_metadata, policy_set_allows_execution,
-    policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
-    policy_set_meta_runtime, policy_set_runtime, CallablePolicyMetadata, ChildBucket, ChildLink,
-    ChildNameRole, CoreMetaFunction, Diagnostic, DiagnosticSeverity, ExecutionEnv, FieldObject,
-    FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-    NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet, Provenance, ResolverCode,
-    SourceCallableObject, SourceCategory, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
-    SyntaxObject, SyntaxObjectKind, TypeField, TypeObject, VerificationPrimitive,
-    VisibilityMetadata,
+    policy_set_compile, policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
+    policy_set_meta_runtime, policy_set_runtime, policy_set_seal, CallablePolicyMetadata,
+    ChildBucket, ChildLink, ChildNameRole, CoreMetaFunction, Diagnostic, DiagnosticSeverity,
+    ExecutionEnv, FieldObject, FieldProjection, MetaFunctionObject, NamespaceDelta, NamespaceNode,
+    NamespaceNodeId, NamespaceNodeKind, PolicyEnv, PolicyFlag, PolicyMetadata, PolicySet,
+    Provenance, ResolverCode, SourceCallableObject, SourceCategory, SymbolId, SymbolKind,
+    SymbolObject, SymbolPayload, SyntaxObject, SyntaxObjectKind, TypeField, TypeObject,
+    VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use overload_pattern::{
@@ -152,11 +158,32 @@ pub use pattern_head::{
     TypeMaterializationState,
 };
 pub use pattern_space::{
-    bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,
-    StructLeafTypeExprShape, SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape,
-    SymbolPathShape, TypePatternExprShape,
+    bool_branch_space_for_tests, bool_pattern_aliases_for_tests, derive_sum_pattern_space,
+    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, SumPatternAlternative,
+    SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape, TypePatternExprShape,
+};
+pub use phase_flow::{
+    classify_static_task, enumerate_value_facet, expose_policy_slice, project_complete_symbol_flow,
+    read_pattern, read_value, resolve_explicit_path, CompleteFlowNode, CompleteSymbolFlow,
+    ExposedPolicyEntry, FacetView, ProjectedCompileFlow, RuntimeResidualFlow, StaticFlow,
+    StaticTaskDisposition, SymbolEntry, SymbolResolutionError,
 };
 pub use policy_expr::elaborate_declaration_policy_expr;
+pub use policy_overload::{
+    select_by_mutability_product, select_policy_overload, MutabilityPattern,
+    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection,
+};
+pub use policy_pair::{
+    compute_export_closure, compute_wpre, derive_function_object_p1,
+    elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
+    elaborate_namespace_declaration_policy, externally_visible, normalize_p2_policy, project_p1,
+    publicly_reachable, BuiltinPrivilegedSealFunction, FormalPolicyPattern, FunctionMember,
+    FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView,
+    FunctionSliceStage, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
+    PolicyPair, PolicyResultEntry, PolicyStage, SealWorldSnapshot, StageSet, ValueComponentPolicy,
+    ValueMutability, ValuePresence, WpreRoots,
+};
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,
     NonValueArgKind, ProductAtom, ProductMaterialRole, ProductObject, RawArgShape,

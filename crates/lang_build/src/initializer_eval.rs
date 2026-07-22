@@ -93,7 +93,7 @@ pub fn evaluate_initializer_best_effort(
         &call_site,
         resolver_context,
         LookupPhase::MetaAction,
-        ExecutionEnv::Meta,
+        ExecutionEnv::OpenStatic,
         VisibilityView::Internal,
         provenance.clone(),
     );
@@ -127,7 +127,7 @@ fn evaluate_type_name(
     };
     let symbol = snapshot
         .capability()
-        .resolve_type_object_with_policy(text, resolver_context, PolicyEnv::Meta)
+        .resolve_type_object_with_policy(text, resolver_context, PolicyEnv::OpenStatic)
         .ok()?;
     (symbol.kind == SymbolKind::Type).then(|| {
         (

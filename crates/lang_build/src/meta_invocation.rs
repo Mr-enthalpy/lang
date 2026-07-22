@@ -1,9 +1,10 @@
 //! Formal meta invocation boundary.
 //!
 //! Consumes a `PreparedCallableCandidate` and dispatches to the appropriate
-//! primitive invocation. This is a **pure** step — it produces a
-//! `MetaInvocationValue` but does **not** install `NamespaceDelta`, bind
-//! declared symbols, or mutate the namespace graph.
+//! primitive invocation. This step is graph-installation-free and binding-free:
+//! it produces a `MetaInvocationValue` but does **not** install
+//! `NamespaceDelta`, bind declared symbols, or mutate the namespace graph. It
+//! may allocate or attach registry-backed materialization state.
 //!
 //! ## Separation of concerns
 //!
@@ -11,7 +12,7 @@
 //! CandidatePrepResult::ApplicablePlaceholder
 //!   → MetaInvocationInput
 //!   → invoke_meta_callable
-//!   → MetaInvocationValue  (pure, no graph mutation)
+//!   → MetaInvocationValue  (no graph installation or binding)
 //!
 //! MetaInvocationValue
 //!   → bind_meta_invocation_value_result (meta.rs)
@@ -21,9 +22,10 @@
 //! `invoke_meta_callable_with_materialization_state` may populate
 //! `TypeMaterializationState` for values whose semantic identity is
 //! registry-backed, such as `GeneratedTypeDefinitionValue`. This is still
-//! pure with respect to the namespace graph. The cache stores only replayable
-//! value material and strips concrete registry-backed `PatternHeadId`s before
-//! insertion; cache hits rematerialize heads in the caller's current state.
+//! graph-installation-free with respect to the namespace graph. The cache stores
+//! only replayable value material and strips concrete registry-backed
+//! `PatternHeadId`s before insertion; cache hits rematerialize heads in the
+//! caller's current state.
 //!
 //! ## Relation to v0.8 shortcut
 //!
@@ -198,9 +200,10 @@ pub enum MetaValueTarget {
 
 /// Invocation value produced by formal meta invocation.
 ///
-/// `ForwardedValue` is produced by `IdentityType` (`r === arg`).
-/// `GeneratedConstructionValue` is produced by `UnaryConstructionPrototype`
-/// (`r = t`, where `t` is computed from the argument object).
+/// `ForwardedValue` is produced by the restricted evaluator's legacy
+/// `IdentityType` forwarding proof. It is transitional transport, not the final
+/// formal meta-return model. `GeneratedConstructionValue` is produced by
+/// `UnaryConstructionPrototype` from argument-derived construction material.
 /// `GeneratedTypeDefinitionValue` is produced by `struct` and is materialized
 /// only by the binding layer.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -244,8 +247,9 @@ impl MetaInvocationValue {
     }
 }
 
-/// Forwarded existing value — the call returns the same value that was passed
-/// as argument (`r === arg`). Used by `IdentityType` as forwarding proof.
+/// Forwarded existing value used by the restricted evaluator's `IdentityType`
+/// proof path. The final formal meta-return model does not expose this as a
+/// separate source-level forwarding category.
 ///
 /// The `target` carries the forwarded type's `SymbolId`. `TypeValueId`
 /// projection is implicitly derived from the symbol identity.
@@ -258,7 +262,7 @@ pub struct ForwardedValue {
 
 /// Generated construction value — the call returns a new construction value
 /// whose external identity is shielded by callee + canonical args + build
-/// identity (`r = t`). Reserved for future generative type constructors.
+/// identity. Reserved for future generative type constructors.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedConstructionValue {
     pub construction_instance_id: ConstructionInstanceId,
@@ -269,7 +273,8 @@ pub struct GeneratedConstructionValue {
 
 /// Generated type-definition value produced by formal `struct` invocation.
 ///
-/// This is pure invocation output. The declared type symbol, associated
+/// This is graph-installation-free and binding-free invocation output. Registry
+/// material may already be attached; the declared type symbol, associated
 /// namespace, and field projections are binding materialization artifacts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedTypeDefinitionValue {
@@ -859,11 +864,18 @@ fn cacheable_invocation_value(value: MetaInvocationValue) -> MetaInvocationValue
     }
 }
 
-fn attach_type_definition_pattern_heads(
-    mut value: GeneratedTypeDefinitionValue,
+/// Attach pattern heads for a generated type definition under its anonymous
+/// generated fallback context.
+///
+/// Formal `struct` invocation is graph-installation-free and binding-free. It
+/// may allocate registry-backed material through this fallback before final
+/// resolved pattern-scope semantics are available.
+pub fn attach_type_definition_pattern_heads(
+    value: GeneratedTypeDefinitionValue,
     materialization_state: &mut TypeMaterializationState,
     provenance: Provenance,
 ) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
+    let type_definition_id = value.type_definition_id;
     let owner_display_name = value
         .type_pattern_expr
         .as_ref()
@@ -874,6 +886,35 @@ fn attach_type_definition_pattern_heads(
                 value.type_definition_id.as_u64()
             )
         });
+    attach_type_definition_pattern_heads_with_context(
+        value,
+        materialization_state,
+        PatternMaterializationContext::GeneratedTypeDefinition { type_definition_id },
+        owner_display_name,
+        provenance,
+    )
+}
+
+/// Attach pattern heads for a generated type definition under an explicit
+/// materialization context.
+///
+/// This is a doc-hidden transitional test-support API. It remains public only
+/// so integration tests can exercise categorical registry identity. It is not
+/// a stable pattern-owner construction capability, and production semantic
+/// callers must not treat `Global`, `Namespace`, `Local`, or `Generated`
+/// contexts as final `ResolvedPatternScope` identities.
+///
+/// The display name is diagnostic material only. The owner `PatternHeadId`
+/// identity comes from `context`; callers must not derive identity from the
+/// bare source spelling.
+#[doc(hidden)]
+pub fn attach_type_definition_pattern_heads_with_context(
+    mut value: GeneratedTypeDefinitionValue,
+    materialization_state: &mut TypeMaterializationState,
+    context: PatternMaterializationContext,
+    owner_display_name: impl Into<String>,
+    provenance: Provenance,
+) -> Result<GeneratedTypeDefinitionValue, Diagnostic> {
     let pattern_fields = value
         .identity_material
         .field_signature_material
@@ -887,10 +928,8 @@ fn attach_type_definition_pattern_heads(
     let pattern_materialization = materialization_state
         .pattern_heads
         .materialize_struct_pattern_heads(
-            PatternMaterializationContext::GeneratedTypeDefinition {
-                type_definition_id: value.type_definition_id,
-            },
-            owner_display_name,
+            context,
+            owner_display_name.into(),
             pattern_fields,
             provenance,
         )?;

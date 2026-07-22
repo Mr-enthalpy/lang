@@ -78,6 +78,12 @@ contribute to:
 vector::math::mylib
 ```
 
+They may create distinct direct children at that namespace level. Each file is
+one closed `SourceConstructionUnit`; neither may reopen a namespace/type/
+pattern/value subtree created by the other. Thus implementation filenames are
+absent from source navigation, but file boundaries still matter for
+construction ownership.
+
 They do not create:
 
 ```text
@@ -90,14 +96,19 @@ file names do not create namespace segments.
 
 ## 7. Namespace graph node kinds
 
-The full namespace graph may contain three kinds of nodes:
+The current graph/provenance model may record three namespace origin categories:
 
 - **Physical namespace nodes**: contributed by filesystem skeleton, build
   descriptors, or package manifests.
 - **Declared namespace objects**: created by `let ns: namespace = ...` at
   the language level.
-- **Virtual namespace nodes**: synthesized by the namespace assembler,
-  metaprogramming, or the resolver. Not tied to any physical source file.
+- **Virtual namespace nodes**: created by canonical meta construction and
+  installed by the namespace assembler. They are not tied to a physical source
+  file; the resolver observes them but does not create their namespace origin.
+
+In the final `SymbolCell` model these are namespace-facet origins, not mutually
+exclusive symbol kinds. A symbol may simultaneously have namespace, type, and
+value facets; structurally, `has TypeFacet => has NamespaceFacet`.
 
 A navigable child name is role-aware: object/function symbols and pure
 namespace subspaces may share the same textual name when resolver callers
@@ -139,12 +150,22 @@ graph and resolver concern, not source-level syntax.
 ## 13. Namespace contribution and injection rule
 
 Ordinary source fragments may contribute only the direct children of their
-current namespace node; they must not inject into grandchildren or deeper
-descendants. Deeper structure is owned by the immediate direct child object. A
-closed meta-function instantiation may generate a parent-to-descendant virtual
-subtree as the exception. In all contexts, generated nodes must not inject into
-parents, siblings, or unrelated globals. See `spec/design/build-package/build-system-design.md`
-§9 and `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4.
+current physical directory namespace. One file may fully construct the new
+direct-child subtree it creates, but a parallel file may not reopen it. An
+ordinary canonical meta invocation may construct a complete virtual subtree
+because all actions belong to one `MetaConstructionUnit` transaction.
+Compiler-defined privileged AST meta functions use only their bounded
+current-unit capability. In all contexts, generated nodes must not inject into
+parents, siblings, unrelated globals, or subtrees owned by another construction
+unit.
+
+If `ns/ns1/` physically exists, only files inside `ns/ns1/` may create direct
+contents of `ns1::ns`; parent files may navigate/read that child but cannot
+inject into it or upgrade it to a source-created type. Cross-file type-child,
+namespace-child, ordinary value-member, and overload-entry injection are
+currently forbidden. See `spec/design/build-package/build-system-design.md` §9,
+`spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4, and
+`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
 This is a future meta-function / metaprogramming capability. It is not v0.1
 and must not be assumed as general language semantics.

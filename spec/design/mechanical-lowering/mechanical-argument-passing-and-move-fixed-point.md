@@ -114,9 +114,9 @@ The inserted action can be described schematically in language-shaped form:
 
 Semantic points:
 
-1. `(arg: type)? |> if { arg; }` means: the guard `arg: type` produces a
-   bool-protected result `(if | else) bool`; `?` opens the bool extraction
-   view. Non-value argument material passes through unchanged. Non-value
+1. `(arg: type)? |> if { arg; }` uses an optional one-layer top Pattern view.
+   The guard `arg: type` produces a bool symbol whose Pattern carries the
+   `if` / `else` alternatives; matching does not require `?`. Non-value
    material includes type objects, rank objects, namespace objects, meta
    objects, pattern objects, verification objects, and future manifest/package
    objects.
@@ -126,8 +126,9 @@ Semantic points:
 3. `arg |> <T: type>(arg: T) { ... }` binds the first-order type `T` of value
    argument `arg`.
 
-4. `(T: has_pass)? |> if { ... }` means: the guarded predicate produces
-   `(if | else) bool`, then `?` exposes the control-pattern view. If explicit
+4. `(T: has_pass)? |> if { ... }` means: the guarded predicate produces a bool
+   symbol and `?` explicitly peels one top Pattern layer. The branch could read
+   the Pattern directly. If explicit
    pass is present, the lowering preserves `arg` and does not automatically
    rewrite it.
 

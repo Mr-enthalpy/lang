@@ -11,7 +11,7 @@ use crate::{
         CandidatePreparationInput, ParameterShape,
     },
     meta_invocation::{
-        compute_type_definition_instance_id,
+        attach_type_definition_pattern_heads, compute_type_definition_instance_id,
         invoke_meta_callable_cached_with_materialization_state,
         invoke_meta_callable_with_materialization_state, GeneratedFieldDefinition,
         GeneratedTypeDefinitionValue, MetaInvocationInput, MetaInvocationResult,
@@ -81,7 +81,7 @@ pub fn try_expand_early_meta_initializer_with_materialization_state(
         &site.target,
         &snapshot.capability(),
         context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .map_err(BuildError::single)?
     else {
@@ -96,8 +96,8 @@ pub fn try_expand_early_meta_initializer_with_materialization_state(
                 parent_namespace,
                 binding_name,
                 context,
-                PolicyEnv::Meta,
-                ExecutionEnv::Meta,
+                PolicyEnv::OpenStatic,
+                ExecutionEnv::OpenStatic,
                 CandidateBuildIdentityPlaceholder::default(),
                 provenance,
                 None,
@@ -352,12 +352,13 @@ pub fn expand_meta_initializer_via_invocation_with_materialization_state(
         }
     };
 
-    bind_meta_invocation_value_result(
+    bind_meta_invocation_value_result_with_materialization_state(
         invocation_value,
         snapshot,
         parent_namespace,
         binding_name,
         provenance,
+        materialization_state,
     )
 }
 
@@ -514,13 +515,13 @@ fn classify_struct_field_argument(
     let type_path_str = type_path.join("::");
     let type_symbol = snapshot
         .capability()
-        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::Meta)
+        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::OpenStatic)
         .map_err(|_| {
             if let Ok(non_type_symbol) = snapshot.capability().resolve_with_policy(
                 &type_path,
                 context,
                 ResolveExpectation::Object,
-                PolicyEnv::Meta,
+                PolicyEnv::OpenStatic,
             ) {
                 return Diagnostic::hard_error(
                     format!(
@@ -670,12 +671,38 @@ fn insert_field_projection_layer(
 ///   that forwards the target type's symbol identity.
 /// - `GeneratedConstructionValue`: materialized by `bind_generated_construction_value`.
 /// - `GeneratedTypeDefinitionValue`: materialized by `bind_generated_type_definition_value`.
+///
+/// Compatibility helper only. This creates a temporary
+/// `TypeMaterializationState`, so it is not suitable for registry-backed world
+/// binding of generated type definitions. Callers that install generated type
+/// definitions into a `CompilationWorld` must use
+/// `bind_meta_invocation_value_result_with_materialization_state` so the
+/// world-owned `PatternHeadRegistry` remains authoritative.
 pub fn bind_meta_invocation_value_result(
     value: MetaInvocationValue,
     snapshot: &NamespaceGraphSnapshot,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
+) -> Result<MetaExpansionResult, BuildError> {
+    let mut materialization_state = TypeMaterializationState::default();
+    bind_meta_invocation_value_result_with_materialization_state(
+        value,
+        snapshot,
+        parent_namespace,
+        binding_name,
+        provenance,
+        &mut materialization_state,
+    )
+}
+
+pub fn bind_meta_invocation_value_result_with_materialization_state(
+    value: MetaInvocationValue,
+    snapshot: &NamespaceGraphSnapshot,
+    parent_namespace: NamespaceNodeId,
+    binding_name: &str,
+    provenance: Provenance,
+    materialization_state: &mut TypeMaterializationState,
 ) -> Result<MetaExpansionResult, BuildError> {
     match value {
         MetaInvocationValue::ForwardedValue(fv) => match fv.target {
@@ -693,6 +720,7 @@ pub fn bind_meta_invocation_value_result(
                     policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
                     visibility_metadata: crate::model::VisibilityMetadata {
                         slots: std::collections::BTreeMap::new(),
+                        ..crate::model::VisibilityMetadata::default()
                     },
                     provenance: provenance.clone(),
                     diagnostics: Vec::new(),
@@ -707,6 +735,7 @@ pub fn bind_meta_invocation_value_result(
                     policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
                     visibility_metadata: crate::model::VisibilityMetadata {
                         slots: std::collections::BTreeMap::new(),
+                        ..crate::model::VisibilityMetadata::default()
                     },
                     diagnostics: Vec::new(),
                     generation_origin: Some("ForwardedValue(TypeSymbol) binding".to_string()),
@@ -749,22 +778,24 @@ pub fn bind_meta_invocation_value_result(
         ),
         MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv) => {
             bind_generated_type_definition_value(
-                &gtdv,
+                gtdv,
                 snapshot,
                 parent_namespace,
                 binding_name,
                 provenance,
+                materialization_state,
             )
         }
     }
 }
 
 fn bind_generated_type_definition_value(
-    value: &GeneratedTypeDefinitionValue,
+    value: GeneratedTypeDefinitionValue,
     snapshot: &NamespaceGraphSnapshot,
     parent_namespace: NamespaceNodeId,
     binding_name: &str,
     provenance: Provenance,
+    materialization_state: &mut TypeMaterializationState,
 ) -> Result<MetaExpansionResult, BuildError> {
     let expected = compute_type_definition_instance_id(&value.identity_material);
     if expected != value.type_definition_id {
@@ -787,6 +818,12 @@ fn bind_generated_type_definition_value(
     let mut delta = snapshot.empty_delta();
     let type_symbol_id = delta.allocate_symbol_id();
     let type_namespace_id = delta.allocate_node_id();
+    let value = if value.pattern_heads.is_some() {
+        value
+    } else {
+        attach_type_definition_pattern_heads(value, materialization_state, provenance.clone())
+            .map_err(BuildError::single)?
+    };
     delta.insert_node(NamespaceNode::new(
         type_namespace_id,
         format!("{binding_name}<type-associated>"),
@@ -974,6 +1011,7 @@ fn bind_generated_construction_value(
         policy_metadata: crate::policy_metadata(policy_set_meta_runtime()),
         visibility_metadata: crate::model::VisibilityMetadata {
             slots: std::collections::BTreeMap::new(),
+            ..crate::model::VisibilityMetadata::default()
         },
         diagnostics: Vec::new(),
         generation_origin: Some(

@@ -66,6 +66,10 @@ pub struct PatternHead {
     pub provenance: Provenance,
 }
 
+/// Transitional categorical registry contexts for explicit low-level
+/// materialization and tests. These variants are not the final
+/// `ResolvedPatternScope` owner model, and ordinary binding must not derive one
+/// from its destination path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PatternMaterializationContext {
     Global {

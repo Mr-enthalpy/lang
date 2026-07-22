@@ -2,13 +2,14 @@ use crate::{
     token::operator_spelling_in_expr_context, AliasBinderAst, AnnotationTermAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, CanonicalSkeletonAst, DeduceListAst,
     DiagnosticCode, EntityRefAst, ErrorAst, ExprAst, ExprKind, FormAst, LetAliasAst, LetAst,
-    NameAst, NavComponentAst, OperatorNameAst, ProductExtractAst, ProductExtractElementAst, Span,
-    Symbol, TokenKind, WithClauseAst, WithClauseKind,
+    NameAst, NavComponentAst, OperatorNameAst, PolicySpecAst, ProductExtractAst,
+    ProductExtractElementAst, Span, Symbol, TokenKind, WithClauseAst, WithClauseKind,
 };
 
 use super::{
     atom::parse_nav_group_component, canonical::parse_canonical_skeleton,
     deduce::parse_deduce_list, expr::parse_expr_until, form::Parser,
+    policy::try_parse_policy_spec_before_let,
 };
 
 #[derive(Clone, Copy)]
@@ -18,10 +19,10 @@ pub enum BindingSlotContext {
     Return,
 }
 
-pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<ExprAst>) -> FormAst {
+pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<PolicySpecAst>) -> FormAst {
     let start = policy
         .as_ref()
-        .map(|expr| expr.span)
+        .map(|policy| policy.span)
         .unwrap_or_else(|| parser.cursor.current_span());
     parser
         .cursor
@@ -236,7 +237,7 @@ pub fn parse_product_extract(
 fn parse_slot_policy_and_let(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
-) -> (Option<ExprAst>, bool) {
+) -> (Option<PolicySpecAst>, bool) {
     if !matches!(
         context,
         BindingSlotContext::Param | BindingSlotContext::Return
@@ -249,19 +250,12 @@ fn parse_slot_policy_and_let(
         return (None, true);
     }
 
-    let saved = parser.cursor.current_index();
-    parser.gate_diagnostics();
-    let expr = parse_expr_until(parser, |p| {
-        p.cursor.at_name("let") || slot_policy_boundary(p, context)
-    });
-
-    if parser.cursor.at_name("let") {
-        parser.ungate_keep_diagnostics();
+    if let Some(policy) =
+        try_parse_policy_spec_before_let(parser, |p| slot_policy_boundary(p, context))
+    {
         parser.cursor.bump_non_trivia();
-        (Some(expr), true)
+        (Some(policy), true)
     } else {
-        parser.cursor.set_index(saved);
-        parser.ungate_drop_diagnostics();
         (None, false)
     }
 }
@@ -272,13 +266,10 @@ fn slot_policy_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) ->
     }
     match context {
         BindingSlotContext::Param => {
-            parser.cursor.at_symbol(Symbol::Colon)
-                || parser.cursor.at_symbol(Symbol::Comma)
-                || parser.cursor.at_symbol(Symbol::RParen)
+            parser.cursor.at_symbol(Symbol::Comma) || parser.cursor.at_symbol(Symbol::RParen)
         }
         BindingSlotContext::Return => {
-            parser.cursor.at_symbol(Symbol::Colon)
-                || parser.cursor.at_symbol(Symbol::FatArrow)
+            parser.cursor.at_symbol(Symbol::FatArrow)
                 || parser.cursor.at_symbol(Symbol::LBrace)
                 || parser.cursor.at_name("with")
         }
@@ -530,7 +521,7 @@ fn parse_let_value(parser: &mut Parser<'_>, require_initializer: bool) -> ExprAs
 fn parse_alias_let_body(
     parser: &mut Parser<'_>,
     span_start: Span,
-    policy: Option<ExprAst>,
+    policy: Option<PolicySpecAst>,
 ) -> LetAliasAst {
     let binder = parse_alias_binder(parser);
 

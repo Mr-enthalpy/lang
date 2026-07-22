@@ -242,7 +242,7 @@ spanning the failed region.
 
 - **Trigger**: A sequence that starts like a `FnHeadPrefix` but contains a
   malformed clause (e.g., duplicate deduce list, misplaced `=>`, unrecognizable
-  param list contents, missing function item trait after `:`, missing return
+  param list contents, missing call-result policy after `:`, missing return
   binder after `->`, missing return constraint after `:`, or a head clause
   keyword (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) immediately
   followed by a clause/body boundary with no expression — message `expected

@@ -15,6 +15,15 @@ Pattern normalization and the candidate model that feeds invocation:
 - the full overload-resolution vision
 - static pattern spaces and extraction chains
 
+Resolved pattern owners, `struct` / functional `inject`, and the rule that fully
+named direct-child layers normalize to `Set<PatternValue>` while any bare child
+makes the whole layer positional are owned by
+`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+Canonical policy pairs, seal visibility, const/mut product order, compile-flow
+projection, derived compile companions, must-select semantics, match staging,
+and automatic require are owned by
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
 This block distinguishes two layers explicitly:
 
 - the **earlier, narrower** candidate-preparation subset that serves formal meta
@@ -25,7 +34,8 @@ This block distinguishes two layers explicitly:
 ## Not in scope
 
 Runtime overload resolution implementation, full pattern-space algebra, and
-match/exhaustiveness checking.
+match/exhaustiveness checking. Lifetime checking/refinement is later than this
+type/compile pipeline and is bounded separately in `../lifetime/`.
 
 ## Product semantic normalization bridge
 
@@ -45,7 +55,8 @@ candidate preparation, not runtime overload resolution.
 - `pattern-normalization-and-first-order-overload.md` — the earlier
   candidate-preparation subset.
 - `overload-resolution-design.md` — the broader, later full overload-resolution
-  vision.
+  vision, including fully admissible set `A`, ordered preference filters, and
+  must-select consistency.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   extraction-chain semantics.
 

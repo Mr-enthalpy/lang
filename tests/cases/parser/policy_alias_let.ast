@@ -1,12 +1,13 @@
 Program
   LetAlias
     policy:
-      Expr
-        Pipe
-          Segment has_incoming=false
-            OperatorExpr
-              Atom
-                Name policy
+      PolicySpec
+        value_policy:
+          PolicyConjunction
+            PolicyChoice
+              PolicyAtom Name "policy"
+        pattern_policy:
+          None
     binder:
       Name x
     target:

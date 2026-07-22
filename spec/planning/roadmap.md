@@ -17,7 +17,7 @@ v0.4   — Raw AST → Normalized AST Prototype / Hardening — completed
 v0.5   — Normalized Surface Semantics Stabilization and Public Documentation Reset — completed public baseline
 v0.6   — Build / Namespace Graph Bootstrap — started / partial vertical slice
 v0.7   — Early Meta-Function Bootstrap — future
-v0.8   — Type-to-Type Meta Construction Interpreter — future
+v0.8   — Compile / Symbol Construction Interpreter Bootstrap — future
 v0.9+  — Resumed semantic design (canonical forms, pattern spaces, meta with control flow, type/kind, closure materialization, NLL, semantic prototype, HIR, codegen) — future
 ```
 
@@ -194,10 +194,11 @@ Narrative:
 - v0.5 closes normalized surface semantics.
 - v0.6 builds package / namespace graph infrastructure.
 - v0.7 introduces early meta-function lookup and expansion.
-- v0.8 introduces a restricted type-to-type meta construction interpreter.
-- Later stages resume canonical forms, pattern spaces, value-to-type and
-  value-to-value meta, type/kind checking, closure materialization, ownership/NLL,
-  the semantic prototype, HIR, and codegen.
+- v0.8 evolves the restricted type-shaped evaluator toward `compile`
+  `PatternValue` computation and `meta` `SymbolConstructionValue` construction.
+- Later stages resume canonical forms, pattern spaces, value-directed
+  compile/meta control flow, type/kind checking, closure materialization,
+  ownership/NLL, the semantic prototype, HIR, and codegen.
 
 The canonical detailed direction for v0.6–v0.8 is
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`, building on
@@ -214,11 +215,15 @@ The active design route (documented under `spec/design/`) is:
 
 ```text
 package/manifest identity
-  -> namespace graph / SymbolObject
-  -> TypeValueId / PlaceId / AliasChain
+  -> namespace graph / SymbolCell (current substrate: SymbolObject)
+  -> SymbolId / PlaceId / PatternValue / TypeValueId / AliasChain
   -> ProductObject / ArgProductShape
   -> pattern normalization + first-order candidate shapes
-  -> formal meta object invocation
+  -> compile PatternValue computation
+  -> meta SymbolConstructionValue construction
+  -> ResolvedPatternScope / struct / functional inject
+  -> let binding/injection + NamespaceDelta install
+  -> formal invocation demand/policy integration
   -> mechanical lowering family
   -> later runtime lookup
   -> first-order type check
@@ -272,6 +277,13 @@ Must cover:
 - physical namespace skeleton from directories
 - implementation file as source fragment; file name does not contribute a
   namespace segment
+- namespace facet creation has exactly one origin: physical directory, one
+  source construction unit, or one canonical meta construction unit
+- physical directory namespaces define contribution authority: only files in
+  that directory may create their direct contents
+- each source file is one closed construction unit; parallel files may create
+  distinct direct children but may not reopen one another's namespace/type/
+  pattern/value subtrees
 - declared symbol harvesting
 - SymbolObject model
 - physical / declared / virtual `NamespaceNode` kind
@@ -280,16 +292,23 @@ Must cover:
 - role-aware child-name buckets: object/function role and namespace-subspace
   role; same-role conflicts are hard errors, while field functions may share
   names with projection namespace subspaces such as `ref` / `share`
-- ordinary contribution restricted to direct children; deeper structure owned by
-  the immediate direct child (no ordinary parent-to-descendant injection)
+- ordinary source authority begins at direct children; one source unit may fully
+  construct a new child subtree in its own delta, while parallel files may not
+  reopen that subtree
 - no source-level import/use/include/module
 - policy metadata slots on symbols, contexts, and namespace graph nodes,
-  including minimal `PolicyEnv::Meta` resolver visibility filtering; full policy
-  checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`)
+  including the legacy flat resolver adapter now mapped onto OpenStatic,
+  SealStatic, and Runtime visibility; full pair storage on every entry and
+  end-to-end checking remain future work (see
+  `spec/design/policy-capability/policy-visibility-symbols.md`)
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
   overload-set semantics or package overlay in v0.6
+- current cross-file closure forbids type-child, namespace-child, ordinary
+  value-member, and overload-entry injection into an existing symbol; value
+  overload union may be reconsidered only after explicit merge authority and
+  stable candidate identity are designed
 - engineering invariants: snapshot + transaction delta discipline,
   symbol-identity-as-object, core bootstrap boundary, meta-expansion atomicity,
   phase-freeze vocabulary, no-bypass rule, invariant-targeted test philosophy
@@ -309,8 +328,8 @@ harvesting, role-aware child buckets, expectation-aware resolver lookup, core
 bootstrap symbols, and invariant tests. It also includes a minimal early-meta
 closure for `core::struct` / `core::assert` lookup so the world model can prove
 generated type-associated namespaces are installed atomically. v0.7-prep has
-implemented minimal policy-aware early-meta lookup and callable policy-plane
-clarification: `PolicyEnv::Meta` is resolver visibility, not callable execution
+implemented policy-aware resolver visibility and callable policy-plane
+clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. Fields named `ref` / `share` are accepted as
 object-role field functions that coexist with projection namespace subspaces.
@@ -330,68 +349,77 @@ Must cover:
 - early meta-function lookup from the namespace graph
 - closed `SyntaxObject` passing
 - `assert` as a compile-time hard-check primitive
-- `struct` as the first real globally visible meta-function object from the core
-  namespace
-- meta call replacement model
-- `MetaExpansionResult` (replacement object / namespace delta / diagnostics /
-  provenance)
-- parent-to-child namespace injection rule; parent-to-descendant generation only
-  as the closed meta exception
+- `struct` as the first real globally visible
+  `BuiltinPrivilegedAstMetaFunction` object from the core namespace
+- current meta call replacement adapter
+- current `MetaExpansionResult` transport (replacement object / namespace delta /
+  diagnostics / provenance); final formal invocation returns an uninstalled
+  construction and outer binding performs delta installation
+- an ordinary canonical meta invocation owns one closed
+  `MetaConstructionUnit` and may build its complete virtual subtree without
+  cross-unit reopening; compiler-known privileged AST meta functions use only
+  their separately bounded construction capability
 - generated child namespace installation; no arbitrary rewrite of parent /
   sibling / global namespace
 - `struct` consumes AST by a private checker; failure is a meta hard error, not
   a parser / normalizer error
-- policy fields on callable objects — symbol visibility policy, body-entry
-  policy, and return-object policy represented distinctly; full projection and
-  execution checking remain future work (see
+- policy fields on callable objects retained as transitional symbol,
+  body-entry, and result metadata; final source semantics use canonical
+  `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
+  `P3`; the typed pair substrate now exists, while migration of every legacy
+  `PolicySet` consumer and end-to-end execution checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 
-Non-goals: general compile-time value execution; value-to-value meta-functions;
+Non-goals: general `compile` PatternValue execution; value-directed meta construction;
 arbitrary control flow in meta bodies; full generic system; full pattern-space
 semantics; HIR/codegen integration beyond placeholder nodes.
 
-#### v0.8 — Type-to-Type Meta Construction Interpreter
+#### v0.8 — Compile / Symbol Construction Interpreter Bootstrap
 
-**Goal**: the earliest, most restricted meta-function body execution model:
-type → type, single entry / single exit, no intermediate control flow, pure
-streaming structure. A meta body is the source file's already-produced Raw AST /
-Normalized AST executed under a meta policy by a type-object construction
-interpreter; it is not a separate DSL and not a text macro.
+**Goal**: evolve the earliest restricted type-shaped evaluator toward the
+canonical value-level `compile` and symbol-level `meta` capabilities. Bodies
+consume the source file's already-produced structured AST/Normalized AST under
+policy; this is not a separate DSL or text macro.
 
 Must cover:
 
-- meta function body as normalized AST
-- type-object construction interpreter
-- declaration-as-assignment / assignment-as-injection
-- `let` inside a meta body creates symbols through the namespace graph capability
-- `===` as symbol alias / forwarding, not copy
-- explicit return object slot, e.g. `meta | runtime let r: type`
-- `r = t` returns the generated object; `r === t` forwards an existing globally
-  visible symbol
-- generative meta identity = function symbol + canonical args + build/config
-  fingerprint
-- symbol shielding: the externally visible result name is determined by the meta
-  function name + arguments, not internal temporary names
-- generated declarations installed only under a legal parent / instance node
-- first-class generic classes such as `(T)Vec`, `(T)Option`, `(A, B)Pair`
-- awareness that meta body execution policy differs from function symbol policy
-  and return-object policy; implement only the minimum checks needed to avoid
-  misrepresenting meta-functions as runtime functions
+- implement the symbol-first construction boundary defined in
+  `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`;
+- implement namespace origin and construction ownership in the order defined by
+  `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`;
+- preserve the future layered-policy boundary defined in
+  `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` while
+  deferring full compile-flow projection, companions, and automatic require;
+- keep normalized body material, current policy metadata, canonical instance keys, and
+  outer atomic installation as explicit stage boundaries;
+- first-class generic classes such as `(T Vec)`, `(T Option)`, `(A, B Pair)`
+- preserve canonical policy as `Pv:Pp`: `P1` is contextual binding projection,
+  `P2` is result-pair normalization, and function-object stage views are
+  derived from `P2`; current flat symbol/body/result fields remain transitional;
+- preserve legal runtime bindings and keep any non-runtime
+  projection-source premise local to its specific compile-determined rule;
+- preserve typed policy dimensions (stage, value mutability, value presence,
+  ordinary namespace visibility, and export-root) rather than flattening atoms;
+- preserve three phases: OpenStatic exposes meta/compile, SealStatic exposes
+  seal/compile, Runtime exposes runtime values; privileged seal scans consume
+  fixed Wpre and never Wseal
 
 Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`. The following are
 preconditions, not optional local conveniences: `ProductObject` /
-`ArgProductShape`, `TypeValueId` / `PlaceId` / `AliasChain`, policy-aware
-lookup with distinct symbol visibility / body-entry / return-object planes,
+`ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / `AliasChain`,
+`SymbolConstructionValue` / `ResolvedPatternScope`, contextual P1 projection,
+P2 pair normalization and function-object stage derivation while preserving
+current metadata transport,
 canonical meta instance key, and `NamespaceDelta` atomic install. This does not
 make a full generic system, full overload resolution, or full type checker a
 v0.8 requirement.
 
-Non-goals: value-to-type control flow; value-to-value compile-time world;
-unrestricted compile-time IO; runtime execution; full borrow/lifetime checking;
-full pattern-space subtraction / exhaustiveness; complete operator overload
-semantics (the overload resolution pipeline is specified in
+Non-goals: unrestricted/general compile-time execution; unrestricted
+compile-time IO; runtime execution; full borrow/lifetime checking; full
+pattern-space subtraction / exhaustiveness; complete operator overload semantics
+(the overload resolution pipeline is specified in
 `spec/design/patterns-overload/overload-resolution-design.md`; overload resolution is gated on
 v0.10+ pattern-space infrastructure).
 
@@ -406,7 +434,8 @@ yet.
 Design pattern spaces as static objects generated by canonical pattern
 constructors: sum patterns, structural pattern-space operations, extraction
 chains, residual propagation, the `Done` isolation layer, explicit result
-consumption, postfix `?`, and conventional closing consumers such as `match`.
+consumption, postfix `?` as a one-layer top-Pattern view, and conventional
+closing consumers such as `match`.
 
 This phase provides the pattern-space infrastructure that overload resolution
 depends on: extraction-pattern specificity (§4 of `overload-resolution-design.md`)
@@ -434,24 +463,57 @@ position remain pattern material, and operator names remain unresolved structura
 targets. Detailed design note:
 `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
-#### v0.11+ — Value-to-type meta-functions with control flow
+#### v0.11+ — Value-directed compile/meta control flow
 
-Extend the meta-function model with value-to-type meta-functions that allow
-control flow in meta bodies, beyond the v0.8 restricted type-to-type form.
+Extend `compile` PatternValue computation and `meta` SymbolConstructionValue
+construction with value-directed control flow beyond the v0.8 restricted
+bootstrap.
+
+This later track owns implementation planning for mechanical compile-flow
+projection over ordinary call nodes, complete derived `Val2` compile-companion
+objects, fully admissible overload preparation, the
+`must_select_if_qualified` overload strategy, intrinsic D/Done match flow,
+coarse inferred-require extraction, and shared require/body compile evaluation.
+Recursive calls remain ordinary call evaluation and are not a separate summary
+system. Internal unresolved-call bookkeeping or finer require atoms may be
+introduced as implementation IR when useful, but they are not frozen language
+objects.
+
+Overload-strategy and companion-association spellings remain open. Candidate
+notations such as `[[must_select_if_qualified]]` /
+`#must_select_if_qualified` and `[[companion_of(runtime_f)]]` /
+`#companion_of(runtime_f)` are illustrative only; they do not request lexer,
+parser, Raw AST, or Normalized AST changes. Build semantic objects and
+compiler-known metadata first. Whether default companion suppression is ever
+allowed, and what equivalent compile Pattern/contract interface it would
+require, also remains open rather than an implementation commitment.
 
 #### Later stages
 
 The following remain deferred and are not numbered precisely here:
 
-- value-to-value compile-time meta execution
+- general value-to-value `compile` PatternValue execution
 - type / kind checking integration
 - closure materialization model (ClosureAST → ClosureObject; capture rules)
 - ownership / NLL / drop / lifetime design (including any future semantics for
-  `with { ... }`)
-- full policy inference, projection checking, compile / runtime / seal semantics,
-  const / mut policy, effect / error / panic policy, and resource capability
-  policy (see `spec/design/policy-capability/policy-visibility-symbols.md`)
+  `with { ... }`); lifetime-policy checking/refinement is after first-order
+  type/compile overload selection and is bounded by
+  `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`
+- storing canonical `Pv:Pp` on every semantic object and wiring full P1
+  projection, P2 result validation, function-object views, and compile/runtime/
+  seal namespace lookup;
+- seal dependency ordering, complete reflection objects, and any future policy
+  stage beyond the current three-phase model;
+- integrating const/mut product order into the complete overload resolver, plus
+  effect/error/panic and resource-capability policy
+  (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes
+- public syntax and precise source-level selection for overload strategies and
+  explicit compile-companion replacement
+- any permitted companion-suppression rule and its required replacement
+  interface
+- finer-grained require atom identity, if later implementation needs it
+- the bounded future member set of `BuiltinPrivilegedAstMetaFunction`
 - HIR
 - code generation
 

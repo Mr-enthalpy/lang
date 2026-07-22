@@ -87,7 +87,9 @@ documents remain present, but they are not part of the normal public reading pat
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
 | Contract / handoff | `spec/contracts/` | `v0.3-normalization-handoff-checklist.md` | v0.3 normalization handoff: may-assume, must-not-assume, required inputs, open v0.3 questions |
-| Contract / handoff | `spec/contracts/` | `v0.8-meta-construction-agent-constraints.md` | Draft v0.8-adjacent construction guardrails for generic type meta construction and shared build/symbol/product/policy/meta invocation boundaries |
+| Contract / handoff | `spec/contracts/` | `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; old formal meta-return split superseded by the symbol-first design |
+| Contract / handoff | `spec/contracts/` | `v0.8-meta-construction-agent-constraints.md` | Draft v0.8-adjacent guardrails for shared build/symbol/product/policy/meta construction boundaries |
+| Contract / handoff | `spec/contracts/` | `v0.9-pattern-head-identity-and-explicit-navigation.md` | Bare-name/explicit-navigation contract plus current registry-backed PatternHeadId substrate and future owner-resolution handoff |
 | Design / history | `spec/history/v0.1/` | `operator-design.md` | Operator syntax design and implementation boundaries — historical reference |
 | Design / history | `spec/history/v0.1/` | `resolved-questions.md` | Design decisions — resolved for v0.1 |
 | Design / history | `spec/history/v0.1/` | `frontend-v0.1.md` | Pipeline overview — historical reader entry point |
@@ -102,12 +104,22 @@ design-fusion staging area; non-normative, not current behavior). Start at
 
 | Block | Purpose |
 |---|---|
-| `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, export surface, provenance |
-| `spec/design/symbol-world/` | Namespace graph world model, SymbolId/PlaceId/TypeValueId, alias forwarding, field functions, early-meta bootstrap |
+| `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, physical contribution authority, export surface, provenance |
+| `spec/design/symbol-world/` | Canonical symbol-first facets, `Pv:Pp`, contextual P1/P2 elaboration, seal visibility/snapshot, const/mut product order, compile-flow projection, companions, automatic require, `PatternValue` / `SymbolConstructionValue`, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, and identity/alias foundations |
 | `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
-| `spec/design/meta-invocation/` | Policy-governed meta object invocation, partial/strict reduction, guarded invocation |
-| `spec/design/policy-capability/` | Visibility / body-entry / return-object policy, meta/runtime filtering, future error policy |
+| `spec/design/meta-invocation/` | Symbol-first callable invocation, policy-pair handoff, partial/strict demand, and residualization |
+| `spec/design/policy-capability/` | Current flat policy-metadata mapping to canonical pairs and future orthogonal policy dimensions |
+| `spec/design/lifetime/` | Negative boundary separating future lifetime policy/refinement from type/compile overload selection |
 | `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
+
+For the current future semantic baseline, read these canonical construction and
+flow documents in order:
+
+1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
+3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`
+
+They describe intended semantics, not currently implemented public behavior.
 
 | Directory | Document | Purpose |
 |---|---|---|
@@ -326,10 +338,13 @@ Read these only when implementing, auditing, or repairing the frontend.
 
 Read these only when working on future design topics.
 
-1. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
-2. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
-3. `spec/planning/roadmap.md` — Understand scope boundaries.
-4. `spec/planning/open-questions.md` — Recognize known gaps.
+1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` — Canonical symbol facets, compile/meta, pattern scope, struct/inject, and install boundary.
+2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md` — Canonical namespace origin, physical authority, and source/meta construction ownership.
+3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` — Canonical layered policy, contextual P1 binding projection, P2 result normalization, mechanical call projection, derived compile-companion objects, match staging, and coarse inferred require.
+4. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.
+5. `spec/design/symbol-world/entity-alias-design.md` — Alias binding design (parser preservation implemented, semantics future).
+6. `spec/planning/roadmap.md` — Understand scope boundaries.
+7. `spec/planning/open-questions.md` — Recognize known gaps.
 
 Other future design documents (build, package, namespace assembly, library namespace)
 are listed in the Documentation map above under Build / package / namespace (future notes).

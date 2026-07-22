@@ -23,12 +23,37 @@ should migrate into `spec/public/`, `spec/contracts/`, `spec/planning/`, and
 - Accepted ADR constraints have been absorbed into the relevant design blocks;
   they constrain direction but do not override `spec/public/`.
 
+### Topic owners
+
+To prevent parallel future-design texts from drifting, each cross-cutting topic
+has one normative owner inside the staging area:
+
+| Topic | Normative owner | Other documents retain only |
+|---|---|---|
+| Symbol-first resolution, facets, `compile` / `meta`, `struct` / `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
+| Namespace origin, construction-unit ownership, physical contribution authority, cross-file closure | `symbol-world/symbol-construction-units-and-namespace-origin.md` | Build-phase application, implementation gap, and link |
+| Canonical `Pv:Pp`, contextual binding `P1`, result `P2`, function-object stage derivation, seal visibility/snapshot, const/mut product order, no scalar result policy, mechanical compile projection, companions, match staging, and coarse automatic require | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Implementation mapping, invocation handoff, pattern algebra, and links |
+| Current `PatternHeadId` registry/materialization substrate | `../contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` | No claim of final owner resolution |
+| Pattern/argument shape adaptation before overload qualification | `patterns-overload/pattern-normalization-and-first-order-overload.md` | Structural handoff only; no competing policy or final selection rules |
+| Overload candidate preparation, linear filters, qualification boundary, must-select final check | `patterns-overload/overload-resolution-design.md` | Invocation consumes the selected entry; policy definition stays in symbol-world |
+| Invocation frames, partial/strict demand, residualization | `meta-invocation/meta-object-invocation-and-policy-reduction.md` | References to symbol-world policy/result ranks and overload selection |
+| Pattern-space and extraction algebra | `patterns-overload/static-pattern-spaces-and-extraction-chains.md` | References to canonical symbol-to-value lookup |
+| Lifetime-policy separation from type/compile overload | `lifetime/lifetime-policy-and-overload-boundary.md` | No positive lifetime algorithm in this stage |
+| Stage ordering and implementation dependencies | `../planning/roadmap.md` | Links to semantic owners rather than duplicated rules |
+
+If a satellite summary conflicts with its listed owner, the owner controls the
+future-design direction. Current implemented behavior remains governed by
+`spec/public/` and the applicable stage contract.
+
 ## Current staging route
 
 The current staging route (not a permanent design reading order) is:
 
 ```text
-v0.8-semantic-spine (values-first narrative)
+symbol-first-meta-construction-and-pattern-injection (canonical construction boundary)
+  -> symbol-construction-units-and-namespace-origin (origin/ownership boundary)
+  -> symbol-policy-and-compile-flow-projection (policy/flow/require boundary)
+  -> v0.8-semantic-spine (value/extraction narrative)
   -> symbolic construction values and extraction interfaces
   -> meta-invocation
   -> mechanical lowering family
@@ -36,23 +61,28 @@ v0.8-semantic-spine (values-first narrative)
   -> first-order type check
 ```
 
-For v0.8-adjacent type-to-type meta construction work, the recommended
+For v0.8-adjacent compile/meta construction work, the recommended
 reading order is:
 
 ```text
-1. v0.8-semantic-spine.md — positive semantic model
-2. return-value-extraction-and-implicit-decomposition.md — extraction view
-3. v0.8-symbolic-construction-values-and-extraction-interfaces.md — construction values
-4. meta-object-invocation-and-policy-reduction.md — invocation + policy
-5. v0.8-meta-construction-agent-constraints.md — implementation guardrails
+1. symbol-first-meta-construction-and-pattern-injection.md — canonical symbol/construction boundary
+2. symbol-construction-units-and-namespace-origin.md — namespace origin and construction ownership
+3. symbol-policy-and-compile-flow-projection.md — policy pairs, seal, compile projection, companions, require
+4. v0.8-semantic-spine.md — value/extraction narrative
+5. return-value-extraction-and-implicit-decomposition.md — extraction view
+6. v0.8-symbolic-construction-values-and-extraction-interfaces.md — transitional construction/extraction contract
+7. meta-object-invocation-and-policy-reduction.md — invocation demand and residualization
+8. v0.8-meta-construction-agent-constraints.md — implementation guardrails
 ```
 
 In block terms:
 
 ```text
-semantic-spine
+symbol-first facets / compile / meta / pattern scopes
+  -> namespace origin / construction-unit ownership
+  -> semantic-spine value/extraction narrative
   -> patterns-overload / extraction-view
-  -> symbolic-construction-values
+  -> transitional symbolic-construction-values
   -> meta-invocation
   -> mechanical-lowering
   -> later runtime lookup / type check
@@ -61,7 +91,7 @@ semantic-spine
 Runtime lookup and first-order type checking are deliberately later than the
 pattern/type-value/meta-invocation work.
 
-For implementation patches that touch v0.8-adjacent type-to-type meta
+For implementation patches that touch v0.8-adjacent compile/meta
 construction, read `spec/contracts/v0.8-meta-construction-agent-constraints.md`
 after the semantic spine and construction-value documents. It is the
 implementation guardrail, not the semantic entry point.
@@ -70,11 +100,12 @@ implementation guardrail, not the semantic entry point.
 
 | Block | Responsibility | Not responsible for |
 |---|---|---|
-| `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, export surface, cache/fingerprint/provenance. | Language expression semantics. |
-| `symbol-world/` | Namespace graph world model: `SymbolObject`, `SymbolId` / `PlaceId` / `TypeValueId`, alias forwarding, writable-place, field functions, `ref`/`share` projection namespaces, type-associated function objects, injection targets, function-object self and return capability; plus the early-meta / namespace-graph bootstrap. | Full type checking, full alias resolver, access-tree construction, lifetime checking implementation. |
-| `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and implicit decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
-| `meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation; control-like callables instead of an `if constexpr` / `if` syntax split. | Defining symbol-world, patterns-overload, or policy-capability internals (it references them). |
-| `policy-capability/` | Symbol-visibility policy, callable body-entry policy, return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. | Mechanical return normalization (that lives in `mechanical-lowering/` and only references policy planes here). |
+| `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, physical-directory contribution authority, export surface, cache/fingerprint/provenance. | Language expression semantics. |
+| `symbol-world/` | Namespace graph world model: symbol-first facets and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut product order, compile-flow projection and companions, automatic require, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, full alias resolver, access-tree construction, lifetime checking implementation. |
+| `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and pattern-directed decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
+| `meta-invocation/` | Symbol-first invocation frames, candidate-selection handoff, partial vs strict demand, residualization, and policy-staged pattern matching. | Defining symbol construction, layered policy, overload ordering, or pattern algebra (it references their canonical owners). |
+| `policy-capability/` | Current flat-metadata mapping to canonical `Pv:Pp`, P1/P2 contextual elaboration, and orthogonal policy dimensions. | Compile-flow/require semantics and mechanical return normalization. |
+| `lifetime/` | Negative stage boundary separating lifetime policy/refinement from completed first-order type/compile overload selection. | Region/origin algebra, lifetime checking, specificity, Horae logic, or implementation. |
 | `control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only | Implemented parser / normalizer return syntax (lives in `spec/public/` and `spec/contracts/`); runtime return execution semantics. |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |
 
@@ -87,6 +118,7 @@ implementation guardrail, not the semantic entry point.
 | patterns-overload/ | `spec/public/` for stable pattern/overload semantics; `spec/contracts/` for normalized-pattern handoff obligations; `spec/planning/` for runtime overload/type-check staging; `spec/history/` for obsolete extraction-chain alternatives. |
 | meta-invocation/ | `spec/public/` once meta invocation is a user-facing semantic model; `spec/contracts/` for evaluator/residualization obligations; `spec/planning/` for runtime lookup/type-check sequencing. |
 | policy-capability/ | `spec/public/` for stable policy semantics; `spec/contracts/` for policy metadata/checker boundaries; `spec/planning/` for deferred lattice/effect/error work. |
+| lifetime/ | `spec/planning/` until region/origin/refinement semantics are designed; later contract/public placement depends on implementation. |
 | mechanical-lowering/ | `spec/contracts/` for lowering obligations and IR handoff invariants; `spec/public/` only for stable source-visible effects such as move/noerror/call-mode semantics; `spec/history/` for rejected loop/if-constexpr alternatives. |
 
 ## Implementation status
@@ -94,12 +126,12 @@ implementation guardrail, not the semantic entry point.
 - Partial implementation (a narrow vertical slice in `crates/lang_build`):
   `build-package/` (API-level build/namespace graph) and parts of
   `symbol-world/` (namespace graph, resolver, early-meta `struct`/`verify`
-  slice, `PolicyEnv::Meta` lookup filtering) and `policy-capability/` (policy
-  metadata).
+  slice, flat policy lookup environments) and `policy-capability/` (policy
+  metadata and pair helpers).
 - Future design only (not implemented): `patterns-overload/`,
-  `meta-invocation/`, `mechanical-lowering/`, and the remaining `symbol-world/`
-  and `policy-capability/` semantics (TypeValueId, alias forwarding,
-  writable-place checking, full policy checking).
+  `meta-invocation/`, `mechanical-lowering/`, `lifetime/`, and the remaining
+  `symbol-world/` and `policy-capability/` semantics (TypeValueId, alias
+  forwarding, writable-place checking, full policy checking).
 
 ## Reading order
 

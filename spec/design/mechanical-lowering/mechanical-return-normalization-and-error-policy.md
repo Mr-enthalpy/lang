@@ -89,9 +89,9 @@ language-shaped form:
 
 Semantic points:
 
-1. `(r: type)? |> if { r; }` means: the guard `r: type` produces a
-   bool-protected result `(if | else) bool`; `?` exposes the bool extraction
-   view before the `if` / `else` heads are applied. If `r` is non-value
+1. `(r: type)? |> if { r; }` uses an optional explicit one-layer top Pattern
+   view. The guard `r: type` produces a bool symbol whose Pattern carries the
+   `if` / `else` alternatives; matching does not require `?`. If `r` is non-value
    material — type-rank material, a type object, meta material, namespace
    material, pattern material, or similar — the `if` branch returns `r`
    unchanged. It does not enter automatic error normalization.
@@ -101,9 +101,9 @@ Semantic points:
 3. `r |> <T: type>(r: T) { ... }` is rank-pattern / type-binding shape. It binds
    the first-order type `T` of value `r`, then runs guarded predicates over `T`.
 
-4. `(T |> has(Error))? |> if { ... }` means: `T |> has(Error)` produces a
-   bool-protected result `(if | else) bool`. Only after `?` exposes the
-   control-pattern view does the branch chain select `if` or `else`. The
+4. `(T |> has(Error))? |> if { ... }` explicitly peels one top Pattern layer
+   from the bool result. The branch chain could also read the bool Pattern
+   directly without `?`. The
    predicate is evaluated at compile time. Only when the predicate is true
    does the error branch run. The branch that is not entered creates no
    `Error` lookup obligation.
@@ -354,21 +354,23 @@ Three stable cases summarize the model:
    function still satisfies noerror
 ```
 
-## 10. Policy Planes Involved
+## 10. Policy Dimensions Involved
 
 This design depends on future policy checking; it does not assume a complete
-error-policy checker exists. The relevant policy planes:
+error-policy checker exists. The relevant dimensions are:
 
-- **Symbol visibility policy** controls whether the `Error` branch predicate and
-  carrier shape can be found.
-- **Body-entry policy** controls whether any factored callable handler may
-  execute.
-- **Return-object policy** describes the produced object.
+- the current P1-projected value view and namespace visibility determine which
+  `Error` branch predicate or handler objects are available;
+- receiver/parameter policy pairs and stage constraints determine whether a
+  handler call is admissible, while P2 describes its result pair;
+- the produced result remains layered `Val1 x Pattern x Val2` material; there is
+  no independent return-policy `P3` or scalar whole-result policy;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
 These are future design statements, not a description of an implemented policy
-checker.
+checker. Canonical symbol-flow policy is defined in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 ## 11. Relation to Meta Object Invocation
 
@@ -431,8 +433,11 @@ model specified here, and this document does not depend on them for its meaning.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the argument-slot
   counterpart of this return-slot normalization; both are mechanical source-level
   lowering actions.
-- `policy-visibility-symbols.md` — the overall policy model whose visibility /
-  body-entry / return-object planes gate Error branch lookup and execution.
+- `../symbol-world/symbol-policy-and-compile-flow-projection.md` — canonical
+  `Pv:Pp`, contextual P1/P2 elaboration, and stage views that gate Error branch
+  lookup and execution.
+- `../policy-capability/policy-visibility-symbols.md` — mapping from current
+  policy metadata to that final boundary and future orthogonal error policy.
 - `return-value-extraction-and-implicit-decomposition.md` — defines the
   extraction-view `?` operator as a one-step declared top-pattern-layer
   transition. Although Error carrier handling also uses pattern-shaped branches,

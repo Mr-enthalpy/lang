@@ -229,10 +229,10 @@ continues through line 2. The parser should consume both lines and diagnose
 ### 4.1 Let statement shape
 
 ```text
-LetStmt ::= OptionalPolicy "let" BindingSlotWithInitializer
+LetStmt ::= OptionalPolicySpec "let" BindingSlotWithInitializer
 ```
 
-`OptionalPolicy` is an optional `Expr` written before `let` (see §4.3). A let
+`OptionalPolicySpec` is an optional `PolicySpec` written before `let` (see §4.3). A let
 binding uses the general binding-slot shape. The initializer is required
 for ordinary let bindings. The annotation after `:` is optional and is preserved
 as syntax rather than classified as a type annotation.
@@ -291,7 +291,7 @@ with-clause kind.
 
 ```text
 BindingSlot ::=
-    OptionalPolicy
+    OptionalPolicySpec
     OptionalLet
     OptionalDeduceList
     BindingPattern
@@ -299,13 +299,19 @@ BindingSlot ::=
     OptionalWithClause
     OptionalInitializer
 
-OptionalPolicy ::= (Expr "let")?
+OptionalPolicySpec ::= (PolicySpec "let")?
+
+PolicySpec ::= PolicyConjunction | PolicyConjunction ":" PolicyConjunction
+PolicyConjunction ::= PolicyChoice | PolicyConjunction "+" PolicyChoice
+PolicyChoice ::= PolicyAtom | PolicyChoice "||" PolicyAtom
+PolicyAtom ::= Name | "(" PolicyConjunction ")" | AbsentValuePattern
 ```
 
-A policy expression is recognized **only** by the syntactic shape `Expr let`:
-the expression appears immediately before the `let` keyword in binding-slot
-prefix position. Without the following `let`, the same tokens remain part of the
-binding pattern / canonical skeleton (see §4.4).
+A policy specification is recognized **only** by the syntactic shape
+`PolicySpec let`: it appears immediately before the `let` anchor in
+binding-slot prefix position. `||` binds tighter than `+`, and `+` binds tighter
+than pair separator `:`. Single `|` remains Pattern alternative. Without the following `let`, the same tokens remain
+part of the binding pattern / canonical skeleton (see §4.4).
 
 Context restrictions:
 
@@ -313,14 +319,14 @@ Context restrictions:
 let binding:
     initializer is required for ordinary let syntax
     with { ... } is allowed
-    policy: optional `Expr let` prefix; `let` is always present in let forms
+    policy: optional `PolicySpec let` prefix; `let` is always present in let forms
 
 function parameter slot:
     initializer is absent
     with { ... } is allowed
     let is allowed but redundant
     <> is allowed per slot
-    policy: optional `Expr let` prefix; a written policy REQUIRES the explicit
+    policy: optional `PolicySpec let` prefix; a written policy REQUIRES the explicit
         `let` anchor. `policy x: T` (no `let`) is an ordinary pattern/skeleton,
         not a policy slot, and is not an error.
 
@@ -329,7 +335,7 @@ function return slot:
     with { ... } is rejected
     let is allowed but redundant
     <> is allowed per slot
-    policy: optional `Expr let` prefix; same `let`-anchor rule as parameters.
+    policy: optional `PolicySpec let` prefix; same `let`-anchor rule as parameters.
 ```
 
 Binding pattern:
@@ -343,7 +349,7 @@ AST:
 
 ```text
 BindingSlotAst {
-    policy: Option<ExprAst>,
+    policy: Option<PolicySpecAst>,
     has_let: bool,
     deduce: Option<DeduceListAst>,
     pattern: BindingPatternAst,
@@ -352,6 +358,17 @@ BindingSlotAst {
     initializer: Option<ExprAst>,
     span: Span
 }
+
+PolicySpecAst {
+    value_policy: ValuePolicyPatternAst,
+    pattern_policy: Option<PolicyConjunctionAst>,
+    span: Span
+}
+
+ValuePolicyPatternAst ::= Conjunction(PolicyConjunctionAst) | Absent { span: Span }
+PolicyConjunctionAst { choices: Vec<PolicyChoiceAst>, span: Span }
+PolicyChoiceAst { atoms: Vec<PolicyAtomAst>, span: Span }
+PolicyAtomAst ::= Name | Group(PolicyConjunctionAst) | AbsentValuePattern | Error
 
 BindingPatternAst ::=
     Binder(BinderNameAst)
@@ -372,23 +389,22 @@ AnnotationTermAst ::=
   | Hole
 ```
 
-**Binding-slot policy expressions are Raw AST expressions. The parser preserves
-the expression shape and does not decide whether it is a valid accessibility
-policy, capability condition, visibility object, contract, type-level object,
-rank-level object, or semantic predicate. Those checks belong to later
-normalization, name resolution, type calculation, and checking phases.**
+**Binding-slot policy components contain dedicated Raw policy AST. The parser
+preserves choice, conjunction, and one or two pair components but does not decide whether they form a valid
+P1 projection, P2 result pair, visibility condition, or semantic predicate.
+Those checks belong to contextual policy elaboration.**
 
-A policy expression is recognized only by the syntactic shape `Expr let`.
+A policy specification is recognized only by the syntactic shape `PolicySpec let`.
 Without the following `let`, the same tokens remain part of the binding pattern /
 canonical skeleton. The `let` keyword is the parser-level boundary between the
-policy expression and the rest of the binding slot.
+policy specification and the rest of the binding slot.
 
 A `policy` of `None` means the policy was **not written** at this binding site
 (implicit / to be supplied or inferred by a later phase). It does not mean the
 binding has "no policy". The AST dump omits the `policy:` line when it is
 unwritten.
 
-The `Expr let` policy prefix is accepted in every position that accepts `let`:
+The `PolicySpec let` policy prefix is accepted in every position that accepts `let`:
 top-level let forms, let forms inside closure bodies, parameter binding slots,
 return binding slots, and alias-let forms (`LetAliasAst` also carries an
 optional `policy`). In parameter and return slots, where `let` may otherwise be
@@ -1860,8 +1876,8 @@ Examples:
 
 Both forms parse the closure parameters as one `ProductExtractAst`. The closure
 head is already a binding / extraction context, so an element without a policy
-may omit the local `let` anchor. If a policy expression is written for an
-element, the policy still requires the `Expr let` anchor.
+may omit the local `let` anchor. If a policy specification is written for an
+element, the policy still requires the `PolicySpec let` anchor.
 
 Function parameter slots reuse the general binding-slot grammar:
 
@@ -1878,18 +1894,20 @@ names inside the with block are valid, same-level, earlier parameters, or
 resolvable dependencies. Those checks belong to name resolution, type
 calculation, and later ownership/lifetime checking.
 
-### 11.5 Function item trait clause
+### 11.5 Call-result P2 policy
 
 ```text
-FnItemTraitClause ::= ":" TraitExpr
-TraitExpr ::= PipeExpr
+CallPolicyClause ::= ":" PolicySpec
 ```
 
 AST field:
 
 ```text
-fn_item_trait: Option<ExprAst>
+call_policy: Option<PolicySpecAst>
 ```
+
+The parser preserves pair syntax only. P2 single-policy normalization and pair
+validity are semantic elaboration, not parser behavior.
 
 ### 11.6 Return clause
 
@@ -1937,14 +1955,14 @@ contextual parser structure, not a semantic dependency check.
 ### 11.7 Head clauses (`require` / `pre` / `post` / `lifetime pre` / `lifetime post`)
 
 The closure/function head may carry a tail of source-preserving clauses after
-the deduce, capture, parameter, fn-item-trait, and return clauses:
+the deduce, capture, parameter, call-policy, and return clauses:
 
 ```text
 FnHeadPrefix ::=
     DeduceList?
     CaptureClause?
     ParamClause?
-    FnItemTraitClause?
+    CallPolicyClause?
     ReturnClause?
     HeadClause*
 
@@ -2255,7 +2273,7 @@ validate operator identity, perform name/operator lookup, or lower aliases.
 ### 16.2 Grammar
 
 ```text
-AliasBinding ::= OptionalPolicy "let" AliasBinder "===" EntityRef
+AliasBinding ::= OptionalPolicySpec "let" AliasBinder "===" EntityRef
 
 AliasBinder ::= Name | OperatorName
 
@@ -2289,7 +2307,7 @@ reinterpreted as an operator spelling. It is not available as an alias
 
 ### 16.3 Dispatch
 
-An optional policy expression (`Expr let`, see §4.3) may precede `let`. It is
+An optional policy specification (`PolicySpec let`, see §4.3) may precede `let`. It is
 parsed before `let` and carried onto the alias (`LetAliasAst.policy`); alias
 dispatch is unaffected by its presence.
 
@@ -2312,7 +2330,7 @@ FormAst ::=
   | Error(ErrorAst)
 
 LetAliasAst {
-    policy: Option<ExprAst>,
+    policy: Option<PolicySpecAst>,
     binder: AliasBinderAst,
     target: EntityRefAst,
     span: Span

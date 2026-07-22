@@ -1,4 +1,4 @@
-meta | runtime let + =
+meta || runtime let + =
   (self, t: type, u: type): meta -> let r: type =>
 {
   r === t;

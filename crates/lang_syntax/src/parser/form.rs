@@ -3,7 +3,10 @@ use crate::{
     ReturnTargetAst, Span, Symbol, Token, TokenKind,
 };
 
-use super::{cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form};
+use super::{
+    cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form,
+    policy::try_parse_policy_spec_before_let,
+};
 
 pub struct Parser<'tokens> {
     pub cursor: Cursor<'tokens>,
@@ -51,13 +54,24 @@ impl<'tokens> Parser<'tokens> {
             return parse_let_form(self, None);
         }
 
+        if let Some(policy) = try_parse_policy_spec_before_let(self, |parser| {
+            parser.is_form_boundary() || parser.cursor.at_name("return")
+        }) {
+            return parse_let_form(self, Some(policy));
+        }
+
         let expr = parse_expr_until(self, |parser| {
             parser.cursor.at_name("let")
                 || parser.is_form_boundary()
                 || parser.cursor.at_name("return")
         });
         if self.cursor.at_name("let") {
-            return parse_let_form(self, Some(expr));
+            self.error(
+                DiagnosticCode::UnexpectedToken,
+                "invalid policy prefix; policy choice uses `||`, conjunction uses `+`, and pair separation uses `:`",
+                expr.span,
+            );
+            return parse_let_form(self, None);
         }
 
         // Implicit return: `<value> return`
@@ -171,6 +185,12 @@ impl<'tokens> Parser<'tokens> {
                 self.diagnostics.append(&mut diagnostics);
             }
         }
+    }
+
+    pub fn current_diagnostic_gate_is_empty(&self) -> bool {
+        self.diagnostic_gates
+            .last()
+            .is_some_and(|diagnostics| diagnostics.is_empty())
     }
 
     pub fn ungate_drop_diagnostics(&mut self) {

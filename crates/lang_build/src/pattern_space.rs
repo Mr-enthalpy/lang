@@ -577,3 +577,24 @@ pub fn bool_branch_space_for_tests(provenance: Provenance) -> SumPatternSpaceSha
     derive_sum_pattern_space(&bool_expr)
         .expect("bool type-pattern expression must derive a valid sum pattern space")
 }
+
+/// Alias facts for the two ordinary value names associated with the bool
+/// Pattern symbols. They do not add alternatives to the bool Pattern space.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PatternSymbolAlias {
+    pub alias: String,
+    pub target: SymbolPathShape,
+}
+
+pub fn bool_pattern_aliases_for_tests() -> Vec<PatternSymbolAlias> {
+    vec![
+        PatternSymbolAlias {
+            alias: "true".to_string(),
+            target: SymbolPathShape::new(vec!["if".to_string(), "bool".to_string()]),
+        },
+        PatternSymbolAlias {
+            alias: "false".to_string(),
+            target: SymbolPathShape::new(vec!["else".to_string(), "bool".to_string()]),
+        },
+    ]
+}

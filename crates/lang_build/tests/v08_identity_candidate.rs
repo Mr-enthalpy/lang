@@ -73,7 +73,11 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "struct",
+            &world.package_context(),
+            PolicyEnv::OpenStatic,
+        )
         .expect("core struct resolves through namespace graph as SymbolObject");
 
     let site = v08_candidate_call_site();
@@ -83,8 +87,8 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("struct source product placeholder")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder {
                 package_identity_fragment: Some("package:app".to_string()),
                 mount_identity_fragment: Some("mount:core".to_string()),
@@ -130,7 +134,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         !candidate.arg_product_shape.raw_args[0].receives_automatic_pass_action(),
         "UnknownExpression does not receive automatic pass action at candidate-prep boundary"
     );
-    assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::Meta);
+    assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::OpenStatic);
     assert_eq!(
         candidate.policy_planes.symbol_visibility_policy,
         callee.policy_metadata
@@ -235,8 +239,8 @@ fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("field parameter placeholder")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("build-fixture generated field function"),
         },
@@ -246,7 +250,7 @@ fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
         panic!("runtime-only body-entry must defer instead of becoming meta-executable");
     };
     assert_eq!(reason, CandidatePrepDeferredReason::BodyEntryPolicyMismatch);
-    assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::Meta);
+    assert_eq!(candidate.policy_planes.lookup_env, PolicyEnv::OpenStatic);
     assert!(candidate
         .policy_planes
         .symbol_visibility_policy
@@ -286,7 +290,11 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixt
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "struct",
+            &world.package_context(),
+            PolicyEnv::OpenStatic,
+        )
         .expect("core struct resolves through namespace graph as SymbolObject");
 
     let CandidatePrepResult::ApplicablePlaceholder(candidate) = prepare_meta_callable_candidate(
@@ -294,8 +302,8 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixt
         shape,
         ParameterShape::exact_arity(3, Provenance::new("unit-sensitive parameter placeholder")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("unit-sensitive canonical key seed"),
         },
@@ -390,7 +398,11 @@ fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "struct",
+            &world.package_context(),
+            PolicyEnv::OpenStatic,
+        )
         .expect("core struct resolves through namespace graph as SymbolObject");
 
     let site = v08_candidate_call_site();
@@ -401,8 +413,8 @@ fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("pipeline entry test")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("CandidatePreparationInput pipeline entry"),
         },
@@ -450,7 +462,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         .resolve_meta_function_with_policy(
             "IdentityType",
             &world.package_context(),
-            PolicyEnv::Meta,
+            PolicyEnv::OpenStatic,
         )
         .expect("IdentityType resolves as meta function through namespace graph");
     assert_eq!(identity.name, "IdentityType");
@@ -467,7 +479,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("IdentityType target should resolve through namespace graph");
@@ -556,7 +568,7 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
         .resolve_meta_function_with_policy(
             "IdentityType",
             &world.package_context(),
-            PolicyEnv::Meta,
+            PolicyEnv::OpenStatic,
         )
         .expect("IdentityType resolves through namespace graph");
 
@@ -573,8 +585,8 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("IdentityType candidate-prep object boundary"),
         },
@@ -610,7 +622,7 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("IdentityType target should resolve");
@@ -623,8 +635,8 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("formal invocation test"),
         },
@@ -674,7 +686,7 @@ fn identity_type_binding_uses_invocation_value_boundary() {
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("IdentityType target should resolve");
@@ -687,8 +699,8 @@ fn identity_type_binding_uses_invocation_value_boundary() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("binding boundary test")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("binding boundary test"),
         },
@@ -763,7 +775,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("IdentityType target should resolve");
@@ -776,8 +788,8 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
         classified0.clone(),
         ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("cache reuse test"),
         },
@@ -815,8 +827,8 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
             classified0,
             ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
             CandidatePreparationContext {
-                lookup_env: PolicyEnv::Meta,
-                demanded_execution: ExecutionEnv::Meta,
+                lookup_env: PolicyEnv::OpenStatic,
+                demanded_execution: ExecutionEnv::OpenStatic,
                 build_identity: CandidateBuildIdentityPlaceholder::default(),
                 provenance: Provenance::new("cache reuse test 2"),
             },
@@ -848,7 +860,7 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("IdentityType target should resolve");
@@ -861,8 +873,8 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("forwarded binding boundary")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("forwarded binding boundary"),
         },
@@ -917,7 +929,11 @@ fn generated_construction_value_binding_materializes_declared_type_symbol() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UCPrototype resolves");
 
     let site = v08_identity_type_call_site();
@@ -994,7 +1010,11 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UCPrototype resolves");
 
     let site = v08_identity_type_call_site();
@@ -1007,8 +1027,8 @@ fn meta_instance_cache_reuses_generated_construction_value() {
         classified.clone(),
         ParameterShape::type_parameter_signature(Provenance::new("GCV cache test")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("GCV cache test"),
         },
@@ -1044,8 +1064,8 @@ fn meta_instance_cache_reuses_generated_construction_value() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("GCV cache test 2")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("GCV cache test 2"),
         },
@@ -1079,7 +1099,7 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("target should resolve");
@@ -1090,7 +1110,11 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UnaryConstructionPrototype resolves through namespace graph");
 
     let input = CandidatePreparationInput::new(
@@ -1100,8 +1124,8 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
             "UnaryConstructionPrototype param",
         )),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("UCPrototype invocation test"),
         },
@@ -1139,7 +1163,11 @@ fn generated_construction_value_carries_construction_instance_identity() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UCPrototype resolves");
 
     let site = v08_identity_type_call_site();
@@ -1151,8 +1179,8 @@ fn generated_construction_value_carries_construction_instance_identity() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("UCPrototype param")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("GCV identity test"),
         },
@@ -1194,7 +1222,11 @@ fn binding_layer_materializes_generated_construction_value() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UCPrototype resolves");
 
     let site = v08_identity_type_call_site();
@@ -1206,8 +1238,8 @@ fn binding_layer_materializes_generated_construction_value() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("UCPrototype binding test")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("binding materialization test"),
         },
@@ -1262,7 +1294,11 @@ fn generated_construction_identity_is_independent_of_binding_name() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UCPrototype resolves");
 
     let site = v08_identity_type_call_site();
@@ -1274,8 +1310,8 @@ fn generated_construction_identity_is_independent_of_binding_name() {
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("UCPrototype identity test")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("identity independence test"),
         },
@@ -1340,7 +1376,11 @@ fn generated_construction_identity_changes_with_canonical_args() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("UnaryConstructionPrototype", &context, PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "UnaryConstructionPrototype",
+            &context,
+            PolicyEnv::OpenStatic,
+        )
         .expect("UCPrototype resolves");
 
     let site = v08_identity_type_call_site();
@@ -1404,8 +1444,8 @@ fn produce_gcv(
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("GCV production")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("GCV production"),
         },
@@ -1440,8 +1480,8 @@ fn identity_type_initializer_expands_through_meta_invocation_driver() {
         world.package_root_node(),
         "T",
         &world.package_context(),
-        PolicyEnv::Meta,
-        ExecutionEnv::Meta,
+        PolicyEnv::OpenStatic,
+        ExecutionEnv::OpenStatic,
         CandidateBuildIdentityPlaceholder::default(),
         Provenance::new("IdentityType driver test"),
         None,
@@ -1478,8 +1518,8 @@ fn unary_construction_initializer_expands_through_meta_invocation_driver() {
         world.package_root_node(),
         "T",
         &world.package_context(),
-        PolicyEnv::Meta,
-        ExecutionEnv::Meta,
+        PolicyEnv::OpenStatic,
+        ExecutionEnv::OpenStatic,
         CandidateBuildIdentityPlaceholder::default(),
         Provenance::new("UnaryConstructionPrototype driver test"),
         None,
@@ -1513,8 +1553,8 @@ fn struct_initializer_expands_through_generated_type_definition_value() {
         world.package_root_node(),
         "S",
         &world.package_context(),
-        PolicyEnv::Meta,
-        ExecutionEnv::Meta,
+        PolicyEnv::OpenStatic,
+        ExecutionEnv::OpenStatic,
         CandidateBuildIdentityPlaceholder::default(),
         Provenance::new("struct driver test"),
         Some(&mut cache),
@@ -1646,8 +1686,8 @@ fn struct_decoder_uses_pattern_head_registry() {
         world.package_root_node(),
         "S",
         &world.package_context(),
-        PolicyEnv::Meta,
-        ExecutionEnv::Meta,
+        PolicyEnv::OpenStatic,
+        ExecutionEnv::OpenStatic,
         CandidateBuildIdentityPlaceholder::default(),
         Provenance::new("struct driver pattern heads"),
         None,
@@ -1961,7 +2001,7 @@ fn struct_invocation_input(
         &site.target,
         &world.snapshot().capability(),
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("struct target should resolve");
@@ -1987,8 +2027,8 @@ fn struct_invocation_input(
             Provenance::new("struct direct invocation field signature"),
         ),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new(provenance),
         },

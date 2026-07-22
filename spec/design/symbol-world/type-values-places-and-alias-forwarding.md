@@ -14,6 +14,11 @@ documents are background or adjacent design only; the model here stands on its
 own and is the canonical authority for the type-value / place / symbol / alias
 distinction.
 
+The broader symbol-first facet, `PatternValue`, `compile` / `meta`, pattern
+scope, `struct`, and functional `inject` model is canonicalized in
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+That document composes with this identity/alias model rather than replacing it.
+
 ## 1. Purpose
 
 The language must distinguish three things that look similar in source text but
@@ -43,14 +48,16 @@ Two phrasings are explicitly rejected throughout. `let T: type = uint8` is
 **not** fresh nominal type generation. Alias forwarding is **not** textual
 substitution. And type-value equality is **not** writable-place equality.
 
-## 2. Three semantic identities
+## 2. Semantic identities
 
-Three distinct identities participate in this model:
+Three distinct symbol/type identities participate in this model, alongside
+canonical pattern-value identity:
 
 ```text
 SymbolId
 PlaceId
 TypeValueId
+PatternValue identity
 ```
 
 - `SymbolId` is the identity of a symbol object in the name graph.
@@ -59,12 +66,17 @@ TypeValueId
 - `TypeValueId` is the identity of a canonical type value, used for type-value
   equality, first-order type comparison in pattern/overload matching, and
   rank/type expression evaluation.
+- `PatternValue identity` is the canonical identity of any compile-time pattern
+  value, including ordinary compile-time values, type values, and structured
+  pattern values. `TypeValueId` is the type-value projection used when a
+  parameter or expectation has `type` rank.
 
 These identities are independent. None implies another:
 
 ```text
 SymbolId equality does not imply TypeValueId equality.
 TypeValueId equality does not imply PlaceId equality.
+PatternValue equality does not imply SymbolId or PlaceId equality.
 Alias forwarding may relate symbols, values, and places, but does not erase the distinction.
 ```
 
@@ -72,6 +84,10 @@ A type expression cares about the *value*. A namespace injection target or a
 declaration-extension site cares about the *place*. Alias forwarding relates a
 *symbol* to a forwarding chain. The three concerns must not be folded into one
 another.
+
+In the symbol-first model, a path initially resolves to one symbol cell and the
+use site then projects namespace, type, or heterogeneous value facets. Facet
+projection does not collapse these identities and is not a cast.
 
 ## 3. Value judgment versus place judgment
 
@@ -99,9 +115,58 @@ These are not interchangeable. `let f::T = ...` uses the **place** judgment on
 `T`, not the value judgment: it targets the place that `T` owns, not the value
 that `T` evaluates to.
 
+### 3.1 General value binding resolves symbols first
+
+The ordinary rule:
+
+```lang
+let r = expr;
+```
+
+is:
+
+```text
+value(symbol(r)) := evaluate(expr)
+```
+
+When `expr` is a source path, value evaluation is not direct value naming:
+
+```text
+source path
+  -> resolve Symbol
+  -> read the selected value / PatternValue from that Symbol
+  -> bind the value to the destination Symbol/Place
+```
+
+Thus:
+
+```lang
+let a = b;
+```
+
+copies/binds the value read through `symbol(b)` into the fresh destination
+`symbol(a)`. It does not alias the symbols or merge their places.
+
+The same rule applies to an externally owned pattern value:
+
+```lang
+let t1::t = bool;
+```
+
+resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
+destination symbol/place `t1::t`. It does not reroot the pattern, rewrite its
+navigation, or make the destination symbol identical to the pattern owner.
+
+Literal syntax is the explicit exception to source-path resolution. In
+`let a = 'a';`, the left `a` is a symbol name while the right `'a'` is a
+character literal; matching textual content does not make them the same object.
+Pattern values have no analogous standalone literal syntax, so same-spelled
+symbol paths and pattern diagnostic names must be kept especially distinct.
+
 ## 4. Ordinary type-value binding
 
-The ordinary binding form:
+Type-value binding is the general value-binding rule under a `type`
+expectation, not a separate assignment mechanism. The form:
 
 ```text
 let T: type = uint8
@@ -128,6 +193,13 @@ T may evaluate to an existing type value.
 value* equals that of `uint8`, but its *place* is its own. Binding to an existing
 type value does not generate a new type, and it does not forward to `uint8`'s
 symbol or place.
+
+This ordinary declaration rule does not license a meta return symbol to use an
+external type value as its type root. A canonical meta instance has an
+additional self-root invariant: if its return symbol has a `TypeFacet`, the
+facet's outer pattern root must be the `MetaInstanceScope`. Thus ordinary
+`let T: type = uint8` remains legal while direct `r = uint8` as a meta return
+type construction is rejected.
 
 Consequently, injection through `T`:
 
@@ -190,6 +262,18 @@ intermediate forwarding to the final symbol, the final value and place, the
 provenance of each hop, where the writable boundary lies, and whether the chain
 contains a cycle. Cycle detection is part of the design because forwarding chains
 must terminate.
+
+Canonical summary:
+
+```text
+alias does not affect type-value equality;
+alias still affects symbol forwarding, place forwarding,
+namespace injection target, writability, and provenance.
+```
+
+This ordinary declaration-layer alias meaning is not removed by the formal meta
+return correction. `let a === b` remains valid design syntax; only the obsolete
+use of `r === ...` as a special formal meta-return category is removed.
 
 ## 6. Writable-place checking
 
@@ -257,6 +341,24 @@ The resolver here is asking "which writable place does this path name?", not
 "what value does this path evaluate to?". An injection that resolves to a value
 rather than a writable place is ill-formed.
 
+Writability alone does not grant construction ownership. Under the current
+future construction contract, another source file cannot reopen a namespace,
+type, pattern, ordinary value-member, or overload subtree created by a parallel
+`SourceConstructionUnit`, even to add a previously absent child. Physical
+directory authority and construction-unit ownership are specified in
+`symbol-construction-units-and-namespace-origin.md`.
+
+An ordinary type facet is installed once. Repeating:
+
+```lang
+let T = A;
+let T = B;
+```
+
+as two type-facet definitions is a conflict, not implicit `A | B`. Child
+construction and sum construction require explicit APIs and remain distinct
+from repeated ordinary binding.
+
 ## 8. Type values in overload and pattern matching
 
 First-order type matching for overload and pattern compatibility uses
@@ -277,6 +379,15 @@ But this says nothing about their places:
 ```text
 T and uint8 may have the same TypeValueId but different PlaceId.
 ```
+
+The same separation applies to normalized pattern layers. If every direct
+element has a complete top-pattern navigation name, the layer is
+`Set<PatternValue>`. `SymbolId` and `PlaceId` identify carriers/locations; they
+are not set elements. Extraction resolves a source symbol, reads its
+`PatternValue`, and looks up that value in the set. A symbol path may share the
+value's navigation spelling or differ from it without changing this sequence.
+Source/provenance classification does not participate in `PatternValue`
+identity.
 
 Pass mode is **not** part of `TypeValueId`. A construct such as `T move` does not
 change the type value, and type-value comparison is invariant under
@@ -313,7 +424,9 @@ The current v0.6/v0.7 lang_build slice still represents some `let T: type = uint
 The intended final semantics defined by this document are: canonical
 `TypeValueId` for type-value identity, a fresh `PlaceId` for ordinary
 type-value binding, explicit alias forwarding through an `AliasChain`, and
-writable-place checking at injection sites. None of these is implemented yet.
+writable-place checking at injection sites. Meta return self-root validation,
+type-facet single-install checks, and construction-unit ownership are also not
+implemented. None of these final rules is current behavior.
 
 ## 11. Non-goals
 
@@ -336,6 +449,10 @@ The documents below are adjacent or background design. They do not define the
 distinctions specified here, and this document does not depend on them for its
 meaning.
 
+- `symbol-first-meta-construction-and-pattern-injection.md` — canonical
+  symbol-first facet resolution, `PatternValue`, `compile` / `meta`, pattern
+  scopes, `struct`, functional `inject`, and binding/install boundary. It uses
+  this document's `SymbolId` / `PlaceId` / `TypeValueId` and alias judgments.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   projection namespaces, role-aware lookup, and access-tree work. It references
   this document for the canonical type-value / place / alias-forwarding
@@ -343,6 +460,9 @@ meaning.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph and
   early-meta slice, including the v0.6 placeholder `TypeObject` representation
   this document supersedes as the long-term semantics.
+- `symbol-construction-units-and-namespace-origin.md` — canonical
+  `NamespaceOrigin`, construction-unit ownership, physical contribution
+  authority, type/namespace facet inclusion, and cross-file closure rules.
 - `entity-alias-design.md` — the surface/parser alias syntax (`let binder ===
   EntityRef`) and frozen parser preservation. This document defines the
   *semantic* alias forwarding model (value/place forwarding, `AliasChain`,

@@ -17,7 +17,6 @@ fn assert_parser_case(name: &str, expect_diagnostics: bool) {
         &fs::read_to_string(case_path(name, "ast")).expect("read AST fixture"),
     );
     let output = lang_syntax::parse(&source);
-
     assert_eq!(lang_syntax::dump_ast(&output.program), expected_ast);
 
     if expect_diagnostics {
@@ -488,8 +487,8 @@ fn invalid_closure_bad_head_recovery() {
 }
 
 #[test]
-fn invalid_closure_missing_trait_after_colon() {
-    assert_parser_case("invalid_closure_missing_trait_after_colon", true);
+fn invalid_closure_missing_call_policy_after_colon() {
+    assert_parser_case("invalid_closure_missing_call_policy_after_colon", true);
 }
 
 #[test]
@@ -745,6 +744,11 @@ fn head_clause_inline_only_head() {
 #[test]
 fn policy_let_statement() {
     assert_parser_case("policy_let_statement", false);
+}
+
+#[test]
+fn policy_pair() {
+    assert_parser_case("policy_pair", false);
 }
 
 #[test]

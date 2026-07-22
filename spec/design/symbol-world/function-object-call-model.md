@@ -2,6 +2,13 @@
 
 Design consolidation note. Not a user-visible syntax document.
 
+The canonical symbol-first/facet boundary is
+`symbol-first-meta-construction-and-pattern-injection.md`. This document owns
+the type-associated `()` call mechanism; it does not redefine how a name first
+resolves to a symbol and heterogeneous value facet.
+Policy pairs, binding P1, result P2, compile companions, and must-select consistency
+are canonical in `symbol-policy-and-compile-flow-projection.md`.
+
 ## 1. Basic thesis
 
 A function is a value.
@@ -11,6 +18,11 @@ let f = (self) => {};
 ```
 
 `f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
+
+The converse is not true: a value entry need not be a function. A symbol's
+value facet may contain ordinary uncallable values and multiple heterogeneous
+values of unrelated types. Callability is tested only in a call position by
+resolving each value's type-associated `()` entry.
 
 Under the associated namespace of `F` there is a call entry `() :: F`. This `()` is the call method of the function object.
 
@@ -31,6 +43,12 @@ Product |> Expr
 5. Invoke that entry with implicit self + explicit Product
 
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
+
+When `Expr` is a name/path, resolution first produces a symbol and projects its
+heterogeneous value facet. Candidate preparation observes each enumerated
+object's `Pv:Pp` view for the current lookup domain before type-associated call
+lookup. The remaining steps run independently for each surviving value entry;
+entries without an applicable `()` call entry are discarded.
 
 ## 3. `()` is not an operator
 
@@ -67,6 +85,53 @@ The source product contains only the explicit user arguments. `ProductObject`, `
 
 The implicit `self` belongs to the callable-entry invocation frame, not to the source product.
 
+Declared receiver/parameter policy-pair compatibility applies uniformly to
+that complete frame:
+
+```text
+InvocationFrame:
+  slot 0 = selected function-object self view
+  slot 1..n = explicit argument symbol views
+
+every slot must satisfy its selected associated () entry policy pattern
+```
+
+No separate self-policy plane is required. Independently, the function
+object's available stage view is derived from its result P2:
+
+```text
+Stage(P1p) = Stage(P2p)
+Stage(P1v) = Stage(P2v) union Stage(P2p)
+```
+
+Thus the selected object has the static/runtime view required to supply self;
+an optional written P1 prefix merely projects that derived view.
+
+### 6.1 Internal Self frame and local pattern construction
+
+An ordinary function object owns an internal symbol/pattern space for local
+construction. Its diagnostic path may be sketched as:
+
+```text
+topname::__inner_space::Self
+```
+
+The exact eventual Self-frame identity is still future design. The invariant is
+that a local `struct` evaluated by an ordinary or `compile` callable uses this
+function-object internal scope as its ambient pattern owner. A `compile`
+invocation does not manufacture a meta-style `(canonical_arguments name)`
+symbol layer.
+
+An ordinary canonical `meta` invocation is different: symbol construction is
+anchored by its own `MetaInstanceScope(callee_symbol, canonical_arguments)`.
+Ordinary meta callables still use the implicit-self mechanics described above,
+but their returned type construction is rooted in the meta-instance scope.
+
+A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct` or
+`inject`, also has a function object, type, associated `()`, and implicit self,
+but may use its specified special owner/scope rule instead of creating an
+ordinary externally navigable `MetaInstanceScope`.
+
 ## 7. ZST function objects
 
 A function object with no captures is normally zero-sized. ZST values are not move-killed, so a zero-sized function object can naturally be called multiple times. Reusability follows from the general ZST movement rule.
@@ -79,13 +144,29 @@ If a function object captures state, it may be non-ZST and follows ordinary valu
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve Expr as a value: SymbolObject / value object → TypeValueId
-3. Find call entry: type(Expr).associated_namespace → lookup `()`
-4. Determine self mode: () :: F / () :: ref::T / () :: share::T
-5. Build invocation frame: implicit self + explicit shaped product args
-6. Apply callable-entry policy: symbol visibility, body-entry, return-object
-7. Enter invocation or defer
+2. Resolve a name/path to Symbol and project/enumerate its heterogeneous value facet
+3. Expose each Val2 object's policy-pair view for the current `Phase`
+4. For each surviving value entry, obtain its type / TypeValueId
+5. Find call entry: type(value).associated_namespace → lookup `()`
+6. Discard non-callable/non-applicable entries
+   while retaining visible derived companion objects
+7. Determine self mode: () :: F / () :: ref::T / () :: share::T
+8. Build invocation frame: implicit self + explicit shaped product args
+9. Form fully admissible set A using all hard checks, including receiver and
+   parameter pair compatibility, P2 result compatibility with any target
+   expectation, stage legality, and require legality
+10. Apply const/mut product-maximal filtering and the remaining fixed-order
+    preference filters, then the must-select check
+11. Enter the unique selected invocation or defer according to demand
 ```
+
+A derived compile companion is a complete `Val2` function object with stable
+origin, its own type, and its own associated static `()`. For origin result
+`runtime:Qstatic`, that result pair is `Qstatic:Qstatic`. It is not a
+lookup-failure fallback. If its prepared candidate enters fully admissible set
+`A`, its must-select strategy requires it to be the final unique candidate.
+Compile projection preserves an ordinary projected call; normal compile
+evaluation later enumerates and selects objects.
 
 ## 9. Relation to v0.8 substrate
 
@@ -114,4 +195,10 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
-- Meta functions follow the same function-object and implicit-self model.
+- Ordinary and built-in privileged meta functions follow the same
+  function-object and implicit-self call model.
+- Ordinary/compile local pattern construction uses the function-object internal
+  Self frame; compile does not create a MetaInstanceScope.
+- Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
+  built-in privileged AST meta functions may instead use their declared special
+  scope/owner rule.

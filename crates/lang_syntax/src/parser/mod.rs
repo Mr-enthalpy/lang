@@ -8,6 +8,7 @@ pub mod form;
 pub mod let_stmt;
 pub mod operator;
 pub mod pipe;
+pub mod policy;
 pub mod product;
 
 use crate::{lex, Diagnostic, ProgramAst, Token};

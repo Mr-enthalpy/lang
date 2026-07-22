@@ -1,9 +1,9 @@
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
     BindingPatternAst, BindingSlotAst, Diagnostic, DiagnosticCode, EntityRefAst, ExprAst, ExprKind,
-    FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, ProductElementAst,
-    ProductExprAst, ProgramAst, SegmentAst, SegmentElementAst, Symbol, Token, TokenKind,
-    TriviaKind, WithClauseKind,
+    FormAst, HeadClauseAst, LetAliasAst, LetAst, OperatorExprKind, PipeExprAst, PolicyAtomAst,
+    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProgramAst, SegmentAst,
+    SegmentElementAst, Symbol, Token, TokenKind, TriviaKind, ValuePolicyPatternAst, WithClauseKind,
 };
 
 pub fn dump_tokens(tokens: &[Token]) -> String {
@@ -96,7 +96,7 @@ fn dump_binding_slot(output: &mut String, slot: &BindingSlotAst, indent: usize) 
     line(output, indent, &format!("BindingSlot let={}", slot.has_let));
     if let Some(policy) = &slot.policy {
         line(output, indent + 1, "policy:");
-        dump_expr(output, policy, indent + 2);
+        dump_policy_spec(output, policy, indent + 2);
     }
     line(output, indent + 1, "deduce:");
     match &slot.deduce {
@@ -171,7 +171,7 @@ fn dump_alias_let(output: &mut String, alias: &LetAliasAst, indent: usize) {
     line(output, indent, "LetAlias");
     if let Some(policy) = &alias.policy {
         line(output, indent + 1, "policy:");
-        dump_expr(output, policy, indent + 2);
+        dump_policy_spec(output, policy, indent + 2);
     }
     line(output, indent + 1, "binder:");
     dump_alias_binder(output, &alias.binder, indent + 2);
@@ -667,9 +667,9 @@ fn dump_fn_head_prefix(output: &mut String, head: &crate::FnHeadPrefixAst, inden
         line(output, indent + 1, "params:");
         dump_param_clause(output, params, indent + 2);
     }
-    if let Some(trait_expr) = &head.fn_item_trait {
-        line(output, indent + 1, "fn_item_trait:");
-        dump_expr(output, trait_expr, indent + 2);
+    if let Some(policy) = &head.call_policy {
+        line(output, indent + 1, "call_policy:");
+        dump_policy_spec(output, policy, indent + 2);
     }
     if let Some(returns) = &head.returns {
         line(output, indent + 1, "returns:");
@@ -733,6 +733,50 @@ fn dump_return_clause(output: &mut String, clause: &crate::ReturnClauseAst, inde
     line(output, indent, "ReturnClause");
     line(output, indent + 1, "slot:");
     dump_binding_slot(output, &clause.slot, indent + 2);
+}
+
+fn dump_policy_spec(output: &mut String, policy: &PolicySpecAst, indent: usize) {
+    line(output, indent, "PolicySpec");
+    line(output, indent + 1, "value_policy:");
+    match &policy.value_policy {
+        ValuePolicyPatternAst::Conjunction(conjunction) => {
+            dump_policy_conjunction(output, conjunction, indent + 2)
+        }
+        ValuePolicyPatternAst::Absent { .. } => line(output, indent + 2, "Absent"),
+    }
+    line(output, indent + 1, "pattern_policy:");
+    match &policy.pattern_policy {
+        Some(pattern_policy) => dump_policy_conjunction(output, pattern_policy, indent + 2),
+        None => line(output, indent + 2, "None"),
+    }
+}
+
+fn dump_policy_conjunction(output: &mut String, conjunction: &PolicyConjunctionAst, indent: usize) {
+    line(output, indent, "PolicyConjunction");
+    for choice in &conjunction.choices {
+        line(output, indent + 1, "PolicyChoice");
+        for atom in &choice.atoms {
+            match atom {
+                PolicyAtomAst::Name(name) => {
+                    line(
+                        output,
+                        indent + 2,
+                        &format!("PolicyAtom Name \"{}\"", name.text),
+                    );
+                }
+                PolicyAtomAst::Group { conjunction, .. } => {
+                    line(output, indent + 2, "PolicyAtom Group");
+                    dump_policy_conjunction(output, conjunction, indent + 3);
+                }
+                PolicyAtomAst::AbsentValuePattern { .. } => {
+                    line(output, indent + 2, "AbsentValuePattern");
+                }
+                PolicyAtomAst::Error(error) => {
+                    line(output, indent + 2, &format!("Error \"{}\"", error.message));
+                }
+            }
+        }
+    }
 }
 
 fn line(output: &mut String, indent: usize, text: &str) {

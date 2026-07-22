@@ -1,6 +1,10 @@
-# Return Value, Extraction View, and Implicit Decomposition
+# Return Value, Extraction View, and Pattern-Directed Decomposition
 
 **Status: Future design boundary. Not current implementation behavior.**
+
+Policy staging of this extraction flow, including runtime Pattern retention and
+automatic require, is canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`.
 
 An evaluation returns one result object. The result object's value normal form is
 one of two shapes:
@@ -27,35 +31,22 @@ return P
 `P` is not an outer call wrapper. If a function returns a product, the result is
 product normal form.
 
-`?` does not mean destructure. `?` means enter one exposed extraction view:
+`?` does not mean destructure or enable extraction. Its current default meaning
+is one top-Pattern peel:
 
 ```text
-leaf e:
-  e? = e
+leaf? = leaf
 
-non-leaf e:
-  e? = peel_one_exposed_extraction_view(e)
-  // result may be e' or P
+P? = P
 
-product P:
-  P? = P
+TopPattern(P)? = P
+
+x?? = (x?)?
 ```
 
-Bare `?` peels one declared top extraction pattern layer. It is not recursive by
-default. It does not keep peeling until a target pattern is found. It does not
-perform Error propagation. It does not stand for arbitrary pattern matching.
-
-A type/value may define its exposed `?` view:
-- as one-layer peel;
-- as a direct jump to a chosen exposed view;
-- as an identity view, making the value opaque under bare `?`.
-
-The language default only performs one declared top-view transition. Multi-layer
-or recursive peeling must be explicitly defined by the type / extraction
-interface.
-
-For `P`, there is no top-level pattern shell to peel. `P` is already the product
-value, so `?` is idempotent on product normal form.
+Bare `?` peels at most one layer. It does not keep peeling until a target pattern
+is found, perform Error propagation, search for an extractor, or stand for
+arbitrary pattern matching. Leaves and Pattern normal forms are fixed points.
 
 Destructuring is a pattern-matcher operation, not value-level `?` semantics:
 
@@ -64,20 +55,20 @@ bind ProductPattern against P
   -> pattern matcher consumes product elements of P
 ```
 
-Equality never inserts `?`. Binding may request `?` only as pattern-directed
-repair.
+Equality never inserts `?`. Pattern matching and binding may directly read the
+symbol's Pattern layer; they do not need to insert `?` as an enabling bridge.
 
 A leaf is any value whose current extraction interface does not permit further
-decomposition by that same interface. `1uint8`, `uint8`, and `(int)Vec::std` are
+decomposition by that same interface. `1uint8`, `uint8`, and `(int Vec::std)` are
 all leaves in ordinary value context. Thus:
 
 ```text
-((int)Vec::std)? == (int)Vec::std
+(int Vec::std)? == (int Vec::std)
 ```
 
-This is not a claim that `Vec::std` has no argument. It says `(int)Vec::std`
-carries no product extraction interface in ordinary value context. Extraction of
-the type parameter requires an explicit rank-pattern context.
+This is not a claim that `Vec::std` has no argument. It says the current object
+is already a fixed-point leaf for the default one-layer view. Extraction of the
+type parameter requires an explicit rank-pattern context.
 
 ## 0. The Hourglass Model
 
@@ -94,7 +85,7 @@ Every constructed value can be understood as a waist point:
               |
               ?
               ↓
-        exposed extraction view e' or P
+        one-layer top Pattern view
 ```
 
 Upward, the value participates in a constructor-specific isomorphism:
@@ -109,12 +100,12 @@ construct_C(extract_C(v)) = v
 
 This `extract_C` is a named constructor/extractor pair, not bare `?`.
 
-Downward, `?` enters the value's currently exposed extraction view:
+Downward, `?` peels one top Pattern layer:
 
 ```text
 leaf e?       = e
 product P?    = P
-C(P)?         = declared ordinary extraction view
+TopPattern(P)? = P
 ```
 
 If that view contains product elements, each element may itself be a new waist
@@ -125,17 +116,16 @@ Examples:
 
 - `()single_return` may evaluate to a leaf `e`; `e? = e`.
 - `()two_return` may evaluate directly to product normal form `P`; `P? = P`.
-- `val : t` is a non-leaf `e`; `val?` enters the named-field product view.
-- `(int)Vec::std` is a leaf in ordinary value context; `?` is idempotent.
+- `val : t` may expose its one top named-field Pattern view through `val?`.
+- `(int Vec::std)` is a leaf in ordinary value context; `?` is idempotent.
 
-This is why `?` must not be understood as "inverse constructor." It goes
-downward into the next exposed extraction view. The upward
+This is why `?` must not be understood as "inverse constructor." It peels one
+top layer. The upward
 constructor/extractor isomorphism is a separate named interface.
 
 ### `?` Peels One Top Pattern Layer
 
-Bare `?` is a one-step extraction-view transition. It attempts to peel one
-declared top pattern layer from the value.
+Bare `?` attempts to peel one top Pattern layer.
 
 It is not recursive by default, and it is not an error-propagation shorthand.
 
@@ -146,36 +136,21 @@ leaf e:
 product P:
   P? = P
 
-non-leaf e:
-  e? = the declared exposed view of e
+TopPattern(P):
+  TopPattern(P)? = P
 ```
 
-The exposed view may be a product, a named product, a sum pattern, or another
-value-shaped view. Pattern matching consumes that exposed view after `?`; `?`
-itself does not recursively search for a matching pattern.
+Pattern matching may consume a symbol's Pattern layer directly without `?`;
+`?` itself does not recursively search for a matching pattern.
 
-A type may define its exposed `?` view as an identity view, making the value
-opaque under bare extraction:
+A future extension may allow a type to declare one custom exposed view, but the
+extension is not frozen here. It must remain bounded and must not imply
+arbitrary multi-layer skipping, recursive search, AST rewriting, or macro
+capability. Repeated explicit `?` remains ordinary composition:
 
 ```text
-opaque_value? = opaque_value
+x?? = (x?)?
 ```
-
-A cryptographic key, capability token, opaque handle, or abstract module value
-may intentionally define `?` as identity. Internal structure does not
-automatically imply extractability through bare `?`.
-
-Conversely, a wrapper may define `?` to expose a chosen inner branch pattern
-directly, if that is the abstraction's intended interface:
-
-```text
-wrapped_bool? -> if | else
-```
-
-This is a custom exposed view, not recursive default peeling. The language
-default peels only one declared top layer. If a user wants additional peeling,
-they must either write `?` again or explicitly define a multi-step extraction
-interface on the type.
 
 ### Minimal Sum-Pattern Example: `bool`
 
@@ -184,52 +159,27 @@ let bool: type = ((if | else) bool) |> struct;
 ```
 
 The first `bool` is the symbol being bound. The second `bool` is the pattern /
-construction name attached to the sum pattern `if + else`.
+construction name attached to the sum Pattern `if | else`.
 
-In cond-oriented contexts, logical operators naturally return the bare branch
-pattern:
-
-```text
-bool -> if | else
-(bool, bool) -> if | else
-```
-
-For example:
+Logical operators return ordinary bool symbols:
 
 ```text
-not  : bool -> if | else
-and  : (bool, bool) -> if | else
-or   : (bool, bool) -> if | else
+not  : bool -> bool
+and  : (bool, bool) -> bool
+or   : (bool, bool) -> bool
 ```
 
-Because these operators already return `if | else`, the cond consumer does not
-need to apply `?` — cond branch selection consumes the returned branch pattern
-directly.
-
-If a user wraps the bare `if | else` pattern into a custom `bool` value/type but
-still wants `?` to expose `if | else` in one step, the wrapper's extraction
-interface should define `?` to expose that branch pattern directly:
+The bool symbol's Pattern layer carries exactly one alternative space:
 
 ```text
-wrapped_bool? -> if | else
+if | else
 ```
 
-This is a user-defined extraction interface, not recursive default peeling.
+`true === if::bool` and `false === else::bool` are aliases of those Pattern
+symbols. They do not create a second `true | false` alternative space.
 
-If the wrapper's default top pattern exposes only an intermediate layer:
-
-```text
-wrapped_bool? -> inner_bool_layer
-```
-
-The language default stops there. It does not continue with:
-
-```text
-inner_bool_layer? -> if | else
-```
-
-unless the user explicitly defines recursive / multi-step extraction policy or
-writes `?` a second time.
+Pattern matching reads that layer directly; conditional control flow does not
+require `?`. Explicit `bool_value?` only asks for the one-layer top Pattern view.
 
 The same mechanism generalizes beyond `bool`:
 
@@ -244,11 +194,12 @@ AST node:
   node? -> literal | call | block | name
 
 User-defined wrapper:
-  wrapper? -> chosen exposed view
+  wrapper? -> one declared exposed top view (future extension)
 ```
 
-These are design examples. They are not implemented as current runtime types,
-pattern matchers, or constructor-specific extractors.
+These are design examples. They are not permission for default `?` to skip
+multiple layers or search recursively, and they are not implemented as current
+runtime types or custom view declarations.
 
 ## 1. Single-Return Non-Product Value
 
@@ -266,13 +217,14 @@ let a, b = e?       // error: e? is still leaf
 (a, b) == e         // false: e is not product normal form
 ```
 
-A corresponding implicit decomposition form also fails:
+A direct binding form also fails:
 
 ```lang
-let a, b = e;       // error; pattern-directed repair cannot expose a product
+let a, b = e;       // error; e has no matching product Pattern
 ```
 
-because the exposed view is still a single value, not a two-element product.
+because neither the value normal form nor its Pattern layer supplies a
+two-element product match.
 
 ## 2. Product-Return Normal Form
 
@@ -295,7 +247,7 @@ There is no value-level call wrapper around the product. If an implementation
 needs call-site provenance, invocation records, or debug origin, that is metadata
 or origin material, not a value-level wrapper.
 
-## 3. Binding-Context Implicit Decomposition
+## 3. Binding Reads Pattern Directly
 
 The binding rule is:
 
@@ -303,28 +255,26 @@ The binding rule is:
 let Pattern = Expr
 ```
 
-first tries to bind `Pattern` against the direct value normal form of `Expr`.
-
-If that fails, and `Pattern` is an extraction-demanding pattern, the checker may
-try one view transition:
+The checker resolves/evaluates `Expr`, then matches against its value normal
+form and Pattern layer. It does not retry a failed match by inserting `?`.
+Postfix `?` is applied only when source writes it explicitly:
 
 ```text
 let Pattern = Expr?
 ```
 
-This implicit bridge is allowed only in binding / extraction contexts.
-
-It is not allowed in ordinary value expressions:
+The same rule applies in binding, parameter, and other extraction contexts:
 
 ```text
 (a, b) == e      // no implicit `?`
-f(e)             // no implicit `?` unless f's parameter pattern demands it
+f(e)             // parameter matching reads e's Pattern directly
 ```
 
 Therefore:
 
 ```text
-binding context may request `?`
+binding/pattern matching reads Pattern without `?`
+only explicit source `?` requests the one-layer view
 value equality never inserts `?`
 ordinary expression evaluation never inserts `?`
 ```
@@ -371,11 +321,12 @@ P A== e             // true under named constructor / pattern A, if A reconstruc
 `A==` is provisional notation for constructor/pattern mediated equality. It is
 not ordinary value equality and does not imply that equality inserts `?`.
 
-## 5. Named Extraction Is Not Bare Product Extraction
+## 5. Named Pattern View Is Not Bare Product Extraction
 
-For a constructor-shaped value, `?` uses the value's declared exposed extraction
-interface. A struct value does not expose a bare product unless its extraction
-interface declares a bare product.
+For a constructor-shaped value, the symbol's Pattern layer carries its named
+field view. A struct value does not expose a bare product unless that Pattern
+layer declares a bare product. `?` may peel one top named layer, but extraction
+can read the Pattern directly.
 
 Given:
 
@@ -417,7 +368,8 @@ The correct binding form is:
 let a a, b b = val copy;
 ```
 
-This is valid by binding-context implicit decomposition, and is equivalent to:
+This is valid because binding-pattern matching reads the Pattern layer directly.
+Writing an explicit one-layer view may reach the same top Pattern:
 
 ```lang
 let a a, b b = val copy?;
@@ -431,8 +383,8 @@ are local binders.
 ```text
 1. Evaluation result normalizes to e or P.
 
-2. `?` peels one declared top extraction pattern layer. It does not mean
-   destructure. It is not recursive by default. It does not perform Error
+2. `?` attempts to peel one top Pattern layer. It does not mean destructure,
+   search, recursive decomposition, cross-rank conversion, or Error
    propagation.
 
 3. On leaf values, `?` is idempotent:
@@ -441,12 +393,13 @@ are local binders.
 4. On product normal form, `?` is idempotent:
    P? = P
 
-5. Named construction values expose their declared named extraction shape via
-   `?`, not necessarily a bare product.
+5. Named construction symbols carry their named extraction shape in Pattern;
+   `?` may expose one top layer but is not required for matching.
 
 6. Equality never inserts `?`.
 
-7. Binding may request `?` as pattern-directed decomposition repair.
+7. Binding/pattern matching may read the Pattern layer directly; `?` is not an
+   enabling repair step.
 
 8. Product matching consumes P in the pattern matcher; value-level `?` does not
    produce a separate split result.
@@ -478,7 +431,8 @@ The build implementation records this model as a static shape substrate:
 EvalResultNormalForm = ValuePoint(e) | Product(P)
 ```
 
-`question_view` is the pure shape-level view transition:
+The current `question_view` helper is transitional shape substrate for a pure
+one-step view transition:
 
 ```text
 Product(P) -> Product(P)
@@ -490,13 +444,18 @@ Binding and pattern matching consume product normal form directly:
 
 ```text
 ProductPattern + P -> Direct
-ProductPattern + non-leaf e exposing P -> AfterExtraction
+ProductPattern + non-leaf e exposing P -> AfterExtraction (current substrate name)
 ProductPattern + leaf e -> Mismatch
 ```
 
+`AfterExtraction` is a transitional implementation category. It must not be
+read as a final rule that inserts postfix `?` after a failed binding. The final
+matcher reads the symbol's Pattern layer directly; an explicit `?` remains a
+separate one-layer view operation.
+
 "Split" is a pattern-matcher consumption operation over product normal form. It
-is not the value-level result of `?`. Equality does not call `question_view` and
-never requests extraction repair.
+is not the value-level result of `?`. Equality does not call `question_view`.
+Final pattern matching does not require this helper as an enabling bridge.
 
 ## 7. Relationship to Control-Flow-Local Meta Evaluation
 
@@ -506,3 +465,8 @@ substrate uses sum-pattern spaces (e.g. `if | else`) as branch-selection materia
 It enforces that only the selected branch may perform lookup, policy check, meta
 invocation, or local symbol construction. Unselected branches have no lookup,
 policy, invocation, or `NamespaceDelta` obligation.
+
+That invariant applies when a compile-policy scrutinee has been evaluated and a
+single branch is selected. For a runtime-policy scrutinee, compile-flow
+projection retains the Pattern and inferred require retains all
+runtime-reachable alternatives as pattern-guarded contracts.

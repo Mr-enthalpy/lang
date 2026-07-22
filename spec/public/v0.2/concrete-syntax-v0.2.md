@@ -111,14 +111,41 @@ declarations, statements, or semantic categories.
 An ordinary let form has the shape:
 
 ```text
-OptionalPolicy "let" BindingSlot "=" Expr
+OptionalPolicySpec "let" BindingSlot "=" Expr
 ```
 
-Where `OptionalPolicy` is an optional expression written immediately before
-`let`. The policy is recognized only by the syntactic shape `Expr let`.
+Where `OptionalPolicySpec` is an optional policy specification written
+immediately before `let`. It is recognized only by the syntactic shape
+`PolicySpec let`.
 Without the following `let`, the same tokens remain part of the binding
 pattern or canonical skeleton. A `policy` of `None` means the policy was
 unwritten (implicit), not that the binding has "no policy."
+
+```text
+PolicySpec
+    ::= PolicyConjunction
+     |  PolicyConjunction ":" PolicyConjunction
+
+PolicyConjunction
+    ::= PolicyChoice
+     |  PolicyConjunction "+" PolicyChoice
+
+PolicyChoice
+    ::= PolicyAtom
+     |  PolicyChoice "||" PolicyAtom
+
+PolicyAtom
+    ::= Name
+     |  "(" PolicyConjunction ")"
+     |  AbsentValuePattern
+```
+
+Policy precedence is `||` above `+`, and `+` above the pair separator `:`.
+Single `|` remains Pattern alternative and is rejected by the strong-context
+policy parser.
+Raw parsing preserves both components in `PolicySpecAst`; semantic elaboration
+decides whether the position is P1 or P2 and validates policy atoms/pairs. The
+lexer continues to emit policy words as ordinary `Name` tokens.
 
 The let body includes:
 
@@ -130,7 +157,7 @@ The let body includes:
 
 The parser preserves all of these as raw syntax. It does not check:
 
-- whether the policy expression is a valid accessibility or visibility policy
+- whether the policy specification is a valid P1 projection or P2 result pair
 - whether the annotation denotes a valid type, rank, or classifier
 - whether the deduce list declares valid holes
 - whether the binding pattern is admissible
@@ -141,7 +168,7 @@ The parser preserves all of these as raw syntax. It does not check:
 An alias-let form has the shape:
 
 ```text
-OptionalPolicy "let" AliasBinder "===" EntityRef
+OptionalPolicySpec "let" AliasBinder "===" EntityRef
 ```
 
 Alias binding is a form-level construct. It may appear wherever a form may
@@ -175,7 +202,7 @@ slots, and return slots. It preserves:
 
 | Field | Presence by context |
 |---|---|
-| `policy: Option<ExprAst>` | Optional in all let/param/return positions; recognized only by `Expr let` shape |
+| `policy: Option<PolicySpecAst>` | Optional in all let/param/return positions; recognized only by `PolicySpec let` shape |
 | `has_let: bool` | Required in let forms; optional/redundant in param/return slots |
 | `deduce: Option<DeduceListAst>` | Optional per slot in strong binding contexts |
 | `pattern: BindingPatternAst` | Required |
@@ -505,7 +532,7 @@ An explicit closure head (`FnHeadPrefix`) has a fixed clause order:
 1. optional deduce list (`<...>`)
 2. optional capture clause (`[...]`)
 3. optional parameter clause (`()`, `(a, b)`)
-4. optional fn-item-trait clause (`: trait_expr`)
+4. optional call-result P2 policy (`: PolicySpec`)
 5. optional return clause (`-> binding_slot`)
 6. head clause tail (zero or more)
 
@@ -553,7 +580,7 @@ slot in parameter context (no initializer, `with` allowed, `let` optional,
 
 A parenthesized product in expression position is recognized as the parameter
 clause of an explicit closure head when it is followed by later closure-head
-material such as a fn-item-trait clause (`:`), return clause (`->`), head
+material such as a call-result P2 policy (`:`), return clause (`->`), head
 clause, or body delimiter. For example, `(self, t: type): meta -> r => { ... }`
 is parsed as an explicit headed closure, not as a product expression followed
 by an unrelated `:` token.

@@ -46,10 +46,13 @@ fn delete_body_non_string() -> NormClosureBody {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn delete_body_is_legal_in_meta_execution_env() {
+fn delete_body_is_legal_in_open_static_execution_env() {
     let body = delete_body("reason");
-    let result =
-        check_closure_body_delete_legality(&body, ClosureBodyExecutionEnv::Meta, provenance("t"));
+    let result = check_closure_body_delete_legality(
+        &body,
+        ClosureBodyExecutionEnv::OpenStatic,
+        provenance("t"),
+    );
     assert!(result.is_ok());
 }
 
@@ -63,15 +66,18 @@ fn delete_body_is_rejected_in_runtime_execution_env() {
     );
     assert!(result.is_err());
     let diag = result.unwrap_err();
-    assert!(diag.message.contains("meta-executed"));
+    assert!(diag.message.contains("static bodies"));
     assert_eq!(diag.severity, DiagnosticSeverity::Error);
 }
 
 #[test]
-fn block_body_is_legal_in_meta_execution_env() {
+fn block_body_is_legal_in_open_static_execution_env() {
     let body = block_body();
-    let result =
-        check_closure_body_delete_legality(&body, ClosureBodyExecutionEnv::Meta, provenance("t"));
+    let result = check_closure_body_delete_legality(
+        &body,
+        ClosureBodyExecutionEnv::OpenStatic,
+        provenance("t"),
+    );
     assert!(result.is_ok());
 }
 

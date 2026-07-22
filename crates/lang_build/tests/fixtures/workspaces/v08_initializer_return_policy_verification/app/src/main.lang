@@ -7,4 +7,4 @@ meta let + =
   r === t;
 };
 
-meta | runtime let X: type = int + unit;
+meta || runtime let X: type = int + unit;

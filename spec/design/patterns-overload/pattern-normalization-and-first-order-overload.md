@@ -10,11 +10,16 @@ exist before a formal meta object invocation model can select callables. It is a
 future design note. It is not current public language behavior, not an
 implemented pass, and not a parser or normalizer rule.
 
-The document is self-contained. It does not require the reader to assemble its
-meaning from `overload-resolution-design.md`,
-`static-pattern-spaces-and-extraction-chains.md`, or
-`early-meta-functions-and-namespace-graph.md`. Those documents are background
-context only; the design here stands on its own.
+The document is self-contained for pattern and argument-shape preparation. It
+does not restate final overload ordering, pattern-space algebra, or symbol
+policy; those boundaries remain owned by their canonical documents.
+
+Canonical `Pv:Pp`, contextual P1 projection, P2 result normalization,
+function-object stage-view derivation, complete derived compile-companion
+objects, and must-select consistency are canonical in
+`../symbol-world/symbol-policy-and-compile-flow-projection.md`. This document
+supplies structural candidate material to that policy boundary; it does not
+define a competing body-entry or return-policy model.
 
 ## 0.1 v0.8 restricted subset
 
@@ -67,11 +72,16 @@ overload `(self, t: type, _ unit: type): meta -> ...`, and the selected body
 forwards `t`. The left-hand `: type` annotation is only checked after this RHS
 result exists; it does not cause the RHS meta evaluation.
 
-The generic fallback body `r === t | u` is not part of the implemented value
-model unless canonical sum-pattern values are added. If that body is selected,
+The current legacy generic fallback body `r === t | u` is not part of the
+implemented value model unless canonical sum-pattern values are added. If that
+body is selected,
 the restricted evaluator reports the structured
 `UnsupportedCanonicalSumPatternValue` diagnostic instead of treating `|` as
 policy union, expression-level operator lookup, or `+` reduction.
+
+This is an implementation-substrate note. Final formal meta return uses
+`r = ...` to build `SymbolConstructionValue`; `r === ...` is not a future
+formal-return category.
 
 Restricted overload failure is structured in v0.8. Ambiguous candidates,
 missing source-declared callables, lookup-phase visibility misses,
@@ -155,13 +165,16 @@ lookup callee name
 It must be at least:
 
 ```text
-lookup callee name
-collect candidates
+resolve callee Symbol and project heterogeneous value entries
+prepare type-associated `()` entries, including entries of derived companion objects
 normalize argument shapes
 match candidate parameter patterns
 check first-order type-value compatibility
-filter by policy/body-entry
-select callable
+project the current Val2 object view and namespace visibility
+form fully admissible set A using parameter/receiver policy pairs, any target
+result constraint, stage legality, concept/ordinary require, and all other hard checks
+apply fixed-order preference filters and must-select consistency
+select one callable
 ```
 
 The "overload" introduced at this layer serves meta object invocation first. It
@@ -244,7 +257,7 @@ Only a future explicit parameter expectation / extraction rule may consume
 `Unit`; product semantic normalization itself does not delete it.
 
 This layer prohibits callee-specific AST argument parsing, special handling of
-`(T)Vec` / `(T)Option` / `(A, B)Pair`, flattening through Expression nodes, and
+`(T Vec)` / `(T Option)` / `(A, B Pair)`, flattening through Expression nodes, and
 dropping `Unit` during product normalization.
 
 ## 3. PatternObject
@@ -448,18 +461,21 @@ formal meta object invocation engine. The end-to-end pipeline is:
 
 ```text
 normalized call
-  -> callee lookup under policy
-  -> candidate collection
+  -> callee Symbol / heterogeneous value projection
+  -> type-associated `()` candidate preparation
   -> argument shape formation
   -> parameter pattern normalization
   -> first-order type-value compatibility
-  -> applicable candidate set
+  -> fully admissible set A after policy-pair, target-result,
+     stage, concept/require, and other hard checks
+  -> fixed-order overload preference filters and must-select check
   -> meta object invocation
 ```
 
 This document covers only the preparation portion — from argument shape to the
-applicable candidate set. It stops at the boundary where the meta object
-invocation engine takes over. The invocation engine itself (policy-governed
+hard-admissibility input material. It stops at the boundary where the overload
+filters and meta object invocation engine take over. The invocation engine
+itself (policy-governed
 execution, partial vs strict reduction, residualization) is specified in
 `meta-object-invocation-and-policy-reduction.md`.
 

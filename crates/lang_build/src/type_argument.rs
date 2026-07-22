@@ -51,7 +51,7 @@ pub fn classify_type_arguments(
             _ => continue,
         };
         let Ok(type_symbol) =
-            capability.resolve_type_object_with_policy(&name, context, PolicyEnv::Meta)
+            capability.resolve_type_object_with_policy(&name, context, PolicyEnv::OpenStatic)
         else {
             continue;
         };
@@ -100,7 +100,7 @@ pub fn classify_type_arguments_with_report(
             } => text.clone(),
             _ => continue,
         };
-        match capability.resolve_type_object_with_policy(&name, context, PolicyEnv::Meta) {
+        match capability.resolve_type_object_with_policy(&name, context, PolicyEnv::OpenStatic) {
             Ok(type_symbol) => {
                 *raw_arg = raw_arg
                     .clone()

@@ -1,0 +1,233 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "runtime"
+            pattern_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "compile"
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName runtime_compile
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "runtime"
+            pattern_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "seal"
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName runtime_seal
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Group
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "runtime"
+                        PolicyAtom Name "compile"
+            pattern_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "compile"
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName runtime_compile_union
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Group
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "runtime"
+                        PolicyAtom Name "seal"
+            pattern_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "seal"
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName runtime_seal_union
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "const"
+                PolicyChoice
+                  PolicyAtom Group
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "compile"
+                        PolicyAtom Name "runtime"
+            pattern_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "compile"
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName mixed
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name value
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName callable
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Explicit
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName x
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                        call_policy:
+                          PolicySpec
+                            value_policy:
+                              PolicyConjunction
+                                PolicyChoice
+                                  PolicyAtom Name "runtime"
+                            pattern_policy:
+                              PolicyConjunction
+                                PolicyChoice
+                                  PolicyAtom Name "seal"
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  PatternSkeleton
+                                    CanonicalWildcard _
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      BodyBlock
+                        forms:
+                          ReturnEvent
+                            value
+                              Expr
+                                Pipe
+                                  Segment has_incoming=false
+                                    OperatorExpr
+                                      Atom
+                                        Name x
+                            target
+                              ImplicitNearest

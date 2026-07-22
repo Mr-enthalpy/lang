@@ -96,7 +96,9 @@ ordinary syntax understanding.
 | `raw-ast-contract-freeze-v0.2.md` | Normative for v0.2 contract freeze | Defines v0.2 freeze boundary, allowed work, forbidden work, and handoff requirements for v0.3. |
 | `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
 | `v0.4-normalization-prototype-notes.md` | Normative for the v0.4 normalization boundary | Records what the v0.4 Raw AST → Normalized AST prototype/hardening delivered and the boundary it must not cross (value/pattern separation, annotation patterns, unresolved operator/alias targets, `Unsupported` visibility, no pattern-space/semantic behavior). |
-| `v0.8-meta-construction-agent-constraints.md` | Draft construction contract for v0.8-adjacent work; not current public behavior | Cross-block agent guardrails for type-to-type meta construction, requiring no-bypass namespace graph use, `ProductObject` / `ArgProductShape`, `SymbolObject`, `TypeValueId` / `PlaceId` / `AliasChain`, policy planes, canonical meta instance keys, and `NamespaceDelta` atomicity. |
+| `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; not current public behavior | Preserves extraction and current v0.8/v0.9 construction-substrate boundaries; its old formal `r =`/`r ===` return split is superseded by the canonical symbol-first design note. |
+| `v0.8-meta-construction-agent-constraints.md` | Draft construction contract for v0.8-adjacent work; not current public behavior | Cross-block guardrails requiring no-bypass namespace graph use, `ProductObject` / `ArgProductShape`, symbol/place/pattern-value separation, transitional policy metadata aligned toward `P1` / `P2`, rank-directed keys, resolved pattern owners, and `NamespaceDelta` atomicity. |
+| `v0.9-pattern-head-identity-and-explicit-navigation.md` | Mixed implemented-substrate/future handoff contract | Preserves bare-name vs explicit-`::` navigation and documents the current registry-backed `PatternHeadId` attachment substrate; final `ResolvedPatternScope`, binding-independent `struct` ownership, and `inject` are future. |
 | `v0.9-control-flow-end-events.md` | Handoff contract for `TailValue`/`ReturnEvent` terminal forms and deferred target resolution | v0.9 control-flow end events contract (implemented syntax/normalized structure, deferred semantic resolution). Covers the three return terminal form spellings, non-expression guarantees, terminal block enforcement, and consumer handoff expectations. Target resolution and D-reduction are explicitly deferred. |
 
 ## Historical design notes
@@ -139,11 +141,12 @@ into contracts, moved into planning, or archived into history. Start at
 
 | Block | Role |
 |---|---|
-| `spec/design/build-package/` | Package/build layer: manifest records, namespace-graph projection, mount paths, export surface, package identity, dependency edges, source roots, cache/fingerprint/provenance. |
-| `spec/design/symbol-world/` | Namespace graph world model: `SymbolId` / `PlaceId` / `TypeValueId`, alias forwarding, writable-place, field functions, `ref`/`share` projection namespaces, type-associated function objects, injection targets, and the early-meta / namespace-graph bootstrap. |
+| `spec/design/build-package/` | Package/build layer: manifest records, namespace-graph projection, mount paths, physical-directory contribution authority, export surface, package identity, dependency edges, source roots, cache/fingerprint/provenance. |
+| `spec/design/symbol-world/` | Namespace graph world model: symbol-first facets, `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility/snapshot, const/mut product order, compile-flow projection, companions, automatic require, identities, alias forwarding, `compile` / `meta`, meta type self-root, resolved pattern scopes, `struct`, functional `inject`, namespace origin/construction ownership, binding/install, and the early-meta bootstrap. |
 | `spec/design/patterns-overload/` | Pattern normalization, occurrence roles, argument/parameter shapes, first-order type-value candidate adaptation, applicability, specificity, the full overload-resolution vision, static pattern spaces, and extraction chains. |
-| `spec/design/meta-invocation/` | Policy-governed meta object invocation: dual symbol-lookup vs callable execution, partial vs strict meta reduction, residualization, guarded invocation, and control-like callables instead of `if constexpr` syntax. |
-| `spec/design/policy-capability/` | Symbol-visibility / body-entry / return-object policy, context policy, meta/runtime policy filtering, and future error/panic policy. |
+| `spec/design/meta-invocation/` | Policy-governed invocation: heterogeneous value candidates, canonical pair handoff, partial vs strict demand, residualization, and policy-staged pattern matching. |
+| `spec/design/policy-capability/` | Mapping from current flat policy metadata to canonical `Pv:Pp`, contextual P1/P2 elaboration, seal boundaries, and future orthogonal dimensions; no final `P3`. |
+| `spec/design/lifetime/` | Negative boundary placing lifetime policy/refinement after completed first-order type/compile overload selection; no lifetime algorithm is frozen. |
 | `spec/design/control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only |
 | `spec/design/mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes with no loop core. |
 
@@ -222,6 +225,18 @@ Read these only when working on forward-looking design topics. Start at
 build-package -> symbol-world -> patterns-overload -> meta-invocation
   -> mechanical-lowering -> later runtime lookup / type check
 ```
+
+For symbol construction work, begin the symbol-world block with
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+Then read
+`spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
+for namespace creation origin, physical authority, and source/meta construction
+ownership.
+Then read
+`spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
+layered policy, contextual P1 binding projection, P2 result normalization,
+mechanical projection of ordinary calls, complete derived compile-companion
+objects, finite local flow, and coarse inferred-require slicing.
 
 Then read within each block as needed. Scope boundaries are in
 `spec/planning/roadmap.md`, and known gaps in `spec/planning/open-questions.md`.
