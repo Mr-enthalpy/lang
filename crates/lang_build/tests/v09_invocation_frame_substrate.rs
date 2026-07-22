@@ -40,9 +40,9 @@ fn candidate_with_arg_product(arg_product_shape: ArgProductShape) -> PreparedCal
         arg_product_shape,
         parameter_shape: ParameterShape::deferred(Provenance::new("test parameter shape")),
         policy_planes: CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
-            demanded_execution: ExecutionEnv::Meta,
+            demanded_execution: ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
             return_object_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
         },
@@ -101,8 +101,8 @@ fn self_is_not_counted_in_explicit_argument_product() {
             Provenance::new("resolved callable self"),
         ),
         explicit_user_product,
-        InvocationLookupEnv::new(PolicyEnv::Meta),
-        InvocationExecutionEnv::new(ExecutionEnv::Meta),
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
         Provenance::new("invocation frame"),
     )
     .expect("valid invocation frame");
@@ -122,8 +122,8 @@ fn declaration_context_call_entry_placeholder_uses_same_frame_model() {
         InvocationCallableRef::Placeholder,
         SelfPosition::placeholder_from_call_entry(Provenance::new("call-entry self")),
         empty_arg_product_shape(),
-        InvocationLookupEnv::new(PolicyEnv::Meta),
-        InvocationExecutionEnv::new(ExecutionEnv::Meta),
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
         Provenance::new("unit callable placeholder frame"),
     )
     .expect("valid placeholder invocation frame");
@@ -163,8 +163,8 @@ fn invocation_frame_rejects_nonzero_self_position() {
             provenance: Provenance::new("invalid self position"),
         },
         empty_arg_product_shape(),
-        InvocationLookupEnv::new(PolicyEnv::Meta),
-        InvocationExecutionEnv::new(ExecutionEnv::Meta),
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
         Provenance::new("invalid invocation frame"),
     );
 
@@ -184,8 +184,8 @@ fn invocation_frame_rejects_arg_shape_arity_atom_mismatch() {
             Provenance::new("resolved callable self"),
         ),
         mismatched_product,
-        InvocationLookupEnv::new(PolicyEnv::Meta),
-        InvocationExecutionEnv::new(ExecutionEnv::Meta),
+        InvocationLookupEnv::new(PolicyEnv::OpenStatic),
+        InvocationExecutionEnv::new(ExecutionEnv::OpenStatic),
         Provenance::new("mismatched invocation frame"),
     );
 

@@ -17,7 +17,6 @@ fn assert_parser_case(name: &str, expect_diagnostics: bool) {
         &fs::read_to_string(case_path(name, "ast")).expect("read AST fixture"),
     );
     let output = lang_syntax::parse(&source);
-
     assert_eq!(lang_syntax::dump_ast(&output.program), expected_ast);
 
     if expect_diagnostics {

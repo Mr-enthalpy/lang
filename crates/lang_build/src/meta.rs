@@ -81,7 +81,7 @@ pub fn try_expand_early_meta_initializer_with_materialization_state(
         &site.target,
         &snapshot.capability(),
         context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     )
     .map_err(BuildError::single)?
     else {
@@ -96,8 +96,8 @@ pub fn try_expand_early_meta_initializer_with_materialization_state(
                 parent_namespace,
                 binding_name,
                 context,
-                PolicyEnv::Meta,
-                ExecutionEnv::Meta,
+                PolicyEnv::OpenStatic,
+                ExecutionEnv::OpenStatic,
                 CandidateBuildIdentityPlaceholder::default(),
                 provenance,
                 None,
@@ -515,13 +515,13 @@ fn classify_struct_field_argument(
     let type_path_str = type_path.join("::");
     let type_symbol = snapshot
         .capability()
-        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::Meta)
+        .resolve_type_object_with_policy(&type_path_str, context, PolicyEnv::OpenStatic)
         .map_err(|_| {
             if let Ok(non_type_symbol) = snapshot.capability().resolve_with_policy(
                 &type_path,
                 context,
                 ResolveExpectation::Object,
-                PolicyEnv::Meta,
+                PolicyEnv::OpenStatic,
             ) {
                 return Diagnostic::hard_error(
                     format!(
@@ -720,6 +720,7 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                     policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
                     visibility_metadata: crate::model::VisibilityMetadata {
                         slots: std::collections::BTreeMap::new(),
+                        ..crate::model::VisibilityMetadata::default()
                     },
                     provenance: provenance.clone(),
                     diagnostics: Vec::new(),
@@ -734,6 +735,7 @@ pub fn bind_meta_invocation_value_result_with_materialization_state(
                     policy_metadata: crate::policy_metadata(crate::policy_set_meta_runtime()),
                     visibility_metadata: crate::model::VisibilityMetadata {
                         slots: std::collections::BTreeMap::new(),
+                        ..crate::model::VisibilityMetadata::default()
                     },
                     diagnostics: Vec::new(),
                     generation_origin: Some("ForwardedValue(TypeSymbol) binding".to_string()),
@@ -1009,6 +1011,7 @@ fn bind_generated_construction_value(
         policy_metadata: crate::policy_metadata(policy_set_meta_runtime()),
         visibility_metadata: crate::model::VisibilityMetadata {
             slots: std::collections::BTreeMap::new(),
+            ..crate::model::VisibilityMetadata::default()
         },
         diagnostics: Vec::new(),
         generation_origin: Some(

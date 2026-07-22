@@ -123,23 +123,26 @@ unwritten (implicit), not that the binding has "no policy."
 
 ```text
 PolicySpec
-    ::= PolicyExpr
-     |  PolicyExpr ":" PolicyExpr
+    ::= PolicyConjunction
+     |  PolicyConjunction ":" PolicyConjunction
 
-PolicyExpr
-    ::= PolicyTerm
-     |  PolicyExpr "|" PolicyTerm
+PolicyConjunction
+    ::= PolicyChoice
+     |  PolicyConjunction "+" PolicyChoice
 
-PolicyTerm
+PolicyChoice
     ::= PolicyAtom
-     |  PolicyTerm "+" PolicyAtom
+     |  PolicyChoice "||" PolicyAtom
 
 PolicyAtom
     ::= Name
-     |  "(" PolicyExpr ")"
+     |  "(" PolicyConjunction ")"
+     |  AbsentValuePattern
 ```
 
-Policy precedence is `+` above `|`, and `|` above the pair separator `:`.
+Policy precedence is `||` above `+`, and `+` above the pair separator `:`.
+Single `|` remains Pattern alternative and is rejected by the strong-context
+policy parser.
 Raw parsing preserves both components in `PolicySpecAst`; semantic elaboration
 decides whether the position is P1 or P2 and validates policy atoms/pairs. The
 lexer continues to emit policy words as ordinary `Name` tokens.

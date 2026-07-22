@@ -19,10 +19,11 @@ pub use ast::{
     ClosureBodyAst, DeduceListAst, DeleteBodyAst, EntityRefAst, ErrorAst, ExplicitClosureAst,
     ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst, InPlaceClosureAst, LetAliasAst,
     LetAst, NameAst, NavComponentAst, OperatorExprAst, OperatorExprKind, OperatorFixity,
-    OperatorNameAst, ParamClauseAst, PipeExprAst, PolicySpecAst, ProductElementAst, ProductExprAst,
-    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, ReturnEventAst,
-    ReturnTargetAst, SegmentAst, SegmentElementAst, SelectorAst, ValuePolicyPatternAst,
-    WithClauseAst, WithClauseKind,
+    OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
+    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
+    ProductExtractElementAst, ProgramAst, ReturnClauseAst, ReturnEventAst, ReturnTargetAst,
+    SegmentAst, SegmentElementAst, SelectorAst, ValuePolicyPatternAst, WithClauseAst,
+    WithClauseKind,
 };
 pub use diagnostic::{Diagnostic, DiagnosticCode};
 pub use dump::{dump_ast, dump_diagnostics, dump_tokens};
@@ -32,9 +33,9 @@ pub use norm::{
     NormCanonicalNameRole, NormClosure, NormClosureBody, NormClosureHead, NormClosureKind,
     NormDecl, NormDeleteBody, NormEntityRef, NormError, NormExpr, NormForm, NormHeadClause,
     NormHoleDecl, NormLiteralKind, NormNavComponent, NormOperatorFixity, NormOrigin, NormPattern,
-    NormPatternElem, NormPolicySpec, NormProduct, NormProductElem, NormProgram, NormReturnEvent,
-    NormReturnTargetSyntax, NormRule, NormSkeleton, NormSkeletonElem, NormValuePolicyPattern,
-    NormWithClause,
+    NormPatternElem, NormPolicyAtom, NormPolicyChoice, NormPolicyConjunction, NormPolicySpec,
+    NormProduct, NormProductElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule,
+    NormSkeleton, NormSkeletonElem, NormValuePolicyPattern, NormWithClause,
 };
 pub use parser::{parse, ParseOutput};
 pub use source::normalize_source_text;

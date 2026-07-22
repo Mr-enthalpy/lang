@@ -29,6 +29,7 @@ pub mod overload_pattern;
 pub mod overload_set;
 pub mod pattern_head;
 pub mod pattern_space;
+pub mod phase_flow;
 pub mod policy_expr;
 pub mod policy_overload;
 pub mod policy_pair;
@@ -157,21 +158,31 @@ pub use pattern_head::{
     TypeMaterializationState,
 };
 pub use pattern_space::{
-    bool_branch_space_for_tests, derive_sum_pattern_space, SelectedSumPattern,
-    StructLeafTypeExprShape, SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape,
-    SymbolPathShape, TypePatternExprShape,
+    bool_branch_space_for_tests, bool_pattern_aliases_for_tests, derive_sum_pattern_space,
+    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, SumPatternAlternative,
+    SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape, TypePatternExprShape,
+};
+pub use phase_flow::{
+    classify_static_task, enumerate_value_facet, expose_policy_slice, project_complete_symbol_flow,
+    read_pattern, read_value, resolve_explicit_path, CompleteFlowNode, CompleteSymbolFlow,
+    ExposedPolicyEntry, FacetView, ProjectedCompileFlow, RuntimeResidualFlow, StaticFlow,
+    StaticTaskDisposition, SymbolEntry, SymbolResolutionError,
 };
 pub use policy_expr::elaborate_declaration_policy_expr;
 pub use policy_overload::{
-    select_by_mutability_product, MutabilityPattern, PolicyOverloadCandidate,
-    PolicyOverloadSelection,
+    select_by_mutability_product, select_policy_overload, MutabilityPattern,
+    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection,
 };
 pub use policy_pair::{
-    derive_function_object_p1, elaborate_p1_projection, normalize_p2_policy, project_p1,
-    FunctionMember, FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy,
-    FunctionObjectView, FunctionSliceStage, NamespaceVisibility, P1Projection,
-    PatternComponentPolicy, PolicyLookupStage, PolicyPair, PolicyResultEntry, PolicyStage,
-    SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence,
+    compute_export_closure, compute_wpre, derive_function_object_p1,
+    elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
+    elaborate_namespace_declaration_policy, externally_visible, normalize_p2_policy, project_p1,
+    publicly_reachable, BuiltinPrivilegedSealFunction, FormalPolicyPattern, FunctionMember,
+    FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView,
+    FunctionSliceStage, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
+    PolicyPair, PolicyResultEntry, PolicyStage, SealWorldSnapshot, StageSet, ValueComponentPolicy,
+    ValueMutability, ValuePresence, WpreRoots,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

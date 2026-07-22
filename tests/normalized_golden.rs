@@ -24,7 +24,6 @@ fn assert_norm_case(name: &str, expect_diagnostics: bool) {
     );
     let output = lang_syntax::parse(&source);
     let normalized = lang_syntax::normalize_program(&output.program);
-
     assert_eq!(lang_syntax::dump_norm_program(&normalized), expected_norm);
 
     if expect_diagnostics {

@@ -1,994 +1,606 @@
 # Symbol Policy and Compile-Flow Projection
 
-Status: canonical future-design note, with an explicitly identified transitional
-implementation substrate.
+Status: canonical design contract. The typed model in this document is the
+normative policy algebra. Flat `PolicySet`/`PolicyFlag` values are transitional
+transport only and must not define source semantics.
 
-This document owns:
+This document owns the complete chain:
 
-- the `Val1 × Pattern × Val2` symbol-flow model;
-- the canonical policy pair `Π = Pv:Pp`;
-- general binding-position `P1` projection;
-- callable-result `P2` normalization and function-object `P1` derivation;
-- `meta`, `compile`, `seal`, and `runtime` visibility boundaries;
-- mechanical compile-flow projection and derived compile companions;
-- the policy portion of overload admissibility and const/mut preference;
-- match staging and coarse automatic-`require` extraction.
+```text
+source policy syntax
+  -> contextual elaboration
+  -> PolicyPair
+  -> symbol resolution
+  -> phase-slice exposure
+  -> binding/overload selection
+  -> OpenStatic evaluation
+  -> SealStatic evaluation
+  -> Runtime binding and evaluation
+```
 
-Related canonical owners:
+## 1. Complete symbol flow and policy pair
 
-- `symbol-first-meta-construction-and-pattern-injection.md` owns symbol-first
-  resolution, facets, `compile`/`meta` construction ranks, pattern scopes,
-  `struct`, `inject`, and graph-installation boundaries.
-- `symbol-construction-units-and-namespace-origin.md` owns namespace origin,
-  construction-unit ownership, physical contribution authority, and cross-unit
-  closure.
-- `../patterns-overload/overload-resolution-design.md` owns the complete
-  admissibility and preference pipeline.
-- `../lifetime/lifetime-policy-and-overload-boundary.md` owns the negative
-  boundary between lifetime policy and type/compile overload resolution.
-
-## 1. Complete Symbol Flow
-
-Language computation is one flow of symbols, not separate type and value
-worlds. The abstract semantic shape is:
+Language computation remains one symbol flow:
 
 ```text
 Symbol = Val1 × Pattern × Val2
 ```
 
-where:
-
-```text
-Val1:
-  value leaves in the pattern tree
-
-Pattern:
-  the anonymous type/pattern structure carried by those values
-
-Val2:
-  objects installed at a pattern level, commonly function objects
-```
-
-Traditional categories are degenerate cases:
-
-```text
-traditional pure type:
-  Val1 is absent
-
-traditional ordinary value:
-  Val2 is absent
-```
-
-`Val2` does not disappear from symbol-first semantics. Each `Val2` object has
-its own policy pair and, when callable, its own type-associated `()` entry.
-Different objects in one symbol value facet may therefore expose different
-policy slices.
-
-## 2. Canonical Policy Representation
-
-The internal policy representation is a pair:
+The policy of a result is always a pair:
 
 ```text
 Π = Pv:Pp
+
+Pv  policy of Val1/the value component
+Pp  policy of Pattern/the anonymous-type component
 ```
 
-```text
-Pv:
-  policy of the Val1/value component
-
-Pp:
-  policy of the Pattern/anonymous-type component
-```
-
-A scalar policy is only surface notation or a derived summary. Implementations
-must not store one scalar and later attempt to reconstruct `Pv` and `Pp` from
-it.
+There is no scalar replacement for this pair and no third policy slot. A
+result object carries its own `PolicyPair` when it re-enters the flow.
 
 Policy dimensions are typed and orthogonal:
 
 ```text
-stage:
-  meta | compile | seal | runtime
-
-value mutability:
-  const | mut
-
-namespace visibility:
-  public | private | export | ...
-
-value presence:
-  present | optional | absent
+stage                       meta / compile / seal / runtime
+value mutability            const / mut
+value presence              present / optional / absent
+ordinary namespace visibility public / private
+export-root attribute       yes / no
 ```
 
-These dimensions must not be flattened into one untyped atom set and then
-unioned indiscriminately.
+They are not members of one untyped atom bag. In particular, export-root and
+ordinary visibility are independent.
 
-Ordinary policy judgments reserve `@` for lifetime syntax and use notation such
-as:
+## 2. Pattern alternative and policy operators
 
-```text
-Γ ⊢ e : (τ, Pv:Pp)
-```
-
-or:
-
-```text
-Γ ⊢ e : τ ; policy = Pv:Pp
-```
-
-## 3. P1 Is a General Binding Projection
-
-`P1` is the optional policy prefix of any binding:
-
-```text
-[P1] let x = expr
-```
-
-It is not a function-object-only policy position.
-
-### 3.1 Omitted P1
+Single `|` belongs to Pattern alternative:
 
 ```lang
-let x = expr;
+let bool = ((if | else) bool) |> struct;
+
+let true === if::bool;
+let false === else::bool;
 ```
 
-Omission requests full inference. The binding retains every result pair
-produced by `expr`; it does not proactively crop the result.
+Therefore:
 
-### 3.2 Single-policy P1
+```text
+Pattern(bool) = if::bool | else::bool
+true  is an alias of if::bool
+false is an alias of else::bool
+```
+
+`true | false` is not a second Pattern space for `bool`.
+
+Policy uses three different operators:
+
+```text
+||  choice within one policy dimension
++   conjunction of different orthogonal dimensions
+:   value/Pattern pair separator
+```
+
+Precedence, from tightest to loosest, is:
+
+```text
+||  >  +  >  :
+```
+
+Thus:
+
+```text
+const + runtime || compile : compile
+```
+
+means:
+
+```text
+const + (runtime || compile) : compile
+```
+
+### 2.1 Policy grammar
+
+```text
+PolicySpec
+  ::= PolicyConjunction
+   |  PolicyConjunction ":" PolicyConjunction
+
+PolicyConjunction
+  ::= PolicyChoice
+   |  PolicyConjunction "+" PolicyChoice
+
+PolicyChoice
+  ::= PolicyAtom
+   |  PolicyChoice "||" PolicyAtom
+
+PolicyAtom
+  ::= Name
+   |  "(" PolicyConjunction ")"
+   |  AbsentValuePattern
+```
+
+The parser is a strong-context parser. `meta`, `compile`, `seal`, `runtime`,
+`public`, `private`, and `export` remain ordinary names to the lexer. The token
+spelling for `AbsentValuePattern` is provisional; implementation fixtures may
+use `S`, but source spelling is not frozen.
+
+### 2.2 Algebra
+
+`||` selects alternatives within one dimension:
+
+```text
+runtime || compile
+meta || compile
+const || mut
+runtime || S
+```
+
+It is not arbitrary clause-level Boolean disjunction. These are invalid:
+
+```text
+runtime || const
+compile || public
+mut || export
+(const + runtime) || (mut + compile)
+```
+
+`+` combines different dimensions:
+
+```text
+const + runtime
+mut + (runtime || compile)
+public + compile
+```
+
+It cannot combine mutually exclusive values in one dimension:
+
+```text
+const + mut
+public + private
+```
+
+The syntax and normalized AST retain `PolicyPair`, `PolicyConjunction`,
+`PolicyChoice`, `PolicyAtom`, and `AbsentValuePattern`; `||` and `+` are never
+lowered to the same set insertion operation.
+
+## 3. Contextual elaboration of P1
+
+Three policy contexts can occupy a binding-shaped surface slot, but use three
+different elaborators.
+
+### 3.1 Ordinary binding projection
+
+```lang
+[P1] let x = expr;
+```
+
+Omitted P1 retains the complete inferred RHS result. A single policy is a
+value-dominant projection:
 
 ```lang
 Q let x = expr;
 ```
 
-The single-policy form is a value-dominant projection query:
+It selects the value slice exposed by `Q`, then preserves the Pattern component
+associated with that selected value slice. It does not mean `Q:Q`.
 
-```text
-ProjectP1(Q, R)
-  = { (v, p) in R | v is visible under Q }
-```
-
-The pattern/type component associated with each selected value follows that
-value. It is not independently filtered by `Q`.
-
-Therefore:
-
-```lang
-runtime let x = expr;
-```
-
-means:
-
-1. evaluate `expr` to its policy-indexed symbol result;
-2. select entries whose value component has a runtime-visible slice;
-3. retain each selected value's associated compile/seal pattern component;
-4. reject only if the selected slice is empty.
-
-It does **not** mean that the whole RHS must equal one scalar `runtime` policy.
-It also does not normalize to `runtime:runtime`.
-
-### 3.3 Pair P1
+An explicit pair constrains both components:
 
 ```lang
 Qv:Qp let x = expr;
 ```
 
-The pair form filters both components:
+Projection returns an identity-preserving restricted view. Given:
 
 ```text
-ProjectP1(Qv:Qp, R)
-  = {
-      (v, p) in R
-      | v satisfies Qv
-      and p satisfies Qp
-    }
+Pv = compile || runtime
+Pp = compile
 ```
 
-The single form `Q` and pair form `Q:Q` are not equivalent. Surface syntax may
-share `PolicySpec`, but elaboration is context-directed.
-
-### 3.4 Absent value component
-
-Pure types and queries that admit either a value or no value require an
-explicit value-presence pattern. Design prose uses abstract `S` or `∅`:
+the projection `runtime` produces:
 
 ```text
-runtime|S:compile
+Pv = runtime
+Pp = compile
 ```
 
-This admits either:
+It must not return the original `compile || runtime` entry. Symbol identity and
+Pattern identity do not change; only the visible slice is cropped.
 
-- a runtime value carrying a compile pattern; or
-- no value and a compile pattern.
+### 3.2 Formal parameter policy pattern
 
-The normalized AST reserves an absent-value variant. This document does not
-freeze `S`, `null`, `val`, or any other source token.
-
-### 3.5 General binding remains runtime-legal
-
-There is no general side condition `binding_policy != runtime`. A binding may
-legally be:
+In a formal parameter:
 
 ```lang
-runtime let x = runtime_value;
-compile let y = compile_value;
+const let x
+mut let x
+let x
 ```
 
-After projection, the selected RHS slice must be admitted by the destination
-binding policy. In lattice notation:
+the prefix is a formal policy pattern, not a binding slice query. Opposite
+const/mut qualifiers remain in the fully admissible set and are compared only
+by the overload product order in section 12.
+
+### 3.3 Namespace declaration attributes
+
+`public`, `private`, and `export` are accepted only by namespace-declaration
+elaboration. They are rejected in ordinary P1, formal parameters, return
+slots, P2, Pattern interiors, expression policies, and local declarations that
+are not namespace declaration positions.
+
+`export` has the narrower placement rule described in section 9.
+
+## 4. P2 normalization
+
+P2 is the result pair of a call or expression:
 
 ```text
-Πselected <= Πbinding
+P2 = P2v:P2p
 ```
 
-A rule used by compile-flow projection may separately require a source policy
-`Psrc != runtime`. That premise applies only to that source position. It must
-not be implemented as:
-
-```text
-reject if binding_policy == runtime
-```
-
-## 4. P2 Produces a Result Policy Pair
-
-Function form is conceptually:
-
-```text
-[P1] let F = (...): P2 -> let r => { ... }
-```
-
-`P2` describes the call/expression result pair. The function object's available
-`P1` stage slices are then derived from `P2`; the causal direction is:
-
-```text
-P2 -> function-object P1
-```
-
-There is no premise that `P2` is a subset of a pre-existing scalar `P1`, and
-`P1` does not determine `P2`.
-
-### 4.1 Explicit P2 pair
-
-P2 may be written directly as:
-
-```text
-Pv:Pp
-```
-
-Examples:
+Explicit pairs include:
 
 ```text
 runtime:compile
 runtime:seal
-(runtime|compile):compile
-(runtime|seal):seal
-const+(runtime|compile):compile
+(runtime || compile):compile
+(runtime || seal):seal
+const + (runtime || compile):compile
 ```
 
-Stage constraints are:
+`runtime` is forbidden in P2p. If P2v contains a static stage, its static stage
+set must equal P2p. Consequently these are invalid:
 
 ```text
-runtime not in Stage(Pp)
-
-Static(Pv) is empty
-  or Static(Pv) = Stage(Pp)
+runtime:runtime
+compile:seal
+meta:compile
 ```
 
-Consequences:
-
-- mixed runtime/static stage sets occur only in `Pv`;
-- `compile:seal` and `meta:compile` are invalid because their static stages
-  disagree;
-- `runtime:runtime` is invalid because `Pp` cannot be runtime;
-- explicit `runtime:compile` remains valid and requests earlier type
-  availability than the default runtime shorthand.
-
-### 4.2 Single-policy P2 normalization
-
-In P2 position only, a single policy `P` expands uniformly:
+For a single policy `P`:
 
 ```text
 Pv = P
 Pp = P - runtime
 ```
 
-If `P - runtime` is non-empty:
+If that subtraction is empty, Pp is `compile`:
 
-```text
-N2(P) = P:(P - runtime)
-```
+| Source P2 | Normalized pair |
+|---|---|
+| `meta` | `meta:meta` |
+| `compile` | `compile:compile` |
+| `seal` | `seal:seal` |
+| `runtime` | `runtime:compile` |
+| `runtime || compile` | `(runtime || compile):compile` |
+| `runtime || seal` | `(runtime || seal):seal` |
 
-Examples:
+`runtime:seal` remains a valid explicit pair; it means that the value is a
+runtime value whose Pattern/type is first exposed during SealStatic.
 
-```text
-meta
-  => meta:meta
+## 5. Function-object P1 derivation
 
-compile
-  => compile:compile
-
-seal
-  => seal:seal
-
-runtime|compile
-  => (runtime|compile):compile
-
-runtime|seal
-  => (runtime|seal):seal
-```
-
-If `P - runtime` is empty, P2 supplies the latest legal static type stage:
-
-```text
-N2(runtime) = runtime:lastStatic
-```
-
-With `seal` present:
-
-```text
-lastStatic = seal
-N2(runtime) = runtime:seal
-```
-
-This replaces the obsolete fixed expansion `runtime => runtime:compile`.
-
-### 4.3 No P3 and no scalar result-symbol policy
-
-There is no independent P3 position:
-
-```text
-P1 let F = (...): P2 -> P3 let r => ...  // rejected model
-```
-
-The result remains layered:
-
-```text
-Result = Val1 × Pattern × Val2
-```
-
-Each returned value/pattern pair retains its `Pv:Pp`. Each returned `Val2`
-object retains its own policy pair. The selected caller object does not stamp
-one scalar policy onto the entire result symbol.
-
-Current Rust fields named `return_object_policy` are transitional transport
-metadata. They are not a language-level P3 and cannot define whole-result
-identity.
-
-## 5. Function-Object P1 Is Derived From P2
-
-Let a callable result have:
-
-```text
-P2 = P2v:P2p
-```
-
-The function object's stage components are:
+For `P2 = P2v:P2p`, lift only stages:
 
 ```text
 Stage(P1p) = Stage(P2p)
-
-Stage(P1v) = Stage(P2v) union Stage(P2p)
+Stage(P1v) = Stage(P2v) || Stage(P2p)
 ```
 
 Examples:
 
 ```text
-P2 = runtime:seal
-  => P1stage = (runtime|seal):seal
-
-P2 = (runtime|compile):compile
-  => P1stage = (runtime|compile):compile
+P2 runtime:compile -> P1stage (runtime || compile):compile
+P2 runtime:seal    -> P1stage (runtime || seal):seal
+P2 meta:meta       -> P1stage meta:meta
 ```
 
-This derivation explains why a runtime body still has a static function-object
-view. It is not an independent ban on runtime bindings.
-
-Only stage dimensions are lifted. The following do not propagate from P2:
-
-- returned `mut` or `const` does not make the function object mut/const;
-- returned namespace policy does not make the function object public/exported;
-- value presence does not rewrite the function object's declaration shape.
-
-Function-object mutability and namespace visibility come from its actual P1
-declaration position.
-
-An explicit P1 prefix then projects the derived function-object view like any
-other binding. For example, a source prefix `meta|runtime` cannot manufacture a
-runtime slice from `P2 = meta`; it selects only the available meta slice.
-
-## 6. Function-Object Runtime and Seal Views
-
-Policy projection creates a restricted view, not a new nominal object:
-
-- original symbol identity is retained;
-- original anonymous function-object type relation is retained;
-- only the observable member set changes.
-
-Runtime view:
+The following never propagate from P2 to the function object:
 
 ```text
-Members(runtimeSlice(F)) = ConcreteMembers(F)
+const / mut
+public / private
+export-root
+value presence
 ```
 
-It cannot enumerate uninstantiated generic members.
+Those properties come only from the function object's declaration.
 
-Seal view:
+## 6. Three execution phases
 
 ```text
-Members(sealSlice(F))
-  = ConcreteMembers(F)
-    union MaterializedInstances(F)
+Phase = OpenStatic | SealStatic | Runtime
 ```
 
-`MaterializedInstances` contains only instances generated and committed before
-the seal snapshot. It is not the infinite mathematical set of all possible
-generic instantiations.
-
-## 7. Meta, Compile, Seal, and Runtime Visibility
-
-`meta` and `compile` may share evaluator machinery, but remain semantically
-different:
+Stage visibility is defined by domains:
 
 ```text
-meta:
-  open-world symbol construction capability
-
-compile:
-  static value and PatternValue computation across open, seal, and post-seal
-  compile views
-
-seal:
-  static visibility domain excluded from open meta lookup
-
-runtime:
-  runtime value execution
+Vis(meta)    = { OpenStatic }
+Vis(seal)    = { SealStatic }
+Vis(compile) = { OpenStatic, SealStatic }
+Vis(runtime) = { Runtime }
 ```
 
-Canonical visibility domains are:
+| Policy stage | OpenStatic | SealStatic | Runtime |
+|---|:---:|:---:|:---:|
+| `meta` | yes | no | no |
+| `compile` | yes | yes | no |
+| `seal` | no | yes | no |
+| `runtime` value | no | no | yes |
+
+`compile` being visible during SealStatic does not make `compile` equal to
+`seal`. Exposure checks ask whether the current phase is in `Vis(stage)`; they
+do not intersect atom spellings.
+
+## 7. Resolution, exposure, and facet reads
+
+Every phase distinguishes:
 
 ```text
-Vis(meta)    = { open }
-Vis(seal)    = { seal, postSealCompile }
-Vis(compile) = { open, seal, postSealCompile }
+ResolveSymbol(path)
+ExposePolicySlice(symbol, phase)
+ReadValue(slice)
+ReadPattern(slice)
+EnumerateValueFacet(slice)
+EnterCallableBody(candidate)
 ```
 
-Therefore:
+Failure to expose a value slice is not an unresolved symbol. In particular:
 
 ```text
-Vis(compile) is a superset of Vis(seal)
+Pv = runtime
+Pp = compile
 ```
 
-This is a visibility-domain relation. It does not require source or AST to
-rewrite every `compile` spelling into a literal `compile|seal` union.
-
-Rules:
-
-- meta-policy objects are not visible through ordinary seal lookup;
-- seal objects are not ordinary open-meta arguments or members;
-- compile lookup can observe seal symbols in seal/post-seal compile contexts;
-- seal does not mean a type or symbol ceased to exist;
-- seal policy alone grants no reflection or global-scan capability.
-
-## 8. Seal Privilege and the Pre-Seal Snapshot
-
-Global symbol scanning is a capability of compiler-known privileged seal
-meta-functions, not a property of every seal-policy object.
-
-On entering seal, freeze:
+has this OpenStatic behavior:
 
 ```text
-Wpre = every symbol committed before seal
+symbol/path resolves
+runtime value is unreadable
+compile Pattern/type is readable
+derived compile companion may join static overload resolution
+original runtime computation remains in RuntimeResidualFlow
 ```
 
-Privileged scan domain:
+Seal-only symbols follow the same ordinary-symbol rule. Their paths can be
+resolved independently of whether a facet is exposed in the current phase.
 
-```text
-ScanDomain = Wpre
-```
+## 8. Mechanical compile-flow projection
 
-Symbols generated during seal form:
-
-```text
-Wseal
-Wfinal = Wpre union Wseal
-```
-
-But:
-
-```text
-ScanDomain != Wfinal
-```
-
-The frozen domain prevents source-order-dependent scans, self-observation,
-mutually expanding seal generators, and non-finite reflection closure.
-
-Ordinary seal lookup and privileged `Wpre` scanning are distinct operations.
-The scan may inspect pre-seal symbol descriptions without making meta-policy
-objects ordinary seal-visible arguments.
-
-This document does not freeze all explicit-name dependency ordering inside
-seal.
-
-## 9. Namespace Policy Is Shared Across the Pair
-
-Namespace visibility (`public`, `private`, `export`, and future equivalents):
-
-- is valid only in a namespace-scoped P1 declaration position;
-- is not a general P2 result policy;
-- may be written syntactically on either side of a P1 pair;
-- normalizes to one shared namespace attribute;
-- conflicts if both sides state different values.
-
-Thus:
-
-```text
-public:compile
-compile:public
-```
-
-normalize to the same namespace visibility plus stage pair.
-
-This is invalid:
-
-```text
-public:private
-```
-
-Exported global mutable objects are also invalid:
-
-```text
-mut in Pv and export in NamespacePolicy => error
-```
-
-Namespace policy does not propagate from P2 to a function object's P1.
-
-## 10. Const/Mut Is a Pv Dimension
-
-`const` and `mut` belong only to `Pv`. They do not modify `Pp`.
-
-An unspecified parameter/result mutability is a broad match:
-
-```text
-let x
-```
-
-It need not be spelled `const|mut`.
-
-Per-position preference for a const actual value is:
-
-```text
-const > unspecified > mut
-```
-
-For a mut actual value:
-
-```text
-mut > unspecified > const
-```
-
-This order is local to one compared policy position. It is not a global
-conversion ban; an abstraction controls permitted behavior by the callable
-members it provides.
-
-### 10.1 Product partial order
-
-Across self, parameters, and an applicable target-result constraint, compare
-candidates by product order. Candidate `f` dominates `g` iff:
-
-```text
-for every compared position i:
-  fi >=i gi
-
-and for at least one position j:
-  fj >j gj
-```
-
-No total score, exact-match count, position weighting, left-to-right
-lexicographic fallback, input-over-output preference, or separate conversion
-rank may break incomparability.
-
-The ordinary selection set is:
-
-```text
-Max(A)
-```
-
-where `A` is the fully admissible candidate set. Success requires:
-
-```text
-|Max(A)| = 1
-```
-
-If one candidate is better on parameter one and another is better on parameter
-two, they remain incomparable and the call is ambiguous.
-
-Return policy participates only when the call context supplies a target policy
-constraint.
-
-### 10.2 Delete members
-
-`delete` members remain in the admissible set and product-order comparison. A
-delete candidate must not be removed before preference.
-
-If the unique maximal candidate is delete, report that the call matched a
-specific rejection member. This permits an abstraction such as:
-
-```text
-mut object   -> ordinary member
-const object -> more-specific delete member
-```
-
-## 11. Compile Flow Is a Mechanical Projection
-
-The complete program first forms:
+Before any of the three phases executes, structurally project:
 
 ```text
 CompleteSymbolFlow
+  -> StaticFlow
+  -> RuntimeResidualFlow
 ```
 
-Compile flow is a mechanical normalization:
+Projection does not execute calls or perform final overload selection.
+
+`StaticFlow` preserves:
 
 ```text
-CompileFlow = compile_projection(CompleteSymbolFlow)
+Pattern/type flow
+meta/compile/seal static call nodes
+derived compile companions
+symbol relationships required by static bindings
+DeferredSealTask nodes
+D/Done and control-flow structure
 ```
 
-It retains:
-
-- Pattern/type-component flow visible to compile;
-- compile-policy value leaves;
-- compile/meta early calls at their respective capabilities;
-- static calls through derived compile companions;
-- D residual and Done completion structure.
-
-It removes or defers:
-
-- runtime value-leaf computation;
-- runtime body execution;
-- runtime branch value selection.
-
-A runtime symbol does not disappear:
+`RuntimeResidualFlow` preserves:
 
 ```text
-Sruntime = Val1runtime × Patternstatic × Val2
-
-compile_projection(Sruntime)
-  includes at least Patternstatic
+runtime value computations and bodies
+runtime branch value selection
+runtime effects
+runtime symbol binding
+required D/Done and control-flow structure
 ```
 
-Projection does not execute calls, select final overloads, compute predicates,
-calculate PatternValue, prove assertions, or decide recursive termination.
+No phase is inferred ad hoc from the original AST after this projection.
 
-### 11.1 Local source restrictions
+## 9. Namespace visibility and export
 
-A specific projection rule may state:
+### 9.1 Export roots
+
+`export` is allowed only on a direct top-level declaration of one namespace
+construction level:
+
+```lang
+export let name = expr;
+```
+
+It is forbidden in function/meta-function bodies, parameters, return slots,
+P2, Pattern interiors, expression policies, ordinary local P1, and any nested
+local declaration below that namespace level. A top-level function object may
+be an export root; its body declarations may not.
+
+For export root `s`:
 
 ```text
-source_policy != runtime
+ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
 ```
 
-This checks the source item of that projection. It says nothing about whether a
-general `runtime let` binding is legal.
+All ancestors needed to reach the root and its entire subtree enter the export
+graph. A child cannot close export again; an unrelated sibling is unaffected.
 
-### 11.2 Calls project homomorphically
+### 9.2 Public/private
 
-Ordinary calls remain ordinary unresolved calls:
+`public` and `private` are ordinary hierarchical visibility attributes. A
+public parent may contain a private child, and a private parent may contain a
+public child. External path access checks every segment, so a private parent
+blocks external reachability to a public child.
 
 ```text
-C[(args...) f] = (C[args]...) f
+ExternallyVisible(path)
+  = Exported(path) && PubliclyReachable(path)
 ```
 
-For a runtime value argument:
+Export closure may retain private dependencies without making them
+name-addressable externally.
+
+## 10. Wpre and seal world
+
+Immediately before SealStatic, compute the least semantic materialization
+closure:
 
 ```text
-C[arg_runtime] = arg_runtime |> type
+R0 = ExportedSymbols
+   ∪ MaterializedResultsOfExportedMetaFunctions
+   ∪ ParameterDependenciesOfExportedMetaFunctions
+
+R(n+1) = Rn ∪ SemanticDependencies(Rn)
+
+Wpre = least_fixed_point(R)
 ```
 
-`|> type` is the symbol's static Pattern projection, not a separate traditional
-type world.
+Materialized results include only results actually generated in this build,
+not the infinite set a generic meta function might produce for future inputs.
+Wpre can contain non-exported private dependencies solely so the exported
+interface remains interpretable.
 
-Objects such as `UnresolvedCallFamily` may be useful implementation IR, but are
-not required public language-semantic objects.
-
-### 11.3 Recursion
-
-With calls treated as opaque finite `CallNode`s, one callable body has finite,
-bounded, loop-free local flow. There are no source loop or inline-for nodes.
-
-Projection does not expand callees. Recursive evaluation remains ordinary call
-evaluation and may form `f -> f` or `f -> g -> f`. Termination is the compile
-program's normal semantic obligation; projection introduces no recursive
-summary or fixed-point contract mechanism.
-
-## 12. Derived Compile Companion Objects
-
-A runtime-capable `Val2` function object has a default mechanically derived
-static companion object. A merely same-named or more-preferred static overload
-does not suppress that derivation. The companion is a complete `Val2` function
-object:
+SealStatic generates `Wseal` and finishes with:
 
 ```text
-DerivedCompileCompanionObject {
-  object_id,
-  origin_runtime_object_id,
-  derived_function_object_type,
-  associated_static_call_entry,
-  overload_strategy = must_select_if_qualified,
-  provenance,
-}
+Wfinal = Wpre ∪ Wseal
 ```
 
-If the origin result pair is `runtime:Qstatic`, the companion result pair is
-`Qstatic:Qstatic` (`compile:compile` for explicit `runtime:compile`, or
-`seal:seal` for default `runtime => runtime:seal`).
+Only a compiler-known privileged seal function may enumerate the symbol world,
+and its fixed scan domain is `Wpre`. Adding `Wseal` never expands that domain.
+Ordinary seal policy grants no scanning capability.
 
-The derived object:
-
-- enters the carrying symbol's heterogeneous value facet;
-- has stable identity and origin;
-- has its own type and associated `()`;
-- participates in normal symbol-first candidate preparation;
-- is visible in diagnostics, reflection, and documentation tools;
-- is not a hidden fallback after overload failure.
-
-Projected calls remain ordinary calls. Normal static lookup later enumerates
-the derived object and performs complete overload resolution.
-
-Explicit replacement may be supported later through semantic `companion_of`
-metadata. Ordinary overload priority cannot silently replace a default
-companion. Whether default companions may be suppressed, and what equivalent
-static interface would then be required, remains open.
-
-Any future source spelling for companion metadata is separate syntax design;
-this document freezes no annotation prefix.
-
-## 13. Fully Admissible Candidates and Must-Select
-
-Candidate processing is:
+Explicit lookup is separate:
 
 ```text
-resolve Symbol
-  -> enumerate heterogeneous Val2 objects
-  -> apply visibility and each bound object's available pair/stage view
-  -> resolve each object's type-associated ()
-  -> perform all hard shape, pair-policy, concept, and require checks
-  -> form fully admissible set A
-  -> apply fixed-order preference filters
-  -> obtain ordinary survivor set Bn
+ResolveExplicitPath != EnumerateSymbolWorld
 ```
 
-`must_select_if_qualified` is an overload strategy carried by a function object
-and propagated to its prepared candidate. Let:
+A committed symbol in Wseal can be explicitly resolved by later seal/compile
+code under ordinary construction transaction, name-resolution, dependency, and
+policy rules. Its absence from the current Wpre scan does not make it
+unaddressable.
+
+## 11. Phase execution
+
+### 11.1 OpenStatic
+
+Exposed stages are `meta` and `compile`; seal and runtime value slices are not
+exposed. A call may evaluate when its callable exposes a meta/compile view, all
+arguments supply the required static views, and the associated `()` candidate
+is fully admissible.
+
+Static views include meta values, compile values, compile Pattern/type
+projections of runtime symbols, and derived compile companions. Meta and compile
+callables may invoke one another in one evaluator, but result ranks remain:
 
 ```text
-M = { c in A | strategy(c) = must_select_if_qualified }
+meta    -> SymbolConstructionValue
+compile -> PatternValue / ordinary static value
 ```
 
-Then:
+No OpenStatic task may read a runtime value or depend on a runtime effect. If a
+task is blocked only by a seal-only view, preserve its call node, Pattern
+arguments, symbol dependencies, and overload inputs as a `DeferredSealTask`.
+
+When otherwise equal and fully admissible, phase specificity uses the narrower
+visible domain:
 
 ```text
-M is empty:
-  use ordinary unique-maximal selection
-
-M = {m}:
-  succeed only when Bn = {m}
-
-|M| > 1:
-  overload-set inconsistency
+Vis(meta) ⊂ Vis(compile), therefore meta > compile in OpenStatic
 ```
 
-Must-select is not infinite priority. It requires a fully admissible protected
-candidate to remain the unique final choice.
+This is one dimension of the complete partial order, not an unconditional
+global priority.
 
-The precise overload pipeline is canonical in
-`../patterns-overload/overload-resolution-design.md`.
+### 11.2 SealStatic
 
-## 14. Match Staging and D/Done
+Exposed stages are `seal` and `compile`; meta and runtime value slices are not.
+The same static evaluator and symbol-construction machinery consumes deferred
+tasks, explicit seal/compile callables, privileged seal calls, fixed Wpre scan
+results, and ordinary explicitly resolved symbols.
 
-The language has one pattern-match mechanism. `if/else` is a two-alternative
-match, not an independent `if constexpr` system.
-
-Stage follows the scrutinee pair:
+When otherwise equal and fully admissible:
 
 ```text
-static value scrutinee:
-  branch selected during static evaluation
-
-runtime value scrutinee:
-  Pattern remains in compile projection;
-  value branch selection remains runtime
+Vis(seal) ⊂ Vis(compile), therefore seal > compile in SealStatic
 ```
 
-Match already has D/Done normal form inside `CompleteSymbolFlow`:
+SealStatic is terminal for static work. Missing symbols/projections/companions,
+runtime value/effect dependencies, or non-unique overload maxima are errors;
+there is no later static deferral phase.
+
+### 11.3 Runtime
+
+Runtime consumes `RuntimeResidualFlow`, exposes runtime value slices, completes
+runtime symbol binding and overload selection, executes runtime bodies/effects,
+and performs runtime branch value selection. A derived compile companion never
+replaces the real runtime call.
+
+## 12. Unified binding and overload selection
+
+All ordinary bindings and call targets use one selection trunk:
 
 ```text
-A |> S { body }
-  -> D(A, S) + Done(body(S))
+C0 = EnumerateValueEntries(ResolveSymbol(path))
+C1 = ExposePhaseViews(C0, Phase)
+C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
+A  = FullyAdmissible(C2, argument_frame, expected_result)
+M  = MaxPolicyAndOverloadOrder(A)
 ```
 
-Compile projection is homomorphic:
+Success requires exactly one maximal candidate. Failure can mean no exposed
+slice, no fully admissible entry, multiple incomparable maxima, a unique delete
+maximum, or an unfinished terminal SealStatic task.
+
+For each const/mut comparison position:
 
 ```text
-C[D(A, S)] = D(C[A], C[S])
-C[Done(B)] = Done(C[B])
-C[X + Y] = C[X] + C[Y]
+const actual: const > unspecified > mut
+mut actual:   mut > unspecified > const
 ```
 
-D/Done is not a separately ordered pass and automatic require does not invent
-a parallel CFG branch algebra.
+Multiple positions form a product partial order: `f` dominates `g` iff `f` is
+not worse at every participating position and is strictly better at at least
+one. Crossed advantages remain incomparable. There is no score, exact-match
+count, parameter weighting, lexicographic order, input-before-output rule, or
+separate conversion rank. A result policy participates only when the call
+context supplies a target-result constraint.
 
-## 15. Coarse Automatic Require
+Delete members enter the same fully admissible set and order. A unique maximal
+delete produces a diagnostic naming that member.
 
-Automatic require extracts complete compile-projected flows that:
+## 13. Lifetime boundary
 
-1. depend on formal-argument projections or their guarded pattern domains; and
-2. terminate in an assertion/verification endpoint.
+`@` is lifetime syntax, not an ordinary policy operator. This design defines no
+lifetime checking algorithm, overload, ordering, ABI class, refinement pass, or
+handoff object. Ordinary overload selection must already have one unique
+candidate, and future lifetime rules may not change that result.
 
-Endpoints include `assert`, `require`, delete/reject branches, and other
-explicit verification structures.
+## 14. Transitional implementation boundary
 
-The initial design keeps coarse complete blocks rather than freezing a
-node-by-node canonical contract identity.
+The typed implementation model contains dedicated policy AST nodes,
+`PolicyPair`, typed dimensions, three distinct P1 elaborators, true slice
+restriction, three `Phase` values, phase exposure, mechanical flow projection,
+Wpre closure, export closure, and phase-aware partial-order selection.
 
-Serial blocks:
+`PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
+transport. They cannot represent `||` structure, Pattern association of a
+cropped slice, or independent export-root and public/private dimensions. New
+semantics must be implemented in the typed model first; compatibility flags may
+only receive a projection from it. Full namespace-graph storage and end-to-end
+evaluator integration remain implementation work and must not be inferred from
+flat flags.
 
-```text
-Require(BlockA; BlockB)
-  = Require(BlockA) && Require(BlockB)
-```
+## 15. Deliberately unfrozen
 
-Compile match is one grouped guarded alternative structure:
+This document does not freeze:
 
-```text
-(Guard(P1) && Require(B1))
-||
-(Guard(P2) && Require(B2))
-```
-
-The outer contract may wrap that grouped OR as one structured atom; this does
-not introduce unrestricted top-level Boolean theorem syntax.
-
-Runtime match contributes guarded conjuncts:
-
-```text
-(P1 => Require(B1))
-&&
-(P2 => Require(B2))
-```
-
-Guards must not be erased.
-
-Total contract:
-
-```text
-Require_total = Require_inferred && Require_manual
-```
-
-Manual require cannot remove inferred requirements.
-
-Calls in the slice remain ordinary `CallNode`s. The design does not require
-recursive contract summaries or a require fixed point.
-
-## 16. Shared Evaluation Graph
-
-Require and body continuation are views of one compile graph:
-
-```text
-CompleteCompileFlow
-  |- RequireView
-  `- BodyContinuationView
-```
-
-For one static node and one canonical instantiation environment, there is one
-evaluation identity and result. A result first demanded by require is reused by
-body continuation, including overload choice, PatternValue, intermediate
-static values, predicates, normalization, and diagnostics.
-
-This is semantic reuse, not a second execution that merely hopes to hit a
-cache.
-
-## 17. Surface Grammar
-
-Policy pair syntax is:
-
-```text
-PolicySpec
-  ::= PolicyExpr
-   |  PolicyExpr ":" PolicyExpr
-
-PolicyExpr
-  ::= PolicyTerm
-   |  PolicyExpr "|" PolicyTerm
-
-PolicyTerm
-  ::= PolicyAtom
-   |  PolicyTerm "+" PolicyAtom
-
-PolicyAtom
-  ::= Name
-   |  '(' PolicyExpr ')'
-```
-
-Precedence is:
-
-```text
-+ higher than |
-| higher than :
-```
-
-Thus:
-
-```text
-const+(compile|runtime):compile
-```
-
-parses as:
-
-```text
-(const + (compile | runtime)) : compile
-```
-
-`PolicySpec` is recognized only in strong policy positions. `meta`, `compile`,
-`seal`, `runtime`, `const`, `mut`, namespace words, and future absent-value
-spelling remain ordinary lexer names.
-
-The same surface `PolicySpec` elaborates differently by context:
-
-- P1 single policy is value-dominant projection;
-- P2 single policy uses `N2(P)` normalization.
-
-## 18. Current Implementation Substrate
-
-Implemented in this PR:
-
-- Raw AST `PolicySpecAst` with value/type components;
-- Normalized AST `NormPolicySpec` and an explicit absent-value variant;
-- parser preservation of `PolicyExpr:PolicyExpr` in binding and callable P2
-  positions;
-- structured stage/mutability/namespace/value-presence policy data;
-- P2 normalization and validation for the rules above;
-- P1 value-dominant and pair projection helpers;
-- function-object P1 stage derivation;
-- bounded runtime/seal member-view and pre-seal snapshot models;
-- const/mut product-partial-order selection substrate, including delete result;
-- current initializer binding changed from exact flat-set verification to a
-  non-empty stage-slice projection.
-
-Still transitional:
-
-- `PolicyFlag`, `PolicySet`, `PolicyEnv`, `body_entry_policy`, and
-  `return_object_policy` transport only a flat compatibility projection;
-- the resolver does not yet store full `Pv:Pp` on every symbol entry;
-- flat `PolicyEnv::Compile` / `Seal` / `PostSealCompile` visibility filtering is
-  wired into the current resolver, but namespace entries do not yet carry or
-  project complete `Pv:Pp` views;
-- current restricted overload selection is not replaced wholesale by the new
-  const/mut product-order substrate;
-- no full compile-flow evaluator, derived companion materializer, seal-world
-  builder, reflection model, or automatic-require pass exists.
-
-The implementation must not be described as complete policy-pair semantics.
-
-## 19. Required Invariants
-
-1. Internal policy is `Pv:Pp`; scalar policy is surface shorthand or summary.
-2. Omitted P1 infers; single P1 projects values and follows their patterns;
-   pair P1 filters both components.
-3. Runtime is a legal binding policy.
-4. P2 single-policy normalization uses `P:(P-runtime)` and
-   `runtime:lastStatic`; currently `lastStatic = seal`.
-5. `Pp` never contains runtime, and P2 static stages agree across components.
-6. Function-object stage P1 is derived from P2; non-stage dimensions are not
-   copied from the result.
-7. Runtime and seal member views preserve object identity and contain only
-   already concrete/materialized members.
-8. Meta is open-world-only; compile visibility includes seal/post-seal compile;
-   seal alone grants no scan privilege.
-9. Privileged seal scans read exactly `Wpre`, never seal-generated `Wseal`.
-10. Namespace visibility is one shared P1 attribute; `mut+export` is invalid.
-11. Const/mut preference uses product partial order; no score or lexicographic
-    fallback exists; delete candidates participate normally.
-12. Compile projection is mechanical and does not perform final overload
-    selection or recursive expansion.
-13. A compile companion is a derived `Val2` object, not a fallback entry.
-14. Require and body continuation share one evaluation graph.
-15. Ordinary policy notation never reuses lifetime operator `@`.
+- the final source token for `AbsentValuePattern`;
+- full lifetime/Horae semantics;
+- future policy stages;
+- arbitrary clause-level Boolean policy logic;
+- a complete runtime reflection API;
+- export reopening syntax;
+- cross-file open overload union;
+- unrelated `?`, `inject`, or new PatternValue mechanisms.

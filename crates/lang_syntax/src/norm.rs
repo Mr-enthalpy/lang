@@ -12,9 +12,10 @@ use crate::{
     CanonicalProductElementAst, CanonicalSkeletonAst, ClosureAst, ClosureBodyAst, DeduceListAst,
     EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst,
     LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind, OperatorFixity,
-    OperatorNameAst, ParamClauseAst, PipeExprAst, PolicySpecAst, ProductElementAst, ProductExprAst,
-    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst,
-    SegmentElementAst, SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
+    OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
+    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
+    ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
+    SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -190,14 +191,42 @@ pub struct NormBindingSlot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormPolicySpec {
     pub value_policy: NormValuePolicyPattern,
-    pub type_policy: Option<Box<NormExpr>>,
+    pub pattern_policy: Option<NormPolicyConjunction>,
     pub origin: NormOrigin,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormValuePolicyPattern {
-    Expr(Box<NormExpr>),
+    Conjunction(NormPolicyConjunction),
     Absent { origin: NormOrigin },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormPolicyConjunction {
+    pub choices: Vec<NormPolicyChoice>,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormPolicyChoice {
+    pub atoms: Vec<NormPolicyAtom>,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NormPolicyAtom {
+    Name {
+        text: String,
+        origin: NormOrigin,
+    },
+    Group {
+        conjunction: Box<NormPolicyConjunction>,
+        origin: NormOrigin,
+    },
+    AbsentValuePattern {
+        origin: NormOrigin,
+    },
+    Error(NormError),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -475,8 +504,8 @@ fn normalize_alias_decl(alias: &LetAliasAst) -> NormDecl {
 
 fn normalize_policy_spec(policy: &PolicySpecAst) -> NormPolicySpec {
     let value_policy = match &policy.value_policy {
-        ValuePolicyPatternAst::Expr(expr) => {
-            NormValuePolicyPattern::Expr(Box::new(normalize_expr(expr)))
+        ValuePolicyPatternAst::Conjunction(conjunction) => {
+            NormValuePolicyPattern::Conjunction(normalize_policy_conjunction(conjunction))
         }
         ValuePolicyPatternAst::Absent { span } => NormValuePolicyPattern::Absent {
             origin: NormOrigin::Source(*span),
@@ -484,11 +513,46 @@ fn normalize_policy_spec(policy: &PolicySpecAst) -> NormPolicySpec {
     };
     NormPolicySpec {
         value_policy,
-        type_policy: policy
-            .type_policy
+        pattern_policy: policy
+            .pattern_policy
             .as_ref()
-            .map(|type_policy| Box::new(normalize_expr(type_policy))),
+            .map(normalize_policy_conjunction),
         origin: NormOrigin::Source(policy.span),
+    }
+}
+
+fn normalize_policy_conjunction(conjunction: &PolicyConjunctionAst) -> NormPolicyConjunction {
+    NormPolicyConjunction {
+        choices: conjunction
+            .choices
+            .iter()
+            .map(normalize_policy_choice)
+            .collect(),
+        origin: NormOrigin::Source(conjunction.span),
+    }
+}
+
+fn normalize_policy_choice(choice: &PolicyChoiceAst) -> NormPolicyChoice {
+    NormPolicyChoice {
+        atoms: choice.atoms.iter().map(normalize_policy_atom).collect(),
+        origin: NormOrigin::Source(choice.span),
+    }
+}
+
+fn normalize_policy_atom(atom: &PolicyAtomAst) -> NormPolicyAtom {
+    match atom {
+        PolicyAtomAst::Name(name) => NormPolicyAtom::Name {
+            text: name.text.clone(),
+            origin: NormOrigin::Source(name.span),
+        },
+        PolicyAtomAst::Group { conjunction, span } => NormPolicyAtom::Group {
+            conjunction: Box::new(normalize_policy_conjunction(conjunction)),
+            origin: NormOrigin::Source(*span),
+        },
+        PolicyAtomAst::AbsentValuePattern { span } => NormPolicyAtom::AbsentValuePattern {
+            origin: NormOrigin::Source(*span),
+        },
+        PolicyAtomAst::Error(error) => NormPolicyAtom::Error(normalize_error(error)),
     }
 }
 
@@ -2044,13 +2108,41 @@ fn dump_norm_policy_spec(output: &mut String, policy: &NormPolicySpec, indent: u
     line(output, indent, "PolicySpec");
     line(output, indent + 1, "value_policy:");
     match &policy.value_policy {
-        NormValuePolicyPattern::Expr(expr) => dump_norm_expr(output, expr, indent + 2),
+        NormValuePolicyPattern::Conjunction(conjunction) => {
+            dump_norm_policy_conjunction(output, conjunction, indent + 2)
+        }
         NormValuePolicyPattern::Absent { .. } => line(output, indent + 2, "Absent"),
     }
-    line(output, indent + 1, "type_policy:");
-    match &policy.type_policy {
-        Some(type_policy) => dump_norm_expr(output, type_policy, indent + 2),
+    line(output, indent + 1, "pattern_policy:");
+    match &policy.pattern_policy {
+        Some(pattern_policy) => dump_norm_policy_conjunction(output, pattern_policy, indent + 2),
         None => line(output, indent + 2, "None"),
+    }
+}
+
+fn dump_norm_policy_conjunction(
+    output: &mut String,
+    conjunction: &NormPolicyConjunction,
+    indent: usize,
+) {
+    line(output, indent, "PolicyConjunction");
+    for choice in &conjunction.choices {
+        line(output, indent + 1, "PolicyChoice");
+        for atom in &choice.atoms {
+            match atom {
+                NormPolicyAtom::Name { text, .. } => {
+                    line(output, indent + 2, &format!("PolicyAtom Name \"{text}\""));
+                }
+                NormPolicyAtom::Group { conjunction, .. } => {
+                    line(output, indent + 2, "PolicyAtom Group");
+                    dump_norm_policy_conjunction(output, conjunction, indent + 3);
+                }
+                NormPolicyAtom::AbsentValuePattern { .. } => {
+                    line(output, indent + 2, "AbsentValuePattern");
+                }
+                NormPolicyAtom::Error(error) => dump_norm_error(output, error, indent + 2),
+            }
+        }
     }
 }
 

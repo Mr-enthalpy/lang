@@ -352,7 +352,7 @@ resolve symbol
   -> form fully admissible set A using structure, Pattern/type/result checks,
      receiver/parameter policy-pair compatibility, P2 target-result
      compatibility when constrained, stage legality, and concept/require legality
-  -> retain const/mut product-maximal candidates
+  -> retain phase-specificity/const-mut product-maximal candidates
   -> apply the remaining fixed-order preference filters
   -> enforce must-select consistency and require one final candidate
 ```
@@ -376,13 +376,13 @@ The model has three independent dimensions:
 
 ```text
 execution capability:
-    meta | compile | seal | runtime
+    meta / compile / seal / runtime
 
 evaluation demand:
-    partial | strict
+    partial / strict
 
 result rank:
-    PatternValue | SymbolConstructionValue | runtime value
+    PatternValue / SymbolConstructionValue / runtime value
 ```
 
 `MetaPartial` / `MetaStrict` describe evaluation demand. They do not define the

@@ -1,9 +1,10 @@
 use lang_syntax::NormPolicySpec;
 
 use crate::{
-    elaborate_p1_projection,
+    elaborate_namespace_declaration_policy,
     model::{Diagnostic, PolicyFlag, PolicySet, Provenance},
-    NamespaceVisibility, P1Projection, PolicyPair, PolicyStage, StageSet,
+    NamespaceDeclarationPolicy, NamespaceDeclarationPosition, P1Projection, PolicyPair,
+    PolicyStage, StageSet,
 };
 
 /// Elaborate a declaration-prefix policy as a P1 projection and expose its
@@ -15,19 +16,30 @@ pub fn elaborate_declaration_policy_expr(
     policy: Option<&NormPolicySpec>,
     fallback_provenance: Provenance,
 ) -> Result<PolicySet, Diagnostic> {
-    let projection = elaborate_p1_projection(policy, fallback_provenance)?;
-    Ok(legacy_policy_set_from_p1(&projection))
+    let declaration = elaborate_namespace_declaration_policy(
+        policy,
+        NamespaceDeclarationPosition::DirectTopLevel,
+        fallback_provenance,
+    )?;
+    Ok(legacy_policy_set_from_namespace_declaration(&declaration))
 }
 
 pub fn legacy_policy_set_from_p1(projection: &P1Projection) -> PolicySet {
     match projection {
         P1Projection::Infer => PolicySet::new(),
-        P1Projection::ValueDominant {
-            value,
-            namespace_visibility,
-        } => legacy_policy_set(&value.stages, *namespace_visibility),
+        P1Projection::ValueDominant { value } => legacy_policy_set(&value.stages, false),
         P1Projection::Pair(pair) => legacy_policy_set_from_pair(pair),
     }
+}
+
+pub fn legacy_policy_set_from_namespace_declaration(
+    declaration: &NamespaceDeclarationPolicy,
+) -> PolicySet {
+    let mut set = legacy_policy_set_from_p1(&declaration.projection);
+    if declaration.export_root {
+        set.insert(PolicyFlag::Export);
+    }
+    set
 }
 
 pub fn legacy_policy_set_from_pair(pair: &PolicyPair) -> PolicySet {
@@ -36,13 +48,10 @@ pub fn legacy_policy_set_from_pair(pair: &PolicyPair) -> PolicySet {
     } else {
         &pair.value.stages
     };
-    legacy_policy_set(stages, pair.namespace_visibility)
+    legacy_policy_set(stages, pair.export_root)
 }
 
-fn legacy_policy_set(
-    stages: &StageSet,
-    namespace_visibility: Option<NamespaceVisibility>,
-) -> PolicySet {
+fn legacy_policy_set(stages: &StageSet, export_root: bool) -> PolicySet {
     let mut set = PolicySet::new();
     for stage in stages.iter() {
         set.insert(match stage {
@@ -52,7 +61,7 @@ fn legacy_policy_set(
             PolicyStage::Runtime => PolicyFlag::Runtime,
         });
     }
-    if namespace_visibility == Some(NamespaceVisibility::Export) {
+    if export_root {
         set.insert(PolicyFlag::Export);
     }
     set

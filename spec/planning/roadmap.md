@@ -297,9 +297,10 @@ Must cover:
   reopen that subtree
 - no source-level import/use/include/module
 - policy metadata slots on symbols, contexts, and namespace graph nodes,
-  including flat meta/compile/seal/post-seal/runtime resolver visibility
-  filtering; full pair policy
-  checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`)
+  including the legacy flat resolver adapter now mapped onto OpenStatic,
+  SealStatic, and Runtime visibility; full pair storage on every entry and
+  end-to-end checking remain future work (see
+  `spec/design/policy-capability/policy-visibility-symbols.md`)
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -365,8 +366,8 @@ Must cover:
 - policy fields on callable objects retained as transitional symbol,
   body-entry, and result metadata; final source semantics use canonical
   `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
-  `P3`; full pair storage and execution checking remain future
-  work (see
+  `P3`; the typed pair substrate now exists, while migration of every legacy
+  `PolicySet` consumer and end-to-end execution checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 
 Non-goals: general `compile` PatternValue execution; value-directed meta construction;
@@ -397,11 +398,11 @@ Must cover:
   derived from `P2`; current flat symbol/body/result fields remain transitional;
 - preserve legal runtime bindings and keep any non-runtime
   projection-source premise local to its specific compile-determined rule;
-- preserve typed policy dimensions (stage, value mutability, namespace
-  visibility, and value presence) rather than flattening all atoms into one set;
-- preserve the seal boundary: ordinary seal lookup does not expose open-meta
-  objects, compile visibility includes seal/post-seal compile, and privileged
-  scans consume a frozen pre-seal world rather than seal-generated symbols
+- preserve typed policy dimensions (stage, value mutability, value presence,
+  ordinary namespace visibility, and export-root) rather than flattening atoms;
+- preserve three phases: OpenStatic exposes meta/compile, SealStatic exposes
+  seal/compile, Runtime exposes runtime values; privileged seal scans consume
+  fixed Wpre and never Wseal
 
 Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
@@ -501,8 +502,8 @@ The following remain deferred and are not numbered precisely here:
 - storing canonical `Pv:Pp` on every semantic object and wiring full P1
   projection, P2 result validation, function-object views, and compile/runtime/
   seal namespace lookup;
-- seal dependency ordering, complete reflection objects, and any future
-  post-seal extension of Pattern policy;
+- seal dependency ordering, complete reflection objects, and any future policy
+  stage beyond the current three-phase model;
 - integrating const/mut product order into the complete overload resolver, plus
   effect/error/panic and resource-capability policy
   (see `spec/design/policy-capability/policy-visibility-symbols.md`)

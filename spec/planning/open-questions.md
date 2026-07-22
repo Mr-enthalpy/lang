@@ -88,14 +88,14 @@ here. Their normative future-design owners are:
   cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
   `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1/P2 elaboration,
-  seal/const-mut boundaries, no `P3`, mechanical
+  three-phase visibility, seal/const-mut boundaries, mechanical
   compile-flow projection over ordinary call nodes, complete derived `Val2`
   compile-companion objects, must-select consistency, policy-staged match,
   intrinsic D/Done flow, coarse automatic require, and shared compile
   evaluation;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
-  negative boundary separating later lifetime policy/refinement from the
-  type/compile overload pipeline.
+  negative rule that lifetime syntax cannot reopen the unique ordinary
+  overload result.
 
 Unimplemented portions remain roadmap work, not reopened design questions.
 
@@ -120,18 +120,18 @@ Resolved future-design decisions:
 - A general `runtime let` is legal. A source-side non-runtime premise belongs
   only to the particular compile-flow projection rule that declares it.
 - `P2` describes a call/expression result pair. Single-policy `P2` uses
-  `P:(P-runtime)` and supplies `lastStatic = seal` when only `runtime` remains.
+  `P:(P-runtime)` and supplies `compile` when only `runtime` remains.
 - Function-object stage views are derived from `P2`:
   `Stage(P1p) = Stage(P2p)` and
   `Stage(P1v) = Stage(P2v) union Stage(P2p)`. Mutability, namespace
   visibility, and value presence are not copied by this stage derivation.
-- `meta`, `compile`, `seal`, and `runtime` are distinct stages. Compile lookup
-  includes seal/post-seal compile visibility; meta is open-world only; seal
-  grants no global scan capability by itself.
+- The only execution phases are OpenStatic, SealStatic, and Runtime. `meta` is
+  exposed only in OpenStatic, `seal` only in SealStatic, `compile` in both
+  static phases, and runtime values only in Runtime.
 - Privileged seal scans read the frozen pre-seal world `Wpre`, never symbols
   generated during seal.
-- There is no independent `P3` or scalar result-symbol policy. Results retain
-  component policy pairs and returned `Val2` objects retain their own policy.
+- Results retain component policy pairs and returned `Val2` objects retain
+  their own policy; no whole-result scalar policy is inferred.
 - Compile flow is a mechanical projection of complete symbol flow. Calls stay
   ordinary unresolved call nodes, D/Done structure is intrinsic, and recursive
   evaluation is not replaced by summary/fixed-point machinery.
@@ -147,35 +147,33 @@ Resolved future-design decisions:
 
 Implemented substrate after this correction:
 
-- Raw and Normalized AST preserve `PolicySpec` as a single expression or an
-  explicit value/type pair; the normalized model reserves an absent-value
-  variant.
-- `lang_build` provides typed pair normalization/projection helpers,
-  function-object stage derivation, bounded runtime/seal member views, a
-  pre-seal snapshot model, and const/mut product-order test substrate.
-- Flat meta/compile/seal/post-seal/runtime lookup environments are wired as
-  compatibility visibility filters; they are not pair projection, execution
-  permission, or privileged seal scanning.
+- Raw and Normalized AST preserve dedicated conjunction, choice, atom, pair,
+  and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
+- `lang_build` provides typed pair normalization and true slice restriction,
+  three contextual P1 elaborators, three-phase exposure, structural compile
+  flow projection, Wpre/export closure, and phase/const-mut product-order test
+  substrate.
+- Flat policy flags remain compatibility transport, while lookup and execution
+  environments use the same three canonical phases.
 
 Not implemented after this correction:
 
 - Storing and checking canonical `Pv:Pp` on every symbol/value object.
-- Storing policy-pair views on namespace entries and complete P1 projection.
-- Compile-flow projection and shared compile-evaluation graph.
+- Storing policy-pair views on every namespace entry and routing every build
+  operation through the typed P1 projection.
+- Integrating structural compile-flow projection with the complete evaluator.
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call
   execution checker.
-- Later lifetime-policy checking/refinement after first-order type/compile
-  selection.
+- Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
 
 Still open for later design:
 
 - the final source token for the absent-value policy pattern (`S`, `null`, or
   another spelling);
-- explicit-name dependency ordering within seal;
 - the complete runtime reflection object model;
-- additional future stage names and how they extend `lastStatic`;
+- the semantics of any additional future policy stage;
 - the final public spelling for overload-strategy metadata;
 - how source code references a derived compile companion and associates an
   explicit replacement;
@@ -184,7 +182,7 @@ Still open for later design:
 - finer-grained require atomization and canonical identities for grouped
   require structures;
 - future Pattern policy after an explicit sealing mechanism;
-- complete lifetime region/origin/Horae algebra and refinement rules;
+- complete lifetime region/origin/Horae algebra;
 - the future member set of `BuiltinPrivilegedAstMetaFunction` and each member's
   bounded capability.
 

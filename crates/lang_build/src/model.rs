@@ -164,15 +164,14 @@ impl PolicySet {
 /// This controls whether a symbol is visible to a resolver query. It does not
 /// grant permission to enter or evaluate a callable body.
 ///
-/// These variants are a flat compatibility projection of the canonical
-/// `Pv:Pp` visibility domains. They do not grant body execution or privileged
-/// pre-seal scanning.
+/// This is a flat compatibility projection of the canonical `Pv:Pp` slices.
+/// It deliberately has the same three execution phases as the canonical
+/// policy model. It does not grant body execution or privileged pre-seal
+/// scanning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyEnv {
-    Meta,
-    Compile,
-    Seal,
-    PostSealCompile,
+    OpenStatic,
+    SealStatic,
     Runtime,
 }
 
@@ -182,7 +181,8 @@ pub enum PolicyEnv {
 /// whose body cannot be entered in the current execution environment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExecutionEnv {
-    Meta,
+    OpenStatic,
+    SealStatic,
     Runtime,
 }
 
@@ -249,7 +249,12 @@ pub fn callable_body_allows_execution(callable_policy: &PolicyMetadata, env: Exe
 
 pub fn policy_set_allows_execution(policy_set: &PolicySet, env: ExecutionEnv) -> bool {
     match env {
-        ExecutionEnv::Meta => policy_set.contains(PolicyFlag::Meta),
+        ExecutionEnv::OpenStatic => {
+            policy_set.contains(PolicyFlag::Meta) || policy_set.contains(PolicyFlag::Compile)
+        }
+        ExecutionEnv::SealStatic => {
+            policy_set.contains(PolicyFlag::Seal) || policy_set.contains(PolicyFlag::Compile)
+        }
         ExecutionEnv::Runtime => policy_set.contains(PolicyFlag::Runtime),
     }
 }
@@ -264,12 +269,14 @@ pub struct PolicyMetadata {
     pub policy_set: PolicySet,
 }
 
-/// Reserved visibility metadata slot.
-///
-/// v0.6 preserves this data but does not enforce visibility.
+/// Namespace visibility metadata. `namespace_visibility` and `export_root` are
+/// independent dimensions; the legacy `PolicyFlag::Export` transport must not
+/// be used to infer ordinary public/private reachability.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VisibilityMetadata {
     pub slots: BTreeMap<String, String>,
+    pub namespace_visibility: Option<crate::policy_pair::NamespaceVisibility>,
+    pub export_root: bool,
 }
 
 /// Human-readable origin information for diagnostics and future IDE/cache use.

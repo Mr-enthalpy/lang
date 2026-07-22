@@ -65,7 +65,7 @@ impl VerificationInvocation {
             &entry_path.components,
             context,
             ResolveExpectation::AnyUnique,
-            PolicyEnv::Meta,
+            PolicyEnv::OpenStatic,
         ) {
             Ok(symbol) => symbol,
             Err(diagnostic) => match diagnostic.code {
@@ -116,7 +116,7 @@ impl VerificationInvocation {
             &operation_path.components,
             &operation_context,
             ResolveExpectation::MetaFunction,
-            PolicyEnv::Meta,
+            PolicyEnv::OpenStatic,
         ) {
             Ok(symbol) => symbol,
             Err(diagnostic) => {

@@ -140,8 +140,8 @@ fn struct_type_materialization_records_named_field_extraction_interface() {
         world.package_root_node(),
         "T",
         &world.package_context(),
-        PolicyEnv::Meta,
-        ExecutionEnv::Meta,
+        PolicyEnv::OpenStatic,
+        ExecutionEnv::OpenStatic,
         CandidateBuildIdentityPlaceholder::default(),
         Provenance::new("struct extraction interface test"),
         None,
@@ -150,7 +150,7 @@ fn struct_type_materialization_records_named_field_extraction_interface() {
     let uint8 = world
         .snapshot()
         .capability()
-        .resolve_type_object_with_policy("uint8", &world.package_context(), PolicyEnv::Meta)
+        .resolve_type_object_with_policy("uint8", &world.package_context(), PolicyEnv::OpenStatic)
         .expect("uint8 type resolves");
 
     let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {

@@ -9,14 +9,14 @@ use lang_build::{
 };
 
 #[test]
-fn uint8_resolves_under_meta_policy() {
+fn uint8_resolves_under_open_static_compatibility_view() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let capability = world.snapshot().capability();
     let context = world.package_context();
 
     let symbol = capability
-        .resolve_type_object_with_policy("uint8", &context, PolicyEnv::Meta)
-        .expect("uint8 should resolve under Meta policy (export+meta+runtime)");
+        .resolve_type_object_with_policy("uint8", &context, PolicyEnv::OpenStatic)
+        .expect("uint8 should resolve under OpenStatic compatibility view");
     assert_eq!(symbol.kind, SymbolKind::Type);
     assert_eq!(symbol.name, "uint8");
 }
@@ -30,7 +30,7 @@ fn callable_body_execution_helper_uses_policy_flags() {
 
     assert!(callable_body_allows_execution(
         &meta_policy,
-        ExecutionEnv::Meta
+        ExecutionEnv::OpenStatic
     ));
     assert!(!callable_body_allows_execution(
         &meta_policy,
@@ -38,7 +38,7 @@ fn callable_body_execution_helper_uses_policy_flags() {
     ));
     assert!(!callable_body_allows_execution(
         &runtime_policy,
-        ExecutionEnv::Meta
+        ExecutionEnv::OpenStatic
     ));
     assert!(callable_body_allows_execution(
         &runtime_policy,
@@ -47,27 +47,32 @@ fn callable_body_execution_helper_uses_policy_flags() {
 }
 
 #[test]
-fn runtime_only_value_is_invisible_under_meta_lookup() {
-    // Compiler-internal resolver invariant: source verification observes the
-    // policy flags, while this test checks PolicyEnv filtering.
+fn runtime_only_value_compatibility_filter_does_not_define_symbol_existence() {
+    // The unfiltered resolver establishes symbol identity first. The legacy
+    // PolicyEnv adapter can still return a filtered diagnostic, but canonical
+    // phase exposure must not reinterpret that adapter result as nonexistence.
     let world = build_single_fixture_world("user_runtime_values", "app");
     let context = world.package_context();
+    let capability = world.snapshot().capability();
 
-    let diagnostic = world
-        .snapshot()
-        .capability()
+    let symbol = capability
+        .resolve(&["x".to_string()], &context)
+        .expect("runtime symbol exists independently of phase exposure");
+    assert_eq!(symbol.name, "x");
+
+    let diagnostic = capability
         .resolve_with_policy(
             &["x".to_string()],
             &context,
             ResolveExpectation::Object,
-            PolicyEnv::Meta,
+            PolicyEnv::OpenStatic,
         )
-        .expect_err("runtime-only value should be filtered out under Meta lookup");
+        .expect_err("compatibility OpenStatic adapter filters the runtime value flag");
     assert_eq!(diagnostic.code, Some(ResolverCode::Unresolved));
 }
 
 #[test]
-fn runtime_only_meta_function_is_filtered_under_meta_policy() {
+fn runtime_only_meta_function_is_filtered_by_legacy_open_static_adapter() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let mut delta = world.snapshot().empty_delta();
 
@@ -100,7 +105,7 @@ fn runtime_only_meta_function_is_filtered_under_meta_policy() {
     let result = snapshot.capability().resolve_meta_function_with_policy(
         "struct",
         &context,
-        PolicyEnv::Meta,
+        PolicyEnv::OpenStatic,
     );
     assert!(
         result.is_ok(),
@@ -149,9 +154,8 @@ fn seal_lookup_uses_visibility_domains_without_granting_execution() {
         )
     };
 
-    assert!(resolve("meta_only", PolicyEnv::Seal).is_err());
-    assert!(resolve("compile_only", PolicyEnv::Seal).is_ok());
-    assert!(resolve("seal_only", PolicyEnv::Compile).is_ok());
-    assert!(resolve("seal_only", PolicyEnv::PostSealCompile).is_ok());
-    assert!(resolve("seal_only", PolicyEnv::Meta).is_err());
+    assert!(resolve("meta_only", PolicyEnv::SealStatic).is_err());
+    assert!(resolve("compile_only", PolicyEnv::SealStatic).is_ok());
+    assert!(resolve("seal_only", PolicyEnv::SealStatic).is_ok());
+    assert!(resolve("seal_only", PolicyEnv::OpenStatic).is_err());
 }

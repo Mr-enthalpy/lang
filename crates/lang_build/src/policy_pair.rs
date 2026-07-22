@@ -1,6 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use lang_syntax::{NormExpr, NormPolicySpec, NormProductElem, NormValuePolicyPattern};
+use lang_syntax::{
+    NormPolicyAtom, NormPolicyChoice, NormPolicyConjunction, NormPolicySpec, NormValuePolicyPattern,
+};
 
 use crate::{Diagnostic, Provenance};
 
@@ -12,31 +14,24 @@ pub enum PolicyStage {
     Runtime,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Phase {
+    OpenStatic,
+    SealStatic,
+    Runtime,
+}
+
 impl PolicyStage {
     pub fn is_static(self) -> bool {
         !matches!(self, Self::Runtime)
     }
 
-    pub fn visible_at(self, lookup: PolicyLookupStage) -> bool {
+    pub fn visible_at(self, phase: Phase) -> bool {
         match self {
-            Self::Meta => matches!(
-                lookup,
-                PolicyLookupStage::OpenMeta | PolicyLookupStage::Compile
-            ),
-            Self::Compile => matches!(
-                lookup,
-                PolicyLookupStage::OpenMeta
-                    | PolicyLookupStage::Compile
-                    | PolicyLookupStage::Seal
-                    | PolicyLookupStage::PostSealCompile
-            ),
-            Self::Seal => matches!(
-                lookup,
-                PolicyLookupStage::Compile
-                    | PolicyLookupStage::Seal
-                    | PolicyLookupStage::PostSealCompile
-            ),
-            Self::Runtime => matches!(lookup, PolicyLookupStage::Runtime),
+            Self::Meta => phase == Phase::OpenStatic,
+            Self::Compile => matches!(phase, Phase::OpenStatic | Phase::SealStatic),
+            Self::Seal => phase == Phase::SealStatic,
+            Self::Runtime => phase == Phase::Runtime,
         }
     }
 }
@@ -83,12 +78,26 @@ impl StageSet {
         Self(self.0.union(&other.0).copied().collect())
     }
 
+    pub fn intersection(&self, other: &Self) -> Self {
+        Self(self.0.intersection(&other.0).copied().collect())
+    }
+
     pub fn intersects(&self, other: &Self) -> bool {
         self.0.iter().any(|stage| other.contains(*stage))
     }
 
-    pub fn visible_at(&self, lookup: PolicyLookupStage) -> bool {
-        self.0.iter().any(|stage| stage.visible_at(lookup))
+    pub fn visible_at(&self, phase: Phase) -> bool {
+        self.0.iter().any(|stage| stage.visible_at(phase))
+    }
+
+    pub fn exposed_at(&self, phase: Phase) -> Self {
+        Self(
+            self.0
+                .iter()
+                .copied()
+                .filter(|stage| stage.visible_at(phase))
+                .collect(),
+        )
     }
 }
 
@@ -108,7 +117,6 @@ pub enum ValueMutability {
 pub enum NamespaceVisibility {
     Public,
     Private,
-    Export,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -135,31 +143,40 @@ pub struct PolicyPair {
     pub value: ValueComponentPolicy,
     pub pattern: PatternComponentPolicy,
     pub namespace_visibility: Option<NamespaceVisibility>,
+    pub export_root: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum P1Projection {
     Infer,
-    ValueDominant {
-        value: ValueComponentPolicy,
-        namespace_visibility: Option<NamespaceVisibility>,
-    },
+    ValueDominant { value: ValueComponentPolicy },
     Pair(PolicyPair),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FormalPolicyPattern {
+    pub stages: StageSet,
+    pub mutability: Option<ValueMutability>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PolicyLookupStage {
-    OpenMeta,
-    Compile,
-    Seal,
-    PostSealCompile,
-    Runtime,
+pub enum NamespaceDeclarationPosition {
+    DirectTopLevel,
+    Local,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NamespaceDeclarationPolicy {
+    pub projection: P1Projection,
+    pub visibility: Option<NamespaceVisibility>,
+    pub export_root: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionObjectDeclarationPolicy {
     pub mutability: BTreeSet<ValueMutability>,
     pub namespace_visibility: Option<NamespaceVisibility>,
+    pub export_root: bool,
 }
 
 impl Default for FunctionObjectDeclarationPolicy {
@@ -167,6 +184,7 @@ impl Default for FunctionObjectDeclarationPolicy {
         Self {
             mutability: BTreeSet::new(),
             namespace_visibility: None,
+            export_root: false,
         }
     }
 }
@@ -236,6 +254,11 @@ impl<I: Clone> FunctionObject<I> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BuiltinPrivilegedSealFunction {
+    ExportWorldMaterializer,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SealWorldSnapshot<T> {
     pre_seal: Vec<T>,
@@ -250,7 +273,7 @@ impl<T> SealWorldSnapshot<T> {
         }
     }
 
-    pub fn scan_domain(&self) -> &[T] {
+    pub fn scan_domain_for_builtin(&self, _builtin: BuiltinPrivilegedSealFunction) -> &[T] {
         &self.pre_seal
     }
 
@@ -265,30 +288,163 @@ impl<T> SealWorldSnapshot<T> {
     pub fn final_world(&self) -> impl Iterator<Item = &T> {
         self.pre_seal.iter().chain(self.seal_generated.iter())
     }
+
+    pub fn resolve_explicit(&self, mut predicate: impl FnMut(&T) -> bool) -> Option<&T> {
+        self.final_world().find(|value| predicate(value))
+    }
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WpreRoots<T> {
+    pub exported_symbols: Vec<T>,
+    pub materialized_results_of_exported_meta_functions: Vec<T>,
+    pub parameter_dependencies_of_exported_meta_functions: Vec<T>,
+}
+
+pub fn compute_wpre<T: Clone + Ord>(
+    roots: WpreRoots<T>,
+    mut semantic_dependencies: impl FnMut(&T) -> Vec<T>,
+) -> BTreeSet<T> {
+    let mut closure = BTreeSet::new();
+    let mut queue = VecDeque::new();
+    queue.extend(roots.exported_symbols);
+    queue.extend(roots.materialized_results_of_exported_meta_functions);
+    queue.extend(roots.parameter_dependencies_of_exported_meta_functions);
+
+    while let Some(symbol) = queue.pop_front() {
+        if !closure.insert(symbol.clone()) {
+            continue;
+        }
+        queue.extend(semantic_dependencies(&symbol));
+    }
+    closure
+}
+
+/// Namespace facts used to derive the export graph and ordinary path
+/// visibility. Export closure and public reachability intentionally remain
+/// independent computations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NamespaceExportNode<I> {
+    pub parent: Option<I>,
+    pub visibility: NamespaceVisibility,
+}
+
+/// Compute `PathAncestors(root) ∪ Subtree(root)` for every export root.
+/// Descendants cannot opt out, while siblings are included only when they are
+/// themselves an ancestor/descendant of another root.
+pub fn compute_export_closure<I: Clone + Ord>(
+    nodes: &BTreeMap<I, NamespaceExportNode<I>>,
+    export_roots: impl IntoIterator<Item = I>,
+) -> BTreeSet<I> {
+    let mut exported = BTreeSet::new();
+    let mut children = BTreeMap::<I, Vec<I>>::new();
+    for (id, node) in nodes {
+        if let Some(parent) = &node.parent {
+            children.entry(parent.clone()).or_default().push(id.clone());
+        }
+    }
+
+    for root in export_roots {
+        let mut current = Some(root.clone());
+        let mut visited_ancestors = BTreeSet::new();
+        while let Some(id) = current {
+            if !visited_ancestors.insert(id.clone()) {
+                break;
+            }
+            exported.insert(id.clone());
+            current = nodes.get(&id).and_then(|node| node.parent.clone());
+        }
+
+        let mut queue = VecDeque::from([root]);
+        while let Some(id) = queue.pop_front() {
+            if exported.insert(id.clone()) || children.contains_key(&id) {
+                if let Some(direct_children) = children.get(&id) {
+                    queue.extend(direct_children.iter().cloned());
+                }
+            }
+        }
+    }
+    exported
+}
+
+pub fn publicly_reachable<I: Ord>(
+    nodes: &BTreeMap<I, NamespaceExportNode<I>>,
+    path: impl IntoIterator<Item = I>,
+) -> bool {
+    path.into_iter().all(|id| {
+        nodes
+            .get(&id)
+            .is_some_and(|node| node.visibility == NamespaceVisibility::Public)
+    })
+}
+
+pub fn externally_visible<I: Ord>(
+    symbol: &I,
+    export_closure: &BTreeSet<I>,
+    nodes: &BTreeMap<I, NamespaceExportNode<I>>,
+    path: impl IntoIterator<Item = I>,
+) -> bool {
+    export_closure.contains(symbol) && publicly_reachable(nodes, path)
+}
+
+#[derive(Clone, Debug, Default)]
 struct ComponentAtoms {
     stages: StageSet,
     mutability: BTreeSet<ValueMutability>,
     namespace: BTreeSet<NamespaceVisibility>,
+    export_root: bool,
+    absent_value: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum PolicyDimension {
+    Stage,
+    Mutability,
+    NamespaceVisibility,
+    ExportRoot,
+    ValuePresence,
+}
+
+impl ComponentAtoms {
+    fn dimensions(&self) -> BTreeSet<PolicyDimension> {
+        let mut result = BTreeSet::new();
+        if !self.stages.is_empty() {
+            result.insert(PolicyDimension::Stage);
+        }
+        if !self.mutability.is_empty() {
+            result.insert(PolicyDimension::Mutability);
+        }
+        if !self.namespace.is_empty() {
+            result.insert(PolicyDimension::NamespaceVisibility);
+        }
+        if self.export_root {
+            result.insert(PolicyDimension::ExportRoot);
+        }
+        if self.absent_value {
+            result.insert(PolicyDimension::ValuePresence);
+        }
+        result
+    }
+
+    fn presence(&self) -> ValuePresence {
+        match (self.absent_value, self.stages.is_empty()) {
+            (true, true) => ValuePresence::Absent,
+            (true, false) => ValuePresence::Optional,
+            (false, _) => ValuePresence::Present,
+        }
+    }
 }
 
 pub fn normalize_p2_policy(
     policy: &NormPolicySpec,
     provenance: Provenance,
 ) -> Result<PolicyPair, Diagnostic> {
-    match (&policy.value_policy, &policy.type_policy) {
-        (NormValuePolicyPattern::Expr(value), None) => {
-            let atoms = parse_component(value, provenance.clone())?;
-            reject_namespace_in_p2(&atoms, provenance.clone())?;
+    match (&policy.value_policy, &policy.pattern_policy) {
+        (NormValuePolicyPattern::Conjunction(value), None) => {
+            let atoms = parse_component(value, true, provenance.clone())?;
+            reject_namespace_attributes(&atoms, "P2", provenance.clone())?;
+            let presence = atoms.presence();
             let static_stages = atoms.stages.static_stages();
-            if static_stages.len() > 1 {
-                return Err(policy_error(
-                    "P2 single-policy form contains more than one static stage",
-                    provenance,
-                ));
-            }
             let pattern_stages = if static_stages.is_empty() {
                 if !atoms.stages.contains(PolicyStage::Runtime) {
                     return Err(policy_error(
@@ -296,7 +452,7 @@ pub fn normalize_p2_policy(
                         provenance,
                     ));
                 }
-                StageSet::from([PolicyStage::Seal])
+                StageSet::from([PolicyStage::Compile])
             } else {
                 static_stages
             };
@@ -305,24 +461,31 @@ pub fn normalize_p2_policy(
                     value: ValueComponentPolicy {
                         stages: atoms.stages,
                         mutability: atoms.mutability,
-                        presence: ValuePresence::Present,
+                        presence,
                     },
                     pattern: PatternComponentPolicy {
                         stages: pattern_stages,
                     },
                     namespace_visibility: None,
+                    export_root: false,
                 },
                 provenance,
             )
         }
         (value_pattern, Some(pattern)) => {
             let value_atoms = match value_pattern {
-                NormValuePolicyPattern::Expr(value) => parse_component(value, provenance.clone())?,
-                NormValuePolicyPattern::Absent { .. } => ComponentAtoms::default(),
+                NormValuePolicyPattern::Conjunction(value) => {
+                    parse_component(value, true, provenance.clone())?
+                }
+                NormValuePolicyPattern::Absent { .. } => ComponentAtoms {
+                    absent_value: true,
+                    ..ComponentAtoms::default()
+                },
             };
-            let pattern_atoms = parse_component(pattern, provenance.clone())?;
-            reject_namespace_in_p2(&value_atoms, provenance.clone())?;
-            reject_namespace_in_p2(&pattern_atoms, provenance.clone())?;
+            let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
+            reject_namespace_attributes(&value_atoms, "P2", provenance.clone())?;
+            reject_namespace_attributes(&pattern_atoms, "P2", provenance.clone())?;
+            let value_presence = value_atoms.presence();
             if !pattern_atoms.mutability.is_empty() {
                 return Err(policy_error(
                     "const/mut policy is valid only in the P2 value component",
@@ -334,100 +497,171 @@ pub fn normalize_p2_policy(
                     value: ValueComponentPolicy {
                         stages: value_atoms.stages,
                         mutability: value_atoms.mutability,
-                        presence: if matches!(value_pattern, NormValuePolicyPattern::Absent { .. })
-                        {
-                            ValuePresence::Absent
-                        } else {
-                            ValuePresence::Present
-                        },
+                        presence: value_presence,
                     },
                     pattern: PatternComponentPolicy {
                         stages: pattern_atoms.stages,
                     },
                     namespace_visibility: None,
+                    export_root: false,
                 },
                 provenance,
             )
         }
         (NormValuePolicyPattern::Absent { .. }, None) => Err(policy_error(
-            "an absent P2 value component requires an explicit type component",
+            "an absent P2 value component requires an explicit Pattern component",
             provenance,
         )),
     }
 }
 
-pub fn elaborate_p1_projection(
+pub fn elaborate_binding_p1_projection(
     policy: Option<&NormPolicySpec>,
     provenance: Provenance,
 ) -> Result<P1Projection, Diagnostic> {
     let Some(policy) = policy else {
         return Ok(P1Projection::Infer);
     };
-    match (&policy.value_policy, &policy.type_policy) {
-        (NormValuePolicyPattern::Expr(value), None) => {
-            let atoms = parse_component(value, provenance.clone())?;
-            let namespace_visibility = one_namespace(&atoms.namespace, provenance.clone())?;
-            reject_mut_export(&atoms.mutability, namespace_visibility, provenance)?;
-            Ok(P1Projection::ValueDominant {
+    let (projection, namespace, export_root) = elaborate_p1_components(policy, provenance.clone())?;
+    if !namespace.is_empty() || export_root {
+        return Err(policy_error(
+            "public/private/export are valid only on namespace declarations",
+            provenance,
+        ));
+    }
+    Ok(projection)
+}
+
+pub fn elaborate_formal_policy_pattern(
+    policy: Option<&NormPolicySpec>,
+    provenance: Provenance,
+) -> Result<FormalPolicyPattern, Diagnostic> {
+    let Some(policy) = policy else {
+        return Ok(FormalPolicyPattern {
+            stages: StageSet::new(),
+            mutability: None,
+        });
+    };
+    if policy.pattern_policy.is_some() {
+        return Err(policy_error(
+            "formal parameter policy uses a value policy pattern, not a P1 pair projection",
+            provenance,
+        ));
+    }
+    let atoms = match &policy.value_policy {
+        NormValuePolicyPattern::Conjunction(value) => {
+            parse_component(value, false, provenance.clone())?
+        }
+        NormValuePolicyPattern::Absent { .. } => {
+            return Err(policy_error(
+                "formal parameter policy cannot use an absent value pattern",
+                provenance,
+            ));
+        }
+    };
+    reject_namespace_attributes(&atoms, "formal parameter", provenance.clone())?;
+    if atoms.mutability.len() > 1 {
+        return Err(policy_error(
+            "formal parameter must select one of const, mut, or unspecified",
+            provenance,
+        ));
+    }
+    Ok(FormalPolicyPattern {
+        stages: atoms.stages,
+        mutability: atoms.mutability.iter().next().copied(),
+    })
+}
+
+pub fn elaborate_namespace_declaration_policy(
+    policy: Option<&NormPolicySpec>,
+    position: NamespaceDeclarationPosition,
+    provenance: Provenance,
+) -> Result<NamespaceDeclarationPolicy, Diagnostic> {
+    let Some(policy) = policy else {
+        return Ok(NamespaceDeclarationPolicy {
+            projection: P1Projection::Infer,
+            visibility: None,
+            export_root: false,
+        });
+    };
+    let (projection, namespace, export_root) = elaborate_p1_components(policy, provenance.clone())?;
+    let visibility = one_namespace(&namespace, provenance.clone())?;
+    if export_root && position != NamespaceDeclarationPosition::DirectTopLevel {
+        return Err(policy_error(
+            "export is allowed only on a direct top-level declaration of a namespace construction level",
+            provenance,
+        ));
+    }
+    Ok(NamespaceDeclarationPolicy {
+        projection,
+        visibility,
+        export_root,
+    })
+}
+
+fn elaborate_p1_components(
+    policy: &NormPolicySpec,
+    provenance: Provenance,
+) -> Result<(P1Projection, BTreeSet<NamespaceVisibility>, bool), Diagnostic> {
+    match (&policy.value_policy, &policy.pattern_policy) {
+        (NormValuePolicyPattern::Conjunction(value), None) => {
+            let atoms = parse_component(value, true, provenance)?;
+            let projection = P1Projection::ValueDominant {
                 value: ValueComponentPolicy {
-                    stages: atoms.stages,
-                    mutability: atoms.mutability,
-                    presence: ValuePresence::Present,
+                    stages: atoms.stages.clone(),
+                    mutability: atoms.mutability.clone(),
+                    presence: atoms.presence(),
                 },
-                namespace_visibility,
-            })
+            };
+            Ok((projection, atoms.namespace, atoms.export_root))
         }
         (value_pattern, Some(pattern)) => {
-            let mut value_atoms = match value_pattern {
-                NormValuePolicyPattern::Expr(value) => parse_component(value, provenance.clone())?,
-                NormValuePolicyPattern::Absent { .. } => ComponentAtoms::default(),
+            let value_atoms = match value_pattern {
+                NormValuePolicyPattern::Conjunction(value) => {
+                    parse_component(value, true, provenance.clone())?
+                }
+                NormValuePolicyPattern::Absent { .. } => ComponentAtoms {
+                    absent_value: true,
+                    ..ComponentAtoms::default()
+                },
             };
-            let mut pattern_atoms = parse_component(pattern, provenance.clone())?;
+            let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
             if !pattern_atoms.mutability.is_empty() {
                 return Err(policy_error(
                     "const/mut policy is valid only in the P1 value component",
                     provenance,
                 ));
             }
-            let namespace_visibility = merge_namespace(
-                &value_atoms.namespace,
-                &pattern_atoms.namespace,
-                provenance.clone(),
-            )?;
-            reject_mut_export(
-                &value_atoms.mutability,
-                namespace_visibility,
-                provenance.clone(),
-            )?;
-            if value_atoms.stages.is_empty() && !pattern_atoms.stages.is_empty() {
-                value_atoms.stages = pattern_atoms.stages.clone();
-            } else if pattern_atoms.stages.is_empty() && !value_atoms.stages.is_empty() {
-                pattern_atoms.stages = value_atoms.stages.clone();
-            }
             if pattern_atoms.stages.contains(PolicyStage::Runtime) {
                 return Err(policy_error(
-                    "the P1 type component cannot contain runtime",
+                    "the P1 Pattern component cannot contain runtime",
                     provenance,
                 ));
             }
-            Ok(P1Projection::Pair(PolicyPair {
-                value: ValueComponentPolicy {
-                    stages: value_atoms.stages,
-                    mutability: value_atoms.mutability,
-                    presence: if matches!(value_pattern, NormValuePolicyPattern::Absent { .. }) {
-                        ValuePresence::Absent
-                    } else {
-                        ValuePresence::Present
+            let mut namespace = value_atoms.namespace.clone();
+            namespace.extend(pattern_atoms.namespace.iter().copied());
+            let export_root = value_atoms.export_root || pattern_atoms.export_root;
+            let visibility = one_namespace(&namespace, provenance.clone())?;
+            let value_presence = value_atoms.presence();
+            Ok((
+                P1Projection::Pair(PolicyPair {
+                    value: ValueComponentPolicy {
+                        stages: value_atoms.stages,
+                        mutability: value_atoms.mutability,
+                        presence: value_presence,
                     },
-                },
-                pattern: PatternComponentPolicy {
-                    stages: pattern_atoms.stages,
-                },
-                namespace_visibility,
-            }))
+                    pattern: PatternComponentPolicy {
+                        stages: pattern_atoms.stages,
+                    },
+                    namespace_visibility: visibility,
+                    export_root,
+                }),
+                namespace,
+                export_root,
+            ))
         }
         (NormValuePolicyPattern::Absent { .. }, None) => Err(policy_error(
-            "an absent P1 value pattern requires an explicit type component",
+            "an absent P1 value pattern requires an explicit Pattern component",
             provenance,
         )),
     }
@@ -447,55 +681,98 @@ pub fn derive_function_object_p1(
             stages: result_p2.pattern.stages.clone(),
         },
         namespace_visibility: declaration.namespace_visibility,
+        export_root: declaration.export_root,
     }
 }
 
-pub fn project_p1<'a, V, P>(
+/// Apply a P1 projection as a real slice restriction. The returned entries are
+/// owned views whose stage/mutability sets are cropped; associated value and
+/// Pattern identities are cloned unchanged.
+pub fn project_p1<V: Clone, P: Clone>(
     projection: &P1Projection,
-    result: &'a [PolicyResultEntry<V, P>],
-) -> Vec<&'a PolicyResultEntry<V, P>> {
+    result: &[PolicyResultEntry<V, P>],
+) -> Vec<PolicyResultEntry<V, P>> {
     result
         .iter()
-        .filter(|entry| match projection {
-            P1Projection::Infer => true,
-            P1Projection::ValueDominant { value, .. } => value_matches(value, entry),
+        .filter_map(|entry| match projection {
+            P1Projection::Infer => Some((*entry).clone()),
+            P1Projection::ValueDominant { value } => {
+                let value_policy = restrict_value_policy(value, entry)?;
+                Some(PolicyResultEntry {
+                    value: entry.value.clone(),
+                    value_policy,
+                    pattern: entry.pattern.clone(),
+                    pattern_policy: entry.pattern_policy.clone(),
+                })
+            }
             P1Projection::Pair(pair) => {
-                value_matches(&pair.value, entry)
-                    && stages_match(&pair.pattern.stages, &entry.pattern_policy.stages)
+                let value_policy = restrict_value_policy(&pair.value, entry)?;
+                let pattern_stages =
+                    restrict_stages(&pair.pattern.stages, &entry.pattern_policy.stages)?;
+                Some(PolicyResultEntry {
+                    value: entry.value.clone(),
+                    value_policy,
+                    pattern: entry.pattern.clone(),
+                    pattern_policy: PatternComponentPolicy {
+                        stages: pattern_stages,
+                    },
+                })
             }
         })
         .collect()
 }
 
-fn value_matches<V, P>(query: &ValueComponentPolicy, entry: &PolicyResultEntry<V, P>) -> bool {
+fn restrict_value_policy<V, P>(
+    query: &ValueComponentPolicy,
+    entry: &PolicyResultEntry<V, P>,
+) -> Option<ValueComponentPolicy> {
     match query.presence {
-        ValuePresence::Absent => return entry.value.is_none(),
-        ValuePresence::Present if entry.value.is_none() => return false,
-        ValuePresence::Optional if entry.value.is_none() => return true,
-        ValuePresence::Present | ValuePresence::Optional => {}
+        ValuePresence::Absent if entry.value.is_some() => return None,
+        ValuePresence::Present if entry.value.is_none() => return None,
+        ValuePresence::Optional | ValuePresence::Present | ValuePresence::Absent => {}
     }
-    stages_match(&query.stages, &entry.value_policy.stages)
-        && (query.mutability.is_empty()
-            || query
-                .mutability
-                .iter()
-                .any(|mutability| entry.value_policy.mutability.contains(mutability)))
+    if entry.value.is_none() {
+        return Some(entry.value_policy.clone());
+    }
+    let stages = restrict_stages(&query.stages, &entry.value_policy.stages)?;
+    let mutability = if query.mutability.is_empty() {
+        entry.value_policy.mutability.clone()
+    } else {
+        let selected = query
+            .mutability
+            .intersection(&entry.value_policy.mutability)
+            .copied()
+            .collect::<BTreeSet<_>>();
+        if selected.is_empty() {
+            return None;
+        }
+        selected
+    };
+    Some(ValueComponentPolicy {
+        stages,
+        mutability,
+        presence: entry.value_policy.presence,
+    })
 }
 
-fn stages_match(query: &StageSet, available: &StageSet) -> bool {
-    query.is_empty() || query.intersects(available)
+fn restrict_stages(query: &StageSet, available: &StageSet) -> Option<StageSet> {
+    if query.is_empty() {
+        return Some(available.clone());
+    }
+    let selected = query.intersection(available);
+    (!selected.is_empty()).then_some(selected)
 }
 
 fn validate_p2_pair(pair: PolicyPair, provenance: Provenance) -> Result<PolicyPair, Diagnostic> {
     if pair.pattern.stages.contains(PolicyStage::Runtime) {
         return Err(policy_error(
-            "P2 type component cannot contain runtime",
+            "P2 Pattern component cannot contain runtime",
             provenance,
         ));
     }
-    if pair.pattern.stages.len() != 1 {
+    if pair.pattern.stages.is_empty() {
         return Err(policy_error(
-            "P2 type component must name exactly one static stage",
+            "P2 Pattern component requires at least one static stage",
             provenance,
         ));
     }
@@ -508,51 +785,26 @@ fn validate_p2_pair(pair: PolicyPair, provenance: Provenance) -> Result<PolicyPa
     let value_static = pair.value.stages.static_stages();
     if !value_static.is_empty() && value_static != pair.pattern.stages {
         return Err(policy_error(
-            "P2 value and type components use different static stages",
+            "P2 value and Pattern components use different static stages",
             provenance,
         ));
     }
     Ok(pair)
 }
 
-fn reject_namespace_in_p2(
+fn reject_namespace_attributes(
     atoms: &ComponentAtoms,
+    context: &str,
     provenance: Provenance,
 ) -> Result<(), Diagnostic> {
-    if atoms.namespace.is_empty() {
+    if atoms.namespace.is_empty() && !atoms.export_root {
         Ok(())
     } else {
         Err(policy_error(
-            "namespace visibility is valid only in P1 declaration position",
+            format!("public/private/export are not valid in {context} policy"),
             provenance,
         ))
     }
-}
-
-fn reject_mut_export(
-    mutability: &BTreeSet<ValueMutability>,
-    namespace: Option<NamespaceVisibility>,
-    provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    if mutability.contains(&ValueMutability::Mut) && namespace == Some(NamespaceVisibility::Export)
-    {
-        Err(policy_error(
-            "mut+export is invalid: a globally exported mutable value is not permitted",
-            provenance,
-        ))
-    } else {
-        Ok(())
-    }
-}
-
-fn merge_namespace(
-    value: &BTreeSet<NamespaceVisibility>,
-    pattern: &BTreeSet<NamespaceVisibility>,
-    provenance: Provenance,
-) -> Result<Option<NamespaceVisibility>, Diagnostic> {
-    let mut combined = value.clone();
-    combined.extend(pattern.iter().copied());
-    one_namespace(&combined, provenance)
 }
 
 fn one_namespace(
@@ -561,83 +813,178 @@ fn one_namespace(
 ) -> Result<Option<NamespaceVisibility>, Diagnostic> {
     if namespace.len() > 1 {
         return Err(policy_error(
-            "conflicting namespace visibility policies",
+            "a namespace declaration must choose exactly one of public or private",
             provenance,
         ));
     }
     Ok(namespace.iter().next().copied())
 }
 
-fn parse_component(expr: &NormExpr, provenance: Provenance) -> Result<ComponentAtoms, Diagnostic> {
+fn parse_component(
+    conjunction: &NormPolicyConjunction,
+    allow_absent: bool,
+    provenance: Provenance,
+) -> Result<ComponentAtoms, Diagnostic> {
+    let mut result = ComponentAtoms::default();
+    for choice in &conjunction.choices {
+        let next = parse_choice(choice, allow_absent, provenance.clone())?;
+        merge_conjunction(&mut result, next, provenance.clone())?;
+    }
+    Ok(result)
+}
+
+fn parse_choice(
+    choice: &NormPolicyChoice,
+    allow_absent: bool,
+    provenance: Provenance,
+) -> Result<ComponentAtoms, Diagnostic> {
+    let mut alternatives = Vec::new();
+    for atom in &choice.atoms {
+        alternatives.push(parse_atom(atom, allow_absent, provenance.clone())?);
+    }
+    if alternatives.len() == 1 {
+        return Ok(alternatives.pop().expect("one alternative"));
+    }
+
+    let dimensions = alternatives
+        .iter()
+        .map(ComponentAtoms::dimensions)
+        .collect::<Vec<_>>();
+    let same_single_dimension = dimensions
+        .first()
+        .and_then(|first| (first.len() == 1).then(|| first.iter().next().copied().unwrap()))
+        .filter(|dimension| {
+            dimensions
+                .iter()
+                .all(|current| current.len() == 1 && current.contains(dimension))
+        });
+
+    if let Some(dimension) = same_single_dimension {
+        let mut result = ComponentAtoms::default();
+        for alternative in alternatives {
+            merge_same_dimension(&mut result, alternative, dimension);
+        }
+        return Ok(result);
+    }
+
+    let stage_or_absent = dimensions.iter().all(|current| {
+        !current.is_empty()
+            && current.iter().all(|dimension| {
+                matches!(
+                    dimension,
+                    PolicyDimension::Stage | PolicyDimension::ValuePresence
+                )
+            })
+    });
+    if stage_or_absent {
+        let mut result = ComponentAtoms::default();
+        for alternative in alternatives {
+            result.stages = result.stages.union(&alternative.stages);
+            result.absent_value |= alternative.absent_value;
+        }
+        return Ok(result);
+    }
+
+    Err(policy_error(
+        "policy `||` may choose alternatives only within one dimension; clause-level disjunction is not supported",
+        provenance,
+    ))
+}
+
+fn parse_atom(
+    atom: &NormPolicyAtom,
+    allow_absent: bool,
+    provenance: Provenance,
+) -> Result<ComponentAtoms, Diagnostic> {
     let mut atoms = ComponentAtoms::default();
-    collect_atoms(expr, &mut atoms, provenance)?;
+    match atom {
+        NormPolicyAtom::Name { text, .. } => match text.as_str() {
+            "meta" => atoms.stages.insert(PolicyStage::Meta),
+            "compile" => atoms.stages.insert(PolicyStage::Compile),
+            "seal" => atoms.stages.insert(PolicyStage::Seal),
+            "runtime" => atoms.stages.insert(PolicyStage::Runtime),
+            "const" => {
+                atoms.mutability.insert(ValueMutability::Const);
+            }
+            "mut" => {
+                atoms.mutability.insert(ValueMutability::Mut);
+            }
+            "public" => {
+                atoms.namespace.insert(NamespaceVisibility::Public);
+            }
+            "private" => {
+                atoms.namespace.insert(NamespaceVisibility::Private);
+            }
+            "export" => atoms.export_root = true,
+            other => {
+                return Err(policy_error(
+                    format!("unknown policy atom `{other}`"),
+                    provenance,
+                ));
+            }
+        },
+        NormPolicyAtom::Group { conjunction, .. } => {
+            return parse_component(conjunction, allow_absent, provenance);
+        }
+        NormPolicyAtom::AbsentValuePattern { .. } => {
+            if !allow_absent {
+                return Err(policy_error(
+                    "absent-value pattern is valid only in the value component",
+                    provenance,
+                ));
+            }
+            atoms.absent_value = true;
+        }
+        NormPolicyAtom::Error(_) => {
+            return Err(policy_error("invalid policy AST", provenance));
+        }
+    }
     Ok(atoms)
 }
 
-fn collect_atoms(
-    expr: &NormExpr,
-    atoms: &mut ComponentAtoms,
+fn merge_conjunction(
+    result: &mut ComponentAtoms,
+    next: ComponentAtoms,
     provenance: Provenance,
 ) -> Result<(), Diagnostic> {
-    match expr {
-        NormExpr::Name { text, .. } => {
-            match text.as_str() {
-                "meta" => atoms.stages.insert(PolicyStage::Meta),
-                "compile" => atoms.stages.insert(PolicyStage::Compile),
-                "seal" => atoms.stages.insert(PolicyStage::Seal),
-                "runtime" => atoms.stages.insert(PolicyStage::Runtime),
-                "const" => {
-                    atoms.mutability.insert(ValueMutability::Const);
-                }
-                "mut" => {
-                    atoms.mutability.insert(ValueMutability::Mut);
-                }
-                "public" => {
-                    atoms.namespace.insert(NamespaceVisibility::Public);
-                }
-                "private" => {
-                    atoms.namespace.insert(NamespaceVisibility::Private);
-                }
-                "export" => {
-                    atoms.namespace.insert(NamespaceVisibility::Export);
-                }
-                other => {
-                    return Err(policy_error(
-                        format!("unknown policy atom `{other}`"),
-                        provenance,
-                    ));
-                }
-            }
-            Ok(())
-        }
-        NormExpr::Call { source, target, .. } => {
-            let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
-                return Err(policy_error(
-                    "policy expression requires `+` or `|`",
-                    provenance,
-                ));
-            };
-            if spelling != "+" && spelling != "|" {
-                return Err(policy_error(
-                    format!("policy expression cannot use operator `{spelling}`"),
-                    provenance,
-                ));
-            }
-            for element in &source.elements {
-                let NormProductElem::Expr(expr) = element else {
-                    return Err(policy_error(
-                        "policy operators require expression operands",
-                        provenance,
-                    ));
-                };
-                collect_atoms(expr, atoms, provenance.clone())?;
-            }
-            Ok(())
-        }
-        _ => Err(policy_error(
-            "invalid policy component expression",
+    let overlap = result
+        .dimensions()
+        .intersection(&next.dimensions())
+        .copied()
+        .collect::<Vec<_>>();
+    if !overlap.is_empty() {
+        return Err(policy_error(
+            format!("policy `+` cannot conjoin two values of the same dimension ({overlap:?})"),
             provenance,
-        )),
+        ));
+    }
+    if (result.absent_value && !next.stages.is_empty())
+        || (next.absent_value && !result.stages.is_empty())
+    {
+        return Err(policy_error(
+            "value absence is an alternative (`||`), not a stage conjunction (`+`)",
+            provenance,
+        ));
+    }
+    result.stages = result.stages.union(&next.stages);
+    result.mutability.extend(next.mutability);
+    result.namespace.extend(next.namespace);
+    result.export_root |= next.export_root;
+    result.absent_value |= next.absent_value;
+    Ok(())
+}
+
+fn merge_same_dimension(
+    result: &mut ComponentAtoms,
+    next: ComponentAtoms,
+    dimension: PolicyDimension,
+) {
+    match dimension {
+        PolicyDimension::Stage => result.stages = result.stages.union(&next.stages),
+        PolicyDimension::Mutability => result.mutability.extend(next.mutability),
+        PolicyDimension::NamespaceVisibility => result.namespace.extend(next.namespace),
+        PolicyDimension::ExportRoot => result.export_root |= next.export_root,
+        PolicyDimension::ValuePresence => result.absent_value |= next.absent_value,
     }
 }
 

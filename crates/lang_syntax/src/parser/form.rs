@@ -1,6 +1,6 @@
 use crate::{
-    Diagnostic, DiagnosticCode, ErrorAst, ExprAst, ExprKind, FormAst, PolicySpecAst, ProgramAst,
-    ReturnEventAst, ReturnTargetAst, Span, Symbol, Token, TokenKind, ValuePolicyPatternAst,
+    Diagnostic, DiagnosticCode, ErrorAst, ExprAst, ExprKind, FormAst, ProgramAst, ReturnEventAst,
+    ReturnTargetAst, Span, Symbol, Token, TokenKind,
 };
 
 use super::{
@@ -66,15 +66,12 @@ impl<'tokens> Parser<'tokens> {
                 || parser.cursor.at_name("return")
         });
         if self.cursor.at_name("let") {
-            let span = expr.span;
-            return parse_let_form(
-                self,
-                Some(PolicySpecAst {
-                    value_policy: ValuePolicyPatternAst::Expr(Box::new(expr)),
-                    type_policy: None,
-                    span,
-                }),
+            self.error(
+                DiagnosticCode::UnexpectedToken,
+                "invalid policy prefix; policy choice uses `||`, conjunction uses `+`, and pair separation uses `:`",
+                expr.span,
             );
+            return parse_let_form(self, None);
         }
 
         // Implicit return: `<value> return`
@@ -188,6 +185,12 @@ impl<'tokens> Parser<'tokens> {
                 self.diagnostics.append(&mut diagnostics);
             }
         }
+    }
+
+    pub fn current_diagnostic_gate_is_empty(&self) -> bool {
+        self.diagnostic_gates
+            .last()
+            .is_some_and(|diagnostics| diagnostics.is_empty())
     }
 
     pub fn ungate_drop_diagnostics(&mut self) {

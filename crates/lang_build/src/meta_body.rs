@@ -4,9 +4,9 @@
 //! the `=> ("msg") delete` syntax. This module provides the minimal
 //! build/check substrate:
 //!
-//! 1. Legality check: `Delete` bodies are only valid in meta-executed
+//! 1. Legality check: `Delete` bodies are only valid in statically executed
 //!    closures; runtime-only closures reject them.
-//! 2. Selected-body evaluation: when a selected meta closure body is a
+//! 2. Selected-body evaluation: when a selected static closure body is a
 //!    `Delete` body, it produces a hard static diagnostic.
 //!
 //! `delete` is not a primitive callable, not a value, not `assert`, and
@@ -23,7 +23,8 @@ use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
 /// The execution environment a closure body is demanded under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClosureBodyExecutionEnv {
-    Meta,
+    OpenStatic,
+    SealStatic,
     Runtime,
 }
 
@@ -33,8 +34,8 @@ pub enum ClosureBodyExecutionEnv {
 
 /// Check whether a closure body is legal in the given execution environment.
 ///
-/// - `Block` bodies are legal in both Meta and Runtime.
-/// - `Delete` bodies are legal only in Meta.
+/// - `Block` bodies are legal in every phase.
+/// - `Delete` bodies are legal only in a static phase.
 ///
 /// If illegal, returns a `Diagnostic` describing the violation.
 pub fn check_closure_body_delete_legality(
@@ -45,10 +46,10 @@ pub fn check_closure_body_delete_legality(
     match body {
         NormClosureBody::Block(_) => Ok(()),
         NormClosureBody::Delete(del) => match env {
-            ClosureBodyExecutionEnv::Meta => Ok(()),
+            ClosureBodyExecutionEnv::OpenStatic | ClosureBodyExecutionEnv::SealStatic => Ok(()),
             ClosureBodyExecutionEnv::Runtime => Err(Diagnostic::new(
                 DiagnosticSeverity::Error,
-                "delete closure body is only valid in meta-executed bodies".to_string(),
+                "delete closure body is only valid in static bodies".to_string(),
                 Some(del.origin_reprovenance(&fallback_provenance)),
             )),
         },

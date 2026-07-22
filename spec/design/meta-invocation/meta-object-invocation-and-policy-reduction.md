@@ -70,7 +70,7 @@ head. The function-object stage view is then derived from that P2 pair, and an
 explicit declaration prefix performs ordinary P1 projection. For example:
 
 ```lang
-meta | runtime let + =
+meta || runtime let + =
   (self, t: type, u: type): meta -> let r: type =>
 {
   r === t;
@@ -78,15 +78,15 @@ meta | runtime let + =
 ```
 
 has canonical `P2 = meta:meta`. Its derived function-object stage view is meta,
-so the written P1 query `meta | runtime` selects only the available meta slice;
+so the written P1 query `meta || runtime` selects only the available meta slice;
 it does not manufacture runtime visibility. Current flat symbol,
 `body_entry_policy`, and `return_object_policy` metadata therefore all carry
 the selected meta compatibility projection for this example. These fields are
 transitional transport, not three final source-level policy positions.
 
-Conversely, a single P2 `runtime` normalizes canonically to `runtime:seal`.
+Conversely, a single P2 `runtime` normalizes canonically to `runtime:compile`.
 Current flat transport records the runtime value stage but does not yet install
-the seal pattern stage into the namespace resolver.
+the compile Pattern stage as a first-class graph facet.
 
 The written `self` formal denotes the callable frame's explicit slot 0
 self-position. It is injected by invocation after callable resolution; it is not
@@ -109,7 +109,7 @@ the RHS enters meta evaluation. The RHS enters the default inferred evaluation
 strategy because the binding policy is omitted:
 
 ```text
-default ordinary initializer strategy = meta | runtime / MetaPartial
+default ordinary initializer strategy = meta || runtime / MetaPartial
 ```
 
 `MetaPartial` evaluates the normalized AST as far as meta policy allows. If a
@@ -151,13 +151,13 @@ condition:
 
 ```lang
 let x = expr;                 // retain the inferred complete result
-meta | runtime let x = expr;  // select available meta/runtime value slices
+meta || runtime let x = expr; // select available meta/runtime value slices
 runtime let x = expr;         // select runtime values and follow their types
 ```
 
 The current binding substrate applies a non-empty stage-slice projection rather
 than exact flat-flag verification. Thus an expression that residualizes only to
-runtime may satisfy `meta | runtime let x = expr` by selecting its runtime
+runtime may satisfy `meta || runtime let x = expr` by selecting its runtime
 slice. Full `Pv:Pp`, const/mut, namespace, and value-presence transport through
 the namespace graph remains future work. Ambiguous meta-visible candidates
 remain hard diagnostics in both `MetaPartial` and `MetaStrict`; ambiguity is
@@ -300,8 +300,8 @@ P2 -> derived function-object P1
 The judgments are:
 
 ```text
-Gamma; lookup_stage |- path => Symbol
-Gamma; lookup_stage |- value_facet(Symbol) => Val2*
+Gamma |- ResolveSymbol(path) => Symbol
+Gamma; Phase |- ExposePolicySlice(value_facet(Symbol)) => Val2View*
 
 Gamma |- invoke(selected object, InvocationFrame)
       => result(P2v:P2p)
@@ -320,7 +320,7 @@ P2 is an explicit pair or a context-specific single-policy shorthand:
 P2 = Pv:Pp
 
 N2(P) = P:(P-runtime), when P-runtime is non-empty
-N2(runtime) = runtime:seal
+N2(runtime) = runtime:compile
 ```
 
 P2 pair validity requires:
@@ -349,9 +349,10 @@ execute the original runtime value body as compile/meta.
 
 `compile` and `meta` remain different capabilities: compile computes static
 values and PatternValue; meta constructs SymbolConstructionValue in a
-MetaConstructionUnit. Seal is a static visibility domain excluded from open
-meta lookup. A single P2 runtime defaults to `runtime:seal`, not
-`runtime:compile`.
+MetaConstructionUnit. OpenStatic exposes both meta and compile; SealStatic
+exposes seal and compile but not meta. A single P2 runtime defaults to
+`runtime:compile`; explicit `runtime:seal` remains available when the Pattern
+must wait for SealStatic.
 
 There is no independent P3 and no scalar policy for the whole result symbol.
 Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
@@ -437,13 +438,13 @@ meta block interpretation.
 A formal sketch of the intended end-to-end frame:
 
 ```text
-Gamma; lookup_stage |- callee_path => Symbol
-Gamma; lookup_stage |- value_facet(Symbol) => V*
-Gamma; lookup_stage |- policy_views(V*) => V_stage*
-Gamma; lookup_stage |- type(V_stage*) / () => C0
+Gamma |- ResolveSymbol(callee_path) => Symbol
+Gamma; Phase |- value_facet(Symbol) => V*
+Gamma; Phase |- ExposePolicySlice(V*) => V_phase*
+Gamma; Phase |- type(V_phase*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
 Gamma |- InvocationFrame(self, ArgShapes) => Frame
-Gamma; lookup_stage |- FullyAdmissible(C0, Frame, expectation) => A
+Gamma; Phase |- FullyAdmissible(C0, Frame, expectation) => A
 Gamma |- PreferenceFilters(A) => B_final
 Gamma |- MustSelectConsistent(A, B_final) => selected_callable
 Gamma; P2pair(selected_callable) |- invoke(...) => InvocationResult
@@ -472,7 +473,7 @@ return execution, D/Done, lifetime checking, or implicit `?`.
 Evaluation demand is orthogonal to execution capability and result rank:
 
 ```text
-execution capability: compile | meta | seal | runtime
+execution capability: compile / meta / seal / runtime
 evaluation demand:     partial | strict
 result rank:           PatternValue | SymbolConstructionValue | runtime value
 ```
@@ -799,8 +800,9 @@ Current state:
   forwarding body. The final model replaces that formal return split with
   `r = ...` producing a `SymbolConstructionValue`; ordinary `let ===` aliasing
   remains separate.
-- Flat meta/compile/seal/post-seal/runtime `PolicyEnv` variants support resolver
-  visibility metadata; the restricted overload selector also checks the
+- The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and
+  Runtime variants; it projects flat visibility metadata while the restricted
+  overload selector also checks the
   selected current body-entry field before meta execution. These environments
   are not canonical pair projection or execution permission.
 - The current early-meta, verification, and v0.8 overload behavior are not yet

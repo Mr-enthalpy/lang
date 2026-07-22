@@ -159,7 +159,7 @@ let bool: type = ((if | else) bool) |> struct;
 ```
 
 The first `bool` is the symbol being bound. The second `bool` is the pattern /
-construction name attached to the sum pattern `if + else`.
+construction name attached to the sum Pattern `if | else`.
 
 Logical operators return ordinary bool symbols:
 
@@ -169,12 +169,14 @@ and  : (bool, bool) -> bool
 or   : (bool, bool) -> bool
 ```
 
-The bool symbol's Pattern layer carries the alternatives:
+The bool symbol's Pattern layer carries exactly one alternative space:
 
 ```text
 if | else
-true | false
 ```
+
+`true === if::bool` and `false === else::bool` are aliases of those Pattern
+symbols. They do not create a second `true | false` alternative space.
 
 Pattern matching reads that layer directly; conditional control flow does not
 require `?`. Explicit `bool_value?` only asks for the one-layer top Pattern view.

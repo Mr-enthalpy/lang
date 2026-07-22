@@ -1,10 +1,10 @@
 # policy-capability
 
-**Status: Non-normative future design with a partial implementation note. The
-current substrate provides policy metadata and flat meta/compile/seal/
-post-seal/runtime `PolicyEnv` lookup filtering; full policy
-checking (lattice, projection, conformance, effect/error/panic policy) is not
-implemented.**
+**Status: Non-normative implementation map. The current substrate provides a
+typed policy-pair algebra and three-phase visibility helpers, while some graph
+consumers still use a legacy flat `PolicyEnv` adapter. Full end-to-end policy
+checking (projection at every binding path, conformance, and
+effect/error/panic policy) is not implemented.**
 
 ## Scope
 

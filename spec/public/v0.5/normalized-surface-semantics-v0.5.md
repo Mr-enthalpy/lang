@@ -573,13 +573,18 @@ Binding prefixes and callable-head P2 positions normalize to:
 ```text
 NormPolicySpec {
   value_policy: NormValuePolicyPattern,
-  type_policy: Option<NormExpr>
+  pattern_policy: Option<NormPolicyConjunction>
 }
+
+NormPolicyConjunction { choices: Vec<NormPolicyChoice> }
+NormPolicyChoice { atoms: Vec<NormPolicyAtom> }
 ```
 
-The single-component and `value:type` pair shapes are preserved. The explicit
-`Absent` value-policy variant reserves pure-type/value-optional elaboration but
-has no frozen source token. Normalization does not decide whether a single
+The single-component and `value:Pattern` pair shapes are preserved. `||`
+choice and `+` conjunction remain different normalized nodes; Pattern `|` is
+not lowered into either. The explicit absent-value atom reserves
+pure-type/value-optional elaboration but has no frozen source token.
+Normalization does not decide whether a single
 component is P1 value-dominant projection or P2 shorthand, validate pair stage
 rules, or interpret const/mut/namespace atoms. Those are semantic policy
 elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.

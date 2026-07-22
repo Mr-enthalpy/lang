@@ -26,8 +26,9 @@ use crate::{
     policy_expr::{elaborate_declaration_policy_expr, legacy_policy_set_from_pair},
     policy_metadata,
     policy_pair::{
-        derive_function_object_p1, elaborate_p1_projection, normalize_p2_policy,
-        FunctionObjectDeclarationPolicy, P1Projection,
+        derive_function_object_p1, elaborate_namespace_declaration_policy, normalize_p2_policy,
+        FunctionObjectDeclarationPolicy, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
+        P1Projection,
     },
     policy_set_meta_runtime, policy_set_runtime,
     return_target::{
@@ -353,14 +354,15 @@ impl CompilationWorld {
             }
         }
 
-        let explicit_policy = slot
-            .policy
-            .as_ref()
-            .map(|policy_expr| {
-                elaborate_declaration_policy_expr(Some(policy_expr), declaration_provenance.clone())
-            })
-            .transpose()
-            .map_err(BuildError::single)?;
+        let namespace_declaration = elaborate_namespace_declaration_policy(
+            slot.policy.as_ref(),
+            NamespaceDeclarationPosition::DirectTopLevel,
+            declaration_provenance.clone(),
+        )
+        .map_err(BuildError::single)?;
+        let explicit_policy = slot.policy.as_ref().map(|_| {
+            crate::policy_expr::legacy_policy_set_from_namespace_declaration(&namespace_declaration)
+        });
         let mut residual_binding_policy = None;
 
         if let Some(initializer) = slot.initializer.as_deref() {
@@ -394,7 +396,18 @@ impl CompilationWorld {
                     &binder_name,
                     final_binding_policy.clone(),
                 );
+                override_delta_binding_visibility(
+                    &mut expansion.namespace_delta,
+                    &binder_name,
+                    &namespace_declaration,
+                );
                 expansion.replacement_object.policy_metadata.policy_set = final_binding_policy;
+                expansion
+                    .replacement_object
+                    .visibility_metadata
+                    .namespace_visibility = namespace_declaration.visibility;
+                expansion.replacement_object.visibility_metadata.export_root =
+                    namespace_declaration.export_root;
                 self.snapshot = self
                     .snapshot
                     .install_delta(expansion.namespace_delta)
@@ -442,7 +455,18 @@ impl CompilationWorld {
                         &binder_name,
                         final_binding_policy.clone(),
                     );
+                    override_delta_binding_visibility(
+                        &mut expansion.namespace_delta,
+                        &binder_name,
+                        &namespace_declaration,
+                    );
                     expansion.replacement_object.policy_metadata.policy_set = final_binding_policy;
+                    expansion
+                        .replacement_object
+                        .visibility_metadata
+                        .namespace_visibility = namespace_declaration.visibility;
+                    expansion.replacement_object.visibility_metadata.export_root =
+                        namespace_declaration.export_root;
                     self.snapshot = self
                         .snapshot
                         .install_delta(expansion.namespace_delta)
@@ -506,6 +530,9 @@ impl CompilationWorld {
             for symbol in delta.symbols.values_mut() {
                 if symbol.name == binder_name {
                     symbol.policy_metadata.policy_set = policy_set.clone();
+                    symbol.visibility_metadata.namespace_visibility =
+                        namespace_declaration.visibility;
+                    symbol.visibility_metadata.export_root = namespace_declaration.export_root;
                 }
             }
         }
@@ -779,9 +806,13 @@ fn source_callable_delta(
 ) -> Result<NamespaceDelta, BuildError> {
     let result_p2 =
         result_policy_from_closure(closure, provenance.clone()).map_err(BuildError::single)?;
-    let declaration_projection =
-        elaborate_p1_projection(policy_expr, provenance.clone()).map_err(BuildError::single)?;
-    let declaration_policy = function_object_declaration_policy(&declaration_projection);
+    let namespace_declaration = elaborate_namespace_declaration_policy(
+        policy_expr,
+        NamespaceDeclarationPosition::DirectTopLevel,
+        provenance.clone(),
+    )
+    .map_err(BuildError::single)?;
+    let declaration_policy = function_object_declaration_policy(&namespace_declaration);
     let derived_function_p1 = derive_function_object_p1(&result_p2, &declaration_policy);
     let derived_symbol_policy = legacy_policy_set_from_pair(&derived_function_p1);
     let explicit_symbol_policy = policy_expr
@@ -826,6 +857,8 @@ fn source_callable_delta(
         provenance.clone(),
     );
     symbol.policy_metadata.policy_set = symbol_policy.clone();
+    symbol.visibility_metadata.namespace_visibility = namespace_declaration.visibility;
+    symbol.visibility_metadata.export_root = namespace_declaration.export_root;
     symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
         function_symbol_id: symbol_id,
         primitive: None,
@@ -861,21 +894,23 @@ fn result_policy_from_closure(
 }
 
 fn function_object_declaration_policy(
-    projection: &P1Projection,
+    declaration: &NamespaceDeclarationPolicy,
 ) -> FunctionObjectDeclarationPolicy {
-    match projection {
+    let mutability = match &declaration.projection {
         P1Projection::Infer => FunctionObjectDeclarationPolicy::default(),
-        P1Projection::ValueDominant {
-            value,
-            namespace_visibility,
-        } => FunctionObjectDeclarationPolicy {
+        P1Projection::ValueDominant { value } => FunctionObjectDeclarationPolicy {
             mutability: value.mutability.clone(),
-            namespace_visibility: *namespace_visibility,
+            ..FunctionObjectDeclarationPolicy::default()
         },
         P1Projection::Pair(pair) => FunctionObjectDeclarationPolicy {
             mutability: pair.value.mutability.clone(),
-            namespace_visibility: pair.namespace_visibility,
+            ..FunctionObjectDeclarationPolicy::default()
         },
+    };
+    FunctionObjectDeclarationPolicy {
+        mutability: mutability.mutability,
+        namespace_visibility: declaration.visibility,
+        export_root: declaration.export_root,
     }
 }
 
@@ -1044,6 +1079,19 @@ fn override_delta_binding_policy(
     for symbol in delta.symbols.values_mut() {
         if symbol.name == binding_name {
             symbol.policy_metadata.policy_set = policy.clone();
+        }
+    }
+}
+
+fn override_delta_binding_visibility(
+    delta: &mut NamespaceDelta,
+    binding_name: &str,
+    declaration: &NamespaceDeclarationPolicy,
+) {
+    for symbol in delta.symbols.values_mut() {
+        if symbol.name == binding_name {
+            symbol.visibility_metadata.namespace_visibility = declaration.visibility;
+            symbol.visibility_metadata.export_root = declaration.export_root;
         }
     }
 }

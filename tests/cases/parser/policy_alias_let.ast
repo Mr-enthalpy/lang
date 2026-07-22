@@ -3,13 +3,10 @@ Program
     policy:
       PolicySpec
         value_policy:
-          Expr
-            Pipe
-              Segment has_incoming=false
-                OperatorExpr
-                  Atom
-                    Name policy
-        type_policy:
+          PolicyConjunction
+            PolicyChoice
+              PolicyAtom Name "policy"
+        pattern_policy:
           None
     binder:
       Name x

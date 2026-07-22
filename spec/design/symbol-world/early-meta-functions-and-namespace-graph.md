@@ -44,17 +44,18 @@ compile companions, and automatic require are canonical in
 
 ## v0.7 implementation additions
 
-v0.7 introduced early policy-aware resolution; the current branch carries five
+v0.7 introduced early policy-aware resolution; the current branch retains five
 flat compatibility flags:
 
 - `PolicyFlag::Export`, `PolicyFlag::Meta`, `PolicyFlag::Compile`,
   `PolicyFlag::Seal`, `PolicyFlag::Runtime`
 - `PolicySet` — bit-set of flags carried on `PolicyMetadata.policy_set`
-- `PolicyEnv::{Meta, Compile, Seal, PostSealCompile, Runtime}` — flat resolver
-  visibility environments. Open meta/compile lookup, seal/post-seal lookup, and
-  runtime lookup use the visibility-domain rules summarized by the canonical
-  pair document. These do not grant permission to enter a callable body or scan
-  the pre-seal world.
+- `PolicyEnv::{OpenStatic, SealStatic, Runtime}` — the compatibility resolver's
+  three phase views. These do not grant permission to enter a callable body or
+  scan the pre-seal world.
+
+`PolicyFlag::Export` is legacy transport only. Canonical export-root and
+public/private visibility are independent typed dimensions.
 
 ### Source verification forms
 
@@ -63,7 +64,7 @@ is bootstrapped as a core meta-visible verification namespace/object, with
 verification operations installed below it as core meta-function symbols.
 Ordinary normalized expressions are treated as verification forms only after the
 verification entry and operation resolve through the namespace graph under
-`PolicyEnv::Meta`. They do not install symbols, produce runtime objects, or add
+`PolicyEnv::OpenStatic`. They do not install symbols, produce runtime objects, or add
 parser syntax.
 
 The current fixture spelling is a compact expression-chain form such as:
@@ -106,16 +107,16 @@ call modes; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-l
 
 | Symbol source | Policy set |
 |---|---|
-| Core namespace symbol | `export | meta | runtime` |
-| Namespace symbols (declared, physical, dependency mount, generated) | `meta | runtime` |
-| Core meta-functions (`struct`, `assert`) | `export | meta` |
-| Core verification namespace and operations (`verify`, `verify::exists`, …) | `export | meta` |
-| Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `export | meta | runtime` |
+| Core namespace symbol | `{export, meta, runtime}` |
+| Namespace symbols (declared, physical, dependency mount, generated) | `{meta, runtime}` |
+| Core meta-functions (`struct`, `assert`) | `{export, meta}` |
+| Core verification namespace and operations (`verify`, `verify::exists`, …) | `{export, meta}` |
+| Core built-in types/ranks (`uint8`, `type`, `namespace`, `ref`, `share`, …) | `{export, meta, runtime}` |
 | Source-contributed ordinary value placeholders | `runtime` |
-| Source-contributed type-annotated placeholders (`: type`) | `meta | runtime` |
-| Struct-generated `TypeObject` | `meta | runtime` |
-| Projection namespace symbols (`ref`/`share` under a generated type) | `meta | runtime` |
-| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `meta | runtime` |
+| Source-contributed type-annotated placeholders (`: type`) | `{meta, runtime}` |
+| Struct-generated `TypeObject` | `{meta, runtime}` |
+| Projection namespace symbols (`ref`/`share` under a generated type) | `{meta, runtime}` |
+| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `{meta, runtime}` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
 
 Generated `struct` expansion currently assigns these transitional metadata
@@ -123,9 +124,9 @@ fields:
 
 | Generated object | Current metadata |
 |---|---|
-| Generated `TypeObject` | symbol policy = `meta | runtime` |
-| Projection namespace `ref` / `share` | symbol policy = `meta | runtime` |
-| Generated field function | symbol policy = `meta | runtime` |
+| Generated `TypeObject` | symbol policy = `{meta, runtime}` |
+| Projection namespace `ref` / `share` | symbol policy = `{meta, runtime}` |
+| Generated field function | symbol policy = `{meta, runtime}` |
 | Generated field function | body entry policy = `runtime` |
 | Generated field function | transitional return object policy = `runtime` |
 
@@ -145,29 +146,29 @@ New methods on `NamespaceGraphCapability`:
 - `resolve_type_object_with_policy(…, PolicyEnv)`
 - `resolve_meta_function_with_policy(…, PolicyEnv)`
 
-Policy filtering happens **before** cross-root conflict reporting. A
-runtime-only local `uint8` does not block discovery of
-`export+meta+runtime` `core::uint8`.
+The compatibility APIs still filter before cross-root conflict reporting. This
+is a known substrate gap: canonical resolution must first produce a symbol and
+only then expose its current-phase slices. A hidden runtime value must not erase
+the symbol or its compile Pattern facet.
 
 Policy filtering is **per-component**: every path component (including
 namespace intermediaries like `core`) is checked against the policy
 environment. Namespace symbols that must be traversed under a policy
 environment therefore carry appropriate traversal policy flags. For v0.7,
 the compiler-seeded `core` namespace symbol is assigned
-`export | meta | runtime` so that explicit paths such as `struct::core`
-and `uint8::core` resolve correctly under `PolicyEnv::Meta`.
+`{export, meta, runtime}` so that explicit paths such as `struct::core`
+and `uint8::core` resolve correctly under `PolicyEnv::OpenStatic`.
 
-`PolicyEnv::Meta` is lookup visibility, not meta execution permission. Meta
-lookup may resolve runtime-callable symbols whose symbol policy includes `Meta`.
-A meta evaluator may only execute a callable if the callable body-entry policy
-admits `Meta`.
+`PolicyEnv::OpenStatic` is lookup visibility, not body-entry permission. The
+static evaluator may enter only a fully admissible meta/compile callable and
+may not read a runtime value.
 
-### Early meta expansion uses PolicyEnv::Meta
+### Early meta expansion uses PolicyEnv::OpenStatic
 
 - `try_expand_early_meta_initializer` resolves the call target via
-  `resolve_meta_function_with_policy(…, PolicyEnv::Meta)`.
+  `resolve_meta_function_with_policy(…, PolicyEnv::OpenStatic)`.
 - `parse_field_expr` resolves field type names via
-  `resolve_type_object_with_policy(…, PolicyEnv::Meta)`.
+  `resolve_type_object_with_policy(…, PolicyEnv::OpenStatic)`.
 
 ## Implemented vertical slice (v0.6 partial)
 
@@ -206,8 +207,8 @@ model boundary:
 - Successful `struct` expansion produces a placeholder type object and a
   generated type-associated namespace containing `a::T`, `a::ref::T`,
   `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
-  symbols. These field-function symbols are visible under `PolicyEnv::Meta`
-  because their symbol policy is `meta | runtime`, but their callable
+  symbols. These field-function symbols are visible under `PolicyEnv::OpenStatic`
+  because their compatibility symbol policy is `{meta, runtime}`, but their callable
   body-entry and return-object policies are runtime-only.
 - PR #94 adds an explicit pattern-head attachment helper with generated,
   global, namespace, and local categorical contexts. Formal `struct` uses the
@@ -581,7 +582,7 @@ Test targets should include:
 - missing mount is a build/resolver error;
 - meta expansion delta is atomic;
 - failed `struct` expansion leaves no partial generated subtree;
-- flat meta/compile/seal/post-seal/runtime resolver visibility filtering is
+- flat flags projected through OpenStatic/SealStatic/Runtime resolver views are
   implemented, while
   full policy checking and callable execution checking remain deferred.
 
@@ -656,7 +657,7 @@ field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
 ```
 
-Their symbol policy is `meta | runtime`, so the compiler can resolve and inspect
+Their compatibility symbol policy is `{meta, runtime}`, so the compiler can resolve and inspect
 them during meta/type-checking phases and can construct residual runtime calls
 that reference them. Their current callable body-entry policy is `runtime`, and
 their transitional return-object field is `runtime`; meta lookup visibility does not permit a meta
@@ -859,7 +860,7 @@ local-construction rules (§4); `NamespaceOrigin`, physical contribution
 authority, and source construction ownership as future contracts; no
 source-level import/use/include/module;
 policy metadata slots on symbols, contexts, and namespace graph nodes
-with flat meta/compile/seal/post-seal/runtime resolver visibility filtering;
+with three-phase compatibility resolver visibility filtering;
 full pair policy
 checking remains future work (see `spec/design/policy-capability/policy-visibility-symbols.md`).
 

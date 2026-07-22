@@ -742,7 +742,7 @@ fn evaluate_block_body(
     let resolved = snapshot.capability().resolve_type_object_with_policy(
         &rhs_name,
         resolver_context,
-        crate::PolicyEnv::Meta,
+        crate::PolicyEnv::OpenStatic,
     );
     match resolved {
         Ok(symbol) => forwarded_type_value(selected, Some(symbol.id)),

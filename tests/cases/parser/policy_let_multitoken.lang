@@ -1,1 +1,1 @@
-public policy let x: T = value
+public + compile let x: T = value

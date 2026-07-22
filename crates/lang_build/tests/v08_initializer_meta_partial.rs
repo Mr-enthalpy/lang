@@ -246,7 +246,7 @@ fn p1_projection_does_not_expand_runtime_callable_into_meta_visibility() {
         &site,
         &world.package_context(),
         LookupPhase::MetaAction,
-        ExecutionEnv::Meta,
+        ExecutionEnv::OpenStatic,
         VisibilityView::Internal,
         lang_build::Provenance::new("body entry mismatch test"),
     );

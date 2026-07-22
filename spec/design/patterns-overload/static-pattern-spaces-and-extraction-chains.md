@@ -60,7 +60,8 @@ Not implemented in v0.8:
 - pattern-space algebra beyond the restricted top-pattern matching needed for
   overload selection.
 
-The `|` in `meta | runtime` is policy-set union in declaration-policy context.
+The `||` in `meta || runtime` is same-stage-dimension policy choice in a
+strong declaration-policy context.
 The `|` in `_ if | else: type` is restricted pattern-side or material in
 parameter-pattern context. Neither use is expression-level operator lookup,
 and neither is implemented by source-declared `+`.
@@ -1145,7 +1146,8 @@ logical operator
   -> bool symbol
 
 bool symbol Pattern
-  -> if | else / true | false alternatives
+  -> if::bool | else::bool alternatives
+  -> true/false aliases of those Pattern symbols
 ```
 
 A conditional extraction chain may therefore consume `bool_cond` directly:
@@ -1345,8 +1347,9 @@ policy check, is the activation boundary for `must_select_if_qualified`.
 ### 12.4 Relationship to Policy and Namespace
 
 Overload set construction observes the current P1-projected object view
-(§12.1). Meta remains open-world construction capability, compile visibility
-includes seal/post-seal compile, and the two are not semantically merged.
+(§12.1). Meta remains an OpenStatic construction capability; compile is
+visible in both OpenStatic and SealStatic, and those stages are not
+semantically merged.
 Runtime-result function objects contribute complete derived static companion
 objects according to the canonical pair rules; the original runtime body does
 not itself become statically executable.
@@ -1685,7 +1688,9 @@ delete is only valid in meta bodies.
 ### Build/check semantics
 
 A build-level semantic substrate (`lang_build::meta_body`) enforces:
-- A `Delete` closure body is legal only under meta execution (`ClosureBodyExecutionEnv::Meta`).
+- A `Delete` closure body is legal only in static construction execution
+  (`ClosureBodyExecutionEnv::OpenStatic` or
+  `ClosureBodyExecutionEnv::SealStatic`).
 - Runtime-only `Delete` bodies are rejected with a static diagnostic.
 - Evaluating a selected meta `Delete` body produces a hard static diagnostic
   carrying the delete message (currently string literal messages).

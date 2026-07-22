@@ -395,7 +395,26 @@ MetaInstanceNavigationAtom :=
 
 This note does not request a lexer/parser change.
 
-## 11. Current Implementation Substrate
+## 11. Export Roots on Construction Levels
+
+Each namespace construction level accepts `export` only on its direct
+top-level declarations. The construction transaction records an export root;
+it does not stamp a freely mutable flag on every descendant.
+
+```text
+ExportClosure(root) = PathAncestors(root) ∪ Subtree(root)
+```
+
+A child transaction cannot turn export off inside that subtree, while sibling
+subtrees remain unaffected. `public`/`private` are independent ordinary
+visibility attributes and may vary at every parent/child boundary. The
+construction unit must preserve both facts so external traversal can require
+both export closure membership and public reachability.
+
+Private semantic dependencies may enter Wpre to keep an exported interface
+interpretable without becoming externally name-visible.
+
+## 12. Current Implementation Substrate
 
 The existing build slice already has physical directory skeleton collection,
 `SymbolObject`, role-aware namespace nodes, transactional `NamespaceDelta`
@@ -431,7 +450,7 @@ In particular, the current binding/materialization destination must not be
 described as determining or rerooting a meta result type's pattern identity.
 Final meta type identity is anchored by the meta instance's own symbol scope.
 
-## 12. Non-Goals
+## 13. Non-Goals
 
 This document does not:
 

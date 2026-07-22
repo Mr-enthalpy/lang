@@ -53,8 +53,9 @@ policy checker (referenced from the other blocks).
   separation, and current cross-file closure.
 - `symbol-policy-and-compile-flow-projection.md` — canonical future `Pv:Pp`,
   P1/P2 contextual elaboration, function-object stage derivation, seal
-  visibility and pre-seal scanning, namespace-policy sharing, const/mut product
-  order, no `P3`, mechanical compile projection, derived companion objects,
+  three-phase visibility, Wpre scanning versus explicit seal lookup,
+  independent export-root/public-private dimensions, const/mut product order,
+  mechanical compile projection, derived companion objects,
   must-select consistency, match/D/Done, coarse require, and shared evaluation.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;

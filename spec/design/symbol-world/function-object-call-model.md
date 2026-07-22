@@ -145,7 +145,7 @@ Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
 2. Resolve a name/path to Symbol and project/enumerate its heterogeneous value facet
-3. Observe each Val2 object's policy-pair view for the current lookup stage
+3. Expose each Val2 object's policy-pair view for the current `Phase`
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries

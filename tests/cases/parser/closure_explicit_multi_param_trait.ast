@@ -44,13 +44,10 @@ Program
                   call_policy:
                     PolicySpec
                       value_policy:
-                        Expr
-                          Pipe
-                            Segment has_incoming=false
-                              OperatorExpr
-                                Atom
-                                  Name meta
-                      type_policy:
+                        PolicyConjunction
+                          PolicyChoice
+                            PolicyAtom Name "meta"
+                      pattern_policy:
                         None
                   returns:
                     ReturnClause

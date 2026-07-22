@@ -1,4 +1,4 @@
-use crate::policy_pair::ValueMutability;
+use crate::policy_pair::{Phase, PolicyStage, ValueMutability};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutabilityPattern {
@@ -13,6 +13,17 @@ pub struct PolicyOverloadCandidate<I> {
     pub parameter_policies: Vec<MutabilityPattern>,
     pub result_policy: Option<MutabilityPattern>,
     pub is_delete: bool,
+}
+
+/// A candidate after heterogeneous entry enumeration. The phase-aware selector
+/// first removes candidates that are not fully admissible or whose stage is not
+/// exposed, then uses one product partial order across mutability positions and
+/// phase-local stage specificity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PhaseOverloadCandidate<I> {
+    pub candidate: PolicyOverloadCandidate<I>,
+    pub stage: PolicyStage,
+    pub fully_admissible: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,6 +71,118 @@ pub fn select_by_mutability_product<I: Clone>(
                 .map(|candidate| candidate.id.clone())
                 .collect(),
         ),
+    }
+}
+
+pub fn select_policy_overload<I: Clone>(
+    candidates: &[PhaseOverloadCandidate<I>],
+    arguments: &[ValueMutability],
+    target_result: Option<ValueMutability>,
+    phase: Phase,
+) -> PolicyOverloadSelection<I> {
+    let admissible = candidates
+        .iter()
+        .filter(|candidate| {
+            candidate.fully_admissible
+                && candidate.stage.visible_at(phase)
+                && candidate.candidate.parameter_policies.len() == arguments.len()
+        })
+        .collect::<Vec<_>>();
+    if admissible.is_empty() {
+        return PolicyOverloadSelection::NoCandidate;
+    }
+
+    let maximal = admissible
+        .iter()
+        .enumerate()
+        .filter(|(candidate_index, candidate)| {
+            !admissible.iter().enumerate().any(|(other_index, other)| {
+                *candidate_index != other_index
+                    && phase_dominates(other, candidate, arguments, target_result, phase)
+            })
+        })
+        .map(|(_, candidate)| *candidate)
+        .collect::<Vec<_>>();
+
+    match maximal.as_slice() {
+        [] => PolicyOverloadSelection::NoCandidate,
+        [candidate] if candidate.candidate.is_delete => {
+            PolicyOverloadSelection::RejectedByDelete(candidate.candidate.id.clone())
+        }
+        [candidate] => PolicyOverloadSelection::Selected(candidate.candidate.id.clone()),
+        candidates => PolicyOverloadSelection::Ambiguous(
+            candidates
+                .iter()
+                .map(|candidate| candidate.candidate.id.clone())
+                .collect(),
+        ),
+    }
+}
+
+fn phase_dominates<I>(
+    better: &PhaseOverloadCandidate<I>,
+    worse: &PhaseOverloadCandidate<I>,
+    arguments: &[ValueMutability],
+    target_result: Option<ValueMutability>,
+    phase: Phase,
+) -> bool {
+    let mut strictly_better = false;
+    for ((better_policy, worse_policy), argument) in better
+        .candidate
+        .parameter_policies
+        .iter()
+        .zip(&worse.candidate.parameter_policies)
+        .zip(arguments)
+    {
+        match compare_position(*better_policy, *worse_policy, *argument) {
+            PositionPreference::Worse => return false,
+            PositionPreference::Better => strictly_better = true,
+            PositionPreference::Equal => {}
+        }
+    }
+
+    if let Some(target_result) = target_result {
+        let better_result = better
+            .candidate
+            .result_policy
+            .unwrap_or(MutabilityPattern::Unspecified);
+        let worse_result = worse
+            .candidate
+            .result_policy
+            .unwrap_or(MutabilityPattern::Unspecified);
+        match compare_position(better_result, worse_result, target_result) {
+            PositionPreference::Worse => return false,
+            PositionPreference::Better => strictly_better = true,
+            PositionPreference::Equal => {}
+        }
+    }
+
+    match compare_stage_specificity(better.stage, worse.stage, phase) {
+        PositionPreference::Worse => return false,
+        PositionPreference::Better => strictly_better = true,
+        PositionPreference::Equal => {}
+    }
+
+    strictly_better
+}
+
+fn compare_stage_specificity(
+    left: PolicyStage,
+    right: PolicyStage,
+    phase: Phase,
+) -> PositionPreference {
+    let rank = |stage| match (phase, stage) {
+        (Phase::OpenStatic, PolicyStage::Meta) => 2,
+        (Phase::OpenStatic, PolicyStage::Compile) => 1,
+        (Phase::SealStatic, PolicyStage::Seal) => 2,
+        (Phase::SealStatic, PolicyStage::Compile) => 1,
+        (Phase::Runtime, PolicyStage::Runtime) => 1,
+        _ => 0,
+    };
+    match rank(left).cmp(&rank(right)) {
+        std::cmp::Ordering::Greater => PositionPreference::Better,
+        std::cmp::Ordering::Equal => PositionPreference::Equal,
+        std::cmp::Ordering::Less => PositionPreference::Worse,
     }
 }
 

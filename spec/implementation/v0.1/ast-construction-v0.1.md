@@ -301,16 +301,16 @@ BindingSlot ::=
 
 OptionalPolicySpec ::= (PolicySpec "let")?
 
-PolicySpec ::= PolicyExpr | PolicyExpr ":" PolicyExpr
-PolicyExpr ::= PolicyTerm | PolicyExpr "|" PolicyTerm
-PolicyTerm ::= PolicyAtom | PolicyTerm "+" PolicyAtom
-PolicyAtom ::= Name | "(" PolicyExpr ")"
+PolicySpec ::= PolicyConjunction | PolicyConjunction ":" PolicyConjunction
+PolicyConjunction ::= PolicyChoice | PolicyConjunction "+" PolicyChoice
+PolicyChoice ::= PolicyAtom | PolicyChoice "||" PolicyAtom
+PolicyAtom ::= Name | "(" PolicyConjunction ")" | AbsentValuePattern
 ```
 
 A policy specification is recognized **only** by the syntactic shape
 `PolicySpec let`: it appears immediately before the `let` anchor in
-binding-slot prefix position. `+` binds tighter than `|`, and `|` binds tighter
-than pair separator `:`. Without the following `let`, the same tokens remain
+binding-slot prefix position. `||` binds tighter than `+`, and `+` binds tighter
+than pair separator `:`. Single `|` remains Pattern alternative. Without the following `let`, the same tokens remain
 part of the binding pattern / canonical skeleton (see §4.4).
 
 Context restrictions:
@@ -361,11 +361,14 @@ BindingSlotAst {
 
 PolicySpecAst {
     value_policy: ValuePolicyPatternAst,
-    type_policy: Option<ExprAst>,
+    pattern_policy: Option<PolicyConjunctionAst>,
     span: Span
 }
 
-ValuePolicyPatternAst ::= Expr(ExprAst) | Absent { span: Span }
+ValuePolicyPatternAst ::= Conjunction(PolicyConjunctionAst) | Absent { span: Span }
+PolicyConjunctionAst { choices: Vec<PolicyChoiceAst>, span: Span }
+PolicyChoiceAst { atoms: Vec<PolicyAtomAst>, span: Span }
+PolicyAtomAst ::= Name | Group(PolicyConjunctionAst) | AbsentValuePattern | Error
 
 BindingPatternAst ::=
     Binder(BinderNameAst)
@@ -386,8 +389,8 @@ AnnotationTermAst ::=
   | Hole
 ```
 
-**Binding-slot policy components contain Raw AST expressions. The parser
-preserves one or two components but does not decide whether they form a valid
+**Binding-slot policy components contain dedicated Raw policy AST. The parser
+preserves choice, conjunction, and one or two pair components but does not decide whether they form a valid
 P1 projection, P2 result pair, visibility condition, or semantic predicate.
 Those checks belong to contextual policy elaboration.**
 

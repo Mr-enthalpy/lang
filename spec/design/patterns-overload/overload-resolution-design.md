@@ -79,8 +79,8 @@ Explicitly not implemented in v0.8:
 Declaration order is not a semantic tiebreaker. When implemented stages leave
 two equal maximal candidates, selection reports ambiguity.
 
-`meta | runtime` is a policy expression in declaration-policy context. Its
-`|` is policy-set union. It is not pattern-space canonical sum, not
+`meta || runtime` is a policy expression in declaration-policy context. Its
+`||` is same-dimension stage choice. It is not Pattern alternative, not
 expression-level operator lookup, and not evidence that the body may execute
 under runtime policy. Pattern-side forms such as `_ if | else: type` are parsed
 and interpreted in parameter-pattern context only.
@@ -104,7 +104,7 @@ policy storage exists.
 For:
 
 ```lang
-meta | runtime let + =
+meta || runtime let + =
   (self, t: type, u: type): meta -> let r: type =>
 {
   r === t;
@@ -116,7 +116,7 @@ the current pair-aware adapter elaborates:
 ```text
 P2 = meta:meta
 derived function-object stage view = meta:meta
-written P1 query meta|runtime selects the available meta slice
+written P1 query meta||runtime selects the available meta slice
 flat compatibility metadata = { Meta }
 ```
 
@@ -159,7 +159,7 @@ This document does **not** define:
 
 - concept semantics (only the interface: `concept_projection` must produce a
   stable poset element)
-- lifetime checking or lifetime-driven refinement; see
+- lifetime checking or any lifetime-driven second selection; see
   `../lifetime/lifetime-policy-and-overload-boundary.md`
 - ADL or unrestricted symbol search
 - implicit type conversion or coercion
@@ -170,34 +170,29 @@ This document does **not** define:
 
 ## 2. Overload Set Construction
 
-### 2.1 Lookup-stage separation
+### 2.1 Phase-slice separation
 
 After a callee path has resolved to `Symbol`, candidate preparation observes a
-specific policy visibility domain:
+specific execution phase:
 
 ```text
-LookupStage ::=
-    openMeta
-  | openCompile
-  | seal
-  | postSealCompile
-  | runtime
+Phase ::= OpenStatic | SealStatic | Runtime
 ```
 
 A `Val2` object enters C2 only through the view exposed in that domain by its
 `Pv:Pp` pair. The canonical domains include:
 
 ```text
-Vis(meta)    = { open }
-Vis(seal)    = { seal, postSealCompile }
-Vis(compile) = { open, seal, postSealCompile }
+Vis(meta)    = { OpenStatic }
+Vis(seal)    = { SealStatic }
+Vis(compile) = { OpenStatic, SealStatic }
+Vis(runtime) = { Runtime }
 ```
 
-The current Rust implementation instead exposes `CompileEval`, `MetaAction`,
-and `RuntimeBinding`-shaped query paths over `PolicyFlag` sets. Those are
-transitional resolver mechanics. Compile-flow projection preserves ordinary
-calls; normal compile evaluation later distinguishes direct compile/meta/seal
-objects and derived companion objects.
+The compatibility resolver projects those phases onto flat `PolicyFlag` sets;
+that lossy transport cannot define the canonical pair algebra. Compile-flow
+projection preserves ordinary calls; the static evaluator distinguishes direct
+compile/meta/seal objects and derived companion objects.
 
 Policy-view selection does not control the preceding path-to-`Symbol`
 resolution. One symbol may hold heterogeneous objects with different pairs,
@@ -214,13 +209,15 @@ V ::= Internal | External
 
 ```text
 Visible(C, Internal) = C
-Visible(C, External) = { c ∈ C | export(c) }
+Visible(C, External)
+  = { c ∈ C | Exported(c.path) && PubliclyReachable(c.path) }
 ```
 
 - **Internal** lookup: all children of the current namespace are candidates.
   `export` is irrelevant.
-- **External** lookup: only `export`-bearing symbols are visible. External
-  path traversal must be export-gated segment-by-segment.
+- **External** lookup: the path must be in the export closure and every path
+  segment must pass ordinary public/private reachability. Export-root and
+  visibility are independent dimensions.
 
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
@@ -255,9 +252,9 @@ facet before ordinary candidate preparation, not after overload failure.
 ```text
 C0 = EnumerateValueObjects(Symbol)
 C1 = VisibleObjects(C0, V)
-C2 = VisiblePolicyViews(C1, current_lookup_stage)
+C2 = ExposePhaseViews(C1, Phase)
 C3 = AssociatedCallEntryAndShapeMatch(C2, E)
-A  = FullyAdmissible(C3, current_lookup_stage, invocation_frame, expectation)
+A  = FullyAdmissible(C3, Phase, invocation_frame, expectation)
 ```
 
 - `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
@@ -322,7 +319,7 @@ Single P2 normalizes contextually:
 
 ```text
 N2(P) = P:(P-runtime), when non-empty
-N2(runtime) = runtime:seal
+N2(runtime) = runtime:compile
 ```
 
 After structural applicability, a candidate enters A only when receiver and
@@ -339,10 +336,11 @@ No independent self policy plane is introduced. Pair-policy matching of frame
 positions is a hard admissibility check, not a preference score; P2 remains the
 result pair rather than a substitute parameter policy.
 
-`compile`, `meta`, and `seal` remain distinct static capabilities/domains.
+Explicit `runtime:seal` remains valid. `compile`, `meta`, and `seal` remain
+distinct static capabilities/domains.
 Compile computes static values and PatternValue. Meta constructs
 SymbolConstructionValue inside a MetaConstructionUnit. Seal excludes ordinary
-open-meta visibility and provides no global scan privilege by itself.
+OpenStatic meta visibility and provides no global scan privilege by itself.
 
 ### 3.3 Derived objects and must-select
 
@@ -470,7 +468,7 @@ overload and does not fall through to the built-in.
 Not a passive variable hole — it explicitly requires the current position to
 be a type-rank object. This node's depth contributes to specificity.
 
-### 4.5 Const/mut product partial order
+### 4.5 Policy product partial order
 
 `const` and `mut` belong to the value component `Pv`. An unspecified policy
 position is broad.
@@ -492,8 +490,13 @@ is actually supplied, compare candidates by product order. Candidate `f`
 dominates `g` iff `f` is no worse at every compared position and strictly
 better at at least one.
 
-Crossed advantages remain incomparable. There is no total score, exact-match
-count, parameter weighting, left-to-right lexicographic fallback,
+Crossed advantages remain incomparable. Phase-local stage specificity joins
+this product only after full admissibility: OpenStatic has `meta > compile` and
+SealStatic has `seal > compile` when candidates differ only by the narrower
+visible domain. It is not a global override of argument dimensions.
+
+There is no total score, exact-match count, parameter weighting,
+left-to-right lexicographic fallback,
 input-before-output preference, or independent conversion rank.
 
 Delete candidates participate in this same relation. If the unique maximal
@@ -509,17 +512,17 @@ than removing it before comparison.
 ```text
 C0  = EnumerateValueObjects(Symbol)
 C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
-C2  = VisiblePolicyViews(C1, lookup_stage)
+C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(
         C3,
-        lookup_stage,
+        Phase,
         invocation_frame,
         expected_result,
         compile_type_requirements
       )
 
-Bp  = MaxConstMutProduct(A, invocation_frame, target_result_policy)
+Bp  = MaxPolicyProduct(A, Phase, invocation_frame, target_result_policy)
 B1  = MaxEntryPreference(Bp)
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
@@ -592,7 +595,7 @@ Hard admissibility includes, at minimum:
 
 ```text
 path and object visibility
-object policy-view admission for the current lookup stage
+object policy-view admission for the current Phase
 existence of associated ()
 parameter count and structural shape
 Pattern/extraction applicability
@@ -611,16 +614,18 @@ Concept legality belongs here. A concept-violating candidate never reaches a
 preference filter. Full concept semantics remain deferred, but the legality
 boundary is fixed.
 
-Lifetime policy does not belong to `A`. Lifetime checking/refinement occurs
-after type/compile overload selection and first-order instantiation, as bounded
-by `../lifetime/lifetime-policy-and-overload-boundary.md`.
+Lifetime policy does not belong to `A`. This revision defines no lifetime
+overload, ordering, refinement, or second selection; ordinary overload must
+already be unique, as bounded by
+`../lifetime/lifetime-policy-and-overload-boundary.md`.
 
 ### 5.7 Bp and B1–B4: Preference filters
 
 Only fully admissible candidates enter preference filtering:
 
-- **Bp Const/mut product order**: retain maximal candidates under §4.5; include
-  target-result policy only when the context supplies one.
+- **Bp Policy product order**: retain maximal candidates under §4.5, including
+  phase-local stage specificity and const/mut positions; include target-result
+  policy only when the context supplies one.
 - **B1 Entry preference**: apply any configured entry preference.
 - **B2 Concept ordering**: keep maximal legal candidates under the future
   concept-order poset.
@@ -674,18 +679,18 @@ no declaration-order fallback; written order is diagnostic presentation only.
 ## 6. Judgment Form
 
 ```text
-Γ; V; lookup_stage ⊢ name(args) ⇓ f
+Γ; V; Phase ⊢ name(args) ⇓ f
 
 where:
   Γ  = namespace graph + type / concept environment
   V  = lookup visibility view (Internal | External)
-  lookup_stage = openMeta | openCompile | seal | postSealCompile | runtime
+  Phase = OpenStatic | SealStatic | Runtime
   E  = normalized extraction tree of the call operand name(args)
   f  = the selected unique overload candidate
 ```
 
 The judgment reads: in environment `Γ`, under visibility view `V` and lookup
-stage `lookup_stage`, the call `name(args)` with extraction tree `E` resolves
+phase `Phase`, the call `name(args)` with extraction tree `E` resolves
 to overload candidate `f`.
 
 Derivation:
@@ -694,10 +699,10 @@ Derivation:
 CalleeSymbol = ResolveSymbol(Γ, name)
 C0  = EnumerateValueObjects(CalleeSymbol)
 C1  = VisibleObjects(C0, V)
-C2  = VisiblePolicyViews(C1, lookup_stage)
+C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
-A   = FullyAdmissible(C3, lookup_stage, invocation_frame, expected_result, Γ)
-Bp  = MaxConstMutProduct(A, invocation_frame, target_result_policy)
+A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
+Bp  = MaxPolicyProduct(A, Phase, invocation_frame, target_result_policy)
 B1  = MaxEntryPreference(Bp)
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
@@ -707,7 +712,7 @@ M   = MustSelectMembers(A)
 OrdinaryUnique(B4, f)
 MustSelectConsistent(M, B4, f)
 ────────────────────────────────────
-  Γ; V; lookup_stage ⊢ name(args) ⇓ f
+  Γ; V; Phase ⊢ name(args) ⇓ f
 ```
 
 ---
@@ -720,7 +725,7 @@ that approximates part of C2:
 - `PolicyFlag::{Export, Meta, Compile, Seal, Runtime}` — flat compatibility
   flags carried on `PolicyMetadata.policy_set`
 - `PolicySet` — bit-set of flags
-- `PolicyEnv::Meta` — the current early/meta query environment
+- `PolicyEnv::OpenStatic` — the current compatibility OpenStatic query view
 - `ResolverCode` — miss vs ambiguity discriminator
 
 These are used in early-meta expansion (`try_expand_early_meta_initializer`)
@@ -758,9 +763,9 @@ whether default companion suppression is permitted
 closed overload-name declarations
 ```
 
-Lifetime checking and lifetime-driven refinement are separately deferred by
-`../lifetime/lifetime-policy-and-overload-boundary.md`; they are not stages in
-this type/compile overload pipeline.
+Lifetime checking is separately deferred by
+`../lifetime/lifetime-policy-and-overload-boundary.md`. This revision defines
+no lifetime overload, refinement, ABI class, or second selection stage.
 
 ---
 
@@ -774,7 +779,7 @@ this type/compile overload pipeline.
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
 | `../policy-capability/policy-visibility-symbols.md` | Implementation mapping for current policy metadata |
 | `../symbol-world/symbol-policy-and-compile-flow-projection.md` | Canonical `P1` / `P2`, companion, and must-select semantics |
-| `../lifetime/lifetime-policy-and-overload-boundary.md` | Negative boundary separating lifetime policy/refinement from this type/compile pipeline |
+| `../lifetime/lifetime-policy-and-overload-boundary.md` | Negative boundary: lifetime syntax cannot reopen the unique ordinary overload result |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph resolves the callee `Symbol`; the current same-name child bucket is only transitional candidate substrate |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |
 | `glossary.md` | Defines OverloadCandidate, OverloadSpecificity, OverloadResolutionPipeline |

@@ -71,16 +71,48 @@ pub struct BindingSlotAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicySpecAst {
     pub value_policy: ValuePolicyPatternAst,
-    pub type_policy: Option<Box<ExprAst>>,
+    pub pattern_policy: Option<PolicyConjunctionAst>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValuePolicyPatternAst {
-    Expr(Box<ExprAst>),
+    Conjunction(PolicyConjunctionAst),
     // Reserved semantic shape for a missing value component. No source token
     // spelling is frozen for this variant.
     Absent { span: Span },
+}
+
+/// Conjunction across orthogonal policy dimensions. Each item is a
+/// same-dimension choice; the AST intentionally keeps `+` distinct from `||`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyConjunctionAst {
+    pub choices: Vec<PolicyChoiceAst>,
+    pub span: Span,
+}
+
+/// Alternatives within one policy dimension. `runtime || S` is the one
+/// special value-presence form that combines a stage alternative with the
+/// provisional absent-value pattern.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyChoiceAst {
+    pub atoms: Vec<PolicyAtomAst>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PolicyAtomAst {
+    Name(NameAst),
+    Group {
+        conjunction: Box<PolicyConjunctionAst>,
+        span: Span,
+    },
+    /// Provisional source spelling `S` in the strong policy parser. The final
+    /// public spelling remains intentionally unfrozen.
+    AbsentValuePattern {
+        span: Span,
+    },
+    Error(ErrorAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

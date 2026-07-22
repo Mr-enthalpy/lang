@@ -14,8 +14,10 @@ NormProgram origin=Source@1:1[0..62]
         policy:
           PolicySpec
             value_policy:
-              Name "policy_expr" origin=Source@2:1[16..27]
-            type_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "policy_expr"
+            pattern_policy:
               None
         binder:
           Name "A" origin=Source@2:17[32..33]

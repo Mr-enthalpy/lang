@@ -349,12 +349,14 @@ _See also: FullyAdmissibleCandidate, OverloadResolutionPipeline._
 
 ## Seal Visibility
 
-The static visibility domain excluded from open-meta lookup. Compile visibility
-contains open, seal, and post-seal compile domains; seal does not imply that a
-symbol ceased to exist. Seal policy alone grants no global scan capability.
-Compiler-known privileged seal operations may inspect exactly the frozen
-pre-seal world `Wpre`; symbols generated during seal are not added to that scan
-domain.
+Seal slices are exposed only in SealStatic; meta slices only in OpenStatic;
+compile slices in both. Symbol resolution precedes this exposure, so a hidden
+slice does not erase the symbol. Seal policy grants no global scan capability.
+Compiler-known privileged seal operations may inspect exactly Wpre, the least
+semantic dependency closure rooted at exported symbols, actually materialized
+results of exported meta functions, and their parameter/signature dependencies.
+Wseal never expands that scan domain, though committed Wseal symbols remain
+explicitly addressable.
 
 _See also: PolicyPair,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
@@ -391,9 +393,10 @@ filter is independent of candidate enumeration order; filters are not assumed
 to commute. Delete members participate normally, and ordinary uniqueness is
 constrained by `must_select_if_qualified` strategies activated from `A`.
 
-Lifetime policy is not a type/compile candidate filter. Any future lifetime
-checking or refinement occurs after type/compile selection and first-order
-instantiation, under the boundary in
+Lifetime policy is not a type/compile candidate filter. This revision defines
+no lifetime overload, refinement order, ABI class, or second selection. Any
+future lifetime check receives the already unique ordinary overload result,
+under the boundary in
 `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`.
 
 Full overload resolution is deferred to v0.10+ and depends on the pattern-space
@@ -407,12 +410,10 @@ _See also: OverloadCandidate, OverloadSpecificity, Concept,
 
 ## Lifetime Policy Boundary
 
-The stage boundary after sealing and before runtime at which future lifetime
-predicates may check or refine already first-order callable objects. Lifetime
-algebra is not type-value identity, lifetime policy is not compile policy, and
-lifetime refinement is not part of the type/compile fully admissible set `A`.
-The current design freezes only this negative boundary, not region/origin
-algebra or a refinement algorithm.
+A negative boundary only: `@` belongs to lifetime syntax, lifetime policy is
+not ordinary stage policy, and it cannot reopen or change the already unique
+ordinary overload result. No lifetime algorithm, ordering, overload, ABI
+equivalence class, refinement phase, or handoff object is defined.
 
 _See also: `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
 
@@ -787,8 +788,8 @@ The canonical internal policy representation:
 ```
 
 `Pv` describes the `Val1`/value component; `Pp` describes its carried
-Pattern/anonymous-type component. Stage, value mutability, namespace
-visibility, and value presence are typed orthogonal dimensions. A scalar policy
+Pattern/anonymous-type component. Stage, value mutability, value presence,
+ordinary namespace visibility, and export-root are typed orthogonal dimensions. A scalar policy
 is surface shorthand or a derived summary and cannot reconstruct the pair.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
@@ -810,6 +811,8 @@ Omitted P1 keeps the fully inferred result. A single `Q` selects values visible
 under `Q` and retains each value's associated Pattern component. An explicit
 `Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
 The selected slice must be non-empty and admitted by the destination binding.
+Projection crops the policy slice while preserving symbol and Pattern identity;
+it does not return an unchanged entry after a mere intersection check.
 
 There is no general prohibition on runtime bindings:
 
@@ -820,7 +823,8 @@ runtime let x = runtime_value
 is legal when the runtime value slice exists. A `Psrc != runtime` premise may
 belong to one compile-flow projection rule, but never to general let lowering.
 In P2 context, unlike P1, a single policy is normalized into a result pair; in
-particular current `runtime` means `runtime:seal`.
+particular current `runtime` means `runtime:compile`; explicit `runtime:seal`
+remains valid.
 
 _See also: BindingSlot, PolicyPair,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._

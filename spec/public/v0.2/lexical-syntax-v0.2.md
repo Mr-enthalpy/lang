@@ -72,9 +72,10 @@ The parser may later recognize selected names structurally in strong contexts
 remain ordinary expression atoms.
 
 Policy-pair syntax does not add lexical keywords. Policy atoms remain `Name`
-tokens; `:` is the existing structural colon token, while `+` and `|` retain
+tokens; `:` is the existing structural colon token, while `+` and `||` retain
 their existing operator tokenization. Only a strong parser policy position
-interprets those tokens as `PolicySpec` structure.
+interprets them as conjunction and choice. Single `|` retains Pattern
+alternative meaning and is not policy choice.
 
 ## 5. Names
 

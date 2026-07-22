@@ -74,8 +74,8 @@ fn candidate_prep_does_not_execute_meta_invocation() {
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("field parameter placeholder")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("forbidden collapse: candidate prep != meta invocation"),
         },
@@ -354,8 +354,8 @@ fn candidate_preparation_input_wrapper_still_does_not_execute_invocation() {
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("wrapper invocation test")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("forbidden: wrapper must not execute"),
         },
@@ -540,8 +540,8 @@ fn candidate_input(shape: ArgProductShape) -> CandidatePreparationInput {
         shape,
         ParameterShape::type_parameter_signature(Provenance::new("rejection test param")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("rejection test"),
         },
@@ -558,7 +558,11 @@ fn candidate_preparation_does_not_return_meta_invocation_result() {
     let callee = world
         .snapshot()
         .capability()
-        .resolve_meta_function_with_policy("struct", &world.package_context(), PolicyEnv::Meta)
+        .resolve_meta_function_with_policy(
+            "struct",
+            &world.package_context(),
+            PolicyEnv::OpenStatic,
+        )
         .expect("struct resolves");
 
     let site = v08_candidate_call_site();
@@ -569,8 +573,8 @@ fn candidate_preparation_does_not_return_meta_invocation_result() {
         shape,
         ParameterShape::exact_arity(1, Provenance::new("struct arity")),
         CandidatePreparationContext {
-            lookup_env: PolicyEnv::Meta,
-            demanded_execution: ExecutionEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
+            demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
             provenance: Provenance::new("forbidden: candidate prep != invocation"),
         },
@@ -737,14 +741,14 @@ fn key_for_single_arg(kind: CanonicalArgAtomKind) -> lang_build::MetaInstanceKey
         },
         parameter_shape: ParameterShape::deferred(Provenance::new("test")),
         policy_planes: lang_build::CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
                     flags: std::collections::BTreeSet::new(),
                 },
             },
-            demanded_execution: lang_build::ExecutionEnv::Meta,
+            demanded_execution: lang_build::ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
@@ -802,14 +806,14 @@ fn key_for_type_symbol_arg(symbol_id: SymbolId) -> lang_build::MetaInstanceKey {
         },
         parameter_shape: ParameterShape::deferred(Provenance::new("test")),
         policy_planes: lang_build::CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
                     flags: std::collections::BTreeSet::new(),
                 },
             },
-            demanded_execution: lang_build::ExecutionEnv::Meta,
+            demanded_execution: lang_build::ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
@@ -879,14 +883,14 @@ fn key_for_shape_with_units(unit_positions: &[usize]) -> lang_build::MetaInstanc
         },
         parameter_shape: ParameterShape::deferred(Provenance::new("test")),
         policy_planes: lang_build::CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
                     flags: std::collections::BTreeSet::new(),
                 },
             },
-            demanded_execution: lang_build::ExecutionEnv::Meta,
+            demanded_execution: lang_build::ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
@@ -944,14 +948,14 @@ fn bare_candidate() -> PreparedCallableCandidate {
         },
         parameter_shape: ParameterShape::deferred(Provenance::new("test")),
         policy_planes: lang_build::CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
                     flags: std::collections::BTreeSet::new(),
                 },
             },
-            demanded_execution: lang_build::ExecutionEnv::Meta,
+            demanded_execution: lang_build::ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
@@ -1011,14 +1015,14 @@ fn key_for_single_arg_with_provenance(
         },
         parameter_shape: ParameterShape::deferred(Provenance::new(provenance_desc)),
         policy_planes: lang_build::CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
                     flags: std::collections::BTreeSet::new(),
                 },
             },
-            demanded_execution: lang_build::ExecutionEnv::Meta,
+            demanded_execution: lang_build::ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
@@ -1079,14 +1083,14 @@ fn key_for_type_symbol_arg_with_provenance(
         },
         parameter_shape: ParameterShape::deferred(Provenance::new(provenance_desc)),
         policy_planes: lang_build::CandidatePolicyPlanes {
-            lookup_env: PolicyEnv::Meta,
+            lookup_env: PolicyEnv::OpenStatic,
             symbol_visibility_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {
                     flags: std::collections::BTreeSet::new(),
                 },
             },
-            demanded_execution: lang_build::ExecutionEnv::Meta,
+            demanded_execution: lang_build::ExecutionEnv::OpenStatic,
             body_entry_policy: lang_build::PolicyMetadata {
                 slots: std::collections::BTreeMap::new(),
                 policy_set: lang_build::PolicySet {

@@ -26,10 +26,10 @@ Program
                   call_policy:
                     PolicySpec
                       value_policy:
-                        Expr
-                          Pipe
-                            Segment has_incoming=false
-                      type_policy:
+                        PolicyConjunction
+                          PolicyChoice
+                            Error "expected policy atom"
+                      pattern_policy:
                         None
                 BodyBlock
                   forms:
