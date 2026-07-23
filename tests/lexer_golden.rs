@@ -60,6 +60,11 @@ fn symbols() {
 }
 
 #[test]
+fn dot_ellipsis_maximal_munch() {
+    assert_lexer_case("dot_ellipsis_maximal_munch", false);
+}
+
+#[test]
 fn trivia() {
     assert_lexer_case("trivia", false);
 }

@@ -421,6 +421,29 @@ pub(super) fn token_index_starts_overload_strategy_annotation(
     matches!(second.kind, TokenKind::Symbol(Symbol::LBracket))
 }
 
+/// The single strong-context lookahead used when a parenthesized form could be
+/// either an ordinary Product or the parameter clause of a closure head.
+///
+/// Keep every continuation that proves `FnHeadPrefix` here. Callers in the
+/// segment and operator parsers must not maintain their own approximations.
+pub(super) fn token_index_starts_closure_head_continuation(
+    parser: &Parser<'_>,
+    from: usize,
+) -> bool {
+    let (_, token) = parser.cursor.peek_at_skip_trivia(from);
+    matches!(
+        token.kind,
+        TokenKind::Symbol(Symbol::Colon | Symbol::ThinArrow | Symbol::FatArrow | Symbol::LBrace)
+    ) || token_index_starts_head_clause(parser, from)
+        || token_index_starts_overload_strategy_annotation(parser, from)
+}
+
+pub(super) fn at_callable_implementation_tail(parser: &mut Parser<'_>) -> bool {
+    parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || at_overload_strategy_annotation(parser)
+}
+
 fn parse_overload_strategy_annotation(parser: &mut Parser<'_>) -> Option<NameAst> {
     let first = parser.cursor.consume_symbol(Symbol::LBracket)?;
     parser.cursor.consume_symbol(Symbol::LBracket)?;
@@ -463,11 +486,12 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
-    let captures = if parser.cursor.at_symbol(Symbol::LBracket) {
-        Some(parse_capture_clause(parser))
-    } else {
-        None
-    };
+    let captures =
+        if parser.cursor.at_symbol(Symbol::LBracket) && !at_overload_strategy_annotation(parser) {
+            Some(parse_capture_clause(parser))
+        } else {
+            None
+        };
 
     let params = if parser.cursor.at_symbol(Symbol::LParen) {
         Some(parse_param_clause(parser, deduce.as_ref()))
@@ -486,9 +510,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         }
         let policy = parse_policy_spec_until(parser, |p| {
             p.cursor.at_symbol(Symbol::ThinArrow)
-                || p.cursor.at_symbol(Symbol::FatArrow)
-                || p.cursor.at_symbol(Symbol::LBrace)
-                || at_overload_strategy_annotation(p)
+                || at_callable_implementation_tail(p)
                 || p.is_form_boundary()
         });
         Some(policy)
@@ -578,9 +600,7 @@ pub(super) fn at_head_clause_keyword(parser: &Parser<'_>) -> bool {
 }
 
 fn clause_expr_boundary(parser: &mut Parser<'_>) -> bool {
-    parser.cursor.at_symbol(Symbol::FatArrow)
-        || parser.cursor.at_symbol(Symbol::LBrace)
-        || at_overload_strategy_annotation(parser)
+    at_callable_implementation_tail(parser)
         || parser.is_form_boundary()
         || at_head_clause_keyword(parser)
 }
@@ -723,8 +743,6 @@ fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
 
 fn at_call_policy_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::ThinArrow)
-        || parser.cursor.at_symbol(Symbol::FatArrow)
-        || parser.cursor.at_symbol(Symbol::LBrace)
-        || at_overload_strategy_annotation(parser)
+        || at_callable_implementation_tail(parser)
         || parser.is_form_boundary()
 }

@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    closure::try_parse_closure,
+    closure::{at_overload_strategy_annotation, try_parse_closure},
     form::Parser,
     let_stmt::looks_like_alias_binding_start,
     pipe::parse_pipe_expr,
@@ -87,7 +87,9 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 );
                 break;
             }
-        } else if parser.cursor.at_symbol(Symbol::LBracket) {
+        } else if parser.cursor.at_symbol(Symbol::LBracket)
+            && !at_overload_strategy_annotation(parser)
+        {
             let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),

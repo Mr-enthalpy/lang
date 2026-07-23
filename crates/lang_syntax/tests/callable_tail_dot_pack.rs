@@ -1,8 +1,8 @@
 use lang_syntax::{
-    normalize_program, parse, validate_normalized_patterns, BindingPatternAst, ClosureBodyAst,
-    ClosurePlacementAst, ExprKind, FormAst, NormAnnotation, NormBindingSlot, NormClosureBody,
-    NormClosureKind, NormDecl, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem,
-    NormRule, OperatorExprKind, SegmentElementAst, Span,
+    normalize_and_validate, normalize_program, parse, validate_normalized_patterns,
+    BindingPatternAst, ClosureBodyAst, ClosurePlacementAst, ExprKind, FormAst, NormAnnotation,
+    NormBindingSlot, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr, NormForm,
+    NormOrigin, NormPattern, NormPatternElem, NormRule, OperatorExprKind, SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -92,7 +92,7 @@ fn callable_tail_normalizes_delete_default_and_named_strategy() {
 #[test]
 fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
     let escaped = normalized_closure("let f = () -> r [[prefer_named]] { r };");
-    assert_eq!(escaped.kind, NormClosureKind::InPlace);
+    assert_eq!(escaped.placement, NormClosurePlacement::InPlace);
     assert!(matches!(
         escaped.body,
         NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "prefer_named"
@@ -103,7 +103,7 @@ fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
     ));
 
     let legacy = normalized_closure("let f = () -> r name { r };");
-    assert_eq!(legacy.kind, NormClosureKind::InPlace);
+    assert_eq!(legacy.placement, NormClosurePlacement::InPlace);
     assert!(matches!(legacy.body, NormClosureBody::Block(_)));
     assert!(matches!(
         legacy
@@ -116,6 +116,38 @@ fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
             .value_pattern,
         NormPattern::Skeleton { .. }
     ));
+}
+
+#[test]
+fn double_bracket_strategy_uses_one_closure_head_boundary_in_every_context() {
+    for fixture in [
+        "let f = () [[s]] { value };",
+        "let f = () : compile [[s]] { value };",
+        "let f = () require C [[s]] { value };",
+        "let f = <T> [[s]] { value };",
+        "let f = <T>() [[s]] { value };",
+        "let f = <T>() -> r [[s]] { value };",
+    ] {
+        let closure = normalized_closure(fixture);
+        assert_eq!(
+            closure.placement,
+            NormClosurePlacement::InPlace,
+            "{fixture}"
+        );
+        assert!(
+            matches!(
+                closure.body,
+                NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "s"
+            ),
+            "{fixture}"
+        );
+    }
+
+    let output = parsed("value |> () [[s]] { value };");
+    let normalized = normalize_program(&output.program);
+    let dump = lang_syntax::dump_norm_program(&normalized);
+    assert!(dump.contains("Closure placement=InPlace"), "{dump}");
+    assert!(dump.contains("UserBody strategy=Named(s)"), "{dump}");
 }
 
 #[test]
@@ -142,10 +174,12 @@ fn dot_name_is_a_first_class_field_function_closure() {
     let [NormForm::Expr(NormExpr::Closure(closure))] = program.forms.as_slice() else {
         panic!("standalone .push must normalize to a closure");
     };
+    assert_eq!(closure.placement, NormClosurePlacement::InPlace);
     assert!(matches!(
-        closure.kind,
-        lang_syntax::NormClosureKind::Generated {
-            rule: NormRule::DotClosureLowering
+        closure.origin,
+        NormOrigin::Generated {
+            rule: NormRule::DotClosureLowering,
+            ..
         }
     ));
     let head = closure.head.as_ref().unwrap();
@@ -167,10 +201,7 @@ fn compact_member_sugar_calls_the_same_dot_closure_and_double_dot_survives() {
     assert!(matches!(
         target.as_ref(),
         NormExpr::Closure(closure)
-            if matches!(closure.kind,
-                lang_syntax::NormClosureKind::Generated {
-                    rule: NormRule::DotClosureLowering
-                })
+            if is_generated_closure(closure, NormRule::DotClosureLowering)
     ));
 
     let direct_member = normalized_initializer("let x = object..push(value);");
@@ -180,10 +211,7 @@ fn compact_member_sugar_calls_the_same_dot_closure_and_double_dot_survives() {
     assert!(matches!(
         target.as_ref(),
         NormExpr::Closure(closure)
-            if matches!(closure.kind,
-                lang_syntax::NormClosureKind::Generated {
-                    rule: NormRule::DoubleDotLowering
-                })
+            if is_generated_closure(closure, NormRule::DoubleDotLowering)
     ));
 }
 
@@ -231,10 +259,7 @@ fn compact_member_then_space_argument_remains_an_outer_call() {
     assert!(matches!(
         member_target.as_ref(),
         NormExpr::Closure(closure)
-            if matches!(closure.kind,
-                lang_syntax::NormClosureKind::Generated {
-                    rule: NormRule::DotClosureLowering
-                })
+            if is_generated_closure(closure, NormRule::DotClosureLowering)
     ));
 }
 
@@ -327,8 +352,8 @@ fn closure_placement_is_independent_of_head_presence_and_strategy() {
         "let f = () -> r [[prefer_named]] { r };",
     ] {
         assert_eq!(
-            normalized_closure(fixture).kind,
-            NormClosureKind::InPlace,
+            normalized_closure(fixture).placement,
+            NormClosurePlacement::InPlace,
             "{fixture}"
         );
     }
@@ -340,8 +365,8 @@ fn closure_placement_is_independent_of_head_presence_and_strategy() {
         "let f = () -> r => delete;",
     ] {
         assert_eq!(
-            normalized_closure(fixture).kind,
-            NormClosureKind::Ordinary,
+            normalized_closure(fixture).placement,
+            NormClosurePlacement::Ordinary,
             "{fixture}"
         );
     }
@@ -445,6 +470,14 @@ fn global_pack_validation_visits_every_binding_slot_context() {
         validate_normalized_patterns(&program).is_err(),
         "Sequence and annotation levels must use the same one-pack validator"
     );
+
+    let valid = parse("let (head, ...rest) = value;");
+    assert!(normalize_and_validate(&valid.program).is_ok());
+
+    let invalid = parse("let (...x, ...y) = value;");
+    let failure = normalize_and_validate(&invalid.program)
+        .expect_err("downstream handoff must reject an invalid normalized Pattern");
+    assert!(!failure.pattern_errors.is_empty());
 }
 
 fn expression_binding_shape(expr: &NormExpr) -> String {
@@ -475,12 +508,7 @@ fn expression_binding_shape(expr: &NormExpr) -> String {
                 .join(",")
         ),
         NormExpr::Closure(closure)
-            if matches!(
-                closure.kind,
-                NormClosureKind::Generated {
-                    rule: NormRule::DotClosureLowering
-                }
-            ) =>
+            if is_generated_closure(closure, NormRule::DotClosureLowering) =>
         {
             "$field".to_string()
         }
@@ -493,4 +521,14 @@ fn expression_binding_shape(expr: &NormExpr) -> String {
         NormExpr::Error(_) => "error".to_string(),
         NormExpr::Unsupported { .. } => "unsupported".to_string(),
     }
+}
+
+fn is_generated_closure(closure: &lang_syntax::NormClosure, rule: NormRule) -> bool {
+    matches!(
+        closure.origin,
+        NormOrigin::Generated {
+            rule: actual,
+            ..
+        } if actual == rule
+    )
 }

@@ -24,6 +24,31 @@ pub struct NormProgram {
     pub origin: NormOrigin,
 }
 
+/// A normalized program whose global Pattern invariants have been checked.
+///
+/// Semantic/build consumers should accept this wrapper rather than relying on
+/// a call-order convention around `validate_normalized_patterns`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValidatedNormProgram {
+    program: NormProgram,
+}
+
+impl ValidatedNormProgram {
+    pub fn as_program(&self) -> &NormProgram {
+        &self.program
+    }
+
+    pub fn into_program(self) -> NormProgram {
+        self.program
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InvalidNormProgram {
+    pub program: NormProgram,
+    pub pattern_errors: Vec<PackPatternLayerError>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormForm {
     Let(NormDecl),
@@ -606,7 +631,7 @@ pub struct NormWithClause {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormClosure {
-    pub kind: NormClosureKind,
+    pub placement: NormClosurePlacement,
     pub head: Option<NormClosureHead>,
     pub body: NormClosureBody,
     pub origin: NormOrigin,
@@ -658,11 +683,10 @@ pub struct NormDeleteBody {
     pub origin: NormOrigin,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum NormClosureKind {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NormClosurePlacement {
     InPlace,
     Ordinary,
-    Generated { rule: NormRule },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -823,6 +847,29 @@ pub fn normalize_program(raw: &ProgramAst) -> NormProgram {
     NormProgram {
         forms: raw.forms.iter().map(normalize_form).collect(),
         origin: NormOrigin::Source(raw.span),
+    }
+}
+
+/// The validated handoff for downstream build/semantic consumers.
+///
+/// `normalize_program` remains available for dump/recovery tooling that must
+/// inspect invalid structure. Such a program must pass through this function
+/// before it is installed into a semantic world.
+pub fn normalize_and_validate(
+    raw: &ProgramAst,
+) -> Result<ValidatedNormProgram, InvalidNormProgram> {
+    validate_normalized_program(normalize_program(raw))
+}
+
+pub fn validate_normalized_program(
+    program: NormProgram,
+) -> Result<ValidatedNormProgram, InvalidNormProgram> {
+    match validate_normalized_patterns(&program) {
+        Ok(()) => Ok(ValidatedNormProgram { program }),
+        Err(pattern_errors) => Err(InvalidNormProgram {
+            program,
+            pattern_errors,
+        }),
     }
 }
 
@@ -1591,9 +1638,9 @@ fn normalize_closure(closure: &ClosureAst) -> NormClosure {
         }),
     };
     NormClosure {
-        kind: match closure.placement {
-            ClosurePlacementAst::InPlace => NormClosureKind::InPlace,
-            ClosurePlacementAst::Ordinary => NormClosureKind::Ordinary,
+        placement: match closure.placement {
+            ClosurePlacementAst::InPlace => NormClosurePlacement::InPlace,
+            ClosurePlacementAst::Ordinary => NormClosurePlacement::Ordinary,
         },
         head: closure.head.as_ref().map(normalize_closure_head),
         body,
@@ -2170,7 +2217,7 @@ fn generated_prefix_negative_closure(span: Span) -> NormClosure {
 
 fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -> NormClosure {
     NormClosure {
-        kind: NormClosureKind::Generated { rule },
+        placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
             deduce: vec![NormHoleDecl {
                 name: "T".to_string(),
@@ -2891,8 +2938,8 @@ fn dump_closure(output: &mut String, closure: &NormClosure, indent: usize) {
         output,
         indent,
         &format!(
-            "Closure kind={} {}",
-            closure_kind_label(&closure.kind),
+            "Closure placement={} {}",
+            closure_placement_label(closure.placement),
             origin_inline(&closure.origin)
         ),
     );
@@ -3179,11 +3226,10 @@ fn literal_kind_label(kind: NormLiteralKind) -> &'static str {
     }
 }
 
-fn closure_kind_label(kind: &NormClosureKind) -> String {
-    match kind {
-        NormClosureKind::InPlace => "InPlace".to_string(),
-        NormClosureKind::Ordinary => "Ordinary".to_string(),
-        NormClosureKind::Generated { rule } => format!("Generated({})", rule_label(*rule)),
+fn closure_placement_label(placement: NormClosurePlacement) -> &'static str {
+    match placement {
+        NormClosurePlacement::InPlace => "InPlace",
+        NormClosurePlacement::Ordinary => "Ordinary",
     }
 }
 

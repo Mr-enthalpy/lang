@@ -79,7 +79,27 @@ closures never have a capture list or an independent capture environment.
 `[x] { ... }` is rejected. Their external reads instead use the lazy
 embedding-layer lookup defined by the function-object model.
 
-### 1.1 No rollback over the return extraction pattern
+### 1.1 Strong-context boundary
+
+`[[strategy]]` has one parser recognizer even though the lexer continues to
+emit ordinary bracket tokens. Every layer that must decide whether `(...)` is
+a Product or a closure parameter head uses:
+
+```text
+starts_closure_head_continuation
+  = :
+  | ->
+  | =>
+  | {
+  | head-clause
+  | [[strategy]]
+```
+
+After a deduce list, `[[strategy]]` is excluded from capture-clause parsing.
+This keeps `() [[s]] { ... }`, `<T> [[s]] { ... }`, call-policy heads, and
+head-clause forms on the same strong-context path.
+
+### 1.2 No rollback over the return extraction pattern
 
 The established form remains unchanged:
 
@@ -99,7 +119,7 @@ named strategy in this no-`=>` form is written explicitly:
 }
 ```
 
-### 1.2 Implementation form and strategy are orthogonal
+### 1.3 Implementation form and strategy are orthogonal
 
 `UserBody`, `Defaulted`, and `Deleted` occupy the same tail slot but do not
 mean the same operation:
@@ -313,12 +333,20 @@ Implemented substrate:
   delete implementation variants, and compact `E.name`;
 - orthogonal `ClosurePlacementAst` plus optional head, preserving headed and
   headless in-place closures without granting them capture lists;
+- orthogonal `NormClosurePlacement`; generated provenance remains exclusively
+  in `NormOrigin::Generated`, so a generated dot closure is still in-place;
+- one centralized closure-head continuation predicate and one
+  `[[strategy]]` recognizer across segment, operator, head, and binding-slot
+  parsing;
 - DotClosure substitution invariance: after atom lowering, ordinary
   pipe/product normalization cannot observe `DotClosureLowering` provenance;
 - pack preservation in every parser binding-slot context (`let`, parameter,
   return, and nested product extraction), not a parameter-only grammar;
 - global post-normalization one-pack-per-level validation over declarations,
   local bodies, parameters, returns, annotations, and nested binding slots;
+- `normalize_and_validate -> ValidatedNormProgram` as the only build-world
+  harvesting handoff; raw `normalize_program` remains available for
+  diagnostic/recovery inspection;
 - `AtomKind::Error` recovery for malformed callable tails, never an executable
   empty user body;
 - restricted variadic applicability, remainder binding, and pack node-class

@@ -1172,12 +1172,15 @@ AtomBase ::=
     Name
   | Literal
   | Group
-  | ClosureAst
+  | InPlaceClosureAst
+  | ExplicitClosureAst
 ```
 
-`ClosureAst` carries independent placement, optional-head, and implementation
-fields. A bare `{ ... }` is the headless in-place case. A no-`=>` headed block
-is headed but still in-place. `=>` selects ordinary placement.
+`InPlaceClosureAst` is a bare `{ ... }` atom. It is closure AST, not a normal
+block expression, and has no capture clause, parameter clause, return clause,
+or head clauses.
+
+`ExplicitClosureAst` is a `FnHeadPrefix => BodyBlock` atom.
 
 AST:
 
@@ -1735,83 +1738,43 @@ role to `(a, b)`.
 ### 10.1 Closure categories
 
 ```text
-ClosureAst {
-    placement: ClosurePlacementAst,
-    head: Option<FnHeadPrefixAst>,
-    body: ClosureBodyAst,
-    span: Span
-}
-
-ClosurePlacementAst ::= InPlace | Ordinary
+ClosureAst ::=
+    InPlaceClosureAst
+  | ExplicitClosureAst
 ```
 
 ### 10.2 In-place closure
 
 ```text
-{ ... }
-FnHeadPrefix BodyBlock
-FnHeadPrefix "[[" Name "]]" BodyBlock
+InPlaceClosureAst ::= BodyBlock
 ```
 
-All three forms have `placement = InPlace`. The bare form has `head = None`;
-the headed forms retain `head = Some(...)`. `[[Name]]` adds named strategy
-metadata without changing placement.
-
-An in-place closure cannot carry a capture clause or independent capture
-environment. `[x] { ... }` and `[x](...) { ... }` produce
-`InvalidClosureHead` plus an `ErrorAst`. Parameters, returns, and head clauses
-remain available in the headed no-`=>` form.
+A bare `{ ... }` in atom position is an in-place closure. It has no capture
+clause, no parameter clause, no return clause, and no head clauses. It is the
+Raw AST representation of a control-flow-embedding closure block.
 
 Having no extraction head is distinct from having a unit extraction pattern.
 A headless in-place closure does not implicitly accept unit input; it has no
 extracted input, including no implicit unit input.
 
 `{ ... }` is not a normal block expression; it always produces
-`ClosureAst { placement: InPlace, head: None, ... }`.
+`ClosureAst::InPlace`.
 
-### 10.3 Ordinary closure and callable implementation tail
+### 10.3 Explicit closure
 
 ```text
-OrdinaryClosure ::= FnHeadPrefix "=>" CallableImplementation
-
-CallableImplementation ::=
-    BodyBlock
-  | Name BodyBlock
-  | "default"
-  | "delete"
-  | "(" StringLiteral ")" "delete"
+ExplicitClosureAst ::= FnHeadPrefix "=>" BodyBlock
 ```
 
-An ordinary closure always has `placement = Ordinary` and
-`head = Some(FnHeadPrefix)`. A headed in-place closure uses the no-`=>` block
-forms defined in §10.2; it is not an ordinary closure merely because it has a
-head.
-
-`=> name {}` and `[[name]] {}` preserve named overload-strategy metadata;
-`[[...]]` is the required no-`=>` disambiguation. In
-`() -> r name {}`, `name` remains return extraction material and is never
-backtracked into a strategy. `#` has no overload-strategy role.
+A headed closure must use `=>`. Forms such as `[](){}`, `[x]{}`, `(){}`, and
+`pre c {}` are invalid headed closures without `=>` and produce
+`InvalidClosureHead` diagnostics.
 
 Minimal form:
 
 ```text
 (self) => {}
 ```
-
-AST:
-
-```text
-ClosureBodyAst =
-    Block(BodyBlockAst)
-  | NamedBlock { strategy: NameAst, block: BodyBlockAst }
-  | Defaulted
-  | Delete { message: Option<StringLiteral> }
-```
-
-`default` and `delete` are contextual `Name` tokens. Bare `=> delete` and
-parenthesized-message delete are both accepted. A malformed callable
-implementation tail produces `AtomKind::Error`; recovery must never fabricate
-a legal empty `Block`.
 
 ### 10.4 Body block
 
@@ -2079,23 +2042,19 @@ A `{ ... }` body-like form is assigned by its immediate syntactic owner:
    expression atom parser.
 
 2. In expression atom position, a bare `{ ... }` with no preceding committed
-   closure head is parsed as `ClosureAst { placement=InPlace, head=None }`.
+   closure head is parsed as `InPlaceClosureAst`.
 
 3. A successfully parsed `FnHeadPrefix` followed by `=> { ... }` is parsed as
-   `ClosureAst { placement=Ordinary, head=Some(...) }`.
+   `ExplicitClosureAst`.
 
 4. A parenthesized product followed by closure-head material such as `:`,
-   `->`, a head-clause keyword, or `=>` commits to closure-head
+   `->`, a head-clause keyword, or `=>` commits to explicit closure-head
    parsing. This allows heads such as `(self, t: type): meta -> r => { ... }`
    to parse as closures rather than product expressions.
 
 5. A successfully parsed `FnHeadPrefix` followed directly by `{ ... }` without
-   `=>` is a headed in-place closure. A following `[[strategy]] { ... }` is the
-   same placement with named strategy metadata.
-
-6. If either no-`=>` form contains a capture clause, the parser emits
-   `InvalidClosureHead` and preserves an Error atom. Capture syntax is available
-   only to ordinary `=>` closures in the current model.
+   `=>` is invalid and produces `InvalidClosureHead`; it is not reinterpreted as
+   an in-place closure.
 
 Failed speculative `FnHeadPrefix` lookahead restores the cursor and drops gated
 diagnostics. Committed malformed closure-head parsing keeps diagnostics. Nested
@@ -2116,16 +2075,13 @@ acquire A => { x }
 ```
 
 **Headed closures without `=>`:**
-Recognizable heads followed by a block are callable implementation tails and
-are accepted with `placement=InPlace`. Where strategy/return-pattern ambiguity
-exists, `[[strategy]]` is the explicit strategy marker; it does not change
-placement. Malformed head clauses, in-place capture lists, and incoming
-headless pipe branches still produce `InvalidClosureHead` diagnostics.
+Forms such as `[](){}`, `[x]{ body }`, `(){ body }`, and `pre c { body }`
+produce `InvalidClosureHead` diagnostics.
 
 v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
 forms remain `(self) => {}` and `{ }`, and `(x) => {}` where the `()` is a
 `ParamClause`. `(x) => {}` with a single param inside parens is the simplest
-parametrized ordinary closure form; `(x) {}` is its headed in-place counterpart.
+parametrized explicit closure form.
 
 ## 12. Match-style expression
 
@@ -2147,8 +2103,8 @@ PipeExpr
   Segment
     Atom Name(obj)
     Product
-      Ordinary/In-place Closure AST arm 1
-      Ordinary/In-place Closure AST arm 2
+      Explicit/Inline Closure AST arm 1
+      Explicit/Inline Closure AST arm 2
     Atom Name(match)
 ```
 

@@ -191,7 +191,10 @@ An explicit declaration P1 may restrict that domain to one view.
 
 ### 7.2 In-place closures are embedded callable candidates
 
-An in-place closure is distinguished by `NormClosureKind::InPlace`. Its
+An in-place closure is distinguished by
+`NormClosure.placement = NormClosurePlacement::InPlace`. Generated provenance
+is carried independently by `NormClosure.origin`; it is never a placement
+variant. Its
 semantic object remains embedded in the control-flow layer at which it is
 used; it is not converted into a freely escaping captured closure. It may
 nevertheless contribute a normal callable candidate to an overload set.

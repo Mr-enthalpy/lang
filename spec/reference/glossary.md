@@ -1,7 +1,8 @@
 # Glossary
 
-Definitions are specific to this repository's v0.1/v0.2 usage. Terms may have different
-meanings in general PL theory.
+Definitions are specific to this repository. Versioned entries distinguish the
+frozen v0.1/v0.2 historical surface from the amended v0.5 contract. Terms may
+have different meanings in general PL theory.
 
 ---
 
@@ -10,7 +11,7 @@ meanings in general PL theory.
 The maintenance and contract-stabilization window after the completed v0.1 Raw
 AST Frontend. During this window richer literal spelling and the pipe
 branch-name shorthand were implemented as the final v0.1.w additions. v0.1.w
-is now closed; the project has entered v0.2.
+is now closed; it was followed by the now-closed v0.2 freeze.
 
 _See also: Raw AST, v0.2 Raw AST Contract Freeze._
 
@@ -18,13 +19,36 @@ _See also: Raw AST, v0.2 Raw AST Contract Freeze._
 
 ## v0.2 Raw AST Contract Freeze
 
-The current active stage after v0.1.w closure. The Raw AST frontend input
-surface is frozen by default. Work in this stage is documentation
-reconciliation, consistency repair, contract freeze checklist, and preparation
-of the exact boundary that v0.3 Normalized AST Specification will consume.
-`v0.2` is not a parser-expansion phase and does not implement Normalized AST.
+The closed historical stage after v0.1.w. It froze the then-current Raw AST
+frontend input and prepared the exact boundary consumed by v0.3. Its documents
+remain historical snapshots and are not rewritten for later parser changes.
+`v0.2` was not a parser-expansion phase and did not implement Normalized AST.
 
-_See also: v0.1.w, Raw AST, Normalized AST, raw-ast-contract-freeze-v0.2.md._
+_See also: v0.1.w, Frontend Semantic Amendment v0.5-A, Raw AST,
+Normalized AST, raw-ast-contract-freeze-v0.2.md._
+
+---
+
+## Frontend Semantic Amendment v0.5-A
+
+The versioned amendment that classifies post-v0.2 parser changes without
+rewriting the frozen history. Closure orthogonalization and malformed-tail
+error preservation are hard structural corrections; `DotClosure` is a
+normalization-driven extension; `Ellipsis`/Pack and callable-tail alternatives
+are new syntax amendments.
+
+_See also: v0.2 Raw AST Contract Freeze, Raw AST Contract v0.5._
+
+---
+
+## Raw AST Contract v0.5
+
+The current Raw AST contract obtained by applying Frontend Semantic Amendment
+v0.5-A to the frozen v0.2 baseline. It defines the 20-symbol/33-diagnostic
+surface, callable tail, first-class dot closure, Pattern pack, orthogonal
+closure placement, and validated normalized handoff.
+
+_See also: Frontend Semantic Amendment v0.5-A, ValidatedNormProgram._
 
 ---
 
@@ -730,6 +754,18 @@ _See also: ClosureAST, InPlaceClosureAST, FnHeadPrefix._
 
 ---
 
+## NormClosure
+
+The normalized closure carrier. It stores
+`placement: NormClosurePlacement`, optional normalized head, implementation
+body, and `NormOrigin` independently. `NormClosurePlacement` is only
+`InPlace | Ordinary`; generated lowering provenance belongs to
+`NormOrigin::Generated`, never to placement.
+
+_See also: ClosurePlacement, Origin, Dot Closure._
+
+---
+
 ## Callable Implementation Tail
 
 The single syntax slot that describes a callable implementation and optional
@@ -739,6 +775,17 @@ same named strategy. Strategy metadata participates only after full
 admissibility and never creates a second overload pass.
 
 _See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution Pipeline._
+
+---
+
+## ValidatedNormProgram
+
+The downstream handoff produced by `normalize_and_validate` after all global
+normalized Pattern invariants, including one pack per structural level, have
+passed. `normalize_program` alone remains useful for diagnostic/recovery dumps
+but does not authorize build-world harvesting.
+
+_See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._
 
 ---
 

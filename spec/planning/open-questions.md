@@ -32,6 +32,17 @@ track:
   equivalent must preserve the general pipe/product spine. Compact `E.name`
   mechanically uses the same core. Direct `..name(product)` remains the
   distinct direct member-call simulation and is not redundant.
+- The post-v0.2 parser changes are versioned by frontend amendment v0.5-A and
+  Raw AST contract v0.5; the closed v0.1/v0.2/v0.3 documents remain historical
+  snapshots.
+- Closure placement and generated provenance are independent in both Raw and
+  Normalized AST. Generated dot closures retain `InPlace` placement.
+- `[[strategy]]` has one strong-context recognizer and one closure-head
+  continuation predicate across parser layers; it is not capture syntax after
+  a deduce list.
+- Build-world harvesting consumes `ValidatedNormProgram` from
+  `normalize_and_validate`; unvalidated normalized programs remain available
+  only for dump/recovery inspection.
 - `ref` and `share` are namespace subspaces, not reserved field names.
 - Function-object names and namespace-subspace names may be identical under the
   same parent when they occupy different child-name roles.

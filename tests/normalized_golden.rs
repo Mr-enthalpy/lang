@@ -2,9 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use lang_syntax::norm::{
-    NormBindingSlot, NormClosure, NormClosureBody, NormClosureKind, NormDecl, NormExpr, NormForm,
-    NormNavComponent, NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem, NormProduct,
-    NormProductElem, NormProgram, NormRule,
+    NormBindingSlot, NormClosure, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr,
+    NormForm, NormNavComponent, NormOperatorFixity, NormOrigin, NormPattern, NormPatternElem,
+    NormProduct, NormProductElem, NormProgram, NormRule,
 };
 
 fn case_path(name: &str, extension: &str) -> PathBuf {
@@ -142,10 +142,9 @@ fn expect_generated_closure(expr: &NormExpr, rule: NormRule) -> &NormClosure {
     let NormExpr::Closure(closure) = target else {
         panic!("expected generated closure target, got {target:#?}");
     };
-    match closure.kind {
-        NormClosureKind::Generated { rule: actual } if actual == rule => closure,
-        _ => panic!("expected generated closure {rule:?}, got {closure:#?}"),
-    }
+    assert_eq!(closure.placement, NormClosurePlacement::InPlace);
+    expect_generated(&closure.origin, rule);
+    closure
 }
 
 fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_remainder_pack: bool) {
@@ -499,12 +498,8 @@ fn member_sugar_generated_closure_has_unresolved_nav_target() {
     let NormExpr::Closure(closure) = target else {
         panic!("expected dot-closure target, got {target:#?}");
     };
-    assert!(matches!(
-        closure.kind,
-        NormClosureKind::Generated {
-            rule: NormRule::DotClosureLowering
-        }
-    ));
+    assert_eq!(closure.placement, NormClosurePlacement::InPlace);
+    expect_generated(&closure.origin, NormRule::DotClosureLowering);
     expect_generated_receiver_head(closure, NormRule::DotClosureLowering, true);
     let (body_source, body_target, body_origin) = expect_generated_body_call(closure);
     expect_generated(body_origin, NormRule::DotClosureLowering);

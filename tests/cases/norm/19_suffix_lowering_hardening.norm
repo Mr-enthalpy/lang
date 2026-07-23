@@ -75,7 +75,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@6:1[55..58]
         target:
-          Closure kind=Generated(DotClosureLowering) origin=Generated(DotClosureLowering)@6:1[55..64]
+          Closure placement=InPlace origin=Generated(DotClosureLowering)@6:1[55..64]
             head:
               ClosureHead origin=Generated(DotClosureLowering)@6:1[55..64]
                 deduce:
@@ -135,7 +135,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@7:2[67..70]
         target:
-          Closure kind=Generated(DotClosureLowering) origin=Generated(DotClosureLowering)@7:1[66..77]
+          Closure placement=InPlace origin=Generated(DotClosureLowering)@7:1[66..77]
             head:
               ClosureHead origin=Generated(DotClosureLowering)@7:1[66..77]
                 deduce:
@@ -195,7 +195,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@8:1[79..82]
         target:
-          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@8:1[79..92]
+          Closure placement=InPlace origin=Generated(DoubleDotLowering)@8:1[79..92]
             head:
               ClosureHead origin=Generated(DoubleDotLowering)@8:1[79..92]
                 deduce:
@@ -240,7 +240,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@9:1[94..97]
         target:
-          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@9:1[94..109]
+          Closure placement=InPlace origin=Generated(DoubleDotLowering)@9:1[94..109]
             head:
               ClosureHead origin=Generated(DoubleDotLowering)@9:1[94..109]
                 deduce:
@@ -289,7 +289,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@10:1[111..114]
         target:
-          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@10:1[111..126]
+          Closure placement=InPlace origin=Generated(DoubleDotLowering)@10:1[111..126]
             head:
               ClosureHead origin=Generated(DoubleDotLowering)@10:1[111..126]
                 deduce:
@@ -337,7 +337,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@11:1[128..131]
         target:
-          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@11:1[128..143]
+          Closure placement=InPlace origin=Generated(DoubleDotLowering)@11:1[128..143]
             head:
               ClosureHead origin=Generated(DoubleDotLowering)@11:1[128..143]
                 deduce:
@@ -385,7 +385,7 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@12:1[145..148]
         target:
-          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@12:1[145..162]
+          Closure placement=InPlace origin=Generated(DoubleDotLowering)@12:1[145..162]
             head:
               ClosureHead origin=Generated(DoubleDotLowering)@12:1[145..162]
                 deduce:

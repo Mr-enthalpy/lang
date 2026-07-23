@@ -220,13 +220,12 @@ Context restrictions:
 
 ## 8. Binding patterns
 
-The parser recognizes five binding pattern variants:
+The parser recognizes four binding pattern variants:
 
 ```text
 BindingPatternAst ::=
     Binder(BinderNameAst)
   | Product(ProductExtractAst)
-  | Pack { inner: BindingPatternAst }
   | Skeleton(CanonicalSkeletonAst)
   | Error(ErrorAst)
 ```
@@ -235,11 +234,6 @@ BindingPatternAst ::=
 (`OperatorNameAst`). `Product` is product extraction in binding/extraction
 context — parenthesized forms with top-level commas. `Skeleton` is a
 canonical skeleton pattern (see §21). `Error` is a recovery marker.
-
-`...Q` produces `Pack(inner=Q)`. Ellipsis is accepted only in binding/Pattern
-context. After Pattern normalization, each structural level may contain at
-most one pack; nested levels are independent. The parser/normalizer does not
-turn it into a value spread, pack type, ABI category, or RHS unpack operation.
 
 `_` is a `Name` token at the lexical level. The canonical skeleton grammar
 may mark it syntactically as a hole only in extraction contexts where that
@@ -399,7 +393,6 @@ The parser recognizes the following atom-level expression sources:
 | Float literal | `AtomKind::FloatLiteral(String)` |
 | String literal | `AtomKind::StringLiteral(String)` |
 | Grouped expression | `AtomKind::Group(ExprAst)` |
-| Leading-dot field function (`.name`) | `AtomKind::DotClosure { selector }` |
 | Closure | `AtomKind::Closure(ClosureAst)` |
 | Error | `AtomKind::Error(ErrorAst)` |
 
@@ -436,10 +429,6 @@ object.field
 
 produces `MemberSugar`. The selector is a text `Name` only. Numeric selectors
 have been removed. The parser performs no field or method lookup.
-
-At atom start, `.field` produces `DotClosure(field)`, an independent expression
-rather than a suffix missing its receiver. Later normalization defines
-`object.field` through that same first-class dot closure.
 
 ### 14.3 Double-dot (`..`)
 
@@ -510,15 +499,7 @@ semantics.
 
 ## 17. Closure literals
 
-Closure syntax preserves three independent fields:
-
-```text
-ClosureAst {
-  placement: InPlace | Ordinary,
-  head: Option<FnHeadPrefixAst>,
-  body: ClosureBodyAst
-}
-```
+The parser recognizes two closure syntax categories:
 
 ### 17.1 In-place closure
 
@@ -526,49 +507,27 @@ ClosureAst {
 { ... }   (in atom position)
 ```
 
-Bare `{ ... }` in atom position produces `placement=InPlace, head=None`. It is
-not a normal block expression. Having no extraction head means it has no
-extracted input, including no implicit unit input.
+Bare `{ ... }` in atom position produces `ClosureAst::InPlace`. It is not a
+normal block expression. It has no capture clause, no parameter clause, no
+return clause, and no head clauses. Having no extraction head means it has
+no extracted input, including no implicit unit input.
 
-### 17.2 Headed closure and callable tail
+### 17.2 Explicit headed closure
 
 ```text
 FnHeadPrefix => { ... }
-FnHeadPrefix => strategy_name { ... }
-FnHeadPrefix => default
-FnHeadPrefix => delete
-FnHeadPrefix => (StringLiteral) delete
-FnHeadPrefix [[strategy_name]] { ... }
-FnHeadPrefix { ... }
 ```
 
-The body slot is the callable implementation tail. `=> strategy_name { ... }`
-and `[[strategy_name]] { ... }` preserve named overload-strategy metadata;
-`[[...]]` is the explicit no-`=>` disambiguation form. `=> default` preserves
-a compiler-defaulted implementation request. Delete accepts an optional
-parenthesized string-literal message.
-
-The old parse of `() -> r name { ... }` is unchanged: `name` belongs to the
-return extraction pattern. The parser never backtracks it into strategy
-metadata. Use `() -> r [[name]] { ... }` for that intention. `default` and
-`delete` remain contextual `Name` tokens, and `#` has no strategy role.
+An explicit headed closure requires `=>` between the head prefix and the body.
+`FnHeadPrefix { ... }` without `=>` is invalid and produces an
+`InvalidClosureHead` diagnostic.
 
 Closure literals produce AST, not callable objects. Closure materialization
 into callable objects is a future semantic pass.
 
-`=>` selects `Ordinary` placement. Both no-`=>` forms select `InPlace`
-placement while retaining `head=Some(...)`; `[[strategy_name]]` adds metadata
-but does not change placement. In-place closures cannot carry capture lists.
-`[x] { ... }` and `[x](...) { ... }` produce `InvalidClosureHead` and an
-`ErrorAst`.
-
-Malformed callable tails likewise preserve an Error atom. Recovery never
-substitutes a legal empty user body for an invalid delete message, invalid
-strategy tail, or malformed `[[strategy]]`.
-
 ## 18. Closure heads
 
-A closure head (`FnHeadPrefix`) has a fixed clause order:
+An explicit closure head (`FnHeadPrefix`) has a fixed clause order:
 
 1. optional deduce list (`<...>`)
 2. optional capture clause (`[...]`)
@@ -605,8 +564,7 @@ A capture clause is a bracket-delimited list of expression items:
 
 Each item is stored as `CaptureItemAst { expr: ExprAst }`, not as a name-only
 item and not as a token tree. The parser does not interpret move, ref, copy,
-or capture mode. Capture clauses are accepted only for ordinary `=>` closures;
-in-place closures reject them. No capture analysis is performed.
+or capture mode. No capture analysis is performed.
 
 ## 20. Parameter and return clauses
 
@@ -725,7 +683,7 @@ The parser is error-tolerant. When an error is detected:
 2. An `ErrorAst` node is inserted at the recovery point.
 3. Parsing continues from a reasonable resynchronization point.
 
-The complete diagnostic catalog (33 `DiagnosticCode` variants across lexer,
+The complete diagnostic catalog (32 `DiagnosticCode` variants across lexer,
 parser, operator, and alias categories) is documented in
 `spec/implementation/v0.1/diagnostics-v0.1.md`. The concrete syntax document names diagnostics
 only when needed to define a syntax boundary.

@@ -1,0 +1,7 @@
+let f0 = () [[s]] { value };
+let f1 = () : compile [[s]] { value };
+let f2 = () require C [[s]] { value };
+let f3 = <T> [[s]] { value };
+let f4 = <T>() [[s]] { value };
+let f5 = <T>() -> r [[s]] { value };
+value |> () [[s]] { value };

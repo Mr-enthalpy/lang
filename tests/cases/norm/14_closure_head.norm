@@ -1,7 +1,7 @@
 NormProgram origin=Source@1:1[0..63]
   forms:
     Form Expr
-      Closure kind=Ordinary origin=Source@1:1[0..28]
+      Closure placement=Ordinary origin=Source@1:1[0..28]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@1:1[0..20]
             deduce:
@@ -29,7 +29,7 @@ NormProgram origin=Source@1:1[0..63]
               Form TailValue
                 Name "val" origin=Source@1:24[23..26]
     Form Expr
-      Closure kind=Ordinary origin=Source@2:1[30..63]
+      Closure placement=Ordinary origin=Source@2:1[30..63]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@2:1[30..53]
             deduce:

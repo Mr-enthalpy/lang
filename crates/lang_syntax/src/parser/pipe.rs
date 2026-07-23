@@ -360,19 +360,10 @@ fn parse_segment_element(
     match class {
         ParenClassification::Product => {
             // Check if this is a closure param clause before parsing as Product.
-            // A `(...)` followed by `:`, `=>`, `->`, `{`, or a head-clause
-            // keyword (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`)
-            // is a closure-head parameter clause rather than a product
-            // expression.
+            // A `(...)` followed by any centralized closure-head continuation
+            // is a parameter clause rather than an ordinary Product.
             if let Some(idx) = after_idx {
-                let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
-                if matches!(
-                    after.kind,
-                    TokenKind::Symbol(
-                        Symbol::Colon | Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow
-                    )
-                ) || super::closure::token_index_starts_head_clause(parser, idx)
-                {
+                if super::closure::token_index_starts_closure_head_continuation(parser, idx) {
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }

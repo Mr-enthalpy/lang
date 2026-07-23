@@ -181,6 +181,23 @@ semantics are published.
 
 The current public v0.5 documentation entry point is `spec/public/v0.5/`.
 
+#### v0.5-A — versioned frontend semantic amendment
+
+Later v0.5 semantic-surface work required parser and Raw AST changes. Those
+changes do not rewrite the closed v0.1/v0.2/v0.3 documents. They are versioned
+by:
+
+```text
+spec/contracts/frontend-semantic-amendment-v0.5-a.md
+spec/contracts/raw-ast-contract-v0.5.md
+```
+
+The amendment classifies closure placement orthogonalization as a hard
+structural correction, first-class DotClosure as a normalization-driven
+extension, and Ellipsis/Pack plus callable-tail alternatives as new syntax
+amendments. The current syntax crate version is `0.5.0`; the v0.2 freeze
+remains a historical 19-Symbol/32-diagnostic snapshot.
+
 ---
 
 ### v0.6+ — Build, namespace graph, meta-functions, then resumed semantic design

@@ -549,7 +549,7 @@ Closure head example (head dump label `ClosureNormalize`):
 ```text
 <T: type>(val: T) => { val }
 
-Closure kind=Ordinary
+Closure placement=Ordinary
   head: ClosureHead
     deduce:
       HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )
@@ -586,12 +586,23 @@ levels are independent. The pack remains Pattern-side only. Normalization does
 not create a pack value, variadic ABI class, runtime container, or RHS unpack
 operator.
 
-The common post-normalization `ValidateNormalizedPatterns` pass enforces that
+The common post-normalization `validate_normalized_patterns` pass enforces that
 limit over all `NormBindingSlot` consumers: top-level and local `let`,
 parameters, returns, annotations, and nested Pattern levels. Both `Product`
 and `Sequence` count their direct pack children before recursive validation.
 Parser-local checks provide earlier diagnostics but do not define the
 invariant.
+
+`normalize_program` remains available to dump recovered or invalid normalized
+structure. Downstream build installation instead uses:
+
+```text
+normalize_and_validate
+  -> ValidatedNormProgram
+  |  InvalidNormProgram
+```
+
+Only the validated wrapper enters world harvesting.
 
 `Pack` is part of the general binding-pattern grammar. It is preserved in
 every binding-slot context—ordinary/local `let`, product extraction, callable
@@ -657,6 +668,22 @@ Closure placement is orthogonal to head presence and implementation:
 `[[strategy]]` does not change placement. In-place closures cannot spell a
 capture list; `[x] { ... }` remains an error. A malformed callable tail
 normalizes as `NormExpr::Error`, never as a legal empty `Block`.
+
+The parser recognizes `[[strategy]]` through one strong-context lookahead used
+by segment, operator-expression, closure-head, and binding-slot parsing. It is
+also excluded from capture parsing after a deduce list, so `() [[s]] { ... }`
+and `<T> [[s]] { ... }` have the same headed in-place interpretation.
+
+Normalized closure placement and origin are separate fields:
+
+```text
+NormClosure.placement = InPlace | Ordinary
+NormClosure.origin    = Source | Generated(rule) | Derived(rule)
+```
+
+Generated provenance never replaces placement. In particular the closure
+generated for `.name` has `placement=InPlace` and
+`origin=Generated(DotClosureLowering)`.
 
 ## 10. Alias Preservation
 

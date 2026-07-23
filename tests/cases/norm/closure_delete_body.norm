@@ -1,7 +1,7 @@
 NormProgram origin=Source@1:1[0..20]
   forms:
     Form Expr
-      Closure kind=Ordinary origin=Source@1:1[0..20]
+      Closure placement=Ordinary origin=Source@1:1[0..20]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@1:1[0..5]
             deduce:

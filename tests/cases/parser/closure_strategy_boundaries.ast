@@ -1,0 +1,276 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f0
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      OverloadStrategy s
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name value
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f1
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                        call_policy:
+                          PolicySpec
+                            value_policy:
+                              PolicyConjunction
+                                PolicyChoice
+                                  PolicyAtom Name "compile"
+                            pattern_policy:
+                              None
+                      OverloadStrategy s
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name value
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f2
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                        clauses:
+                          Require
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name C
+                      OverloadStrategy s
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name value
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f3
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      FnHeadPrefix
+                        deduce:
+                          DeduceList
+                            binders:
+                              BinderDecl name=T
+                                annotation:
+                                  None
+                      OverloadStrategy s
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name value
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f4
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      FnHeadPrefix
+                        deduce:
+                          DeduceList
+                            binders:
+                              BinderDecl name=T
+                                annotation:
+                                  None
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      OverloadStrategy s
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name value
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f5
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure InPlace
+                      FnHeadPrefix
+                        deduce:
+                          DeduceList
+                            binders:
+                              BinderDecl name=T
+                                annotation:
+                                  None
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  Binder
+                                    TextName r
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      OverloadStrategy s
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name value
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Name value
+        Segment has_incoming=true
+          OperatorExpr
+            Atom
+              Closure InPlace
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                OverloadStrategy s
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name value

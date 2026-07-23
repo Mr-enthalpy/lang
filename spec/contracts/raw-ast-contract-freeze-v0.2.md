@@ -29,7 +29,7 @@ v0.6+  — Later semantic design stages
 ## What v0.1 and v0.1.w delivered
 
 - A complete Raw AST frontend: lexer, parser, token dump, AST dump, diagnostic dump.
-- 33 `DiagnosticCode` variants after the Pattern-pack amendment.
+- 32 `DiagnosticCode` variants across lexer, parser, return, operator, and alias categories.
 - Golden test coverage (25 lexer, 325 parser, 43 diagnostics).
 - `crates/lang_syntax` and `crates/lang_cli`.
 - Richer literal spelling: radix integers, digit separators, scientific notation,
@@ -45,7 +45,7 @@ exception:
 - Lexer token categories: `Name`, `IntLiteral`, `FloatLiteral`, `StringLiteral`,
   `Symbol`, `Operator(OperatorSpelling)`, `Trivia`, `Invalid`, `Eof`
 - 32 lexer-produced operator spellings plus `BracketCall` contextual operator (33 total)
-- 20 `Symbol` variants including `TripleEqual` and `Ellipsis`
+- 19 `Symbol` variants including `TripleEqual`
 - Raw AST node categories documented in `ast-construction-v0.1.md`
 - `lex` / `parse` public API
 - Stable hand-written dump format for tokens, AST, and diagnostics
@@ -54,8 +54,7 @@ exception:
 - Weak lexer (no keyword classification)
 - Product / product-extract architecture
 - Pipe / segment / operator-expression architecture
-- Closure AST preservation with orthogonal placement (`InPlace | Ordinary`),
-  optional head, and callable implementation tail
+- Closure AST preservation (InPlace, Explicit)
 - Inner-to-outer navigation
 - Alias-let parser preservation (`let binder === EntityRef`)
 - `with { ... }` narrow payload grammar (names only)

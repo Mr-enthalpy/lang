@@ -52,11 +52,12 @@ Follow this workflow for every change:
 | Current normalized surface (v0.5) | `spec/public/v0.5/normalized-surface-semantics-v0.5.md`, `spec/public/v0.5/agent-interpretation-guide-v0.5.md`, `spec/contracts/v0.4-normalization-prototype-notes.md` |
 | v0.3 Normalized AST design history | `spec/history/v0.3/README.md`, `spec/history/v0.3/normalized-ast-specification-v0.3.md`, `spec/history/v0.3/normalized-ast-design-history-v0.3.md` |
 | Frozen v0.2 frontend input | `spec/public/v0.2/lexical-syntax-v0.2.md`, `spec/public/v0.2/concrete-syntax-v0.2.md`, `spec/public/v0.2/diagnostics-recovery-v0.2.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` |
+| Current amended Raw AST | `spec/contracts/frontend-semantic-amendment-v0.5-a.md`, `spec/contracts/raw-ast-contract-v0.5.md` |
 | Parser implementation changes | `spec/implementation/v0.1/ast-construction-v0.1.md`, `spec/implementation/v0.1/implementation-status-v0.1.md` |
 | Diagnostic implementation changes | `spec/implementation/v0.1/diagnostics-v0.1.md` |
 | Operator syntax or operator-name repair | `spec/history/v0.1/operator-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
 | Alias / EntityRef repair | `spec/design/symbol-world/entity-alias-design.md`, `spec/design/symbol-world/entity-ref-design.md`, `spec/public/v0.2/concrete-syntax-v0.2.md` |
-| v0.3 handoff / normalization-boundary work | `spec/contracts/raw-ast-contract-v0.1.md`, `spec/contracts/raw-ast-contract-freeze-v0.2.md`, `spec/contracts/v0.3-normalization-handoff-checklist.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` |
+| v0.3 handoff / normalization-boundary work | `spec/contracts/raw-ast-contract-v0.1.md`, `spec/contracts/raw-ast-contract-freeze-v0.2.md`, `spec/contracts/v0.3-normalization-handoff-checklist.md`, `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md`, then `spec/contracts/frontend-semantic-amendment-v0.5-a.md` and `spec/contracts/raw-ast-contract-v0.5.md` for the current delta |
 | Future build/package/namespace work | `spec/design/build-package/build-system-design.md`, `spec/design/build-package/package-manifest-v0.md`, `spec/design/build-package/namespace-assembly-v0.md` |
 | Resolving old open questions / design history | `spec/history/v0.1/resolved-questions.md`, `spec/planning/open-questions.md`, `spec/history/v0.1/frontend-v0.1.md` |
 | Forward-looking scope changes | `spec/planning/roadmap.md` |
@@ -252,8 +253,10 @@ For current v0.5 documentation / stabilization work:
 - Run `cargo test` after code, test, or snapshot changes.
 
 For Raw AST contract work:
-- Do not change parser behavior; document invariants in `spec/contracts/raw-ast-contract-v0.1.md`.
-- Update the contract when parser changes affect AST shape.
+- Preserve the closed v0.1/v0.2/v0.3 documents as historical snapshots.
+- Record an authorized parser/AST change in
+  `spec/contracts/frontend-semantic-amendment-v0.5-a.md` and
+  `spec/contracts/raw-ast-contract-v0.5.md`.
 
 For Normalized AST changes:
 - The Raw AST → Normalized AST lowering is implemented (v0.4); its boundary is
@@ -316,8 +319,10 @@ Default flow:
 
 ## 11. Spec update rules
 
-- When changing **parser behavior**: update `spec/implementation/v0.1/ast-construction-v0.1.md`.
-- When changing **diagnostic behavior**: update `spec/implementation/v0.1/diagnostics-v0.1.md`.
+- When changing **parser behavior**: update the versioned frontend amendment
+  and current Raw AST contract; do not rewrite historical v0.1/v0.2 docs.
+- When changing **diagnostic behavior**: update the same current contract and
+  preserve the historical diagnostic snapshot.
 - When adding **new terminology**: update `spec/reference/glossary.md`.
 - When resolving an **open question**: update `spec/planning/open-questions.md`.
 - Spec and code changes must be in the same commit.

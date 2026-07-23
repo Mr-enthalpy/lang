@@ -198,7 +198,6 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
     ) -> Result<(), BuildError> {
         let parsed = lang_syntax::parse(&unit.content);
-        let normalized = lang_syntax::normalize_program(&parsed.program);
         let provenance = unit.provenance.clone();
         let mut diagnostics = parsed
             .diagnostics
@@ -214,29 +213,31 @@ impl CompilationWorld {
                 )
             })
             .collect::<Vec<_>>();
-        let pattern_validation_failed =
-            if let Err(errors) = lang_syntax::validate_normalized_patterns(&normalized) {
-                diagnostics.extend(errors.into_iter().map(|error| {
-                    Diagnostic::hard_error(
-                        format!(
-                            "Pattern contains {} pack nodes at one normalized structural level",
-                            error.pack_count
-                        ),
-                        Some(Provenance::from_norm_origin(
-                            "global normalized Pattern validation",
-                            &error.origin,
-                        )),
-                    )
-                }));
-                true
-            } else {
-                false
-            };
+        let normalized = lang_syntax::normalize_and_validate(&parsed.program);
+        if let Err(invalid) = &normalized {
+            diagnostics.extend(invalid.pattern_errors.iter().map(|error| {
+                Diagnostic::hard_error(
+                    format!(
+                        "Pattern contains {} pack nodes at one normalized structural level",
+                        error.pack_count
+                    ),
+                    Some(Provenance::from_norm_origin(
+                        "global normalized Pattern validation",
+                        &error.origin,
+                    )),
+                )
+            }));
+        }
         self.diagnostics.extend(diagnostics.clone());
 
-        if !pattern_validation_failed {
-            self.harvest_program(namespace, &normalized, &unit.canonical_path)?;
-        }
+        let normalized = match normalized {
+            Ok(validated) => {
+                self.harvest_program(namespace, validated.as_program(), &unit.canonical_path)?;
+                validated.into_program()
+            }
+            Err(invalid) => invalid.program,
+        };
+
         self.source_fragments.push(SourceFragment {
             path: unit.canonical_path.clone(),
             namespace,

@@ -73,7 +73,7 @@ NormProgram origin=Source@1:1[0..127]
     Form Expr
       Name "z" origin=Source@6:16[69..70]
     Form Expr
-      Closure kind=Ordinary origin=Source@7:1[72..101]
+      Closure placement=Ordinary origin=Source@7:1[72..101]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@7:1[72..93]
             deduce:

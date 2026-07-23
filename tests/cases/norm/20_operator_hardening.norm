@@ -48,7 +48,7 @@ NormProgram origin=Source@1:1[0..47]
               ExprElem
                 Name "a" origin=Source@4:2[23..24]
         target:
-          Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+          Closure placement=InPlace origin=Generated(PrefixNegativeLowering)@4:1[22..24]
             head:
               ClosureHead origin=Generated(PrefixNegativeLowering)@4:1[22..24]
                 deduce:
@@ -114,7 +114,7 @@ NormProgram origin=Source@1:1[0..47]
                   target:
                     OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@6:5[35..36]
         target:
-          Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+          Closure placement=InPlace origin=Generated(PrefixNegativeLowering)@6:1[31..39]
             head:
               ClosureHead origin=Generated(PrefixNegativeLowering)@6:1[31..39]
                 deduce:
@@ -168,7 +168,7 @@ NormProgram origin=Source@1:1[0..47]
                         ExprElem
                           Name "b" origin=Source@7:6[46..47]
                   target:
-                    Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                    Closure placement=InPlace origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                       head:
                         ClosureHead origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                           deduce:

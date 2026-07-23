@@ -8,7 +8,7 @@ NormProgram origin=Source@1:1[0..25]
               ExprElem
                 Name "obj" origin=Source@1:1[0..3]
         target:
-          Closure kind=Generated(DotClosureLowering) origin=Generated(DotClosureLowering)@1:1[0..9]
+          Closure placement=InPlace origin=Generated(DotClosureLowering)@1:1[0..9]
             head:
               ClosureHead origin=Generated(DotClosureLowering)@1:1[0..9]
                 deduce:
@@ -68,7 +68,7 @@ NormProgram origin=Source@1:1[0..25]
               ExprElem
                 Name "obj" origin=Source@2:1[11..14]
         target:
-          Closure kind=Generated(DoubleDotLowering) origin=Generated(DoubleDotLowering)@2:1[11..25]
+          Closure placement=InPlace origin=Generated(DoubleDotLowering)@2:1[11..25]
             head:
               ClosureHead origin=Generated(DoubleDotLowering)@2:1[11..25]
                 deduce:

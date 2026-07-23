@@ -31,6 +31,16 @@ spec/public/v0.2/diagnostics-recovery-v0.2.md
 spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
 ```
 
+Then read the versioned current delta and contract:
+
+```text
+spec/contracts/frontend-semantic-amendment-v0.5-a.md
+spec/contracts/raw-ast-contract-v0.5.md
+```
+
+The v0.1/v0.2/v0.3 files are historical snapshots. Do not rewrite them to make
+later parser changes appear part of the original freeze.
+
 Read older implementation/design documents only when the task specifically
 requires parser implementation detail, diagnostic implementation detail,
 historical decision repair, or future design work.
@@ -68,6 +78,8 @@ spec/contracts/v0.3-normalization-handoff-checklist.md
 spec/contracts/v0.4-normalization-prototype-notes.md
 spec/contracts/v0.9-control-flow-end-events.md
 spec/public/v0.2/raw-ast-frozen-surface-v0.2.md
+spec/contracts/frontend-semantic-amendment-v0.5-a.md
+spec/contracts/raw-ast-contract-v0.5.md
 ```
 
 Before build/package/namespace design:
@@ -698,14 +710,17 @@ diagnostics/
 
 When changing parser behavior:
 
-1. Update `spec/implementation/v0.1/ast-construction-v0.1.md`.
+1. Update `spec/contracts/frontend-semantic-amendment-v0.5-a.md` and
+   `spec/contracts/raw-ast-contract-v0.5.md`; do not rewrite the closed
+   v0.1/v0.2/v0.3 snapshots.
 2. Update or add golden tests.
 3. Run `cargo fmt --all`.
 4. Run `cargo test`.
 
 When changing diagnostic behavior:
 
-1. Update `spec/implementation/v0.1/diagnostics-v0.1.md`.
+1. Update the versioned amendment/current contract; preserve the historical
+   v0.1 diagnostic inventory.
 2. Update or add golden tests.
 3. Run `cargo fmt --all`.
 4. Run `cargo test`.
@@ -744,8 +759,9 @@ Default PR behavior:
   v0.3 obligations.
 * `spec/implementation/v0.1/ast-construction-v0.1.md` remains the detailed parser-construction
   spec. Consult it before making parser implementation changes.
-* `spec/implementation/v0.1/implementation-status-v0.1.md` records current implementation facts.
-  Consult it before changing parser behavior.
+* `spec/implementation/v0.1/implementation-status-v0.1.md` records the closed
+  v0.1 implementation snapshot. Consult it for the historical baseline, then
+  apply v0.5-A and `raw-ast-contract-v0.5.md` for current behavior.
 * `spec/implementation/v0.1/diagnostics-v0.1.md` is the implementation-level diagnostic catalog
   for current behavior.
 * `spec/planning/roadmap.md` defines scope boundaries. If a change would cross a stage

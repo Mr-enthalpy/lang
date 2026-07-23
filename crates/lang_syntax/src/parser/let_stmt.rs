@@ -280,9 +280,7 @@ fn slot_policy_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) ->
             parser.cursor.at_symbol(Symbol::Comma) || parser.cursor.at_symbol(Symbol::RParen)
         }
         BindingSlotContext::Return => {
-            parser.cursor.at_symbol(Symbol::FatArrow)
-                || parser.cursor.at_symbol(Symbol::LBrace)
-                || parser.cursor.at_name("with")
+            super::closure::at_callable_implementation_tail(parser) || parser.cursor.at_name("with")
         }
         BindingSlotContext::Let => true,
     }
@@ -405,36 +403,20 @@ fn starts_skeleton_name(parser: &mut Parser<'_>, context: BindingSlotContext) ->
     if matches!(
         context,
         BindingSlotContext::Param | BindingSlotContext::Return
-    ) && next_token_starts_head_clause(parser)
-    {
-        return false;
-    }
-    if matches!(context, BindingSlotContext::Return) {
+    ) {
         let (current_index, _) = parser
             .cursor
             .peek_at_skip_trivia(parser.cursor.current_index());
-        if super::closure::token_index_starts_overload_strategy_annotation(
-            parser,
-            current_index + 1,
-        ) {
+        if super::closure::token_index_starts_closure_head_continuation(parser, current_index + 1) {
             return false;
         }
     }
     !is_binding_pattern_stop_kind(&next.kind, context)
 }
 
-// Head clauses (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) only act
-// as binding-slot boundaries inside closure-head parameter and return slots.
-fn next_token_starts_head_clause(parser: &Parser<'_>) -> bool {
-    let (current_index, _) = parser
-        .cursor
-        .peek_at_skip_trivia(parser.cursor.current_index());
-    super::closure::token_index_starts_head_clause(parser, current_index + 1)
-}
-
 fn at_binding_pattern_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {
     if matches!(context, BindingSlotContext::Return)
-        && super::closure::at_overload_strategy_annotation(parser)
+        && super::closure::at_callable_implementation_tail(parser)
     {
         return true;
     }
@@ -454,11 +436,6 @@ fn is_binding_pattern_stop_kind(kind: &TokenKind, context: BindingSlotContext) -
         TokenKind::Eof => true,
         TokenKind::Symbol(Symbol::Colon | Symbol::Comma | Symbol::RParen) => true,
         TokenKind::Symbol(Symbol::Equal) if matches!(context, BindingSlotContext::Let) => true,
-        TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
-            if matches!(context, BindingSlotContext::Return) =>
-        {
-            true
-        }
         TokenKind::Name => false,
         _ => false,
     }
@@ -541,8 +518,7 @@ fn annotation_stop(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool
     parser.cursor.at_name("with")
         || parser.cursor.at_symbol(Symbol::Comma)
         || parser.cursor.at_symbol(Symbol::RParen)
-        || parser.cursor.at_symbol(Symbol::FatArrow)
-        || parser.cursor.at_symbol(Symbol::LBrace)
+        || super::closure::at_callable_implementation_tail(parser)
         || (matches!(context, BindingSlotContext::Let) && parser.cursor.at_symbol(Symbol::Equal))
         || (matches!(
             context,

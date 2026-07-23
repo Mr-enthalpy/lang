@@ -5,7 +5,7 @@ use crate::{
 
 use super::{
     atom::{parse_atom, parse_member_selector, parse_nav_outer_component, selector_span},
-    closure::token_index_starts_head_clause,
+    closure::{at_overload_strategy_annotation, token_index_starts_closure_head_continuation},
     cursor::ParenClassification,
     form::Parser,
     product::{parse_bracket_product_expr, parse_product_expr},
@@ -170,14 +170,7 @@ fn parse_operand(
         let (class, after_idx) = parser.cursor.classify_paren_at_segment_position();
         if matches!(class, ParenClassification::Product) {
             if let Some(idx) = after_idx {
-                let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
-                if matches!(
-                    after.kind,
-                    TokenKind::Symbol(
-                        Symbol::Colon | Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow
-                    )
-                ) || token_index_starts_head_clause(parser, idx)
-                {
+                if token_index_starts_closure_head_continuation(parser, idx) {
                     let atom = parse_atom(parser)?;
                     return Some(OperatorExprAst {
                         span: atom.span,
@@ -294,7 +287,9 @@ fn parse_postfix_expr(
                 );
                 break;
             }
-        } else if parser.cursor.at_symbol(Symbol::LBracket) {
+        } else if parser.cursor.at_symbol(Symbol::LBracket)
+            && !at_overload_strategy_annotation(parser)
+        {
             let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),

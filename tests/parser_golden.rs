@@ -697,6 +697,11 @@ fn closure_headed_no_arrow_3() {
 }
 
 #[test]
+fn closure_strategy_boundaries() {
+    assert_parser_case("closure_strategy_boundaries", false);
+}
+
+#[test]
 fn invalid_bare_closure_empty() {
     assert_parser_case("invalid_bare_closure_empty", false);
 }
