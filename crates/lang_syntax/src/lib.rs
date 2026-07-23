@@ -30,15 +30,15 @@ pub use lexer::{lex, LexOutput};
 pub use norm::{
     dump_norm_program, normalize_and_validate_patterns, normalize_program,
     validate_normalized_pattern_layers, validate_normalized_patterns,
-    validate_pack_pattern_element_level, validate_pack_pattern_layers, NormAliasBinder,
-    NormAnnotation, NormBindingSlot, NormCanonicalNameRole, NormCapture, NormClosure,
-    NormClosureBody, NormClosureHead, NormClosurePlacement, NormDecl, NormDeleteBody,
+    validate_pack_pattern_element_level, validate_pack_pattern_layers, HoleBinderId,
+    NormAliasBinder, NormAnnotation, NormBindingSlot, NormCanonicalNameRole, NormCapture,
+    NormClosure, NormClosureBody, NormClosureHead, NormClosurePlacement, NormDecl, NormDeleteBody,
     NormEntityRef, NormError, NormExpr, NormForm, NormHeadClause, NormHoleDecl, NormLiteralKind,
     NormNavComponent, NormOperatorFixity, NormOrigin, NormOverloadStrategy, NormPattern,
     NormPatternElem, NormPolicyAtom, NormPolicyChoice, NormPolicyConjunction, NormPolicySpec,
     NormProduct, NormProductElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule,
     NormSkeleton, NormSkeletonElem, NormValuePolicyPattern, NormWithClause, PackPatternLayerError,
-    PatternInvalidNormProgram, PatternValidatedNormProgram,
+    PatternInvalidNormProgram, PatternValidatedNormProgram, PatternValidationError,
 };
 pub use parser::{parse, ParseOutput};
 pub use source::normalize_source_text;

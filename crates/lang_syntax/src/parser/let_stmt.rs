@@ -117,8 +117,8 @@ pub fn parse_binding_slot(
         }
     }
 
-    let pattern =
-        parse_binding_pattern(parser, context, has_let, deduce.as_ref(), inherited_deduce);
+    let active_deduce = merge_active_deduce(inherited_deduce, deduce.as_ref(), start);
+    let pattern = parse_binding_pattern(parser, context, has_let, Some(&active_deduce));
     let mut end = binding_pattern_span(&pattern);
 
     let annotation = parse_binding_annotation(parser, context);
@@ -294,14 +294,13 @@ fn parse_binding_pattern(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
     _has_let: bool,
-    local_deduce: Option<&DeduceListAst>,
-    inherited_deduce: Option<&DeduceListAst>,
+    active_deduce: Option<&DeduceListAst>,
 ) -> BindingPatternAst {
     let token = parser.cursor.peek_non_trivia();
 
     if parser.cursor.at_symbol(Symbol::Ellipsis) {
         let empty_deduce;
-        let deduce_ref = match local_deduce.or(inherited_deduce) {
+        let deduce_ref = match active_deduce {
             Some(deduce) => deduce,
             None => {
                 empty_deduce = DeduceListAst {
@@ -336,7 +335,7 @@ fn parse_binding_pattern(
         return BindingPatternAst::Product(parse_product_extract(
             parser,
             element_context,
-            local_deduce.or(inherited_deduce),
+            active_deduce,
         ));
     }
 
@@ -345,7 +344,7 @@ fn parse_binding_pattern(
         || matches!(token.kind, TokenKind::IntLiteral | TokenKind::StringLiteral)
     {
         let empty_deduce;
-        let deduce_ref = match local_deduce.or(inherited_deduce) {
+        let deduce_ref = match active_deduce {
             Some(deduce) => deduce,
             None => {
                 empty_deduce = DeduceListAst {
@@ -386,6 +385,27 @@ fn parse_binding_pattern(
     };
     parser.error(DiagnosticCode::ExpectedName, message, token.span);
     BindingPatternAst::Error(parser.error_ast(message, token.span))
+}
+
+fn merge_active_deduce(
+    inherited: Option<&DeduceListAst>,
+    local: Option<&DeduceListAst>,
+    fallback_span: Span,
+) -> DeduceListAst {
+    let mut binders = Vec::new();
+    if let Some(inherited) = inherited {
+        binders.extend(inherited.binders.iter().cloned());
+    }
+    if let Some(local) = local {
+        binders.extend(local.binders.iter().cloned());
+    }
+    let span = match (inherited, local) {
+        (Some(inherited), Some(local)) => inherited.span.join(local.span),
+        (Some(inherited), None) => inherited.span,
+        (None, Some(local)) => local.span,
+        (None, None) => fallback_span,
+    };
+    DeduceListAst { binders, span }
 }
 
 fn starts_skeleton_name(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {

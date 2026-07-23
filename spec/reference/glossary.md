@@ -113,15 +113,23 @@ binding contexts such as extract-let binders, closure heads, parameter binders,
 and return binders. Outside these contexts, `<` and `>` are ordinary symbols;
 in expression/operator contexts they may be operator spellings.
 
+Normalized DeduceLists are left-to-right dependent telescopes. A declaration
+annotation sees inherited and earlier declarations, never itself or later
+declarations. An active hole name cannot be redeclared or shadowed. Each
+declaration has a source-scoped `HoleBinderId`, and a named `HoleRef` targets
+that exact identity rather than merely repeating its spelling.
+
 _See also: Hole, Strong context, CanonicalSkeleton._
 
 ---
 
 ## Hole
 
-A name declared in a `DeduceList` that acts as a wildcard standing for an
-unknown type or value in following syntax. Holes appear inside a
-`CanonicalSkeleton` with the `CanonicalNameRole::Hole` annotation.
+A binder declared in a `DeduceList` that acts as a wildcard standing for an
+unknown type or value in following syntax. Raw canonical parsing may mark its
+spelling with `CanonicalNameRole::Hole`; normalized uses carry an exact
+`HoleBinderId`. The anonymous `_` annotation placeholder is not a named Hole
+and targets no DeduceList declaration.
 
 _See also: DeduceList, CanonicalSkeleton._
 
@@ -405,8 +413,10 @@ expression tree of the call operand. Structural depth evidence is compared
 before node-class evidence. At equal depth, ordinary explicit matches outrank
 explicit pack matches, which outrank ordinary discards, which outrank pack
 discards. Captured length never changes the count. A simple pack has one
-inner evidence node; a structured `...(a, b)` projects two pack-class evidence
-nodes (as `...a`, `...b`) while remaining one syntactic Pack constructor.
+outward evidence node. Raw `...(a, b)` is non-canonical, and a legal headed
+structured operand still contributes only one outward Pack node at its
+containing level; internal evidence stays below the stable head at the next
+structural level.
 Specificity does not depend on declaration order or an ad-hoc conversion-rank
 table. This extraction-only rank is not a const/mut fitness score and never
 resolves candidates that remain incomparable under the const/mut product order.
@@ -708,6 +718,14 @@ surface distinction and produces `NormCapture { slot, initializer, origin }`.
 This does not perform name resolution, environment layout, or closure
 materialization.
 
+Every source-written item is an explicit capture requirement. `[x]` is
+shorthand for `[let x = x]` with the ordinary unwritten capture-policy domain
+(`const || mut`), not an automatic const capture. A future resolved stage may
+add a separate `ImplicitConst` requirement for an otherwise uncaptured free
+outer value reference. Capture requirements are abstract dependencies: they
+do not declare `self` fields, copy/reference representation, layout, ZST
+status, or ABI.
+
 _See also: BindingSlot, NormClosure, Materialization._
 
 ---
@@ -724,7 +742,8 @@ including no implicit unit input.
 In future callable materialization it may contribute an overload candidate
 while remaining tied to its embedding control-flow layer. Unresolved outer
 reads are resolved lazily at that layer; no capture list is required or
-allowed, and this read rule grants no implicit outer-write authority. An
+allowed. Direct writes to a place outside the closure-local scope are
+forbidden; local mutation and effectful calls remain possible. An
 otherwise tied in-place candidate is preferred after the
 first-order-over-instantiated filter.
 
@@ -807,11 +826,13 @@ _See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution P
 ## PatternValidatedNormProgram
 
 The downstream handoff produced by `normalize_and_validate_patterns` after all
-global normalized Pattern invariants, including one pack per structural level,
-have passed. Its certificate is intentionally narrow: it does not assert that
-the parser emitted no diagnostics or that no recovered `NormExpr::Error`
-exists. `normalize_program` alone remains useful for diagnostic/recovery dumps
-but does not authorize build-world harvesting.
+currently enforced global normalized Pattern invariants have passed: one Pack
+per structural level, no bare Product Pack operand, and no duplicate
+DeduceList hole in the active telescope. Its certificate is intentionally
+narrow: it does not prove ordered/unordered Pack applicability, stable
+Pattern-head identity, complete matching support, parser-diagnostic absence,
+or recovery freedom. `normalize_program` alone remains useful for
+diagnostic/recovery dumps but does not authorize build-world harvesting.
 
 _See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._
 
@@ -838,19 +859,26 @@ _See also: Atom, Function Object, Call normalization._
 The Pattern-side remainder form `...Q`. It matches the unmatched portion of
 one normalized structural level and then applies `Q`. Each level permits one
 pack; nested levels are independent. It is not a value/type/ABI category and
-has no RHS unpack counterpart. A simple operand contributes one specificity
-node, independent of captured length. For a structured operand,
-each written explicit/discard inner node contributes pack-class evidence:
-`...(a, b)` compares as `...a` plus `...b` while the AST remains the single
-constructor `Pack(Product[a, b])`. It is valid in every let-shaped binding slot,
-including ordinary/local let, parameter, return, and nested product extraction;
-it is not a parameter-only variadic syntax. It may be a direct canonical
-Pattern Sequence child: `a ...x b` normalizes as
-`Sequence[a, Pack(x), b]`. Ellipsis consumes one following Pattern primary;
-`...(x, y)` supplies an explicit compound operand. Only Product and Sequence
-establish cardinality levels; Pack and BindingSlot are transparent. The parser
-preserves all formed Pack nodes, and the normalized Pattern validator is the
-sole one-pack-per-level authority.
+has no RHS unpack counterpart. Every Pack contributes one outward specificity
+node, independent of captured length and internal node count.
+
+At an unordered named layer only a whole-remainder binder/discard (including a
+transparent let-shaped slot) is admissible. At an ordered layer a structured
+operand may be meaningful only if its P-normal form retains a stable top mode,
+for example `...((a, b) pair)`. Raw `...(a, b)` is preserved by the parser but
+rejected after P normalization: Pack cannot reify the bare Product boundary
+that ordinary Product normalization removes. Internal evidence below a stable
+operand head belongs to the next preserved level; it is never flattened into
+multiple same-level EP nodes.
+
+Pack is valid syntax in every let-shaped binding slot, including ordinary/local
+let, parameter, return, and nested product extraction; it is not a
+parameter-only variadic form. It may be a direct canonical Pattern Sequence
+child: `a ...x b` normalizes as `Sequence[a, Pack(x), b]`. Ellipsis consumes one
+following Pattern primary. Only Product and Sequence establish cardinality
+levels; Pack and BindingSlot are transparent. The parser preserves all formed
+Pack nodes, and the normalized Pattern validator is the sole authority for
+cardinality and the bare-Product rejection.
 
 _See also: Pattern normalization, Overload Specificity._
 
@@ -872,8 +900,12 @@ _See also: ClosureAST, Materialization._
 ## Materialization
 
 The future semantic pass that converts `ClosureAST` into a `ClosureObject`.
-Materialization involves capture analysis, environment layout, and callable
-object construction. This is not implemented in v0.1.
+Before this pass, resolved capture dependencies must first become
+lifetime-checkable source/access/storage-or-link forms. Materialization may
+then select static links, constant embedding, zero-layout dependencies, stack
+environments, stored checked references, or other future representations. A
+capture list is not itself an environment-field declaration. This is not
+implemented in v0.1.
 
 _See also: ClosureAST, ClosureObject._
 

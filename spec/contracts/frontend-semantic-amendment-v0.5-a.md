@@ -42,6 +42,7 @@ This amendment therefore classifies each delta explicitly:
 | Delete message `(message_expr) delete` -> `(StringLiteral) delete` | Deliberate source-language contraction | Delete diagnostics are static source messages, not general evaluated expressions. |
 | Malformed-tail `ErrorAst` recovery | Hard recovery correction | Invalid source must not become a legal empty user body. |
 | Global one-pack validation | New post-normalization invariant | Parser-local counting cannot enforce a normalized-level invariant across every binding slot. |
+| DeduceList telescope and exact `HoleBinderId` references | Normalized binding correction | A string-only `HoleRef` cannot identify its declaration or define forward/self/duplicate behavior in nested let-shaped slots. |
 
 ## 2. Version boundary
 
@@ -279,19 +280,35 @@ the capture clause.
 Canonical sequences containing Pack normalize into `NormPattern::Sequence`
 with `NormPattern::Pack` children. Pack never enters `NormSkeleton`.
 
-A compound Pack operand remains structural:
+A parenthesized Product is still preserved in Raw AST:
 
 ```text
 ...(a, b)
-  -> NormPattern::Pack(
-       NormPattern::Product[Binder(a), Binder(b)]
-     )
+  -> Raw Pack(Product[a, b])
 ```
 
-Pack-operand binding context propagates through the Product. For later overload
-specificity, each written inner node is projected into the pack evidence class,
-so the example contributes evidence as `...a` and `...b`. This does not create
-two `NormPattern::Pack` nodes, and captured input length never adds specificity.
+It is not, however, a valid semantic structured Pack operand. Ordinary P
+normalization flattens a bare Product boundary, and Pack cannot reify that
+boundary again. The post-normalization Pattern handoff therefore rejects this
+shape. A future ordered matcher may admit an operand whose P-normal form keeps
+a stable top mode:
+
+```text
+...((a, b) pair)
+```
+
+At an unordered named level, only a whole-remainder binder/discard (including
+a transparent let-shaped wrapper) is admissible. Every Pack supplies one
+outward specificity node at its containing level. Captured width and internal
+node count never become multiple same-level EP nodes; structured evidence, when
+legal, remains below the stable operand head.
+
+DeduceLists normalize as left-to-right telescopes. Each declaration receives a
+source-scoped `HoleBinderId`; each `HoleRef` targets that ID rather than only a
+spelling. A declaration annotation sees inherited and preceding binders, not
+the declaration itself or following binders. Same-list and active-ancestor
+duplicates are retained for diagnostics but do not shadow or extend the active
+environment. `_` normalizes as an anonymous hole rather than a named reference.
 
 `normalize_program` remains available for diagnostic dumps and recovery
 inspection. The downstream build handoff is:
@@ -303,9 +320,10 @@ normalize_and_validate_patterns
 ```
 
 Only `PatternValidatedNormProgram` may enter declaration harvesting. This
-makes the one-pack-per-normalized-level rule an enforced handoff rather than
-an optional caller convention. It is the sole authority for the normalized
-level invariant: the parser constructs every syntactically formed
+makes the normalized Pattern rules an enforced handoff rather than an optional
+caller convention. It is the sole authority for pack cardinality,
+non-canonical bare-Product Pack operands, and active-telescope duplicate holes:
+the parser constructs every syntactically formed
 `BindingPatternAst::Pack` and diagnoses only local syntax such as a missing
 inner Pattern. It does not count packs or claim knowledge of normalized
 structural levels. The certificate proves only Pattern-layer invariants;
@@ -320,9 +338,10 @@ This amendment does not implement:
 name or type resolution
 closure materialization
 capture-environment layout or admissibility
+resolved automatic capture analysis
 named strategy execution
 default body generation
-pack matching execution
+stable Pattern-head discovery and general pack matching execution
 runtime spread/unpack
 ABI pack classes
 overload reopening

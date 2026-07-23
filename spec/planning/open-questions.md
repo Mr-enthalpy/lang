@@ -178,15 +178,28 @@ Resolved future-design decisions:
   `export + const`, and any written export domain containing `mut` is invalid.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
-  unpack. Specificity projects the explicit/discard nodes of a structured
-  operand into pack-class evidence, so `...(a, b)` contributes the same
-  ordering evidence as `...a` and `...b` without becoming two Pack constructors.
+  unpack. Raw `...(a, b)` is preserved but rejected after P normalization
+  because the bare Product has no stable top mode. At an ordered level,
+  explicitly headed structure such as `...((a, b) pair)` may be admissible;
+  unordered levels accept only a whole-remainder binder/discard. Every Pack
+  contributes one outward specificity node, and internal structure never
+  becomes multiple same-level EP nodes.
+- DeduceLists elaborate as left-to-right telescopes with exact
+  `HoleBinderId`-targeted references. Declarations see inherited and preceding
+  holes, not themselves or later declarations; active names cannot be
+  redeclared or shadowed. Parser/Norm recursive preservation and the identity
+  substrate are implemented, while general Pattern-directed execution remains
+  a later consumer.
 - Extraction-style result delivery uses the declared return Pattern. Explicit
   writes address its binders separately; a bare tail or targeted return matches
   one result object as `let ResultPattern = expr`.
 - In-place closures may contribute callable overload candidates. They have no
   capture list, defer unresolved outer reads to the embedding layer, gain no
-  implicit outer-write authority, and are preferred over otherwise tied
+  capture set, and may not directly write an outer place. Ordinary closures
+  have explicit source captures plus future resolved automatic-const
+  requirements; `[x]` is explicit `[let x = x]`, not automatic capture.
+  Capture requirements remain abstract dependencies rather than `self` fields
+  or layout declarations. In-place candidates are preferred over otherwise tied
   non-in-place candidates after first-order-over-instantiated preference.
 - Inferred require retains coarse complete blocks and guarded branch groups,
   conjoins with manual require, and shares one compile-evaluation graph with

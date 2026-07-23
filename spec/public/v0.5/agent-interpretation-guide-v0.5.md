@@ -95,8 +95,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   expressions. Inside an `AnnotationPattern`: a DeduceList-declared name →
   `HoleRef`; an undeclared name → `PatternName`; navigation → `PatternNav`; a
   multi-term annotation → `PatternSequence`.
-- DeduceList is a binding-site hole binder list (`HoleDecl`); its holes may appear
-  as `HoleRef` inside annotation patterns.
+- DeduceList is a left-to-right telescope of `HoleDecl { id, ... }`. Each
+  annotation sees inherited and preceding holes, not its own or following
+  declarations. Active names cannot be redeclared or shadowed. A `HoleRef`
+  targets an exact `HoleBinderId`; `_` is an anonymous hole, not a named ref.
 - Alias right-hand sides stay unresolved `EntityRef` (dump label `AliasPreserve`),
   never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to
@@ -108,16 +110,18 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   parameter-only variadic form.
 - A canonical Pattern Sequence accepts Pack as a direct child:
   `a ...x b -> Sequence[a, Pack(x), b]`. Ellipsis consumes one following
-  Pattern primary; a compound operand needs an explicit boundary such as
-  `...(x, y)`.
-- Structured Pack specificity is projected through the inner Pattern:
-  `...(a, b)` contributes two explicit pack-match evidence nodes, as if
-  `...a` and `...b` participated in the order, while remaining one
-  `NormPattern::Pack(Product[...])`. Captured remainder length never adds rank.
+  Pattern primary. Raw `...(x, y)` is preserved but rejected after P
+  normalization because the bare Product has no stable top mode. A later
+  ordered matcher may admit an explicitly headed operand such as
+  `...((x, y) pair)`; an unordered layer admits only a whole-remainder
+  binder/discard.
+- Every Pack contributes one outward specificity node at its containing level.
+  Captured width and inner-node count never add same-level EP evidence. Any
+  evidence below a stable operand head belongs to the next preserved level.
 - Run the global normalized-Pattern validator before downstream build.
-  It is the sole authority for pack cardinality across Product, Sequence,
-  annotations, local bodies, parameters, and returns. The parser preserves
-  syntactically formed Pack nodes and diagnoses only local malformed syntax.
+  It is the sole authority for pack cardinality, bare-Product Pack rejection,
+  and active-telescope hole uniqueness. The parser preserves syntactically
+  formed Pack nodes and diagnoses only local malformed syntax.
 
 Quick pattern-context lowering checklist:
 
@@ -144,6 +148,13 @@ insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 In particular, normalizing a closure literal or `.name` produces a Raw/Norm
 closure carrier, not a callable value. Only a later explicit binding or call
 consumer may materialize that carrier.
+
+Source-written captures are explicit binding requirements. `[x]` is
+`[let x = x]` with an unwritten (`const || mut`) capture policy, not automatic
+const capture. Automatic const requirements need later resolved free-reference
+analysis. Capture requirements do not define `self` fields, layout, or ABI.
+In-place closures have no capture set: they may read through embedding-layer
+lookup but may not directly write an outer place.
 
 ## 6. Common Misreadings
 

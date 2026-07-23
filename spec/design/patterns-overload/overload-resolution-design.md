@@ -416,18 +416,23 @@ EP(P, E) = explicit pack-binding nodes
 DP(P, E) = pack-discard nodes (..._)
 ```
 
-The number of remainder elements absorbed never contributes specificity. A
-simple `...a` or `..._` supplies one pack-class evidence node. A structured
-operand projects its written inner nodes into that class:
+The number of remainder elements absorbed never contributes specificity.
+Every Pack supplies exactly one outward pack-class evidence node at its
+containing structural level:
 
 ```text
-...(a, b) -> evidence as (...a, ...b)
-...(a, _) -> one EP and one DP
+...a -> one EP
+..._ -> one DP
+...Q -> one outward Pack position
 ```
 
-This is a specificity projection through one syntactic
-`Pack(Product[...])`, not a claim that the Pattern contains multiple Pack
-constructors.
+Raw `...(a, b)` cannot supply structured evidence: the bare Product has no
+stable top mode after P normalization and is rejected by the normalized
+Pattern handoff. If an ordered layer later admits an explicitly headed operand
+such as `...((a, b) pair)`, evidence for `pair` and its internal `a`/`b`
+structure belongs below the stable head at the next preserved structural
+level. It is not flattened into two same-level EP nodes. Unordered named
+levels admit only a whole-remainder binder/discard.
 
 ### 4.2 Specificity tuple
 
@@ -462,8 +467,8 @@ constructor match" problem:
    `ordinary explicit > explicit pack > ordinary discard > pack discard`.
 
 Discard `_` contributes depth because it asserts the user knows and requires
-that structure. At equal depth totals, a pack never gains specificity from the
-number of elements it absorbed.
+that structure. At equal depth totals, a Pack never gains specificity from the
+number of elements absorbed or from internal operand width at the same level.
 
 ### 4.4 Examples
 

@@ -553,7 +553,7 @@ fn raw_pack_node_wraps_the_inner_binding_pattern() {
 }
 
 #[test]
-fn structured_pack_preserves_one_pack_constructor_with_a_product_operand() {
+fn bare_product_pack_is_preserved_raw_but_rejected_after_p_normalization() {
     let output = parsed("let ...(a, b) = value;");
     let [FormAst::Let(let_ast)] = output.program.forms.as_slice() else {
         panic!("expected let declaration");
@@ -577,20 +577,182 @@ fn structured_pack_preserves_one_pack_constructor_with_a_product_operand() {
     assert!(matches!(
         &slot.value_pattern,
         NormPattern::Pack { inner, .. }
-            if matches!(
-                inner.as_ref(),
-                NormPattern::Product { elements, .. }
-                    if matches!(
-                        elements.as_slice(),
-                        [
-                            NormPatternElem::Pattern(NormPattern::Binder { name: a, .. }),
-                            NormPatternElem::Pattern(NormPattern::Binder { name: b, .. })
-                        ] if a == "a" && b == "b"
-                    )
-            )
+            if matches!(inner.as_ref(), NormPattern::Product { .. })
+    ));
+    let errors = validate_normalized_patterns(&normalized)
+        .expect_err("a bare Product cannot manufacture a stable Pack operand boundary");
+    assert!(errors.iter().any(|error| matches!(
+        error,
+        lang_syntax::PatternValidationError::NonCanonicalPackOperand { .. }
+    )));
+}
+
+#[test]
+fn explicitly_headed_structured_pack_survives_as_a_semantic_candidate() {
+    let output = parsed("let ...((a, b) pair) = value;");
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = normalized.forms.as_slice() else {
+        panic!("expected normalized let declaration");
+    };
+    assert!(matches!(
+        &slot.value_pattern,
+        NormPattern::Pack { inner, .. }
+            if matches!(inner.as_ref(), NormPattern::Sequence { .. })
     ));
     validate_normalized_patterns(&normalized)
-        .expect("...(a, b) contains one syntactic pack at its outer structural level");
+        .expect("an explicitly headed structured operand is not a bare Product");
+}
+
+#[test]
+fn nested_deduce_lists_form_a_left_to_right_telescope_with_exact_ids() {
+    let output = parsed("let <A> (let <B: A> (let <C: A, D: B> x: D)) = value;");
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot: outer, .. })] = normalized.forms.as_slice() else {
+        panic!("expected outer let");
+    };
+    let outer_a = outer.deduce[0].id;
+    let NormPattern::Product { elements, .. } = &outer.value_pattern else {
+        panic!("expected outer extraction Product");
+    };
+    let [NormPatternElem::BindingSlot(middle)] = elements.as_slice() else {
+        panic!("expected middle binding slot");
+    };
+    let middle_b = middle.deduce[0].id;
+    assert!(matches!(
+        middle.deduce[0]
+            .annotation
+            .as_ref()
+            .map(|annotation| &annotation.pattern),
+        Some(NormPattern::HoleRef { target, name, .. })
+            if *target == outer_a && name == "A"
+    ));
+
+    let NormPattern::Product { elements, .. } = &middle.value_pattern else {
+        panic!("expected middle extraction Product");
+    };
+    let [NormPatternElem::BindingSlot(inner)] = elements.as_slice() else {
+        panic!("expected inner binding slot");
+    };
+    assert_eq!(inner.deduce.len(), 2);
+    let inner_c = inner.deduce[0].id;
+    let inner_d = inner.deduce[1].id;
+    assert_ne!(outer_a, middle_b);
+    assert_ne!(middle_b, inner_c);
+    assert_ne!(inner_c, inner_d);
+    assert!(matches!(
+        inner.deduce[0]
+            .annotation
+            .as_ref()
+            .map(|annotation| &annotation.pattern),
+        Some(NormPattern::HoleRef { target, name, .. })
+            if *target == outer_a && name == "A"
+    ));
+    assert!(matches!(
+        inner.deduce[1]
+            .annotation
+            .as_ref()
+            .map(|annotation| &annotation.pattern),
+        Some(NormPattern::HoleRef { target, name, .. })
+            if *target == middle_b && name == "B"
+    ));
+    assert!(matches!(
+        inner.annotation.as_ref().map(|annotation| &annotation.pattern),
+        Some(NormPattern::HoleRef { target, name, .. })
+            if *target == inner_d && name == "D"
+    ));
+}
+
+#[test]
+fn raw_nested_canonical_roles_keep_all_active_deduce_lists() {
+    let output = parsed("let <A> (let <B> A B) = value;");
+    let [FormAst::Let(let_ast)] = output.program.forms.as_slice() else {
+        panic!("expected let");
+    };
+    let BindingPatternAst::Product(product) = &let_ast.slot.pattern else {
+        panic!("expected outer Product");
+    };
+    let [lang_syntax::ProductExtractElementAst::Slot(inner)] = product.elements.as_slice() else {
+        panic!("expected inner slot");
+    };
+    let BindingPatternAst::Skeleton(CanonicalSkeletonAst::Segment { elements, .. }) =
+        &inner.pattern
+    else {
+        panic!("expected canonical sequence");
+    };
+    assert!(matches!(
+        elements.as_slice(),
+        [
+            CanonicalSkeletonAst::Name {
+                role: lang_syntax::CanonicalNameRole::Hole,
+                ..
+            },
+            CanonicalSkeletonAst::Name {
+                role: lang_syntax::CanonicalNameRole::Hole,
+                ..
+            }
+        ]
+    ));
+}
+
+#[test]
+fn deduce_telescope_rejects_duplicates_and_does_not_resolve_forward_or_self_refs() {
+    for source in ["let <A, A> x = value;", "let <A> (let <A> x) = value;"] {
+        let output = parsed(source);
+        let invalid = normalize_and_validate_patterns(&output.program)
+            .expect_err("same-list and active-scope duplicate holes must fail");
+        assert!(invalid.pattern_errors.iter().any(|error| matches!(
+            error,
+            lang_syntax::PatternValidationError::DuplicateHole { name, .. } if name == "A"
+        )));
+    }
+
+    let output = parsed("let <A: B, B> x = value;");
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = normalized.forms.as_slice() else {
+        panic!("expected let");
+    };
+    assert!(matches!(
+        slot.deduce[0]
+            .annotation
+            .as_ref()
+            .map(|annotation| &annotation.pattern),
+        Some(NormPattern::Name { name, .. }) if name == "B"
+    ));
+
+    let output = parsed("let <A: A> x = value;");
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = normalized.forms.as_slice() else {
+        panic!("expected let");
+    };
+    assert!(matches!(
+        slot.deduce[0]
+            .annotation
+            .as_ref()
+            .map(|annotation| &annotation.pattern),
+        Some(NormPattern::Name { name, .. }) if name == "A"
+    ));
+
+    let output = parsed("let <A> (let <A: A> x) = value;");
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot: outer, .. })] = normalized.forms.as_slice() else {
+        panic!("expected outer let");
+    };
+    let outer_a = outer.deduce[0].id;
+    let NormPattern::Product { elements, .. } = &outer.value_pattern else {
+        panic!("expected outer extraction Product");
+    };
+    let [NormPatternElem::BindingSlot(inner)] = elements.as_slice() else {
+        panic!("expected inner binding slot");
+    };
+    assert_eq!(inner.deduce[0].duplicate_of, Some(outer_a));
+    assert!(matches!(
+        inner.deduce[0]
+            .annotation
+            .as_ref()
+            .map(|annotation| &annotation.pattern),
+        Some(NormPattern::HoleRef { target, name, .. })
+            if *target == outer_a && name == "A"
+    ));
 }
 
 #[test]

@@ -31,25 +31,44 @@ pub enum RestrictedParamPattern {
     PackDiscard {
         provenance: Provenance,
     },
-    StructuredPack {
-        elements: Vec<RestrictedPackElement>,
-        provenance: Provenance,
-    },
     Unsupported {
         reason: String,
         provenance: Provenance,
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RestrictedPackElement {
-    Binder {
-        name: String,
-        provenance: Provenance,
-    },
-    Discard {
-        provenance: Provenance,
-    },
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PatternLayerOrder {
+    Ordered,
+    Unordered,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PackOperandClass {
+    WholeRemainderBinder,
+    Structured { stable_top_mode: bool },
+}
+
+/// Semantic admissibility after P normalization and layer-order discovery.
+/// This does not perform name or Pattern-head resolution; its caller supplies
+/// the resulting stable-top-mode fact.
+pub fn pack_operand_is_admissible(order: PatternLayerOrder, operand: PackOperandClass) -> bool {
+    match (order, operand) {
+        (_, PackOperandClass::WholeRemainderBinder) => true,
+        (
+            PatternLayerOrder::Ordered,
+            PackOperandClass::Structured {
+                stable_top_mode: true,
+            },
+        ) => true,
+        (
+            PatternLayerOrder::Ordered,
+            PackOperandClass::Structured {
+                stable_top_mode: false,
+            },
+        )
+        | (PatternLayerOrder::Unordered, PackOperandClass::Structured { .. }) => false,
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,8 +83,8 @@ pub struct SpecificityTuple {
     pub max_depth: usize,
     pub sum_depth: usize,
     pub non_discard_explicit_node_count: usize,
-    /// Each explicit node inside a structured pack contributes one pack-class
-    /// node. The number of remainder arguments absorbed never contributes.
+    /// The outward Pack position contributes one pack-class node. Captured
+    /// width and nested operand evidence never inflate this same-level count.
     pub explicit_pack_match_count: usize,
     pub explicit_discard_count: usize,
     pub pack_discard_count: usize,
@@ -131,18 +150,15 @@ pub fn decode_param_pattern(element: &NormPatternElem) -> RestrictedParamPattern
             {
                 RestrictedParamPattern::PackDiscard { provenance }
             }
-            NormPattern::Product { elements, .. } => {
-                match decode_structured_pack_elements(elements) {
-                    Ok(elements) => RestrictedParamPattern::StructuredPack {
-                        elements,
-                        provenance,
-                    },
-                    Err(reason) => RestrictedParamPattern::Unsupported { reason, provenance },
-                }
-            }
+            NormPattern::Product { .. } => RestrictedParamPattern::Unsupported {
+                reason:
+                    "bare Product Pack operands are non-canonical after P normalization"
+                        .to_string(),
+                provenance,
+            },
             _ => RestrictedParamPattern::Unsupported {
                 reason:
-                    "restricted pack pattern must bind, discard, or structurally match the remaining product"
+                    "restricted pack matching currently supports only whole-remainder binders and discards"
                         .to_string(),
                 provenance,
             },
@@ -187,68 +203,6 @@ pub fn decode_param_pattern(element: &NormPatternElem) -> RestrictedParamPattern
             provenance: Provenance::from_norm_origin("parameter pattern", pattern_origin(other)),
         },
     }
-}
-
-fn decode_structured_pack_elements(
-    elements: &[NormPatternElem],
-) -> Result<Vec<RestrictedPackElement>, String> {
-    elements
-        .iter()
-        .map(|element| {
-            let pattern = match element {
-                NormPatternElem::Pattern(pattern) => pattern,
-                NormPatternElem::BindingSlot(slot)
-                    if slot.policy.is_none()
-                        && slot.deduce.is_empty()
-                        && slot.annotation.is_none()
-                        && slot.with_clause.is_none()
-                        && slot.initializer.is_none() =>
-                {
-                    &slot.value_pattern
-                }
-                NormPatternElem::BindingSlot(_) => {
-                    return Err(
-                        "restricted structured pack elements do not yet support policy, annotation, deduce, with, or initializer clauses"
-                            .to_string(),
-                    );
-                }
-                NormPatternElem::Unit { .. } => {
-                    return Err(
-                        "restricted structured pack matching does not yet support unit elements"
-                            .to_string(),
-                    );
-                }
-            };
-            match pattern {
-                NormPattern::Binder { name, origin } if name != "_" => {
-                    Ok(RestrictedPackElement::Binder {
-                        name: name.clone(),
-                        provenance: Provenance::from_norm_origin(
-                            "structured pack binder",
-                            origin,
-                        ),
-                    })
-                }
-                NormPattern::Binder { origin, .. } => Ok(RestrictedPackElement::Discard {
-                    provenance: Provenance::from_norm_origin("structured pack discard", origin),
-                }),
-                NormPattern::Skeleton { skeleton, origin }
-                    if matches!(skeleton, NormSkeleton::Wildcard { .. }) =>
-                {
-                    Ok(RestrictedPackElement::Discard {
-                        provenance: Provenance::from_norm_origin(
-                            "structured pack discard",
-                            origin,
-                        ),
-                    })
-                }
-                other => Err(format!(
-                    "restricted structured pack element is not yet supported: {:?}",
-                    pattern_origin(other)
-                )),
-            }
-        })
-        .collect()
 }
 
 fn finish_restricted_named_discard(
@@ -306,6 +260,7 @@ fn collect_restricted_pattern(
         | NormPattern::OperatorBinder { .. }
         | NormPattern::Pack { .. }
         | NormPattern::Unit { .. }
+        | NormPattern::AnonymousHole { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
         | NormPattern::BindingSlot { .. }
@@ -373,12 +328,12 @@ pub fn match_param_pattern(
                 },
             })
         }
-        RestrictedParamPattern::PackBinder { .. }
-        | RestrictedParamPattern::PackDiscard { .. }
-        | RestrictedParamPattern::StructuredPack { .. } => Err(Diagnostic::hard_error(
-            "pack parameter matching requires the remaining argument slice",
-            Some(arg.provenance.clone()),
-        )),
+        RestrictedParamPattern::PackBinder { .. } | RestrictedParamPattern::PackDiscard { .. } => {
+            Err(Diagnostic::hard_error(
+                "pack parameter matching requires the remaining argument slice",
+                Some(arg.provenance.clone()),
+            ))
+        }
         RestrictedParamPattern::Unsupported { reason, provenance } => Err(Diagnostic::hard_error(
             format!("unsupported parameter extraction pattern: {reason}"),
             Some(provenance.clone()),
@@ -415,42 +370,6 @@ pub fn match_pack_param_pattern(
                 ..SpecificityTuple::default()
             },
         }),
-        RestrictedParamPattern::StructuredPack {
-            elements,
-            provenance,
-        } => {
-            if args.len() != elements.len() {
-                return Err(Diagnostic::hard_error(
-                    format!(
-                        "structured pack applicability failed: expected {} remainder elements, got {}",
-                        elements.len(),
-                        args.len()
-                    ),
-                    Some(provenance.clone()),
-                ));
-            }
-
-            let mut bindings = BTreeMap::new();
-            let mut specificity = SpecificityTuple::default();
-            for (element, arg) in elements.iter().zip(args) {
-                match element {
-                    RestrictedPackElement::Binder { name, .. } => {
-                        bindings.insert(name.clone(), arg.clone());
-                        specificity.explicit_pack_match_count += 1;
-                    }
-                    RestrictedPackElement::Discard { .. } => {
-                        specificity.pack_discard_count += 1;
-                    }
-                }
-                specificity.max_depth = 1;
-                specificity.sum_depth += 1;
-            }
-            Ok(PatternMatchOutcome {
-                bindings,
-                pack_bindings: BTreeMap::new(),
-                specificity,
-            })
-        }
         RestrictedParamPattern::Binder { provenance, .. }
         | RestrictedParamPattern::NamedDiscard { provenance, .. }
         | RestrictedParamPattern::Unsupported { provenance, .. } => Err(Diagnostic::hard_error(
@@ -499,6 +418,7 @@ fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
         | NormPattern::Pack { origin, .. }
         | NormPattern::Unit { origin }
         | NormPattern::HoleRef { origin, .. }
+        | NormPattern::AnonymousHole { origin }
         | NormPattern::Name { origin, .. }
         | NormPattern::Literal { origin, .. }
         | NormPattern::Nav { origin, .. }

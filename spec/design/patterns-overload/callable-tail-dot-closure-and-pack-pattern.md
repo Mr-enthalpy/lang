@@ -306,6 +306,118 @@ The outer shorthand elaborates to:
 
 Each initializer's `cap` denotes its own pre-capture enclosing binding.
 
+### 2.3 Explicit capture is not automatic capture
+
+Every source capture item is explicit, including shorthand whose binder is
+inferred:
+
+```text
+[let x = E]  -> Explicit
+[x = E]      -> Explicit
+[E]          -> ExplicitInferredBinder, if shorthand inference succeeds
+```
+
+In particular `[x]` elaborates to the explicit empty-policy binding
+`[let x = x]`. Its empty capture-policy domain remains `const || mut`; it is
+not the implicit-const rule described below.
+
+For an ordinary non-in-place closure whose body contains an unresolved free
+outer value reference and no explicit capture binding replaces that reference,
+the resolved layer later forms:
+
+```text
+AutoCapture(C, s)
+  = capture local binder s from source symbol s
+    with requested policy const
+    and origin ImplicitConst
+```
+
+This automatic capture cannot run in Raw-to-Norm normalization. It requires
+name resolution, closure-local binder exclusion, value-facet selection, and
+const policy projection. A resolved/HIR handoff therefore distinguishes:
+
+```text
+CaptureOrigin
+  = Explicit
+  | ExplicitInferredBinder
+  | ImplicitConst
+```
+
+Outer writes require an explicit capture whose selected source view contains
+`mut`. Automatic capture never grants `mut`.
+
+### 2.4 Capture is an abstract dependency
+
+A resolved capture records a dependency, not object layout:
+
+```text
+ResolvedCaptureRequirement {
+  local_binder: BinderId,
+  source: ResolvedValueRef,
+  requested_policy: PolicySlice,
+  origin: Explicit | ExplicitInferredBinder | ImplicitConst
+}
+```
+
+It does not state that the dependency is a `self` field, a copied value, a
+reference, a receiver mode, or an ABI slot. Representation selection may later
+choose an environment field, checked reference, stack environment, static
+symbol link, constant embedding, or zero-layout dependency edge.
+
+For example an exported closure that explicitly depends on an internal
+namespace symbol is written:
+
+```lang
+mut let internal_state = ...;
+
+export let exported_fn =
+    [internal_state]() => {
+        use internal_state;
+    };
+```
+
+The capture requirement may lower to an internal static link rather than an
+object field. It does not export `internal_state` or make it externally
+navigable:
+
+```text
+Export(function) does not imply Export(capture dependencies)
+```
+
+Before materialization, every resolved requirement must lower to a
+lifetime-checkable form naming the source place, requested access view,
+origin/region relation, and storage-or-link category. This is a handoff
+obligation only; copy/move/borrow defaults, region construction, escape rules,
+and ABI remain unfrozen.
+
+### 2.5 DeduceList is an identity-bearing telescope
+
+The let-shaped slots reused by captures, parameters, returns, and nested
+extraction may each carry a DeduceList. Recursive preservation alone is not a
+scope rule. Normalized DeduceLists therefore elaborate as left-to-right
+telescopes:
+
+```text
+Gamma0 = inherited active holes
+Ti is normalized in Gamma(i-1)
+Ai receives HoleBinderId i
+Gamma_i = Gamma(i-1) extended with Ai
+```
+
+Consequently:
+
+```lang
+<A, B: A>   // B.annotation targets A_id
+<A: B, B>   // A.annotation does not target later B_id
+<A: A>      // no self-reference unless an ancestor A was already active
+```
+
+Same-list duplicate names and redeclaration of an active ancestor name are
+errors. A duplicate declaration is retained for diagnostics but does not
+shadow or extend the environment. Each normalized reference carries its exact
+`HoleBinderId`; spelling is retained only for dumps and diagnostics. The
+anonymous `_` placeholder has no named binder identity.
+
 ## 3. `.name` is a first-class field-function closure
 
 The semantic atom is the leading-dot expression itself:
@@ -424,29 +536,56 @@ Therefore:
 a ...x b   -> NormPattern::Sequence[a, Pack(x), b]
 ```
 
-It does not become `Pack(Sequence[x, b])`. A compound operand requires an
-explicit primary boundary such as `...(x, y)`. Canonical sequence Pack nodes
-live in `NormPattern`; they are never hidden inside `NormSkeleton`.
+It does not become `Pack(Sequence[x, b])`. The parser preserves any following
+Pattern primary, including a parenthesized Product, but parser acceptance does
+not prove that the operand survives P normalization. Canonical sequence Pack
+nodes live in `NormPattern`; they are never hidden inside `NormSkeleton`.
 
 ### 4.2 Ordered and unordered levels
 
-At an order-insensitive named level, ordinary siblings match their names first
-and the Pack receives the unmatched siblings. At an order-sensitive level, the
-Pack receives the ordinary prefix/suffix remainder. Its inner Pattern then
-matches that remainder as normal structure.
-
-In particular:
+At an order-insensitive named level, ordinary siblings match their distinct
+top modes first and the Pack receives the unmatched siblings. Those remaining
+siblings do not share a new common top mode. Consequently only a whole
+remainder binder/discard, including a transparent let-shaped wrapper, is
+admissible:
 
 ```text
-...(a, b)
-  -> Pack(Product[Binder(a), Binder(b)])
+Order(L) = Unordered
+  => AdmissiblePackOperand(L, Q)
+     iff Q is WholeRemainderBinder
 ```
 
-This is one Pack constructor with a structured operand. The product constrains
-the captured remainder to the structure expected by `a` and `b`. Pack-operand
-context is propagated through this Product so these names retain the same
-binding meaning as direct `...a` and `...b`; it is not an opaque binding of the
-entire remainder to one symbol.
+At an order-sensitive level the Pack receives a contiguous interval. A
+structured operand is meaningful only when its P-normal form retains a stable
+top mode:
+
+```text
+Order(L) = Ordered
+  => AdmissiblePackOperand(L, Q)
+     iff Q is WholeRemainderBinder
+      or StableTopMode(N_P(Q))
+```
+
+Thus a legal structured spelling supplies a non-flattened top mode:
+
+```lang
+...((a, b) pair)
+```
+
+Here `pair` is the stable top mode and `(a, b)` is its next-level internal
+structure.
+
+The bare spelling:
+
+```lang
+...(a, b)
+```
+
+has no stable top mode. The parser preserves its Raw shape, but P normalization
+cannot let `Pack` reify the Product boundary that ordinary Product
+normalization removes. The normalized Pattern-validation handoff therefore
+rejects it as non-canonical. This is not a restricted-evaluator implementation
+gap.
 
 ### 4.3 One pack per normalized level
 
@@ -505,20 +644,20 @@ Thus an ordinary explicit node is more specific than an explicit pack;
 `...args` is more specific than `..._`; and input length never manufactures
 additional pack specificity.
 
-An unstructured `...args` or `..._` has one inner evidence node. A structured
-operand projects each of its explicit/discard nodes into the corresponding
-pack class:
+Every Pack contributes exactly one outward node at its containing structural
+level:
 
 ```text
-...(a, b) -> specificity evidence equivalent to (...a, ...b)
-...(a, _) -> one EP plus one DP
+...rest -> one EP
+..._    -> one DP
+...Q    -> one outward Pack position
 ```
 
-The first line means two explicit pack-match evidence nodes for the partial
-order. It does not mean the syntax or AST contains two Pack constructors:
-the AST remains `Pack(Product[a, b])`. Nor does either `a` or `b` gain evidence
-from how many runtime elements the outer remainder happened to contain.
-Nested/other structured operands extend by the same node-wise projection.
+For legal `...((a, b) pair)`, evidence for `pair` and its internal `a`/`b`
+structure belongs to the operand's preserved next structural level. It is not
+flattened sideways into two EP nodes at the containing level. Captured width,
+runtime remainder length, and internal node count never manufacture
+same-level Pack specificity.
 
 This tuple is only the Pattern-specificity preference dimension. It is not a
 global score across stage, mutability, result policy, or named strategies.
@@ -558,8 +697,15 @@ Implemented substrate:
   does not claim recovery-free syntax;
 - `AtomKind::Error` recovery for malformed callable tails, never an executable
   empty user body;
-- restricted variadic applicability, remainder binding, direct structured
-  product Pack matching, and pack node-class specificity evidence;
+- restricted whole-remainder binder/discard applicability and one-node Pack
+  specificity evidence;
+- normalized validation that rejects a bare Product Pack operand while
+  retaining explicitly headed structured operands for later semantic checking;
+- typed ordered/unordered operand-admissibility substrate, with stable-top-mode
+  discovery left to Pattern-head resolution;
+- left-to-right DeduceList telescope normalization, exact source-scoped
+  `HoleBinderId` references, and duplicate-without-shadow validation across
+  nested let-shaped slots;
 - named strategy metadata carried by selected restricted candidates only after
   applicability.
 
@@ -569,9 +715,36 @@ Not yet general implementation:
 - resolving the compatibility `String` strategy carrier to stable `Symbol`
   identity (the normative carrier above is `Named(Symbol)`);
 - compiler generation rules for every `Defaulted` callable kind;
-- complete ordered/unordered Pattern matching over all future Pattern forms;
+- stable-top-mode resolution and complete ordered/unordered Pattern matching
+  over all future Pattern forms;
+- execution of explicitly headed structured Pack operands;
+- resolved automatic-const capture discovery, capture lifetime checking, and
+  representation/layout selection;
 - full runtime overload resolution using these nodes.
 
 The restricted evaluator diagnoses selected `Defaulted` bodies it cannot yet
 materialize. It never treats that implementation gap as extra priority or as a
 second overload pass.
+
+The current consumer boundary is intentionally narrower than the recursive
+frontend carrier:
+
+```text
+Parser / Raw AST
+  recursive BindingSlot, Product, Sequence, DeduceList, Pack shape
+
+Normalized AST
+  recursive structure, telescope identity, Pattern validation
+
+Build declaration harvest
+  simple Binder / OperatorBinder only
+
+Restricted overload
+  simple ordinary patterns and whole-remainder Binder/Discard Pack only
+
+Return substrate
+  full NormBindingSlot retained; target-name extraction remains shallow
+
+General Pattern-directed execution
+  not implemented
+```

@@ -1,6 +1,6 @@
 use lang_build::{
-    decode_param_pattern, match_pack_param_pattern, OverloadArgShape, RestrictedParamPattern,
-    SpecificityTuple,
+    decode_param_pattern, match_pack_param_pattern, pack_operand_is_admissible, OverloadArgShape,
+    PackOperandClass, PatternLayerOrder, RestrictedParamPattern, SpecificityTuple,
 };
 use lang_syntax::{
     normalize_program, validate_pack_pattern_element_level, NormBindingSlot, NormDecl, NormExpr,
@@ -28,24 +28,6 @@ fn pack(name: &str) -> NormPatternElem {
     slot(NormPattern::Pack {
         inner: Box::new(NormPattern::Binder {
             name: name.to_string(),
-            origin: origin(),
-        }),
-        origin: origin(),
-    })
-}
-
-fn structured_pack(patterns: &[&str]) -> NormPatternElem {
-    slot(NormPattern::Pack {
-        inner: Box::new(NormPattern::Product {
-            elements: patterns
-                .iter()
-                .map(|name| {
-                    slot(NormPattern::Binder {
-                        name: (*name).to_string(),
-                        origin: origin(),
-                    })
-                })
-                .collect(),
             origin: origin(),
         }),
         origin: origin(),
@@ -133,38 +115,52 @@ fn pack_binding_captures_the_remainder_without_counting_its_length() {
 }
 
 #[test]
-fn structured_pack_projects_each_inner_node_into_pack_specificity_evidence() {
+fn bare_product_pack_is_not_a_restricted_structured_match() {
     let source = source_parameter("let f = (self, ...(a, b)) -> r => { r };");
     let pattern = decode_param_pattern(&source);
-    let RestrictedParamPattern::StructuredPack { elements, .. } = &pattern else {
-        panic!("expected a structured pack, got {pattern:#?}");
-    };
-    assert_eq!(elements.len(), 2);
+    assert!(matches!(
+        pattern,
+        RestrictedParamPattern::Unsupported { ref reason, .. }
+            if reason.contains("non-canonical")
+    ));
 
-    let matched = match_pack_param_pattern(&pattern, &[arg(0), arg(1)])
-        .expect("...(a, b) matches a two-element remainder product");
-    assert_eq!(
-        matched.bindings["a"].top_pattern_name.as_deref(),
-        Some("arg0")
-    );
-    assert_eq!(
-        matched.bindings["b"].top_pattern_name.as_deref(),
-        Some("arg1")
-    );
-    assert_eq!(
-        matched.specificity.explicit_pack_match_count, 2,
-        "specificity sees ...a and ...b evidence, not one opaque pack score"
-    );
-    assert_eq!(matched.specificity.pack_discard_count, 0);
-    assert!(
-        match_pack_param_pattern(&pattern, &[arg(0)]).is_err(),
-        "the inner product still constrains the captured remainder shape"
-    );
+    let parsed = lang_syntax::parse("let f = (self, ...(a, b)) -> r => { r };");
+    let invalid = lang_syntax::normalize_and_validate_patterns(&parsed.program)
+        .expect_err("bare Product Pack operand must fail normalized Pattern validation");
+    assert!(invalid.pattern_errors.iter().any(|error| matches!(
+        error,
+        lang_syntax::PatternValidationError::NonCanonicalPackOperand { .. }
+    )));
+}
 
-    let with_discard = decode_param_pattern(&structured_pack(&["a", "_"]));
-    let matched = match_pack_param_pattern(&with_discard, &[arg(0), arg(1)]).unwrap();
-    assert_eq!(matched.specificity.explicit_pack_match_count, 1);
-    assert_eq!(matched.specificity.pack_discard_count, 1);
+#[test]
+fn pack_operand_admissibility_depends_on_layer_order_and_stable_top_mode() {
+    assert!(pack_operand_is_admissible(
+        PatternLayerOrder::Ordered,
+        PackOperandClass::WholeRemainderBinder,
+    ));
+    assert!(pack_operand_is_admissible(
+        PatternLayerOrder::Unordered,
+        PackOperandClass::WholeRemainderBinder,
+    ));
+    assert!(pack_operand_is_admissible(
+        PatternLayerOrder::Ordered,
+        PackOperandClass::Structured {
+            stable_top_mode: true,
+        },
+    ));
+    assert!(!pack_operand_is_admissible(
+        PatternLayerOrder::Ordered,
+        PackOperandClass::Structured {
+            stable_top_mode: false,
+        },
+    ));
+    assert!(!pack_operand_is_admissible(
+        PatternLayerOrder::Unordered,
+        PackOperandClass::Structured {
+            stable_top_mode: true,
+        },
+    ));
 }
 
 #[test]

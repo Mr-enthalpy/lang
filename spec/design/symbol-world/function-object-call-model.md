@@ -178,9 +178,13 @@ ordinary externally navigable `MetaInstanceScope`.
 
 ## 7. ZST function objects
 
-A function object with no captures is normally zero-sized. ZST values are not move-killed, so a zero-sized function object can naturally be called multiple times. Reusability follows from the general ZST movement rule.
+A function object with no stored environment is normally zero-sized. ZST values
+are not move-killed, so a zero-sized function object can naturally be called
+multiple times. Reusability follows from the general ZST movement rule.
 
-If a function object captures state, it may be non-ZST and follows ordinary value-passing and ownership rules.
+A capture requirement does not by itself imply a stored field or non-ZST
+layout. If representation selection chooses stored state, the resulting object
+may be non-ZST and follows ordinary value-passing and ownership rules.
 
 ### 7.1 Function-object mutability default
 
@@ -192,7 +196,59 @@ namespace-declaration spelling `export let fn = ...` is the sole contextual
 default exception: it elaborates to `export + const`, because `export` and
 `mut` cannot coexist.
 
-### 7.2 In-place closures are embedded callable candidates
+### 7.2 Ordinary closure capture requirements
+
+Ordinary closures combine source-explicit capture bindings with resolved-stage
+automatic const capture:
+
+```text
+source [let x = E] / [x = E] -> Explicit capture
+source [E] shorthand          -> ExplicitInferredBinder capture
+unreplaced resolved free ref  -> ImplicitConst capture
+```
+
+`[x]` is the explicit shorthand `[let x = x]`. Because its capture policy is
+unwritten, its mutability domain is the neutral `const || mut`; it is not
+automatic const capture. A write to an outer source requires an explicit
+capture projected to a `mut` view. Automatic capture never grants mutability.
+
+Resolved capture analysis produces abstract dependencies:
+
+```text
+ResolvedCaptureRequirement {
+  local_binder,
+  source,
+  requested_policy,
+  origin
+}
+```
+
+This object is not a `self` field list and does not determine receiver mode,
+copy/reference representation, field ordering, ZST status, or ABI layout.
+Static symbol links, constant embedding, zero-layout dependencies, stack
+environments, and stored checked references are possible later lowerings.
+
+For example:
+
+```lang
+mut let internal_state = ...;
+
+export let exported_fn =
+    [internal_state]() => {
+        use internal_state;
+    };
+```
+
+The explicit dependency may lower to an internal static link. It neither
+exports `internal_state` nor requires an address field in every
+`exported_fn` object.
+
+Before materialization, each requirement must lower to a lifetime-checkable
+form naming its source place, requested access view, origin/region relation,
+and storage-or-link category. This is only a handoff obligation; copy/move/
+borrow defaults, region construction, escape rules, and ABI remain unfrozen.
+
+### 7.3 In-place closures are embedded callable candidates
 
 An in-place closure is distinguished by
 `NormClosure.placement = NormClosurePlacement::InPlace`. Generated provenance
@@ -228,14 +284,21 @@ macro substitution: local declarations still shadow normally, symbol identity
 is used after resolution, and each use is checked in its own embedding
 environment.
 
-The implicit read ability does not grant arbitrary writes to outer places.
-Writing still requires ordinary place/mutability authority; because an
-in-place closure cannot spell a capture list, it cannot manufacture captured
-write authority. The future closure materializer and resolver own these
-checks. The Normalized AST only preserves `InPlace` and, for ordinary closures,
-elaborates the v0.5-A let-shaped capture syntax. Its free non-call-name
-inference is shape-directed; it performs no lookup, capture-environment layout,
-or capture admissibility analysis.
+An in-place closure may not write any symbol/place outside its closure-local
+scope:
+
+```text
+WriteSet(C) intersect OuterSymbols(C) = empty
+```
+
+It may still mutate its own locals, call effectful functions, and use ordinary
+capabilities. The prohibition is specifically direct outer-place mutation.
+Because an in-place closure has neither a capture list nor an automatic capture
+set, there is no syntax or materialization step that can grant an exception.
+The resolved embedding check owns this rule. The Normalized AST only preserves
+`InPlace` and, for ordinary closures, elaborates the v0.5-A let-shaped capture
+syntax. Its free non-call-name inference is shape-directed; it performs no
+lookup, capture-environment layout, or capture admissibility analysis.
 
 ## 8. Call lookup pipeline
 
@@ -309,9 +372,12 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
   `mut`.
 - Written formal parameters inherit P2 exactly outside the optional const/mut
   Pattern axis.
-- In-place closures may be overload candidates, have no capture clause, defer
-  unresolved outer reads to their embedding layer, and gain no implicit outer
-  write authority.
+- Ordinary closures distinguish explicit, explicit-inferred-binder, and
+  implicit-const capture requirements; those requirements do not define
+  `self` fields or physical layout.
+- In-place closures may be overload candidates, have no capture clause or
+  automatic capture set, defer unresolved outer reads to their embedding
+  layer, and are forbidden from writing outer symbols/places.
 - Ordinary and built-in privileged meta functions follow the same
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal

@@ -283,17 +283,20 @@ It binds only the immediately following primary:
 
 ```text
 a ...x b     -> Sequence[a, Pack(x), b]
-...(x, y)    -> Pack(Product[Binder(x), Binder(y)])
+...(x, y)    -> Raw Pack(Product[x, y])
 ```
 
 Canonical sequences with Pack normalize to `NormPattern::Sequence`; Pack is
-never hidden in `NormSkeleton`. Pack-operand binding context propagates through
-the compound Product.
+never hidden in `NormSkeleton`.
 
-`...(x, y)` has one Pack constructor and a structured Product operand. Later
-specificity projects the two written inner nodes as `...x` and `...y`
-pack-class evidence; it does not count captured remainder length and does not
-rewrite the AST into two Pack constructors.
+Raw preservation does not make `...(x, y)` a valid structured match. A bare
+Product has no stable top mode after P normalization, so the normalized
+Pattern validator rejects it. An explicitly headed candidate such as
+`...((x, y) pair)` may survive structurally for later ordered matching. At an
+unordered layer, only a whole-remainder binder/discard is admissible. Every
+Pack contributes one outward specificity node at the containing level;
+captured length and internal nodes do not become additional same-level Pack
+evidence.
 
 Each normalized structural level contains at most one direct pack. Product and
 Sequence levels apply the same rule, and nested levels validate independently.
@@ -360,12 +363,43 @@ expression-carried closure bodies
 ```
 
 Only `PatternValidatedNormProgram` may be harvested into the build world. Its
-proof scope is exactly the normalized Pattern-layer invariants above. It does
-not prove that the parser emitted no diagnostics or that the program contains
-no recovered `NormExpr::Error`; consumers that require those properties need
-a distinct certificate.
+current proof scope is exactly:
 
-## 9. Diagnostics
+```text
+one Pack per normalized Product/Sequence level
+no bare Product Pack operand
+no duplicate DeduceList hole in an active telescope
+```
+
+It does not prove ordered/unordered Pack applicability, stable Pattern-head
+identity, complete matching support, that the parser emitted no diagnostics,
+or that the program contains no recovered `NormExpr::Error`; consumers that
+require those properties need distinct resolved-stage checks or certificates.
+
+## 9. Deduce telescope and capture dependency boundary
+
+Normalized DeduceLists are left-to-right telescopes:
+
+```text
+Ti in <A1:T1, ..., Ai:Ti> sees inherited holes and A1..A(i-1)
+Ai is not visible in Ti
+later binders are not visible in Ti
+active hole names cannot be redeclared or shadowed
+```
+
+Every declaration carries a source-scoped `HoleBinderId`, and every named
+`HoleRef` targets one exact ID. The display spelling is diagnostic data, not
+semantic identity. `_` is an anonymous hole and targets no declaration.
+
+Normalized source capture items are explicit let-shaped bindings. `[x]` is
+explicit shorthand for `[let x = x]` with an unwritten policy domain; it is not
+automatic const capture. Future resolved free-reference analysis may create
+separate `ImplicitConst` capture requirements. Such requirements are abstract
+dependencies, not `self` fields or layout decisions. In-place closures create
+no capture set, may resolve outer reads at the embedding layer, and may not
+directly write an outer place.
+
+## 10. Diagnostics
 
 The amended implementation has 33 `DiagnosticCode` variants. The v0.2 frozen
 diagnostic inventory remains 32 because it is a historical snapshot.
@@ -382,7 +416,7 @@ emit it or independently count packs. Every diagnostic retains a span.
 Recovery remains error tolerant, but no recovery path may replace invalid
 callable syntax with a valid executable body.
 
-## 10. Non-goals
+## 11. Non-goals
 
 This contract does not define:
 

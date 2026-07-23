@@ -9,15 +9,15 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
-    BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
-    CanonicalProductElementAst, CanonicalSkeletonAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
-    ClosurePlacementAst, DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst,
-    FormAst, HeadClauseAst, LetAliasAst, LetAst, NavComponentAst, OperatorExprAst,
-    OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
-    PolicyChoiceAst, PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst,
-    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst,
-    SegmentElementAst, SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
+    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
+    BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole, CanonicalProductElementAst,
+    CanonicalSkeletonAst, CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst,
+    DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
+    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
+    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
+    ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
+    SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -50,7 +50,7 @@ impl PatternValidatedNormProgram {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternInvalidNormProgram {
     pub program: NormProgram,
-    pub pattern_errors: Vec<PackPatternLayerError>,
+    pub pattern_errors: Vec<PatternValidationError>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -162,7 +162,11 @@ pub enum NormPattern {
         origin: NormOrigin,
     },
     HoleRef {
+        target: HoleBinderId,
         name: String,
+        origin: NormOrigin,
+    },
+    AnonymousHole {
         origin: NormOrigin,
     },
     Name {
@@ -208,6 +212,29 @@ pub enum NormPatternElem {
 pub struct PackPatternLayerError {
     pub pack_count: usize,
     pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PatternValidationError {
+    MultiplePacks(PackPatternLayerError),
+    NonCanonicalPackOperand {
+        origin: NormOrigin,
+    },
+    DuplicateHole {
+        name: String,
+        first: HoleBinderId,
+        duplicate: HoleBinderId,
+        origin: NormOrigin,
+    },
+}
+
+impl PatternValidationError {
+    pub fn origin(&self) -> &NormOrigin {
+        match self {
+            Self::MultiplePacks(error) => &error.origin,
+            Self::NonCanonicalPackOperand { origin } | Self::DuplicateHole { origin, .. } => origin,
+        }
+    }
 }
 
 /// Validate the semantic, post-normalization rule that one structural level
@@ -267,6 +294,7 @@ pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPat
         | NormPattern::OperatorBinder { .. }
         | NormPattern::Unit { .. }
         | NormPattern::HoleRef { .. }
+        | NormPattern::AnonymousHole { .. }
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
@@ -299,13 +327,16 @@ pub fn validate_pack_pattern_element_level(
     Ok(())
 }
 
-/// Run the one-pack-per-normalized-level invariant over every Pattern-bearing
-/// location in a normalized program. This is the common post-normalization
-/// validation pass for declarations, local bodies, callable heads, returns,
-/// annotations, and nested expression-carried closures.
+/// Run the current global normalized Pattern invariants over every
+/// Pattern-bearing location in a normalized program.
+///
+/// This pass owns pack cardinality, rejection of a bare Product Pack operand,
+/// and uniqueness of DeduceList hole names across the active telescope. It
+/// does not prove resolved ordered/unordered Pack applicability, stable
+/// Pattern-head identity, general matching support, or recovery freedom.
 pub fn validate_normalized_patterns(
     program: &NormProgram,
-) -> Result<(), Vec<PackPatternLayerError>> {
+) -> Result<(), Vec<PatternValidationError>> {
     let mut errors = Vec::new();
     collect_program_pack_errors(program, &mut errors);
     if errors.is_empty() {
@@ -315,7 +346,7 @@ pub fn validate_normalized_patterns(
     }
 }
 
-fn collect_program_pack_errors(program: &NormProgram, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_program_pack_errors(program: &NormProgram, errors: &mut Vec<PatternValidationError>) {
     for form in &program.forms {
         match form {
             NormForm::Let(decl) | NormForm::Alias(decl) => {
@@ -335,7 +366,7 @@ fn collect_program_pack_errors(program: &NormProgram, errors: &mut Vec<PackPatte
     }
 }
 
-fn collect_decl_pack_errors(decl: &NormDecl, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_decl_pack_errors(decl: &NormDecl, errors: &mut Vec<PatternValidationError>) {
     match decl {
         NormDecl::Let { slot, .. } => collect_slot_pack_errors(slot, errors),
         NormDecl::Alias { target, .. } => {
@@ -345,8 +376,16 @@ fn collect_decl_pack_errors(decl: &NormDecl, errors: &mut Vec<PackPatternLayerEr
     }
 }
 
-fn collect_slot_pack_errors(slot: &NormBindingSlot, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_slot_pack_errors(slot: &NormBindingSlot, errors: &mut Vec<PatternValidationError>) {
     for hole in &slot.deduce {
+        if let Some(first) = hole.duplicate_of {
+            errors.push(PatternValidationError::DuplicateHole {
+                name: hole.name.clone(),
+                first,
+                duplicate: hole.id,
+                origin: hole.origin.clone(),
+            });
+        }
         if let Some(annotation) = &hole.annotation {
             collect_pattern_pack_errors(&annotation.pattern, errors);
         }
@@ -360,7 +399,7 @@ fn collect_slot_pack_errors(slot: &NormBindingSlot, errors: &mut Vec<PackPattern
     }
 }
 
-fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PatternValidationError>) {
     match pattern {
         NormPattern::Product { elements, .. } => {
             collect_pattern_element_level_error(elements, errors);
@@ -384,8 +423,15 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PackPatte
         }
         NormPattern::Pack { inner, origin } => {
             if direct_pack_pattern_origin(inner).is_some() {
-                errors.push(PackPatternLayerError {
-                    pack_count: 2,
+                errors.push(PatternValidationError::MultiplePacks(
+                    PackPatternLayerError {
+                        pack_count: 2,
+                        origin: origin.clone(),
+                    },
+                ));
+            }
+            if matches!(inner.as_ref(), NormPattern::Product { .. }) {
+                errors.push(PatternValidationError::NonCanonicalPackOperand {
                     origin: origin.clone(),
                 });
             }
@@ -402,6 +448,7 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PackPatte
         | NormPattern::OperatorBinder { .. }
         | NormPattern::Unit { .. }
         | NormPattern::HoleRef { .. }
+        | NormPattern::AnonymousHole { .. }
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Error(_)
@@ -411,30 +458,34 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PackPatte
 
 fn collect_pattern_element_level_error(
     elements: &[NormPatternElem],
-    errors: &mut Vec<PackPatternLayerError>,
+    errors: &mut Vec<PatternValidationError>,
 ) {
     let packs = elements
         .iter()
         .filter_map(direct_pack_element_origin)
         .collect::<Vec<_>>();
     if packs.len() > 1 {
-        errors.push(PackPatternLayerError {
-            pack_count: packs.len(),
-            origin: (*packs[1]).clone(),
-        });
+        errors.push(PatternValidationError::MultiplePacks(
+            PackPatternLayerError {
+                pack_count: packs.len(),
+                origin: (*packs[1]).clone(),
+            },
+        ));
     }
 }
 
-fn collect_pattern_level_error(elements: &[NormPattern], errors: &mut Vec<PackPatternLayerError>) {
+fn collect_pattern_level_error(elements: &[NormPattern], errors: &mut Vec<PatternValidationError>) {
     let packs = elements
         .iter()
         .filter_map(direct_pack_pattern_origin)
         .collect::<Vec<_>>();
     if packs.len() > 1 {
-        errors.push(PackPatternLayerError {
-            pack_count: packs.len(),
-            origin: (*packs[1]).clone(),
-        });
+        errors.push(PatternValidationError::MultiplePacks(
+            PackPatternLayerError {
+                pack_count: packs.len(),
+                origin: (*packs[1]).clone(),
+            },
+        ));
     }
 }
 
@@ -454,7 +505,7 @@ fn direct_pack_pattern_origin(pattern: &NormPattern) -> Option<&NormOrigin> {
     }
 }
 
-fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PatternValidationError>) {
     match expr {
         NormExpr::Call { source, target, .. } => {
             for element in &source.elements {
@@ -483,7 +534,19 @@ fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PackPatternLayerEr
     }
 }
 
-fn collect_closure_pack_errors(closure: &NormClosure, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_closure_pack_errors(closure: &NormClosure, errors: &mut Vec<PatternValidationError>) {
+    if let Some(head) = &closure.head {
+        for hole in &head.deduce {
+            if let Some(first) = hole.duplicate_of {
+                errors.push(PatternValidationError::DuplicateHole {
+                    name: hole.name.clone(),
+                    first,
+                    duplicate: hole.id,
+                    origin: hole.origin.clone(),
+                });
+            }
+        }
+    }
     if let Some(head) = &closure.head {
         for hole in &head.deduce {
             if let Some(annotation) = &hole.annotation {
@@ -528,7 +591,7 @@ fn collect_closure_pack_errors(closure: &NormClosure, errors: &mut Vec<PackPatte
 
 fn collect_nav_component_pack_errors(
     components: &[NormNavComponent],
-    errors: &mut Vec<PackPatternLayerError>,
+    errors: &mut Vec<PatternValidationError>,
 ) {
     for component in components {
         if let NormNavComponent::Group { expr, .. } = component {
@@ -537,7 +600,7 @@ fn collect_nav_component_pack_errors(
     }
 }
 
-fn collect_skeleton_pack_errors(skeleton: &NormSkeleton, errors: &mut Vec<PackPatternLayerError>) {
+fn collect_skeleton_pack_errors(skeleton: &NormSkeleton, errors: &mut Vec<PatternValidationError>) {
     match skeleton {
         NormSkeleton::Segment { elements, .. } => {
             for element in elements {
@@ -622,9 +685,47 @@ pub enum NormPolicyAtom {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormHoleDecl {
+    pub id: HoleBinderId,
     pub name: String,
     pub annotation: Option<NormAnnotation>,
+    /// Present only on an invalid redeclaration. DeduceLists are telescopes and
+    /// monotonically extend the active hole environment; they never shadow.
+    pub duplicate_of: Option<HoleBinderId>,
     pub origin: NormOrigin,
+}
+
+/// Lexical identity of a normalized DeduceList binder within one source
+/// program. Source binders use their unique name span. Generated binders use
+/// the generating expression span and a separate discriminator.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HoleBinderId {
+    anchor_start: usize,
+    anchor_end: usize,
+    discriminator: u8,
+}
+
+impl HoleBinderId {
+    fn source(span: Span) -> Self {
+        Self {
+            anchor_start: span.byte_start,
+            anchor_end: span.byte_end,
+            discriminator: 0,
+        }
+    }
+
+    fn generated(span: Span) -> Self {
+        Self {
+            anchor_start: span.byte_start,
+            anchor_end: span.byte_end,
+            discriminator: 1,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct VisibleHole {
+    id: HoleBinderId,
+    name: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1688,15 +1789,11 @@ fn normalize_body_block(body: &BodyBlockAst) -> NormProgram {
 }
 
 fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
-    let deduce = normalize_deduce_list(head.deduce.as_ref(), &[]);
-    let hole_names = deduce
-        .iter()
-        .map(|hole| hole.name.clone())
-        .collect::<Vec<_>>();
+    let (deduce, holes) = normalize_deduce_list(head.deduce.as_ref(), &[]);
     let params = head
         .params
         .as_ref()
-        .map(|params| normalize_param_clause(params, &hole_names))
+        .map(|params| normalize_param_clause(params, &holes))
         .unwrap_or_default();
     let captures = head
         .captures
@@ -1705,7 +1802,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
             captures
                 .items
                 .iter()
-                .map(|item| normalize_capture_item(item, &hole_names))
+                .map(|item| normalize_capture_item(item, &holes))
                 .collect()
         })
         .unwrap_or_default();
@@ -1713,7 +1810,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
     let returns = head
         .returns
         .as_ref()
-        .map(|returns| normalize_return_clause(returns, &hole_names));
+        .map(|returns| normalize_return_clause(returns, &holes));
     let clauses = head.clauses.iter().map(normalize_head_clause).collect();
 
     NormClosureHead {
@@ -1730,14 +1827,14 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
     }
 }
 
-fn normalize_capture_item(item: &CaptureItemAst, hole_names: &[String]) -> NormCapture {
+fn normalize_capture_item(item: &CaptureItemAst, holes: &[VisibleHole]) -> NormCapture {
     match item {
         CaptureItemAst::Explicit {
             slot,
             initializer,
             span,
         } => {
-            let mut slot = normalize_binding_slot(slot, hole_names);
+            let mut slot = normalize_binding_slot(slot, holes);
             slot.has_let = true;
             slot.initializer = None;
             NormCapture {
@@ -1960,6 +2057,7 @@ fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<Stri
         NormPattern::OperatorBinder { .. }
         | NormPattern::Unit { .. }
         | NormPattern::HoleRef { .. }
+        | NormPattern::AnonymousHole { .. }
         | NormPattern::Name { .. }
         | NormPattern::Literal { .. }
         | NormPattern::Nav { .. }
@@ -1969,14 +2067,14 @@ fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<Stri
     }
 }
 
-fn normalize_param_clause(params: &ParamClauseAst, hole_names: &[String]) -> Vec<NormPatternElem> {
+fn normalize_param_clause(params: &ParamClauseAst, holes: &[VisibleHole]) -> Vec<NormPatternElem> {
     params
         .extract
         .elements
         .iter()
         .map(|element| match element {
             ProductExtractElementAst::Slot(slot) => {
-                NormPatternElem::BindingSlot(normalize_binding_slot(slot, hole_names))
+                NormPatternElem::BindingSlot(normalize_binding_slot(slot, holes))
             }
             ProductExtractElementAst::Unit { span } => NormPatternElem::Unit {
                 origin: NormOrigin::Source(*span),
@@ -1985,8 +2083,8 @@ fn normalize_param_clause(params: &ParamClauseAst, hole_names: &[String]) -> Vec
         .collect()
 }
 
-fn normalize_return_clause(returns: &ReturnClauseAst, hole_names: &[String]) -> NormBindingSlot {
-    normalize_binding_slot(&returns.slot, hole_names)
+fn normalize_return_clause(returns: &ReturnClauseAst, holes: &[VisibleHole]) -> NormBindingSlot {
+    normalize_binding_slot(&returns.slot, holes)
 }
 
 fn normalize_head_clause(clause: &HeadClauseAst) -> NormHeadClause {
@@ -2015,20 +2113,21 @@ fn normalize_head_clause(clause: &HeadClauseAst) -> NormHeadClause {
     }
 }
 
-fn normalize_binding_slot(slot: &BindingSlotAst, inherited_holes: &[String]) -> NormBindingSlot {
-    let deduce = normalize_deduce_list(slot.deduce.as_ref(), inherited_holes);
-    let mut hole_names = inherited_holes.to_vec();
-    hole_names.extend(deduce.iter().map(|hole| hole.name.clone()));
+fn normalize_binding_slot(
+    slot: &BindingSlotAst,
+    inherited_holes: &[VisibleHole],
+) -> NormBindingSlot {
+    let (deduce, holes) = normalize_deduce_list(slot.deduce.as_ref(), inherited_holes);
 
     NormBindingSlot {
         policy: slot.policy.as_ref().map(normalize_policy_spec),
         has_let: slot.has_let,
         deduce,
-        value_pattern: normalize_binding_pattern(&slot.pattern, &hole_names),
+        value_pattern: normalize_binding_pattern(&slot.pattern, &holes),
         annotation: slot
             .annotation
             .as_ref()
-            .map(|annotation| normalize_binding_annotation(annotation, &hole_names)),
+            .map(|annotation| normalize_binding_annotation(annotation, &holes)),
         with_clause: slot.with_clause.as_ref().map(normalize_with_clause),
         initializer: slot
             .initializer
@@ -2043,34 +2142,46 @@ fn normalize_binding_slot(slot: &BindingSlotAst, inherited_holes: &[String]) -> 
 
 fn normalize_deduce_list(
     deduce: Option<&DeduceListAst>,
-    inherited_holes: &[String],
-) -> Vec<NormHoleDecl> {
-    deduce
-        .map(|deduce| {
-            deduce
-                .binders
-                .iter()
-                .map(|binder| normalize_hole_decl(binder, inherited_holes))
-                .collect()
-        })
-        .unwrap_or_default()
-}
+    inherited_holes: &[VisibleHole],
+) -> (Vec<NormHoleDecl>, Vec<VisibleHole>) {
+    let mut visible = inherited_holes.to_vec();
+    let mut normalized = Vec::new();
 
-fn normalize_hole_decl(binder: &BinderDeclAst, inherited_holes: &[String]) -> NormHoleDecl {
-    NormHoleDecl {
-        name: binder.name.text.clone(),
-        annotation: binder
-            .annotation
-            .as_ref()
-            .map(|annotation| normalize_annotation_term(annotation, inherited_holes)),
-        origin: NormOrigin::Generated {
-            rule: NormRule::PatternNormalize,
-            span: binder.span,
-        },
+    if let Some(deduce) = deduce {
+        for binder in &deduce.binders {
+            let id = HoleBinderId::source(binder.name.span);
+            let duplicate_of = find_visible_hole(&visible, &binder.name.text).map(|hole| hole.id);
+            let annotation = binder
+                .annotation
+                .as_ref()
+                .map(|annotation| normalize_annotation_term(annotation, &visible));
+            normalized.push(NormHoleDecl {
+                id,
+                name: binder.name.text.clone(),
+                annotation,
+                duplicate_of,
+                origin: NormOrigin::Generated {
+                    rule: NormRule::PatternNormalize,
+                    span: binder.span,
+                },
+            });
+            if duplicate_of.is_none() {
+                visible.push(VisibleHole {
+                    id,
+                    name: binder.name.text.clone(),
+                });
+            }
+        }
     }
+
+    (normalized, visible)
 }
 
-fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> NormPattern {
+fn find_visible_hole<'a>(holes: &'a [VisibleHole], name: &str) -> Option<&'a VisibleHole> {
+    holes.iter().rev().find(|hole| hole.name == name)
+}
+
+fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole]) -> NormPattern {
     // Extraction-side entry point. Binder/name/skeleton material stays in the
     // NormPattern family and is not treated as value-side call target material.
     match pattern {
@@ -2089,30 +2200,30 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> N
             inner: Box::new(normalize_pack_operand_pattern(inner, holes)),
             origin: NormOrigin::Source(*span),
         },
-        BindingPatternAst::Skeleton(skeleton) => {
-            normalize_canonical_pattern(skeleton, holes, false)
-        }
+        BindingPatternAst::Skeleton(skeleton) => normalize_canonical_pattern(skeleton, holes),
         BindingPatternAst::Error(error) => NormPattern::Error(normalize_error(error)),
     }
 }
 
-fn normalize_pack_operand_pattern(pattern: &BindingPatternAst, holes: &[String]) -> NormPattern {
+fn normalize_pack_operand_pattern(
+    pattern: &BindingPatternAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
     match pattern {
-        BindingPatternAst::Skeleton(skeleton) => normalize_canonical_pattern(skeleton, holes, true),
+        BindingPatternAst::Skeleton(skeleton) => normalize_canonical_pack_operand(skeleton, holes),
         other => normalize_binding_pattern(other, holes),
     }
 }
 
 fn normalize_canonical_pattern(
     skeleton: &CanonicalSkeletonAst,
-    holes: &[String],
-    is_pack_operand: bool,
+    holes: &[VisibleHole],
 ) -> NormPattern {
     match skeleton {
         CanonicalSkeletonAst::Segment { elements, span } => NormPattern::Sequence {
             elements: elements
                 .iter()
-                .map(|element| normalize_canonical_pattern(element, holes, false))
+                .map(|element| normalize_canonical_pattern(element, holes))
                 .collect(),
             origin: NormOrigin::Generated {
                 rule: NormRule::PatternNormalize,
@@ -2120,16 +2231,16 @@ fn normalize_canonical_pattern(
             },
         },
         CanonicalSkeletonAst::Pack { inner, span } => NormPattern::Pack {
-            inner: Box::new(normalize_canonical_pattern(inner, holes, true)),
+            inner: Box::new(normalize_canonical_pack_operand(inner, holes)),
             origin: NormOrigin::Source(*span),
         },
         CanonicalSkeletonAst::ProductExtract { elements, span } => NormPattern::Product {
             elements: elements
                 .iter()
                 .map(|element| match element {
-                    CanonicalProductElementAst::Skeleton(skeleton) => NormPatternElem::Pattern(
-                        normalize_canonical_pattern(skeleton, holes, is_pack_operand),
-                    ),
+                    CanonicalProductElementAst::Skeleton(skeleton) => {
+                        NormPatternElem::Pattern(normalize_canonical_pattern(skeleton, holes))
+                    }
                     CanonicalProductElementAst::Unit { span } => NormPatternElem::Unit {
                         origin: NormOrigin::Source(*span),
                     },
@@ -2140,18 +2251,18 @@ fn normalize_canonical_pattern(
                 span: *span,
             },
         },
-        CanonicalSkeletonAst::Name { name, role, .. }
-            if *role == CanonicalNameRole::Hole || holes.iter().any(|hole| hole == &name.text) =>
+        CanonicalSkeletonAst::Name { name, .. }
+            if find_visible_hole(holes, &name.text).is_some() =>
         {
+            let target = find_visible_hole(holes, &name.text)
+                .expect("guard proved visible hole")
+                .id;
             NormPattern::HoleRef {
+                target,
                 name: name.text.clone(),
                 origin: NormOrigin::Source(name.span),
             }
         }
-        CanonicalSkeletonAst::Name { name, .. } if is_pack_operand => NormPattern::Binder {
-            name: name.text.clone(),
-            origin: NormOrigin::Source(name.span),
-        },
         CanonicalSkeletonAst::Error(error) => NormPattern::Error(normalize_error(error)),
         atom => NormPattern::Skeleton {
             skeleton: normalize_canonical_skeleton(atom),
@@ -2163,7 +2274,43 @@ fn normalize_canonical_pattern(
     }
 }
 
-fn normalize_product_extract_pattern(product: &ProductExtractAst, holes: &[String]) -> NormPattern {
+fn normalize_canonical_pack_operand(
+    skeleton: &CanonicalSkeletonAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
+    match skeleton {
+        CanonicalSkeletonAst::Name { name, .. }
+            if find_visible_hole(holes, &name.text).is_none() =>
+        {
+            NormPattern::Binder {
+                name: name.text.clone(),
+                origin: NormOrigin::Source(name.span),
+            }
+        }
+        CanonicalSkeletonAst::ProductExtract { .. } => {
+            let normalized = normalize_canonical_pattern(skeleton, holes);
+            match normalized {
+                NormPattern::Product {
+                    mut elements,
+                    origin,
+                } if elements.len() == 1 => match elements.pop().expect("one element") {
+                    NormPatternElem::Pattern(pattern) => pattern,
+                    element => NormPattern::Product {
+                        elements: vec![element],
+                        origin,
+                    },
+                },
+                other => other,
+            }
+        }
+        _ => normalize_canonical_pattern(skeleton, holes),
+    }
+}
+
+fn normalize_product_extract_pattern(
+    product: &ProductExtractAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
     let elements = product
         .elements
         .iter()
@@ -2187,7 +2334,7 @@ fn normalize_product_extract_pattern(product: &ProductExtractAst, holes: &[Strin
 
 fn normalize_binding_annotation(
     annotation: &BindingAnnotationAst,
-    holes: &[String],
+    holes: &[VisibleHole],
 ) -> NormAnnotation {
     // Annotation syntax is classifier/pattern material. It deliberately lowers
     // to NormAnnotation { pattern: NormPattern } rather than NormExpr.
@@ -2217,12 +2364,11 @@ fn normalize_binding_annotation(
     }
 }
 
-fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[String]) -> NormAnnotation {
+fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[VisibleHole]) -> NormAnnotation {
     match term {
         AnnotationTermAst::Expr(expr) => normalize_annotation_expr(expr, holes),
         AnnotationTermAst::Hole { span } => NormAnnotation {
-            pattern: NormPattern::HoleRef {
-                name: "_".to_string(),
+            pattern: NormPattern::AnonymousHole {
                 origin: NormOrigin::Source(*span),
             },
             origin: NormOrigin::Generated {
@@ -2233,7 +2379,7 @@ fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[String]) -> Norm
     }
 }
 
-fn normalize_annotation_expr(expr: &ExprAst, holes: &[String]) -> NormAnnotation {
+fn normalize_annotation_expr(expr: &ExprAst, holes: &[VisibleHole]) -> NormAnnotation {
     // Bridge from raw expression-shaped parser surface into pattern context.
     // This is not value-to-pattern conversion for runtime values.
     NormAnnotation {
@@ -2245,7 +2391,7 @@ fn normalize_annotation_expr(expr: &ExprAst, holes: &[String]) -> NormAnnotation
     }
 }
 
-fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[String]) -> NormPattern {
+fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[VisibleHole]) -> NormPattern {
     // Pattern-side lowering for raw expression-shaped syntax in annotation or
     // extraction contexts. Names become PatternName/HoleRef, not NormExpr::Name.
     match &expr.kind {
@@ -2275,7 +2421,7 @@ fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[String]) -> NormPattern {
     }
 }
 
-fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[String]) -> NormPattern {
+fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[VisibleHole]) -> NormPattern {
     // Pipe-shaped raw syntax in pattern context is preserved as pattern
     // sequence material. It does not participate in value-side call lowering.
     let mut elements = Vec::new();
@@ -2312,7 +2458,10 @@ fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[String]) -> NormPatter
     }
 }
 
-fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) -> NormPattern {
+fn normalize_operator_expr_as_pattern(
+    expr: &OperatorExprAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
     // Operator-expression raw syntax in pattern context stays in NormPattern.
     // Unsupported sugar is surfaced explicitly instead of silently becoming a
     // value-side expression.
@@ -2345,13 +2494,17 @@ fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) 
     }
 }
 
-fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[String]) -> NormPattern {
+fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPattern {
     // Atom raw syntax in pattern context remains bounded extraction material:
     // PatternName/PatternNav/HoleRef labels are intentionally distinct from
     // value-side Name/Nav dumps.
     match &atom.kind {
-        AtomKind::Name(name) if holes.iter().any(|hole| hole == &name.text) => {
+        AtomKind::Name(name) if find_visible_hole(holes, &name.text).is_some() => {
+            let target = find_visible_hole(holes, &name.text)
+                .expect("guard proved visible hole")
+                .id;
             NormPattern::HoleRef {
+                target,
                 name: name.text.clone(),
                 origin: NormOrigin::Source(name.span),
             }
@@ -2541,10 +2694,12 @@ fn generated_prefix_negative_closure(span: Span) -> NormClosure {
 }
 
 fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -> NormClosure {
+    let type_hole_id = HoleBinderId::generated(span);
     NormClosure {
         placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
             deduce: vec![NormHoleDecl {
+                id: type_hole_id,
                 name: "T".to_string(),
                 annotation: Some(NormAnnotation {
                     pattern: NormPattern::Name {
@@ -2553,6 +2708,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                     },
                     origin: NormOrigin::Generated { rule, span },
                 }),
+                duplicate_of: None,
                 origin: NormOrigin::Generated { rule, span },
             }],
             captures: Vec::new(),
@@ -2566,6 +2722,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                 },
                 annotation: Some(NormAnnotation {
                     pattern: NormPattern::HoleRef {
+                        target: type_hole_id,
                         name: "T".to_string(),
                         origin: NormOrigin::Generated { rule, span },
                     },
@@ -3044,7 +3201,7 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
         NormPattern::Unit { origin } => {
             line(output, indent, &format!("Unit {}", origin_inline(origin)))
         }
-        NormPattern::HoleRef { name, origin } => line(
+        NormPattern::HoleRef { name, origin, .. } => line(
             output,
             indent,
             &format!(
@@ -3052,6 +3209,11 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 escape_text(name),
                 origin_inline(origin)
             ),
+        ),
+        NormPattern::AnonymousHole { origin } => line(
+            output,
+            indent,
+            &format!("AnnotationHole {}", origin_inline(origin)),
         ),
         NormPattern::Name { name, origin } => line(
             output,

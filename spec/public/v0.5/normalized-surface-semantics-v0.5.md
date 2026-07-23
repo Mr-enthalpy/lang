@@ -506,12 +506,24 @@ Each declared hole is a `HoleDecl` in the binding site's `deduce` list; a use of
 that hole inside an annotation is a `HoleRef`:
 
 ```text
-HoleDecl   declares a hole in a DeduceList (e.g. `<T>` -> HoleDecl "T")
-HoleRef    references a declared hole inside a pattern (e.g. annotation `T` -> HoleRef "T")
+HoleDecl   { id: HoleBinderId, spelling, annotation, origin }
+HoleRef    { target: HoleBinderId, spelling, origin }
 ```
 
 A `HoleDecl` may itself carry an annotation pattern (e.g. `<T: type>` declares
 `T` with annotation `PatternName "type"`).
+
+DeduceLists elaborate as left-to-right dependent telescopes. If
+`<A1: T1, ..., An: Tn>` occurs with inherited hole environment `Γ0`, then
+`Ti` is interpreted in `Γ(i-1)` and only afterwards is `Ai` added. Therefore
+`<A, B: A>` refers to the preceding `A`, while `<A: B, B>` does not resolve the
+first annotation to the later `B`. A declaration is not visible in its own
+annotation. Same-list duplicates and redeclaration of any active ancestor hole
+are errors; DeduceList holes do not shadow. `HoleBinderId`, rather than the
+display spelling, records the exact declaration targeted by a `HoleRef`.
+
+The anonymous annotation placeholder `_` is `AnonymousHole`; it is not a named
+`HoleRef` and has no `HoleBinderId`.
 
 ### Annotation is pattern-side / classifier-pattern material
 
@@ -610,9 +622,17 @@ normalize_and_validate_patterns
   |  PatternInvalidNormProgram
 ```
 
-Only the Pattern-validated wrapper enters world harvesting. The wrapper proves
-the one-pack-per-normalized-level invariant only; it does not prove that
-normalization contains no recovered `NormExpr::Error`.
+Only the Pattern-validated wrapper enters world harvesting. Its current proof
+scope is deliberately exact:
+
+```text
+one Pack per normalized structural level
+no bare Product as a Pack operand
+no duplicate DeduceList hole in the active telescope
+```
+
+It does not prove order-sensitive Pack applicability, stable Pattern-head
+identity, full matching support, or absence of recovered `NormExpr::Error`.
 
 `Pack` is part of the general binding-pattern grammar. It is preserved in
 every binding-slot context—ordinary/local `let`, product extraction, callable
@@ -627,29 +647,39 @@ PatternSequence ::= PatternTerm*
 PatternTerm     ::= "..." PatternPrimary | PatternPrimary
 
 a ...x b       -> NormPattern::Sequence[a, Pack(x), b]
-...(x, y)      -> Pack(Product[Binder(x), Binder(y)])
+...(x, y)      -> Raw Pack(Product[x, y]), rejected after P normalization
+...((x, y) pair)
+                -> Pack(Sequence[Product[x, y], PatternName "pair"])
 ```
 
 The prefix constructor consumes one immediate Pattern primary, not the rest of
-the Sequence. `Pack` and `BindingSlot` are transparent to the normalized-level
-cardinality rule; only Product and Sequence establish structural levels.
-Pack-operand context propagates through the compound Product, so its direct
-names have the same binding role as direct `...x` / `...y`.
+the Sequence. A bare Product supplies no stable top mode after P normalization,
+so `Pack` cannot make that flattened boundary semantic again. The parser keeps
+`...(x, y)` for recovery and auditing, but the normalized Pattern validator
+rejects it. An ordered layer may later admit a structured operand only when its
+P-normal form retains a stable top mode, as in `...((x, y) pair)`. At an
+unordered named layer, only a whole-remainder binder/discard (possibly under a
+transparent let-shaped slot) is admissible. Order and stable-top-mode checks
+belong to later resolved Pattern semantics.
 
-For later overload specificity, a structured operand projects each written
-inner node into the pack evidence class:
+`Pack` and `BindingSlot` are transparent to the normalized-level cardinality
+rule; only Product and Sequence establish structural levels.
+
+Every Pack contributes exactly one outward specificity node at its containing
+level:
 
 ```text
-...(a, b) -> evidence as (...a, ...b)
-...(a, _) -> one explicit-pack node plus one pack-discard node
+...rest -> one explicit-Pack node
+..._    -> one Pack-discard node
+...Q    -> one outward Pack position
 ```
 
-The normalized shape remains one `Pack(Product[...])`; this evidence projection
-does not create two Pack constructors. The number of captured remainder values
-never adds specificity.
+Captured width and the number of nodes inside `Q` never create more same-level
+Pack evidence. For `...((a, b) pair)`, evidence for `pair` and its inner
+structure belongs to the preserved next level, not to two flattened EP nodes.
 
-There is no type checking, kind checking, or hole-validity checking beyond local
-DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and
+There is no type checking, kind checking, Pattern-head resolution, or general
+matching at normalization. `Option::std` / `Pair::std` are not resolved, and
 whether `T Option::std` is a legal type pattern is not decided.
 
 ### Policy pair preservation
@@ -727,6 +757,37 @@ NormCapture {
 
 This is syntax-directed capture binding elaboration, not closure environment
 layout, name resolution, or materialization.
+
+These source-written captures are explicit requirements. In particular,
+`[x]` means explicit `[let x = x]` with the ordinary unwritten capture policy
+domain (`const || mut`); it is not an automatic const capture. A later resolved
+stage may add an `ImplicitConst` requirement for an otherwise uncaptured free
+outer value reference. That later operation requires symbol resolution and
+const-slice projection and therefore is not normalization.
+
+Resolved capture requirements are abstract dependencies, not a declaration of
+`self` fields, capture-by-value/reference representation, field order, ZST
+status, or ABI layout. An ordinary closure that writes an outer place must have
+an explicit capture able to project a `mut` view; automatic capture never grants
+mutability. An in-place closure has no capture list or capture set, resolves
+outer reads at its embedding layer, and may not directly write an outer place.
+
+For example, an exported ordinary closure's source dependency is explicit:
+
+```lang
+mut let internal_state = ...;
+
+export let exported_fn =
+    [internal_state]() => {
+        use internal_state;
+    };
+```
+
+The dependency does not export `internal_state` and does not by itself require
+an environment field. Before a callable is materialized, every resolved
+capture requirement must lower to a lifetime-checkable source/access/storage
+form. Concrete lifetime, borrow/move/copy, escape, layout, and ABI rules remain
+future work.
 
 ### Callable implementation tail
 

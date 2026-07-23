@@ -1403,8 +1403,8 @@ The Normalized AST stage should preserve the necessary boundaries:
 value-side material remains NormExpr
 pattern-side material remains NormPattern
 annotation remains AnnotationPattern
-DeduceList declares holes
-HoleRef and PatternName remain distinct
+DeduceList declares an identity-bearing left-to-right hole telescope
+HoleRef(target=HoleBinderId) and PatternName remain distinct
 alias target remains EntityRef
 operators remain unresolved structural targets
 postfix ? remains operator-shaped syntax
@@ -1441,7 +1441,8 @@ The Normalized AST only needs to preserve enough structure for later phases to d
 NormExpr::Name("P")        value-side ordinary name
 NormPattern::Name("P")     pattern-side unresolved material
 NormPattern::Nav(...)      pattern-side unresolved navigation material
-NormPattern::HoleRef("T")  DeduceList-bound hole
+NormPattern::HoleRef(target=T_id, spelling="T")
+                             exact DeduceList-bound hole
 OperatorTarget("?")        postfix one-layer top-Pattern-view syntax material
 Pattern-side "_"           explicit consumption pattern
 ```
@@ -1668,23 +1669,28 @@ participates normally and diagnoses only if uniquely selected.
 
 `...Q` is the Pattern-side remainder matcher. At each normalized structural
 level, at most one pack node may occur; nested levels are independent. At an
-unordered named level it captures the nodes left after explicit named matches;
-at an ordered level it captures the usual contiguous remainder. The captured
-remainder is ordinary normalized product material, not a new pack value/type,
-and there is no RHS unpack operator.
+unordered named level it captures the nodes left after explicit named matches,
+and only a whole-remainder binder/discard is admissible. At an ordered level it
+captures the usual contiguous remainder; a structured operand is admissible
+only if its P-normal form retains a stable top mode, for example
+`...((a, b) pair)`. The captured remainder is ordinary normalized product
+material, not a new pack value/type, and there is no RHS unpack operator.
 
 Pack is also a direct canonical Pattern Sequence child:
 `a ...x b -> Sequence[a, Pack(x), b]`. Ellipsis binds one following Pattern
 primary. Product and Sequence establish structural levels; Pack and
 BindingSlot are transparent. The parser preserves every formed Pack node and
-the normalized Pattern validator alone owns per-level cardinality.
+the normalized Pattern validator alone owns per-level cardinality. Raw
+`...(a, b)` is preserved but rejected after P normalization because Pack
+cannot reify the bare Product boundary that Product normalization removes.
 
-Pack specificity is independent of captured length. A simple `...a` counts one
-explicit pack node, while a structured `...(a, b)` projects two explicit
-pack-node evidences—as if `...a` and `...b` were compared—without becoming two
-Pack constructors. Discards project analogously. At equal structural-depth
-evidence, ordinary explicit matches outrank explicit packs, which outrank
-ordinary discards, which outrank pack discards.
+Pack specificity is independent of captured length and operand width. Every
+Pack contributes one outward node at its containing level: `...a` is one
+explicit-Pack node and `..._` one Pack-discard node. For a legal headed
+operand, inner evidence remains below its stable top mode at the next
+structural level and is not flattened into multiple same-level EP nodes. At
+equal structural-depth evidence, ordinary explicit matches outrank explicit
+packs, which outrank ordinary discards, which outrank pack discards.
 
 The complete syntax, AST mapping, `.name` connection, and implementation
 boundary are canonical in

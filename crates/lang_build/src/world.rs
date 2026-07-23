@@ -216,14 +216,24 @@ impl CompilationWorld {
         let normalized = lang_syntax::normalize_and_validate_patterns(&parsed.program);
         if let Err(invalid) = &normalized {
             diagnostics.extend(invalid.pattern_errors.iter().map(|error| {
-                Diagnostic::hard_error(
-                    format!(
+                let message = match error {
+                    lang_syntax::PatternValidationError::MultiplePacks(error) => format!(
                         "Pattern contains {} pack nodes at one normalized structural level",
                         error.pack_count
                     ),
+                    lang_syntax::PatternValidationError::NonCanonicalPackOperand { .. } => {
+                        "Pack operand is a bare Product without a stable top Pattern; write a whole-remainder binder/discard or an explicitly headed structured Pattern"
+                            .to_string()
+                    }
+                    lang_syntax::PatternValidationError::DuplicateHole { name, .. } => format!(
+                        "DeduceList hole `{name}` duplicates an already visible hole; hole scopes do not shadow"
+                    ),
+                };
+                Diagnostic::hard_error(
+                    message,
                     Some(Provenance::from_norm_origin(
                         "global normalized Pattern validation",
-                        &error.origin,
+                        error.origin(),
                     )),
                 )
             }));
@@ -1111,6 +1121,7 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::Pack { origin, .. }
         | NormPattern::Unit { origin }
         | NormPattern::HoleRef { origin, .. }
+        | NormPattern::AnonymousHole { origin }
         | NormPattern::Name { origin, .. }
         | NormPattern::Literal { origin, .. }
         | NormPattern::Nav { origin, .. }
