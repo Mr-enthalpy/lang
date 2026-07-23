@@ -765,6 +765,15 @@ stage may add an `ImplicitConst` requirement for an otherwise uncaptured free
 outer value reference. That later operation requires symbol resolution and
 const-slice projection and therefore is not normalization.
 
+In later resolved semantics, explicit navigation succeeds only for exported
+paths. Such values have the export-required const view, so explicit-navigation
+dependencies—including ordinary external call targets—normally become
+automatic const capture requirements. Automatic capture and call resolution
+therefore touch the same problem domain—external symbol identity and readable
+const view—but this does not prescribe pass ordering, data flow, or an
+implementation dependency. Explicit source capture of an already explicitly
+navigable export is redundant; whether it should become an error remains open.
+
 Resolved capture requirements are abstract dependencies, not a declaration of
 `self` fields, capture-by-value/reference representation, field order, ZST
 status, or ABI layout. An ordinary closure that writes an outer place must have

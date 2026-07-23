@@ -201,6 +201,15 @@ Resolved future-design decisions:
   Capture requirements remain abstract dependencies rather than `self` fields
   or layout declarations. In-place candidates are preferred over otherwise tied
   non-in-place candidates after first-order-over-instantiated preference.
+- Explicit navigation reaches exported names, whose const-only export view is
+  eligible for automatic const capture. Ordinary external call dependencies
+  normally fall within automatic const capture. Automatic capture and call
+  resolution share a problem domain around external symbol identity and const
+  visibility, without implying pass ordering, shared intermediate objects, or
+  an implementation dependency. Open: should a source-written capture of an
+  already explicitly navigable export be rejected as redundant, merely
+  diagnosed, or normalized to the same automatic dependency? This decision is
+  deferred until both domains are designed more fully.
 - Inferred require retains coarse complete blocks and guarded branch groups,
   conjoins with manual require, and shares one compile-evaluation graph with
   body continuation.

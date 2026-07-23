@@ -346,6 +346,32 @@ CaptureOrigin
 Outer writes require an explicit capture whose selected source view contains
 `mut`. Automatic capture never grants `mut`.
 
+An explicitly navigated name is a special, common case. Successful explicit
+navigation requires the target path to be in the export graph. Because bare
+`export let` supplies the contextual `export + const` view and export cannot
+coexist with `mut`, an explicitly navigable value necessarily supplies the
+const projection required by `ImplicitConst`:
+
+```text
+ResolveExplicitNavigation(path) = exported symbol s
+  -> AutoCapture(C, s, requested_policy = const)
+```
+
+External callable references therefore normally enter an ordinary closure as
+automatic const dependencies rather than source-written capture bindings.
+Automatic capture and call resolution meet in the same problem domain because
+both reason about an external symbol's identity and readable const view. This
+observation imposes no pass ordering, data flow, shared intermediate object, or
+implementation dependency between them. Automatic capture does not itself
+choose an overload.
+
+Writing an explicit capture for a symbol already available through explicit
+navigation is redundant and is treated as a design smell. Whether such a
+capture should be rejected outright is deliberately left open; the current
+frontend preserves it. Future capture and call-resolution designs should make
+compatible choices about the shared problem domain, without requiring one
+implementation to consume the other.
+
 ### 2.4 Capture is an abstract dependency
 
 A resolved capture records a dependency, not object layout:

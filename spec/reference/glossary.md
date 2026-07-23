@@ -726,6 +726,14 @@ outer value reference. Capture requirements are abstract dependencies: they
 do not declare `self` fields, copy/reference representation, layout, ZST
 status, or ABI.
 
+Explicit navigation reaches only exported names. Because exported values carry
+the required const view, explicitly navigated external values and callable
+targets normally become `ImplicitConst` dependencies. Automatic capture and
+call resolution share the external-symbol-identity/const-view problem domain;
+this does not imply pass ordering or an implementation dependency. Explicitly
+capturing the same navigable export is redundant; whether it is forbidden is
+still open.
+
 _See also: BindingSlot, NormClosure, Materialization._
 
 ---

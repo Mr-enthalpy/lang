@@ -399,6 +399,14 @@ dependencies, not `self` fields or layout decisions. In-place closures create
 no capture set, may resolve outer reads at the embedding layer, and may not
 directly write an outer place.
 
+Explicit-navigation/export checking and automatic capture remain resolved
+semantics, not Raw-to-Norm work. The future rule is that an explicitly
+navigable exported value supplies the const projection for `ImplicitConst`;
+ordinary external call references normally inhabit the same external-symbol
+problem domain. This does not imply an implementation dependency on call
+resolution. Whether an explicit source capture of the same navigable export is
+forbidden remains an open question.
+
 ## 10. Diagnostics
 
 The amended implementation has 33 `DiagnosticCode` variants. The v0.2 frozen

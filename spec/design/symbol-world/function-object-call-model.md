@@ -212,6 +212,21 @@ unwritten, its mutability domain is the neutral `const || mut`; it is not
 automatic const capture. A write to an outer source requires an explicit
 capture projected to a `mut` view. Automatic capture never grants mutability.
 
+Explicit navigation resolves only names retained by the export graph.
+Exported value bindings provide a const view (`export let` defaults to
+`export + const`, and export cannot coexist with mut), so an explicitly
+navigated external callable or value automatically satisfies the
+`ImplicitConst` capture requirement. Ordinary external calls are therefore
+normally backed by automatic const dependencies, not by a source capture list.
+
+Automatic capture and call resolution occupy adjoining problem domains: both
+reason about an external symbol identity and its readable const view. This
+does not require either mechanism to consume the other's output, share a pass,
+or run in a prescribed order. Automatic capture does not skip admissibility or
+select a candidate. Explicitly capturing an already explicitly navigable
+export is redundant; whether to reject that spelling is an open design
+question rather than a rule frozen here.
+
 Resolved capture analysis produces abstract dependencies:
 
 ```text
