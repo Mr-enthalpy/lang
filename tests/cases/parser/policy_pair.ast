@@ -176,7 +176,7 @@ Program
               Segment has_incoming=false
                 OperatorExpr
                   Atom
-                    Closure Explicit
+                    Closure Ordinary
                       FnHeadPrefix
                         params:
                           ParamClause

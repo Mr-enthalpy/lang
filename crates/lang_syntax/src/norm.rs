@@ -3182,9 +3182,7 @@ fn literal_kind_label(kind: NormLiteralKind) -> &'static str {
 fn closure_kind_label(kind: &NormClosureKind) -> String {
     match kind {
         NormClosureKind::InPlace => "InPlace".to_string(),
-        // Preserve the existing dump label while the typed representation uses
-        // the semantic placement term `Ordinary`.
-        NormClosureKind::Ordinary => "Explicit".to_string(),
+        NormClosureKind::Ordinary => "Ordinary".to_string(),
         NormClosureKind::Generated { rule } => format!("Generated({})", rule_label(*rule)),
     }
 }

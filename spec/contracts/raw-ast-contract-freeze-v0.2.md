@@ -54,7 +54,8 @@ exception:
 - Weak lexer (no keyword classification)
 - Product / product-extract architecture
 - Pipe / segment / operator-expression architecture
-- Closure AST preservation (InPlace, Explicit)
+- Closure AST preservation with orthogonal placement (`InPlace | Ordinary`),
+  optional head, and callable implementation tail
 - Inner-to-outer navigation
 - Alias-let parser preservation (`let binder === EntityRef`)
 - `with { ... }` narrow payload grammar (names only)

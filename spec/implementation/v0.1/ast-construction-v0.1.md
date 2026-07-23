@@ -2147,8 +2147,8 @@ PipeExpr
   Segment
     Atom Name(obj)
     Product
-      Explicit/Inline Closure AST arm 1
-      Explicit/Inline Closure AST arm 2
+      Ordinary/In-place Closure AST arm 1
+      Ordinary/In-place Closure AST arm 2
     Atom Name(match)
 ```
 

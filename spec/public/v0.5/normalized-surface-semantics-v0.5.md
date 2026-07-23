@@ -549,7 +549,7 @@ Closure head example (head dump label `ClosureNormalize`):
 ```text
 <T: type>(val: T) => { val }
 
-Closure kind=Explicit
+Closure kind=Ordinary
   head: ClosureHead
     deduce:
       HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )

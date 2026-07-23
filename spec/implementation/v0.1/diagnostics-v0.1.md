@@ -251,7 +251,7 @@ spanning the failed region.
   non-string delete message, missing named-strategy body, or malformed
   `[[strategy]]`. Also emitted when an in-place closure body
   appears in incoming pipe position without a segment-level product head, such
-  as `x |> { y; }` or `x |> a::b { y; }`. Explicit closures such as
+  as `x |> { y; }` or `x |> a::b { y; }`. Ordinary closures such as
   `x |> (self) => { y; }` have product extraction heads and do not emit this
   diagnostic.
 - **Primary span**: The failing clause or token.

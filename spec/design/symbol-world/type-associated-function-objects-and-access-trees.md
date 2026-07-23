@@ -37,13 +37,16 @@ and normalizes to a function object shaped as:
 (val: T, ...args) { (val, args) |> field::T }
 ```
 
-Thus `E.field` is compact `E |> .field`; `.field` itself is independently
-storable/transportable. Explicit `E |> .field P` supplies additional
-source-product items for a member-function-like call without creating a
-separate member dispatch system. Compact `E.field P` instead means
-`(E |> .field) P`; it does not add `P` to `field::T`. `...args` is a Pattern
-remainder matcher only. Existing product normalization forwards the bound
-remainder; no pack type or unpack operator is introduced.
+Thus `E.field` mechanically lowers to `E |> .field`; `.field` itself is
+independently storable/transportable. After that one lowering, `.field` is an
+ordinary expression: `E |> .field P` and `E |> d P` (where `d` is bound to
+`.field`) must use exactly the same general pipe/product binding path. No rule
+may inspect `DotClosureLowering` provenance to absorb `P`, end a target, or
+override the ordinary continuation and legality-repair rules. Compact
+`E.field P` likewise lowers `E.field` first and then resumes the general
+expression rules. `...args` is a Pattern remainder matcher only. Existing
+product normalization forwards the bound remainder; no pack type or unpack
+operator is introduced.
 `E..field(product)` remains the direct member-call sugar.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin

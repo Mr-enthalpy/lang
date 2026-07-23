@@ -10,7 +10,7 @@ NormProgram origin=Source@1:1[0..189]
               Form TailValue
                 Name "x" origin=Source@1:3[2..3]
     Form Expr
-      Closure kind=Explicit origin=Source@2:1[7..35]
+      Closure kind=Ordinary origin=Source@2:1[7..35]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@2:1[7..27]
             deduce:
@@ -38,7 +38,7 @@ NormProgram origin=Source@1:1[0..189]
               Form TailValue
                 Name "val" origin=Source@2:24[30..33]
     Form Expr
-      Closure kind=Explicit origin=Source@3:1[37..77]
+      Closure kind=Ordinary origin=Source@3:1[37..77]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@3:1[37..69]
             deduce:
@@ -72,7 +72,7 @@ NormProgram origin=Source@1:1[0..189]
               Form TailValue
                 Name "val" origin=Source@3:36[72..75]
     Form Expr
-      Closure kind=Explicit origin=Source@4:1[79..106]
+      Closure kind=Ordinary origin=Source@4:1[79..106]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@4:1[79..100]
             deduce:
@@ -115,7 +115,7 @@ NormProgram origin=Source@1:1[0..189]
               Form TailValue
                 Name "x" origin=Source@4:25[103..104]
     Form Expr
-      Closure kind=Explicit origin=Source@5:1[108..126]
+      Closure kind=Ordinary origin=Source@5:1[108..126]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@5:1[108..122]
             deduce:
@@ -130,7 +130,7 @@ NormProgram origin=Source@1:1[0..189]
             forms:
               (empty)
     Form Expr
-      Closure kind=Explicit origin=Source@6:1[128..158]
+      Closure kind=Ordinary origin=Source@6:1[128..158]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@6:1[128..150]
             deduce:
@@ -159,7 +159,7 @@ NormProgram origin=Source@1:1[0..189]
               Form TailValue
                 Name "val" origin=Source@6:26[153..156]
     Form Expr
-      Closure kind=Explicit origin=Source@7:1[160..189]
+      Closure kind=Ordinary origin=Source@7:1[160..189]
         head:
           ClosureHead origin=Generated(ClosureNormalize)@7:1[160..181]
             deduce:

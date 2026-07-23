@@ -738,7 +738,7 @@ overload strategy. It normalizes to `UserBody(Ordinary|Named, body)`,
 same named strategy. Strategy metadata participates only after full
 admissibility and never creates a second overload pass.
 
-_See also: ExplicitClosureAST, Fully Admissible Candidate, Overload Resolution Pipeline._
+_See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution Pipeline._
 
 ---
 

@@ -635,10 +635,7 @@ fn dump_nav_component(output: &mut String, component: &crate::NavComponentAst, i
 fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize) {
     match closure.placement {
         crate::ClosurePlacementAst::InPlace => line(output, indent, "Closure InPlace"),
-        // Keep the historical dump spelling for the ordinary, `=>`-delimited
-        // placement. The typed AST no longer conflates this label with
-        // whether a closure has a head.
-        crate::ClosurePlacementAst::Ordinary => line(output, indent, "Closure Explicit"),
+        crate::ClosurePlacementAst::Ordinary => line(output, indent, "Closure Ordinary"),
     }
     if let Some(head) = &closure.head {
         dump_fn_head_prefix(output, head, indent + 1);
