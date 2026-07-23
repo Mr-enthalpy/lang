@@ -1652,6 +1652,12 @@ Without `=>`, `[[strategy_name]] { ... }` supplies named strategy metadata.
 Plain `() -> r name { ... }` retains the old return extraction-pattern parse;
 the parser never backtracks `name` into a strategy.
 
+Ordinary closure captures are let-shaped bindings. `[let x = E]` and
+`[x = E]` are explicit; `[E]` is shorthand only when normalized `E` has one
+distinct free non-call bare name. Capture initializers are simultaneous in the
+pre-capture environment. Only the complete `[[Name]] {` tail can bypass an
+available capture slot, and Deduce alone does not close that slot.
+
 The normalized implementation is `UserBody(strategy, body)`, `Defaulted`, or
 `Deleted(message?)`. A named strategy is attached to the candidate and becomes
 relevant only after full admissibility. It cannot repair Pattern, phase,
@@ -1666,6 +1672,12 @@ unordered named level it captures the nodes left after explicit named matches;
 at an ordered level it captures the usual contiguous remainder. The captured
 remainder is ordinary normalized product material, not a new pack value/type,
 and there is no RHS unpack operator.
+
+Pack is also a direct canonical Pattern Sequence child:
+`a ...x b -> Sequence[a, Pack(x), b]`. Ellipsis binds one following Pattern
+primary. Product and Sequence establish structural levels; Pack and
+BindingSlot are transparent. The parser preserves every formed Pack node and
+the normalized Pattern validator alone owns per-level cardinality.
 
 Pack specificity counts one node regardless of captured length. At equal
 structural-depth evidence, ordinary explicit matches outrank explicit packs,

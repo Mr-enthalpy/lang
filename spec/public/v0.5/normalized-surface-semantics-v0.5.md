@@ -590,8 +590,10 @@ The common post-normalization `validate_normalized_patterns` pass enforces that
 limit over all `NormBindingSlot` consumers: top-level and local `let`,
 parameters, returns, annotations, and nested Pattern levels. Both `Product`
 and `Sequence` count their direct pack children before recursive validation.
-Parser-local checks provide earlier diagnostics but do not define the
-invariant.
+This pass is the sole authority for normalized-level pack cardinality. The
+parser preserves all syntactically formed `BindingPatternAst::Pack` nodes and
+reports only local syntax failures such as a missing inner Pattern; it neither
+counts packs nor predicts normalized structural levels.
 
 `normalize_program` remains available to dump recovered or invalid normalized
 structure. Downstream build installation instead uses:
@@ -611,6 +613,20 @@ every binding-slot context—ordinary/local `let`, product extraction, callable
 parameters, callable return slots, and nested binding Patterns—not only in
 parameter lists. Normalization does not assign those contexts their later
 matching semantics.
+
+Ellipsis may also occur as a direct child of a canonical Pattern Sequence:
+
+```text
+PatternSequence ::= PatternTerm*
+PatternTerm     ::= "..." PatternPrimary | PatternPrimary
+
+a ...x b       -> NormPattern::Sequence[a, Pack(x), b]
+...(x, y)      -> Pack(Product[x, y])
+```
+
+The prefix constructor consumes one immediate Pattern primary, not the rest of
+the Sequence. `Pack` and `BindingSlot` are transparent to the normalized-level
+cardinality rule; only Product and Sequence establish structural levels.
 
 There is no type checking, kind checking, or hole-validity checking beyond local
 DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and
@@ -638,6 +654,59 @@ Normalization does not decide whether a single
 component is P1 value-dominant projection or P2 shorthand, validate pair stage
 rules, or interpret const/mut/namespace atoms. Those are semantic policy
 elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
+### Capture binding elaboration
+
+An ordinary closure capture clause is a list of let-shaped bindings:
+
+```text
+CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
+
+CaptureItem
+  ::= PolicySpec "let" BindingCore "=" Expr
+   |  "let" BindingCore "=" Expr
+   |  BindingCore "=" Expr
+   |  Expr
+```
+
+The first three forms are explicit captures. `let` may be omitted when no
+policy prefix needs to be anchored. They reuse the ordinary `BindingSlot`
+surface and normalization path; form-level alias `===` is not imported into a
+capture item.
+
+The final form is shorthand. Normalization first forms the ordinary call
+structure of `Expr`, then collects its distinct free bare names whose concrete
+occurrences are not direct callable targets. Exactly one distinct name `n`
+elaborates the item as `let n = Expr`; zero or multiple candidates produce a
+retained normalization error. Call-target role is local to each call node and
+duplicate occurrences of the same text count once:
+
+```text
+[x]                 -> [let x = x]
+[x x]               -> [let x = x |> x]
+[x y z]             -> [let x = x y z]
+[(x, x) |> x]       -> [let x = (x, x) |> x]
+[(x, y) |> z]       -> inference error
+[(1, 2) |> make]    -> inference error
+```
+
+Nested closure parameters, local lets, Patterns, and capture binders do not
+pollute the outer inference set. All initializers in one capture clause are
+interpreted in the enclosing pre-capture environment, so capture bindings are
+simultaneous rather than a sequential let block.
+
+After normalization every capture has one shape:
+
+```text
+NormCapture {
+  slot: NormBindingSlot,
+  initializer: NormExpr,
+  origin: NormOrigin
+}
+```
+
+This is syntax-directed capture binding elaboration, not closure environment
+layout, name resolution, or materialization.
 
 ### Callable implementation tail
 
@@ -671,11 +740,17 @@ Closure placement is orthogonal to head presence and implementation:
 capture list; `[x] { ... }` remains an error. A malformed callable tail
 normalizes as `NormExpr::Error`, never as a legal empty `Block`.
 
-Product-versus-closure classification recognizes only a complete
-`[[Name]]`. A leading `[[` may be treated as a malformed strategy candidate
-only after another closure-head component has independently established the
-strong context. Ordinary atom/operator postfix parsing does not exclude `[[`,
-so `obj[[cap] => { cap }]`, `()[[cap] => { cap }]`, and
+Product-versus-closure classification, and the decision to bypass an available
+capture slot, recognize only the complete local tail shape `[[Name]] {`.
+A DeduceList alone does not close the capture slot. Thus
+`<T> [[cap] => { cap }] () => { value }` parses the bracketed closure as a
+capture item, while `<T> [[strategy]] { value }` has the complete strategy
+tail. A leading `[[` may be treated as a malformed strategy candidate only
+after parameters, call policy, return syntax, or a head clause has independently
+closed the capture slot and established the strong context.
+
+Ordinary atom/operator postfix parsing does not exclude `[[`, so
+`obj[[cap] => { cap }]`, `()[[cap] => { cap }]`, and
 `(a + b)[[cap] => { cap }]` remain bracket calls with capture-closure
 arguments.
 
@@ -683,6 +758,16 @@ After `=>`, `Name Block` is selected before the bare contextual forms.
 Therefore `=> default { ... }` and `=> delete { ... }` are named strategy
 bodies, while bare `=> default` and `=> delete` remain `Defaulted` and
 `Delete`.
+
+The message-bearing form is intentionally limited to a source string literal:
+
+```text
+=> ("message") delete
+```
+
+The historical `(message_expr) delete` surface is not retained in v0.5 because
+delete messages are static compiler diagnostic text rather than evaluated
+expressions.
 
 Normalized closure placement and origin are separate fields:
 
@@ -812,9 +897,10 @@ fixtures in `tests/cases/norm/`.
 The normalized surface does not perform name resolution, type/kind checking,
 operator lookup, operator overload resolution, alias target resolution,
 namespace resolution, pattern-head resolution, canonical matching, closure
-materialization, capture analysis, ownership/NLL/drop, effect interpretation,
-runtime evaluation, or code generation. It does not turn Normalized AST into
-HIR.
+materialization, capture-environment analysis, ownership/NLL/drop, effect
+interpretation, runtime evaluation, or code generation. The syntax-directed
+capture-name inference described above is not semantic environment analysis.
+The normalized surface does not turn Normalized AST into HIR.
 
 A source Product is never a conventional argument list. There is no callee-first
 call, method dispatch, field lookup, resolved function call, operator overload

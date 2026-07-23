@@ -344,6 +344,16 @@ fn closure_delete_body_normalizes_as_delete_not_call() {
 }
 
 #[test]
+fn callable_tail_outer_composition() {
+    assert_norm_case("callable_tail_outer_composition", false);
+}
+
+#[test]
+fn capture_binding_and_sequence_pack_v05() {
+    assert_norm_case("capture_binding_and_sequence_pack_v05", false);
+}
+
+#[test]
 fn annotation_patterns_are_structural_pattern_material() {
     let slot = single_let_slot("let <T> x: T = y");
     let annotation = slot.annotation.as_ref().expect("annotation");

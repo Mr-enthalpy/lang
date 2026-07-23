@@ -1,8 +1,9 @@
 use lang_syntax::{
     normalize_and_validate_patterns, normalize_program, parse, validate_normalized_patterns,
-    BindingPatternAst, ClosureBodyAst, ClosurePlacementAst, ExprKind, FormAst, NormAnnotation,
-    NormBindingSlot, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr, NormForm,
-    NormOrigin, NormPattern, NormPatternElem, NormRule, OperatorExprKind, SegmentElementAst, Span,
+    BindingPatternAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode, ExprKind, FormAst,
+    NormAnnotation, NormBindingSlot, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr,
+    NormForm, NormOrigin, NormPattern, NormPatternElem, NormRule, OperatorExprKind,
+    SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -129,7 +130,7 @@ fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
             .as_ref()
             .unwrap()
             .value_pattern,
-        NormPattern::Skeleton { .. }
+        NormPattern::Sequence { .. }
     ));
 }
 
@@ -186,6 +187,163 @@ fn complete_strategy_annotation_does_not_steal_bracket_call_capture_closures() {
         assert!(
             !dump.contains("OverloadStrategy"),
             "ordinary bracket-call payload must not become strategy metadata: {fixture}\n{dump}"
+        );
+    }
+}
+
+#[test]
+fn capture_items_normalize_to_let_shaped_bindings() {
+    for (fixture, expected) in [
+        ("let f = [x]() => { x };", "x"),
+        ("let f = [x x]() => { x };", "x"),
+        ("let f = [x y z]() => { x };", "x"),
+        ("let f = [x let]() => { x };", "x"),
+        ("let f = [(x, x) |> x]() => { x };", "x"),
+    ] {
+        let closure = normalized_closure(fixture);
+        let capture = &closure.head.as_ref().unwrap().captures[0];
+        assert!(capture.slot.has_let, "{fixture}");
+        assert!(capture.slot.initializer.is_none(), "{fixture}");
+        assert!(
+            matches!(&capture.slot.value_pattern, NormPattern::Binder { name, .. } if name == expected),
+            "{fixture}: {:#?}",
+            capture.slot.value_pattern
+        );
+    }
+
+    for fixture in [
+        "let f = [(x, y) |> z]() => { z };",
+        "let f = [(x, y) |> x]() => { x };",
+        "let f = [(1, 2) |> make]() => { value };",
+    ] {
+        let closure = normalized_closure(fixture);
+        assert!(
+            matches!(
+                closure.head.as_ref().unwrap().captures[0]
+                    .slot
+                    .value_pattern,
+                NormPattern::Error(_)
+            ),
+            "capture shorthand must retain an inference error: {fixture}"
+        );
+    }
+
+    for fixture in [
+        "let f = [let out = x y]() => { out };",
+        "let f = [out = x y]() => { out };",
+    ] {
+        let closure = normalized_closure(fixture);
+        let capture = &closure.head.as_ref().unwrap().captures[0];
+        assert!(matches!(
+            &capture.slot.value_pattern,
+            NormPattern::Binder { name, .. } if name == "out"
+        ));
+        assert!(capture.slot.policy.is_none());
+    }
+
+    let closure = normalized_closure("let f = [runtime let out = x]() => { out };");
+    let capture = &closure.head.as_ref().unwrap().captures[0];
+    assert!(capture.slot.policy.is_some());
+    assert!(matches!(
+        &capture.slot.value_pattern,
+        NormPattern::Binder { name, .. } if name == "out"
+    ));
+
+    let closure = normalized_closure("let f = [runtime let <T> out: T with {} = x]() => { out };");
+    let capture = &closure.head.as_ref().unwrap().captures[0];
+    assert!(capture.slot.policy.is_some());
+    assert_eq!(capture.slot.deduce.len(), 1);
+    assert!(capture.slot.annotation.is_some());
+    assert!(capture.slot.with_clause.is_some());
+
+    let output = parse("let f = [let x === y]() => { x };");
+    assert!(
+        output
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == DiagnosticCode::InvalidAliasPosition),
+        "capture binding must not import form-level alias-let"
+    );
+}
+
+#[test]
+fn capture_inference_ignores_locally_bound_names_and_binds_simultaneously() {
+    let closure = normalized_closure("let f = [{ let local = outer; local }]() => { value };");
+    assert!(matches!(
+        &closure.head.as_ref().unwrap().captures[0]
+            .slot
+            .value_pattern,
+        NormPattern::Binder { name, .. } if name == "outer"
+    ));
+
+    let closure = normalized_closure("let f = [let x = outer, let y = outer]() => { value };");
+    let captures = &closure.head.as_ref().unwrap().captures;
+    assert_eq!(captures.len(), 2);
+    assert!(captures.iter().all(|capture| {
+        matches!(
+            &capture.initializer,
+            NormExpr::Name { text, .. } if text == "outer"
+        )
+    }));
+}
+
+#[test]
+fn deduce_keeps_capture_slot_open_unless_complete_strategy_tail_is_present() {
+    for fixture in [
+        "let f = [[cap] => { cap }] () => { value };",
+        "let f = <T> [[cap] => { cap }] () => { value };",
+    ] {
+        let captured = normalized_closure(fixture);
+        assert_eq!(captured.placement, NormClosurePlacement::Ordinary);
+        let [capture] = captured.head.as_ref().unwrap().captures.as_slice() else {
+            panic!("expected one capture: {fixture}");
+        };
+        assert!(matches!(
+            &capture.slot.value_pattern,
+            NormPattern::Binder { name, .. } if name == "cap"
+        ));
+        assert!(matches!(captured.body, NormClosureBody::Block(_)));
+    }
+
+    let strategy = normalized_closure("let f = <T> [[s]] { value };");
+    assert_eq!(strategy.placement, NormClosurePlacement::InPlace);
+    assert!(strategy.head.as_ref().unwrap().captures.is_empty());
+    assert!(matches!(
+        strategy.body,
+        NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "s"
+    ));
+}
+
+#[test]
+fn canonical_sequence_accepts_pack_as_a_direct_pattern_child() {
+    let output = parsed("let <T> head ...rest T = value;");
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = normalized.forms.as_slice() else {
+        panic!("expected one let declaration");
+    };
+    let NormPattern::Sequence { elements, .. } = &slot.value_pattern else {
+        panic!("canonical Pattern sequence must normalize as NormPattern::Sequence");
+    };
+    assert!(matches!(
+        elements.as_slice(),
+        [
+            NormPattern::Skeleton { .. },
+            NormPattern::Pack { inner, .. },
+            NormPattern::HoleRef { name, .. }
+        ] if matches!(inner.as_ref(), NormPattern::Binder { name, .. } if name == "rest")
+            && name == "T"
+    ));
+
+    for fixture in ["let <T> head ...x ...y T = value;", "let ......x = value;"] {
+        let output = parse(fixture);
+        assert!(
+            output.diagnostics.is_empty(),
+            "parser must preserve Pack shape without normalized-level diagnostics: {fixture}\n{}",
+            lang_syntax::dump_diagnostics(&output.diagnostics)
+        );
+        assert!(
+            validate_normalized_patterns(&normalize_program(&output.program)).is_err(),
+            "normalized Pattern validator must reject {fixture}"
         );
     }
 }
@@ -304,7 +462,7 @@ fn compact_member_then_space_argument_remains_an_outer_call() {
 }
 
 #[test]
-fn pack_is_pattern_only_and_each_product_level_allows_one() {
+fn pack_is_pattern_only_and_normalized_validation_owns_layer_cardinality() {
     let closure = normalized_closure("let f = (val: T, ...args) -> r => { r };");
     let head = closure.head.as_ref().unwrap();
     assert!(matches!(
@@ -317,14 +475,24 @@ fn pack_is_pattern_only_and_each_product_level_allows_one() {
     assert!(nested.diagnostics.is_empty());
 
     let duplicate = parse("let f = (a, ...x, ...y) -> r => { r };");
-    assert!(duplicate.diagnostics.iter().any(|diagnostic| {
-        diagnostic.code == lang_syntax::DiagnosticCode::MultiplePackPatternsAtSameLevel
-    }));
+    assert!(
+        duplicate.diagnostics.is_empty(),
+        "the parser must preserve all syntactically formed packs without claiming normalized levels"
+    );
+    assert!(
+        validate_normalized_patterns(&normalize_program(&duplicate.program)).is_err(),
+        "normalized Pattern validation must reject duplicate packs at one level"
+    );
 
     let nested_without_level = parse("let f = (......args) -> r => { r };");
-    assert!(nested_without_level.diagnostics.iter().any(|diagnostic| {
-        diagnostic.code == lang_syntax::DiagnosticCode::MultiplePackPatternsAtSameLevel
-    }));
+    assert!(
+        nested_without_level.diagnostics.is_empty(),
+        "directly nested pack syntax must reach the normalized Pattern validator"
+    );
+    assert!(
+        validate_normalized_patterns(&normalize_program(&nested_without_level.program)).is_err(),
+        "the normalized validator must reject directly nested packs"
+    );
 
     let rhs_spread = parse("let x = ...args;");
     assert!(

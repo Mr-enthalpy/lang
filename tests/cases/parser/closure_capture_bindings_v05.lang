@@ -1,0 +1,5 @@
+let f = [
+    let x = outer,
+    y = source target,
+    runtime let <T> z: T with {} = seed
+]() => { x };

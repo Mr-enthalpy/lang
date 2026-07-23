@@ -33,12 +33,14 @@ Program
                                           captures:
                                             CaptureClause
                                               items:
-                                                Expr
-                                                  Pipe
-                                                    Segment has_incoming=false
-                                                      OperatorExpr
-                                                        Atom
-                                                          Name cap
+                                                CaptureItem Inferred
+                                                  initializer:
+                                                    Expr
+                                                      Pipe
+                                                        Segment has_incoming=false
+                                                          OperatorExpr
+                                                            Atom
+                                                              Name cap
                                         BodyBlock
                                           forms:
                                             ExprForm
@@ -82,12 +84,14 @@ Program
                                         captures:
                                           CaptureClause
                                             items:
-                                              Expr
-                                                Pipe
-                                                  Segment has_incoming=false
-                                                    OperatorExpr
-                                                      Atom
-                                                        Name cap
+                                              CaptureItem Inferred
+                                                initializer:
+                                                  Expr
+                                                    Pipe
+                                                      Segment has_incoming=false
+                                                        OperatorExpr
+                                                          Atom
+                                                            Name cap
                                       BodyBlock
                                         forms:
                                           ExprForm
@@ -142,12 +146,14 @@ Program
                                           captures:
                                             CaptureClause
                                               items:
-                                                Expr
-                                                  Pipe
-                                                    Segment has_incoming=false
-                                                      OperatorExpr
-                                                        Atom
-                                                          Name cap
+                                                CaptureItem Inferred
+                                                  initializer:
+                                                    Expr
+                                                      Pipe
+                                                        Segment has_incoming=false
+                                                          OperatorExpr
+                                                            Atom
+                                                              Name cap
                                         BodyBlock
                                           forms:
                                             ExprForm

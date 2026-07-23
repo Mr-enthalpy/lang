@@ -65,6 +65,14 @@ See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserv
 - Closure placement is independent of head presence. No-`=>` headed bodies,
   including `[[strategy]]`, stay `InPlace`; `=>` bodies are `Ordinary`.
   In-place capture lists are rejected, and malformed callable tails stay Error.
+- Ordinary capture clauses are lists of let-shaped bindings. Explicit
+  `[let x = E]` and `[x = E]` share `BindingSlot` normalization; shorthand
+  `[E]` elaborates to `let n = E` only when normalized `E` has exactly one
+  distinct free non-call bare name. Capture initializers are simultaneous and
+  see the pre-capture environment.
+- Only the complete `[[Name]] {` shape bypasses an available capture slot.
+  Deduce alone leaves that slot open; malformed `[[` strategy recovery is
+  reserved for a head independently established by a later component.
 
 Quick continuation checklist:
 
@@ -98,10 +106,14 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   no RHS unpack counterpart. The grammar is shared by every binding slot
   (`let`, parameter, return, and nested product extraction); it is not a
   parameter-only variadic form.
+- A canonical Pattern Sequence accepts Pack as a direct child:
+  `a ...x b -> Sequence[a, Pack(x), b]`. Ellipsis consumes one following
+  Pattern primary; a compound operand needs an explicit boundary such as
+  `...(x, y)`.
 - Run the global normalized-Pattern validator before downstream build.
-  Parser-local duplicate-pack diagnostics are only an early check; Product,
-  Sequence, annotations, local bodies, parameters, and returns share the same
-  post-normalization invariant.
+  It is the sole authority for pack cardinality across Product, Sequence,
+  annotations, local bodies, parameters, and returns. The parser preserves
+  syntactically formed Pack nodes and diagnoses only local malformed syntax.
 
 Quick pattern-context lowering checklist:
 

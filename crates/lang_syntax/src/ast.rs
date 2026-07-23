@@ -183,6 +183,12 @@ pub enum CanonicalSkeletonAst {
         elements: Vec<CanonicalSkeletonAst>,
         span: Span,
     },
+    /// Pattern-side remainder constructor inside a canonical Sequence. It
+    /// binds only the immediately following canonical primary.
+    Pack {
+        inner: Box<CanonicalSkeletonAst>,
+        span: Span,
+    },
     ProductExtract {
         elements: Vec<CanonicalProductElementAst>,
         span: Span,
@@ -449,9 +455,17 @@ pub struct CaptureClauseAst {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CaptureItemAst {
-    pub expr: ExprAst,
-    pub span: Span,
+pub enum CaptureItemAst {
+    /// A full let-shaped binding. `let` may be omitted when no policy prefix
+    /// needs it as an anchor.
+    Explicit {
+        slot: BindingSlotAst,
+        initializer: ExprAst,
+        span: Span,
+    },
+    /// Source-preserving capture shorthand. Normalization must infer exactly
+    /// one free non-call bare name and elaborate this into a binding.
+    Inferred { initializer: ExprAst, span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

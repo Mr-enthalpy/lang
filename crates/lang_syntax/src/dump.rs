@@ -250,6 +250,10 @@ fn dump_canonical_skeleton(
                 dump_canonical_skeleton(output, elem, indent + 2);
             }
         }
+        crate::CanonicalSkeletonAst::Pack { inner, .. } => {
+            line(output, indent, "CanonicalPack");
+            dump_canonical_skeleton(output, inner, indent + 1);
+        }
         crate::CanonicalSkeletonAst::ProductExtract { elements, .. } => {
             line(output, indent, "CanonicalProductExtract");
             line(output, indent + 1, "elements:");
@@ -745,7 +749,22 @@ fn dump_capture_clause(output: &mut String, clause: &crate::CaptureClauseAst, in
     line(output, indent, "CaptureClause");
     line(output, indent + 1, "items:");
     for item in &clause.items {
-        dump_expr(output, &item.expr, indent + 2);
+        match item {
+            crate::CaptureItemAst::Explicit {
+                slot, initializer, ..
+            } => {
+                line(output, indent + 2, "CaptureItem Explicit");
+                line(output, indent + 3, "slot:");
+                dump_binding_slot(output, slot, indent + 4);
+                line(output, indent + 3, "initializer:");
+                dump_expr(output, initializer, indent + 4);
+            }
+            crate::CaptureItemAst::Inferred { initializer, .. } => {
+                line(output, indent + 2, "CaptureItem Inferred");
+                line(output, indent + 3, "initializer:");
+                dump_expr(output, initializer, indent + 4);
+            }
+        }
     }
 }
 

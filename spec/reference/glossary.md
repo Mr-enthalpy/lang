@@ -130,9 +130,11 @@ _See also: DeduceList, CanonicalSkeleton._
 ## CanonicalSkeleton
 
 A syntactic pattern used in extraction contexts (extract-let binder, extract
-parameter, extract return). The skeleton is a sequence of `CanonicalElement`
-items. In v0.1, the parser builds canonical skeleton AST but does not execute
-matching.
+parameter, extract return). The historical skeleton is a sequence of
+`CanonicalElement` items. Under v0.5-A, Ellipsis may occur as a direct
+canonical Pattern Sequence child and normalizes to `NormPattern::Pack` inside
+`NormPattern::Sequence`; it is not hidden as a new skeleton atom. The parser
+builds shape only and does not execute matching.
 
 All canonical skeleton golden tests in v0.1 are parser preservation tests.
 No semantic meaning (matching, destructuring, equality, constructor
@@ -690,6 +692,24 @@ _See also: ClosureAST, InPlaceClosureAST, OrdinaryClosureAST._
 
 ---
 
+## Capture Clause
+
+The ordinary-closure head component `[CaptureItem, ...]`. Each item is a
+let-shaped binding: `[let x = E]` and `[x = E]` are explicit forms, while
+`[E]` is shorthand only when normalized `E` has exactly one distinct free bare
+name occurrence that is not a direct callable target. Policy-bearing captures
+retain `let` to anchor the binding policy.
+
+Capture initializers are simultaneous: every initializer sees the enclosing
+environment before the clause. Normalization removes the explicit/inferred
+surface distinction and produces `NormCapture { slot, initializer, origin }`.
+This does not perform name resolution, environment layout, or closure
+materialization.
+
+_See also: BindingSlot, NormClosure, Materialization._
+
+---
+
 ## InPlaceClosureAST
 
 A `ClosureAst` whose placement is `InPlace`. It may be the bare, headless
@@ -772,7 +792,11 @@ The single syntax slot that describes a callable implementation and optional
 overload strategy. It normalizes to `UserBody(Ordinary|Named, body)`,
 `Defaulted`, or `Deleted(message?)`. `=> name {}` and `[[name]] {}` carry the
 same named strategy. Strategy metadata participates only after full
-admissibility and never creates a second overload pass.
+admissibility and never creates a second overload pass. Product/closure
+classification and capture-slot bypass require the complete `[[Name]] {`
+shape; Deduce alone leaves capture parsing available, and the weaker `[[`
+prefix is recovery-only after a later head component has proved the strong
+context.
 
 _See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution Pipeline._
 
@@ -813,7 +837,13 @@ pack; nested levels are independent. It is not a value/type/ABI category and
 has no RHS unpack counterpart. Its specificity contribution is one node,
 independent of captured length. It is valid in every let-shaped binding slot,
 including ordinary/local let, parameter, return, and nested product extraction;
-it is not a parameter-only variadic syntax.
+it is not a parameter-only variadic syntax. It may be a direct canonical
+Pattern Sequence child: `a ...x b` normalizes as
+`Sequence[a, Pack(x), b]`. Ellipsis consumes one following Pattern primary;
+`...(x, y)` supplies an explicit compound operand. Only Product and Sequence
+establish cardinality levels; Pack and BindingSlot are transparent. The parser
+preserves all formed Pack nodes, and the normalized Pattern validator is the
+sole one-pack-per-level authority.
 
 _See also: Pattern normalization, Overload Specificity._
 

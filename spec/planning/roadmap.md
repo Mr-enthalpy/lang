@@ -194,9 +194,11 @@ spec/contracts/raw-ast-contract-v0.5.md
 
 The amendment classifies closure placement orthogonalization as a hard
 structural correction, first-class DotClosure as a normalization-driven
-extension, and Ellipsis/Pack plus callable-tail alternatives as new syntax
-amendments. The current syntax crate version is `0.5.0`; the v0.2 freeze
-remains a historical 19-Symbol/32-diagnostic snapshot.
+extension, and let-shaped capture binding, Ellipsis/Pack (including canonical
+Sequence children), plus callable-tail alternatives as new syntax amendments.
+It also records the intentional contraction from arbitrary delete-message
+expressions to string literals. The current syntax crate version is `0.5.0`;
+the v0.2 freeze remains a historical 19-Symbol/32-diagnostic snapshot.
 
 ---
 
@@ -511,7 +513,12 @@ The following remain deferred and are not numbered precisely here:
 
 - general value-to-value `compile` PatternValue execution
 - type / kind checking integration
-- closure materialization model (ClosureAST → ClosureObject; capture rules)
+- closure materialization model (ClosureAST → ClosureObject; capture
+  environment layout and capture admissibility)
+  - preserve the v0.5-A syntax-directed capture binding: every ordinary
+    capture is a `NormCapture { slot, initializer }`, inferred shorthand has
+    exactly one distinct free non-call bare name, and initializers are
+    simultaneous in the pre-capture environment;
   - preserve `InPlace` as an embedded callable-candidate kind with no capture
     list, independently of whether the Raw/Normalized closure has a head;
   - defer unresolved outer reads to the selected embedding layer, while

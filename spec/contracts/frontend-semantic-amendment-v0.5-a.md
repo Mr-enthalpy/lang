@@ -37,7 +37,9 @@ This amendment therefore classifies each delta explicitly:
 | Closure `placement`, optional `head`, and implementation stored independently | Hard structural correction | Head presence and in-place placement are independent semantic facts. The old sum type could not preserve a headed in-place closure without lying about placement. |
 | Leading `.name` / `DotClosure` atom | Normalization-driven structural extension | `.name` must exist independently before the mechanical `E.name -> E |> .name` lowering can preserve first-class substitution. |
 | `...` / `BindingPatternAst::Pack` | New Pattern syntax amendment | This is a new general binding-pattern form, not a repair to a previously accepted v0.2 spelling. |
+| Capture `Expr` items -> let-shaped explicit/inferred items | Closure-head grammar amendment | Every capture now elaborates to a binding; the old expression list is retained only where its binding name is uniquely inferable. |
 | Callable implementation tail (`default`, bare/message `delete`, named strategy) | New closure-tail grammar amendment | These are new strong-context alternatives in the callable tail. |
+| Delete message `(message_expr) delete` -> `(StringLiteral) delete` | Deliberate source-language contraction | Delete diagnostics are static source messages, not general evaluated expressions. |
 | Malformed-tail `ErrorAst` recovery | Hard recovery correction | Invalid source must not become a legal empty user body. |
 | Global one-pack validation | New post-normalization invariant | Parser-local counting cannot enforce a normalized-level invariant across every binding slot. |
 
@@ -49,6 +51,7 @@ The frozen v0.2 documents continue to describe the v0.2 surface:
 19 structural Symbol variants
 32 DiagnosticCode variants
 ClosureAst::InPlace | ClosureAst::Explicit
+CaptureItemAst { expr }
 no general Pattern pack syntax
 no v0.5 callable-tail grammar
 ```
@@ -59,6 +62,7 @@ The amended v0.5 contract describes the current implementation:
 20 structural Symbol variants, including Ellipsis
 33 DiagnosticCode variants
 ClosureAst { placement, head, body, span }
+CaptureItemAst::Explicit | CaptureItemAst::Inferred
 DotClosure
 BindingPatternAst::Pack
 CallableImplementationTail
@@ -103,6 +107,24 @@ CallableImplementationTail
    |  Block
 ```
 
+The amended capture clause is:
+
+```text
+CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
+
+CaptureItem
+  ::= PolicySpec "let" BindingCore "=" Expr
+   |  "let" BindingCore "=" Expr
+   |  BindingCore "=" Expr
+   |  Expr
+```
+
+The first three alternatives are explicit let-shaped captures. `let` may be
+omitted only when no policy needs it as a P1 anchor. Alias `===` remains a
+form-level declaration and is not imported into capture items. The final
+`Expr` alternative is source-preserving shorthand and becomes valid only if
+normalization can infer exactly one binding name.
+
 Placement is determined by the delimiter:
 
 ```text
@@ -115,8 +137,8 @@ metadata without changing in-place placement. Capture lists remain unavailable
 to in-place closures.
 
 Parenthesized Product-versus-head classification uses one closure-head
-continuation predicate. Its strategy alternative requires the complete shape
-`[[Name]]`:
+continuation predicate. Its strategy alternative requires the complete local
+tail shape `[[Name]] {`:
 
 ```text
 :
@@ -124,14 +146,20 @@ continuation predicate. Its strategy alternative requires the complete shape
 =>
 {
 head-clause
-[[Name]]
+[[Name]] {
 ```
 
-The parser separately recognizes a leading `[[` only after another head
-component has independently established the closure-tail strong context. That
-weaker candidate is recovery-only; it cannot classify an ordinary Product or
-disable a bracket-call suffix. Ordinary atom and operator postfix parsing
-therefore continues to accept:
+The capture slot remains open after a DeduceList. Therefore
+`<T> [[cap] => { cap }] () => { ... }` parses `[[cap] => { cap }]` as the
+capture clause, while `<T> [[strategy]] { ... }` has the complete strategy-tail
+shape and bypasses capture parsing. A leading `[[` becomes a recovery-only
+strategy candidate only after a parameter clause, call policy, return clause,
+or head clause has independently closed the capture slot. Deduce alone is not
+sufficient.
+
+The recovery candidate cannot classify an ordinary Product or disable a
+bracket-call suffix. Ordinary atom and operator postfix parsing therefore
+continues to accept:
 
 ```lang
 obj[[cap] => { cap }]
@@ -139,13 +167,26 @@ obj[[cap] => { cap }]
 ```
 
 The complete annotation recognizer, plus the recovery-only candidate after a
-deduce list, prevents heads such as `<T> [[s]] { ... }` from entering
-capture-clause parsing.
+proven post-capture head component, prevents strategy recovery from stealing
+capture expressions.
 
 After `=>`, the parser selects by complete local shape. `Name Block` is tested
 before the bare contextual names, so `=> default { ... }` and
 `=> delete { ... }` are named strategy bodies; only a `default` or `delete`
 not followed by a block selects `Defaulted` or `Deleted`.
+
+The delete-message alternative is intentionally narrower than the historical
+surface:
+
+```text
+v0.2/v0.8 historical surface   => (message_expr) delete
+v0.5 amended surface           => (StringLiteral) delete
+```
+
+This is a deliberate source-language contraction, not merely an AST storage
+change. A delete message is compiler diagnostic text fixed in source; it is
+not an expression to evaluate. Consequently `=> (reason) delete` is invalid,
+while `=> ("reason") delete` remains valid.
 
 ## 5. Raw AST amendment
 
@@ -171,6 +212,18 @@ AtomKind::DotClosure { selector }
 
 BindingPatternAst::Pack { inner, span }
 ```
+
+Canonical Pattern sequences may also contain a Pack as a direct child:
+
+```text
+PatternSequence ::= PatternTerm*
+PatternTerm     ::= "..." PatternPrimary | PatternPrimary
+```
+
+The prefix binds exactly one following primary, so `a ...x b` preserves
+`Sequence[a, Pack(x), b]`. A grouped/product primary may be used for a
+compound operand. Raw `Pack(Pack(x))` is preserved; the parser does not decide
+whether the two nodes share a normalized structural level.
 
 Invalid callable tails produce an error atom. They never recover as an empty
 `ClosureBodyAst::Block`.
@@ -201,6 +254,27 @@ origin.rule = DotClosureLowering
 
 `Generated` is not a placement variant.
 
+Capture normalization removes the raw explicit/inferred split:
+
+```text
+NormCapture {
+  slot: NormBindingSlot,
+  initializer: NormExpr,
+  origin: NormOrigin
+}
+```
+
+For shorthand `[E]`, normalization computes the set of distinct free bare
+names in `N(E)` whose occurrence is not the callable target of its direct
+`Call`. Exactly one name `n` elaborates to `[let n = E]`; zero or multiple
+names produce a retained normalized inference error. Locally bound names in
+nested closures, parameters, and local lets do not participate. Capture
+initializers are simultaneous: each is interpreted in the environment before
+the capture clause.
+
+Canonical sequences containing Pack normalize into `NormPattern::Sequence`
+with `NormPattern::Pack` children. Pack never enters `NormSkeleton`.
+
 `normalize_program` remains available for diagnostic dumps and recovery
 inspection. The downstream build handoff is:
 
@@ -212,9 +286,13 @@ normalize_and_validate_patterns
 
 Only `PatternValidatedNormProgram` may enter declaration harvesting. This
 makes the one-pack-per-normalized-level rule an enforced handoff rather than
-an optional caller convention. The certificate proves only Pattern-layer
-invariants; recovered `NormExpr::Error` nodes require a separate future
-recovery-free certificate and are not ruled out by this type.
+an optional caller convention. It is the sole authority for the normalized
+level invariant: the parser constructs every syntactically formed
+`BindingPatternAst::Pack` and diagnoses only local syntax such as a missing
+inner Pattern. It does not count packs or claim knowledge of normalized
+structural levels. The certificate proves only Pattern-layer invariants;
+recovered `NormExpr::Error` nodes require a separate future recovery-free
+certificate and are not ruled out by this type.
 
 ## 7. Non-semantic boundary
 
@@ -223,6 +301,7 @@ This amendment does not implement:
 ```text
 name or type resolution
 closure materialization
+capture-environment layout or admissibility
 named strategy execution
 default body generation
 pack matching execution

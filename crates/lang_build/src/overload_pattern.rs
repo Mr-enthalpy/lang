@@ -138,27 +138,91 @@ pub fn decode_param_pattern(element: &NormPatternElem) -> RestrictedParamPattern
             let mut has_discard = false;
             let mut alternatives = Vec::new();
             collect_restricted_skeleton(skeleton, &mut has_discard, &mut alternatives);
-            if has_discard && !alternatives.is_empty() {
-                alternatives.sort();
-                alternatives.dedup();
-                RestrictedParamPattern::NamedDiscard {
-                    alternatives,
-                    provenance: Provenance::from_norm_origin(
-                        "named discard parameter pattern",
-                        origin,
-                    ),
-                }
-            } else {
-                RestrictedParamPattern::Unsupported {
-                    reason: "unsupported restricted overload skeleton pattern".to_string(),
-                    provenance: Provenance::from_norm_origin("parameter skeleton", origin),
-                }
+            finish_restricted_named_discard(
+                has_discard,
+                alternatives,
+                Provenance::from_norm_origin("parameter skeleton", origin),
+            )
+        }
+        NormPattern::Sequence { elements, origin } => {
+            let mut has_discard = false;
+            let mut alternatives = Vec::new();
+            for element in elements {
+                collect_restricted_pattern(element, &mut has_discard, &mut alternatives);
             }
+            finish_restricted_named_discard(
+                has_discard,
+                alternatives,
+                Provenance::from_norm_origin("parameter sequence", origin),
+            )
         }
         other => RestrictedParamPattern::Unsupported {
             reason: "unsupported restricted overload parameter pattern".to_string(),
             provenance: Provenance::from_norm_origin("parameter pattern", pattern_origin(other)),
         },
+    }
+}
+
+fn finish_restricted_named_discard(
+    has_discard: bool,
+    mut alternatives: Vec<String>,
+    provenance: Provenance,
+) -> RestrictedParamPattern {
+    if has_discard && !alternatives.is_empty() {
+        alternatives.sort();
+        alternatives.dedup();
+        RestrictedParamPattern::NamedDiscard {
+            alternatives,
+            provenance,
+        }
+    } else {
+        RestrictedParamPattern::Unsupported {
+            reason: "unsupported restricted overload skeleton pattern".to_string(),
+            provenance,
+        }
+    }
+}
+
+fn collect_restricted_pattern(
+    pattern: &NormPattern,
+    has_discard: &mut bool,
+    alternatives: &mut Vec<String>,
+) {
+    match pattern {
+        NormPattern::Skeleton { skeleton, .. } => {
+            collect_restricted_skeleton(skeleton, has_discard, alternatives)
+        }
+        NormPattern::Name { name, .. } | NormPattern::HoleRef { name, .. } => {
+            alternatives.push(name.clone())
+        }
+        NormPattern::Sequence { elements, .. } => {
+            for element in elements {
+                collect_restricted_pattern(element, has_discard, alternatives);
+            }
+        }
+        NormPattern::Product { elements, .. } => {
+            for element in elements {
+                match element {
+                    NormPatternElem::Pattern(pattern) => {
+                        collect_restricted_pattern(pattern, has_discard, alternatives)
+                    }
+                    NormPatternElem::BindingSlot(slot) => {
+                        collect_restricted_pattern(&slot.value_pattern, has_discard, alternatives)
+                    }
+                    NormPatternElem::Unit { .. } => {}
+                }
+            }
+        }
+        NormPattern::Binder { name, .. } if name == "_" => *has_discard = true,
+        NormPattern::Binder { .. }
+        | NormPattern::OperatorBinder { .. }
+        | NormPattern::Pack { .. }
+        | NormPattern::Unit { .. }
+        | NormPattern::Literal { .. }
+        | NormPattern::Nav { .. }
+        | NormPattern::BindingSlot { .. }
+        | NormPattern::Error(_)
+        | NormPattern::Unsupported { .. } => {}
     }
 }
 

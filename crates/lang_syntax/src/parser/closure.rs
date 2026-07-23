@@ -410,8 +410,8 @@ fn parse_bare_delete_body(parser: &mut Parser<'_>) -> DeleteBodyAst {
     }
 }
 
-fn at_complete_strategy_annotation(parser: &Parser<'_>) -> bool {
-    token_index_starts_complete_strategy_annotation(parser, parser.cursor.current_index())
+fn at_complete_strategy_tail(parser: &Parser<'_>) -> bool {
+    token_index_starts_complete_strategy_tail(parser, parser.cursor.current_index())
 }
 
 fn at_strategy_annotation_candidate(parser: &Parser<'_>) -> bool {
@@ -427,10 +427,10 @@ fn token_index_starts_strategy_annotation_candidate(parser: &Parser<'_>, from: u
     matches!(second.kind, TokenKind::Symbol(Symbol::LBracket))
 }
 
-pub(super) fn token_index_starts_complete_strategy_annotation(
-    parser: &Parser<'_>,
-    from: usize,
-) -> bool {
+/// A strategy annotation closes a still-available capture slot only when its
+/// complete local tail shape is present. `[[Name]]` alone may still be the
+/// beginning of a capture-clause expression.
+pub(super) fn token_index_starts_complete_strategy_tail(parser: &Parser<'_>, from: usize) -> bool {
     let (first_index, first) = parser.cursor.peek_at_skip_trivia(from);
     if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
         return false;
@@ -447,8 +447,13 @@ pub(super) fn token_index_starts_complete_strategy_annotation(
     if !matches!(first_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
         return false;
     }
-    let (_, second_close) = parser.cursor.peek_at_skip_trivia(first_close_index + 1);
-    matches!(second_close.kind, TokenKind::Symbol(Symbol::RBracket))
+    let (second_close_index, second_close) =
+        parser.cursor.peek_at_skip_trivia(first_close_index + 1);
+    if !matches!(second_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return false;
+    }
+    let (_, block) = parser.cursor.peek_at_skip_trivia(second_close_index + 1);
+    matches!(block.kind, TokenKind::Symbol(Symbol::LBrace))
 }
 
 /// The single strong-context lookahead used when a parenthesized form could be
@@ -465,7 +470,7 @@ pub(super) fn token_index_starts_closure_head_continuation(
         token.kind,
         TokenKind::Symbol(Symbol::Colon | Symbol::ThinArrow | Symbol::FatArrow | Symbol::LBrace)
     ) || token_index_starts_head_clause(parser, from)
-        || token_index_starts_complete_strategy_annotation(parser, from)
+        || token_index_starts_complete_strategy_tail(parser, from)
 }
 
 pub(super) fn at_callable_implementation_tail(parser: &mut Parser<'_>) -> bool {
@@ -520,15 +525,12 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
-    let strategy_tail_after_deduce = deduce.is_some() && at_strategy_annotation_candidate(parser);
-    let captures = if parser.cursor.at_symbol(Symbol::LBracket)
-        && !at_complete_strategy_annotation(parser)
-        && !strategy_tail_after_deduce
-    {
-        Some(parse_capture_clause(parser))
-    } else {
-        None
-    };
+    let captures =
+        if parser.cursor.at_symbol(Symbol::LBracket) && !at_complete_strategy_tail(parser) {
+            Some(parse_capture_clause(parser))
+        } else {
+            None
+        };
 
     let params = if parser.cursor.at_symbol(Symbol::LParen) {
         Some(parse_param_clause(parser, deduce.as_ref()))
@@ -639,7 +641,7 @@ pub(super) fn at_head_clause_keyword(parser: &Parser<'_>) -> bool {
 fn clause_expr_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
-        || at_complete_strategy_annotation(parser)
+        || at_complete_strategy_tail(parser)
         || parser.is_form_boundary()
         || at_head_clause_keyword(parser)
 }
@@ -720,18 +722,36 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
             break;
         }
 
-        let expr = parse_expr_until(parser, |p| {
-            p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
-        });
-        if super::form::expression_contains_name(&expr, "return") {
-            parser.error(
-                DiagnosticCode::ReturnExpressionNotAllowed,
-                "return is only allowed as a block terminal form",
-                expr.span,
-            );
+        if capture_item_is_explicit_binding(parser) {
+            let mut slot = parse_binding_slot(parser, BindingSlotContext::Capture, None, true);
+            let missing_initializer_span = parser.cursor.current_span();
+            let initializer = slot.initializer.take().unwrap_or_else(|| {
+                error_expr(
+                    parser,
+                    "expected `=` in capture binding",
+                    missing_initializer_span,
+                )
+            });
+            let span = slot.span.join(initializer.span);
+            items.push(CaptureItemAst::Explicit {
+                slot,
+                initializer,
+                span,
+            });
+        } else {
+            let initializer = parse_expr_until(parser, |p| {
+                p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
+            });
+            if super::form::expression_contains_name(&initializer, "return") {
+                parser.error(
+                    DiagnosticCode::ReturnExpressionNotAllowed,
+                    "return is only allowed as a block terminal form",
+                    initializer.span,
+                );
+            }
+            let span = initializer.span;
+            items.push(CaptureItemAst::Inferred { initializer, span });
         }
-        let span = expr.span;
-        items.push(CaptureItemAst { expr, span });
 
         if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
             break;
@@ -754,6 +774,43 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
     CaptureClauseAst {
         items,
         span: lbracket.span.join(end),
+    }
+}
+
+fn capture_item_is_explicit_binding(parser: &Parser<'_>) -> bool {
+    let mut index = parser.cursor.current_index();
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+
+    loop {
+        let (token_index, token) = parser.cursor.peek_at_skip_trivia(index);
+        match token.kind {
+            TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon) => return false,
+            TokenKind::Symbol(Symbol::Comma)
+                if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+            {
+                return false;
+            }
+            TokenKind::Symbol(Symbol::RBracket)
+                if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+            {
+                return false;
+            }
+            TokenKind::Symbol(Symbol::Equal)
+                if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+            {
+                return true;
+            }
+            TokenKind::Symbol(Symbol::LParen) => paren_depth += 1,
+            TokenKind::Symbol(Symbol::RParen) => paren_depth = paren_depth.saturating_sub(1),
+            TokenKind::Symbol(Symbol::LBracket) => bracket_depth += 1,
+            TokenKind::Symbol(Symbol::RBracket) => bracket_depth = bracket_depth.saturating_sub(1),
+            TokenKind::Symbol(Symbol::LBrace) => brace_depth += 1,
+            TokenKind::Symbol(Symbol::RBrace) => brace_depth = brace_depth.saturating_sub(1),
+            _ => {}
+        }
+        index = token_index.saturating_add(1);
     }
 }
 

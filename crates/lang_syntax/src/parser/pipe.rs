@@ -372,7 +372,7 @@ fn parse_segment_element(
                     // A Product followed by `[...]` remains in the ordinary
                     // postfix-expression path. This preserves cases such as
                     // `()[[capture] => { ... }]`; only a complete
-                    // `[[Name]]` continuation above proves a closure head.
+                    // `[[Name]] {` continuation above proves a closure head.
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }

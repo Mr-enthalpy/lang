@@ -65,6 +65,11 @@ fn dot_ellipsis_maximal_munch() {
 }
 
 #[test]
+fn dot_numeric_ellipsis_boundaries() {
+    assert_lexer_case("dot_numeric_ellipsis_boundaries", false);
+}
+
+#[test]
 fn trivia() {
     assert_lexer_case("trivia", false);
 }

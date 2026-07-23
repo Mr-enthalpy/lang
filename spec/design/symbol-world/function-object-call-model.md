@@ -229,8 +229,10 @@ The implicit read ability does not grant arbitrary writes to outer places.
 Writing still requires ordinary place/mutability authority; because an
 in-place closure cannot spell a capture list, it cannot manufacture captured
 write authority. The future closure materializer and resolver own these
-checks. The Normalized AST only preserves `InPlace` and performs no lookup or
-capture analysis.
+checks. The Normalized AST only preserves `InPlace` and, for ordinary closures,
+elaborates the v0.5-A let-shaped capture syntax. Its free non-call-name
+inference is shape-directed; it performs no lookup, capture-environment layout,
+or capture admissibility analysis.
 
 ## 8. Call lookup pipeline
 

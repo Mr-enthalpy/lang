@@ -6,10 +6,12 @@
 //! This prototype records that boundary; explicit bridge syntax/lowering is
 //! future work unless it is already present in Raw AST.
 
+use std::collections::BTreeSet;
+
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
     BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
-    CanonicalProductElementAst, CanonicalSkeletonAst, ClosureAst, ClosureBodyAst,
+    CanonicalProductElementAst, CanonicalSkeletonAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
     ClosurePlacementAst, DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst,
     FormAst, HeadClauseAst, LetAliasAst, LetAst, NavComponentAst, OperatorExprAst,
     OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
@@ -209,7 +211,8 @@ pub struct PackPatternLayerError {
 }
 
 /// Validate the semantic, post-normalization rule that one structural level
-/// may contain at most one pack. Nested products are independent levels.
+/// may contain at most one pack. Nested Product and Sequence containers are
+/// independent levels; Pack and BindingSlot are transparent.
 pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPatternLayerError> {
     match pattern {
         NormPattern::Product { elements, .. } => {
@@ -499,7 +502,8 @@ fn collect_closure_pack_errors(closure: &NormClosure, errors: &mut Vec<PackPatte
             collect_slot_pack_errors(returns, errors);
         }
         for capture in &head.captures {
-            collect_expr_pack_errors(capture, errors);
+            collect_slot_pack_errors(&capture.slot, errors);
+            collect_expr_pack_errors(&capture.initializer, errors);
         }
         for clause in &head.clauses {
             match clause {
@@ -694,11 +698,18 @@ pub enum NormClosurePlacement {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormClosureHead {
     pub deduce: Vec<NormHoleDecl>,
-    pub captures: Vec<NormExpr>,
+    pub captures: Vec<NormCapture>,
     pub params: Vec<NormPatternElem>,
     pub call_policy: Option<NormPolicySpec>,
     pub returns: Option<NormBindingSlot>,
     pub clauses: Vec<NormHeadClause>,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormCapture {
+    pub slot: NormBindingSlot,
+    pub initializer: NormExpr,
     pub origin: NormOrigin,
 }
 
@@ -841,6 +852,7 @@ pub enum NormRule {
     BranchNameExpansion,
     AliasPreserve,
     ClosureNormalize,
+    CaptureNameInference,
     PatternNormalize,
     Unsupported,
 }
@@ -1693,7 +1705,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
             captures
                 .items
                 .iter()
-                .map(|item| normalize_expr(&item.expr))
+                .map(|item| normalize_capture_item(item, &hole_names))
                 .collect()
         })
         .unwrap_or_default();
@@ -1715,6 +1727,245 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
             rule: NormRule::ClosureNormalize,
             span: head.span,
         },
+    }
+}
+
+fn normalize_capture_item(item: &CaptureItemAst, hole_names: &[String]) -> NormCapture {
+    match item {
+        CaptureItemAst::Explicit {
+            slot,
+            initializer,
+            span,
+        } => {
+            let mut slot = normalize_binding_slot(slot, hole_names);
+            slot.has_let = true;
+            slot.initializer = None;
+            NormCapture {
+                slot,
+                initializer: normalize_expr(initializer),
+                origin: NormOrigin::Source(*span),
+            }
+        }
+        CaptureItemAst::Inferred { initializer, span } => {
+            let initializer = normalize_expr(initializer);
+            let names = infer_capture_binding_names(&initializer);
+            let value_pattern = if names.len() == 1 {
+                NormPattern::Binder {
+                    name: names.iter().next().expect("one inferred name").clone(),
+                    origin: NormOrigin::Derived {
+                        rule: NormRule::CaptureNameInference,
+                        span: *span,
+                        summary: "unique free non-call bare name".to_string(),
+                    },
+                }
+            } else {
+                let detail = if names.is_empty() {
+                    "found no candidate".to_string()
+                } else {
+                    format!("found {}", names.into_iter().collect::<Vec<_>>().join(", "))
+                };
+                NormPattern::Error(NormError {
+                    message: format!(
+                        "capture shorthand requires exactly one free non-call bare name; {detail}"
+                    ),
+                    origin: NormOrigin::Derived {
+                        rule: NormRule::CaptureNameInference,
+                        span: *span,
+                        summary: "ambiguous capture shorthand".to_string(),
+                    },
+                })
+            };
+            let origin = NormOrigin::Derived {
+                rule: NormRule::CaptureNameInference,
+                span: *span,
+                summary: "inferred capture elaborates to a let-shaped binding".to_string(),
+            };
+            NormCapture {
+                slot: NormBindingSlot {
+                    policy: None,
+                    has_let: true,
+                    deduce: Vec::new(),
+                    value_pattern,
+                    annotation: None,
+                    with_clause: None,
+                    initializer: None,
+                    origin: origin.clone(),
+                },
+                initializer,
+                origin,
+            }
+        }
+    }
+}
+
+fn infer_capture_binding_names(initializer: &NormExpr) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    collect_free_non_call_names_expr(initializer, &BTreeSet::new(), false, &mut names);
+    names
+}
+
+fn collect_free_non_call_names_expr(
+    expr: &NormExpr,
+    bound: &BTreeSet<String>,
+    direct_call_target: bool,
+    names: &mut BTreeSet<String>,
+) {
+    match expr {
+        NormExpr::Name { text, .. } => {
+            if !direct_call_target && !bound.contains(text) {
+                names.insert(text.clone());
+            }
+        }
+        NormExpr::Call { source, target, .. } => {
+            for element in &source.elements {
+                if let NormProductElem::Expr(expr) = element {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                }
+            }
+            collect_free_non_call_names_expr(target, bound, true, names);
+        }
+        NormExpr::Product(product) => {
+            for element in &product.elements {
+                if let NormProductElem::Expr(expr) = element {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                }
+            }
+        }
+        NormExpr::Nav { components, .. } => {
+            for component in components {
+                if let NormNavComponent::Group { expr, .. } = component {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                }
+            }
+        }
+        NormExpr::Closure(closure) => {
+            collect_free_non_call_names_closure(closure, bound, names);
+        }
+        NormExpr::Literal { .. }
+        | NormExpr::OperatorTarget { .. }
+        | NormExpr::Error(_)
+        | NormExpr::Unsupported { .. } => {}
+    }
+}
+
+fn collect_free_non_call_names_closure(
+    closure: &NormClosure,
+    outer_bound: &BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    let mut body_bound = outer_bound.clone();
+    if let Some(head) = &closure.head {
+        // Capture initializers are simultaneous and therefore all see only the
+        // enclosing environment.
+        for capture in &head.captures {
+            collect_free_non_call_names_expr(&capture.initializer, outer_bound, false, names);
+        }
+        for capture in &head.captures {
+            collect_pattern_binder_names(&capture.slot.value_pattern, &mut body_bound);
+        }
+        for param in &head.params {
+            collect_pattern_element_binder_names(param, &mut body_bound);
+        }
+        if let Some(returns) = &head.returns {
+            collect_pattern_binder_names(&returns.value_pattern, &mut body_bound);
+        }
+        for clause in &head.clauses {
+            let expr = match clause {
+                NormHeadClause::Require { expr, .. }
+                | NormHeadClause::Pre { expr, .. }
+                | NormHeadClause::Post { expr, .. }
+                | NormHeadClause::LifetimePre { expr, .. }
+                | NormHeadClause::LifetimePost { expr, .. } => Some(expr),
+                NormHeadClause::Error(_) => None,
+            };
+            if let Some(expr) = expr {
+                collect_free_non_call_names_expr(expr, &body_bound, false, names);
+            }
+        }
+    }
+
+    if let Some(body) = closure.body.user_body() {
+        collect_free_non_call_names_program(body, &mut body_bound, names);
+    }
+}
+
+fn collect_free_non_call_names_program(
+    program: &NormProgram,
+    bound: &mut BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    for form in &program.forms {
+        match form {
+            NormForm::Let(NormDecl::Let { slot, .. }) => {
+                if let Some(initializer) = &slot.initializer {
+                    collect_free_non_call_names_expr(initializer, bound, false, names);
+                }
+                collect_pattern_binder_names(&slot.value_pattern, bound);
+            }
+            NormForm::Alias(NormDecl::Alias { binder, target, .. }) => {
+                for component in &target.components {
+                    if let NormNavComponent::Group { expr, .. } = component {
+                        collect_free_non_call_names_expr(expr, bound, false, names);
+                    }
+                }
+                if let NormAliasBinder::Name { name, .. } = binder {
+                    bound.insert(name.clone());
+                }
+            }
+            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+                collect_free_non_call_names_expr(expr, bound, false, names);
+            }
+            NormForm::ReturnEvent(event) => {
+                collect_free_non_call_names_expr(&event.value, bound, false, names);
+                if let NormReturnTargetSyntax::Explicit(target) = &event.target {
+                    collect_free_non_call_names_expr(target, bound, false, names);
+                }
+            }
+            NormForm::Let(NormDecl::Alias { .. } | NormDecl::Error(_))
+            | NormForm::Alias(NormDecl::Let { .. } | NormDecl::Error(_))
+            | NormForm::Error(_) => {}
+        }
+    }
+}
+
+fn collect_pattern_element_binder_names(element: &NormPatternElem, bound: &mut BTreeSet<String>) {
+    match element {
+        NormPatternElem::Pattern(pattern) => collect_pattern_binder_names(pattern, bound),
+        NormPatternElem::BindingSlot(slot) => {
+            collect_pattern_binder_names(&slot.value_pattern, bound)
+        }
+        NormPatternElem::Unit { .. } => {}
+    }
+}
+
+fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<String>) {
+    match pattern {
+        NormPattern::Binder { name, .. } => {
+            bound.insert(name.clone());
+        }
+        NormPattern::Product { elements, .. } => {
+            for element in elements {
+                collect_pattern_element_binder_names(element, bound);
+            }
+        }
+        NormPattern::Pack { inner, .. } => collect_pattern_binder_names(inner, bound),
+        NormPattern::BindingSlot { slot, .. } => {
+            collect_pattern_binder_names(&slot.value_pattern, bound)
+        }
+        NormPattern::Sequence { elements, .. } => {
+            for element in elements {
+                collect_pattern_binder_names(element, bound);
+            }
+        }
+        NormPattern::OperatorBinder { .. }
+        | NormPattern::Unit { .. }
+        | NormPattern::HoleRef { .. }
+        | NormPattern::Name { .. }
+        | NormPattern::Literal { .. }
+        | NormPattern::Nav { .. }
+        | NormPattern::Skeleton { .. }
+        | NormPattern::Error(_)
+        | NormPattern::Unsupported { .. } => {}
     }
 }
 
@@ -1838,14 +2089,70 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> N
             inner: Box::new(normalize_binding_pattern(inner, holes)),
             origin: NormOrigin::Source(*span),
         },
-        BindingPatternAst::Skeleton(skeleton) => NormPattern::Skeleton {
-            skeleton: normalize_canonical_skeleton(skeleton),
+        BindingPatternAst::Skeleton(skeleton) => {
+            normalize_canonical_pattern(skeleton, holes, false)
+        }
+        BindingPatternAst::Error(error) => NormPattern::Error(normalize_error(error)),
+    }
+}
+
+fn normalize_canonical_pattern(
+    skeleton: &CanonicalSkeletonAst,
+    holes: &[String],
+    is_pack_operand: bool,
+) -> NormPattern {
+    match skeleton {
+        CanonicalSkeletonAst::Segment { elements, span } => NormPattern::Sequence {
+            elements: elements
+                .iter()
+                .map(|element| normalize_canonical_pattern(element, holes, false))
+                .collect(),
             origin: NormOrigin::Generated {
                 rule: NormRule::PatternNormalize,
-                span: skeleton_span(skeleton),
+                span: *span,
             },
         },
-        BindingPatternAst::Error(error) => NormPattern::Error(normalize_error(error)),
+        CanonicalSkeletonAst::Pack { inner, span } => NormPattern::Pack {
+            inner: Box::new(normalize_canonical_pattern(inner, holes, true)),
+            origin: NormOrigin::Source(*span),
+        },
+        CanonicalSkeletonAst::ProductExtract { elements, span } => NormPattern::Product {
+            elements: elements
+                .iter()
+                .map(|element| match element {
+                    CanonicalProductElementAst::Skeleton(skeleton) => NormPatternElem::Pattern(
+                        normalize_canonical_pattern(skeleton, holes, false),
+                    ),
+                    CanonicalProductElementAst::Unit { span } => NormPatternElem::Unit {
+                        origin: NormOrigin::Source(*span),
+                    },
+                })
+                .collect(),
+            origin: NormOrigin::Generated {
+                rule: NormRule::PatternNormalize,
+                span: *span,
+            },
+        },
+        CanonicalSkeletonAst::Name { name, role, .. }
+            if *role == CanonicalNameRole::Hole || holes.iter().any(|hole| hole == &name.text) =>
+        {
+            NormPattern::HoleRef {
+                name: name.text.clone(),
+                origin: NormOrigin::Source(name.span),
+            }
+        }
+        CanonicalSkeletonAst::Name { name, .. } if is_pack_operand => NormPattern::Binder {
+            name: name.text.clone(),
+            origin: NormOrigin::Source(name.span),
+        },
+        CanonicalSkeletonAst::Error(error) => NormPattern::Error(normalize_error(error)),
+        atom => NormPattern::Skeleton {
+            skeleton: normalize_canonical_skeleton(atom),
+            origin: NormOrigin::Generated {
+                rule: NormRule::PatternNormalize,
+                span: skeleton_span(atom),
+            },
+        },
     }
 }
 
@@ -2101,6 +2408,13 @@ fn normalize_canonical_skeleton(skeleton: &CanonicalSkeletonAst) -> NormSkeleton
             elements: elements.iter().map(normalize_canonical_skeleton).collect(),
             origin: NormOrigin::Source(*span),
         },
+        CanonicalSkeletonAst::Pack { span, .. } => NormSkeleton::Error(NormError {
+            message: "canonical Pack must normalize through NormPattern".to_string(),
+            origin: NormOrigin::Generated {
+                rule: NormRule::Unsupported,
+                span: *span,
+            },
+        }),
         CanonicalSkeletonAst::ProductExtract { elements, span } => NormSkeleton::Product {
             elements: elements
                 .iter()
@@ -2353,6 +2667,7 @@ fn origin_span(origin: &NormOrigin) -> Span {
 fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
     match skeleton {
         CanonicalSkeletonAst::Segment { span, .. }
+        | CanonicalSkeletonAst::Pack { span, .. }
         | CanonicalSkeletonAst::ProductExtract { span, .. }
         | CanonicalSkeletonAst::Wildcard { span }
         | CanonicalSkeletonAst::Name { span, .. }
@@ -2992,7 +3307,15 @@ fn dump_closure_head(output: &mut String, head: &NormClosureHead, indent: usize)
     if !head.captures.is_empty() {
         line(output, indent + 1, "captures:");
         for capture in &head.captures {
-            dump_norm_expr(output, capture, indent + 2);
+            line(
+                output,
+                indent + 2,
+                &format!("Capture {}", origin_inline(&capture.origin)),
+            );
+            line(output, indent + 3, "slot:");
+            dump_binding_slot(output, &capture.slot, indent + 4);
+            line(output, indent + 3, "initializer:");
+            dump_norm_expr(output, &capture.initializer, indent + 4);
         }
     }
     line(output, indent + 1, "params:");
@@ -3200,6 +3523,7 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::BranchNameExpansion => "BranchNameExpansion",
         NormRule::AliasPreserve => "AliasPreserve",
         NormRule::ClosureNormalize => "ClosureNormalize",
+        NormRule::CaptureNameInference => "CaptureNameInference",
         NormRule::PatternNormalize => "PatternNormalize",
         NormRule::Unsupported => "Unsupported",
     }

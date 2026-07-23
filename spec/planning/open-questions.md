@@ -37,9 +37,16 @@ track:
   snapshots.
 - Closure placement and generated provenance are independent in both Raw and
   Normalized AST. Generated dot closures retain `InPlace` placement.
-- Product-versus-closure classification recognizes only complete
-  `[[Name]]`; the weaker `[[` recovery candidate is confined to independently
-  proven closure heads and never disables ordinary bracket-call suffixes.
+- Product-versus-closure classification and capture-slot bypass recognize only
+  the complete `[[Name]] {` tail. Deduce alone leaves capture available; the
+  weaker `[[` recovery candidate is confined to independently proven
+  post-capture closure heads and never disables ordinary bracket-call suffixes.
+- Ordinary capture items are let-shaped bindings. A naked capture expression
+  is retained as shorthand only when normalization finds exactly one distinct
+  free non-call bare name; all initializers use the pre-capture environment.
+- Pack is a direct canonical Pattern Sequence child as well as a Product child.
+  The parser preserves Pack shape, while the normalized Pattern validator alone
+  owns the one-pack-per-Product-or-Sequence-level invariant.
 - Build-world harvesting consumes `PatternValidatedNormProgram` from
   `normalize_and_validate_patterns`. This proves only global normalized
   Pattern invariants; it does not claim recovery-free syntax.

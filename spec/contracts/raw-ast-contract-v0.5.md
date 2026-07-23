@@ -21,7 +21,7 @@ migration boundary are recorded in
 source text
   -> weak lexer
   -> Raw AST + syntax diagnostics
-  -> non-semantic normalization
+  -> non-semantic normalization + capture binding elaboration
   -> normalized Pattern validation
   -> PatternValidatedNormProgram
 ```
@@ -89,24 +89,28 @@ starts_closure_head_continuation
    |  "=>"
    |  "{"
    |  HeadClause
-   |  CompleteStrategyAnnotation
+   |  CompleteStrategyTail
 
-CompleteStrategyAnnotation
-  ::= "[[" Name "]]"
+CompleteStrategyTail
+  ::= "[[" Name "]]" "{"
 ```
 
-Only `CompleteStrategyAnnotation` may classify a Product as a closure
+Only `CompleteStrategyTail` may classify a Product as a closure
 parameter head. A second recognizer for a leading `[[` is recovery-only and
 may be used only after another head component has independently established
 the callable-tail context.
 
-After a deduce list, capture parsing is entered only for:
+After a deduce list, the capture slot remains open. Capture parsing is entered
+for `[` unless the complete strategy tail is present:
 
 ```text
 "["
-and not CompleteStrategyAnnotation
-and not RecoveryStrategyCandidateAfterProvenDeduceHead
+and not CompleteStrategyTail
 ```
+
+A leading `[[` is a malformed-strategy recovery candidate only after a
+parameter clause, call policy, return clause, or head clause has independently
+closed the capture slot. Deduce alone does not close it.
 
 Thus all of these are closure heads:
 
@@ -141,6 +145,13 @@ other Name without Block      -> Error
 
 Consequently `default` and `delete` remain weak names and may be named
 strategies when followed by a block.
+
+The parenthesized delete-message form is a deliberate contraction from the
+historical `=> (message_expr) delete` surface to
+`=> (StringLiteral) delete`. Delete messages are static compiler diagnostic
+text, not evaluated expressions. The v0.2/v0.8 documents remain historical
+records of the broader accepted shape; v0.5 intentionally rejects
+`=> (reason) delete`.
 
 ## 4. Closure Raw AST
 
@@ -178,6 +189,46 @@ backtrack.
 
 In-place closures cannot have capture lists. Invalid capture/tail forms become
 `ErrorAst`; an error cannot be represented as a valid empty Block.
+
+### 4.1 Capture items are let-shaped
+
+```text
+CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
+
+CaptureItem
+  ::= PolicySpec "let" BindingCore "=" Expr
+   |  "let" BindingCore "=" Expr
+   |  BindingCore "=" Expr
+   |  Expr
+```
+
+The Raw AST preserves whether a capture was explicit or shorthand:
+
+```text
+CaptureItemAst
+  = Explicit {
+      slot: BindingSlotAst,
+      initializer: ExprAst
+    }
+  | Inferred {
+      initializer: ExprAst
+    }
+```
+
+`BindingSlotAst` is the same let-shaped structure used by declarations and
+formal parameters. `[let x = E]` and `[x = E]` are equivalent; a policy prefix
+requires the `let` anchor, for example `[runtime let x = E]`. Alias `===`
+remains form-level and is rejected after capture `let`.
+
+The old `[E]` surface is retained only as inferable shorthand. It normalizes to
+`[let n = E]` exactly when the normalized expression contains one distinct
+free bare name `n` in non-call-target position. Occurrences are deduplicated;
+a name may also appear as a call target without losing its non-call evidence.
+Zero or multiple candidates produce a retained normalized inference error.
+Nested binders do not leak into this calculation.
+
+All initializers in one capture clause see the enclosing environment before
+the clause; captures are simultaneous, not a sequential let block.
 
 ## 5. Dot closure and member forms
 
@@ -217,8 +268,29 @@ NormPattern::Pack { inner, origin }
 is permitted in every let-shaped binding slot. It has no RHS spread meaning,
 pack type, ABI class, or unpack operator.
 
+Ellipsis is also a direct canonical Pattern Sequence child:
+
+```text
+PatternSequence ::= PatternTerm*
+PatternTerm     ::= "..." PatternPrimary | PatternPrimary
+```
+
+It binds only the immediately following primary:
+
+```text
+a ...x b     -> Sequence[a, Pack(x), b]
+...(x, y)    -> Pack(Product[x, y])
+```
+
+Canonical sequences with Pack normalize to `NormPattern::Sequence`; Pack is
+never hidden in `NormSkeleton`.
+
 Each normalized structural level contains at most one direct pack. Product and
 Sequence levels apply the same rule, and nested levels validate independently.
+The parser constructs every syntactically formed Pack, including multiple
+direct packs and directly nested packs. It diagnoses only local syntax such as
+a missing inner Pattern. The post-normalization Pattern validator is the sole
+authority for the normalized-level cardinality rule.
 
 ## 7. Normalized closure contract
 
@@ -233,6 +305,16 @@ NormClosure {
 NormClosurePlacement
   = InPlace
   | Ordinary
+```
+
+Normalized captures are uniformly explicit bindings:
+
+```text
+NormCapture {
+  slot: NormBindingSlot,
+  initializer: NormExpr,
+  origin: NormOrigin
+}
 ```
 
 Generated provenance is stored only in:
@@ -284,8 +366,11 @@ The additional code is:
 MultiplePackPatternsAtSameLevel
 ```
 
-Every diagnostic retains a span. Recovery remains error tolerant, but no
-recovery path may replace invalid callable syntax with a valid executable body.
+This code is reserved for a consumer that projects normalized Pattern
+validation failures into the syntax diagnostic transport. The parser does not
+emit it or independently count packs. Every diagnostic retains a span.
+Recovery remains error tolerant, but no recovery path may replace invalid
+callable syntax with a valid executable body.
 
 ## 10. Non-goals
 
@@ -296,7 +381,7 @@ name resolution
 Pattern-head resolution
 type or kind checking
 closure materialization
-capture analysis
+capture-environment analysis
 named strategy execution
 default implementation generation
 pack matching execution

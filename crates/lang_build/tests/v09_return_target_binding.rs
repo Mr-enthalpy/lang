@@ -115,12 +115,12 @@ let f = (): runtime -> (r first, d second) => {
     assert!(matches!(
         &elements[0],
         NormPatternElem::BindingSlot(first)
-            if matches!(&first.value_pattern, NormPattern::Skeleton { .. })
+            if matches!(&first.value_pattern, NormPattern::Sequence { .. })
     ));
     assert!(matches!(
         &elements[1],
         NormPatternElem::BindingSlot(second)
-            if matches!(&second.value_pattern, NormPattern::Skeleton { .. })
+            if matches!(&second.value_pattern, NormPattern::Sequence { .. })
     ));
 }
 

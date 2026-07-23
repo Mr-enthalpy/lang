@@ -21,7 +21,8 @@ behavior, especially:
 - product / group / target boundaries;
 - operator / first-class dot closure / member / bracket sugar as
   normalization-level lowering;
-- callable implementation tails and Pattern remainder packs;
+- let-shaped capture binding, callable implementation tails, and Pattern
+  remainder packs including canonical Sequence children;
 - value-side vs pattern-side separation;
 - annotation patterns and DeduceList holes;
 - origin / provenance and error / `Unsupported` visibility at the normalized
