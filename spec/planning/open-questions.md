@@ -27,9 +27,11 @@ track:
 - Generated data fields are unary function objects; the first-class `.name`
   constructor generalizes the same first-argument dispatch to ordinary
   remainder arguments without creating a separate member system.
-- Remainder arguments require explicit `E |> .name P`; compact `E.name P`
-  remains `(E |> .name) P`. Direct `..name(product)` sugar is therefore not
-  redundant.
+- Once `.name` is lowered, it is an ordinary expression. Its provenance does
+  not alter how `P1 |> E P2` associates; replacing `.name` with a bound
+  equivalent must preserve the general pipe/product spine. Compact `E.name`
+  mechanically uses the same core. Direct `..name(product)` remains the
+  distinct direct member-call simulation and is not redundant.
 - `ref` and `share` are namespace subspaces, not reserved field names.
 - Function-object names and namespace-subspace names may be identical under the
   same parent when they occupy different child-name roles.

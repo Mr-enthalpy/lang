@@ -73,7 +73,7 @@ with its category, typical trigger, and stability status.
 | `InvalidDeduceList` | Parser | Malformed deduce list (missing name, trailing comma, unclosed, missing annotation) | Preserve parsed binders where possible; some malformed annotation positions produce an error expression, other cases recover without adding a dedicated `ErrorAst` | Guaranteed |
 | `InvalidCanonicalSkeleton` | Parser | Malformed canonical skeleton in extraction context | Skip to context boundary; insert `ErrorAst` | Guaranteed |
 | `MultiplePackPatternsAtSameLevel` | Parser | More than one direct `...Q` in one product-extraction level | Preserve nodes and emit level-local diagnostic | Guaranteed |
-| `InvalidClosureHead` | Parser | Headless pipe branch body or malformed head/tail clause | Replace malformed clause with `ErrorAst`; preserve recoverable parts | Guaranteed |
+| `InvalidClosureHead` | Parser | Headless pipe branch body, in-place capture list, or malformed head/tail clause | Replace malformed clause or the whole closure atom with `ErrorAst`; never fabricate a legal empty body | Guaranteed |
 | `TopLevelComma` | Parser | Comma at top level of a form outside any product or group | Consume comma; no additional AST structure | Guaranteed |
 | `UnusedClosureAst` | Parser | Exists for optional / non-guaranteed closure-recovery reporting | Closure AST still produced; callers must not rely on this code being emitted | Optional / not-guaranteed-emitted |
 | `InvalidOperatorExpression` | Operator | Malformed or unsupported operator syntax (missing operand, unsupported prefix) | Best-effort operator expression node or `ErrorAst` | Guaranteed |
@@ -233,7 +233,9 @@ headless in-place closure AST is still preserved as a segment element.
 Two direct pack patterns occur in one product-extraction level, for example
 `(a, ...x, ...y)`. Nested products are checked independently, so
 `(a, (b, ...inner), ...outer)` is valid. A semantic post-normalization
-validator repeats this invariant after aliases/grouping have been lowered.
+validator repeats this invariant across every normalized binding slot after
+aliases/grouping have been lowered. Product and Sequence levels are both
+checked before recursive descent.
 
 ## 11. Atom suffix and navigation diagnostics
 
@@ -294,6 +296,11 @@ Emitted for:
 - malformed head clauses
 - return slot with forbidden `with { ... }` clause
 - missing expression after a head-clause keyword
+- capture list on a no-`=>` in-place closure
+- malformed delete message, named strategy tail, or `[[strategy]]`
+
+For malformed callable tails, the closure atom is an `ErrorAst`; recovery does
+not create an empty user body that could later be treated as executable.
 
 ### Delimiter diagnostics
 

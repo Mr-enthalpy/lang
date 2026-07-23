@@ -1,8 +1,7 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
-    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol,
-    TokenKind,
+    ClosurePlacementAst, DeleteBodyAst, DiagnosticCode, ExprAst, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -88,10 +87,12 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.cursor.at_symbol(Symbol::LBrace) {
         let body = parse_body_block(parser);
         let span = body.span;
-        return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::InPlace(InPlaceClosureAst { body, span })),
+        return Some(closure_atom(
+            ClosurePlacementAst::InPlace,
+            None,
+            ClosureBodyAst::Block(body),
             span,
-        });
+        ));
     }
 
     let saved = parser.cursor.current_index();
@@ -111,77 +112,63 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
             let block = parse_body_block(parser);
             let span = head.span.join(block.span);
             let body = ClosureBodyAst::Block(block);
-            return Some(AtomAst {
-                kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                    head,
-                    body,
-                    span,
-                })),
+            return Some(closure_atom(
+                ClosurePlacementAst::Ordinary,
+                Some(head),
+                body,
                 span,
-            });
+            ));
         }
         if parser.cursor.at_name("delete") {
             let delete_body = parse_bare_delete_body(parser);
             let span = head.span.join(delete_body.span);
-            return Some(AtomAst {
-                kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                    head,
-                    body: ClosureBodyAst::Delete(delete_body),
-                    span,
-                })),
+            return Some(closure_atom(
+                ClosurePlacementAst::Ordinary,
+                Some(head),
+                ClosureBodyAst::Delete(delete_body),
                 span,
-            });
+            ));
         }
         if parser.cursor.at_name("default") {
             let token = parser.cursor.bump_non_trivia();
             let span = head.span.join(token.span);
-            return Some(AtomAst {
-                kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                    head,
-                    body: ClosureBodyAst::Defaulted {
-                        default_name: NameAst {
-                            text: token.text.clone(),
-                            span: token.span,
-                        },
+            return Some(closure_atom(
+                ClosurePlacementAst::Ordinary,
+                Some(head),
+                ClosureBodyAst::Defaulted {
+                    default_name: NameAst {
+                        text: token.text.clone(),
                         span: token.span,
                     },
-                    span,
-                })),
+                    span: token.span,
+                },
                 span,
-            });
+            ));
         }
         if parser.cursor.at_symbol(Symbol::LParen) {
             match parse_delete_body(parser) {
                 Some(delete_body) => {
                     let span = head.span.join(delete_body.span);
-                    return Some(AtomAst {
-                        kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                            head,
-                            body: ClosureBodyAst::Delete(delete_body),
-                            span,
-                        })),
+                    return Some(closure_atom(
+                        ClosurePlacementAst::Ordinary,
+                        Some(head),
+                        ClosureBodyAst::Delete(delete_body),
                         span,
-                    });
+                    ));
                 }
                 None => {
                     parser.recover_to_form_boundary();
-                    let body_start = parser.cursor.current_span();
+                    let error_end = parser.cursor.current_span();
                     parser.error(
                         DiagnosticCode::InvalidClosureHead,
                         "expected `)` then `delete` after `=>`",
-                        body_start,
+                        error_end,
                     );
-                    let body = ClosureBodyAst::Block(BodyBlockAst {
-                        forms: Vec::new(),
-                        span: body_start,
-                    });
-                    let span = head.span.join(body_start);
+                    let span = head.span.join(error_end);
                     return Some(AtomAst {
-                        kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                            head,
-                            body,
-                            span,
-                        })),
+                        kind: AtomKind::Error(
+                            parser.error_ast("invalid parenthesized callable tail", span),
+                        ),
                         span,
                     });
                 }
@@ -197,18 +184,16 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 let block = parse_body_block(parser);
                 let body_span = strategy.span.join(block.span);
                 let span = head.span.join(block.span);
-                return Some(AtomAst {
-                    kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                        head,
-                        body: ClosureBodyAst::NamedBlock {
-                            strategy,
-                            block,
-                            span: body_span,
-                        },
-                        span,
-                    })),
+                return Some(closure_atom(
+                    ClosurePlacementAst::Ordinary,
+                    Some(head),
+                    ClosureBodyAst::NamedBlock {
+                        strategy,
+                        block,
+                        span: body_span,
+                    },
                     span,
-                });
+                ));
             }
             parser.error(
                 DiagnosticCode::InvalidClosureHead,
@@ -232,27 +217,30 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
             "expected `{`, `delete`, `(string) delete`, `default`, or `strategy { ... }` after `=>`",
             body_start,
         );
-        let body = ClosureBodyAst::Block(BodyBlockAst {
-            forms: Vec::new(),
-            span: body_start,
-        });
         let span = head.span.join(body_start);
         return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                head,
-                body,
-                span,
-            })),
+            kind: AtomKind::Error(parser.error_ast("invalid callable implementation tail", span)),
             span,
         });
     }
 
     if at_overload_strategy_annotation(parser) {
         parser.ungate_keep_diagnostics();
-        let strategy = parse_overload_strategy_annotation(parser).unwrap_or(NameAst {
-            text: "<error>".to_string(),
-            span: parser.cursor.current_span(),
-        });
+        let Some(strategy) = parse_overload_strategy_annotation(parser) else {
+            let end = if parser.cursor.at_symbol(Symbol::LBrace) {
+                parse_body_block(parser).span
+            } else {
+                parser.recover_to_form_boundary();
+                parser.cursor.current_span()
+            };
+            let error_span = head.span.join(end);
+            return Some(AtomAst {
+                kind: AtomKind::Error(
+                    parser.error_ast("invalid `[[strategy]]` callable tail", error_span),
+                ),
+                span: error_span,
+            });
+        };
         if !parser.cursor.at_symbol(Symbol::LBrace) {
             let span = parser.cursor.current_span();
             parser.error(
@@ -272,37 +260,76 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         }
         let body = parse_body_block(parser);
         let span = head.span.join(body.span);
-        return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                head,
-                body: ClosureBodyAst::NamedBlock {
-                    strategy,
-                    block: body,
-                    span,
-                },
+        if let Some(error) = reject_in_place_capture(parser, &head, span) {
+            return Some(error);
+        }
+        return Some(closure_atom(
+            ClosurePlacementAst::InPlace,
+            Some(head),
+            ClosureBodyAst::NamedBlock {
+                strategy,
+                block: body,
                 span,
-            })),
+            },
             span,
-        });
+        ));
     }
 
     if parser.cursor.at_symbol(Symbol::LBrace) {
         parser.ungate_keep_diagnostics();
         let body = parse_body_block(parser);
         let span = head.span.join(body.span);
-        return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                head,
-                body: ClosureBodyAst::Block(body),
-                span,
-            })),
+        if let Some(error) = reject_in_place_capture(parser, &head, span) {
+            return Some(error);
+        }
+        return Some(closure_atom(
+            ClosurePlacementAst::InPlace,
+            Some(head),
+            ClosureBodyAst::Block(body),
             span,
-        });
+        ));
     }
 
     parser.cursor.set_index(saved);
     parser.ungate_drop_diagnostics();
     None
+}
+
+fn closure_atom(
+    placement: ClosurePlacementAst,
+    head: Option<FnHeadPrefixAst>,
+    body: ClosureBodyAst,
+    span: Span,
+) -> AtomAst {
+    AtomAst {
+        kind: AtomKind::Closure(ClosureAst {
+            placement,
+            head,
+            body,
+            span,
+        }),
+        span,
+    }
+}
+
+fn reject_in_place_capture(
+    parser: &mut Parser<'_>,
+    head: &FnHeadPrefixAst,
+    closure_span: Span,
+) -> Option<AtomAst> {
+    let capture = head.captures.as_ref()?;
+    parser.error(
+        DiagnosticCode::InvalidClosureHead,
+        "in-place closure cannot have a capture list; add `=>` for an ordinary closure",
+        capture.span,
+    );
+    Some(AtomAst {
+        kind: AtomKind::Error(parser.error_ast(
+            "capture list is not allowed on an in-place closure",
+            closure_span,
+        )),
+        span: closure_span,
+    })
 }
 
 // -- Delete body --

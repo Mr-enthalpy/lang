@@ -5,14 +5,4 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Explicit
-                FnHeadPrefix
-                  captures:
-                    CaptureClause
-                      items:
-                  params:
-                    ParamClause
-                      extract:
-                        elements:
-                BodyBlock
-                  forms:
+              Error "capture list is not allowed on an in-place closure"

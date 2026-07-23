@@ -88,26 +88,25 @@ receiver to:
 
 The first argument supplies `T`; `...args` is a Pattern remainder binding, not
 a pack type. Consequently `.name` can be stored and passed independently.
-`E.name` is the compact spelling of `E |> .name`, and
-`E |> .name P2` is the ordinary `P1 |> Callable P2` call skeleton. Explicit
-incoming-pipe right-side items join the same call source product, so
-`items |> .push value` normalizes as `(items, value) |> .push`.
-
-That rule does not extend across compact member sugar:
+After `.name` becomes that ordinary function-object expression, its origin
+grants no call-binding privilege. In particular, for `let d = .name`:
 
 ```text
-E.name P == (E |> .name) P
-E.name P != E |> .name P
+BindingShape(P1 |> .name P2)
+  == BindingShape(P1 |> d P2)
 ```
 
-`P` in the compact spelling applies to the already produced `E.name` result.
-Member-style arguments therefore require the explicit pipe form, or the direct
-`..name(product)` sugar.
+The surrounding ordinary expression/pipe/product rules alone determine
+whether `P2` is a source-product continuation, later target, or legality
+repair. The normalizer must not inspect `DotClosureLowering` provenance to
+override those rules.
 
 Raw AST may preserve `E.name` as member sugar, but normalization routes it
-through the same `DotClosure(name)` core. `E..name(product)` remains separate
-direct member-call sugar; it is not removed by the more general `.name` form.
-No lookup or dispatch occurs during this normalization.
+mechanically through the same `DotClosure(name)` core as `E |> .name`, then
+returns the resulting ordinary expression to the existing suffix/space
+environment. `E..name(product)` remains separate direct member-call sugar; it
+is not removed by the more general `.name` form. No lookup or dispatch occurs
+during this normalization.
 
 ## 6. Implicit `self`
 
@@ -196,6 +195,12 @@ An in-place closure is distinguished by `NormClosureKind::InPlace`. Its
 semantic object remains embedded in the control-flow layer at which it is
 used; it is not converted into a freely escaping captured closure. It may
 nevertheless contribute a normal callable candidate to an overload set.
+
+Head presence is independent of that placement. Bare `{ ... }`,
+`() -> r name { ... }`, and `() -> r [[strategy]] { ... }` are all in-place;
+the latter two merely preserve a head and optional strategy metadata. `=>`
+selects ordinary placement. The parser and normalizer must not infer
+placement from `head.is_some()`.
 
 An in-place closure has no capture clause and no capture environment. Reads of
 outer symbols do not require `[]`. Instead, unresolved outer reads are carried

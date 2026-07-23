@@ -190,13 +190,13 @@ diagnostic rules, or golden snapshots.
 | Field | Value |
 |---|---|
 | Raw construct family | Closure AST |
-| AST / token shape | `ClosureAst::InPlace(InPlaceClosureAst)`, `ClosureAst::Explicit(ExplicitClosureAst)` |
+| AST / token shape | `ClosureAst { placement: ClosurePlacementAst::InPlace \| Ordinary, head: Option<FnHeadPrefixAst>, body: ClosureBodyAst, span }` |
 | Implementation file(s) | `ast.rs`, `parser/closure.rs` |
 | Spec source | `ast-construction-v0.1.md` §10 |
-| Frozen guarantee | `InPlace`: bare `{ ... }` in atom position. `Explicit`: a `FnHeadPrefix` plus callable implementation tail. `ClosureBodyAst` is `Block`, `NamedBlock`, `Defaulted`, or `Delete`; delete has an optional parenthesized string-literal message. `=> strategy {}` and `[[strategy]] {}` preserve the same named strategy metadata. Plain no-`=>` blocks are accepted. Closure literals produce AST, not callable objects. |
-| Frozen guarantee (callable-tail amendment) | `=> default`, `=> delete`, `=> (StringLiteral) delete`, and `=> name {}` are strong-context forms. `() -> r name {}` retains return-pattern parsing; `[[name]]` is required to select named strategy without `=>`. `#` has no strategy role. `InPlaceClosureAst` is unaffected. |
+| Frozen guarantee | Placement, optional head, and implementation are independent. Bare `{ ... }` has `InPlace + None`; plain and `[[strategy]]` no-`=>` headed blocks have `InPlace + Some`; `=>` headed forms have `Ordinary + Some`. `ClosureBodyAst` is `Block`, `NamedBlock`, `Defaulted`, or `Delete`; delete has an optional parenthesized string-literal message. Closure literals produce AST, not callable objects. |
+| Frozen guarantee (callable-tail amendment) | `=> default`, `=> delete`, `=> (StringLiteral) delete`, and `=> name {}` are strong-context forms. `() -> r name {}` retains return-pattern parsing; `[[name]]` is required to select named strategy without `=>` and does not change in-place placement. `#` has no strategy role. In-place capture lists are rejected. Malformed tails become Error rather than an empty `Block`. |
 | Non-semantic boundary | The parser produces closure AST only. Closure materialization into callable objects is a future semantic pass. |
-| v0.3 obligation | v0.3 must preserve closure AST structure through normalization. The headless/headed distinction must be preserved. |
+| v0.3 obligation | v0.3 must preserve closure AST structure through normalization. Placement and head presence must remain separate dimensions. |
 | Forbidden assumption | v0.3 must not materialize closures into callable objects. v0.3 must not assume a headless in-place closure implicitly accepts unit input. |
 
 ## 16. Closure head clauses

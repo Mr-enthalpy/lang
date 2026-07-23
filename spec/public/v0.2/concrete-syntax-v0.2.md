@@ -510,7 +510,15 @@ semantics.
 
 ## 17. Closure literals
 
-The parser recognizes two closure syntax categories:
+Closure syntax preserves three independent fields:
+
+```text
+ClosureAst {
+  placement: InPlace | Ordinary,
+  head: Option<FnHeadPrefixAst>,
+  body: ClosureBodyAst
+}
+```
 
 ### 17.1 In-place closure
 
@@ -518,12 +526,11 @@ The parser recognizes two closure syntax categories:
 { ... }   (in atom position)
 ```
 
-Bare `{ ... }` in atom position produces `ClosureAst::InPlace`. It is not a
-normal block expression. It has no capture clause, no parameter clause, no
-return clause, and no head clauses. Having no extraction head means it has
-no extracted input, including no implicit unit input.
+Bare `{ ... }` in atom position produces `placement=InPlace, head=None`. It is
+not a normal block expression. Having no extraction head means it has no
+extracted input, including no implicit unit input.
 
-### 17.2 Explicit headed closure and callable tail
+### 17.2 Headed closure and callable tail
 
 ```text
 FnHeadPrefix => { ... }
@@ -549,9 +556,19 @@ metadata. Use `() -> r [[name]] { ... }` for that intention. `default` and
 Closure literals produce AST, not callable objects. Closure materialization
 into callable objects is a future semantic pass.
 
+`=>` selects `Ordinary` placement. Both no-`=>` forms select `InPlace`
+placement while retaining `head=Some(...)`; `[[strategy_name]]` adds metadata
+but does not change placement. In-place closures cannot carry capture lists.
+`[x] { ... }` and `[x](...) { ... }` produce `InvalidClosureHead` and an
+`ErrorAst`.
+
+Malformed callable tails likewise preserve an Error atom. Recovery never
+substitutes a legal empty user body for an invalid delete message, invalid
+strategy tail, or malformed `[[strategy]]`.
+
 ## 18. Closure heads
 
-An explicit closure head (`FnHeadPrefix`) has a fixed clause order:
+A closure head (`FnHeadPrefix`) has a fixed clause order:
 
 1. optional deduce list (`<...>`)
 2. optional capture clause (`[...]`)
@@ -588,7 +605,8 @@ A capture clause is a bracket-delimited list of expression items:
 
 Each item is stored as `CaptureItemAst { expr: ExprAst }`, not as a name-only
 item and not as a token tree. The parser does not interpret move, ref, copy,
-or capture mode. No capture analysis is performed.
+or capture mode. Capture clauses are accepted only for ordinary `=>` closures;
+in-place closures reject them. No capture analysis is performed.
 
 ## 20. Parameter and return clauses
 

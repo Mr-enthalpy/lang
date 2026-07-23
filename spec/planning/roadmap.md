@@ -496,7 +496,7 @@ The following remain deferred and are not numbered precisely here:
 - type / kind checking integration
 - closure materialization model (ClosureAST → ClosureObject; capture rules)
   - preserve `InPlace` as an embedded callable-candidate kind with no capture
-    list;
+    list, independently of whether the Raw/Normalized closure has a head;
   - defer unresolved outer reads to the selected embedding layer, while
     requiring ordinary authority for outer writes;
   - place in-place-over-non-in-place preference after

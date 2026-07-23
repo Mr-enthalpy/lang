@@ -31,6 +31,10 @@ two alternatives are the no-`=>` headed-closure forms.
 The normalized semantic carrier is:
 
 ```text
+ClosurePlacement
+  = InPlace
+  | Ordinary
+
 CallableImplementation
   = UserBody {
       strategy: Ordinary | Named(Symbol),
@@ -56,6 +60,24 @@ The source forms map as follows:
 `=> strategy { ... }` is the preferred spelling. `[[strategy]]` is the
 explicit escape only where a no-`=>` tail would otherwise be ambiguous. `#`
 has no overload-strategy role.
+
+Placement, head presence, and implementation are independent dimensions:
+
+| Source | Placement | Head | Implementation |
+|---|---|---|---|
+| `{ ... }` | `InPlace` | none | `UserBody(Ordinary)` |
+| `() -> r name { ... }` | `InPlace` | present | `UserBody(Ordinary)` |
+| `() -> r [[strategy]] { ... }` | `InPlace` | present | `UserBody(Named(strategy))` |
+| `() -> r => { ... }` | `Ordinary` | present | `UserBody(Ordinary)` |
+| `() -> r => strategy { ... }` | `Ordinary` | present | `UserBody(Named(strategy))` |
+| `() -> r => default` | `Ordinary` | present | `Defaulted` |
+| `() -> r => delete` | `Ordinary` | present | `Deleted` |
+
+In particular, `[[strategy]]` disambiguates strategy metadata; it does not
+change an in-place closure into an ordinary materializable closure. In-place
+closures never have a capture list or an independent capture environment.
+`[x] { ... }` is rejected. Their external reads instead use the lazy
+embedding-layer lookup defined by the function-object model.
 
 ### 1.1 No rollback over the return extraction pattern
 
@@ -151,37 +173,29 @@ It is not a second field-access semantic node. Raw AST may retain
 `MemberSugar(E, name)` for source fidelity, but normalization must use the same
 `DotClosure(name)` core.
 
-Explicit incoming-pipe continuation supplies member-style remainder arguments:
+After that one lowering, the generated closure is an ordinary `NormExpr`.
+No pipe/product rule may inspect `DotClosureLowering` provenance to decide how
+nearby material binds:
 
 ```text
-E |> .name
-E |> .name (P2)
-E |> .name P2_item
+let d = .name
+
+BindingShape(P1 |> .name P2)
+  == BindingShape(P1 |> d P2)
 ```
 
-These normalize as one call whose source product starts with `E` and continues
-with the right-side items:
+The equality is about the general pipe/product/call spine; the leaf retains
+its own symbol identity and provenance. `.name` does not decide whether a
+following item becomes an argument, how many following items are absorbed,
+where a target expression ends, or whether first-product-only and legality
+repair apply. Those decisions belong exclusively to the existing expression,
+pipe, and product normalizer.
 
-```text
-items |> .push value
-  == (items, value) |> .push
-```
-
-Compact `E.name` closes before later space-bound material. Therefore:
-
-```text
-E.name P
-  == (E |> .name) P
-  != E |> .name P
-```
-
-The first form calls/applies `P` to the result of `E |> .name`; it does not
-silently reinterpret `P` as another argument of `name::T`. This follows the
-ordinary space-binding/call chain and is why compact dot syntax is not a
-general member-call notation.
-
-The general call rule remains `P1 |> Callable P2`; `.name` merely supplies the
-callable expression.
+Compact `MemberSugar(E, name)` mechanically lowers its compact core to
+`E |> .name` and then returns that result to the same ordinary suffix and
+space-binding environment. Thus `E.name P` is interpreted exactly as placing
+the ordinary result of `E |> .name` back before `P`; there is no second compact
+dot call algebra and no explicit-pipe DotClosure privilege.
 
 `..name(product)` remains a distinct direct member-call sugar. It models a
 receiver-position call directly and need not first expose a transportable
@@ -296,11 +310,17 @@ Implemented substrate:
 - `Ellipsis`, `DotClosure`, `BindingPatternAst::Pack`, and the callable-tail
   Raw AST variants;
 - normalization to `NormPattern::Pack`, generated dot closures, named/default/
-  delete implementation variants, compact `E.name`, and explicit incoming
-  `E |> .name P` product continuation;
+  delete implementation variants, and compact `E.name`;
+- orthogonal `ClosurePlacementAst` plus optional head, preserving headed and
+  headless in-place closures without granting them capture lists;
+- DotClosure substitution invariance: after atom lowering, ordinary
+  pipe/product normalization cannot observe `DotClosureLowering` provenance;
 - pack preservation in every parser binding-slot context (`let`, parameter,
   return, and nested product extraction), not a parameter-only grammar;
-- post-normalization one-pack-per-level validation;
+- global post-normalization one-pack-per-level validation over declarations,
+  local bodies, parameters, returns, annotations, and nested binding slots;
+- `AtomKind::Error` recovery for malformed callable tails, never an executable
+  empty user body;
 - restricted variadic applicability, remainder binding, and pack node-class
   specificity evidence;
 - named strategy metadata carried by selected restricted candidates only after

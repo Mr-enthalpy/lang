@@ -630,33 +630,50 @@ _See also: OperatorSugar._
 ## ClosureAST
 
 The AST representation of a closure literal before materialization into a
-callable object. Two forms:
+callable object:
 
-- **InPlaceClosureAst**: Bare `{ ... }` in atom position. An in-place control-flow
-  closure with no capture clause, parameters, or head clauses.
-- **ExplicitClosureAst**: a `FnHeadPrefix` followed by a callable
-  implementation tail. The tail may use `=>` or the explicitly disambiguated
-  no-`=>` strategy/block form.
+```text
+ClosureAst {
+  placement: InPlace | Ordinary,
+  head: Option<FnHeadPrefixAst>,
+  body: ClosureBodyAst
+}
+```
+
+Placement and head presence are orthogonal. Bare `{ ... }` is headless
+in-place; a headed block without `=>` remains in-place; `=>` selects ordinary
+placement.
 
 > **Distinction**: `ClosureAST` is **not** `ClosureObject`. Closure literals
 > produce AST first. A later semantic pass may materialize closure AST into
 > callable objects.
 
-> **Distinction**: Bare `{ ... }` in atom position is an `InPlaceClosureAst`,
+> **Distinction**: Bare `{ ... }` in atom position is an in-place `ClosureAst`,
 > not a normal block expression.
 
-_See also: InPlaceClosureAST, ExplicitClosureAST, ClosureObject, Materialization._
+_See also: ClosurePlacement, InPlaceClosureAST, OrdinaryClosureAST,
+ClosureObject, Materialization._
+
+---
+
+## ClosurePlacement
+
+The independent closure dimension `InPlace | Ordinary`. A no-`=>` body is
+in-place even when it has a head or `[[strategy]]`; `=>` selects ordinary
+placement. Placement is not inferred from `head.is_some()`.
+
+_See also: ClosureAST, InPlaceClosureAST, OrdinaryClosureAST._
 
 ---
 
 ## InPlaceClosureAST
 
-A bare `{ ... }` in atom position that produces an in-place closure. It has no
-capture clause, no parameter clause, no return clause, and no head clauses. It
-is the Raw AST representation of a control-flow-embedding closure block.
-Having no extraction head is not the same as having a unit extraction pattern:
-a headless in-place closure accepts no extracted input, including no implicit
-unit input.
+A `ClosureAst` whose placement is `InPlace`. It may be the bare, headless
+`{ ... }` form or a headed no-`=>` block, optionally with `[[strategy]]`.
+In-place closures never have capture lists or independent capture
+environments. Having no extraction head is not the same as having a unit
+extraction pattern: a headless in-place closure accepts no extracted input,
+including no implicit unit input.
 
 In future callable materialization it may contribute an overload candidate
 while remaining tied to its embedding control-flow layer. Unresolved outer
@@ -690,25 +707,24 @@ first-order-over-instantiated filter.
 > syntax in the explicit target position, resolved later by
 > semantic target binding.
 >
-> The example fragment above is a product/extraction-head + in-place
-> closure structural illustration. In current concrete syntax, this
-> shape is accepted as an incoming pipe / branch form (e.g.,
-> `x |> (<A: type> a: A) { ... }` or `(<A: type> a: A) { ... }`
-> in branch position). It is not a standalone closure literal
-> grammar.
+> The example fragment above is a headed in-place closure. The same shape is
+> accepted as a standalone expression atom or in an incoming pipe/branch form;
+> its placement remains in-place in either context.
 
-_See also: ClosureAST, ExplicitClosureAST._
+_See also: ClosureAST, OrdinaryClosureAST._
 
 ---
 
-## ExplicitClosureAST
+## OrdinaryClosureAST
 
-A closure literal with an explicit head and a callable implementation tail.
+A closure literal whose placement is `Ordinary`, selected by `=>`. It has an
+explicit head and a callable implementation tail.
 The head may contain deduce list, capture clause, parameter clause, call-result
 policy clause, return clause, and head clauses. The tail preserves ordinary or
 named user body, compiler-defaulted implementation, or deleted implementation.
-Plain no-`=>` block tails are accepted; `[[name]]` is the named-strategy escape
-that does not steal the established return extraction-pattern parse.
+Plain no-`=>` block tails and `[[name]]` stay in-place; the latter is only the
+named-strategy escape that does not steal the established return
+extraction-pattern parse.
 
 _See also: ClosureAST, InPlaceClosureAST, FnHeadPrefix._
 
@@ -730,9 +746,10 @@ _See also: ExplicitClosureAST, Fully Admissible Candidate, Overload Resolution P
 
 The first-class expression `.name`, normalized to a generated function object
 `(val: T, ...args) { (val, args) |> name::T }`. `E.name` is compact
-`E |> .name`; `.name` itself captures no receiver. Following space material
-does not extend compact syntax: `E.name P == (E |> .name) P`, whereas
-member-style remainder arguments require `E |> .name P`. `..name` remains
+`E |> .name`; `.name` itself captures no receiver. After lowering it is an
+ordinary expression. Replacing it with a bound equivalent must preserve the
+same pipe/product binding spine, and no normalizer rule may inspect
+`DotClosureLowering` provenance to absorb surrounding syntax. `..name` remains
 direct member-call sugar.
 
 _See also: Atom, Function Object, Call normalization._

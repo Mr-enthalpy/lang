@@ -1,7 +1,8 @@
 use lang_syntax::{
-    normalize_program, parse, BindingPatternAst, ClosureAst, ClosureBodyAst, ExprKind, FormAst,
-    NormClosureBody, NormDecl, NormExpr, NormForm, NormPattern, NormPatternElem, NormRule,
-    OperatorExprKind, SegmentElementAst,
+    normalize_program, parse, validate_normalized_patterns, BindingPatternAst, ClosureBodyAst,
+    ClosurePlacementAst, ExprKind, FormAst, NormAnnotation, NormBindingSlot, NormClosureBody,
+    NormClosureKind, NormDecl, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem,
+    NormRule, OperatorExprKind, SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -15,15 +16,37 @@ fn parsed(source: &str) -> lang_syntax::ParseOutput {
 }
 
 fn normalized_initializer(source: &str) -> NormExpr {
+    normalized_initializer_at(source, 0)
+}
+
+fn normalized_initializer_at(source: &str, index: usize) -> NormExpr {
     let output = parsed(source);
     let program = normalize_program(&output.program);
-    let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
-        panic!("expected one let form, got {:#?}", program.forms);
+    let Some(NormForm::Let(NormDecl::Let { slot, .. })) = program.forms.get(index) else {
+        panic!(
+            "expected let form at index {index}, got {:#?}",
+            program.forms
+        );
     };
     slot.initializer
         .as_deref()
         .expect("let fixture has initializer")
         .clone()
+}
+
+fn normalized_initializer_with_diagnostics(source: &str) -> (NormExpr, lang_syntax::ParseOutput) {
+    let output = parse(source);
+    let program = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = program.forms.as_slice() else {
+        panic!("expected one let form, got {:#?}", program.forms);
+    };
+    (
+        slot.initializer
+            .as_deref()
+            .expect("let fixture has initializer")
+            .clone(),
+        output,
+    )
 }
 
 fn normalized_closure(source: &str) -> lang_syntax::NormClosure {
@@ -52,6 +75,9 @@ fn callable_tail_normalizes_delete_default_and_named_strategy() {
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.message.contains("string literal")));
+    let (invalid_message_expr, _) =
+        normalized_initializer_with_diagnostics("let f = () -> r => (reason) delete;");
+    assert!(matches!(invalid_message_expr, NormExpr::Error(_)));
 
     let defaulted = normalized_closure("let f = () -> r => default;");
     assert!(matches!(defaulted.body, NormClosureBody::Defaulted { .. }));
@@ -66,6 +92,7 @@ fn callable_tail_normalizes_delete_default_and_named_strategy() {
 #[test]
 fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
     let escaped = normalized_closure("let f = () -> r [[prefer_named]] { r };");
+    assert_eq!(escaped.kind, NormClosureKind::InPlace);
     assert!(matches!(
         escaped.body,
         NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "prefer_named"
@@ -76,6 +103,7 @@ fn double_bracket_strategy_does_not_steal_the_old_return_extraction_pattern() {
     ));
 
     let legacy = normalized_closure("let f = () -> r name { r };");
+    assert_eq!(legacy.kind, NormClosureKind::InPlace);
     assert!(matches!(legacy.body, NormClosureBody::Block(_)));
     assert!(matches!(
         legacy
@@ -160,24 +188,24 @@ fn compact_member_sugar_calls_the_same_dot_closure_and_double_dot_survives() {
 }
 
 #[test]
-fn explicit_pipe_dot_closure_arguments_join_the_call_source_product() {
-    for fixture in [
-        "let x = items |> .push value;",
-        "let x = items |> .push (value);",
+fn dot_closure_has_no_pipe_or_product_binding_privilege() {
+    for (dot_source, bound_source) in [
+        (
+            "let x = items |> .push value;",
+            "let d = .push; let x = items |> d value;",
+        ),
+        (
+            "let x = items |> .push (value);",
+            "let d = .push; let x = items |> d (value);",
+        ),
     ] {
-        let call = normalized_initializer(fixture);
-        let NormExpr::Call { source, target, .. } = call else {
-            panic!("{fixture} must normalize to one field-function call");
-        };
-        assert_eq!(source.elements.len(), 2, "{fixture}");
-        assert!(matches!(
-            target.as_ref(),
-            NormExpr::Closure(closure)
-                if matches!(closure.kind,
-                    lang_syntax::NormClosureKind::Generated {
-                        rule: NormRule::DotClosureLowering
-                    })
-        ));
+        let dot = normalized_initializer(dot_source);
+        let bound = normalized_initializer_at(bound_source, 1);
+        assert_eq!(
+            expression_binding_shape(&dot),
+            expression_binding_shape(&bound),
+            "replacing `.push` with an ordinary bound expression must preserve the general call spine"
+        );
     }
 }
 
@@ -275,11 +303,12 @@ fn raw_pack_node_wraps_the_inner_binding_pattern() {
     let OperatorExprKind::Atom(atom) = &operator.kind else {
         panic!("expected closure atom");
     };
-    let lang_syntax::AtomKind::Closure(ClosureAst::Explicit(closure)) = &atom.kind else {
-        panic!("expected explicit closure");
+    let lang_syntax::AtomKind::Closure(closure) = &atom.kind else {
+        panic!("expected closure");
     };
+    assert_eq!(closure.placement, ClosurePlacementAst::Ordinary);
     assert!(matches!(closure.body, ClosureBodyAst::Block(_)));
-    let params = closure.head.params.as_ref().unwrap();
+    let params = closure.head.as_ref().unwrap().params.as_ref().unwrap();
     let lang_syntax::ProductExtractElementAst::Slot(slot) = &params.extract.elements[0] else {
         panic!("expected parameter slot");
     };
@@ -288,4 +317,180 @@ fn raw_pack_node_wraps_the_inner_binding_pattern() {
         BindingPatternAst::Pack { inner, .. }
             if matches!(inner.as_ref(), BindingPatternAst::Binder(_))
     ));
+}
+
+#[test]
+fn closure_placement_is_independent_of_head_presence_and_strategy() {
+    for fixture in [
+        "let f = { value };",
+        "let f = () -> r { r };",
+        "let f = () -> r [[prefer_named]] { r };",
+    ] {
+        assert_eq!(
+            normalized_closure(fixture).kind,
+            NormClosureKind::InPlace,
+            "{fixture}"
+        );
+    }
+
+    for fixture in [
+        "let f = () -> r => { r };",
+        "let f = () -> r => prefer_named { r };",
+        "let f = () -> r => default;",
+        "let f = () -> r => delete;",
+    ] {
+        assert_eq!(
+            normalized_closure(fixture).kind,
+            NormClosureKind::Ordinary,
+            "{fixture}"
+        );
+    }
+
+    for fixture in [
+        "value |> () -> r { r };",
+        "value |> () -> r [[prefer_named]] { r };",
+    ] {
+        let output = parse(fixture);
+        assert!(
+            output.diagnostics.is_empty(),
+            "headed in-place closure supplies its own extraction head in `{fixture}`:\n{}",
+            lang_syntax::dump_diagnostics(&output.diagnostics)
+        );
+    }
+}
+
+#[test]
+fn in_place_closure_rejects_capture_environment() {
+    for fixture in ["let f = [x] { x };", "let f = [x]() -> r { r };"] {
+        let (expr, output) = normalized_initializer_with_diagnostics(fixture);
+        assert!(output
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("cannot have a capture list")));
+        assert!(
+            matches!(expr, NormExpr::Error(_)),
+            "invalid in-place capture must remain an error expression: {fixture}"
+        );
+    }
+}
+
+#[test]
+fn malformed_callable_tails_never_normalize_as_user_bodies() {
+    for fixture in [
+        "let f = () -> r => (reason) delete;",
+        "let f = () -> r => strategy;",
+        "let f = () -> r [[strategy { r };",
+    ] {
+        let (expr, output) = normalized_initializer_with_diagnostics(fixture);
+        assert!(!output.diagnostics.is_empty(), "{fixture}");
+        assert!(
+            matches!(expr, NormExpr::Error(_)),
+            "malformed callable tail must not become an executable body: {fixture}"
+        );
+    }
+}
+
+#[test]
+fn global_pack_validation_visits_every_binding_slot_context() {
+    for fixture in [
+        "let (...x, ...y) = value;",
+        "let f = () -> r => { let (...x, ...y) = value; r };",
+        "let f = (...x, ...y) -> r => { r };",
+        "let f = () -> (...x, ...y) => { value };",
+        "let f = (outer, (inner, ...x, ...y)) -> r => { r };",
+    ] {
+        let output = parse(fixture);
+        let normalized = normalize_program(&output.program);
+        assert!(
+            validate_normalized_patterns(&normalized).is_err(),
+            "global normalized Pattern validation must reject `{fixture}`"
+        );
+    }
+
+    let origin = NormOrigin::Source(Span::new(0, 1, 1, 1));
+    let pack = |name: &str| NormPattern::Pack {
+        inner: Box::new(NormPattern::Binder {
+            name: name.to_string(),
+            origin: origin.clone(),
+        }),
+        origin: origin.clone(),
+    };
+    let annotation = NormAnnotation {
+        pattern: NormPattern::Sequence {
+            elements: vec![pack("x"), pack("y")],
+            origin: origin.clone(),
+        },
+        origin: origin.clone(),
+    };
+    let program = lang_syntax::NormProgram {
+        forms: vec![NormForm::Let(NormDecl::Let {
+            slot: NormBindingSlot {
+                policy: None,
+                has_let: true,
+                deduce: Vec::new(),
+                value_pattern: NormPattern::Binder {
+                    name: "value".to_string(),
+                    origin: origin.clone(),
+                },
+                annotation: Some(annotation),
+                with_clause: None,
+                initializer: None,
+                origin: origin.clone(),
+            },
+            origin: origin.clone(),
+        })],
+        origin,
+    };
+    assert!(
+        validate_normalized_patterns(&program).is_err(),
+        "Sequence and annotation levels must use the same one-pack validator"
+    );
+}
+
+fn expression_binding_shape(expr: &NormExpr) -> String {
+    match expr {
+        NormExpr::Call { source, target, .. } => format!(
+            "call([{}],{})",
+            source
+                .elements
+                .iter()
+                .map(|element| match element {
+                    lang_syntax::NormProductElem::Expr(expr) => expression_binding_shape(expr),
+                    lang_syntax::NormProductElem::Unit { .. } => "unit".to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join(","),
+            expression_binding_shape(target)
+        ),
+        NormExpr::Product(product) => format!(
+            "product([{}])",
+            product
+                .elements
+                .iter()
+                .map(|element| match element {
+                    lang_syntax::NormProductElem::Expr(expr) => expression_binding_shape(expr),
+                    lang_syntax::NormProductElem::Unit { .. } => "unit".to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        NormExpr::Closure(closure)
+            if matches!(
+                closure.kind,
+                NormClosureKind::Generated {
+                    rule: NormRule::DotClosureLowering
+                }
+            ) =>
+        {
+            "$field".to_string()
+        }
+        NormExpr::Name { text, .. } if text == "d" => "$field".to_string(),
+        NormExpr::Name { text, .. } => format!("name({text})"),
+        NormExpr::Literal { text, .. } => format!("literal({text})"),
+        NormExpr::Nav { .. } => "nav".to_string(),
+        NormExpr::Closure(_) => "closure".to_string(),
+        NormExpr::OperatorTarget { spelling, .. } => format!("operator({spelling})"),
+        NormExpr::Error(_) => "error".to_string(),
+        NormExpr::Unsupported { .. } => "unsupported".to_string(),
+    }
 }

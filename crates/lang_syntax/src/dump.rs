@@ -633,42 +633,42 @@ fn dump_nav_component(output: &mut String, component: &crate::NavComponentAst, i
 }
 
 fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize) {
-    match closure {
-        crate::ClosureAst::InPlace(inner) => {
-            line(output, indent, "Closure InPlace");
-            dump_body_block(output, &inner.body, indent + 1);
+    match closure.placement {
+        crate::ClosurePlacementAst::InPlace => line(output, indent, "Closure InPlace"),
+        // Keep the historical dump spelling for the ordinary, `=>`-delimited
+        // placement. The typed AST no longer conflates this label with
+        // whether a closure has a head.
+        crate::ClosurePlacementAst::Ordinary => line(output, indent, "Closure Explicit"),
+    }
+    if let Some(head) = &closure.head {
+        dump_fn_head_prefix(output, head, indent + 1);
+    }
+    match &closure.body {
+        crate::ClosureBodyAst::Block(block) => dump_body_block(output, block, indent + 1),
+        crate::ClosureBodyAst::NamedBlock {
+            strategy, block, ..
+        } => {
+            line(
+                output,
+                indent + 1,
+                &format!("OverloadStrategy {}", strategy.text),
+            );
+            dump_body_block(output, block, indent + 1);
         }
-        crate::ClosureAst::Explicit(inner) => {
-            line(output, indent, "Closure Explicit");
-            dump_fn_head_prefix(output, &inner.head, indent + 1);
-            match &inner.body {
-                crate::ClosureBodyAst::Block(block) => dump_body_block(output, block, indent + 1),
-                crate::ClosureBodyAst::NamedBlock {
-                    strategy, block, ..
-                } => {
+        crate::ClosureBodyAst::Defaulted { .. } => {
+            line(output, indent + 1, "Defaulted");
+        }
+        crate::ClosureBodyAst::Delete(del) => {
+            line(output, indent + 1, "Delete");
+            match &del.message {
+                Some(message) => {
                     line(
                         output,
-                        indent + 1,
-                        &format!("OverloadStrategy {}", strategy.text),
+                        indent + 2,
+                        &format!("message StringLiteral {message}"),
                     );
-                    dump_body_block(output, block, indent + 1);
                 }
-                crate::ClosureBodyAst::Defaulted { .. } => {
-                    line(output, indent + 1, "Defaulted");
-                }
-                crate::ClosureBodyAst::Delete(del) => {
-                    line(output, indent + 1, "Delete");
-                    match &del.message {
-                        Some(message) => {
-                            line(
-                                output,
-                                indent + 2,
-                                &format!("message StringLiteral {message}"),
-                            );
-                        }
-                        None => line(output, indent + 2, "message None"),
-                    }
-                }
+                None => line(output, indent + 2, "message None"),
             }
         }
     }

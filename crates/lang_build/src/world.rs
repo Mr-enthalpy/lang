@@ -200,7 +200,7 @@ impl CompilationWorld {
         let parsed = lang_syntax::parse(&unit.content);
         let normalized = lang_syntax::normalize_program(&parsed.program);
         let provenance = unit.provenance.clone();
-        let diagnostics = parsed
+        let mut diagnostics = parsed
             .diagnostics
             .iter()
             .map(|diagnostic| {
@@ -214,9 +214,29 @@ impl CompilationWorld {
                 )
             })
             .collect::<Vec<_>>();
+        let pattern_validation_failed =
+            if let Err(errors) = lang_syntax::validate_normalized_patterns(&normalized) {
+                diagnostics.extend(errors.into_iter().map(|error| {
+                    Diagnostic::hard_error(
+                        format!(
+                            "Pattern contains {} pack nodes at one normalized structural level",
+                            error.pack_count
+                        ),
+                        Some(Provenance::from_norm_origin(
+                            "global normalized Pattern validation",
+                            &error.origin,
+                        )),
+                    )
+                }));
+                true
+            } else {
+                false
+            };
         self.diagnostics.extend(diagnostics.clone());
 
-        self.harvest_program(namespace, &normalized, &unit.canonical_path)?;
+        if !pattern_validation_failed {
+            self.harvest_program(namespace, &normalized, &unit.canonical_path)?;
+        }
         self.source_fragments.push(SourceFragment {
             path: unit.canonical_path.clone(),
             namespace,

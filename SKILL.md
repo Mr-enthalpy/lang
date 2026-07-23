@@ -209,7 +209,8 @@ Do not implement this as a traditional precedence parser.
 
 ## 5. Closure rules
 
-- Bare `{ ... }` in atom position is `ClosureAst::InPlace`, not a block expression.
+- Bare `{ ... }` in atom position is a `ClosureAst` with in-place placement
+  and no head, not a block expression.
 - `FnHead => { ... }` is explicit closure AST.
 - `FnHead { ... }` without `=>` is invalid and is not reinterpreted.
 - A closure literal is AST first. It is not a callable object.

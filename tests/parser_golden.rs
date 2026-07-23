@@ -683,12 +683,12 @@ fn invalid_closure_acquire_not_parsed() {
 
 #[test]
 fn closure_headed_no_arrow_1() {
-    assert_parser_case("closure_headed_no_arrow_1", false);
+    assert_parser_case("closure_headed_no_arrow_1", true);
 }
 
 #[test]
 fn closure_headed_no_arrow_2() {
-    assert_parser_case("closure_headed_no_arrow_2", false);
+    assert_parser_case("closure_headed_no_arrow_2", true);
 }
 
 #[test]

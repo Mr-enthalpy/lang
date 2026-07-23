@@ -327,21 +327,20 @@ Dump label:      DotClosureLowering
 obj.field
 => obj |> .field
 
-items |> .push value
-=> (items, value) |> .push
-
-items.push value
-=> (items |> .push) |> value
-!= (items, value) |> .push
+let d = .field
+BindingShape(P1 |> .field P2)
+== BindingShape(P1 |> d P2)
 ```
 
 `.field` is independently usable and does not capture a left-hand receiver.
 Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
 normalized target is the same generated dot closure. `MemberLowering` records
 that compact wrapper; it does not define a second member semantic system.
-Only the explicit incoming-pipe form extends `.field`'s source product with
-following space-bound arguments. Compact `obj.field` finishes first, so later
-material is an outer ordinary call.
+After atom lowering, `.field` is an ordinary `NormExpr`. Its generated origin
+cannot change pipe/product association, absorb following items, bypass
+first-product-only, or replace legality repair. Compact `obj.field`
+mechanically produces `obj |> .field`, then returns that ordinary expression
+to the existing suffix and space-binding environment.
 
 ### Double-dot sugar
 
@@ -587,6 +586,13 @@ levels are independent. The pack remains Pattern-side only. Normalization does
 not create a pack value, variadic ABI class, runtime container, or RHS unpack
 operator.
 
+The common post-normalization `ValidateNormalizedPatterns` pass enforces that
+limit over all `NormBindingSlot` consumers: top-level and local `let`,
+parameters, returns, annotations, and nested Pattern levels. Both `Product`
+and `Sequence` count their direct pack children before recursive validation.
+Parser-local checks provide earlier diagnostics but do not define the
+invariant.
+
 `Pack` is part of the general binding-pattern grammar. It is preserved in
 every binding-slot context—ordinary/local `let`, product extraction, callable
 parameters, callable return slots, and nested binding Patterns—not only in
@@ -636,6 +642,21 @@ to the same `NamedBlock`. The legacy-looking `() -> r name { ... }` is not
 reinterpreted: `name` remains return extraction material. This layer preserves
 strategy metadata but does not execute a strategy, synthesize a default body,
 or perform overload selection.
+
+Closure placement is orthogonal to head presence and implementation:
+
+```text
+{ ... }                              -> InPlace, head=None
+() -> r name { ... }                 -> InPlace, head=Some
+() -> r [[strategy]] { ... }         -> InPlace, head=Some
+() -> r => { ... }                   -> Ordinary, head=Some
+() -> r => strategy { ... }          -> Ordinary, head=Some
+() -> r => default/delete            -> Ordinary, head=Some
+```
+
+`[[strategy]]` does not change placement. In-place closures cannot spell a
+capture list; `[x] { ... }` remains an error. A malformed callable tail
+normalizes as `NormExpr::Error`, never as a legal empty `Block`.
 
 ## 10. Alias Preservation
 

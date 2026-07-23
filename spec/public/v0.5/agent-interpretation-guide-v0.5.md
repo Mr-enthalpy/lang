@@ -56,11 +56,15 @@ See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserv
 - Operator / dot-closure / member / double-dot / bracket sugar lower into the same
   product-call skeleton with preserved provenance; they are not resolved.
 - `.name` lowers independently to `(val: T, ...args) { (val, args) |> name::T }`;
-  `E.name` calls that same closure. Only explicit `E |> .name P` adds `P` to
-  the field-function source product; `E.name P` is `(E |> .name) P`.
-  `..name` remains direct call sugar.
+  `E.name` mechanically uses that same closure. After lowering, `.name` is an
+  ordinary expression: replacing it with `let d = .name` must preserve the
+  general pipe/product binding spine. Never inspect `DotClosureLowering`
+  provenance to absorb nearby material. `..name` remains direct call sugar.
 - Callable tails preserve ordinary/named user bodies, `default`, and optional-
   message `delete`; strategy metadata is not overload selection at normalization.
+- Closure placement is independent of head presence. No-`=>` headed bodies,
+  including `[[strategy]]`, stay `InPlace`; `=>` bodies are `Ordinary`.
+  In-place capture lists are rejected, and malformed callable tails stay Error.
 
 Quick continuation checklist:
 
@@ -94,6 +98,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   no RHS unpack counterpart. The grammar is shared by every binding slot
   (`let`, parameter, return, and nested product extraction); it is not a
   parameter-only variadic form.
+- Run the global normalized-Pattern validator before downstream build.
+  Parser-local duplicate-pack diagnostics are only an early check; Product,
+  Sequence, annotations, local bodies, parameters, and returns share the same
+  post-normalization invariant.
 
 Quick pattern-context lowering checklist:
 

@@ -375,22 +375,17 @@ pub enum AtomKind {
 // --- Closure AST ---
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ClosureAst {
-    InPlace(InPlaceClosureAst),
-    Explicit(ExplicitClosureAst),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InPlaceClosureAst {
-    pub body: BodyBlockAst,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExplicitClosureAst {
-    pub head: FnHeadPrefixAst,
+pub struct ClosureAst {
+    pub placement: ClosurePlacementAst,
+    pub head: Option<FnHeadPrefixAst>,
     pub body: ClosureBodyAst,
     pub span: Span,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ClosurePlacementAst {
+    InPlace,
+    Ordinary,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

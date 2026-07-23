@@ -661,7 +661,9 @@ Only fully admissible candidates enter preference filtering:
   kind is candidate metadata, not hard admissibility, and this filter cannot
   rescue an inapplicable in-place closure. An in-place closure remains bound
   to its embedding control-flow layer, has no capture list, and resolves lazy
-  outer reads when used at that layer.
+  outer reads when used at that layer. Headed no-`=>` and `[[strategy]]`
+  closures retain this same in-place candidate metadata; head presence does
+  not imply ordinary placement.
 - **B6 Named strategy rules**: apply strategy metadata carried by
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration

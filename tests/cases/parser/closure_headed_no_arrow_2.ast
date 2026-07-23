@@ -5,23 +5,4 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Explicit
-                FnHeadPrefix
-                  captures:
-                    CaptureClause
-                      items:
-                        Expr
-                          Pipe
-                            Segment has_incoming=false
-                              OperatorExpr
-                                Atom
-                                  Name x
-                BodyBlock
-                  forms:
-                    ExprForm
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name body
+              Error "capture list is not allowed on an in-place closure"
