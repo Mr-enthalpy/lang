@@ -13,14 +13,38 @@ distinction.
 
 ## Field Functions and Projection Spaces
 
-Fields are unary function objects installed in a type-associated companion
-space:
+Fields and member-like operations are function objects installed in a
+type-associated companion space. A field is the unary special case; a
+member-like operation may consume a receiver plus ordinary remaining
+arguments:
 
 ```text
 field::T        : T       -> field
 field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
+push::T         : (T, value) -> result
 ```
+
+The first-class surface constructor is:
+
+```lang
+.field
+```
+
+and normalizes to a function object shaped as:
+
+```lang
+(val: T, ...args) { (val, args) |> field::T }
+```
+
+Thus `E.field` is compact `E |> .field`; `.field` itself is independently
+storable/transportable. Explicit `E |> .field P` supplies additional
+source-product items for a member-function-like call without creating a
+separate member dispatch system. Compact `E.field P` instead means
+`(E |> .field) P`; it does not add `P` to `field::T`. `...args` is a Pattern
+remainder matcher only. Existing product normalization forwards the bound
+remainder; no pack type or unpack operator is introduced.
+`E..field(product)` remains the direct member-call sugar.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form, for example:

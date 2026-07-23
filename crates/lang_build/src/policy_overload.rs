@@ -1,4 +1,4 @@
-use crate::policy_pair::{Phase, PolicyStage, ValueMutability};
+use crate::policy_pair::{FormalPolicyPattern, Phase, PolicyStage, ValueMutability};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MutabilityPattern {
@@ -13,6 +13,33 @@ pub struct PolicyOverloadCandidate<I> {
     pub parameter_policies: Vec<MutabilityPattern>,
     pub result_policy: Option<MutabilityPattern>,
     pub is_delete: bool,
+}
+
+impl<I> PolicyOverloadCandidate<I> {
+    /// Build the externally comparable candidate policy from elaborated
+    /// formal parameters. The const/mut slice is not body-local metadata: it
+    /// is copied into the product-order positions used to select this
+    /// candidate from its overload set.
+    pub fn from_formal_patterns(
+        id: I,
+        parameters: &[FormalPolicyPattern],
+        result_policy: Option<MutabilityPattern>,
+        is_delete: bool,
+    ) -> Self {
+        Self {
+            id,
+            parameter_policies: parameters
+                .iter()
+                .map(|formal| match formal.mutability {
+                    Some(ValueMutability::Const) => MutabilityPattern::Const,
+                    Some(ValueMutability::Mut) => MutabilityPattern::Mut,
+                    None => MutabilityPattern::Unspecified,
+                })
+                .collect(),
+            result_policy,
+            is_delete,
+        }
+    }
 }
 
 /// A candidate after heterogeneous entry enumeration. The phase-aware selector

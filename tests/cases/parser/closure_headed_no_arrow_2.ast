@@ -7,14 +7,15 @@ Program
             Atom
               Closure Explicit
                 FnHeadPrefix
-                  clauses:
-                    Require
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
+                  captures:
+                    CaptureClause
+                      items:
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name x
                 BodyBlock
                   forms:
                     ExprForm
@@ -23,4 +24,4 @@ Program
                           Segment has_incoming=false
                             OperatorExpr
                               Atom
-                                Name x
+                                Name body

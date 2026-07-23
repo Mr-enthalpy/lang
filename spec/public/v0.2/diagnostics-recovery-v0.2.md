@@ -49,7 +49,7 @@ as Raw AST.
 
 ## 3. DiagnosticCode inventory
 
-The current `DiagnosticCode` enum contains 32 variants. Each is listed below
+The current `DiagnosticCode` enum contains 33 variants. Each is listed below
 with its category, typical trigger, and stability status.
 
 | Code | Category | Typical trigger | Recovery | Status |
@@ -72,7 +72,8 @@ with its category, typical trigger, and stability status.
 | `UnclosedBrace` | Parser | `{` without matching `}` in a delimiter-owned context | Insert implicit `}` at boundary; preserve parsed content | Guaranteed |
 | `InvalidDeduceList` | Parser | Malformed deduce list (missing name, trailing comma, unclosed, missing annotation) | Preserve parsed binders where possible; some malformed annotation positions produce an error expression, other cases recover without adding a dedicated `ErrorAst` | Guaranteed |
 | `InvalidCanonicalSkeleton` | Parser | Malformed canonical skeleton in extraction context | Skip to context boundary; insert `ErrorAst` | Guaranteed |
-| `InvalidClosureHead` | Parser | `FnHeadPrefix { ... }` without `=>`, headless pipe branch body, malformed head clause | Replace malformed clause with `ErrorAst`; preserve recoverable parts | Guaranteed |
+| `MultiplePackPatternsAtSameLevel` | Parser | More than one direct `...Q` in one product-extraction level | Preserve nodes and emit level-local diagnostic | Guaranteed |
+| `InvalidClosureHead` | Parser | Headless pipe branch body or malformed head/tail clause | Replace malformed clause with `ErrorAst`; preserve recoverable parts | Guaranteed |
 | `TopLevelComma` | Parser | Comma at top level of a form outside any product or group | Consume comma; no additional AST structure | Guaranteed |
 | `UnusedClosureAst` | Parser | Exists for optional / non-guaranteed closure-recovery reporting | Closure AST still produced; callers must not rely on this code being emitted | Optional / not-guaranteed-emitted |
 | `InvalidOperatorExpression` | Operator | Malformed or unsupported operator syntax (missing operand, unsupported prefix) | Best-effort operator expression node or `ErrorAst` | Guaranteed |
@@ -92,7 +93,7 @@ with its category, typical trigger, and stability status.
 | Category | Count | Codes |
 |---|---|---|
 | Lexer | 4 | `InvalidToken`, `UnclosedString`, `UnclosedComment`, `InvalidNumericLiteral` |
-| Parser | 17 | `UnexpectedToken`, `ExpectedName`, `ExpectedColon`, `ExpectedBindingAnnotation`, `ExpectedEqual`, `EmptyPipeSegment`, `ExpectedNameAfterDot`, `ExpectedNameAfterDoubleDot`, `ExpectedProductAfterDoubleDotName`, `UnclosedParen`, `UnclosedBracket`, `UnclosedBrace`, `InvalidDeduceList`, `InvalidCanonicalSkeleton`, `InvalidClosureHead`, `TopLevelComma`, `UnusedClosureAst` |
+| Parser | 18 | Existing parser codes plus `MultiplePackPatternsAtSameLevel` |
 | Return | 3 | `ReturnRequiresValue`, `StatementAfterTerminalBlockForm`, `ReturnExpressionNotAllowed` |
 | Operator | 3 | `InvalidOperatorExpression`, `ChainedNonAssociativeOperator`, `InvalidNavComponent` |
 | Alias | 5 | `ExpectedAliasTarget`, `InvalidAliasBinder`, `InvalidAliasPosition`, `InvalidEntityRef`, `UnexpectedAliasRhsExpression` |
@@ -227,6 +228,13 @@ in pipe-branch position. The parser emits `InvalidClosureHead` because
 incoming pipe branch bodies require an explicit extraction head. The
 headless in-place closure AST is still preserved as a segment element.
 
+### `MultiplePackPatternsAtSameLevel`
+
+Two direct pack patterns occur in one product-extraction level, for example
+`(a, ...x, ...y)`. Nested products are checked independently, so
+`(a, (b, ...inner), ...outer)` is valid. A semantic post-normalization
+validator repeats this invariant after aliases/grouping have been lowered.
+
 ## 11. Atom suffix and navigation diagnostics
 
 ### `ExpectedNameAfterDot`
@@ -282,7 +290,6 @@ lowering.
 
 Emitted for:
 
-- `FnHeadPrefix { ... }` without the required `=>` delimiter
 - incoming `|> { ... }` headless pipe branch body
 - malformed head clauses
 - return slot with forbidden `with { ... }` clause

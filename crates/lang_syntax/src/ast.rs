@@ -119,6 +119,13 @@ pub enum PolicyAtomAst {
 pub enum BindingPatternAst {
     Binder(BinderNameAst),
     Product(ProductExtractAst),
+    /// Match the remaining normalized nodes at this structural level. The
+    /// ellipsis is pattern-side syntax only; it does not construct a pack
+    /// value or introduce a right-value unpack operator.
+    Pack {
+        inner: Box<BindingPatternAst>,
+        span: Span,
+    },
     Skeleton(CanonicalSkeletonAst),
     Error(ErrorAst),
 }
@@ -341,6 +348,11 @@ pub enum AtomKind {
         components: Vec<NavComponentAst>,
         explicit_terminated: bool,
     },
+    /// First-class field-function closure. Unlike `MemberSugar`, this node
+    /// does not capture a receiver; its first argument determines `T`.
+    DotClosure {
+        selector: SelectorAst,
+    },
     MemberSugar {
         object: Box<AtomAst>,
         selector: SelectorAst,
@@ -384,12 +396,22 @@ pub struct ExplicitClosureAst {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClosureBodyAst {
     Block(BodyBlockAst),
+    NamedBlock {
+        strategy: NameAst,
+        block: BodyBlockAst,
+        span: Span,
+    },
+    Defaulted {
+        default_name: NameAst,
+        span: Span,
+    },
     Delete(DeleteBodyAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteBodyAst {
-    pub message: ExprAst,
+    /// Source spelling of the optional string literal, including quotes.
+    pub message: Option<String>,
     pub delete_name: NameAst,
     pub span: Span,
 }

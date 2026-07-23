@@ -75,6 +75,40 @@ User-defined call entries are commonly installed under borrowed associated names
 
 Direct function objects are not merely sugar for user-defined `ref::T` callables. They have their call method directly under their anonymous function-object type.
 
+### 5.1 First-class field-function closures
+
+`.name` is itself a function-object expression. It normalizes without a
+receiver to:
+
+```lang
+(val: T, ...args) {
+    (val, args) |> name::T
+}
+```
+
+The first argument supplies `T`; `...args` is a Pattern remainder binding, not
+a pack type. Consequently `.name` can be stored and passed independently.
+`E.name` is the compact spelling of `E |> .name`, and
+`E |> .name P2` is the ordinary `P1 |> Callable P2` call skeleton. Explicit
+incoming-pipe right-side items join the same call source product, so
+`items |> .push value` normalizes as `(items, value) |> .push`.
+
+That rule does not extend across compact member sugar:
+
+```text
+E.name P == (E |> .name) P
+E.name P != E |> .name P
+```
+
+`P` in the compact spelling applies to the already produced `E.name` result.
+Member-style arguments therefore require the explicit pipe form, or the direct
+`..name(product)` sugar.
+
+Raw AST may preserve `E.name` as member sugar, but normalization routes it
+through the same `DotClosure(name)` core. `E..name(product)` remains separate
+direct member-call sugar; it is not removed by the more general `.name` form.
+No lookup or dispatch occurs during this normalization.
+
 ## 6. Implicit `self`
 
 Every function has an implicit first parameter position: `self`. This is a positional position, not a user-visible name. Applies to all functions, including meta functions.
@@ -107,6 +141,17 @@ Stage(P1v) = Stage(P2v) union Stage(P2p)
 Thus the selected object has the static/runtime view required to supply self;
 an optional written P1 prefix merely projects that derived view.
 
+Each written formal parameter takes the callable P2 as its base policy pair.
+No formal prefix means exact inheritance. `const let` or `mut let` changes only
+the inherited value-mutability Pattern; every stage, presence, and Pattern-side
+dimension stays equal to P2. That qualifier remains an overload-order Pattern,
+so it must not be implemented by running ordinary binding P1 projection over
+the actual and deleting the oppositely qualified candidate early.
+
+Candidate preparation also carries that qualifier outward as the parameter's
+const/mut product-order position. It therefore affects selection between
+callable objects as well as the effective parameter pair seen after entry.
+
 ### 6.1 Internal Self frame and local pattern construction
 
 An ordinary function object owns an internal symbol/pattern space for local
@@ -138,6 +183,47 @@ A function object with no captures is normally zero-sized. ZST values are not mo
 
 If a function object captures state, it may be non-ZST and follows ordinary value-passing and ownership rules.
 
+### 7.1 Function-object mutability default
+
+The binding created by `let fn = () => { ... }` has no written mutability
+restriction. Its empty typed mutability domain denotes `const || mut`. This is
+the neutral, fully available function-object view; it is not copied from P2.
+An explicit declaration P1 may restrict that domain to one view.
+
+### 7.2 In-place closures are embedded callable candidates
+
+An in-place closure is distinguished by `NormClosureKind::InPlace`. Its
+semantic object remains embedded in the control-flow layer at which it is
+used; it is not converted into a freely escaping captured closure. It may
+nevertheless contribute a normal callable candidate to an overload set.
+
+An in-place closure has no capture clause and no capture environment. Reads of
+outer symbols do not require `[]`. Instead, unresolved outer reads are carried
+as lazy embedding lookups:
+
+```text
+definition/materialization:
+  unresolved read name -> DeferredEmbeddingLookup(name)
+
+candidate use at control-flow layer L:
+  DeferredEmbeddingLookup(name) -> ResolveSymbol(name, L)
+  missing at L -> diagnostic at that use
+```
+
+Failure to find the symbol at the syntactic closure site is therefore not yet
+an error. The lookup becomes final only at the layer where that in-place
+candidate is embedded and selected. This is lexical embedding, not textual
+macro substitution: local declarations still shadow normally, symbol identity
+is used after resolution, and each use is checked in its own embedding
+environment.
+
+The implicit read ability does not grant arbitrary writes to outer places.
+Writing still requires ordinary place/mutability authority; because an
+in-place closure cannot spell a capture list, it cannot manufacture captured
+write authority. The future closure materializer and resolver own these
+checks. The Normalized AST only preserves `InPlace` and performs no lookup or
+capture analysis.
+
 ## 8. Call lookup pipeline
 
 ```text
@@ -155,8 +241,11 @@ Product |> Expr
 9. Form fully admissible set A using all hard checks, including receiver and
    parameter pair compatibility, P2 result compatibility with any target
    expectation, stage legality, and require legality
-10. Apply const/mut product-maximal filtering and the remaining fixed-order
-    preference filters, then the must-select check
+10. Export every elaborated formal const/mut Pattern to its candidate position,
+    apply const/mut product-maximal filtering and the remaining fixed-order
+    preference filters, including in-place over non-in-place after the
+    first-order-over-instantiated filter, then named strategy rules and the
+    must-select check
 11. Enter the unique selected invocation or defer according to demand
 ```
 
@@ -195,6 +284,13 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
+- Empty function-object mutability means the unrestricted `const || mut`
+  domain; an explicit declaration P1 may crop it.
+- Written formal parameters inherit P2 exactly outside the optional const/mut
+  Pattern axis.
+- In-place closures may be overload candidates, have no capture clause, defer
+  unresolved outer reads to their embedding layer, and gain no implicit outer
+  write authority.
 - Ordinary and built-in privileged meta functions follow the same
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal
@@ -202,3 +298,7 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
+- `.name` is a first-class generated function object; `E.name` calls that same
+  object, while `..name` remains direct member-call sugar.
+- Callable-tail named strategy metadata operates only on fully admissible
+  candidates and cannot reopen ordinary overload enumeration.

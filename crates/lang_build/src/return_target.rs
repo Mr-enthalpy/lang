@@ -5,8 +5,8 @@
 //! typing, propagation, lowering, lifetime checks, or resource scheduling.
 
 use lang_syntax::{
-    NormBindingSlot, NormClosure, NormClosureBody, NormExpr, NormForm, NormOrigin, NormPattern,
-    NormPatternElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax,
+    NormBindingSlot, NormClosure, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem,
+    NormProgram, NormReturnEvent, NormReturnTargetSyntax,
 };
 
 use crate::model::{Diagnostic, Provenance, ResolverCode, SymbolId};
@@ -16,6 +16,13 @@ pub struct ReturnFrameId(pub usize);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReturnSlotRef {
+    /// The complete normalized return binding slot. Keeping the Pattern and
+    /// its annotations/policy is required for later pattern-directed result
+    /// delivery; this pass still performs target binding only.
+    pub binding_slot: Option<NormBindingSlot>,
+    /// Convenience spelling for the restricted current self-target
+    /// diagnostics. Product/extraction returns intentionally have no single
+    /// name while their full slot remains available above.
     pub name: Option<String>,
     pub origin: NormOrigin,
 }
@@ -194,7 +201,7 @@ impl ReturnTargetBinder {
                 .push_frame(owner, return_slot, self_identity, closure.origin.clone());
         self.report.frames.push(frame);
 
-        if let NormClosureBody::Block(program) = &closure.body {
+        if let Some(program) = closure.body.user_body() {
             self.visit_program(program);
         }
 
@@ -364,17 +371,20 @@ fn return_diagnostic(
 fn return_slot_ref(closure: &NormClosure) -> ReturnSlotRef {
     let Some(head) = &closure.head else {
         return ReturnSlotRef {
+            binding_slot: None,
             name: None,
             origin: closure.origin.clone(),
         };
     };
     let Some(returns) = &head.returns else {
         return ReturnSlotRef {
+            binding_slot: None,
             name: None,
             origin: head.origin.clone(),
         };
     };
     ReturnSlotRef {
+        binding_slot: Some(returns.clone()),
         name: binding_slot_name(returns),
         origin: returns.origin.clone(),
     }
@@ -422,7 +432,7 @@ fn unbound_event(return_event: &NormReturnEvent) -> UnboundReturnEvent {
 }
 
 fn collect_return_events_in_closure(closure: &NormClosure, events: &mut Vec<UnboundReturnEvent>) {
-    if let NormClosureBody::Block(program) = &closure.body {
+    if let Some(program) = closure.body.user_body() {
         collect_return_events_in_program(program, events);
     }
 }

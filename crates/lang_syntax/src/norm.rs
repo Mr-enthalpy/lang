@@ -124,6 +124,11 @@ pub enum NormPattern {
         elements: Vec<NormPatternElem>,
         origin: NormOrigin,
     },
+    /// Match the remaining normalized nodes at this structural level.
+    Pack {
+        inner: Box<NormPattern>,
+        origin: NormOrigin,
+    },
     Unit {
         origin: NormOrigin,
     },
@@ -168,6 +173,90 @@ pub enum NormPatternElem {
     Pattern(NormPattern),
     BindingSlot(NormBindingSlot),
     Unit { origin: NormOrigin },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PackPatternLayerError {
+    pub pack_count: usize,
+    pub origin: NormOrigin,
+}
+
+/// Validate the semantic, post-normalization rule that one structural level
+/// may contain at most one pack. Nested products are independent levels.
+pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPatternLayerError> {
+    match pattern {
+        NormPattern::Product { elements, .. } => {
+            validate_pack_pattern_element_level(elements)?;
+            for element in elements {
+                match element {
+                    NormPatternElem::Pattern(pattern) => validate_pack_pattern_layers(pattern)?,
+                    NormPatternElem::BindingSlot(slot) => {
+                        validate_pack_pattern_layers(&slot.value_pattern)?;
+                        if let Some(annotation) = &slot.annotation {
+                            validate_pack_pattern_layers(&annotation.pattern)?;
+                        }
+                    }
+                    NormPatternElem::Unit { .. } => {}
+                }
+            }
+            Ok(())
+        }
+        NormPattern::Pack { inner, origin } => {
+            if matches!(inner.as_ref(), NormPattern::Pack { .. }) {
+                return Err(PackPatternLayerError {
+                    pack_count: 2,
+                    origin: origin.clone(),
+                });
+            }
+            validate_pack_pattern_layers(inner)
+        }
+        NormPattern::Sequence { elements, .. } => {
+            for element in elements {
+                validate_pack_pattern_layers(element)?;
+            }
+            Ok(())
+        }
+        NormPattern::BindingSlot { slot, .. } => {
+            validate_pack_pattern_layers(&slot.value_pattern)?;
+            if let Some(annotation) = &slot.annotation {
+                validate_pack_pattern_layers(&annotation.pattern)?;
+            }
+            Ok(())
+        }
+        NormPattern::Binder { .. }
+        | NormPattern::OperatorBinder { .. }
+        | NormPattern::Unit { .. }
+        | NormPattern::HoleRef { .. }
+        | NormPattern::Name { .. }
+        | NormPattern::Literal { .. }
+        | NormPattern::Nav { .. }
+        | NormPattern::Skeleton { .. }
+        | NormPattern::Error(_)
+        | NormPattern::Unsupported { .. } => Ok(()),
+    }
+}
+
+pub fn validate_pack_pattern_element_level(
+    elements: &[NormPatternElem],
+) -> Result<(), PackPatternLayerError> {
+    let packs = elements
+        .iter()
+        .filter_map(|element| match element {
+            NormPatternElem::Pattern(NormPattern::Pack { origin, .. }) => Some(origin),
+            NormPatternElem::BindingSlot(slot) => match &slot.value_pattern {
+                NormPattern::Pack { origin, .. } => Some(origin),
+                _ => None,
+            },
+            NormPatternElem::Pattern(_) | NormPatternElem::Unit { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    if packs.len() > 1 {
+        return Err(PackPatternLayerError {
+            pack_count: packs.len(),
+            origin: (*packs[1]).clone(),
+        });
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -255,12 +344,46 @@ pub struct NormClosure {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormClosureBody {
     Block(NormProgram),
+    NamedBlock {
+        strategy: String,
+        body: NormProgram,
+        origin: NormOrigin,
+    },
+    Defaulted {
+        origin: NormOrigin,
+    },
     Delete(NormDeleteBody),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NormOverloadStrategy {
+    Ordinary,
+    Named(String),
+}
+
+impl NormClosureBody {
+    pub fn overload_strategy(&self) -> NormOverloadStrategy {
+        match self {
+            Self::NamedBlock { strategy, .. } => NormOverloadStrategy::Named(strategy.clone()),
+            Self::Block(_) | Self::Defaulted { .. } | Self::Delete(_) => {
+                NormOverloadStrategy::Ordinary
+            }
+        }
+    }
+
+    pub fn user_body(&self) -> Option<&NormProgram> {
+        match self {
+            Self::Block(body) | Self::NamedBlock { body, .. } => Some(body),
+            Self::Defaulted { .. } | Self::Delete(_) => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormDeleteBody {
-    pub message: Box<NormExpr>,
+    /// Normalized source spelling of the optional string literal, including
+    /// quotes. Callable-tail parsing rejects non-string message expressions.
+    pub message: Option<String>,
     pub origin: NormOrigin,
 }
 
@@ -414,6 +537,7 @@ pub enum NormRule {
     SecondLegalityRepair,
     OperatorLowering,
     PrefixNegativeLowering,
+    DotClosureLowering,
     MemberLowering,
     DoubleDotLowering,
     BracketCallLowering,
@@ -597,6 +721,23 @@ fn normalize_segment_with_incoming(incoming: NormExpr, segment: &SegmentAst) -> 
         });
     }
 
+    if is_dot_closure_item(&items[0]) && items.len() > 1 {
+        let target = items[0]
+            .expr()
+            .expect("dot-closure item is always an expression");
+        let mut source = source_product_from_expr(incoming, segment.span);
+        append_field_call_arguments(&mut source, &items[1..]);
+        return make_call(
+            source,
+            target,
+            NormOrigin::Derived {
+                rule: NormRule::ProductMerge,
+                span: segment.span,
+                summary: "incoming dot-closure source-product continuation".to_string(),
+            },
+        );
+    }
+
     let product_index = (1..items.len()).find(|index| items[*index].source_product().is_some());
 
     if let Some(product_index) = product_index {
@@ -630,6 +771,35 @@ fn normalize_segment_with_incoming(incoming: NormExpr, segment: &SegmentAst) -> 
             },
         )
     }
+}
+
+fn append_field_call_arguments(source: &mut NormProduct, arguments: &[SegmentItem]) {
+    for argument in arguments {
+        match argument {
+            SegmentItem::Expr { expr, .. } => {
+                source.elements.push(NormProductElem::Expr(expr.clone()));
+            }
+            SegmentItem::Product(product) => {
+                source.elements.extend(product.elements.clone());
+            }
+        }
+    }
+}
+
+fn is_dot_closure_item(item: &SegmentItem) -> bool {
+    item.expr().as_ref().is_some_and(is_dot_closure_expr)
+}
+
+fn is_dot_closure_expr(expr: &NormExpr) -> bool {
+    matches!(
+        expr,
+        NormExpr::Closure(NormClosure {
+            kind: NormClosureKind::Generated {
+                rule: NormRule::DotClosureLowering
+            },
+            ..
+        })
+    )
 }
 
 #[derive(Clone, Debug)]
@@ -914,6 +1084,7 @@ fn normalize_atom(atom: &AtomAst) -> NormExpr {
             explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
+        AtomKind::DotClosure { selector } => normalize_dot_closure(selector, atom.span),
         AtomKind::MemberSugar { object, selector } => {
             normalize_member_sugar(normalize_atom(object), selector, atom.span)
         }
@@ -997,42 +1168,31 @@ fn normalize_operator_sugar(
 }
 
 fn normalize_member_sugar(object: NormExpr, selector: &SelectorAst, span: Span) -> NormExpr {
-    let selector_name = selector_name(selector);
-    let closure = generated_receiver_closure(
-        NormRule::MemberLowering,
-        span,
-        make_call(
-            NormProduct {
-                elements: vec![NormProductElem::Expr(generated_name(
-                    "val",
-                    span,
-                    NormRule::MemberLowering,
-                ))],
-                origin: NormOrigin::Generated {
-                    rule: NormRule::MemberLowering,
-                    span,
-                },
-            },
-            generated_nav(
-                &[selector_name.as_str(), "T"],
-                span,
-                NormRule::MemberLowering,
-            ),
-            NormOrigin::Generated {
-                rule: NormRule::MemberLowering,
-                span,
-            },
-        ),
-    );
-
     make_call(
         source_product_from_expr(object, span),
-        NormExpr::Closure(closure),
+        normalize_dot_closure(selector, span),
         NormOrigin::Generated {
             rule: NormRule::MemberLowering,
             span,
         },
     )
+}
+
+fn normalize_dot_closure(selector: &SelectorAst, span: Span) -> NormExpr {
+    let rule = NormRule::DotClosureLowering;
+    let selector_name = selector_name(selector);
+    let body = make_call(
+        NormProduct {
+            elements: vec![
+                NormProductElem::Expr(generated_name("val", span, rule)),
+                NormProductElem::Expr(generated_name("args", span, rule)),
+            ],
+            origin: NormOrigin::Generated { rule, span },
+        },
+        generated_nav(&[selector_name.as_str(), "T"], span, rule),
+        NormOrigin::Generated { rule, span },
+    );
+    NormExpr::Closure(generated_field_function_closure(span, body))
 }
 
 fn normalize_double_dot_sugar(
@@ -1196,8 +1356,20 @@ fn normalize_closure(closure: &ClosureAst) -> NormClosure {
         ClosureAst::Explicit(inner) => {
             let body = match &inner.body {
                 ClosureBodyAst::Block(block) => NormClosureBody::Block(normalize_body_block(block)),
+                ClosureBodyAst::NamedBlock {
+                    strategy,
+                    block,
+                    span,
+                } => NormClosureBody::NamedBlock {
+                    strategy: strategy.text.clone(),
+                    body: normalize_body_block(block),
+                    origin: NormOrigin::Source(*span),
+                },
+                ClosureBodyAst::Defaulted { span, .. } => NormClosureBody::Defaulted {
+                    origin: NormOrigin::Source(*span),
+                },
                 ClosureBodyAst::Delete(del) => NormClosureBody::Delete(NormDeleteBody {
-                    message: Box::new(normalize_expr(&del.message)),
+                    message: del.message.clone(),
                     origin: NormOrigin::Source(del.span),
                 }),
             };
@@ -1393,6 +1565,10 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> N
             }
         }
         BindingPatternAst::Product(product) => normalize_product_extract_pattern(product, holes),
+        BindingPatternAst::Pack { inner, span } => NormPattern::Pack {
+            inner: Box::new(normalize_binding_pattern(inner, holes)),
+            origin: NormOrigin::Source(*span),
+        },
         BindingPatternAst::Skeleton(skeleton) => NormPattern::Skeleton {
             skeleton: normalize_canonical_skeleton(skeleton),
             origin: NormOrigin::Generated {
@@ -1822,6 +1998,33 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
     }
 }
 
+fn generated_field_function_closure(span: Span, body_expr: NormExpr) -> NormClosure {
+    let rule = NormRule::DotClosureLowering;
+    let mut closure = generated_receiver_closure(rule, span, body_expr);
+    let head = closure
+        .head
+        .as_mut()
+        .expect("generated receiver closure always has a head");
+    head.params
+        .push(NormPatternElem::BindingSlot(NormBindingSlot {
+            policy: None,
+            has_let: false,
+            deduce: Vec::new(),
+            value_pattern: NormPattern::Pack {
+                inner: Box::new(NormPattern::Binder {
+                    name: "args".to_string(),
+                    origin: NormOrigin::Generated { rule, span },
+                }),
+                origin: NormOrigin::Generated { rule, span },
+            },
+            annotation: None,
+            with_clause: None,
+            initializer: None,
+            origin: NormOrigin::Generated { rule, span },
+        }));
+    closure
+}
+
 fn generated_name(name: &str, span: Span, rule: NormRule) -> NormExpr {
     NormExpr::Name {
         text: name.to_string(),
@@ -2243,6 +2446,10 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 dump_pattern_elem(output, element, indent + 2);
             }
         }
+        NormPattern::Pack { inner, origin } => {
+            line(output, indent, &format!("Pack {}", origin_inline(origin)));
+            dump_pattern(output, inner, indent + 1);
+        }
         NormPattern::Unit { origin } => {
             line(output, indent, &format!("Unit {}", origin_inline(origin)))
         }
@@ -2479,14 +2686,22 @@ fn dump_closure(output: &mut String, closure: &NormClosure, indent: usize) {
     line(output, indent + 1, "body:");
     match &closure.body {
         NormClosureBody::Block(program) => dump_norm_program_body(output, program, indent + 2),
+        NormClosureBody::NamedBlock { strategy, body, .. } => {
+            line(
+                output,
+                indent + 2,
+                &format!("UserBody strategy=Named({strategy})"),
+            );
+            dump_norm_program_body(output, body, indent + 3);
+        }
+        NormClosureBody::Defaulted { .. } => line(output, indent + 2, "Defaulted"),
         NormClosureBody::Delete(del) => {
             line(output, indent + 2, "Delete");
-            let mut msg_buf = String::new();
-            dump_norm_expr(&mut msg_buf, &del.message, 0);
-            // dump_norm_expr appends a trailing \n; trim it to avoid
-            // double-newline when passed through line().
-            let msg_text = msg_buf.trim_end_matches('\n');
-            line(output, indent + 3, msg_text);
+            if let Some(message) = &del.message {
+                line(output, indent + 3, &format!("String {message}"));
+            } else {
+                line(output, indent + 3, "None");
+            }
         }
     }
 }
@@ -2709,6 +2924,7 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::SecondLegalityRepair => "SecondLegalityRepair",
         NormRule::OperatorLowering => "OperatorLowering",
         NormRule::PrefixNegativeLowering => "PrefixNegativeLowering",
+        NormRule::DotClosureLowering => "DotClosureLowering",
         NormRule::MemberLowering => "MemberLowering",
         NormRule::DoubleDotLowering => "DoubleDotLowering",
         NormRule::BracketCallLowering => "BracketCallLowering",

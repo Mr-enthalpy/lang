@@ -24,7 +24,12 @@ design question; it is the next post-v0.5 roadmap track.
 The following points are resolved for the v0.6 namespace graph / early-meta
 track:
 
-- Fields are unary function objects in type-associated companion spaces.
+- Generated data fields are unary function objects; the first-class `.name`
+  constructor generalizes the same first-argument dispatch to ordinary
+  remainder arguments without creating a separate member system.
+- Remainder arguments require explicit `E |> .name P`; compact `E.name P`
+  remains `(E |> .name) P`. Direct `..name(product)` sugar is therefore not
+  redundant.
 - `ref` and `share` are namespace subspaces, not reserved field names.
 - Function-object names and namespace-subspace names may be identical under the
   same parent when they occupy different child-name roles.
@@ -141,6 +146,23 @@ Resolved future-design decisions:
 - `const`/`mut` is a `Pv` dimension. Multi-position preference uses product
   partial order; delete members remain candidates and may be the unique maximal
   rejection.
+- Written formal parameters inherit their callable P2. `const let` / `mut let`
+  restrict only the inherited mutability Pattern; all other P2 dimensions are
+  invariant. The resulting qualifier is exported into the candidate's external
+  policy product order as well as its body-entry pair. Opposite actual
+  qualifiers remain preference inputs rather than being removed by ordinary
+  P1 projection.
+- A function-object binding has the unrestricted empty mutability domain by
+  default (`const || mut`); only its declaration may crop that axis.
+- `...Q` is available in every let-shaped binding slot, not only parameters.
+  It remains one Pattern remainder node, never a pack type or RHS unpack.
+- Extraction-style result delivery uses the declared return Pattern. Explicit
+  writes address its binders separately; a bare tail or targeted return matches
+  one result object as `let ResultPattern = expr`.
+- In-place closures may contribute callable overload candidates. They have no
+  capture list, defer unresolved outer reads to the embedding layer, gain no
+  implicit outer-write authority, and are preferred over otherwise tied
+  non-in-place candidates after first-order-over-instantiated preference.
 - Inferred require retains coarse complete blocks and guarded branch groups,
   conjoins with manual require, and shares one compile-evaluation graph with
   body continuation.
@@ -165,6 +187,11 @@ Not implemented after this correction:
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call
   execution checker.
+- Closure materialization, lazy embedding-layer lookup for in-place closures,
+  and the in-place-over-non-in-place overload filter.
+- Result Pattern delivery/D-reduction; the current return-target substrate only
+  retains the complete return binding slot and selects a restricted active
+  frame.
 - Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
 
@@ -174,7 +201,10 @@ Still open for later design:
   another spelling);
 - the complete runtime reflection object model;
 - the semantics of any additional future policy stage;
-- the final public spelling for overload-strategy metadata;
+- which named overload strategies beyond compiler-known
+  `must_select_if_qualified` are provided, and each rule's monotone comparison
+  semantics (the source spelling `=> name {}` / no-`=>` `[[name]] {}` is now
+  fixed);
 - how source code references a derived compile companion and associates an
   explicit replacement;
 - whether default companion suppression is permitted and which equivalent

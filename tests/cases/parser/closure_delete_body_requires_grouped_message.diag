@@ -1,1 +1,1 @@
-error InvalidClosureHead "expected `{` or `(message) delete` after `=>`" @ 1:19 [18..18]
+error InvalidClosureHead "expected `{`, `delete`, `(string) delete`, `default`, or `strategy { ... }` after `=>`" @ 1:19 [18..18]

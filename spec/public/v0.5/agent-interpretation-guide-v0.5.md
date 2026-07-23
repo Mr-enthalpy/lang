@@ -29,6 +29,8 @@ Do not interpret `a b` as traditional function application.
 Do not interpret `(a, b)` as an argument list.
 Do not interpret `obj.field` as field lookup.
 Do not interpret `obj..f(args)` as method dispatch.
+Do interpret `.field` as an independently generated field-function closure.
+Do not interpret `...args` as a value spread or pack type.
 Do not interpret annotation patterns as runtime expressions.
 Do not resolve pattern-side names through ordinary function lookup.
 Do not treat semantic-looking names (`return`, `else`, `match`, `drop`, `move`) as keywords; they are ordinary `Name` tokens until a later semantic/meta pass interprets them.
@@ -51,8 +53,14 @@ See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserv
 - `P |> e` with no following Product is the **first legality repair** (dump label
   `PipeFallback`), not the main skeleton.
 - `expr |> Product` is never the intended normalized result.
-- Operator / member / double-dot / bracket sugar lower into the same
+- Operator / dot-closure / member / double-dot / bracket sugar lower into the same
   product-call skeleton with preserved provenance; they are not resolved.
+- `.name` lowers independently to `(val: T, ...args) { (val, args) |> name::T }`;
+  `E.name` calls that same closure. Only explicit `E |> .name P` adds `P` to
+  the field-function source product; `E.name P` is `(E |> .name) P`.
+  `..name` remains direct call sugar.
+- Callable tails preserve ordinary/named user bodies, `default`, and optional-
+  message `delete`; strategy metadata is not overload selection at normalization.
 
 Quick continuation checklist:
 
@@ -82,6 +90,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
 - Pattern-side names are not ordinary call targets and must not fall back to
   ordinary value/function lookup.
 - Construction and extraction may be isomorphic; call and extraction are not.
+- `...Q` stays `NormPattern::Pack(Q)`, with one pack per normalized level and
+  no RHS unpack counterpart. The grammar is shared by every binding slot
+  (`let`, parameter, return, and nested product extraction); it is not a
+  parameter-only variadic form.
 
 Quick pattern-context lowering checklist:
 
@@ -110,8 +122,8 @@ insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 - "`a b` must be a call" — no; it is composition into the product-call skeleton.
 - "`(args)` after a name is the argument list" — no; it is the source-product
   continuation when an incoming source product exists.
-- "`obj.field` looks up a field" — no; it lowers to navigation material; lookup
-  is future.
+- "`obj.field` looks up a field" — no; it calls the same first-class `.field`
+  closure whose body contains unresolved `field::T` navigation; lookup is future.
 - "annotation `T Option::std` is an expression" — no; it is annotation-pattern
   material.
 - "Normalized AST is basically HIR" — no; HIR assumes resolution and checking.

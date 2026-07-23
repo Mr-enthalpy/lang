@@ -24,10 +24,4 @@ Program
                             extract:
                               elements:
                       Delete
-                        message
-                          Expr
-                            Pipe
-                              Segment has_incoming=false
-                                OperatorExpr
-                                  Atom
-                                    StringLiteral "\"closure delete\""
+                        message StringLiteral "closure delete"

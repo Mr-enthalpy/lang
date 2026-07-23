@@ -221,6 +221,50 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
+Every written formal parameter first inherits the callable result pair `P2`
+without reinterpretation:
+
+```text
+FormalBase(parameter) = P2(callable)
+```
+
+Omitting the prefix preserves that pair exactly. Writing `const` or `mut`
+restricts only the value-mutability axis of the inherited pair:
+
+```text
+let x        -> FormalPattern(P2, mutability = unspecified)
+const let x  -> FormalPattern(const + P2)
+mut let x    -> FormalPattern(mut + P2)
+```
+
+Stages, value presence, and the Pattern component remain byte-for-byte the
+inherited P2 dimensions; the qualifier may neither shrink nor widen them.
+`public`, `private`, `export`, stage atoms, value absence, and an explicit pair
+are therefore invalid formal prefixes. If P2 already explicitly restricts its
+mutability domain, a contradictory formal qualifier is invalid rather than an
+expansion.
+
+The const/mut singleton above is a formal Pattern and preference input. It is
+not an ordinary P1 query applied to the actual argument. Consequently an
+oppositely qualified actual is not removed before the product order: for a
+const actual the order remains `const > unspecified > mut`, and it reverses
+for a mut actual.
+
+The elaborated formal pair is not body-local policy metadata. Candidate
+formation exports its written/inherited mutability Pattern into the callable's
+external parameter-policy position:
+
+```text
+FormalPolicyPattern(parameter)
+  -> Candidate.parameter_policy[position]
+  -> MaxPolicyProduct
+```
+
+Thus the P2-derived restriction affects both the view available inside the
+callable body and comparison of this callable against other fully admissible
+overloads. “Inherit P2” must not be implemented by updating only the body
+environment while leaving the candidate externally `unspecified`.
+
 ### 3.3 Namespace declaration attributes
 
 `public`, `private`, and `export` are accepted only by namespace-declaration
@@ -305,6 +349,18 @@ value presence
 ```
 
 Those properties come only from the function object's declaration.
+
+For a declaration such as:
+
+```lang
+let fn = () => { ... };
+```
+
+the declaration supplies an empty value-mutability restriction. In the typed
+policy domain, empty here means the complete `const || mut` domain, not “no
+value” and not an unknown third qualifier. A written declaration P1 may crop
+that domain to `const` or `mut`. P2 mutability never propagates into the
+function object during stage lifting.
 
 ## 6. Three execution phases
 

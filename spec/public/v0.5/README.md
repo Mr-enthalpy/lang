@@ -19,7 +19,9 @@ behavior, especially:
 
 - source-product continuation and call binding;
 - product / group / target boundaries;
-- operator / member / bracket sugar as normalization-level lowering;
+- operator / first-class dot closure / member / bracket sugar as
+  normalization-level lowering;
+- callable implementation tails and Pattern remainder packs;
 - value-side vs pattern-side separation;
 - annotation patterns and DeduceList holes;
 - origin / provenance and error / `Unsupported` visibility at the normalized

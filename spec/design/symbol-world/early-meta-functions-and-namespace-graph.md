@@ -223,7 +223,7 @@ model boundary:
 - Failed `struct` expansion returns hard diagnostics and leaves no partial
   generated subtree. Duplicate fields, unknown field types, unit/trailing-unit
   fields, and unsupported nested products are rejected. Fields named `ref` or
-  `share` are allowed because fields are unary function objects while
+  `share` are allowed because generated data fields are unary function objects while
   `ref` / `share` are namespace subspaces.
 - v0.8 ordinary initializer evaluation can materialize
   `let T: type = uint8` as an ordinary type-value binding: resolve
@@ -649,7 +649,12 @@ generated child namespace attached to the type node.
 What unifies the category is the **role** (companion space of a type object),
 not the origin of its members.
 
-For `struct`-generated fields, fields are unary function objects:
+For `struct`-generated data fields, the generated associated callable is the
+unary special case. The first-class `.name` closure is more general: it
+dispatches through the first argument type and may forward a normalized
+remainder product as additional arguments.
+
+The unary generated-field shape is:
 
 ```text
 field::T        : T       -> field

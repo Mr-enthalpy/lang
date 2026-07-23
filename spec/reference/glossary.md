@@ -173,6 +173,7 @@ The smallest self-contained expression unit. Atoms include:
 - `Group(PipeExpr)`
 - `Closure(ClosureAst)`
 - `NavPath(components)` (components are `NavComponentAst` in source order)
+- `DotClosure(selector)` (leading `.name`; no captured receiver)
 - `MemberSugar(object, selector)` (selector is `SelectorAst`)
 - `DoubleDotSugar(object, selector, args)` (selector is `SelectorAst`)
 - `BracketCallSugar(object, operator, args)` (`obj[args...]`; operator spelling `[]`, `args` is a `ProductExprAst`)
@@ -181,6 +182,8 @@ The smallest self-contained expression unit. Atoms include:
 Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
 `..`, `[...]` bracket call, and postfix operators). Operator sugar itself is
 stored at the `OperatorExpr` layer, not as a general `Atom` variant.
+
+Leading `.name` is a base atom, distinct from suffix folding.
 
 `BracketCallSugar` is source-preserving sugar for the operator spelling `[]`; it
 is not indexing/slicing/container access. The `[]` operator is a contextual
@@ -192,7 +195,8 @@ _See also: ClosureAST, ProductForm, OperatorSugar, PostfixOperator, SelectorAst,
 
 ## SelectorAst
 
-A name-like construct appearing in suffix position after `.` or `..`.
+A name-like construct appearing after leading `.` or in suffix position after
+`.` or `..`.
 In the current parser phase:
 
 ```text
@@ -326,7 +330,9 @@ prepared call candidate. It activates only when that candidate belongs to the
 fully admissible set `A`. One admissible must-select candidate must be the sole
 final preference survivor; several admissible must-select candidates conflict.
 The strategy is not infinite priority and does not forbid non-overlapping
-same-name overloads. No `@`-prefixed source spelling is frozen for it.
+same-name overloads. Source strategy metadata uses `=> name { ... }`, with
+`[[name]] { ... }` as the no-`=>` disambiguation form; `@` remains lifetime
+syntax.
 
 _See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
 
@@ -369,11 +375,13 @@ The priority rule that determines which overload candidate is selected when
 multiple candidates survive initial filtering. In this design, overload
 specificity is **extraction-pattern specificity**: candidates are ranked by
 how deeply their extraction pattern penetrates the unified construction-
-expression tree of the call operand. A larger total depth score means a more
-specific candidate. Specificity does not depend on declaration order or an
-ad-hoc conversion-rank table. This extraction-only rank is not a const/mut
-fitness score and never resolves candidates that remain incomparable under the
-const/mut product order.
+expression tree of the call operand. Structural depth evidence is compared
+before node-class evidence. At equal depth, ordinary explicit matches outrank
+explicit pack matches, which outrank ordinary discards, which outrank pack
+discards. One pack counts as one node regardless of captured length.
+Specificity does not depend on declaration order or an ad-hoc conversion-rank
+table. This extraction-only rank is not a const/mut fitness score and never
+resolves candidates that remain incomparable under the const/mut product order.
 
 _See also: OverloadCandidate, OverloadResolutionPipeline,
 `spec/design/patterns-overload/overload-resolution-design.md` §4._
@@ -388,9 +396,12 @@ and every hard structural, Pattern, policy-pair, stage, target-result, concept,
 and ordinary-require check first form fully admissible set `A`. Const/mut then
 uses product partial order across all constrained positions; no total score or
 lexicographic fallback resolves incomparable candidates. Remaining
-side-effect-free preference filters apply in one fixed normative order. Each
+side-effect-free preference filters apply in one fixed normative order:
+entry, concept, extraction, first-order-over-instantiated,
+in-place-over-non-in-place, then named strategy rules. Each
 filter is independent of candidate enumeration order; filters are not assumed
-to commute. Delete members participate normally, and ordinary uniqueness is
+to commute. A named strategy only sees fully admissible candidates and cannot
+restart lookup. Delete members participate normally, and ordinary uniqueness is
 constrained by `must_select_if_qualified` strategies activated from `A`.
 
 Lifetime policy is not a type/compile candidate filter. This revision defines
@@ -623,8 +634,9 @@ callable object. Two forms:
 
 - **InPlaceClosureAst**: Bare `{ ... }` in atom position. An in-place control-flow
   closure with no capture clause, parameters, or head clauses.
-- **ExplicitClosureAst**: `FnHeadPrefix => { ... }`. A headed closure that
-  requires `=>` between the head and body.
+- **ExplicitClosureAst**: a `FnHeadPrefix` followed by a callable
+  implementation tail. The tail may use `=>` or the explicitly disambiguated
+  no-`=>` strategy/block form.
 
 > **Distinction**: `ClosureAST` is **not** `ClosureObject`. Closure literals
 > produce AST first. A later semantic pass may materialize closure AST into
@@ -645,6 +657,13 @@ is the Raw AST representation of a control-flow-embedding closure block.
 Having no extraction head is not the same as having a unit extraction pattern:
 a headless in-place closure accepts no extracted input, including no implicit
 unit input.
+
+In future callable materialization it may contribute an overload candidate
+while remaining tied to its embedding control-flow layer. Unresolved outer
+reads are resolved lazily at that layer; no capture list is required or
+allowed, and this read rule grants no implicit outer-write authority. An
+otherwise tied in-place candidate is preferred after the
+first-order-over-instantiated filter.
 
 > **Explicit self position for return:** A headless in-place closure
 > has no self target and cannot express early return. Early return
@@ -684,12 +703,53 @@ _See also: ClosureAST, ExplicitClosureAST._
 
 ## ExplicitClosureAST
 
-A closure literal with an explicit head and `=>`: `FnHeadPrefix => BodyBlock`.
+A closure literal with an explicit head and a callable implementation tail.
 The head may contain deduce list, capture clause, parameter clause, call-result
-policy clause, return clause, and head clauses. The body is a form block. Headed closures
-without `=>` (e.g., `[](){}` or `(x){x}`) are rejected.
+policy clause, return clause, and head clauses. The tail preserves ordinary or
+named user body, compiler-defaulted implementation, or deleted implementation.
+Plain no-`=>` block tails are accepted; `[[name]]` is the named-strategy escape
+that does not steal the established return extraction-pattern parse.
 
 _See also: ClosureAST, InPlaceClosureAST, FnHeadPrefix._
+
+---
+
+## Callable Implementation Tail
+
+The single syntax slot that describes a callable implementation and optional
+overload strategy. It normalizes to `UserBody(Ordinary|Named, body)`,
+`Defaulted`, or `Deleted(message?)`. `=> name {}` and `[[name]] {}` carry the
+same named strategy. Strategy metadata participates only after full
+admissibility and never creates a second overload pass.
+
+_See also: ExplicitClosureAST, Fully Admissible Candidate, Overload Resolution Pipeline._
+
+---
+
+## Dot Closure
+
+The first-class expression `.name`, normalized to a generated function object
+`(val: T, ...args) { (val, args) |> name::T }`. `E.name` is compact
+`E |> .name`; `.name` itself captures no receiver. Following space material
+does not extend compact syntax: `E.name P == (E |> .name) P`, whereas
+member-style remainder arguments require `E |> .name P`. `..name` remains
+direct member-call sugar.
+
+_See also: Atom, Function Object, Call normalization._
+
+---
+
+## Pack Pattern
+
+The Pattern-side remainder form `...Q`. It matches the unmatched portion of
+one normalized structural level and then applies `Q`. Each level permits one
+pack; nested levels are independent. It is not a value/type/ABI category and
+has no RHS unpack counterpart. Its specificity contribution is one node,
+independent of captured length. It is valid in every let-shaped binding slot,
+including ordinary/local let, parameter, return, and nested product extraction;
+it is not a parameter-only variadic syntax.
+
+_See also: Pattern normalization, Overload Specificity._
 
 ---
 
@@ -1096,7 +1156,10 @@ _See also: TailValue, ReturnTargetSyntax, Control-flow end event._
 
 The last expression form in a body block, normalized as
 `NormForm::TailValue(NormExpr)`. A block result / tail value,
-not early return.
+not early return. For an extraction-style callable result it supplies one
+object expected to match the complete declared return Pattern, as in
+`let ResultPattern = expr`; it does not assign one value to every output
+binder.
 
 _See also: ReturnEvent, Control-flow end event._
 
@@ -1111,7 +1174,8 @@ NormReturnTargetSyntax ::=
 ```
 
 `ImplicitNearest` represents a return targeted at the nearest
-enclosing self (resolved in a future semantic phase).
+enclosing self. The current restricted build pass binds it to an active
+`ReturnTargetFrame`; full lexical self-capability resolution remains future.
 `Explicit(NormExpr)` preserves the explicit target syntax
 without resolution.
 
@@ -1122,7 +1186,8 @@ _See also: ReturnEvent._
 A return target indicating the return should target the nearest
 enclosing function-object self. In the parser and normalizer,
 `ImplicitNearest` is an unresolved marker. The source form is
-`E return;`. Resolution is deferred to a later semantic phase.
+`E return;`. A restricted post-normalization binder resolves the active frame;
+result Pattern delivery remains deferred.
 
 _See also: ReturnTargetSyntax, Explicit return target._
 
@@ -1134,7 +1199,9 @@ normalizer, `Explicit(NormExpr)`. Source forms are
 `E |> (T return);` and `E (T return);`.
 
 The explicit target syntax `T` is not resolved by parser or
-normalizer. Resolution is deferred.
+normalizer. The restricted build binder supports active name targets through a
+temporary spelling identity; full lexical self-capability resolution is
+deferred.
 
 _See also: ReturnTargetSyntax, ImplicitNearest return target._
 

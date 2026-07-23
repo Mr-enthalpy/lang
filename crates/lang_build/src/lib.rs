@@ -141,8 +141,9 @@ pub use model::{
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use overload_pattern::{
-    decode_param_pattern, match_param_pattern, overload_args_from_classified_shape,
-    OverloadArgShape, PatternMatchOutcome, RestrictedParamPattern, SpecificityTuple,
+    decode_param_pattern, match_pack_param_pattern, match_param_pattern,
+    overload_args_from_classified_shape, OverloadArgShape, PatternMatchOutcome,
+    RestrictedParamPattern, SpecificityTuple,
 };
 pub use overload_set::{
     construct_c0, invoke_restricted_meta_overload, invoke_restricted_meta_overload_with_policy,

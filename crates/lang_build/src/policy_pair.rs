@@ -129,6 +129,8 @@ pub enum ValuePresence {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValueComponentPolicy {
     pub stages: StageSet,
+    /// An empty domain is the unconstrained `const || mut` domain. A
+    /// singleton is an explicit restriction to that mutability view.
     pub mutability: BTreeSet<ValueMutability>,
     pub presence: ValuePresence,
 }
@@ -155,7 +157,12 @@ pub enum P1Projection {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FormalPolicyPattern {
-    pub stages: StageSet,
+    /// The parameter policy after inheriting its callable P2 and applying the
+    /// optional const/mut-only formal slice.
+    pub effective_pair: PolicyPair,
+    /// The written overload-preference qualifier. `None` means unspecified;
+    /// it does not erase or rebuild any inherited P2 dimension. Candidate
+    /// formation must copy this field into the external policy product order.
     pub mutability: Option<ValueMutability>,
 }
 
@@ -174,6 +181,8 @@ pub struct NamespaceDeclarationPolicy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionObjectDeclarationPolicy {
+    /// Empty is the default unrestricted `const || mut` function-object
+    /// domain. Written declaration policy may restrict it to a singleton.
     pub mutability: BTreeSet<ValueMutability>,
     pub namespace_visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
@@ -534,11 +543,12 @@ pub fn elaborate_binding_p1_projection(
 
 pub fn elaborate_formal_policy_pattern(
     policy: Option<&NormPolicySpec>,
+    inherited_p2: &PolicyPair,
     provenance: Provenance,
 ) -> Result<FormalPolicyPattern, Diagnostic> {
     let Some(policy) = policy else {
         return Ok(FormalPolicyPattern {
-            stages: StageSet::new(),
+            effective_pair: inherited_p2.clone(),
             mutability: None,
         });
     };
@@ -560,15 +570,37 @@ pub fn elaborate_formal_policy_pattern(
         }
     };
     reject_namespace_attributes(&atoms, "formal parameter", provenance.clone())?;
-    if atoms.mutability.len() > 1 {
+    if !atoms.stages.is_empty() || atoms.absent_value {
         return Err(policy_error(
-            "formal parameter must select one of const, mut, or unspecified",
+            "formal parameter policy may restrict only the const/mut axis inherited from P2",
             provenance,
         ));
     }
+    if atoms.mutability.len() != 1 {
+        return Err(policy_error(
+            "an explicit formal parameter policy must select exactly one of const or mut",
+            provenance,
+        ));
+    }
+    let selected = atoms
+        .mutability
+        .iter()
+        .next()
+        .copied()
+        .expect("one formal mutability after validation");
+    if !inherited_p2.value.mutability.is_empty()
+        && !inherited_p2.value.mutability.contains(&selected)
+    {
+        return Err(policy_error(
+            "formal parameter const/mut slice is outside the mutability domain inherited from P2",
+            provenance,
+        ));
+    }
+    let mut effective_pair = inherited_p2.clone();
+    effective_pair.value.mutability = BTreeSet::from([selected]);
     Ok(FormalPolicyPattern {
-        stages: atoms.stages,
-        mutability: atoms.mutability.iter().next().copied(),
+        effective_pair,
+        mutability: Some(selected),
     })
 }
 
@@ -737,6 +769,10 @@ fn restrict_value_policy<V, P>(
     let stages = restrict_stages(&query.stages, &entry.value_policy.stages)?;
     let mutability = if query.mutability.is_empty() {
         entry.value_policy.mutability.clone()
+    } else if entry.value_policy.mutability.is_empty() {
+        // Empty is the unconstrained `const || mut` domain, so an explicit
+        // query crops it to the requested singleton/domain.
+        query.mutability.clone()
     } else {
         let selected = query
             .mutability

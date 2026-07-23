@@ -120,6 +120,36 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span,
             });
         }
+        if parser.cursor.at_name("delete") {
+            let delete_body = parse_bare_delete_body(parser);
+            let span = head.span.join(delete_body.span);
+            return Some(AtomAst {
+                kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                    head,
+                    body: ClosureBodyAst::Delete(delete_body),
+                    span,
+                })),
+                span,
+            });
+        }
+        if parser.cursor.at_name("default") {
+            let token = parser.cursor.bump_non_trivia();
+            let span = head.span.join(token.span);
+            return Some(AtomAst {
+                kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                    head,
+                    body: ClosureBodyAst::Defaulted {
+                        default_name: NameAst {
+                            text: token.text.clone(),
+                            span: token.span,
+                        },
+                        span: token.span,
+                    },
+                    span,
+                })),
+                span,
+            });
+        }
         if parser.cursor.at_symbol(Symbol::LParen) {
             match parse_delete_body(parser) {
                 Some(delete_body) => {
@@ -157,11 +187,49 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 }
             }
         }
+        if matches!(parser.cursor.peek_non_trivia().kind, TokenKind::Name) {
+            let token = parser.cursor.bump_non_trivia();
+            let strategy = NameAst {
+                text: token.text.clone(),
+                span: token.span,
+            };
+            if parser.cursor.at_symbol(Symbol::LBrace) {
+                let block = parse_body_block(parser);
+                let body_span = strategy.span.join(block.span);
+                let span = head.span.join(block.span);
+                return Some(AtomAst {
+                    kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                        head,
+                        body: ClosureBodyAst::NamedBlock {
+                            strategy,
+                            block,
+                            span: body_span,
+                        },
+                        span,
+                    })),
+                    span,
+                });
+            }
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected `{` after named overload strategy in callable tail",
+                strategy.span,
+            );
+            parser.recover_to_form_boundary();
+            let error_span = head.span.join(strategy.span);
+            return Some(AtomAst {
+                kind: AtomKind::Error(parser.error_ast(
+                    "invalid named-strategy callable tail without body",
+                    error_span,
+                )),
+                span: error_span,
+            });
+        }
         parser.recover_to_form_boundary();
         let body_start = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidClosureHead,
-            "expected `{` or `(message) delete` after `=>`",
+            "expected `{`, `delete`, `(string) delete`, `default`, or `strategy { ... }` after `=>`",
             body_start,
         );
         let body = ClosureBodyAst::Block(BodyBlockAst {
@@ -179,17 +247,55 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         });
     }
 
-    if parser.cursor.at_symbol(Symbol::LBrace) {
+    if at_overload_strategy_annotation(parser) {
         parser.ungate_keep_diagnostics();
-        parser.error(
-            DiagnosticCode::InvalidClosureHead,
-            "closure head before `{` requires `=>`; in-place closure cannot have captures or parameters",
-            head.span,
-        );
+        let strategy = parse_overload_strategy_annotation(parser).unwrap_or(NameAst {
+            text: "<error>".to_string(),
+            span: parser.cursor.current_span(),
+        });
+        if !parser.cursor.at_symbol(Symbol::LBrace) {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected `{` after `[[strategy]]` callable tail annotation",
+                span,
+            );
+            parser.recover_to_form_boundary();
+            let error_span = head.span.join(span);
+            return Some(AtomAst {
+                kind: AtomKind::Error(parser.error_ast(
+                    "invalid `[[strategy]]` callable tail without body",
+                    error_span,
+                )),
+                span: error_span,
+            });
+        }
         let body = parse_body_block(parser);
         let span = head.span.join(body.span);
         return Some(AtomAst {
-            kind: AtomKind::Error(parser.error_ast("invalid headed closure without `=>`", span)),
+            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                head,
+                body: ClosureBodyAst::NamedBlock {
+                    strategy,
+                    block: body,
+                    span,
+                },
+                span,
+            })),
+            span,
+        });
+    }
+
+    if parser.cursor.at_symbol(Symbol::LBrace) {
+        parser.ungate_keep_diagnostics();
+        let body = parse_body_block(parser);
+        let span = head.span.join(body.span);
+        return Some(AtomAst {
+            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
+                head,
+                body: ClosureBodyAst::Block(body),
+                span,
+            })),
             span,
         });
     }
@@ -201,7 +307,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
 
 // -- Delete body --
 
-/// Parse `(message_expr) delete` after `=>`.
+/// Parse `(string_literal) delete` after `=>`.
 ///
 /// Caller has already verified that the cursor is at `(`.
 /// Returns `None` if the grouped expression or the `delete` name
@@ -209,15 +315,16 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
 fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
     let lparen = parser.cursor.consume_symbol(Symbol::LParen)?;
 
-    // Parse the message expression, terminated by `)`
-    let message = parse_expr_until(parser, |p| p.cursor.at_symbol(Symbol::RParen));
-    if super::form::expression_contains_name(&message, "return") {
+    let message_token = parser.cursor.peek_non_trivia();
+    if !matches!(message_token.kind, TokenKind::StringLiteral) {
         parser.error(
-            DiagnosticCode::ReturnExpressionNotAllowed,
-            "return is only allowed as a block terminal form",
-            message.span,
+            DiagnosticCode::InvalidClosureHead,
+            "delete message must be a string literal",
+            message_token.span,
         );
+        return None;
     }
+    let message = parser.cursor.bump_non_trivia().text.clone();
 
     let _rparen = match parser.cursor.consume_symbol(Symbol::RParen) {
         Some(tok) => tok.span,
@@ -247,13 +354,75 @@ fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
 
     let span = lparen.span.join(delete_token.span);
     Some(DeleteBodyAst {
-        message,
+        message: Some(message),
         delete_name: NameAst {
             text: "delete".to_string(),
             span: delete_token.span,
         },
         span,
     })
+}
+
+fn parse_bare_delete_body(parser: &mut Parser<'_>) -> DeleteBodyAst {
+    let token = parser
+        .cursor
+        .consume_name("delete")
+        .expect("parse_bare_delete_body at `delete`");
+    DeleteBodyAst {
+        message: None,
+        delete_name: NameAst {
+            text: token.text.clone(),
+            span: token.span,
+        },
+        span: token.span,
+    }
+}
+
+pub(super) fn at_overload_strategy_annotation(parser: &Parser<'_>) -> bool {
+    token_index_starts_overload_strategy_annotation(parser, parser.cursor.current_index())
+}
+
+pub(super) fn token_index_starts_overload_strategy_annotation(
+    parser: &Parser<'_>,
+    from: usize,
+) -> bool {
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(from);
+    if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return false;
+    }
+    let (_, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+    matches!(second.kind, TokenKind::Symbol(Symbol::LBracket))
+}
+
+fn parse_overload_strategy_annotation(parser: &mut Parser<'_>) -> Option<NameAst> {
+    let first = parser.cursor.consume_symbol(Symbol::LBracket)?;
+    parser.cursor.consume_symbol(Symbol::LBracket)?;
+    let token = parser.cursor.peek_non_trivia();
+    let name = if matches!(token.kind, TokenKind::Name) {
+        let token = parser.cursor.bump_non_trivia();
+        NameAst {
+            text: token.text.clone(),
+            span: token.span,
+        }
+    } else {
+        parser.error(
+            DiagnosticCode::ExpectedName,
+            "expected overload strategy name inside `[[...]]`",
+            token.span,
+        );
+        return None;
+    };
+    if parser.cursor.consume_symbol(Symbol::RBracket).is_none()
+        || parser.cursor.consume_symbol(Symbol::RBracket).is_none()
+    {
+        parser.error(
+            DiagnosticCode::UnclosedBracket,
+            "expected closing `]]` after overload strategy name",
+            first.span.join(name.span),
+        );
+        return None;
+    }
+    Some(name)
 }
 
 // -- FnHeadPrefix --
@@ -292,6 +461,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
             p.cursor.at_symbol(Symbol::ThinArrow)
                 || p.cursor.at_symbol(Symbol::FatArrow)
                 || p.cursor.at_symbol(Symbol::LBrace)
+                || at_overload_strategy_annotation(p)
                 || p.is_form_boundary()
         });
         Some(policy)
@@ -383,6 +553,7 @@ pub(super) fn at_head_clause_keyword(parser: &Parser<'_>) -> bool {
 fn clause_expr_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
+        || at_overload_strategy_annotation(parser)
         || parser.is_form_boundary()
         || at_head_clause_keyword(parser)
 }
@@ -527,5 +698,6 @@ fn at_call_policy_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::ThinArrow)
         || parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
+        || at_overload_strategy_annotation(parser)
         || parser.is_form_boundary()
 }

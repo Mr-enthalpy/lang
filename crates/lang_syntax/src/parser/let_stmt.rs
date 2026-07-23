@@ -167,6 +167,7 @@ pub fn parse_product_extract(
     parser.enter_nesting();
     let mut elements = Vec::new();
     let mut expect_element = true;
+    let mut pack_seen = false;
 
     loop {
         if parser.cursor.at_eof()
@@ -193,6 +194,16 @@ pub fn parse_product_extract(
         }
 
         let element = parse_binding_slot(parser, element_context, inherited_deduce, false);
+        if matches!(&element.pattern, BindingPatternAst::Pack { .. }) {
+            if pack_seen {
+                parser.error(
+                    DiagnosticCode::MultiplePackPatternsAtSameLevel,
+                    "only one `...` pack pattern is allowed at each normalized product level",
+                    element.span,
+                );
+            }
+            pack_seen = true;
+        }
         elements.push(ProductExtractElementAst::Slot(element));
 
         if let Some(comma) = parser.cursor.consume_symbol(Symbol::Comma) {
@@ -286,6 +297,33 @@ fn parse_binding_pattern(
 ) -> BindingPatternAst {
     let token = parser.cursor.peek_non_trivia();
 
+    if parser.cursor.at_symbol(Symbol::Ellipsis) {
+        let ellipsis = parser.cursor.bump_non_trivia();
+        if parser.cursor.at_symbol(Symbol::Ellipsis) {
+            let duplicate_span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::MultiplePackPatternsAtSameLevel,
+                "a pack pattern cannot immediately contain another pack at the same level",
+                duplicate_span,
+            );
+        }
+        if at_binding_pattern_boundary(parser, context) {
+            let message = "expected a binding or discard pattern after `...`";
+            let span = parser.cursor.current_span();
+            parser.error(DiagnosticCode::ExpectedName, message, span);
+            return BindingPatternAst::Pack {
+                inner: Box::new(BindingPatternAst::Error(parser.error_ast(message, span))),
+                span: ellipsis.span.join(span),
+            };
+        }
+        let inner = parse_binding_pattern(parser, context, false, local_deduce, inherited_deduce);
+        let span = ellipsis.span.join(binding_pattern_span(&inner));
+        return BindingPatternAst::Pack {
+            inner: Box::new(inner),
+            span,
+        };
+    }
+
     if at_binding_pattern_boundary(parser, context) {
         let message = match context {
             BindingSlotContext::Let => "expected binding pattern after `let`",
@@ -371,6 +409,17 @@ fn starts_skeleton_name(parser: &mut Parser<'_>, context: BindingSlotContext) ->
     {
         return false;
     }
+    if matches!(context, BindingSlotContext::Return) {
+        let (current_index, _) = parser
+            .cursor
+            .peek_at_skip_trivia(parser.cursor.current_index());
+        if super::closure::token_index_starts_overload_strategy_annotation(
+            parser,
+            current_index + 1,
+        ) {
+            return false;
+        }
+    }
     !is_binding_pattern_stop_kind(&next.kind, context)
 }
 
@@ -384,6 +433,11 @@ fn next_token_starts_head_clause(parser: &Parser<'_>) -> bool {
 }
 
 fn at_binding_pattern_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {
+    if matches!(context, BindingSlotContext::Return)
+        && super::closure::at_overload_strategy_annotation(parser)
+    {
+        return true;
+    }
     if matches!(
         context,
         BindingSlotContext::Param | BindingSlotContext::Return
@@ -918,6 +972,7 @@ fn binding_pattern_span(pattern: &BindingPatternAst) -> Span {
     match pattern {
         BindingPatternAst::Binder(name) => binder_name_span(name),
         BindingPatternAst::Product(product) => product.span,
+        BindingPatternAst::Pack { span, .. } => *span,
         BindingPatternAst::Skeleton(skeleton) => skeleton_span(skeleton),
         BindingPatternAst::Error(error) => error.span,
     }

@@ -75,43 +75,58 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@6:1[55..58]
         target:
-          Closure kind=Generated(MemberLowering) origin=Generated(MemberLowering)@6:1[55..64]
+          Closure kind=Generated(DotClosureLowering) origin=Generated(DotClosureLowering)@6:1[55..64]
             head:
-              ClosureHead origin=Generated(MemberLowering)@6:1[55..64]
+              ClosureHead origin=Generated(DotClosureLowering)@6:1[55..64]
                 deduce:
-                  HoleDecl "T" origin=Generated(MemberLowering)@6:1[55..64]
+                  HoleDecl "T" origin=Generated(DotClosureLowering)@6:1[55..64]
                     annotation:
-                      AnnotationPattern origin=Generated(MemberLowering)@6:1[55..64]
-                        PatternName "type" origin=Generated(MemberLowering)@6:1[55..64]
+                      AnnotationPattern origin=Generated(DotClosureLowering)@6:1[55..64]
+                        PatternName "type" origin=Generated(DotClosureLowering)@6:1[55..64]
                 params:
                   BindingSlotElem
-                    BindingSlot let=false origin=Generated(MemberLowering)@6:1[55..64]
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@6:1[55..64]
                       deduce:
                         None
                       value_pattern:
-                        Binder "val" origin=Generated(MemberLowering)@6:1[55..64]
+                        Binder "val" origin=Generated(DotClosureLowering)@6:1[55..64]
                       annotation:
-                        AnnotationPattern origin=Generated(MemberLowering)@6:1[55..64]
-                          HoleRef "T" origin=Generated(MemberLowering)@6:1[55..64]
+                        AnnotationPattern origin=Generated(DotClosureLowering)@6:1[55..64]
+                          HoleRef "T" origin=Generated(DotClosureLowering)@6:1[55..64]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@6:1[55..64]
+                      deduce:
+                        None
+                      value_pattern:
+                        Pack origin=Generated(DotClosureLowering)@6:1[55..64]
+                          Binder "args" origin=Generated(DotClosureLowering)@6:1[55..64]
+                      annotation:
+                        None
                       with_clause:
                         None
                       initializer:
                         None
             body:
-              NormBody origin=Generated(MemberLowering)@6:1[55..64]
+              NormBody origin=Generated(DotClosureLowering)@6:1[55..64]
                 forms:
                   Form TailValue
-                    Call origin=Generated(MemberLowering)@6:1[55..64]
+                    Call origin=Generated(DotClosureLowering)@6:1[55..64]
                       source:
-                        Product origin=Generated(MemberLowering)@6:1[55..64]
+                        Product origin=Generated(DotClosureLowering)@6:1[55..64]
                           elements:
                             ExprElem
-                              Name "val" origin=Generated(MemberLowering)@6:1[55..64]
+                              Name "val" origin=Generated(DotClosureLowering)@6:1[55..64]
+                            ExprElem
+                              Name "args" origin=Generated(DotClosureLowering)@6:1[55..64]
                       target:
-                        Nav origin=Generated(MemberLowering)@6:1[55..64]
+                        Nav origin=Generated(DotClosureLowering)@6:1[55..64]
                           components:
-                            Name "field" origin=Generated(MemberLowering)@6:1[55..64]
-                            Name "T" origin=Generated(MemberLowering)@6:1[55..64]
+                            Name "field" origin=Generated(DotClosureLowering)@6:1[55..64]
+                            Name "T" origin=Generated(DotClosureLowering)@6:1[55..64]
     Form Expr
       Call origin=Generated(MemberLowering)@7:1[66..77]
         source:
@@ -120,43 +135,58 @@ NormProgram origin=Source@1:1[0..162]
               ExprElem
                 Name "obj" origin=Source@7:2[67..70]
         target:
-          Closure kind=Generated(MemberLowering) origin=Generated(MemberLowering)@7:1[66..77]
+          Closure kind=Generated(DotClosureLowering) origin=Generated(DotClosureLowering)@7:1[66..77]
             head:
-              ClosureHead origin=Generated(MemberLowering)@7:1[66..77]
+              ClosureHead origin=Generated(DotClosureLowering)@7:1[66..77]
                 deduce:
-                  HoleDecl "T" origin=Generated(MemberLowering)@7:1[66..77]
+                  HoleDecl "T" origin=Generated(DotClosureLowering)@7:1[66..77]
                     annotation:
-                      AnnotationPattern origin=Generated(MemberLowering)@7:1[66..77]
-                        PatternName "type" origin=Generated(MemberLowering)@7:1[66..77]
+                      AnnotationPattern origin=Generated(DotClosureLowering)@7:1[66..77]
+                        PatternName "type" origin=Generated(DotClosureLowering)@7:1[66..77]
                 params:
                   BindingSlotElem
-                    BindingSlot let=false origin=Generated(MemberLowering)@7:1[66..77]
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@7:1[66..77]
                       deduce:
                         None
                       value_pattern:
-                        Binder "val" origin=Generated(MemberLowering)@7:1[66..77]
+                        Binder "val" origin=Generated(DotClosureLowering)@7:1[66..77]
                       annotation:
-                        AnnotationPattern origin=Generated(MemberLowering)@7:1[66..77]
-                          HoleRef "T" origin=Generated(MemberLowering)@7:1[66..77]
+                        AnnotationPattern origin=Generated(DotClosureLowering)@7:1[66..77]
+                          HoleRef "T" origin=Generated(DotClosureLowering)@7:1[66..77]
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@7:1[66..77]
+                      deduce:
+                        None
+                      value_pattern:
+                        Pack origin=Generated(DotClosureLowering)@7:1[66..77]
+                          Binder "args" origin=Generated(DotClosureLowering)@7:1[66..77]
+                      annotation:
+                        None
                       with_clause:
                         None
                       initializer:
                         None
             body:
-              NormBody origin=Generated(MemberLowering)@7:1[66..77]
+              NormBody origin=Generated(DotClosureLowering)@7:1[66..77]
                 forms:
                   Form TailValue
-                    Call origin=Generated(MemberLowering)@7:1[66..77]
+                    Call origin=Generated(DotClosureLowering)@7:1[66..77]
                       source:
-                        Product origin=Generated(MemberLowering)@7:1[66..77]
+                        Product origin=Generated(DotClosureLowering)@7:1[66..77]
                           elements:
                             ExprElem
-                              Name "val" origin=Generated(MemberLowering)@7:1[66..77]
+                              Name "val" origin=Generated(DotClosureLowering)@7:1[66..77]
+                            ExprElem
+                              Name "args" origin=Generated(DotClosureLowering)@7:1[66..77]
                       target:
-                        Nav origin=Generated(MemberLowering)@7:1[66..77]
+                        Nav origin=Generated(DotClosureLowering)@7:1[66..77]
                           components:
-                            Name "field" origin=Generated(MemberLowering)@7:1[66..77]
-                            Name "T" origin=Generated(MemberLowering)@7:1[66..77]
+                            Name "field" origin=Generated(DotClosureLowering)@7:1[66..77]
+                            Name "T" origin=Generated(DotClosureLowering)@7:1[66..77]
     Form Expr
       Call origin=Generated(DoubleDotLowering)@8:1[79..92]
         source:

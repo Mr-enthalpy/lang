@@ -1180,7 +1180,8 @@ AtomBase ::=
 block expression, and has no capture clause, parameter clause, return clause,
 or head clauses.
 
-`ExplicitClosureAst` is a `FnHeadPrefix => BodyBlock` atom.
+`ExplicitClosureAst` is a `FnHeadPrefix` plus the callable implementation tail
+specified in §10.3.
 
 AST:
 
@@ -1763,18 +1764,42 @@ extracted input, including no implicit unit input.
 ### 10.3 Explicit closure
 
 ```text
-ExplicitClosureAst ::= FnHeadPrefix "=>" BodyBlock
+ExplicitClosureAst ::= FnHeadPrefix CallableImplementationTail
+
+CallableImplementationTail ::=
+    "=>" BodyBlock
+  | "=>" Name BodyBlock
+  | "=>" "default"
+  | "=>" "delete"
+  | "=>" "(" Expr ")" "delete"
+  | "[[" Name "]]" BodyBlock
+  | BodyBlock
 ```
 
-A headed closure must use `=>`. Forms such as `[](){}`, `[x]{}`, `(){}`, and
-`pre c {}` are invalid headed closures without `=>` and produce
-`InvalidClosureHead` diagnostics.
+A headed closure may use the explicit `=>` tail or a no-`=>` block tail.
+`=> name {}` and `[[name]] {}` preserve named overload-strategy metadata;
+`[[...]]` is the required no-`=>` disambiguation. In
+`() -> r name {}`, `name` remains return extraction material and is never
+backtracked into a strategy. `#` has no overload-strategy role.
 
 Minimal form:
 
 ```text
 (self) => {}
 ```
+
+AST:
+
+```text
+ClosureBodyAst =
+    Block(BodyBlockAst)
+  | NamedBlock { strategy: NameAst, block: BodyBlockAst }
+  | Defaulted
+  | Delete { message: Option<StringLiteral> }
+```
+
+`default` and `delete` are contextual `Name` tokens. Bare `=> delete` and
+parenthesized-message delete are both accepted.
 
 ### 10.4 Body block
 
@@ -2075,8 +2100,10 @@ acquire A => { x }
 ```
 
 **Headed closures without `=>`:**
-Forms such as `[](){}`, `[x]{ body }`, `(){ body }`, and `pre c { body }`
-produce `InvalidClosureHead` diagnostics.
+Recognizable heads followed by a block are callable implementation tails and
+are accepted. Where strategy/return-pattern ambiguity exists, `[[strategy]]`
+is the explicit strategy marker. Malformed head clauses and incoming headless
+pipe branches still produce `InvalidClosureHead` diagnostics.
 
 v0.1 does **not** support bare-name parameter closure sugar. Valid minimal
 forms remain `(self) => {}` and `{ }`, and `(x) => {}` where the `()` is a

@@ -24,6 +24,13 @@ pub enum RestrictedParamPattern {
         alternatives: Vec<String>,
         provenance: Provenance,
     },
+    PackBinder {
+        name: String,
+        provenance: Provenance,
+    },
+    PackDiscard {
+        provenance: Provenance,
+    },
     Unsupported {
         reason: String,
         provenance: Provenance,
@@ -33,6 +40,7 @@ pub enum RestrictedParamPattern {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternMatchOutcome {
     pub bindings: BTreeMap<String, OverloadArgShape>,
+    pub pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub specificity: SpecificityTuple,
 }
 
@@ -41,6 +49,10 @@ pub struct SpecificityTuple {
     pub max_depth: usize,
     pub sum_depth: usize,
     pub non_discard_explicit_node_count: usize,
+    /// A pack counts as one node regardless of how many arguments it absorbs.
+    pub explicit_pack_match_count: usize,
+    pub explicit_discard_count: usize,
+    pub pack_discard_count: usize,
 }
 
 impl SpecificityTuple {
@@ -50,6 +62,10 @@ impl SpecificityTuple {
             sum_depth: self.sum_depth + other.sum_depth,
             non_discard_explicit_node_count: self.non_discard_explicit_node_count
                 + other.non_discard_explicit_node_count,
+            explicit_pack_match_count: self.explicit_pack_match_count
+                + other.explicit_pack_match_count,
+            explicit_discard_count: self.explicit_discard_count + other.explicit_discard_count,
+            pack_discard_count: self.pack_discard_count + other.pack_discard_count,
         }
     }
 }
@@ -84,6 +100,28 @@ pub fn decode_param_pattern(element: &NormPatternElem) -> RestrictedParamPattern
             provenance: Provenance::new("unsupported parameter element"),
         };
     };
+    if let NormPattern::Pack { inner, origin } = &slot.value_pattern {
+        let provenance = Provenance::from_norm_origin("pack parameter pattern", origin);
+        return match inner.as_ref() {
+            NormPattern::Binder { name, .. } if name != "_" => RestrictedParamPattern::PackBinder {
+                name: name.clone(),
+                provenance,
+            },
+            NormPattern::Binder { name, .. } if name == "_" => {
+                RestrictedParamPattern::PackDiscard { provenance }
+            }
+            NormPattern::Skeleton { skeleton, .. }
+                if matches!(skeleton, NormSkeleton::Wildcard { .. }) =>
+            {
+                RestrictedParamPattern::PackDiscard { provenance }
+            }
+            _ => RestrictedParamPattern::Unsupported {
+                reason: "restricted pack pattern must bind or discard the remaining product"
+                    .to_string(),
+                provenance,
+            },
+        };
+    }
     if !is_type_annotation(slot.annotation.as_ref()) {
         return RestrictedParamPattern::Unsupported {
             reason: "restricted overload parameter must be annotated as `type`".to_string(),
@@ -140,10 +178,12 @@ pub fn match_param_pattern(
             bindings.insert(name.clone(), arg.clone());
             Ok(PatternMatchOutcome {
                 bindings,
+                pack_bindings: BTreeMap::new(),
                 specificity: SpecificityTuple {
                     max_depth: 1,
                     sum_depth: 1,
                     non_discard_explicit_node_count: 1,
+                    ..SpecificityTuple::default()
                 },
             })
         }
@@ -168,6 +208,7 @@ pub fn match_param_pattern(
             }
             Ok(PatternMatchOutcome {
                 bindings: BTreeMap::new(),
+                pack_bindings: BTreeMap::new(),
                 // `_ name` explicitly visits the matched top node and an
                 // explicit discard node. The selected alternative alone
                 // contributes; extra alternatives add no rank.
@@ -175,11 +216,57 @@ pub fn match_param_pattern(
                     max_depth: 1,
                     sum_depth: 2,
                     non_discard_explicit_node_count: 1,
+                    explicit_discard_count: 1,
+                    ..SpecificityTuple::default()
                 },
             })
         }
+        RestrictedParamPattern::PackBinder { .. } | RestrictedParamPattern::PackDiscard { .. } => {
+            Err(Diagnostic::hard_error(
+                "pack parameter matching requires the remaining argument slice",
+                Some(arg.provenance.clone()),
+            ))
+        }
         RestrictedParamPattern::Unsupported { reason, provenance } => Err(Diagnostic::hard_error(
             format!("unsupported parameter extraction pattern: {reason}"),
+            Some(provenance.clone()),
+        )),
+    }
+}
+
+pub fn match_pack_param_pattern(
+    pattern: &RestrictedParamPattern,
+    args: &[OverloadArgShape],
+) -> Result<PatternMatchOutcome, Diagnostic> {
+    match pattern {
+        RestrictedParamPattern::PackBinder { name, .. } => {
+            let mut pack_bindings = BTreeMap::new();
+            pack_bindings.insert(name.clone(), args.to_vec());
+            Ok(PatternMatchOutcome {
+                bindings: BTreeMap::new(),
+                pack_bindings,
+                specificity: SpecificityTuple {
+                    max_depth: 1,
+                    sum_depth: 1,
+                    explicit_pack_match_count: 1,
+                    ..SpecificityTuple::default()
+                },
+            })
+        }
+        RestrictedParamPattern::PackDiscard { .. } => Ok(PatternMatchOutcome {
+            bindings: BTreeMap::new(),
+            pack_bindings: BTreeMap::new(),
+            specificity: SpecificityTuple {
+                max_depth: 1,
+                sum_depth: 1,
+                pack_discard_count: 1,
+                ..SpecificityTuple::default()
+            },
+        }),
+        RestrictedParamPattern::Binder { provenance, .. }
+        | RestrictedParamPattern::NamedDiscard { provenance, .. }
+        | RestrictedParamPattern::Unsupported { provenance, .. } => Err(Diagnostic::hard_error(
+            "non-pack parameter cannot consume an argument slice",
             Some(provenance.clone()),
         )),
     }
@@ -221,6 +308,7 @@ fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
         NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
+        | NormPattern::Pack { origin, .. }
         | NormPattern::Unit { origin }
         | NormPattern::HoleRef { origin, .. }
         | NormPattern::Name { origin, .. }

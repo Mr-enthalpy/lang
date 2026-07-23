@@ -4,8 +4,8 @@ use lang_build::{
     ReturnTargetBindingReport,
 };
 use lang_syntax::{
-    NormClosure, NormDecl, NormExpr, NormForm, NormLiteralKind, NormOrigin, NormProgram,
-    NormReturnEvent, NormReturnTargetSyntax, NormRule, Span,
+    NormClosure, NormDecl, NormExpr, NormForm, NormLiteralKind, NormOrigin, NormPattern,
+    NormPatternElem, NormProgram, NormReturnEvent, NormReturnTargetSyntax, NormRule, Span,
 };
 
 mod support;
@@ -86,6 +86,42 @@ let f = (self, x: int): runtime -> r: int => {
         report.bound_events[0].unresolved_target,
         lang_build::UnresolvedReturnTargetForm::ImplicitNearest
     );
+}
+
+#[test]
+fn extraction_return_frame_preserves_the_complete_result_pattern() {
+    let report = bind_closure(
+        r#"
+let f = (): runtime -> (r first, d second) => {
+    value return;
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    let return_slot = &report.frames[0].return_slot;
+    assert_eq!(
+        return_slot.name, None,
+        "a product return has no single slot name"
+    );
+    let slot = return_slot
+        .binding_slot
+        .as_ref()
+        .expect("return target keeps the complete normalized binding slot");
+    let NormPattern::Product { elements, .. } = &slot.value_pattern else {
+        panic!("expected preserved product return Pattern");
+    };
+    assert_eq!(elements.len(), 2);
+    assert!(matches!(
+        &elements[0],
+        NormPatternElem::BindingSlot(first)
+            if matches!(&first.value_pattern, NormPattern::Skeleton { .. })
+    ));
+    assert!(matches!(
+        &elements[1],
+        NormPatternElem::BindingSlot(second)
+            if matches!(&second.value_pattern, NormPattern::Skeleton { .. })
+    ));
 }
 
 #[test]

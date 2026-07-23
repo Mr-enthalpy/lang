@@ -3,7 +3,7 @@ use lang_build::meta_body::{
     selected_meta_delete_diagnostic, ClosureBodyExecutionEnv, SelectedMetaBodyEvaluation,
 };
 use lang_build::{DiagnosticSeverity, Provenance};
-use lang_syntax::{NormClosureBody, NormDeleteBody, NormExpr, NormLiteralKind, NormOrigin, Span};
+use lang_syntax::{NormClosureBody, NormDeleteBody, NormOrigin, Span};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,23 +22,22 @@ fn block_body() -> NormClosureBody {
 
 fn delete_body(msg: &str) -> NormClosureBody {
     NormClosureBody::Delete(NormDeleteBody {
-        message: Box::new(NormExpr::Literal {
-            kind: NormLiteralKind::String,
-            text: format!("\"{msg}\""),
-            origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
-        }),
+        message: Some(format!("\"{msg}\"")),
         origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
     })
 }
 
-fn delete_body_non_string() -> NormClosureBody {
+fn bare_delete_body() -> NormClosureBody {
     NormClosureBody::Delete(NormDeleteBody {
-        message: Box::new(NormExpr::Name {
-            text: "not_a_literal".to_string(),
-            origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
-        }),
+        message: None,
         origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
     })
+}
+
+fn defaulted_body() -> NormClosureBody {
+    NormClosureBody::Defaulted {
+        origin: NormOrigin::Source(Span::new(0, 0, 1, 1)),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +123,23 @@ fn delete_body_diagnostic_uses_string_literal_message() {
 }
 
 #[test]
+fn bare_delete_body_produces_a_specific_static_rejection() {
+    let result = evaluate_selected_meta_closure_body(&bare_delete_body(), provenance("t"));
+    let SelectedMetaBodyEvaluation::DeleteDiagnostic(diag) = result else {
+        panic!("expected bare delete diagnostic");
+    };
+    assert!(diag.message.contains("selected callable is deleted"));
+}
+
+#[test]
+fn defaulted_body_is_preserved_for_compiler_generation() {
+    assert_eq!(
+        evaluate_selected_meta_closure_body(&defaulted_body(), provenance("t")),
+        SelectedMetaBodyEvaluation::Defaulted
+    );
+}
+
+#[test]
 fn delete_body_does_not_produce_value() {
     // Delete is not a MetaInvocationValue variant — it produces a
     // Diagnostic. The evaluate function proves this.
@@ -133,20 +149,6 @@ fn delete_body_does_not_produce_value() {
         result,
         SelectedMetaBodyEvaluation::DeleteDiagnostic(_)
     ));
-}
-
-#[test]
-fn non_string_delete_message_is_diagnostic() {
-    let body = delete_body_non_string();
-    let diag = selected_meta_delete_diagnostic(
-        match &body {
-            NormClosureBody::Delete(d) => d,
-            _ => panic!("expected Delete"),
-        },
-        provenance("t"),
-    );
-    assert!(diag.message.contains("string literal"));
-    assert_eq!(diag.severity, DiagnosticSeverity::Error);
 }
 
 #[test]

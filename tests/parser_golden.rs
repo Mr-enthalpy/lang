@@ -573,12 +573,12 @@ fn closure_explicit_full_head() {
 
 #[test]
 fn closure_prefixed_inline() {
-    assert_parser_case("closure_prefixed_inline", true);
+    assert_parser_case("closure_prefixed_inline", false);
 }
 
 #[test]
 fn closure_prefixed_inline_params() {
-    assert_parser_case("closure_prefixed_inline_params", true);
+    assert_parser_case("closure_prefixed_inline_params", false);
 }
 
 #[test]
@@ -638,7 +638,7 @@ fn binding_param_with_items() {
 
 #[test]
 fn closure_in_product_match_style() {
-    assert_parser_case("closure_in_product_match_style", true);
+    assert_parser_case("closure_in_product_match_style", false);
 }
 
 #[test]
@@ -682,18 +682,18 @@ fn invalid_closure_acquire_not_parsed() {
 }
 
 #[test]
-fn invalid_closure_headed_no_arrow_1() {
-    assert_parser_case("invalid_closure_headed_no_arrow_1", true);
+fn closure_headed_no_arrow_1() {
+    assert_parser_case("closure_headed_no_arrow_1", false);
 }
 
 #[test]
-fn invalid_closure_headed_no_arrow_2() {
-    assert_parser_case("invalid_closure_headed_no_arrow_2", true);
+fn closure_headed_no_arrow_2() {
+    assert_parser_case("closure_headed_no_arrow_2", false);
 }
 
 #[test]
-fn invalid_closure_headed_no_arrow_3() {
-    assert_parser_case("invalid_closure_headed_no_arrow_3", true);
+fn closure_headed_no_arrow_3() {
+    assert_parser_case("closure_headed_no_arrow_3", false);
 }
 
 #[test]
@@ -728,17 +728,17 @@ fn head_clause_only_head() {
 
 #[test]
 fn head_clause_inline_empty_params() {
-    assert_parser_case("head_clause_inline_empty_params", true);
+    assert_parser_case("head_clause_inline_empty_params", false);
 }
 
 #[test]
 fn head_clause_inline_pre_post() {
-    assert_parser_case("head_clause_inline_pre_post", true);
+    assert_parser_case("head_clause_inline_pre_post", false);
 }
 
 #[test]
 fn head_clause_inline_only_head() {
-    assert_parser_case("head_clause_inline_only_head", true);
+    assert_parser_case("head_clause_inline_only_head", false);
 }
 
 #[test]

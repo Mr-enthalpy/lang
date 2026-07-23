@@ -270,7 +270,7 @@ The notation is normalized, not raw source: `(x)` here is a normalized source
 Product, and a nested `(a, b)` is a preserved product element, not a flattened
 list.
 
-## 7. Operator / Member / Double-Dot / Bracket Sugar
+## 7. Operator / Dot Closure / Member / Double-Dot / Bracket Sugar
 
 All of these are normalization-level lowering into the same product-call
 skeleton. None of them perform lookup, dispatch, or resolution.
@@ -312,18 +312,36 @@ Only the generated binary `-` participates in later operator lookup.
 No operator lookup occurs during normalization.
 ```
 
-### Member sugar
+### First-class dot closure and compact member sugar
 
 ```text
-Conceptual rule: member lowering
-Dump label:      MemberLowering
+Conceptual rule: dot-closure lowering
+Dump label:      DotClosureLowering
 ```
 
 ```text
+.field
+=> generated closure:
+   <T: type>(val: T, ...args) { (val, args) |> field::T }
+
 obj.field
-=> obj |> generated closure:
-   <T: type>(val: T) => { (val) |> field::T }
+=> obj |> .field
+
+items |> .push value
+=> (items, value) |> .push
+
+items.push value
+=> (items |> .push) |> value
+!= (items, value) |> .push
 ```
+
+`.field` is independently usable and does not capture a left-hand receiver.
+Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
+normalized target is the same generated dot closure. `MemberLowering` records
+that compact wrapper; it does not define a second member semantic system.
+Only the explicit incoming-pipe form extends `.field`'s source product with
+following space-bound arguments. Compact `obj.field` finishes first, so later
+material is an outer ordinary call.
 
 ### Double-dot sugar
 
@@ -360,8 +378,9 @@ Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, (
 
 ### Shared boundary
 
-In the generated closures, `T` and `val` are local generated binders, and the
-receiver becomes the call's source product (a `ProductLift`).
+In the generated closures, `T`, `val`, and dot-closure `args` are local
+generated binders, and the receiver becomes the call's source product (a
+`ProductLift`). `...args` is a Pattern remainder binding, not a pack type.
 
 ```text
 `field::T` and `method::T` are unresolved navigation targets.
@@ -552,6 +571,7 @@ pattern-side structures preserved for later checking:
 (x,)          -> PatternProduct[ Binder "x", Unit ]
 (,x)          -> PatternProduct[ Unit, Binder "x" ]
 (x,,y)        -> PatternProduct[ Binder "x", Unit, Binder "y" ]
+(x, ...rest)  -> PatternProduct[ Binder "x", Pack(Binder "rest") ]
 _ Pair::std   -> PatternSkeleton( SkeletonWildcard, SkeletonNav["Pair","std"] )
 T Pair::std   -> PatternSkeleton( SkeletonName "T" role=Hole, SkeletonNav["Pair","std"] )
 ```
@@ -561,6 +581,17 @@ Product extraction shape and explicit Unit positions are preserved.
 No totality check, pattern matching, extraction applicability check,
 exhaustiveness check, or residual propagation occurs at normalization.
 ```
+
+At most one `Pack` may occur at each normalized structural level; nested
+levels are independent. The pack remains Pattern-side only. Normalization does
+not create a pack value, variadic ABI class, runtime container, or RHS unpack
+operator.
+
+`Pack` is part of the general binding-pattern grammar. It is preserved in
+every binding-slot context—ordinary/local `let`, product extraction, callable
+parameters, callable return slots, and nested binding Patterns—not only in
+parameter lists. Normalization does not assign those contexts their later
+matching semantics.
 
 There is no type checking, kind checking, or hole-validity checking beyond local
 DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and
@@ -588,6 +619,23 @@ Normalization does not decide whether a single
 component is P1 value-dominant projection or P2 shorthand, validate pair stage
 rules, or interpret const/mut/namespace atoms. Those are semantic policy
 elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
+### Callable implementation tail
+
+Closure normalization preserves one of:
+
+```text
+Block(body)                         -> ordinary user body
+NamedBlock(strategy, body)          -> named strategy + user body
+Defaulted                           -> compiler-default implementation request
+Delete(message: optional String)    -> selected-candidate rejection
+```
+
+`=> strategy { ... }` and the no-`=>` escape `[[strategy]] { ... }` normalize
+to the same `NamedBlock`. The legacy-looking `() -> r name { ... }` is not
+reinterpreted: `name` remains return extraction material. This layer preserves
+strategy metadata but does not execute a strategy, synthesize a default body,
+or perform overload selection.
 
 ## 10. Alias Preservation
 
@@ -670,6 +718,7 @@ Generated:
   ProductLift
   OperatorLowering
   PrefixNegativeLowering
+  DotClosureLowering
   MemberLowering
   DoubleDotLowering
   BracketCallLowering

@@ -148,7 +148,7 @@ fn expect_generated_closure(expr: &NormExpr, rule: NormRule) -> &NormClosure {
     }
 }
 
-fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule) {
+fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_remainder_pack: bool) {
     let head = closure.head.as_ref().expect("generated closure head");
     assert_eq!(head.deduce.len(), 1);
     assert_eq!(head.deduce[0].name, "T");
@@ -160,8 +160,8 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule) {
 
     assert_eq!(
         head.params.len(),
-        1,
-        "expected one generated receiver param, got {:#?}",
+        if has_remainder_pack { 2 } else { 1 },
+        "unexpected generated receiver/pack params: {:#?}",
         head.params
     );
     if let NormPatternElem::BindingSlot(slot) = &head.params[0] {
@@ -179,11 +179,23 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule) {
             head.params[0]
         );
     }
+
+    if has_remainder_pack {
+        assert!(matches!(
+            &head.params[1],
+            NormPatternElem::BindingSlot(slot)
+                if matches!(&slot.value_pattern, NormPattern::Pack { inner, .. }
+                    if matches!(inner.as_ref(), NormPattern::Binder { name, .. }
+                        if name == "args"))
+        ));
+    }
 }
 
 fn expect_generated_body_call(closure: &NormClosure) -> (&NormProduct, &NormExpr, &NormOrigin) {
     let prog = match &closure.body {
         NormClosureBody::Block(prog) => prog,
+        NormClosureBody::NamedBlock { body, .. } => body,
+        NormClosureBody::Defaulted { .. } => panic!("expected block body, got defaulted"),
         NormClosureBody::Delete(_) => panic!("expected block body, got delete"),
     };
     match prog.forms.as_slice() {
@@ -460,7 +472,7 @@ fn prefix_negative_generated_closure_has_expected_shape() {
     expect_product_elem_name(source, 0, "x");
 
     let closure = expect_generated_closure(&expr, NormRule::PrefixNegativeLowering);
-    expect_generated_receiver_head(closure, NormRule::PrefixNegativeLowering);
+    expect_generated_receiver_head(closure, NormRule::PrefixNegativeLowering, false);
     let (body_source, body_target, body_origin) = expect_generated_body_call(closure);
     expect_generated(body_origin, NormRule::PrefixNegativeLowering);
     expect_nav_names(expect_product_elem_expr(body_source, 0), &["zero", "T"]);
@@ -483,11 +495,22 @@ fn member_sugar_generated_closure_has_unresolved_nav_target() {
     expect_generated(origin, NormRule::MemberLowering);
     expect_product_elem_name(source, 0, "obj");
 
-    let closure = expect_generated_closure(&expr, NormRule::MemberLowering);
-    expect_generated_receiver_head(closure, NormRule::MemberLowering);
+    let (_, target, _) = expect_call(&expr);
+    let NormExpr::Closure(closure) = target else {
+        panic!("expected dot-closure target, got {target:#?}");
+    };
+    assert!(matches!(
+        closure.kind,
+        NormClosureKind::Generated {
+            rule: NormRule::DotClosureLowering
+        }
+    ));
+    expect_generated_receiver_head(closure, NormRule::DotClosureLowering, true);
     let (body_source, body_target, body_origin) = expect_generated_body_call(closure);
-    expect_generated(body_origin, NormRule::MemberLowering);
+    expect_generated(body_origin, NormRule::DotClosureLowering);
+    assert_eq!(body_source.elements.len(), 2);
     expect_product_elem_name(body_source, 0, "val");
+    expect_product_elem_name(body_source, 1, "args");
     expect_nav_names(body_target, &["field", "T"]);
 }
 
@@ -499,7 +522,7 @@ fn double_dot_generated_closure_has_unresolved_nav_target() {
     expect_product_elem_name(source, 0, "obj");
 
     let closure = expect_generated_closure(&expr, NormRule::DoubleDotLowering);
-    expect_generated_receiver_head(closure, NormRule::DoubleDotLowering);
+    expect_generated_receiver_head(closure, NormRule::DoubleDotLowering, false);
     let (body_source, body_target, body_origin) = expect_generated_body_call(closure);
     expect_generated(body_origin, NormRule::DoubleDotLowering);
     assert_eq!(body_source.elements.len(), 2);

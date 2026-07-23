@@ -17,7 +17,7 @@ P1 has three contextual elaborators:
 
 ```text
 ordinary binding P1          -> identity-preserving slice restriction
-formal parameter policy      -> const/mut overload pattern
+formal parameter policy      -> inherit P2, then optional const/mut-only pattern slice
 namespace declaration policy -> visibility plus optional export-root
 ```
 
@@ -48,6 +48,17 @@ Stage(P1v) = Stage(P2v) || Stage(P2p)
 
 Only stages lift. Mutability, visibility, export-root, and value presence come
 from the object declaration.
+
+Each written formal parameter inherits P2 first. An omitted qualifier keeps it
+unchanged; `const let` / `mut let` restrict only its mutability Pattern and do
+not alter any other component. The function object itself defaults to an empty
+mutability restriction, whose typed-domain meaning is the full
+`const || mut` choice; an explicit declaration P1 may crop it.
+
+Formal elaboration has two consumers of the same result: the entered callable
+body receives the effective pair, and overload candidate formation copies the
+qualifier into that parameter's external const/mut product-order position.
+Neither consumer may reconstruct a different policy.
 
 ## 3. Phase mapping
 
@@ -91,6 +102,8 @@ The typed substrate currently provides:
 - dedicated `PolicyConjunctionAst`, `PolicyChoiceAst`, and `PolicyAtomAst`;
 - `PolicyPair` with typed dimensions and `Phase` with exactly three variants;
 - separate binding/formal/namespace elaborators;
+- formal elaboration that receives inherited P2 explicitly and preserves all
+  non-mutability dimensions;
 - P2 normalization and stage-only function-object derivation;
 - owned P1 restricted views rather than reference-only filtering;
 - explicit resolution followed by phase exposure and facet reads;

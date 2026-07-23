@@ -12,7 +12,7 @@
 //! `delete` is not a primitive callable, not a value, not `assert`, and
 //! not `panic`. It remains `NormClosureBody::Delete` through normalization.
 
-use lang_syntax::{NormClosureBody, NormDeleteBody, NormExpr, NormLiteralKind};
+use lang_syntax::{NormClosureBody, NormDeleteBody};
 
 use crate::model::{Diagnostic, DiagnosticSeverity, Provenance};
 
@@ -44,7 +44,9 @@ pub fn check_closure_body_delete_legality(
     fallback_provenance: Provenance,
 ) -> Result<(), Diagnostic> {
     match body {
-        NormClosureBody::Block(_) => Ok(()),
+        NormClosureBody::Block(_)
+        | NormClosureBody::NamedBlock { .. }
+        | NormClosureBody::Defaulted { .. } => Ok(()),
         NormClosureBody::Delete(del) => match env {
             ClosureBodyExecutionEnv::OpenStatic | ClosureBodyExecutionEnv::SealStatic => Ok(()),
             ClosureBodyExecutionEnv::Runtime => Err(Diagnostic::new(
@@ -59,30 +61,6 @@ pub fn check_closure_body_delete_legality(
 // ---------------------------------------------------------------------------
 // Selected meta delete evaluation
 // ---------------------------------------------------------------------------
-
-/// Produces the `delete` message as a string. Only string literal
-/// messages are supported for now. Non-literal messages produce a
-/// diagnostic.
-fn delete_message_text(expr: &NormExpr) -> Result<String, Diagnostic> {
-    match expr {
-        NormExpr::Literal {
-            kind: NormLiteralKind::String,
-            text,
-            ..
-        } => {
-            // Normalized string text retains the source containing quotes,
-            // e.g. `"\"msg\""`.  Strip the outer quotes to recover the
-            // literal payload.
-            let inner = strip_string_literal_payload(text);
-            Ok(inner)
-        }
-        _ => Err(Diagnostic::new(
-            DiagnosticSeverity::Error,
-            "delete message must currently be a string literal".to_string(),
-            None,
-        )),
-    }
-}
 
 /// Strip the outer double-quote characters from a normalized string
 /// literal text.  For a normalized representation like `"\"msg\""` this
@@ -115,25 +93,25 @@ fn strip_string_literal_payload(quoted: &str) -> String {
 /// Build a hard static diagnostic from a selected meta `Delete` body.
 ///
 /// The diagnostic message carries the string payload with a `meta delete:`
-/// prefix. String literal messages are extracted; non-literal messages
-/// produce a fallback diagnostic.
+/// prefix. Non-string messages cannot reach this typed normalized node.
 pub fn selected_meta_delete_diagnostic(
     delete: &NormDeleteBody,
     fallback_provenance: Provenance,
 ) -> Diagnostic {
     let provenance = delete.origin_reprovenance(&fallback_provenance);
-    match delete_message_text(&delete.message) {
-        Ok(msg) => Diagnostic::new(
+    let Some(message) = delete.message.as_deref() else {
+        return Diagnostic::new(
             DiagnosticSeverity::Error,
-            format!("meta delete: {msg}"),
+            "meta delete: selected callable is deleted".to_string(),
             Some(provenance),
-        ),
-        Err(diag) => Diagnostic::new(
-            DiagnosticSeverity::Error,
-            format!("meta delete: {}", diag.message),
-            Some(provenance),
-        ),
-    }
+        );
+    };
+    let message = strip_string_literal_payload(message);
+    Diagnostic::new(
+        DiagnosticSeverity::Error,
+        format!("meta delete: {message}"),
+        Some(provenance),
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +123,9 @@ pub fn selected_meta_delete_diagnostic(
 pub enum SelectedMetaBodyEvaluation {
     /// The body is a `Block` — full meta evaluation is deferred.
     DeferredBlock,
+    /// Compiler default implementation generation is deferred to the
+    /// callable's default rule.
+    Defaulted,
     /// The body is a `Delete` — evaluation produces a static diagnostic.
     DeleteDiagnostic(Diagnostic),
 }
@@ -158,7 +139,10 @@ pub fn evaluate_selected_meta_closure_body(
     fallback_provenance: Provenance,
 ) -> SelectedMetaBodyEvaluation {
     match body {
-        NormClosureBody::Block(_) => SelectedMetaBodyEvaluation::DeferredBlock,
+        NormClosureBody::Block(_) | NormClosureBody::NamedBlock { .. } => {
+            SelectedMetaBodyEvaluation::DeferredBlock
+        }
+        NormClosureBody::Defaulted { .. } => SelectedMetaBodyEvaluation::Defaulted,
         NormClosureBody::Delete(del) => SelectedMetaBodyEvaluation::DeleteDiagnostic(
             selected_meta_delete_diagnostic(del, fallback_provenance),
         ),

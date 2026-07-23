@@ -11,14 +11,6 @@ Program
                     ParamClause
                       extract:
                         elements:
-                  clauses:
-                    Require
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Name x
                 BodyBlock
                   forms:
                     ExprForm
@@ -27,4 +19,4 @@ Program
                           Segment has_incoming=false
                             OperatorExpr
                               Atom
-                                Name x
+                                Name body

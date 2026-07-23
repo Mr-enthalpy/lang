@@ -129,6 +129,10 @@ fn dump_binding_pattern(output: &mut String, pattern: &BindingPatternAst, indent
             line(output, indent, "ProductExtract");
             dump_product_extract(output, product, indent + 1);
         }
+        BindingPatternAst::Pack { inner, .. } => {
+            line(output, indent, "Pack");
+            dump_binding_pattern(output, inner, indent + 1);
+        }
         BindingPatternAst::Skeleton(skeleton) => {
             line(output, indent, "PatternSkeleton");
             dump_canonical_skeleton(output, skeleton, indent + 1);
@@ -547,6 +551,10 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
                 dump_nav_component(output, component, indent + 2);
             }
         }
+        AtomKind::DotClosure { selector } => {
+            line(output, indent, "DotClosure");
+            dump_selector(output, selector, indent + 1);
+        }
         AtomKind::MemberSugar { object, selector } => {
             line(output, indent, "MemberSugar");
             line(output, indent + 1, "object:");
@@ -635,10 +643,31 @@ fn dump_closure(output: &mut String, closure: &crate::ClosureAst, indent: usize)
             dump_fn_head_prefix(output, &inner.head, indent + 1);
             match &inner.body {
                 crate::ClosureBodyAst::Block(block) => dump_body_block(output, block, indent + 1),
+                crate::ClosureBodyAst::NamedBlock {
+                    strategy, block, ..
+                } => {
+                    line(
+                        output,
+                        indent + 1,
+                        &format!("OverloadStrategy {}", strategy.text),
+                    );
+                    dump_body_block(output, block, indent + 1);
+                }
+                crate::ClosureBodyAst::Defaulted { .. } => {
+                    line(output, indent + 1, "Defaulted");
+                }
                 crate::ClosureBodyAst::Delete(del) => {
                     line(output, indent + 1, "Delete");
-                    line(output, indent + 2, "message");
-                    dump_expr(output, &del.message, indent + 3);
+                    match &del.message {
+                        Some(message) => {
+                            line(
+                                output,
+                                indent + 2,
+                                &format!("message StringLiteral {message}"),
+                            );
+                        }
+                        None => line(output, indent + 2, "message None"),
+                    }
                 }
             }
         }
@@ -815,6 +844,7 @@ fn symbol_label(symbol: Symbol) -> &'static str {
         Symbol::Colon => "Colon",
         Symbol::Equal => "Equal",
         Symbol::Dot => "Dot",
+        Symbol::Ellipsis => "Ellipsis",
         Symbol::DotDot => "DotDot",
         Symbol::ColonColon => "ColonColon",
         Symbol::PipeGreater => "PipeGreater",
@@ -854,6 +884,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::UnclosedBrace => "UnclosedBrace",
         DiagnosticCode::InvalidDeduceList => "InvalidDeduceList",
         DiagnosticCode::InvalidCanonicalSkeleton => "InvalidCanonicalSkeleton",
+        DiagnosticCode::MultiplePackPatternsAtSameLevel => "MultiplePackPatternsAtSameLevel",
         DiagnosticCode::InvalidClosureHead => "InvalidClosureHead",
         DiagnosticCode::InvalidOperatorExpression => "InvalidOperatorExpression",
         DiagnosticCode::ChainedNonAssociativeOperator => "ChainedNonAssociativeOperator",

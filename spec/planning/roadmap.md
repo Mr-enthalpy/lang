@@ -479,14 +479,14 @@ system. Internal unresolved-call bookkeeping or finer require atoms may be
 introduced as implementation IR when useful, but they are not frozen language
 objects.
 
-Overload-strategy and companion-association spellings remain open. Candidate
-notations such as `[[must_select_if_qualified]]` /
-`#must_select_if_qualified` and `[[companion_of(runtime_f)]]` /
-`#companion_of(runtime_f)` are illustrative only; they do not request lexer,
-parser, Raw AST, or Normalized AST changes. Build semantic objects and
-compiler-known metadata first. Whether default companion suppression is ever
-allowed, and what equivalent compile Pattern/contract interface it would
-require, also remains open rather than an implementation commitment.
+Overload-strategy source syntax is fixed by the callable implementation tail:
+`=> strategy_name { ... }`, or `[[strategy_name]] { ... }` where omitting
+`=>` requires explicit disambiguation. `#` has no strategy role. The catalog
+and comparison semantics of future named strategies remain open. Explicit
+compile-companion association syntax remains open. Whether default companion
+suppression is ever allowed, and what equivalent compile Pattern/contract
+interface it would require, also remains open rather than an implementation
+commitment.
 
 #### Later stages
 
@@ -495,21 +495,32 @@ The following remain deferred and are not numbered precisely here:
 - general value-to-value `compile` PatternValue execution
 - type / kind checking integration
 - closure materialization model (ClosureAST → ClosureObject; capture rules)
+  - preserve `InPlace` as an embedded callable-candidate kind with no capture
+    list;
+  - defer unresolved outer reads to the selected embedding layer, while
+    requiring ordinary authority for outer writes;
+  - place in-place-over-non-in-place preference after
+    first-order-over-instantiated and before named strategy filtering;
+- result delivery over callable return binding Patterns: direct output writes
+  remain per binder, while bare tails and targeted returns match one value as
+  `let ResultPattern = expr`;
 - ownership / NLL / drop / lifetime design (including any future semantics for
   `with { ... }`); lifetime-policy checking/refinement is after first-order
   type/compile overload selection and is bounded by
   `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`
 - storing canonical `Pv:Pp` on every semantic object and wiring full P1
   projection, P2 result validation, function-object views, and compile/runtime/
-  seal namespace lookup;
+  seal namespace lookup; formal parameter elaboration must feed the same
+  P2-inherited const/mut Pattern both to body entry and to the candidate's
+  external policy product-order position;
 - seal dependency ordering, complete reflection objects, and any future policy
   stage beyond the current three-phase model;
 - integrating const/mut product order into the complete overload resolver, plus
   effect/error/panic and resource-capability policy
   (see `spec/design/policy-capability/policy-visibility-symbols.md`)
 - first semantic compiler prototype integrating selected passes
-- public syntax and precise source-level selection for overload strategies and
-  explicit compile-companion replacement
+- the named-strategy catalog/semantics and public syntax for explicit
+  compile-companion replacement
 - any permitted companion-suppression rule and its required replacement
   interface
 - finer-grained require atom identity, if later implementation needs it

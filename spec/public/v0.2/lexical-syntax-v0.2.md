@@ -59,7 +59,7 @@ tokens at the lexer level:
 return  else  match  drop  move  ref
 sync  effect  fn  type  meta  runtime  compile  seal
 const  mut  public  private  export
-namespace  struct  guard  acquire  delete
+namespace  struct  guard  acquire  delete  default
 ```
 
 Any other source word matching the Name lexical shape is also lexed as `Name`.
@@ -76,6 +76,11 @@ tokens; `:` is the existing structural colon token, while `+` and `||` retain
 their existing operator tokenization. Only a strong parser policy position
 interprets them as conjunction and choice. Single `|` retains Pattern
 alternative meaning and is not policy choice.
+
+Callable-tail parsing contextually recognizes `delete`, `default`, and an
+arbitrary strategy `Name`; none is a lexer keyword. `[[strategy]]` uses two
+ordinary bracket tokens on each side. `#` is not an overload-strategy token or
+operator spelling.
 
 ## 5. Names
 
@@ -278,7 +283,7 @@ material: `StringLiteral("\"abc\"")` followed by `Name("utf8")`.
 
 ## 9. Symbols
 
-Structural symbols are single-token delimiters. The lexer recognizes 19
+Structural symbols are single-token delimiters. The lexer recognizes 20
 symbol variants, listed below with their source spelling and lexical identity.
 
 | Symbol | Spelling | Lexical identity |
@@ -294,6 +299,7 @@ symbol variants, listed below with their source spelling and lexical identity.
 | `Equal` | `=` | Equal sign |
 | `Dot` | `.` | Dot |
 | `DotDot` | `..` | Dot-dot (double-dot) |
+| `Ellipsis` | `...` | Pattern remainder delimiter |
 | `ColonColon` | `::` | Colon-colon (navigation) |
 | `PipeGreater` | `\|>` | Pipe-greater (pipe transition) |
 | `FatArrow` | `=>` | Fat arrow (closure head delimiter) |
@@ -323,9 +329,13 @@ The lexer produces 30 `TokenKind::Operator` spellings via maximal-munch
 reinterpreted by parser contexts. `[]` is a contextual paired operator spelling
 and is never produced by the lexer as a single token.
 
-Structural symbols `=>`, `->`, `|>`, `..`, and `::` are not operator spellings.
+Structural symbols `=>`, `->`, `|>`, `...`, `..`, and `::` are not operator spellings.
 They are `Symbol` tokens (see §9). `===` is also a `Symbol` token, but ordinary
 expression parsing may reinterpret it as an operator spelling.
+
+Maximal munch recognizes `...` before `..` and `.`. The lexer attaches no pack,
+variadic, spread, or unpack semantics; the parser assigns `...` its Pattern-side
+remainder role only in a strong binding context.
 
 | Category | Spellings |
 |---|---|

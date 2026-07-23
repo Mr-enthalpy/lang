@@ -1108,6 +1108,7 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
+        | NormPattern::Pack { origin, .. }
         | NormPattern::Unit { origin }
         | NormPattern::HoleRef { origin, .. }
         | NormPattern::Name { origin, .. }

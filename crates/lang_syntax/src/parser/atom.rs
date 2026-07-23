@@ -111,6 +111,30 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
 }
 
 fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {
+    // `.name` is a first-class field-function closure. It is parsed before
+    // ordinary atom lookahead so it can start a pipe segment (`E |> .name P`)
+    // as well as participate in compact `E.name` sugar.
+    if parser.cursor.at_symbol(Symbol::Dot) {
+        let dot = parser.cursor.bump_non_trivia();
+        if let Some(selector) = parse_member_selector(parser) {
+            let span = dot.span.join(selector_span(&selector));
+            return Some(AtomAst {
+                kind: AtomKind::DotClosure { selector },
+                span,
+            });
+        }
+        consume_invalid_operator_selector(parser);
+        parser.error(
+            DiagnosticCode::ExpectedNameAfterDot,
+            "expected name after `.`",
+            dot.span,
+        );
+        return Some(AtomAst {
+            kind: AtomKind::Error(parser.error_ast("expected name after `.`", dot.span)),
+            span: dot.span,
+        });
+    }
+
     // Try closure first (handles `{` and FnHeadPrefix lookahead)
     if let Some(closure_atom) = try_parse_closure(parser) {
         return Some(closure_atom);

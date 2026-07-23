@@ -152,7 +152,7 @@ Normalization must **not** assume:
 
 ## Atom and suffix-sugar invariants
 
-- `AtomAst` preserves `Name`, `IntLiteral`, `FloatLiteral`, `StringLiteral`, `Group`, `NavPath`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
+- `AtomAst` preserves `Name`, `IntLiteral`, `FloatLiteral`, `StringLiteral`, `Group`, `NavPath`, `DotClosure`, `MemberSugar`, `DoubleDotSugar`, `BracketCallSugar`, `Closure`, and `Error`.
 - `IntLiteral` / `FloatLiteral` token text preserves exact source spelling
   including radix prefixes, digit separators, and exponent markers. No value
   interpretation is performed.
@@ -161,23 +161,30 @@ Normalization must **not** assume:
   or body normalization is performed.
 - `NavPath` atoms preserve source-order inner-to-outer navigation components.
 - `MemberSugar` preserves an object and a selector.
+- `DotClosure` preserves a leading-dot selector without a receiver.
 - `DoubleDotSugar` preserves an object, a selector, and a `ProductExprAst`.
 - `BracketCallSugar` preserves an object, the `[]` operator name, and a `ProductExprAst` (the bracket arguments). Left-associative; `obj[a][b]` nests.
 - The parser's suffix pipeline includes `:: NavComponent`, `. Selector`, `.. Selector Product`, and postfix operators. In Raw AST, postfix operators are represented at the `OperatorExpr` layer (`OperatorSugar` with `Postfix` fixity), while `AtomAst` preserves navigation/member/double-dot/closure/name/literal/group shapes. Postfix operators do not terminate suffix parsing; e.g., `obj!.field` has the shape `(obj!).field`.
 
 ## Closure AST invariants
 
-- `ClosureAst` distinguishes `InPlace` (bare `BodyBlock`, no head) and `Explicit` (`FnHeadPrefix => BodyBlock`).
+- `ClosureAst` distinguishes `InPlace` (bare `BodyBlock`, no head) and
+  `Explicit` (`FnHeadPrefix` plus a callable implementation tail).
 - A bare `{ ... }` in atom position is an `InPlaceClosureAst`, not a normal block expression. It has no capture clause, no parameter clause, no return clause, and no head clauses.
 - A headless in-place closure has no extracted input. It is not equivalent to a
   closure with a unit extraction pattern and must not be treated as accepting
   implicit unit input.
-- `ExplicitClosureAst` requires a non-optional `FnHeadPrefixAst` and a body. Headed closures without `=>` (e.g., `[](){}`) are syntax errors, not valid closure AST.
+- `ExplicitClosureAst` requires a non-optional `FnHeadPrefixAst` and one of
+  `Block`, `NamedBlock`, `Defaulted`, or `Delete(string_message?)`. Recognizable
+  headed no-`=>` blocks are valid; `[[strategy]]` disambiguates named strategy
+  metadata without stealing a return extraction pattern.
 - `FnHeadPrefixAst` preserves `deduce`, `captures`, `params`, `call_policy: Option<PolicySpecAst>`, `returns`, `clauses`, and `span`. The optional clauses may be omitted; `clauses` is the (possibly empty) head clause tail.
 - `CaptureClauseAst` preserves ordered `CaptureItemAst` entries. Each `CaptureItemAst` holds a full `ExprAst`, not a name or token tree. The parser does not validate whether a capture expression is movable, borrowable, copyable, lifetime-safe, or admissible as a capture.
 - `ParamClauseAst` preserves one `ProductExtractAst`, not a parameter-slot list.
 - `ProductExtractAst` preserves ordered `ProductExtractElementAst` elements and span. A parenthesized top-level-comma form in binding / extraction context is product extraction.
 - `ProductExtractElementAst` is either `Slot(BindingSlotAst)` or `Unit { span }`. Empty positions produced by leading, doubled, or trailing commas are preserved as unit extraction elements. They are not skipped, not wildcards, and not implicit discards.
+- `BindingPatternAst::Pack` preserves Pattern-side `...Q`. One pack is allowed
+  per normalized structural level; it is not an RHS spread or pack type.
 - `ReturnClauseAst` preserves a `BindingSlotAst`.
 - Parameter and return binding slots reuse the same raw binding-site shape as let, with context-specific restrictions on initializer and `with`.
 - `BodyBlockAst` preserves ordered `FormAst` entries and `span`.

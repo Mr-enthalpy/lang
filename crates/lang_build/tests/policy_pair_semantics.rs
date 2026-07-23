@@ -218,10 +218,40 @@ fn p1_value_dominant_projection_restricts_the_actual_slice() {
 
 #[test]
 fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
-    let formal =
-        elaborate_formal_policy_pattern(Some(&policy_spec("const")), Provenance::new("formal"))
-            .expect("const formal pattern");
+    let inherited_p2 = normalize_p2_policy(
+        &policy_spec("runtime:compile"),
+        Provenance::new("formal inherited P2"),
+    )
+    .expect("valid inherited P2");
+    let unspecified =
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("unspecified formal"))
+            .expect("omitted formal policy inherits P2");
+    assert_eq!(unspecified.effective_pair, inherited_p2);
+    assert_eq!(unspecified.mutability, None);
+
+    let formal = elaborate_formal_policy_pattern(
+        Some(&policy_spec("const")),
+        &inherited_p2,
+        Provenance::new("formal"),
+    )
+    .expect("const formal pattern");
     assert_eq!(formal.mutability, Some(ValueMutability::Const));
+    assert_eq!(
+        formal.effective_pair.value.stages,
+        inherited_p2.value.stages
+    );
+    assert_eq!(
+        formal.effective_pair.pattern, inherited_p2.pattern,
+        "formal const/mut syntax must not change the inherited Pattern policy"
+    );
+    assert_eq!(
+        formal.effective_pair.value.presence,
+        inherited_p2.value.presence
+    );
+    assert_eq!(
+        formal.effective_pair.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
 
     for source in ["public", "private", "export"] {
         assert!(elaborate_binding_p1_projection(
@@ -231,10 +261,34 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         .is_err());
         assert!(elaborate_formal_policy_pattern(
             Some(&policy_spec(source)),
+            &inherited_p2,
             Provenance::new(source)
         )
         .is_err());
     }
+    for source in ["runtime", "compile", "seal", "const + runtime"] {
+        assert!(
+            elaborate_formal_policy_pattern(
+                Some(&policy_spec(source)),
+                &inherited_p2,
+                Provenance::new(source)
+            )
+            .is_err(),
+            "formal `{source}` must not replace inherited P2 dimensions"
+        );
+    }
+
+    let const_only_p2 = normalize_p2_policy(
+        &policy_spec("const + runtime:compile"),
+        Provenance::new("const-only inherited P2"),
+    )
+    .expect("valid const-only P2");
+    assert!(elaborate_formal_policy_pattern(
+        Some(&policy_spec("mut")),
+        &const_only_p2,
+        Provenance::new("expanding mut formal")
+    )
+    .is_err());
 
     let declaration = elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + public + runtime")),
@@ -291,7 +345,30 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         stages(&[PolicyStage::Compile, PolicyStage::Runtime])
     );
     assert_eq!(object.pattern.stages, stages(&[PolicyStage::Compile]));
+    assert!(
+        object.value.mutability.is_empty(),
+        "empty function-object mutability is the unconstrained const || mut domain"
+    );
     assert!(!object.export_root);
+
+    let const_projection = elaborate_binding_p1_projection(
+        Some(&policy_spec("const")),
+        Provenance::new("const function-object P1"),
+    )
+    .expect("const P1 projection");
+    let object_entry = PolicyResultEntry {
+        value: Some("function-object"),
+        value_policy: object.value.clone(),
+        pattern: "function-pattern",
+        pattern_policy: object.pattern.clone(),
+    };
+    let selected = project_p1(&const_projection, &[object_entry]);
+    assert_eq!(selected.len(), 1);
+    assert_eq!(
+        selected[0].value_policy.mutability,
+        mutability(&[ValueMutability::Const]),
+        "an explicit declaration/P1 restriction crops the unconstrained domain"
+    );
 }
 
 #[test]
@@ -521,6 +598,50 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     assert_eq!(
         select_by_mutability_product(&delete, &[ValueMutability::Const], None),
         PolicyOverloadSelection::RejectedByDelete("const-delete")
+    );
+}
+
+#[test]
+fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
+    let inherited_p2 = normalize_p2_policy(
+        &policy_spec("runtime:compile"),
+        Provenance::new("overload formal P2"),
+    )
+    .expect("valid inherited P2");
+    let const_formal = elaborate_formal_policy_pattern(
+        Some(&policy_spec("const")),
+        &inherited_p2,
+        Provenance::new("const formal"),
+    )
+    .expect("const formal");
+    let unspecified_formal =
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("unspecified formal"))
+            .expect("unspecified formal");
+    let mut_formal = elaborate_formal_policy_pattern(
+        Some(&policy_spec("mut")),
+        &inherited_p2,
+        Provenance::new("mut formal"),
+    )
+    .expect("mut formal");
+
+    let candidates = vec![
+        PolicyOverloadCandidate::from_formal_patterns("const", &[const_formal], None, false),
+        PolicyOverloadCandidate::from_formal_patterns(
+            "unspecified",
+            &[unspecified_formal],
+            None,
+            false,
+        ),
+        PolicyOverloadCandidate::from_formal_patterns("mut", &[mut_formal], None, false),
+    ];
+
+    assert_eq!(
+        select_by_mutability_product(&candidates, &[ValueMutability::Const], None),
+        PolicyOverloadSelection::Selected("const")
+    );
+    assert_eq!(
+        select_by_mutability_product(&candidates, &[ValueMutability::Mut], None),
+        PolicyOverloadSelection::Selected("mut")
     );
 }
 
