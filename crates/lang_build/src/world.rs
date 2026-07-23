@@ -26,9 +26,9 @@ use crate::{
     policy_expr::{elaborate_declaration_policy_expr, legacy_policy_set_from_pair},
     policy_metadata,
     policy_pair::{
-        derive_function_object_p1, elaborate_namespace_declaration_policy, normalize_p2_policy,
-        FunctionObjectDeclarationPolicy, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
-        P1Projection,
+        derive_function_object_p1, elaborate_namespace_declaration_policy,
+        function_object_declaration_policy, normalize_p2_policy, NamespaceDeclarationPolicy,
+        NamespaceDeclarationPosition,
     },
     policy_set_meta_runtime, policy_set_runtime,
     return_target::{
@@ -912,27 +912,6 @@ fn result_policy_from_closure(
         ));
     };
     normalize_p2_policy(annotation, provenance)
-}
-
-fn function_object_declaration_policy(
-    declaration: &NamespaceDeclarationPolicy,
-) -> FunctionObjectDeclarationPolicy {
-    let mutability = match &declaration.projection {
-        P1Projection::Infer => FunctionObjectDeclarationPolicy::default(),
-        P1Projection::ValueDominant { value } => FunctionObjectDeclarationPolicy {
-            mutability: value.mutability.clone(),
-            ..FunctionObjectDeclarationPolicy::default()
-        },
-        P1Projection::Pair(pair) => FunctionObjectDeclarationPolicy {
-            mutability: pair.value.mutability.clone(),
-            ..FunctionObjectDeclarationPolicy::default()
-        },
-    };
-    FunctionObjectDeclarationPolicy {
-        mutability: mutability.mutability,
-        namespace_visibility: declaration.visibility,
-        export_root: declaration.export_root,
-    }
 }
 
 fn ensure_return_policy_supported(

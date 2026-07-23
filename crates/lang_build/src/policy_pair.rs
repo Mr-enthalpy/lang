@@ -182,7 +182,9 @@ pub struct NamespaceDeclarationPolicy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionObjectDeclarationPolicy {
     /// Empty is the default unrestricted `const || mut` function-object
-    /// domain. Written declaration policy may restrict it to a singleton.
+    /// domain for a non-export declaration. Namespace declaration elaboration
+    /// always restricts an export root to `const`; an exported function object
+    /// must therefore never reach this carrier with an empty or `mut` domain.
     pub mutability: BTreeSet<ValueMutability>,
     pub namespace_visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
@@ -616,7 +618,8 @@ pub fn elaborate_namespace_declaration_policy(
             export_root: false,
         });
     };
-    let (projection, namespace, export_root) = elaborate_p1_components(policy, provenance.clone())?;
+    let (mut projection, namespace, export_root) =
+        elaborate_p1_components(policy, provenance.clone())?;
     let visibility = one_namespace(&namespace, provenance.clone())?;
     if export_root && position != NamespaceDeclarationPosition::DirectTopLevel {
         return Err(policy_error(
@@ -624,11 +627,41 @@ pub fn elaborate_namespace_declaration_policy(
             provenance,
         ));
     }
+    if export_root {
+        restrict_export_root_to_const(&mut projection, provenance.clone())?;
+    }
     Ok(NamespaceDeclarationPolicy {
         projection,
         visibility,
         export_root,
     })
+}
+
+fn restrict_export_root_to_const(
+    projection: &mut P1Projection,
+    provenance: Provenance,
+) -> Result<(), Diagnostic> {
+    let mutability = match projection {
+        P1Projection::ValueDominant { value } => &mut value.mutability,
+        P1Projection::Pair(pair) => &mut pair.value.mutability,
+        P1Projection::Infer => {
+            return Err(policy_error(
+                "an export root requires an explicit namespace declaration policy",
+                provenance,
+            ));
+        }
+    };
+
+    if mutability.contains(&ValueMutability::Mut) {
+        return Err(policy_error(
+            "export and mut cannot coexist; an export root exposes only its const value slice",
+            provenance,
+        ));
+    }
+    if mutability.is_empty() {
+        mutability.insert(ValueMutability::Const);
+    }
+    Ok(())
 }
 
 fn elaborate_p1_components(
@@ -696,6 +729,21 @@ fn elaborate_p1_components(
             "an absent P1 value pattern requires an explicit Pattern component",
             provenance,
         )),
+    }
+}
+
+pub fn function_object_declaration_policy(
+    declaration: &NamespaceDeclarationPolicy,
+) -> FunctionObjectDeclarationPolicy {
+    let mutability = match &declaration.projection {
+        P1Projection::Infer => BTreeSet::new(),
+        P1Projection::ValueDominant { value } => value.mutability.clone(),
+        P1Projection::Pair(pair) => pair.value.mutability.clone(),
+    };
+    FunctionObjectDeclarationPolicy {
+        mutability,
+        namespace_visibility: declaration.visibility,
+        export_root: declaration.export_root,
     }
 }
 

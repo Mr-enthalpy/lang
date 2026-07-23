@@ -53,7 +53,10 @@ Each written formal parameter inherits P2 first. An omitted qualifier keeps it
 unchanged; `const let` / `mut let` restrict only its mutability Pattern and do
 not alter any other component. The function object itself defaults to an empty
 mutability restriction, whose typed-domain meaning is the full
-`const || mut` choice; an explicit declaration P1 may crop it.
+`const || mut` choice; an explicit declaration P1 may crop it. Namespace
+declaration elaboration has one intentional exception: bare `export let`
+defaults the independent mutability axis to `const`. Any written export policy
+whose mutability domain contains `mut` is invalid.
 
 Formal elaboration has two consumers of the same result: the entered callable
 body receives the effective pair, and overload candidate formation copies the
@@ -93,7 +96,17 @@ ExternallyVisible(path) = Exported(path) && PubliclyReachable(path)
 
 `export` is legal only at a namespace construction level's direct top-level.
 Public/private may vary at every hierarchy layer and external access checks all
-path components.
+path components. `export` and `mut` cannot coexist:
+
+```text
+export let x = expr                 -> export + const
+export + const let x = expr         -> valid
+export + mut let x = expr           -> invalid
+export + (const || mut) let x = expr -> invalid
+```
+
+This const default is performed by the namespace-declaration P1 elaborator,
+not by the generic policy parser or function-object stage lifting.
 
 ## 5. Rust substrate
 

@@ -5,14 +5,15 @@ use lang_build::{
     compute_export_closure, compute_wpre, derive_function_object_p1,
     elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
     elaborate_namespace_declaration_policy, expose_policy_slice, externally_visible,
-    normalize_p2_policy, project_complete_symbol_flow, project_p1, publicly_reachable,
-    read_pattern, read_value, resolve_explicit_path, select_by_mutability_product,
-    select_policy_overload, BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
-    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyResultEntry,
-    PolicyStage, Provenance, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
-    ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
+    function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
+    project_p1, publicly_reachable, read_pattern, read_value, resolve_explicit_path,
+    select_by_mutability_product, select_policy_overload, BuiltinPrivilegedSealFunction,
+    CompleteFlowNode, CompleteSymbolFlow, FunctionObjectDeclarationPolicy, MutabilityPattern,
+    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
+    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
+    PolicyOverloadSelection, PolicyResultEntry, PolicyStage, Provenance, SealWorldSnapshot,
+    StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
+    ValuePresence, WpreRoots,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -295,9 +296,49 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         NamespaceDeclarationPosition::DirectTopLevel,
         Provenance::new("namespace top-level"),
     )
-    .expect("independent export and visibility attributes");
+    .expect("export defaults to a const value slice independently of visibility");
     assert!(declaration.export_root);
     assert_eq!(declaration.visibility, Some(NamespaceVisibility::Public));
+    let P1Projection::ValueDominant { value } = &declaration.projection else {
+        panic!("single namespace policy must elaborate as value-dominant P1");
+    };
+    assert_eq!(
+        value.mutability,
+        mutability(&[ValueMutability::Const]),
+        "bare export declaration policy is export + const, not export + (const || mut)"
+    );
+    let function_declaration = function_object_declaration_policy(&declaration);
+    assert_eq!(
+        function_declaration.mutability,
+        mutability(&[ValueMutability::Const]),
+        "function-object declaration formation must preserve the contextual const export slice"
+    );
+
+    let explicit_const = elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + const + runtime")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("explicit const export"),
+    )
+    .expect("export + const is valid");
+    let P1Projection::ValueDominant { value } = explicit_const.projection else {
+        panic!("single namespace policy must elaborate as value-dominant P1");
+    };
+    assert_eq!(value.mutability, mutability(&[ValueMutability::Const]));
+
+    for source in [
+        "export + mut + runtime",
+        "export + (const || mut) + runtime",
+    ] {
+        assert!(
+            elaborate_namespace_declaration_policy(
+                Some(&policy_spec(source)),
+                NamespaceDeclarationPosition::DirectTopLevel,
+                Provenance::new(source),
+            )
+            .is_err(),
+            "`{source}` must not retain a mut export slice"
+        );
+    }
     assert!(elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + runtime")),
         NamespaceDeclarationPosition::Local,
@@ -316,7 +357,7 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
     let object = derive_function_object_p1(
         &result,
         &FunctionObjectDeclarationPolicy {
-            mutability: mutability(&[ValueMutability::Mut]),
+            mutability: mutability(&[ValueMutability::Const]),
             namespace_visibility: Some(NamespaceVisibility::Private),
             export_root: true,
         },
@@ -326,8 +367,11 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         stages(&[PolicyStage::Seal, PolicyStage::Runtime])
     );
     assert_eq!(object.pattern.stages, stages(&[PolicyStage::Seal]));
-    assert_eq!(object.value.mutability, mutability(&[ValueMutability::Mut]));
-    assert!(!object.value.mutability.contains(&ValueMutability::Const));
+    assert_eq!(
+        object.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
+    assert!(!object.value.mutability.contains(&ValueMutability::Mut));
     assert_eq!(
         object.namespace_visibility,
         Some(NamespaceVisibility::Private)

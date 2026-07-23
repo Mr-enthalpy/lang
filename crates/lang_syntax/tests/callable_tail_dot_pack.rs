@@ -1,9 +1,9 @@
 use lang_syntax::{
     normalize_and_validate_patterns, normalize_program, parse, validate_normalized_patterns,
-    BindingPatternAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode, ExprKind, FormAst,
-    NormAnnotation, NormBindingSlot, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr,
-    NormForm, NormOrigin, NormPattern, NormPatternElem, NormRule, OperatorExprKind,
-    SegmentElementAst, Span,
+    BindingPatternAst, CanonicalSkeletonAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode,
+    ExprKind, FormAst, NormAnnotation, NormBindingSlot, NormClosureBody, NormClosurePlacement,
+    NormDecl, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem, NormRule,
+    OperatorExprKind, SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -550,6 +550,47 @@ fn raw_pack_node_wraps_the_inner_binding_pattern() {
         BindingPatternAst::Pack { inner, .. }
             if matches!(inner.as_ref(), BindingPatternAst::Binder(_))
     ));
+}
+
+#[test]
+fn structured_pack_preserves_one_pack_constructor_with_a_product_operand() {
+    let output = parsed("let ...(a, b) = value;");
+    let [FormAst::Let(let_ast)] = output.program.forms.as_slice() else {
+        panic!("expected let declaration");
+    };
+    assert!(matches!(
+        &let_ast.slot.pattern,
+        BindingPatternAst::Pack { inner, .. }
+            if matches!(
+                inner.as_ref(),
+                BindingPatternAst::Skeleton(CanonicalSkeletonAst::ProductExtract {
+                    elements,
+                    ..
+                }) if elements.len() == 2
+            )
+    ));
+
+    let normalized = normalize_program(&output.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = normalized.forms.as_slice() else {
+        panic!("expected normalized let declaration");
+    };
+    assert!(matches!(
+        &slot.value_pattern,
+        NormPattern::Pack { inner, .. }
+            if matches!(
+                inner.as_ref(),
+                NormPattern::Product { elements, .. }
+                    if matches!(
+                        elements.as_slice(),
+                        [
+                            NormPatternElem::Pattern(NormPattern::Binder { name: a, .. }),
+                            NormPatternElem::Pattern(NormPattern::Binder { name: b, .. })
+                        ] if a == "a" && b == "b"
+                    )
+            )
+    ));
+    validate_normalized_patterns(&normalized)
+        .expect("...(a, b) contains one syntactic pack at its outer structural level");
 }
 
 #[test]

@@ -110,6 +110,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   `a ...x b -> Sequence[a, Pack(x), b]`. Ellipsis consumes one following
   Pattern primary; a compound operand needs an explicit boundary such as
   `...(x, y)`.
+- Structured Pack specificity is projected through the inner Pattern:
+  `...(a, b)` contributes two explicit pack-match evidence nodes, as if
+  `...a` and `...b` participated in the order, while remaining one
+  `NormPattern::Pack(Product[...])`. Captured remainder length never adds rank.
 - Run the global normalized-Pattern validator before downstream build.
   It is the sole authority for pack cardinality across Product, Sequence,
   annotations, local bodies, parameters, and returns. The parser preserves
@@ -136,6 +140,10 @@ analysis, ownership/NLL/drop, effect interpretation, runtime evaluation, or code
 generation. It must not implement pattern-space construction, `Done`
 insertion/elimination, `operator+` meta-reduction, exhaustiveness checking, or
 `match` closing.
+
+In particular, normalizing a closure literal or `.name` produces a Raw/Norm
+closure carrier, not a callable value. Only a later explicit binding or call
+consumer may materialize that carrier.
 
 ## 6. Common Misreadings
 

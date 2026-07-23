@@ -2086,13 +2086,20 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> N
         }
         BindingPatternAst::Product(product) => normalize_product_extract_pattern(product, holes),
         BindingPatternAst::Pack { inner, span } => NormPattern::Pack {
-            inner: Box::new(normalize_binding_pattern(inner, holes)),
+            inner: Box::new(normalize_pack_operand_pattern(inner, holes)),
             origin: NormOrigin::Source(*span),
         },
         BindingPatternAst::Skeleton(skeleton) => {
             normalize_canonical_pattern(skeleton, holes, false)
         }
         BindingPatternAst::Error(error) => NormPattern::Error(normalize_error(error)),
+    }
+}
+
+fn normalize_pack_operand_pattern(pattern: &BindingPatternAst, holes: &[String]) -> NormPattern {
+    match pattern {
+        BindingPatternAst::Skeleton(skeleton) => normalize_canonical_pattern(skeleton, holes, true),
+        other => normalize_binding_pattern(other, holes),
     }
 }
 
@@ -2121,7 +2128,7 @@ fn normalize_canonical_pattern(
                 .iter()
                 .map(|element| match element {
                     CanonicalProductElementAst::Skeleton(skeleton) => NormPatternElem::Pattern(
-                        normalize_canonical_pattern(skeleton, holes, false),
+                        normalize_canonical_pattern(skeleton, holes, is_pack_operand),
                     ),
                     CanonicalProductElementAst::Unit { span } => NormPatternElem::Unit {
                         origin: NormOrigin::Source(*span),

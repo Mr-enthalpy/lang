@@ -1679,9 +1679,12 @@ primary. Product and Sequence establish structural levels; Pack and
 BindingSlot are transparent. The parser preserves every formed Pack node and
 the normalized Pattern validator alone owns per-level cardinality.
 
-Pack specificity counts one node regardless of captured length. At equal
-structural-depth evidence, ordinary explicit matches outrank explicit packs,
-which outrank ordinary discards, which outrank pack discards.
+Pack specificity is independent of captured length. A simple `...a` counts one
+explicit pack node, while a structured `...(a, b)` projects two explicit
+pack-node evidences—as if `...a` and `...b` were compared—without becoming two
+Pack constructors. Discards project analogously. At equal structural-depth
+evidence, ordinary explicit matches outrank explicit packs, which outrank
+ordinary discards, which outrank pack discards.
 
 The complete syntax, AST mapping, `.name` connection, and implementation
 boundary are canonical in

@@ -253,6 +253,10 @@ After this one lowering, the result is an ordinary expression. No pipe,
 product, or legality-repair rule may inspect `DotClosureLowering` provenance to
 change binding.
 
+The normalized result is a closure carrier, not an already materialized
+callable value. Only a later explicit binding or call consumer may materialize
+it; normalization and arbitrary expression composition do not.
+
 Compact `E.name` mechanically lowers through `E |> .name`. Direct
 `E..name(product)` remains a separate member-call sugar.
 
@@ -279,11 +283,17 @@ It binds only the immediately following primary:
 
 ```text
 a ...x b     -> Sequence[a, Pack(x), b]
-...(x, y)    -> Pack(Product[x, y])
+...(x, y)    -> Pack(Product[Binder(x), Binder(y)])
 ```
 
 Canonical sequences with Pack normalize to `NormPattern::Sequence`; Pack is
-never hidden in `NormSkeleton`.
+never hidden in `NormSkeleton`. Pack-operand binding context propagates through
+the compound Product.
+
+`...(x, y)` has one Pack constructor and a structured Product operand. Later
+specificity projects the two written inner nodes as `...x` and `...y`
+pack-class evidence; it does not count captured remainder length and does not
+rewrite the AST into two Pack constructors.
 
 Each normalized structural level contains at most one direct pack. Product and
 Sequence levels apply the same rule, and nested levels validate independently.

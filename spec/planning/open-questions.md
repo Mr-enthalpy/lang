@@ -173,9 +173,14 @@ Resolved future-design decisions:
   qualifiers remain preference inputs rather than being removed by ordinary
   P1 projection.
 - A function-object binding has the unrestricted empty mutability domain by
-  default (`const || mut`); only its declaration may crop that axis.
+  default (`const || mut`); only its declaration may crop that axis. An export
+  root is the contextual exception: bare `export let` elaborates as
+  `export + const`, and any written export domain containing `mut` is invalid.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
-  It remains one Pattern remainder node, never a pack type or RHS unpack.
+  It remains one Pattern remainder constructor, never a pack type or RHS
+  unpack. Specificity projects the explicit/discard nodes of a structured
+  operand into pack-class evidence, so `...(a, b)` contributes the same
+  ordering evidence as `...a` and `...b` without becoming two Pack constructors.
 - Extraction-style result delivery uses the declared return Pattern. Explicit
   writes address its binders separately; a bare tail or targeted return matches
   one result object as `let ResultPattern = expr`.

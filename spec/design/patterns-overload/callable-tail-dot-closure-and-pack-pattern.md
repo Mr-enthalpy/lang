@@ -323,10 +323,11 @@ receiver to:
 }
 ```
 
-`T` is inferred from the first formal argument when the generated function
-object is invoked. It is not captured from a syntactic expression to the left
-of the dot. Consequently `.name` can be stored, passed, or composed like any
-other function object.
+Normalization produces an in-place `NormClosure` carrier. `T` is inferred from
+the first formal argument only when an explicit call context consumes and
+materializes that carrier. It is not captured from a syntactic expression to
+the left of the dot. A binding context may also materialize the carrier; other
+expression contexts merely preserve or compose the closure expression.
 
 The compact suffix is defined through that same atom:
 
@@ -364,8 +365,8 @@ the ordinary result of `E |> .name` back before `P`; there is no second compact
 dot call algebra and no explicit-pipe DotClosure privilege.
 
 `..name(product)` remains a distinct direct member-call sugar. It models a
-receiver-position call directly and need not first expose a transportable
-`.name` function value. Neither form removes the other:
+receiver-position call directly and need not first expose and then materialize
+a `.name` closure carrier. Neither form removes the other:
 
 ```text
 .name    first-class field-function closure
@@ -429,19 +430,23 @@ live in `NormPattern`; they are never hidden inside `NormSkeleton`.
 
 ### 4.2 Ordered and unordered levels
 
-For every normalized structural level `L`:
+At an order-insensitive named level, ordinary siblings match their names first
+and the Pack receives the unmatched siblings. At an order-sensitive level, the
+Pack receives the ordinary prefix/suffix remainder. Its inner Pattern then
+matches that remainder as normal structure.
+
+In particular:
 
 ```text
-count(child in L where child is Pack) <= 1
+...(a, b)
+  -> Pack(Product[Binder(a), Binder(b)])
 ```
 
-The check occurs after Pattern normalization, so grouping or nested syntax
-cannot conceal two packs at one level. Nested levels are independent:
-
-```lang
-(a, (b, ...inner), ...outer)  // valid
-(a, ...x, ...y)               // invalid
-```
+This is one Pack constructor with a structured operand. The product constrains
+the captured remainder to the structure expected by `a` and `b`. Pack-operand
+context is propagated through this Product so these names retain the same
+binding meaning as direct `...a` and `...b`; it is not an opaque binding of the
+entire remainder to one symbol.
 
 ### 4.3 One pack per normalized level
 
@@ -480,8 +485,7 @@ a redundant second algebra and is outside this design.
 
 ## 5. Pack specificity evidence
 
-A pack contributes one outer Pattern node regardless of whether it absorbs
-zero, two, or two hundred elements. Matching records four node classes:
+Matching records four node classes:
 
 ```text
 E   ordinary explicit match
@@ -499,9 +503,25 @@ E > EP > D > DP
 
 Thus an ordinary explicit node is more specific than an explicit pack;
 `...args` is more specific than `..._`; and input length never manufactures
-additional pack specificity. This tuple is only the Pattern-specificity
-preference dimension. It is not a global score across stage, mutability,
-result policy, or named strategies.
+additional pack specificity.
+
+An unstructured `...args` or `..._` has one inner evidence node. A structured
+operand projects each of its explicit/discard nodes into the corresponding
+pack class:
+
+```text
+...(a, b) -> specificity evidence equivalent to (...a, ...b)
+...(a, _) -> one EP plus one DP
+```
+
+The first line means two explicit pack-match evidence nodes for the partial
+order. It does not mean the syntax or AST contains two Pack constructors:
+the AST remains `Pack(Product[a, b])`. Nor does either `a` or `b` gain evidence
+from how many runtime elements the outer remainder happened to contain.
+Nested/other structured operands extend by the same node-wise projection.
+
+This tuple is only the Pattern-specificity preference dimension. It is not a
+global score across stage, mutability, result policy, or named strategies.
 
 ## 6. Current implementation boundary
 
@@ -538,8 +558,8 @@ Implemented substrate:
   does not claim recovery-free syntax;
 - `AtomKind::Error` recovery for malformed callable tails, never an executable
   empty user body;
-- restricted variadic applicability, remainder binding, and pack node-class
-  specificity evidence;
+- restricted variadic applicability, remainder binding, direct structured
+  product Pack matching, and pack node-class specificity evidence;
 - named strategy metadata carried by selected restricted candidates only after
   applicability.
 

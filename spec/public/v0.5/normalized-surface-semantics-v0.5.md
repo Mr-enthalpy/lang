@@ -334,13 +334,19 @@ BindingShape(P1 |> .field P2)
 
 `.field` is independently usable and does not capture a left-hand receiver.
 Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
-normalized target is the same generated dot closure. `MemberLowering` records
-that compact wrapper; it does not define a second member semantic system.
+normalized target is the same generated in-place `NormClosure` carrier.
+`MemberLowering` records that compact wrapper; it does not define a second
+member semantic system.
 After atom lowering, `.field` is an ordinary `NormExpr`. Its generated origin
 cannot change pipe/product association, absorb following items, bypass
 first-product-only, or replace legality repair. Compact `obj.field`
 mechanically produces `obj |> .field`, then returns that ordinary expression
 to the existing suffix and space-binding environment.
+
+“First-class expression” does not mean “eagerly materialized value.”
+Normalization creates only the carrier above. A later explicit binding or call
+context may materialize it; another expression context preserves/composes the
+carrier without allocating a function object or capture environment.
 
 ### Double-dot sugar
 
@@ -621,12 +627,26 @@ PatternSequence ::= PatternTerm*
 PatternTerm     ::= "..." PatternPrimary | PatternPrimary
 
 a ...x b       -> NormPattern::Sequence[a, Pack(x), b]
-...(x, y)      -> Pack(Product[x, y])
+...(x, y)      -> Pack(Product[Binder(x), Binder(y)])
 ```
 
 The prefix constructor consumes one immediate Pattern primary, not the rest of
 the Sequence. `Pack` and `BindingSlot` are transparent to the normalized-level
 cardinality rule; only Product and Sequence establish structural levels.
+Pack-operand context propagates through the compound Product, so its direct
+names have the same binding role as direct `...x` / `...y`.
+
+For later overload specificity, a structured operand projects each written
+inner node into the pack evidence class:
+
+```text
+...(a, b) -> evidence as (...a, ...b)
+...(a, _) -> one explicit-pack node plus one pack-discard node
+```
+
+The normalized shape remains one `Pack(Product[...])`; this evidence projection
+does not create two Pack constructors. The number of captured remainder values
+never adds specificity.
 
 There is no type checking, kind checking, or hole-validity checking beyond local
 DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and

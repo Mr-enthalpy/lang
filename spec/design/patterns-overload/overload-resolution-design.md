@@ -416,8 +416,18 @@ EP(P, E) = explicit pack-binding nodes
 DP(P, E) = pack-discard nodes (..._)
 ```
 
-A pack contributes one outer node regardless of how many remainder elements
-it absorbs.
+The number of remainder elements absorbed never contributes specificity. A
+simple `...a` or `..._` supplies one pack-class evidence node. A structured
+operand projects its written inner nodes into that class:
+
+```text
+...(a, b) -> evidence as (...a, ...b)
+...(a, _) -> one EP and one DP
+```
+
+This is a specificity projection through one syntactic
+`Pack(Product[...])`, not a claim that the Pattern contains multiple Pack
+constructors.
 
 ### 4.2 Specificity tuple
 

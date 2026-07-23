@@ -254,6 +254,10 @@ origin.rule = DotClosureLowering
 
 `Generated` is not a placement variant.
 
+This is still an AST/Normalized-AST carrier. Normalization does not materialize
+it as a callable value or allocate a capture environment. Only a later
+explicit binding or call consumer may perform closure materialization.
+
 Capture normalization removes the raw explicit/inferred split:
 
 ```text
@@ -274,6 +278,20 @@ the capture clause.
 
 Canonical sequences containing Pack normalize into `NormPattern::Sequence`
 with `NormPattern::Pack` children. Pack never enters `NormSkeleton`.
+
+A compound Pack operand remains structural:
+
+```text
+...(a, b)
+  -> NormPattern::Pack(
+       NormPattern::Product[Binder(a), Binder(b)]
+     )
+```
+
+Pack-operand binding context propagates through the Product. For later overload
+specificity, each written inner node is projected into the pack evidence class,
+so the example contributes evidence as `...a` and `...b`. This does not create
+two `NormPattern::Pack` nodes, and captured input length never adds specificity.
 
 `normalize_program` remains available for diagnostic dumps and recovery
 inspection. The downstream build handoff is:

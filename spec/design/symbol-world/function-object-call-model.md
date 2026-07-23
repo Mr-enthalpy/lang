@@ -187,7 +187,10 @@ If a function object captures state, it may be non-ZST and follows ordinary valu
 The binding created by `let fn = () => { ... }` has no written mutability
 restriction. Its empty typed mutability domain denotes `const || mut`. This is
 the neutral, fully available function-object view; it is not copied from P2.
-An explicit declaration P1 may restrict that domain to one view.
+An explicit declaration P1 may restrict that domain to one view. The
+namespace-declaration spelling `export let fn = ...` is the sole contextual
+default exception: it elaborates to `export + const`, because `export` and
+`mut` cannot coexist.
 
 ### 7.2 In-place closures are embedded callable candidates
 
@@ -276,6 +279,12 @@ target expression → target value → target type →
   type-associated namespace → `()` call entry
 ```
 
+If the target expression is a `NormClosure`, the target position is an
+explicit materialization consumer. Likewise, a declaration initializer is a
+materialization consumer when it binds that carrier. Normalization itself
+creates only a closure carrier; an arbitrary surrounding expression does not
+eagerly turn the carrier into a value or allocate its environment.
+
 The current implementation uses a documented shortcut (v0.8): the resolved target `SymbolObject` is treated as the callable entry directly, via `ResolvedCallTarget { temporary_direct_callable_shortcut: true }`. This shortcut will be replaced when function-object types and associated call-entry insertion are implemented.
 
 ## 10. Invariants
@@ -295,7 +304,9 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
 - Empty function-object mutability means the unrestricted `const || mut`
-  domain; an explicit declaration P1 may crop it.
+  domain; an explicit declaration P1 may crop it. Export-root declaration
+  elaboration instead defaults to `const` and rejects any domain containing
+  `mut`.
 - Written formal parameters inherit P2 exactly outside the optional const/mut
   Pattern axis.
 - In-place closures may be overload candidates, have no capture clause, defer
@@ -308,7 +319,9 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
-- `.name` is a first-class generated function object; `E.name` calls that same
-  object, while `..name` remains direct member-call sugar.
+- `.name` is a first-class closure expression whose normalization produces a
+  generated in-place `NormClosure` carrier. Binding or explicit call context
+  may materialize that carrier; normalization does not. `E.name` uses the same
+  carrier, while `..name` remains direct member-call sugar.
 - Callable-tail named strategy metadata operates only on fully admissible
   candidates and cannot reopen ordinary overload enumeration.

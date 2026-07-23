@@ -272,7 +272,18 @@ elaboration. They are rejected in ordinary P1, formal parameters, return
 slots, P2, Pattern interiors, expression policies, and local declarations that
 are not namespace declaration positions.
 
-`export` has the narrower placement rule described in section 9.
+`export` has the narrower placement rule described in section 9. It also has a
+namespace-context default on the independent mutability axis:
+
+```text
+export let name = expr
+  -> export + const let name = expr
+```
+
+This is not the ordinary empty function-object mutability domain. An explicit
+`export + const` is valid; `export + mut` and
+`export + (const || mut)` are invalid because an export root cannot expose a
+mutable value slice.
 
 ## 4. P2 normalization
 
@@ -360,7 +371,9 @@ the declaration supplies an empty value-mutability restriction. In the typed
 policy domain, empty here means the complete `const || mut` domain, not “no
 value” and not an unknown third qualifier. A written declaration P1 may crop
 that domain to `const` or `mut`. P2 mutability never propagates into the
-function object during stage lifting.
+function object during stage lifting. The namespace-context `export` exception
+is deliberate: an exported function-object binding defaults to
+`export + const`, and any written mut domain containing `mut` is rejected.
 
 ## 6. Three execution phases
 
@@ -466,6 +479,16 @@ construction level:
 ```lang
 export let name = expr;
 ```
+
+At this declaration context, omission of a mutability atom is elaborated as:
+
+```text
+export + const
+```
+
+It is not elaborated as `export + (const || mut)` and then rejected later.
+`export + const` is accepted. `export + mut` and a written export mutability
+choice containing `mut` are rejected before namespace installation.
 
 It is forbidden in function/meta-function bodies, parameters, return slots,
 P2, Pattern interiors, expression policies, ordinary local P1, and any nested

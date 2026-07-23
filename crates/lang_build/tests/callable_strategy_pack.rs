@@ -3,8 +3,8 @@ use lang_build::{
     SpecificityTuple,
 };
 use lang_syntax::{
-    validate_pack_pattern_element_level, NormBindingSlot, NormOrigin, NormPattern, NormPatternElem,
-    Span,
+    normalize_program, validate_pack_pattern_element_level, NormBindingSlot, NormDecl, NormExpr,
+    NormForm, NormOrigin, NormPattern, NormPatternElem, Span,
 };
 
 fn origin() -> NormOrigin {
@@ -34,12 +34,47 @@ fn pack(name: &str) -> NormPatternElem {
     })
 }
 
+fn structured_pack(patterns: &[&str]) -> NormPatternElem {
+    slot(NormPattern::Pack {
+        inner: Box::new(NormPattern::Product {
+            elements: patterns
+                .iter()
+                .map(|name| {
+                    slot(NormPattern::Binder {
+                        name: (*name).to_string(),
+                        origin: origin(),
+                    })
+                })
+                .collect(),
+            origin: origin(),
+        }),
+        origin: origin(),
+    })
+}
+
 fn arg(index: usize) -> OverloadArgShape {
     OverloadArgShape {
         top_pattern_name: Some(format!("arg{index}")),
         type_symbol_id: None,
         provenance: lang_build::Provenance::new(format!("arg {index}")),
     }
+}
+
+fn source_parameter(source: &str) -> NormPatternElem {
+    let parsed = lang_syntax::parse(source);
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
+    );
+    let normalized = normalize_program(&parsed.program);
+    let [NormForm::Let(NormDecl::Let { slot, .. })] = normalized.forms.as_slice() else {
+        panic!("expected one let declaration");
+    };
+    let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() else {
+        panic!("expected closure initializer");
+    };
+    closure.head.as_ref().unwrap().params[1].clone()
 }
 
 #[test]
@@ -95,6 +130,41 @@ fn pack_binding_captures_the_remainder_without_counting_its_length() {
     assert_eq!(two.specificity.explicit_pack_match_count, 1);
     assert_eq!(two.pack_bindings["args"].len(), 2);
     assert_eq!(two_hundred.pack_bindings["args"].len(), 200);
+}
+
+#[test]
+fn structured_pack_projects_each_inner_node_into_pack_specificity_evidence() {
+    let source = source_parameter("let f = (self, ...(a, b)) -> r => { r };");
+    let pattern = decode_param_pattern(&source);
+    let RestrictedParamPattern::StructuredPack { elements, .. } = &pattern else {
+        panic!("expected a structured pack, got {pattern:#?}");
+    };
+    assert_eq!(elements.len(), 2);
+
+    let matched = match_pack_param_pattern(&pattern, &[arg(0), arg(1)])
+        .expect("...(a, b) matches a two-element remainder product");
+    assert_eq!(
+        matched.bindings["a"].top_pattern_name.as_deref(),
+        Some("arg0")
+    );
+    assert_eq!(
+        matched.bindings["b"].top_pattern_name.as_deref(),
+        Some("arg1")
+    );
+    assert_eq!(
+        matched.specificity.explicit_pack_match_count, 2,
+        "specificity sees ...a and ...b evidence, not one opaque pack score"
+    );
+    assert_eq!(matched.specificity.pack_discard_count, 0);
+    assert!(
+        match_pack_param_pattern(&pattern, &[arg(0)]).is_err(),
+        "the inner product still constrains the captured remainder shape"
+    );
+
+    let with_discard = decode_param_pattern(&structured_pack(&["a", "_"]));
+    let matched = match_pack_param_pattern(&with_discard, &[arg(0), arg(1)]).unwrap();
+    assert_eq!(matched.specificity.explicit_pack_match_count, 1);
+    assert_eq!(matched.specificity.pack_discard_count, 1);
 }
 
 #[test]

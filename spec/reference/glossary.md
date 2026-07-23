@@ -404,7 +404,9 @@ how deeply their extraction pattern penetrates the unified construction-
 expression tree of the call operand. Structural depth evidence is compared
 before node-class evidence. At equal depth, ordinary explicit matches outrank
 explicit pack matches, which outrank ordinary discards, which outrank pack
-discards. One pack counts as one node regardless of captured length.
+discards. Captured length never changes the count. A simple pack has one
+inner evidence node; a structured `...(a, b)` projects two pack-class evidence
+nodes (as `...a`, `...b`) while remaining one syntactic Pack constructor.
 Specificity does not depend on declaration order or an ad-hoc conversion-rank
 table. This extraction-only rank is not a const/mut fitness score and never
 resolves candidates that remain incomparable under the const/mut product order.
@@ -817,13 +819,15 @@ _See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._
 
 ## Dot Closure
 
-The first-class expression `.name`, normalized to a generated function object
+The first-class expression `.name`, normalized to a generated in-place
+`NormClosure` carrier shaped as
 `(val: T, ...args) { (val, args) |> name::T }`. `E.name` is compact
 `E |> .name`; `.name` itself captures no receiver. After lowering it is an
 ordinary expression. Replacing it with a bound equivalent must preserve the
 same pipe/product binding spine, and no normalizer rule may inspect
-`DotClosureLowering` provenance to absorb surrounding syntax. `..name` remains
-direct member-call sugar.
+`DotClosureLowering` provenance to absorb surrounding syntax. Only explicit
+binding or call context materializes the carrier as a value; normalization and
+other expression contexts do not. `..name` remains direct member-call sugar.
 
 _See also: Atom, Function Object, Call normalization._
 
@@ -834,8 +838,11 @@ _See also: Atom, Function Object, Call normalization._
 The Pattern-side remainder form `...Q`. It matches the unmatched portion of
 one normalized structural level and then applies `Q`. Each level permits one
 pack; nested levels are independent. It is not a value/type/ABI category and
-has no RHS unpack counterpart. Its specificity contribution is one node,
-independent of captured length. It is valid in every let-shaped binding slot,
+has no RHS unpack counterpart. A simple operand contributes one specificity
+node, independent of captured length. For a structured operand,
+each written explicit/discard inner node contributes pack-class evidence:
+`...(a, b)` compares as `...a` plus `...b` while the AST remains the single
+constructor `Pack(Product[a, b])`. It is valid in every let-shaped binding slot,
 including ordinary/local let, parameter, return, and nested product extraction;
 it is not a parameter-only variadic syntax. It may be a direct canonical
 Pattern Sequence child: `a ...x b` normalizes as
@@ -949,6 +956,12 @@ ordinary namespace visibility, and export-root are typed orthogonal dimensions. 
 is surface shorthand or a derived summary and cannot reconstruct the pair.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
+
+At namespace direct top level, `export` supplies a contextual default on the
+otherwise independent mutability dimension: bare `export let` elaborates as
+`export + const`. A written export domain containing `mut` is invalid. This
+rule belongs to namespace-declaration elaboration, not the generic policy
+parser.
 
 _See also: PolicyBinding,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
