@@ -597,12 +597,14 @@ invariant.
 structure. Downstream build installation instead uses:
 
 ```text
-normalize_and_validate
-  -> ValidatedNormProgram
-  |  InvalidNormProgram
+normalize_and_validate_patterns
+  -> PatternValidatedNormProgram
+  |  PatternInvalidNormProgram
 ```
 
-Only the validated wrapper enters world harvesting.
+Only the Pattern-validated wrapper enters world harvesting. The wrapper proves
+the one-pack-per-normalized-level invariant only; it does not prove that
+normalization contains no recovered `NormExpr::Error`.
 
 `Pack` is part of the general binding-pattern grammar. It is preserved in
 every binding-slot context—ordinary/local `let`, product extraction, callable
@@ -669,10 +671,18 @@ Closure placement is orthogonal to head presence and implementation:
 capture list; `[x] { ... }` remains an error. A malformed callable tail
 normalizes as `NormExpr::Error`, never as a legal empty `Block`.
 
-The parser recognizes `[[strategy]]` through one strong-context lookahead used
-by segment, operator-expression, closure-head, and binding-slot parsing. It is
-also excluded from capture parsing after a deduce list, so `() [[s]] { ... }`
-and `<T> [[s]] { ... }` have the same headed in-place interpretation.
+Product-versus-closure classification recognizes only a complete
+`[[Name]]`. A leading `[[` may be treated as a malformed strategy candidate
+only after another closure-head component has independently established the
+strong context. Ordinary atom/operator postfix parsing does not exclude `[[`,
+so `obj[[cap] => { cap }]`, `()[[cap] => { cap }]`, and
+`(a + b)[[cap] => { cap }]` remain bracket calls with capture-closure
+arguments.
+
+After `=>`, `Name Block` is selected before the bare contextual forms.
+Therefore `=> default { ... }` and `=> delete { ... }` are named strategy
+bodies, while bare `=> default` and `=> delete` remain `Defaulted` and
+`Delete`.
 
 Normalized closure placement and origin are separate fields:
 

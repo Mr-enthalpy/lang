@@ -48,7 +48,7 @@ v0.5-A to the frozen v0.2 baseline. It defines the 20-symbol/33-diagnostic
 surface, callable tail, first-class dot closure, Pattern pack, orthogonal
 closure placement, and validated normalized handoff.
 
-_See also: Frontend Semantic Amendment v0.5-A, ValidatedNormProgram._
+_See also: Frontend Semantic Amendment v0.5-A, PatternValidatedNormProgram._
 
 ---
 
@@ -778,11 +778,13 @@ _See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution P
 
 ---
 
-## ValidatedNormProgram
+## PatternValidatedNormProgram
 
-The downstream handoff produced by `normalize_and_validate` after all global
-normalized Pattern invariants, including one pack per structural level, have
-passed. `normalize_program` alone remains useful for diagnostic/recovery dumps
+The downstream handoff produced by `normalize_and_validate_patterns` after all
+global normalized Pattern invariants, including one pack per structural level,
+have passed. Its certificate is intentionally narrow: it does not assert that
+the parser emitted no diagnostics or that no recovered `NormExpr::Error`
+exists. `normalize_program` alone remains useful for diagnostic/recovery dumps
 but does not authorize build-world harvesting.
 
 _See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._

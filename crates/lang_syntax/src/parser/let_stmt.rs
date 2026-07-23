@@ -518,7 +518,10 @@ fn annotation_stop(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool
     parser.cursor.at_name("with")
         || parser.cursor.at_symbol(Symbol::Comma)
         || parser.cursor.at_symbol(Symbol::RParen)
-        || super::closure::at_callable_implementation_tail(parser)
+        || parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || (matches!(context, BindingSlotContext::Return)
+            && super::closure::at_callable_implementation_tail(parser))
         || (matches!(context, BindingSlotContext::Let) && parser.cursor.at_symbol(Symbol::Equal))
         || (matches!(
             context,

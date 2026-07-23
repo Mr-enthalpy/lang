@@ -367,6 +367,15 @@ fn parse_segment_element(
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }
+                let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
+                if matches!(after.kind, TokenKind::Symbol(Symbol::LBracket)) {
+                    // A Product followed by `[...]` remains in the ordinary
+                    // postfix-expression path. This preserves cases such as
+                    // `()[[capture] => { ... }]`; only a complete
+                    // `[[Name]]` continuation above proves a closure head.
+                    let op_expr = parse_operator_expr(parser, stop)?;
+                    return Some(SegmentElementAst::OperatorExpr(op_expr));
+                }
             }
             let product = parse_product_expr(parser);
             Some(SegmentElementAst::Product(product))

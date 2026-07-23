@@ -23,7 +23,7 @@ source text
   -> Raw AST + syntax diagnostics
   -> non-semantic normalization
   -> normalized Pattern validation
-  -> ValidatedNormProgram
+  -> PatternValidatedNormProgram
 ```
 
 Raw AST preserves syntax and recovery. It does not resolve names, check types,
@@ -80,7 +80,7 @@ CallableImplementationTail
    |  Block
 ```
 
-The unique closure-head continuation lookahead is:
+The closure-head continuation lookahead uses the complete strategy shape:
 
 ```text
 starts_closure_head_continuation
@@ -89,17 +89,23 @@ starts_closure_head_continuation
    |  "=>"
    |  "{"
    |  HeadClause
-   |  "[[" Name "]]"
+   |  CompleteStrategyAnnotation
+
+CompleteStrategyAnnotation
+  ::= "[[" Name "]]"
 ```
 
-Segment, operator-expression, binding-slot, call-policy, return, and
-head-clause parsing reuse the same `[[strategy]]` recognizer. They must not
-maintain independent approximate bracket-boundary sets.
+Only `CompleteStrategyAnnotation` may classify a Product as a closure
+parameter head. A second recognizer for a leading `[[` is recovery-only and
+may be used only after another head component has independently established
+the callable-tail context.
 
 After a deduce list, capture parsing is entered only for:
 
 ```text
-"[" and not starts_overload_strategy_annotation
+"["
+and not CompleteStrategyAnnotation
+and not RecoveryStrategyCandidateAfterProvenDeduceHead
 ```
 
 Thus all of these are closure heads:
@@ -112,6 +118,29 @@ Thus all of these are closure heads:
 <T>() [[s]] { value }
 <T>() -> r [[s]] { value }
 ```
+
+Ordinary atom/operator suffix parsing never globally excludes a leading
+`[[`. These remain bracket calls whose argument is a capture closure:
+
+```lang
+obj[[cap] => { cap }]
+()[[cap] => { cap }]
+(a + b)[[cap] => { cap }]
+```
+
+After `=>`, implementation selection examines the full local tail:
+
+```text
+Block                         -> Block
+"(" StringLiteral ")" delete -> Delete(message)
+Name Block                    -> NamedBlock
+default without Block         -> Defaulted
+delete without Block          -> Delete
+other Name without Block      -> Error
+```
+
+Consequently `default` and `delete` remain weak names and may be named
+strategies when followed by a block.
 
 ## 4. Closure Raw AST
 
@@ -215,7 +244,7 @@ NormOrigin::Generated { rule, span }
 It never replaces placement. Generated dot/member/prefix helper closures retain
 their in-place placement while separately reporting their lowering rule.
 
-## 8. Validated normalized handoff
+## 8. Pattern-validated normalized handoff
 
 `normalize_program` produces inspectable normalized structure, including
 invalid recovered Patterns. It is not the semantic/build handoff.
@@ -223,8 +252,8 @@ invalid recovered Patterns. It is not the semantic/build handoff.
 The handoff is:
 
 ```text
-normalize_and_validate(ProgramAst)
-  -> Result<ValidatedNormProgram, InvalidNormProgram>
+normalize_and_validate_patterns(ProgramAst)
+  -> Result<PatternValidatedNormProgram, PatternInvalidNormProgram>
 ```
 
 The validator traverses every Pattern-bearing location:
@@ -238,7 +267,11 @@ nested Product and Sequence
 expression-carried closure bodies
 ```
 
-Only `ValidatedNormProgram` may be harvested into the build world.
+Only `PatternValidatedNormProgram` may be harvested into the build world. Its
+proof scope is exactly the normalized Pattern-layer invariants above. It does
+not prove that the parser emitted no diagnostics or that the program contains
+no recovered `NormExpr::Error`; consumers that require those properties need
+a distinct certificate.
 
 ## 9. Diagnostics
 
@@ -271,4 +304,3 @@ overload execution
 runtime evaluation
 code generation
 ```
-

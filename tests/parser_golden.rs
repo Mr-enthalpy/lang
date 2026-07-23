@@ -702,6 +702,11 @@ fn closure_strategy_boundaries() {
 }
 
 #[test]
+fn closure_strategy_anti_stealing() {
+    assert_parser_case("closure_strategy_anti_stealing", false);
+}
+
+#[test]
 fn invalid_bare_closure_empty() {
     assert_parser_case("invalid_bare_closure_empty", false);
 }

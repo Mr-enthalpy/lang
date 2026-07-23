@@ -115,7 +115,8 @@ metadata without changing in-place placement. Capture lists remain unavailable
 to in-place closures.
 
 Parenthesized Product-versus-head classification uses one closure-head
-continuation predicate containing:
+continuation predicate. Its strategy alternative requires the complete shape
+`[[Name]]`:
 
 ```text
 :
@@ -123,13 +124,28 @@ continuation predicate containing:
 =>
 {
 head-clause
-[[strategy]]
+[[Name]]
 ```
 
-Other closure boundaries delegate to the same callable-tail and
-`[[strategy]]` recognizers. The single annotation recognizer also prevents
-deduce-only heads such as `<T> [[s]] { ... }` from entering capture-clause
-parsing.
+The parser separately recognizes a leading `[[` only after another head
+component has independently established the closure-tail strong context. That
+weaker candidate is recovery-only; it cannot classify an ordinary Product or
+disable a bracket-call suffix. Ordinary atom and operator postfix parsing
+therefore continues to accept:
+
+```lang
+obj[[cap] => { cap }]
+()[[cap] => { cap }]
+```
+
+The complete annotation recognizer, plus the recovery-only candidate after a
+deduce list, prevents heads such as `<T> [[s]] { ... }` from entering
+capture-clause parsing.
+
+After `=>`, the parser selects by complete local shape. `Name Block` is tested
+before the bare contextual names, so `=> default { ... }` and
+`=> delete { ... }` are named strategy bodies; only a `default` or `delete`
+not followed by a block selects `Defaulted` or `Deleted`.
 
 ## 5. Raw AST amendment
 
@@ -189,14 +205,16 @@ origin.rule = DotClosureLowering
 inspection. The downstream build handoff is:
 
 ```text
-normalize_and_validate
-  -> ValidatedNormProgram
-  |  InvalidNormProgram
+normalize_and_validate_patterns
+  -> PatternValidatedNormProgram
+  |  PatternInvalidNormProgram
 ```
 
-Only `ValidatedNormProgram` may enter declaration harvesting. This makes the
-one-pack-per-normalized-level rule an enforced handoff rather than an optional
-caller convention.
+Only `PatternValidatedNormProgram` may enter declaration harvesting. This
+makes the one-pack-per-normalized-level rule an enforced handoff rather than
+an optional caller convention. The certificate proves only Pattern-layer
+invariants; recovered `NormExpr::Error` nodes require a separate future
+recovery-free certificate and are not ruled out by this type.
 
 ## 7. Non-semantic boundary
 

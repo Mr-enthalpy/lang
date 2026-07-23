@@ -1,5 +1,5 @@
 use lang_syntax::{
-    normalize_and_validate, normalize_program, parse, validate_normalized_patterns,
+    normalize_and_validate_patterns, normalize_program, parse, validate_normalized_patterns,
     BindingPatternAst, ClosureBodyAst, ClosurePlacementAst, ExprKind, FormAst, NormAnnotation,
     NormBindingSlot, NormClosureBody, NormClosurePlacement, NormDecl, NormExpr, NormForm,
     NormOrigin, NormPattern, NormPatternElem, NormRule, OperatorExprKind, SegmentElementAst, Span,
@@ -87,6 +87,21 @@ fn callable_tail_normalizes_delete_default_and_named_strategy() {
         named.body,
         NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "prefer_named"
     ));
+
+    for expected_strategy in ["default", "delete"] {
+        let fixture = format!("let f = () -> r => {expected_strategy} {{ r }};");
+        let closure = normalized_closure(&fixture);
+        assert!(
+            matches!(
+                closure.body,
+                NormClosureBody::NamedBlock {
+                    ref strategy,
+                    ..
+                } if strategy == expected_strategy
+            ),
+            "`Name {{ ... }}` must be selected before the bare default/delete forms: {fixture}"
+        );
+    }
 }
 
 #[test]
@@ -127,6 +142,7 @@ fn double_bracket_strategy_uses_one_closure_head_boundary_in_every_context() {
         "let f = <T> [[s]] { value };",
         "let f = <T>() [[s]] { value };",
         "let f = <T>() -> r [[s]] { value };",
+        "let f = () require obj[[cap] => { cap }] [[s]] { value };",
     ] {
         let closure = normalized_closure(fixture);
         assert_eq!(
@@ -148,6 +164,30 @@ fn double_bracket_strategy_uses_one_closure_head_boundary_in_every_context() {
     let dump = lang_syntax::dump_norm_program(&normalized);
     assert!(dump.contains("Closure placement=InPlace"), "{dump}");
     assert!(dump.contains("UserBody strategy=Named(s)"), "{dump}");
+}
+
+#[test]
+fn complete_strategy_annotation_does_not_steal_bracket_call_capture_closures() {
+    for fixture in [
+        "let x = obj[[cap] => { cap }];",
+        "let x = ()[[cap] => { cap }];",
+        "let x = (a + b)[[cap] => { cap }];",
+    ] {
+        let output = parse(fixture);
+        assert!(
+            output.diagnostics.is_empty(),
+            "{fixture}\n{}",
+            lang_syntax::dump_diagnostics(&output.diagnostics)
+        );
+        let dump = lang_syntax::dump_ast(&output.program);
+        assert!(dump.contains("BracketCallSugar"), "{fixture}\n{dump}");
+        assert!(dump.contains("Closure Ordinary"), "{fixture}\n{dump}");
+        assert!(dump.contains("CaptureClause"), "{fixture}\n{dump}");
+        assert!(
+            !dump.contains("OverloadStrategy"),
+            "ordinary bracket-call payload must not become strategy metadata: {fixture}\n{dump}"
+        );
+    }
 }
 
 #[test]
@@ -472,12 +512,26 @@ fn global_pack_validation_visits_every_binding_slot_context() {
     );
 
     let valid = parse("let (head, ...rest) = value;");
-    assert!(normalize_and_validate(&valid.program).is_ok());
+    assert!(normalize_and_validate_patterns(&valid.program).is_ok());
 
     let invalid = parse("let (...x, ...y) = value;");
-    let failure = normalize_and_validate(&invalid.program)
+    let failure = normalize_and_validate_patterns(&invalid.program)
         .expect_err("downstream handoff must reject an invalid normalized Pattern");
     assert!(!failure.pattern_errors.is_empty());
+}
+
+#[test]
+fn pattern_validation_certificate_does_not_claim_recovery_free_syntax() {
+    let recovered = parse("let f = () -> r => strategy;");
+    assert!(!recovered.diagnostics.is_empty());
+
+    let validated = normalize_and_validate_patterns(&recovered.program)
+        .expect("the Pattern-layer certificate is independent of recovered expression errors");
+    assert!(matches!(
+        validated.as_program().forms.as_slice(),
+        [NormForm::Let(NormDecl::Let { slot, .. })]
+            if matches!(slot.initializer.as_deref(), Some(NormExpr::Error(_)))
+    ));
 }
 
 fn expression_binding_shape(expr: &NormExpr) -> String {

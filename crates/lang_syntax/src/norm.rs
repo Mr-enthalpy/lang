@@ -24,16 +24,18 @@ pub struct NormProgram {
     pub origin: NormOrigin,
 }
 
-/// A normalized program whose global Pattern invariants have been checked.
+/// A normalized program whose global Pattern-layer invariants have been
+/// checked.
 ///
-/// Semantic/build consumers should accept this wrapper rather than relying on
-/// a call-order convention around `validate_normalized_patterns`.
+/// This certificate does not assert that parser recovery produced no
+/// `NormExpr::Error` nodes. Consumers that need a recovery-free program must
+/// require a separate proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ValidatedNormProgram {
+pub struct PatternValidatedNormProgram {
     program: NormProgram,
 }
 
-impl ValidatedNormProgram {
+impl PatternValidatedNormProgram {
     pub fn as_program(&self) -> &NormProgram {
         &self.program
     }
@@ -44,7 +46,7 @@ impl ValidatedNormProgram {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InvalidNormProgram {
+pub struct PatternInvalidNormProgram {
     pub program: NormProgram,
     pub pattern_errors: Vec<PackPatternLayerError>,
 }
@@ -850,23 +852,25 @@ pub fn normalize_program(raw: &ProgramAst) -> NormProgram {
     }
 }
 
-/// The validated handoff for downstream build/semantic consumers.
+/// The Pattern-layer-validated handoff for downstream build/semantic
+/// consumers.
 ///
 /// `normalize_program` remains available for dump/recovery tooling that must
-/// inspect invalid structure. Such a program must pass through this function
-/// before it is installed into a semantic world.
-pub fn normalize_and_validate(
+/// inspect invalid structure. Passing this function proves only the global
+/// normalized Pattern invariants; it does not prove the absence of recovered
+/// syntax errors.
+pub fn normalize_and_validate_patterns(
     raw: &ProgramAst,
-) -> Result<ValidatedNormProgram, InvalidNormProgram> {
-    validate_normalized_program(normalize_program(raw))
+) -> Result<PatternValidatedNormProgram, PatternInvalidNormProgram> {
+    validate_normalized_pattern_layers(normalize_program(raw))
 }
 
-pub fn validate_normalized_program(
+pub fn validate_normalized_pattern_layers(
     program: NormProgram,
-) -> Result<ValidatedNormProgram, InvalidNormProgram> {
+) -> Result<PatternValidatedNormProgram, PatternInvalidNormProgram> {
     match validate_normalized_patterns(&program) {
-        Ok(()) => Ok(ValidatedNormProgram { program }),
-        Err(pattern_errors) => Err(InvalidNormProgram {
+        Ok(()) => Ok(PatternValidatedNormProgram { program }),
+        Err(pattern_errors) => Err(PatternInvalidNormProgram {
             program,
             pattern_errors,
         }),

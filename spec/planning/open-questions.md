@@ -37,12 +37,12 @@ track:
   snapshots.
 - Closure placement and generated provenance are independent in both Raw and
   Normalized AST. Generated dot closures retain `InPlace` placement.
-- `[[strategy]]` has one strong-context recognizer and one closure-head
-  continuation predicate across parser layers; it is not capture syntax after
-  a deduce list.
-- Build-world harvesting consumes `ValidatedNormProgram` from
-  `normalize_and_validate`; unvalidated normalized programs remain available
-  only for dump/recovery inspection.
+- Product-versus-closure classification recognizes only complete
+  `[[Name]]`; the weaker `[[` recovery candidate is confined to independently
+  proven closure heads and never disables ordinary bracket-call suffixes.
+- Build-world harvesting consumes `PatternValidatedNormProgram` from
+  `normalize_and_validate_patterns`. This proves only global normalized
+  Pattern invariants; it does not claim recovery-free syntax.
 - `ref` and `share` are namespace subspaces, not reserved field names.
 - Function-object names and namespace-subspace names may be identical under the
   same parent when they occupy different child-name roles.

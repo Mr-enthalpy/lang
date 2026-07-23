@@ -4,21 +4,24 @@ use crate::{
 };
 
 use super::{
-    closure::{at_overload_strategy_annotation, try_parse_closure},
+    closure::try_parse_closure,
     form::Parser,
     let_stmt::looks_like_alias_binding_start,
     pipe::parse_pipe_expr,
     product::{parse_bracket_product_expr, parse_product_expr},
 };
 
-pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
-    if parser.is_form_boundary() {
+pub fn parse_atom(
+    parser: &mut Parser<'_>,
+    stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
+) -> Option<AtomAst> {
+    if parser.is_form_boundary() || stop(parser) {
         return None;
     }
     let mut atom = parse_atom_base(parser)?;
 
     loop {
-        if parser.is_form_boundary() {
+        if parser.is_form_boundary() || stop(parser) {
             break;
         }
         if parser.cursor.at_symbol(Symbol::ColonColon) {
@@ -87,9 +90,7 @@ pub fn parse_atom(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 );
                 break;
             }
-        } else if parser.cursor.at_symbol(Symbol::LBracket)
-            && !at_overload_strategy_annotation(parser)
-        {
+        } else if parser.cursor.at_symbol(Symbol::LBracket) {
             let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),

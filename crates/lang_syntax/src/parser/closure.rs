@@ -119,32 +119,6 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span,
             ));
         }
-        if parser.cursor.at_name("delete") {
-            let delete_body = parse_bare_delete_body(parser);
-            let span = head.span.join(delete_body.span);
-            return Some(closure_atom(
-                ClosurePlacementAst::Ordinary,
-                Some(head),
-                ClosureBodyAst::Delete(delete_body),
-                span,
-            ));
-        }
-        if parser.cursor.at_name("default") {
-            let token = parser.cursor.bump_non_trivia();
-            let span = head.span.join(token.span);
-            return Some(closure_atom(
-                ClosurePlacementAst::Ordinary,
-                Some(head),
-                ClosureBodyAst::Defaulted {
-                    default_name: NameAst {
-                        text: token.text.clone(),
-                        span: token.span,
-                    },
-                    span: token.span,
-                },
-                span,
-            ));
-        }
         if parser.cursor.at_symbol(Symbol::LParen) {
             match parse_delete_body(parser) {
                 Some(delete_body) => {
@@ -175,6 +149,37 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
             }
         }
         if matches!(parser.cursor.peek_non_trivia().kind, TokenKind::Name) {
+            let followed_by_block = matches!(
+                parser.cursor.peek_next_non_trivia().kind,
+                TokenKind::Symbol(Symbol::LBrace)
+            );
+            if !followed_by_block && parser.cursor.at_name("delete") {
+                let delete_body = parse_bare_delete_body(parser);
+                let span = head.span.join(delete_body.span);
+                return Some(closure_atom(
+                    ClosurePlacementAst::Ordinary,
+                    Some(head),
+                    ClosureBodyAst::Delete(delete_body),
+                    span,
+                ));
+            }
+            if !followed_by_block && parser.cursor.at_name("default") {
+                let token = parser.cursor.bump_non_trivia();
+                let span = head.span.join(token.span);
+                return Some(closure_atom(
+                    ClosurePlacementAst::Ordinary,
+                    Some(head),
+                    ClosureBodyAst::Defaulted {
+                        default_name: NameAst {
+                            text: token.text.clone(),
+                            span: token.span,
+                        },
+                        span: token.span,
+                    },
+                    span,
+                ));
+            }
+
             let token = parser.cursor.bump_non_trivia();
             let strategy = NameAst {
                 text: token.text.clone(),
@@ -224,7 +229,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         });
     }
 
-    if at_overload_strategy_annotation(parser) {
+    if at_strategy_annotation_candidate(parser) {
         parser.ungate_keep_diagnostics();
         let Some(strategy) = parse_overload_strategy_annotation(parser) else {
             let end = if parser.cursor.at_symbol(Symbol::LBrace) {
@@ -405,11 +410,24 @@ fn parse_bare_delete_body(parser: &mut Parser<'_>) -> DeleteBodyAst {
     }
 }
 
-pub(super) fn at_overload_strategy_annotation(parser: &Parser<'_>) -> bool {
-    token_index_starts_overload_strategy_annotation(parser, parser.cursor.current_index())
+fn at_complete_strategy_annotation(parser: &Parser<'_>) -> bool {
+    token_index_starts_complete_strategy_annotation(parser, parser.cursor.current_index())
 }
 
-pub(super) fn token_index_starts_overload_strategy_annotation(
+fn at_strategy_annotation_candidate(parser: &Parser<'_>) -> bool {
+    token_index_starts_strategy_annotation_candidate(parser, parser.cursor.current_index())
+}
+
+fn token_index_starts_strategy_annotation_candidate(parser: &Parser<'_>, from: usize) -> bool {
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(from);
+    if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return false;
+    }
+    let (_, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+    matches!(second.kind, TokenKind::Symbol(Symbol::LBracket))
+}
+
+pub(super) fn token_index_starts_complete_strategy_annotation(
     parser: &Parser<'_>,
     from: usize,
 ) -> bool {
@@ -417,8 +435,20 @@ pub(super) fn token_index_starts_overload_strategy_annotation(
     if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
         return false;
     }
-    let (_, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
-    matches!(second.kind, TokenKind::Symbol(Symbol::LBracket))
+    let (second_index, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+    if !matches!(second.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return false;
+    }
+    let (name_index, name) = parser.cursor.peek_at_skip_trivia(second_index + 1);
+    if !matches!(name.kind, TokenKind::Name) {
+        return false;
+    }
+    let (first_close_index, first_close) = parser.cursor.peek_at_skip_trivia(name_index + 1);
+    if !matches!(first_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return false;
+    }
+    let (_, second_close) = parser.cursor.peek_at_skip_trivia(first_close_index + 1);
+    matches!(second_close.kind, TokenKind::Symbol(Symbol::RBracket))
 }
 
 /// The single strong-context lookahead used when a parenthesized form could be
@@ -435,13 +465,17 @@ pub(super) fn token_index_starts_closure_head_continuation(
         token.kind,
         TokenKind::Symbol(Symbol::Colon | Symbol::ThinArrow | Symbol::FatArrow | Symbol::LBrace)
     ) || token_index_starts_head_clause(parser, from)
-        || token_index_starts_overload_strategy_annotation(parser, from)
+        || token_index_starts_complete_strategy_annotation(parser, from)
 }
 
 pub(super) fn at_callable_implementation_tail(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
-        || at_overload_strategy_annotation(parser)
+        // This helper is called only after another closure-head component has
+        // already established the strong context. A leading `[[` can therefore
+        // stop the current head slot so the tail parser can retain an error
+        // node for a malformed annotation.
+        || at_strategy_annotation_candidate(parser)
 }
 
 fn parse_overload_strategy_annotation(parser: &mut Parser<'_>) -> Option<NameAst> {
@@ -486,12 +520,15 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
-    let captures =
-        if parser.cursor.at_symbol(Symbol::LBracket) && !at_overload_strategy_annotation(parser) {
-            Some(parse_capture_clause(parser))
-        } else {
-            None
-        };
+    let strategy_tail_after_deduce = deduce.is_some() && at_strategy_annotation_candidate(parser);
+    let captures = if parser.cursor.at_symbol(Symbol::LBracket)
+        && !at_complete_strategy_annotation(parser)
+        && !strategy_tail_after_deduce
+    {
+        Some(parse_capture_clause(parser))
+    } else {
+        None
+    };
 
     let params = if parser.cursor.at_symbol(Symbol::LParen) {
         Some(parse_param_clause(parser, deduce.as_ref()))
@@ -600,7 +637,9 @@ pub(super) fn at_head_clause_keyword(parser: &Parser<'_>) -> bool {
 }
 
 fn clause_expr_boundary(parser: &mut Parser<'_>) -> bool {
-    at_callable_implementation_tail(parser)
+    parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        || at_complete_strategy_annotation(parser)
         || parser.is_form_boundary()
         || at_head_clause_keyword(parser)
 }

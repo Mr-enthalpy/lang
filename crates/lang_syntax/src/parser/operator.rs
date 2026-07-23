@@ -5,7 +5,7 @@ use crate::{
 
 use super::{
     atom::{parse_atom, parse_member_selector, parse_nav_outer_component, selector_span},
-    closure::{at_overload_strategy_annotation, token_index_starts_closure_head_continuation},
+    closure::token_index_starts_closure_head_continuation,
     cursor::ParenClassification,
     form::Parser,
     product::{parse_bracket_product_expr, parse_product_expr},
@@ -171,7 +171,7 @@ fn parse_operand(
         if matches!(class, ParenClassification::Product) {
             if let Some(idx) = after_idx {
                 if token_index_starts_closure_head_continuation(parser, idx) {
-                    let atom = parse_atom(parser)?;
+                    let atom = parse_atom(parser, stop)?;
                     return Some(OperatorExprAst {
                         span: atom.span,
                         kind: OperatorExprKind::Atom(atom),
@@ -186,7 +186,7 @@ fn parse_operand(
         }
     }
 
-    let atom = parse_atom(parser)?;
+    let atom = parse_atom(parser, stop)?;
     Some(OperatorExprAst {
         span: atom.span,
         kind: OperatorExprKind::Atom(atom),
@@ -287,9 +287,7 @@ fn parse_postfix_expr(
                 );
                 break;
             }
-        } else if parser.cursor.at_symbol(Symbol::LBracket)
-            && !at_overload_strategy_annotation(parser)
-        {
+        } else if parser.cursor.at_symbol(Symbol::LBracket) {
             let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
                 spelling: OperatorSpelling::BracketCall.as_source_text().to_string(),

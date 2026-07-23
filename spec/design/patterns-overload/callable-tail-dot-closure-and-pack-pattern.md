@@ -81,9 +81,8 @@ embedding-layer lookup defined by the function-object model.
 
 ### 1.1 Strong-context boundary
 
-`[[strategy]]` has one parser recognizer even though the lexer continues to
-emit ordinary bracket tokens. Every layer that must decide whether `(...)` is
-a Product or a closure parameter head uses:
+The lexer continues to emit ordinary bracket tokens. Product-versus-closure
+classification recognizes only a complete strategy annotation:
 
 ```text
 starts_closure_head_continuation
@@ -92,14 +91,54 @@ starts_closure_head_continuation
   | =>
   | {
   | head-clause
-  | [[strategy]]
+  | [[Name]]
 ```
 
-After a deduce list, `[[strategy]]` is excluded from capture-clause parsing.
-This keeps `() [[s]] { ... }`, `<T> [[s]] { ... }`, call-policy heads, and
-head-clause forms on the same strong-context path.
+The weaker prefix `[[` is a malformed-strategy candidate only after some other
+head syntax has already proved the closure-tail context. It may improve error
+recovery there, but it cannot classify an ambiguous Product and cannot disable
+ordinary bracket-call suffix parsing.
 
-### 1.2 No rollback over the return extraction pattern
+Therefore all of the following remain ordinary bracket calls whose argument is
+a capture closure:
+
+```lang
+obj[[cap] => { cap }]
+()[[cap] => { cap }]
+(a + b)[[cap] => { cap }]
+```
+
+After a deduce list, a complete annotation—or the recovery candidate after the
+deduce head has independently proved the context—is excluded from
+capture-clause parsing. This keeps `() [[s]] { ... }`, `<T> [[s]] { ... }`,
+call-policy heads, and head-clause forms on the strong-context path without
+leaking strategy syntax into ordinary suffixes.
+
+### 1.2 Tail selection uses complete local shape
+
+After `=>`, implementation selection is:
+
+```text
+Block                         -> UserBody(Ordinary)
+"(" StringLiteral ")" delete -> Deleted(message)
+Name Block                    -> UserBody(Named(Name))
+default without Block         -> Defaulted
+delete without Block          -> Deleted(None)
+other Name without Block      -> Error
+```
+
+`Name Block` precedes the two bare contextual names. Consequently:
+
+```lang
+=> default { ... }
+=> delete { ... }
+```
+
+are named strategy bodies. `default` and `delete` remain weak `Name` tokens;
+their special implementation meaning exists only when they are not followed
+by a block.
+
+### 1.3 No rollback over the return extraction pattern
 
 The established form remains unchanged:
 
@@ -119,7 +158,7 @@ named strategy in this no-`=>` form is written explicitly:
 }
 ```
 
-### 1.3 Implementation form and strategy are orthogonal
+### 1.4 Implementation form and strategy are orthogonal
 
 `UserBody`, `Defaulted`, and `Deleted` occupy the same tail slot but do not
 mean the same operation:
@@ -335,18 +374,22 @@ Implemented substrate:
   headless in-place closures without granting them capture lists;
 - orthogonal `NormClosurePlacement`; generated provenance remains exclusively
   in `NormOrigin::Generated`, so a generated dot closure is still in-place;
-- one centralized closure-head continuation predicate and one
-  `[[strategy]]` recognizer across segment, operator, head, and binding-slot
-  parsing;
+- one complete `[[Name]]` closure-head continuation recognizer, plus a
+  recovery-only `[[` candidate confined to independently proven closure heads;
+- ordinary atom/operator bracket-call suffixes remain closed under capture
+  closure payloads and are not disabled by strategy lookahead;
+- full-shape callable-tail selection, with `Name Block` preceding bare
+  `default`/`delete`;
 - DotClosure substitution invariance: after atom lowering, ordinary
   pipe/product normalization cannot observe `DotClosureLowering` provenance;
 - pack preservation in every parser binding-slot context (`let`, parameter,
   return, and nested product extraction), not a parameter-only grammar;
 - global post-normalization one-pack-per-level validation over declarations,
   local bodies, parameters, returns, annotations, and nested binding slots;
-- `normalize_and_validate -> ValidatedNormProgram` as the only build-world
-  harvesting handoff; raw `normalize_program` remains available for
-  diagnostic/recovery inspection;
+- `normalize_and_validate_patterns -> PatternValidatedNormProgram` as the
+  Pattern-layer build-world harvesting handoff; raw `normalize_program`
+  remains available for diagnostic/recovery inspection, and the certificate
+  does not claim recovery-free syntax;
 - `AtomKind::Error` recovery for malformed callable tails, never an executable
   empty user body;
 - restricted variadic applicability, remainder binding, and pack node-class

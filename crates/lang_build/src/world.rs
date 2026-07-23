@@ -213,7 +213,7 @@ impl CompilationWorld {
                 )
             })
             .collect::<Vec<_>>();
-        let normalized = lang_syntax::normalize_and_validate(&parsed.program);
+        let normalized = lang_syntax::normalize_and_validate_patterns(&parsed.program);
         if let Err(invalid) = &normalized {
             diagnostics.extend(invalid.pattern_errors.iter().map(|error| {
                 Diagnostic::hard_error(

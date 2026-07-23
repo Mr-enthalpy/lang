@@ -58,7 +58,7 @@ The current frontend no longer claims to be the unchanged v0.2 parser. Read:
 | File | Authority | Role |
 |---|---|---|
 | `contracts/frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Classifies hard structural corrections separately from new syntax and preserves the v0.1/v0.2/v0.3 historical snapshots. |
-| `contracts/raw-ast-contract-v0.5.md` | Normative current Raw AST contract | Defines the amended lexer/parser/Raw-AST surface, independent closure placement/provenance, and `ValidatedNormProgram` handoff. |
+| `contracts/raw-ast-contract-v0.5.md` | Normative current Raw AST contract | Defines the amended lexer/parser/Raw-AST surface, independent closure placement/provenance, and `PatternValidatedNormProgram` handoff. |
 
 ## Frozen v0.2 frontend input history
 
