@@ -1171,8 +1171,10 @@ fn struct_field_name_from_expr(
                 other => struct_field_name_from_expr(other, provenance, callee_symbol_id),
             }
         }
-        _ => Err(Diagnostic::hard_error(
-            "invalid struct syntax: expected a field binder name",
+        other => Err(Diagnostic::hard_error(
+            format!(
+                "invalid struct syntax: expected a field binder name, found normalized target {other:#?}"
+            ),
             Some(provenance.clone()),
         )
         .with_symbol_context(callee_symbol_id)),
