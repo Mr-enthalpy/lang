@@ -856,9 +856,7 @@ fn elaborate_p1_components(
                 presence: atoms.presence(),
             };
             validate_value_component_invariant(&value, "P1 value component", provenance)?;
-            let projection = P1Projection::ValueDominant {
-                value,
-            };
+            let projection = P1Projection::ValueDominant { value };
             Ok((projection, atoms.namespace, atoms.export_root))
         }
         (value_pattern, Some(pattern)) => {
@@ -894,11 +892,7 @@ fn elaborate_p1_components(
                 mutability: value_atoms.mutability,
                 presence: value_presence,
             };
-            validate_value_component_invariant(
-                &value,
-                "P1 value component",
-                provenance.clone(),
-            )?;
+            validate_value_component_invariant(&value, "P1 value component", provenance.clone())?;
             Ok((
                 P1Projection::Pair(PolicyPair {
                     value,
@@ -1073,9 +1067,7 @@ fn validate_value_component_invariant(
         && (!value.stages.is_empty() || !value.mutability.is_empty())
     {
         return Err(policy_error(
-            format!(
-                "{context}: `Pv = absent` cannot carry value stages or const/mutability"
-            ),
+            format!("{context}: `Pv = absent` cannot carry value stages or const/mutability"),
             provenance,
         ));
     }

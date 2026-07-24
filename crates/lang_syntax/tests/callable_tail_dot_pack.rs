@@ -741,9 +741,7 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
                 CanonicalSkeletonAst::Segment { elements, .. } => elements
                     .iter()
                     .any(|element| skeleton_marks_hole(element, expected)),
-                CanonicalSkeletonAst::Pack { inner, .. } => {
-                    skeleton_marks_hole(inner, expected)
-                }
+                CanonicalSkeletonAst::Pack { inner, .. } => skeleton_marks_hole(inner, expected),
                 CanonicalSkeletonAst::ProductExtract { elements, .. } => {
                     elements.iter().any(|element| match element {
                         lang_syntax::CanonicalProductElementAst::Skeleton(skeleton) => {
@@ -846,7 +844,11 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
         head_a
     ));
     assert!(norm_pattern_targets(
-        &head.returns.as_ref().expect("normalized return").value_pattern,
+        &head
+            .returns
+            .as_ref()
+            .expect("normalized return")
+            .value_pattern,
         head_a
     ));
 }

@@ -137,19 +137,13 @@ fn absent_value_component_cannot_carry_stage_or_mutability_subdimensions() {
             "`{source}` must not form a P2 with mutability attached to absent Pv"
         );
         assert!(
-            elaborate_binding_p1_projection(
-                Some(&policy),
-                Provenance::new(format!("P1 {source}"))
-            )
-            .is_err(),
+            elaborate_binding_p1_projection(Some(&policy), Provenance::new(format!("P1 {source}")))
+                .is_err(),
             "`{source}` must not form a P1 with mutability attached to absent Pv"
         );
     }
 
-    for source in [
-        "export + const + S : compile",
-        "export + mut + S : compile",
-    ] {
+    for source in ["export + const + S : compile", "export + mut + S : compile"] {
         assert!(
             elaborate_namespace_declaration_policy(
                 Some(&policy_spec(source)),
@@ -973,10 +967,7 @@ fn export_retention_closure_and_public_path_reachability_are_independent() {
         ),
     ]);
     let export_retention_closure = compute_export_retention_closure(&nodes, [1]);
-    assert_eq!(
-        export_retention_closure,
-        BTreeSet::from([0, 1, 3, 4])
-    );
+    assert_eq!(export_retention_closure, BTreeSet::from([0, 1, 3, 4]));
     assert!(
         !export_retention_closure.contains(&2),
         "siblings do not enter the export-retention closure"
