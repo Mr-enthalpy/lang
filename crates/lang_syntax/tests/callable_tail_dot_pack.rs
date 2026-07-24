@@ -695,7 +695,7 @@ fn raw_nested_canonical_roles_keep_all_active_deduce_lists() {
 }
 
 #[test]
-fn raw_callable_deduce_environment_reaches_capture_return_body_and_nested_callable() {
+fn raw_callable_deduce_syntax_keeps_postfix_binding_slot_annotations() {
     let output = parsed(
         "let f = <A>[let c: A = source](x: A) -> r: A => {
             let y: A = x;
@@ -708,12 +708,12 @@ fn raw_callable_deduce_environment_reaches_capture_return_body_and_nested_callab
     );
     let dump = lang_syntax::dump_ast(&output.program);
     assert!(
-        dump.matches("CanonicalName role=Hole name=A").count() >= 6,
-        "outer callable hole must remain lexically visible throughout its callable:\n{dump}"
+        dump.matches("AnnotationExpr").count() >= 6,
+        "capture, parameter, return, and body slots must preserve postfix annotations:\n{dump}"
     );
     assert!(
-        dump.matches("CanonicalName role=Hole name=B").count() >= 1,
-        "nested callable must extend the inherited Raw hole environment:\n{dump}"
+        dump.matches("Name A").count() >= 5,
+        "Raw AST must preserve annotation spellings without preclassifying them as types:\n{dump}"
     );
 }
 
