@@ -184,7 +184,10 @@ Resolved future-design decisions:
   valid complete internal view. This projection consumes the resolved internal
   `PolicyPair` after declaration-side P1 application. Direct `export + mut`
   roots are rejected; mut-only overload members of an exported symbol remain
-  in `Σ_full` and are omitted from `Σ_export`.
+  in `Σ_full` and are omitted from `Σ_export`. `Pv = absent` is structurally
+  empty on the value side: both value stages and value mutability are empty.
+  P1 elaboration, P2 normalization, and resolved export projection reject flat
+  compatibility carriers that attach either subdimension to absent Pv.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
   unpack. Raw `...(a, b)` is preserved but rejected after P normalization
@@ -239,16 +242,17 @@ Implemented substrate after this correction:
   and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
-  flow projection, Wpre/export closure, candidate-level
-  `ResolvedCandidatePolicy { pair: PolicyPair }` to
+  flow projection, Wpre/export-retention closure, candidate-level
+  `ResolvedCandidatePolicy { pair: PolicyPair, provenance }` to
   `ExportCandidateView { identity, internal_candidate, external_policy:
   PolicyPair }` transformation, and phase/const-mut product-order test
   substrate. The direct declaration `external_projection` remains a
   root-local `P1Projection` preview. External admission requires both
-  symbol-level export-closure membership and public path reachability; among
-  an admitted symbol's resolved candidates, mut-only entries remain in
-  `Σ_full` and are omitted from `Σ_export`. Namespace-graph installation
-  supplies the persistent admission facts.
+  symbol-level export-retention-closure membership and public path
+  reachability; among an admitted symbol's resolved candidates, mut-only
+  entries remain in `Σ_full` and are omitted from `Σ_export`. Namespace-graph
+  installation supplies the persistent admission facts. Retention membership
+  is not itself export status; `Σ_export` is the external candidate set.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -298,8 +302,9 @@ substrate PR):
   }
   ```
 
-  That layer must distinguish at least `Unresolved`, `NotInExportClosure`,
-  `PrivatePath`, and `NoConstExportableCandidate`.
+  That layer must distinguish at least `Unresolved`,
+  `NotInExportRetentionClosure`, `PrivatePath`, and
+  `NoConstExportableCandidate`.
 
 - The restricted v0.8 overload selector still reports
   `UnsupportedExternalVisibility`. The implemented scope is the export-view

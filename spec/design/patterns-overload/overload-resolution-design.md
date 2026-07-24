@@ -221,7 +221,7 @@ Visible(C, External)
 
 - **Internal** lookup: all children of the current namespace are candidates.
   `export` is irrelevant.
-- **External** lookup: the path must be in the export closure and every path
+- **External** lookup: the path must be in the export-retention closure and every path
   segment must pass ordinary public/private reachability. Export-root and
   visibility are independent dimensions.
 

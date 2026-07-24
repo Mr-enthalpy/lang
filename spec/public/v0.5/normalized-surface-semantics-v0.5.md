@@ -824,14 +824,16 @@ view, while internal explicit navigation searches the complete namespace view.
 Declaration-side `P1Projection` first applies to actual RHS/result entries and
 produces a resolved internal `PolicyPair`. Only that complete pair may become
 an external candidate policy: its value component is const-projected and its
-associated Pattern component is preserved. Export-closure membership admits
-only the export-graph dimension; external exposure additionally requires every
-path component to be publicly reachable. A private child and public
-descendants behind it therefore remain internal even inside the export closure. Among
-admitted symbols, mut-only overload candidates remain in the complete internal
-set and are omitted from the external overload set. Pure `absent:Pp`
-candidates enter unchanged. A direct source `export + mut` root remains an
-invalid declaration.
+associated Pattern component is preserved. Export-retention-closure membership
+admits only the graph-retention dimension; external exposure additionally
+requires every path component to be publicly reachable. A private child and
+public descendants behind it therefore remain internal even inside the
+retention closure. Among admitted symbols, mut-only overload candidates remain
+in the complete internal set and are omitted from the external overload set.
+Pure `absent:Pp` candidates enter unchanged, subject to the structural
+invariant that absent Pv has neither value stages nor value mutability. Thus
+`const + S : compile`, `mut + S : compile`, and their `export` forms are
+invalid. A direct source `export + mut` root remains an invalid declaration.
 
 Value-bearing export views are therefore const-projected, so dependencies reached with
 external authority—including ordinary external call targets—normally satisfy

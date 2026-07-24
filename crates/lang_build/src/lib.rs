@@ -176,7 +176,7 @@ pub use policy_overload::{
     PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection,
 };
 pub use policy_pair::{
-    compute_export_closure, compute_wpre, derive_function_object_p1,
+    compute_export_retention_closure, compute_wpre, derive_function_object_p1,
     elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
     elaborate_namespace_declaration_policy, externally_visible, function_object_declaration_policy,
     normalize_p2_policy, project_export_overload_sets, project_export_root_preview, project_p1,

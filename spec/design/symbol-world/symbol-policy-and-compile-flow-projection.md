@@ -278,6 +278,20 @@ complete internal declaration view. If the exported symbol has a value facet,
 that external view must have a non-empty `const` projection. A pure
 `absent:Pp` type/Pattern symbol has no value-mutability obligation.
 
+Absence removes the complete value subspace rather than merely selecting a
+presence tag:
+
+```text
+Pv = absent
+  => value stages = ∅
+  && value mutability = ∅
+```
+
+Consequently `const + S : compile`, `mut + S : compile`, and their `export`
+forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
+compatibility substrate rather than the final sum type, so P1 elaboration, P2
+normalization, and resolved export projection each validate this invariant.
+
 ## 4. P2 normalization
 
 P2 is the result pair of a call or expression:
@@ -519,6 +533,8 @@ view:
 
 ```text
 if Pv = absent:
+  require value stages = ∅
+  require value mutability = ∅
   ExternalView(s) = absent:Pp
 
 if Pv is present/optional:
@@ -539,7 +555,7 @@ be an export root; its body declarations may not.
 For export root `s`:
 
 ```text
-ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
+ExportRetentionClosure(s) = PathAncestors(s) ∪ Subtree(s)
 ```
 
 All ancestors needed to reach the root and its entire subtree enter the export
@@ -553,7 +569,7 @@ declaration_projection: P1Projection
 
 RHS/result entries
   -> ApplyDeclarationProjection
-  -> ResolvedCandidatePolicy { pair: PolicyPair }
+  -> ResolvedCandidatePolicy { pair: PolicyPair, provenance }
 ```
 
 Only the resolved pair can be projected into the external interface.
@@ -572,20 +588,25 @@ ExportCandidateView {
 }
 
 ExportAdmission {
-  in_export_closure,
+  in_export_retention_closure,
   publicly_reachable
 }
 
-if admission.in_export_closure && admission.publicly_reachable:
+if admission.in_export_retention_closure && admission.publicly_reachable:
   internal_policy := ResolveCandidatePolicy(candidate)
   external_policy := Project_const(internal_policy.Pv):internal_policy.Pp
 ```
 
-Export-closure membership and public path reachability are separate
+Export-retention-closure membership and public path reachability are separate
 symbol/name-level facts; both are required before a symbol contributes to
 `Σ_export`. In particular, a private child in an exported subtree and every
 descendant reached through that private path remain absent externally even
-when those symbols belong to `ExportClosure`.
+when those symbols belong to `ExportRetentionClosure`.
+
+The retention name is deliberate: membership means that an export root keeps
+the symbol in the graph considered for interface construction. It does not by
+itself mean that the symbol is externally exported. `Σ_export` is the external
+candidate set.
 
 Admission does not arbitrarily select individual overloads. Within an admitted
 symbol's complete overload set, every candidate whose resolved pair has a
@@ -608,8 +629,8 @@ The current typed set carrier omits a name when its external candidate subset
 is empty. That is sufficient to define `Σ_export`, but not to diagnose why no
 external candidate exists. Before end-to-end external resolver integration, a
 symbol-level diagnostic carrier must preserve admission facts and distinguish
-an unresolved name, a name outside the export closure, a private path, and an
-admitted symbol with no const-projectable candidate.
+an unresolved name, a name outside the export-retention closure, a private
+path, and an admitted symbol with no const-projectable candidate.
 
 ### 9.3 Public/private
 
@@ -623,8 +644,8 @@ ExternallyVisible(path)
   = Exported(path) && PubliclyReachable(path)
 ```
 
-Export closure may retain private dependencies without installing them in
-`Σ_export`.
+The export-retention closure may retain private dependencies without
+installing them in `Σ_export`.
 
 ## 10. Wpre and seal world
 
@@ -771,7 +792,8 @@ candidate, and future lifetime rules may not change that result.
 The typed implementation model contains dedicated policy AST nodes,
 `PolicyPair`, typed dimensions, three distinct P1 elaborators, true slice
 restriction, three `Phase` values, phase exposure, mechanical flow projection,
-Wpre closure, export closure, and phase-aware partial-order selection.
+Wpre closure, export-retention closure, and phase-aware partial-order
+selection.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
 transport. They cannot represent `||` structure, Pattern association of a

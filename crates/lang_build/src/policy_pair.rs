@@ -130,7 +130,9 @@ pub enum ValuePresence {
 pub struct ValueComponentPolicy {
     pub stages: StageSet,
     /// An empty domain is the unconstrained `const || mut` domain. A
-    /// singleton is an explicit restriction to that mutability view.
+    /// singleton is an explicit restriction to that mutability view. This
+    /// interpretation applies only when `presence` is not `Absent`; absent Pv
+    /// must carry neither stages nor mutability.
     pub mutability: BTreeSet<ValueMutability>,
     pub presence: ValuePresence,
 }
@@ -180,8 +182,8 @@ pub struct NamespaceDeclarationPolicy {
     /// Root-local external projection derived when this declaration directly
     /// writes `export`. This is an early validation/preview only:
     /// `None` does not prove that the declaration is absent from the eventual
-    /// export view, because `ExportClosure(root)` may admit ancestors and
-    /// descendants. Namespace graph integration must combine closure
+    /// export view, because `ExportRetentionClosure(root)` may admit ancestors
+    /// and descendants. Namespace graph integration must combine retention
     /// membership with public path reachability before projecting candidates
     /// through `project_export_overload_sets`.
     pub external_projection: Option<P1Projection>,
@@ -367,6 +369,7 @@ pub struct ExportCandidateView<I, C> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedCandidatePolicy {
     pub pair: PolicyPair,
+    pub provenance: Provenance,
 }
 
 /// Namespace-level facts required before a symbol may contribute candidate
@@ -376,13 +379,13 @@ pub struct ResolvedCandidatePolicy {
 /// externally navigated path must also pass public/private reachability.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExportAdmission {
-    pub in_export_closure: bool,
+    pub in_export_retention_closure: bool,
     pub publicly_reachable: bool,
 }
 
 impl ExportAdmission {
     pub fn is_externally_exposed(self) -> bool {
-        self.in_export_closure && self.publicly_reachable
+        self.in_export_retention_closure && self.publicly_reachable
     }
 }
 
@@ -436,17 +439,18 @@ impl<N: Ord, I, C> NamespaceOverloadSets<N, I, C> {
 
 /// Project external overload views from the complete namespace sets.
 ///
-/// `ExportAdmission` combines export-closure membership with public path
-/// reachability. Only externally exposed symbols are considered. Candidate
-/// policy eligibility is then a separate operation over each resolved internal
-/// `PolicyPair`: candidates without a const value slice remain in `full` but
-/// are omitted from `exported`. Direct source declarations that explicitly
-/// write `export + mut` are rejected earlier by `project_export_root_preview`.
+/// `ExportAdmission` combines export-retention-closure membership with public
+/// path reachability. Only externally exposed symbols are considered.
+/// Candidate policy eligibility is then a separate operation over each
+/// resolved internal `PolicyPair`: candidates without a const value slice
+/// remain in `full` but are omitted from `exported`. Direct source declarations
+/// that explicitly write `export + mut` are rejected earlier by
+/// `project_export_root_preview`.
 pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
     full: BTreeMap<N, Vec<C>>,
     mut external_admission: impl FnMut(&N) -> ExportAdmission,
     mut resolve_candidate: impl FnMut(&C) -> (I, ResolvedCandidatePolicy),
-) -> NamespaceOverloadSets<N, I, C> {
+) -> Result<NamespaceOverloadSets<N, I, C>, Diagnostic> {
     let mut exported = BTreeMap::new();
     for (name, candidates) in &full {
         if !external_admission(name).is_externally_exposed() {
@@ -455,7 +459,7 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
         let mut projected = Vec::new();
         for candidate in candidates {
             let (identity, internal_policy) = resolve_candidate(candidate);
-            let Some(external_policy) = project_resolved_export_view(&internal_policy) else {
+            let Some(external_policy) = project_resolved_export_view(&internal_policy)? else {
                 continue;
             };
             projected.push(ExportCandidateView {
@@ -468,7 +472,7 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
             exported.insert(name.clone(), projected);
         }
     }
-    NamespaceOverloadSets { full, exported }
+    Ok(NamespaceOverloadSets { full, exported })
 }
 
 /// Derive the externally readable pair from an already resolved internal
@@ -479,24 +483,30 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
 /// value-bearing candidate without a const slice is not externally eligible.
 pub fn project_resolved_export_view(
     internal_policy: &ResolvedCandidatePolicy,
-) -> Option<PolicyPair> {
+) -> Result<Option<PolicyPair>, Diagnostic> {
     let mut projected = internal_policy.pair.clone();
+    validate_value_component_invariant(
+        &projected.value,
+        "resolved export candidate",
+        internal_policy.provenance.clone(),
+    )?;
     if projected.value.presence == ValuePresence::Absent {
-        return Some(projected);
+        return Ok(Some(projected));
     }
     if !projected.value.mutability.is_empty()
         && !projected.value.mutability.contains(&ValueMutability::Const)
     {
-        return None;
+        return Ok(None);
     }
     projected.value.mutability = BTreeSet::from([ValueMutability::Const]);
-    Some(projected)
+    Ok(Some(projected))
 }
 
 /// Compute `PathAncestors(root) ∪ Subtree(root)` for every export root.
-/// Descendants cannot opt out, while siblings are included only when they are
-/// themselves an ancestor/descendant of another root.
-pub fn compute_export_closure<I: Clone + Ord>(
+/// This is a retention/admission-input closure, not the externally exported
+/// symbol set. Descendants cannot opt out, while siblings are included only
+/// when they are themselves an ancestor/descendant of another root.
+pub fn compute_export_retention_closure<I: Clone + Ord>(
     nodes: &BTreeMap<I, NamespaceExportNode<I>>,
     export_roots: impl IntoIterator<Item = I>,
 ) -> BTreeSet<I> {
@@ -544,11 +554,11 @@ pub fn publicly_reachable<I: Ord>(
 
 pub fn externally_visible<I: Ord>(
     symbol: &I,
-    export_closure: &BTreeSet<I>,
+    export_retention_closure: &BTreeSet<I>,
     nodes: &BTreeMap<I, NamespaceExportNode<I>>,
     path: impl IntoIterator<Item = I>,
 ) -> bool {
-    export_closure.contains(symbol) && publicly_reachable(nodes, path)
+    export_retention_closure.contains(symbol) && publicly_reachable(nodes, path)
 }
 
 #[derive(Clone, Debug, Default)]
@@ -701,6 +711,11 @@ pub fn elaborate_formal_policy_pattern(
     inherited_p2: &PolicyPair,
     provenance: Provenance,
 ) -> Result<FormalPolicyPattern, Diagnostic> {
+    validate_value_component_invariant(
+        &inherited_p2.value,
+        "formal inherited P2",
+        provenance.clone(),
+    )?;
     let Some(policy) = policy else {
         return Ok(FormalPolicyPattern {
             effective_pair: inherited_p2.clone(),
@@ -814,6 +829,7 @@ pub fn project_export_root_preview(
         }
     };
 
+    validate_value_component_invariant(value, "export-root P1", provenance.clone())?;
     if value.presence == ValuePresence::Absent {
         return Ok(projected);
     }
@@ -833,13 +849,15 @@ fn elaborate_p1_components(
 ) -> Result<(P1Projection, BTreeSet<NamespaceVisibility>, bool), Diagnostic> {
     match (&policy.value_policy, &policy.pattern_policy) {
         (NormValuePolicyPattern::Conjunction(value), None) => {
-            let atoms = parse_component(value, true, provenance)?;
+            let atoms = parse_component(value, true, provenance.clone())?;
+            let value = ValueComponentPolicy {
+                stages: atoms.stages.clone(),
+                mutability: atoms.mutability.clone(),
+                presence: atoms.presence(),
+            };
+            validate_value_component_invariant(&value, "P1 value component", provenance)?;
             let projection = P1Projection::ValueDominant {
-                value: ValueComponentPolicy {
-                    stages: atoms.stages.clone(),
-                    mutability: atoms.mutability.clone(),
-                    presence: atoms.presence(),
-                },
+                value,
             };
             Ok((projection, atoms.namespace, atoms.export_root))
         }
@@ -871,13 +889,19 @@ fn elaborate_p1_components(
             let export_root = value_atoms.export_root || pattern_atoms.export_root;
             let visibility = one_namespace(&namespace, provenance.clone())?;
             let value_presence = value_atoms.presence();
+            let value = ValueComponentPolicy {
+                stages: value_atoms.stages,
+                mutability: value_atoms.mutability,
+                presence: value_presence,
+            };
+            validate_value_component_invariant(
+                &value,
+                "P1 value component",
+                provenance.clone(),
+            )?;
             Ok((
                 P1Projection::Pair(PolicyPair {
-                    value: ValueComponentPolicy {
-                        stages: value_atoms.stages,
-                        mutability: value_atoms.mutability,
-                        presence: value_presence,
-                    },
+                    value,
                     pattern: PatternComponentPolicy {
                         stages: pattern_atoms.stages,
                     },
@@ -1011,6 +1035,7 @@ fn restrict_stages(query: &StageSet, available: &StageSet) -> Option<StageSet> {
 }
 
 fn validate_p2_pair(pair: PolicyPair, provenance: Provenance) -> Result<PolicyPair, Diagnostic> {
+    validate_value_component_invariant(&pair.value, "P2 value component", provenance.clone())?;
     if pair.pattern.stages.contains(PolicyStage::Runtime) {
         return Err(policy_error(
             "P2 Pattern component cannot contain runtime",
@@ -1037,6 +1062,24 @@ fn validate_p2_pair(pair: PolicyPair, provenance: Provenance) -> Result<PolicyPa
         ));
     }
     Ok(pair)
+}
+
+fn validate_value_component_invariant(
+    value: &ValueComponentPolicy,
+    context: &str,
+    provenance: Provenance,
+) -> Result<(), Diagnostic> {
+    if value.presence == ValuePresence::Absent
+        && (!value.stages.is_empty() || !value.mutability.is_empty())
+    {
+        return Err(policy_error(
+            format!(
+                "{context}: `Pv = absent` cannot carry value stages or const/mutability"
+            ),
+            provenance,
+        ));
+    }
+    Ok(())
 }
 
 fn reject_namespace_attributes(

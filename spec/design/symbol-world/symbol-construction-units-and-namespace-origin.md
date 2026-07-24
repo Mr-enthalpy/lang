@@ -402,14 +402,15 @@ top-level declarations. The construction transaction records an export root;
 it does not stamp a freely mutable flag on every descendant.
 
 ```text
-ExportClosure(root) = PathAncestors(root) ∪ Subtree(root)
+ExportRetentionClosure(root) = PathAncestors(root) ∪ Subtree(root)
 ```
 
 A child transaction cannot turn export off inside that subtree, while sibling
 subtrees remain unaffected. `public`/`private` are independent ordinary
 visibility attributes and may vary at every parent/child boundary. The
 construction unit must preserve both facts so external traversal can require
-both export closure membership and public reachability.
+both export-retention-closure membership and public reachability. Retention
+closure membership is not itself external export status.
 
 Private semantic dependencies may enter Wpre to keep an exported interface
 interpretable without becoming externally name-visible. Construction therefore
@@ -431,11 +432,12 @@ The current typed helper now carries:
 
 ```text
 ResolvedCandidatePolicy {
-  pair: PolicyPair
+  pair: PolicyPair,
+  provenance
 }
 
 ExportAdmission {
-  in_export_closure,
+  in_export_retention_closure,
   publicly_reachable
 }
 
@@ -447,17 +449,29 @@ ExportCandidateView {
 ```
 
 Declaration-side `P1Projection` is first applied to actual RHS/result entries.
-Namespace external admission then requires both export-closure membership and
-public reachability through every path component. The export closure alone is
-not sufficient: a private child and public descendants behind it remain
-internal. This admission is symbol-level and does not act as an arbitrary
-per-candidate eligibility callback.
+Namespace external admission then requires both export-retention-closure
+membership and public reachability through every path component. The
+retention closure alone is not sufficient: a private child and public
+descendants behind it remain internal. This admission is symbol-level and does
+not act as an arbitrary per-candidate eligibility callback.
 
 For each admitted symbol, the helper derives an external `PolicyPair` from
 every resolved candidate pair that has a const value slice (or has
 `Pv = absent`). Mut-only candidates remain in the full overload set and are
 absent from the external overload set. A direct source `export + mut` root is
 rejected earlier as an invalid declaration.
+
+An absent value component is structurally empty:
+
+```text
+Pv = absent
+  => value stages = ∅
+  && value mutability = ∅
+```
+
+The projection helper reports an error when a flat compatibility carrier
+violates this invariant; it does not silently pass the malformed pair through
+the absent branch.
 
 The helper no longer returns cloned internal policies as external views.
 Full namespace-graph installation and external resolver routing remain later

@@ -1368,7 +1368,7 @@ have no external view (including value candidates with no const projection).
 It operates on each candidate's resolved `PolicyPair` after declaration-side
 `P1Projection` has been applied; it never treats `Infer` or
 `ValueDominant` as a completed external policy. Symbol admission first
-requires export-closure membership and public reachability through the full
+requires export-retention-closure membership and public reachability through the full
 path; candidate const eligibility then determines the projected subset.
 It does not build a second symbol universe. Within internal authority, export
 is irrelevant to overload resolution. Across the external boundary, the export

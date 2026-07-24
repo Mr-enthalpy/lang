@@ -1011,13 +1011,15 @@ Wseal. The export overload set preserves the same candidate identities as the
 full set, but every external candidate carries a separately const-projected
 resolved `PolicyPair` rather than a declaration-side `P1Projection` or a clone
 of its complete internal policy. External admission requires both
-export-closure membership and public reachability through the full path.
+export-retention-closure membership and public reachability through the full
+path.
 Within each admitted full overload set, mut-only candidates remain internal
 and candidates with const (or pure `Pp`) views enter the external set.
-Publicly reachable export-closure ancestors and descendants receive this
+Publicly reachable export-retention-closure ancestors and descendants receive this
 projection even when they are not export roots. World membership does not
 imply export, and export does not imply that the symbol itself was an export
-root.
+root. Retention-closure membership is graph/interface-construction input, not
+synonymous with membership in `Σ_export`.
 
 _See also: Policy Pair, Namespace (source name)._
 
@@ -1042,8 +1044,11 @@ At namespace direct top level, `export` derives an external view without
 cropping the complete internal `Pv:Pp`. A value-bearing external view is
 `Project_const(Pv):Pp` and therefore requires a non-empty const projection; a
 `mut`-only value export is invalid. A pure `absent:Pp` export has no
-value-mutability obligation. This rule belongs to namespace-declaration
-elaboration, not the generic policy parser.
+value-mutability obligation. More strongly, absent Pv has no value stages and
+no value-mutability domain at all; `const + S : compile` and
+`mut + S : compile` are invalid before namespace export is considered. This
+rule is checked by P1/P2 elaboration and resolved export projection rather than
+being inferred from export alone.
 
 _See also: PolicyBinding,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._

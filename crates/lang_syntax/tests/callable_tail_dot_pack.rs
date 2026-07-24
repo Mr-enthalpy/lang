@@ -605,6 +605,21 @@ fn explicitly_headed_structured_pack_survives_as_a_semantic_candidate() {
 }
 
 #[test]
+fn same_deduce_list_telescope_binds_later_annotation_to_earlier_hole() {
+    let output = parsed("let <A, B: A> x = value;");
+    let normalized = normalize_program(&output.program);
+    let slot = binding_slot_at(&normalized.forms[0]);
+    let [a, b] = slot.deduce.as_slice() else {
+        panic!("expected two telescope binders");
+    };
+    assert_eq!(
+        annotation_hole_target(b.annotation.as_ref().expect("B annotation")),
+        a.id,
+        "the later B annotation must target the preceding A binder"
+    );
+}
+
+#[test]
 fn nested_deduce_lists_form_a_left_to_right_telescope_with_exact_ids() {
     let output = parsed("let <A> (let <B: A> (let <C: A, D: B> x: D)) = value;");
     let normalized = normalize_program(&output.program);
@@ -716,6 +731,124 @@ fn raw_callable_deduce_syntax_keeps_postfix_binding_slot_annotations() {
         dump.matches("Name A").count() >= 5,
         "Raw AST must preserve annotation spellings without preclassifying them as types:\n{dump}"
     );
+}
+
+#[test]
+fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
+    fn raw_pattern_marks_hole(pattern: &BindingPatternAst, expected: &str) -> bool {
+        fn skeleton_marks_hole(skeleton: &CanonicalSkeletonAst, expected: &str) -> bool {
+            match skeleton {
+                CanonicalSkeletonAst::Segment { elements, .. } => elements
+                    .iter()
+                    .any(|element| skeleton_marks_hole(element, expected)),
+                CanonicalSkeletonAst::Pack { inner, .. } => {
+                    skeleton_marks_hole(inner, expected)
+                }
+                CanonicalSkeletonAst::ProductExtract { elements, .. } => {
+                    elements.iter().any(|element| match element {
+                        lang_syntax::CanonicalProductElementAst::Skeleton(skeleton) => {
+                            skeleton_marks_hole(skeleton, expected)
+                        }
+                        lang_syntax::CanonicalProductElementAst::Unit { .. } => false,
+                    })
+                }
+                CanonicalSkeletonAst::Name { name, role, .. } => {
+                    name.text == expected && *role == lang_syntax::CanonicalNameRole::Hole
+                }
+                CanonicalSkeletonAst::Wildcard { .. }
+                | CanonicalSkeletonAst::NavPath { .. }
+                | CanonicalSkeletonAst::Literal { .. }
+                | CanonicalSkeletonAst::Error(_) => false,
+            }
+        }
+
+        matches!(
+            pattern,
+            BindingPatternAst::Skeleton(skeleton)
+                if skeleton_marks_hole(skeleton, expected)
+        )
+    }
+
+    fn norm_pattern_targets(pattern: &NormPattern, expected: lang_syntax::HoleBinderId) -> bool {
+        match pattern {
+            NormPattern::HoleRef { target, .. } => *target == expected,
+            NormPattern::Sequence { elements, .. } => elements
+                .iter()
+                .any(|element| norm_pattern_targets(element, expected)),
+            NormPattern::Pack { inner, .. } => norm_pattern_targets(inner, expected),
+            NormPattern::Product { elements, .. } => elements.iter().any(|element| match element {
+                NormPatternElem::Pattern(pattern) => norm_pattern_targets(pattern, expected),
+                NormPatternElem::BindingSlot(slot) => {
+                    norm_pattern_targets(&slot.value_pattern, expected)
+                }
+                NormPatternElem::Unit { .. } => false,
+            }),
+            NormPattern::BindingSlot { slot, .. } => {
+                norm_pattern_targets(&slot.value_pattern, expected)
+            }
+            NormPattern::Binder { .. }
+            | NormPattern::OperatorBinder { .. }
+            | NormPattern::Unit { .. }
+            | NormPattern::AnonymousHole { .. }
+            | NormPattern::Name { .. }
+            | NormPattern::Literal { .. }
+            | NormPattern::Nav { .. }
+            | NormPattern::Skeleton { .. }
+            | NormPattern::Error(_)
+            | NormPattern::Unsupported { .. } => false,
+        }
+    }
+
+    let output = parsed("let f = <A>[let c A = source]() -> A r => { r };");
+    let [FormAst::Let(let_ast)] = output.program.forms.as_slice() else {
+        panic!("expected let declaration");
+    };
+    let initializer = let_ast.slot.initializer.as_ref().expect("initializer");
+    let ExprKind::Pipe(pipe) = &initializer.kind else {
+        panic!("expected closure expression shell");
+    };
+    let SegmentElementAst::OperatorExpr(operator) = &pipe.segments[0].elements[0] else {
+        panic!("expected closure atom");
+    };
+    let OperatorExprKind::Atom(atom) = &operator.kind else {
+        panic!("expected closure atom");
+    };
+    let lang_syntax::AtomKind::Closure(raw_closure) = &atom.kind else {
+        panic!("expected closure");
+    };
+    let raw_head = raw_closure.head.as_ref().expect("raw head");
+    let raw_captures = raw_head.captures.as_ref().expect("raw captures");
+    let [lang_syntax::CaptureItemAst::Explicit {
+        slot: raw_capture, ..
+    }] = raw_captures.items.as_slice()
+    else {
+        panic!("expected explicit raw capture");
+    };
+    assert!(raw_pattern_marks_hole(&raw_capture.pattern, "A"));
+    assert!(raw_pattern_marks_hole(
+        &raw_head.returns.as_ref().expect("raw return").slot.pattern,
+        "A"
+    ));
+
+    let normalized = normalize_program(&output.program);
+    let outer_slot = binding_slot_at(&normalized.forms[0]);
+    let NormExpr::Closure(closure) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("normalized initializer")
+    else {
+        panic!("expected normalized closure");
+    };
+    let head = closure.head.as_ref().expect("normalized head");
+    let head_a = head.deduce[0].id;
+    assert!(norm_pattern_targets(
+        &head.captures[0].slot.value_pattern,
+        head_a
+    ));
+    assert!(norm_pattern_targets(
+        &head.returns.as_ref().expect("normalized return").value_pattern,
+        head_a
+    ));
 }
 
 #[test]

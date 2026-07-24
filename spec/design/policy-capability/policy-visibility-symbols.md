@@ -103,7 +103,7 @@ domain; Wseal never enlarges it.
 Export-root and public/private are independent:
 
 ```text
-ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
+ExportRetentionClosure(s) = PathAncestors(s) ∪ Subtree(s)
 ExternallyVisible(path) = Exported(path) && PubliclyReachable(path)
 ```
 
@@ -119,6 +119,17 @@ InternalView(type export)  = absent:Pp
 ExternalView(type export)  = absent:Pp
 ```
 
+The absent value form has no hidden value subdimensions:
+
+```text
+Pv = absent
+  => value stages = ∅
+  && value mutability = ∅
+```
+
+Accordingly `const + S : compile` and `mut + S : compile` are invalid before
+export projection; adding `export` does not make either form valid.
+
 An omitted mutability domain and a written `const || mut` domain are valid when
 their const projection is non-empty. A `mut`-only value export is invalid. A
 pure type/Pattern export has no value-mutability requirement. This projection
@@ -128,7 +139,8 @@ external policy.
 
 After declaration projection has been applied to actual RHS/result entries,
 each candidate carries a resolved `PolicyPair`. External admission then
-requires both export-closure membership and public reachability through every
+requires both export-retention-closure membership and public reachability
+through every
 path component. For each admitted symbol—including non-root ancestors or
 descendants—every policy-eligible candidate is transformed into an
 identity-preserving
@@ -151,9 +163,9 @@ The typed substrate currently provides:
 - owned P1 restricted views rather than reference-only filtering;
 - explicit resolution followed by phase exposure and facet reads;
 - structural `CompleteSymbolFlow` projection;
-- Wpre and export least-closure helpers;
+- Wpre and export-retention least-closure helpers;
 - complete and externally projected namespace overload-set carriers that
-  require a typed `ExportAdmission { in_export_closure,
+  require a typed `ExportAdmission { in_export_retention_closure,
   publicly_reachable }` before projection and
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
