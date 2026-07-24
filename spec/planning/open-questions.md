@@ -191,13 +191,18 @@ Resolved future-design decisions:
   contributes one outward specificity node, and internal structure never
   becomes multiple same-level EP nodes.
 - DeduceLists elaborate as left-to-right telescopes with exact
-  alpha-normalized `HoleBinderId`-targeted references. Declarations see
-  inherited and preceding holes, not themselves or later declarations; active
-  names cannot be redeclared or shadowed. Callable head holes scope captures,
-  parameters, policy, return, clauses, body, and inherited nested callables.
-  Spans are provenance rather than semantic identity. Parser/Norm recursive
-  preservation and the identity substrate are implemented, while general
-  Pattern-directed execution remains a later consumer.
+  alpha-normalized `HoleBinderId`-targeted Pattern/policy references.
+  Declarations see inherited and preceding holes, not themselves or later
+  declarations; active source names cannot be redeclared or shadowed. A
+  BindingSlot policy precedes its local DeduceList. Generated receiver holes
+  use hygienic generated keys and do not collide with source spelling.
+  Callable head holes scope captures, parameters, policy, return, clauses,
+  body, and inherited nested callables. Spans are provenance rather than
+  semantic identity, and each ordinal is owner-local to one NormProgram.
+  Value-side names/navigation remain unresolved for a later resolved-symbol
+  pass. Parser/Norm recursive preservation and the Pattern/policy identity
+  substrate are implemented, while general Pattern-directed execution remains
+  a later consumer.
 - Extraction-style result delivery uses the declared return Pattern. Explicit
   writes address its binders separately; a bare tail or targeted return matches
   one result object as `let ResultPattern = expr`.
@@ -228,8 +233,11 @@ Implemented substrate after this correction:
   and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
-  flow projection, Wpre/export closure, and phase/const-mut product-order test
-  substrate.
+  flow projection, Wpre/export closure, candidate-level
+  `ExportCandidateView { identity, internal_candidate, external_policy }`
+  transformation, and phase/const-mut product-order test substrate. The
+  direct declaration `external_projection` remains a root-local preview;
+  namespace-graph installation supplies final export-closure membership.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -238,6 +246,8 @@ Not implemented after this correction:
 - Storing and checking canonical `Pv:Pp` on every symbol/value object.
 - Storing policy-pair views on every namespace entry and routing every build
   operation through the typed P1 projection.
+- Connecting the candidate-level export-view projector to the persistent
+  namespace graph and authority-sensitive external resolver.
 - Integrating structural compile-flow projection with the complete evaluator.
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call

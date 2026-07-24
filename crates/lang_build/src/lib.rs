@@ -182,10 +182,11 @@ pub use policy_pair::{
     normalize_p2_policy, project_export_overload_sets, project_export_view, project_p1,
     publicly_reachable, BuiltinPrivilegedSealFunction, FormalPolicyPattern, FunctionMember,
     FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView,
-    FunctionSliceStage, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
-    P1Projection, PatternComponentPolicy, Phase, PolicyPair, PolicyResultEntry, PolicyStage,
-    SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
+    FunctionSliceStage, ExportCandidateProjection, ExportCandidateView, NamespaceCandidateSetRef,
+    NamespaceDeclarationPolicy, NamespaceDeclarationPosition, NamespaceExportNode,
+    NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility, P1Projection,
+    PatternComponentPolicy, Phase, PolicyPair, PolicyResultEntry, PolicyStage, SealWorldSnapshot,
+    StageSet, ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

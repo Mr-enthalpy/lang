@@ -390,8 +390,15 @@ active hole names cannot be redeclared or shadowed
 Raw AST carries lexical structure, surface spelling, and provisional canonical
 roles. Normalized alpha conversion, not the parser and not a source span,
 allocates each `HoleBinderId`; every named `HoleRef` then targets one exact
-ordinal identity. The display spelling and span are provenance data. `_` is an
-anonymous hole and targets no declaration.
+owner-local ordinal identity. The display spelling and span are provenance
+data; IDs from distinct `NormProgram` owners are not directly comparable.
+Generated receiver holes use a hygienic generated key rather than their
+display spelling. `_` is an anonymous hole and targets no declaration.
+
+Within a BindingSlot, the leading policy is processed under inherited holes
+before the local DeduceList extends the environment for Pattern, annotation,
+and initializer. Alpha conversion binds Pattern/policy occurrences only;
+ordinary value-side names and navigation components remain unresolved.
 
 A callable head DeduceList remains active through capture clauses and
 initializers, parameters, call policy, return slot, head clauses, and the

@@ -9,8 +9,8 @@ use lang_build::{
     project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
     resolve_explicit_path, select_by_mutability_product, select_policy_overload,
     BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceResolveAuthority, NamespaceVisibility, P1Projection,
+    ExportCandidateProjection, FunctionObjectDeclarationPolicy, MutabilityPattern,
+    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
     PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
     PolicyOverloadSelection, PolicyResultEntry, PolicyStage, Provenance, SealWorldSnapshot,
     StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
@@ -391,59 +391,107 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     #[derive(Clone, Debug, PartialEq, Eq)]
     struct Candidate {
         identity: u32,
-        has_const_view: bool,
+        export_member: bool,
+        export_root: bool,
+        internal_policy: P1Projection,
     }
 
+    let runtime_value = |mutability: BTreeSet<ValueMutability>| P1Projection::ValueDominant {
+        value: ValueComponentPolicy {
+            stages: stages(&[PolicyStage::Runtime]),
+            mutability,
+            presence: ValuePresence::Present,
+        },
+    };
     let full = BTreeMap::from([
         (
             "f",
             vec![
                 Candidate {
                     identity: 1,
-                    has_const_view: true,
+                    export_member: true,
+                    export_root: true,
+                    internal_policy: runtime_value(BTreeSet::new()),
                 },
                 Candidate {
                     identity: 2,
-                    has_const_view: false,
+                    export_member: false,
+                    export_root: false,
+                    internal_policy: runtime_value(mutability(&[ValueMutability::Mut])),
                 },
             ],
+        ),
+        (
+            "exported_child",
+            vec![Candidate {
+                identity: 4,
+                export_member: true,
+                export_root: false,
+                internal_policy: runtime_value(mutability(&[
+                    ValueMutability::Const,
+                    ValueMutability::Mut,
+                ])),
+            }],
         ),
         (
             "private_dependency",
             vec![Candidate {
                 identity: 3,
-                has_const_view: true,
+                export_member: false,
+                export_root: false,
+                internal_policy: runtime_value(BTreeSet::new()),
             }],
         ),
     ]);
     let views = project_export_overload_sets(full, |name, candidate| {
-        *name == "f" && candidate.has_const_view
-    });
+        candidate
+            .export_member
+            .then(|| ExportCandidateProjection {
+                identity: candidate.identity,
+                internal_policy: candidate.internal_policy.clone(),
+                provenance: Provenance::new(format!("export candidate {name}")),
+            })
+    })
+    .expect("all selected export-closure candidates have a const projection");
 
     assert_eq!(
         views
-            .resolve(&"f", NamespaceResolveAuthority::Internal)
+            .resolve_internal(&"f")
             .expect("full overload set")
             .iter()
             .map(|candidate| candidate.identity)
             .collect::<Vec<_>>(),
         vec![1, 2]
     );
+    let external_f = views
+        .resolve_external(&"f")
+        .expect("export candidate view");
     assert_eq!(
-        views
-            .resolve(&"f", NamespaceResolveAuthority::External)
-            .expect("export projection")
+        external_f
             .iter()
             .map(|candidate| candidate.identity)
             .collect::<Vec<_>>(),
         vec![1]
     );
-    assert!(views
-        .resolve(&"private_dependency", NamespaceResolveAuthority::Internal)
-        .is_some());
-    assert!(views
-        .resolve(&"private_dependency", NamespaceResolveAuthority::External)
-        .is_none());
+    assert_eq!(external_f[0].internal_candidate.identity, 1);
+    assert!(matches!(
+        &external_f[0].external_policy,
+        P1Projection::ValueDominant { value }
+            if value.mutability == mutability(&[ValueMutability::Const])
+    ));
+
+    let external_child = views
+        .resolve_external(&"exported_child")
+        .expect("export-closure descendant receives an external candidate view");
+    assert!(!external_child[0].internal_candidate.export_root);
+    assert!(matches!(
+        &external_child[0].external_policy,
+        P1Projection::ValueDominant { value }
+            if value.mutability == mutability(&[ValueMutability::Const])
+    ));
+
+    assert!(views.resolve_internal(&"private_dependency").is_some());
+    assert!(views.resolve_external(&"private_dependency").is_none());
 
     let wpre = compute_wpre(
         WpreRoots {
@@ -464,10 +512,29 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         "Wpre may retain a private semantic dependency"
     );
     assert!(
-        views
-            .resolve(&"private_dependency", NamespaceResolveAuthority::External)
-            .is_none(),
+        views.resolve_external(&"private_dependency").is_none(),
         "world membership must not install an external export view"
+    );
+
+    let invalid = BTreeMap::from([(
+        "bad_export",
+        vec![Candidate {
+            identity: 5,
+            export_member: true,
+            export_root: false,
+            internal_policy: runtime_value(mutability(&[ValueMutability::Mut])),
+        }],
+    )]);
+    assert!(
+        project_export_overload_sets(invalid, |name, candidate| {
+            Some(ExportCandidateProjection {
+                identity: candidate.identity,
+                internal_policy: candidate.internal_policy.clone(),
+                provenance: Provenance::new(format!("export candidate {name}")),
+            })
+        })
+        .is_err(),
+        "every selected export-closure candidate must pass const policy projection"
     );
 }
 

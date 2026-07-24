@@ -177,8 +177,12 @@ pub struct NamespaceDeclarationPolicy {
     /// The complete namespace-internal declaration view. Export never crops
     /// this projection.
     pub projection: P1Projection,
-    /// The externally exposed projection derived from the complete internal
-    /// view. `None` means the declaration is not in the export view.
+    /// Root-local external projection derived when this declaration directly
+    /// writes `export`. This is an early validation/preview only:
+    /// `None` does not prove that the declaration is absent from the eventual
+    /// export view, because `ExportClosure(root)` may admit ancestors and
+    /// descendants. Namespace graph integration must project every admitted
+    /// candidate through `project_export_overload_sets`.
     pub external_projection: Option<P1Projection>,
     pub visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
@@ -344,13 +348,35 @@ pub struct NamespaceExportNode<I> {
     pub visibility: NamespaceVisibility,
 }
 
-/// The complete namespace overload set and its externally exposed projection.
-/// Both views retain the same candidate identities; export does not construct
-/// a second symbol universe.
+/// One externally exposed view of an existing internal candidate.
+///
+/// `identity` and `internal_candidate` preserve the candidate's symbol-world
+/// identity. `external_policy` is the const-projected namespace interface
+/// policy; external resolution must consume this field rather than the
+/// candidate's complete internal policy.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExportCandidateView<I, C> {
+    pub identity: I,
+    pub internal_candidate: C,
+    pub external_policy: P1Projection,
+}
+
+/// Input selected by namespace export-closure membership before candidate
+/// policy projection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExportCandidateProjection<I> {
+    pub identity: I,
+    pub internal_policy: P1Projection,
+    pub provenance: Provenance,
+}
+
+/// The complete namespace overload set and its externally exposed candidate
+/// views. Export views retain internal candidate identity but carry a distinct
+/// policy projection.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NamespaceOverloadSets<N, C> {
+pub struct NamespaceOverloadSets<N, I, C> {
     pub full: BTreeMap<N, Vec<C>>,
-    pub exported: BTreeMap<N, Vec<C>>,
+    pub exported: BTreeMap<N, Vec<ExportCandidateView<I, C>>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -359,34 +385,71 @@ pub enum NamespaceResolveAuthority {
     External,
 }
 
-impl<N: Ord, C> NamespaceOverloadSets<N, C> {
-    pub fn resolve(&self, name: &N, authority: NamespaceResolveAuthority) -> Option<&[C]> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NamespaceCandidateSetRef<'a, I, C> {
+    Internal(&'a [C]),
+    External(&'a [ExportCandidateView<I, C>]),
+}
+
+impl<N: Ord, I, C> NamespaceOverloadSets<N, I, C> {
+    pub fn resolve(
+        &self,
+        name: &N,
+        authority: NamespaceResolveAuthority,
+    ) -> Option<NamespaceCandidateSetRef<'_, I, C>> {
         match authority {
-            NamespaceResolveAuthority::Internal => self.full.get(name),
-            NamespaceResolveAuthority::External => self.exported.get(name),
+            NamespaceResolveAuthority::Internal => self
+                .full
+                .get(name)
+                .map(|candidates| NamespaceCandidateSetRef::Internal(candidates)),
+            NamespaceResolveAuthority::External => self
+                .exported
+                .get(name)
+                .map(|candidates| NamespaceCandidateSetRef::External(candidates)),
         }
-        .map(Vec::as_slice)
+    }
+
+    pub fn resolve_internal(&self, name: &N) -> Option<&[C]> {
+        self.full.get(name).map(Vec::as_slice)
+    }
+
+    pub fn resolve_external(&self, name: &N) -> Option<&[ExportCandidateView<I, C>]> {
+        self.exported.get(name).map(Vec::as_slice)
     }
 }
 
 /// Project external overload views from the complete namespace sets while
-/// preserving each candidate's existing identity.
-pub fn project_export_overload_sets<N: Clone + Ord, C: Clone>(
+/// preserving each candidate's existing identity and transforming every
+/// selected candidate policy through `project_export_view`.
+///
+/// The selector represents final export-closure membership, not merely the
+/// declaration's `export_root` bit. This allows ancestors and descendants
+/// admitted by `ExportClosure(root)` to receive the same candidate-level
+/// external policy projection.
+pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
     full: BTreeMap<N, Vec<C>>,
-    mut externally_visible: impl FnMut(&N, &C) -> bool,
-) -> NamespaceOverloadSets<N, C> {
-    let exported = full
-        .iter()
-        .filter_map(|(name, candidates)| {
-            let projected = candidates
-                .iter()
-                .filter(|candidate| externally_visible(name, candidate))
-                .cloned()
-                .collect::<Vec<_>>();
-            (!projected.is_empty()).then(|| (name.clone(), projected))
-        })
-        .collect();
-    NamespaceOverloadSets { full, exported }
+    mut select_export_candidate: impl FnMut(&N, &C) -> Option<ExportCandidateProjection<I>>,
+) -> Result<NamespaceOverloadSets<N, I, C>, Diagnostic> {
+    let mut exported = BTreeMap::new();
+    for (name, candidates) in &full {
+        let mut projected = Vec::new();
+        for candidate in candidates {
+            let Some(selected) = select_export_candidate(name, candidate) else {
+                continue;
+            };
+            let external_policy =
+                project_export_view(&selected.internal_policy, selected.provenance)?;
+            projected.push(ExportCandidateView {
+                identity: selected.identity,
+                internal_candidate: candidate.clone(),
+                external_policy,
+            });
+        }
+        if !projected.is_empty() {
+            exported.insert(name.clone(), projected);
+        }
+    }
+    Ok(NamespaceOverloadSets { full, exported })
 }
 
 /// Compute `PathAncestors(root) ∪ Subtree(root)` for every export root.

@@ -545,6 +545,26 @@ ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
 All ancestors needed to reach the root and its entire subtree enter the export
 graph. A child cannot close export again; an unrelated sibling is unaffected.
 
+The typed substrate represents this as a candidate transformation, not a
+candidate clone:
+
+```text
+ExportCandidateView {
+  identity,
+  internal_candidate,
+  external_policy
+}
+
+ProjectExportCandidate(candidate, ExportClosure membership)
+  = external_policy := Project_const(candidate.internal_policy)
+```
+
+Every candidate admitted by the final export closure is transformed,
+including ancestors and descendants that are not themselves export roots.
+`NamespaceDeclarationPolicy.external_projection` is only an early
+direct-root validation/preview; `None` on a non-root declaration does not mean
+that the eventual namespace export view lacks that declaration.
+
 ### 9.3 Public/private
 
 `public` and `private` are ordinary hierarchical visibility attributes. A

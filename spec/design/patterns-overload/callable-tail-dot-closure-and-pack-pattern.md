@@ -453,6 +453,23 @@ Same-list duplicate names and redeclaration of an active ancestor name are
 errors. A duplicate declaration is retained for diagnostics but does not
 shadow or extend the environment.
 
+A BindingSlot preserves source order:
+
+```text
+Policy -> let -> DeduceList -> Pattern -> Annotation -> Initializer
+```
+
+Therefore its leading policy is alpha-normalized under the inherited
+environment before the local DeduceList extends that environment. The local
+holes are visible to the following Pattern, annotation, and initializer, but
+not retroactively to the policy:
+
+```text
+NormalizePolicy(slot.policy, rho0)
+rho1 = NormalizeDeduce(slot.deduce, rho0)
+Normalize(slot.Pattern, slot.annotation, slot.initializer, rho1)
+```
+
 A callable head DeduceList scopes the entire callable:
 
 ```text
@@ -491,10 +508,26 @@ After structural normalization, an alpha-normalization pass allocates local
 lexical ordinals and rewrites every scoped Pattern/policy occurrence to an
 exact `HoleBinderId`. Source spans remain provenance only. Alpha-equivalent
 sources such as `<A, B: A>` and `<X, Y: X>` therefore have the same binder/ref
-structure regardless of spelling or byte offset. A later build-world identity
-may combine a stable `SourceUnitId × BinderPath`; generated binders may use an
+graph structure regardless of spelling or byte offset. A `HoleBinderId`
+ordinal is meaningful only with its owning `NormProgram`; IDs from distinct
+programs are not compared directly. A later build-world identity may combine
+a stable `SourceUnitId × BinderPath`; generated binders may use an
 expansion-instance identity. Neither model treats a source span as semantic
 identity.
+
+Compiler-generated receiver holes do not enter the source-name redeclaration
+table. Before alpha conversion, a generated declaration and its Pattern/policy
+references share a generated-syntax-local hygienic key; display spelling such
+as `T` is diagnostic provenance only. Thus a generated `.name`, `..name`, or
+prefix-negative helper inside a user `<T>` scope receives a fresh binder and
+cannot capture or redeclare the user's `T`.
+
+This Norm pass does not alpha-bind ordinary value-side `NormExpr::Name` or
+ungrouped `NormNavComponent::Name`. Callable-wide scope means that the hole
+environment reaches the whole callable, while exact binding is currently
+performed only for Pattern/policy occurrences. Value-side names, including
+the generated `T` component in `field::T`, remain unresolved input to the
+future resolved-symbol pass.
 
 The anonymous `_` placeholder has no named binder identity.
 
@@ -784,8 +817,9 @@ Implemented substrate:
 - typed ordered/unordered operand-admissibility substrate, with stable-top-mode
   discovery left to Pattern-head resolution;
 - callable-wide Deduce scope construction plus left-to-right telescope
-  alpha-normalization, exact ordinal `HoleBinderId` references, and
-  duplicate-without-shadow validation across nested let-shaped slots and
+  alpha-normalization, owner-local `HoleBinderId` Pattern/policy references,
+  generated receiver hygiene, BindingSlot policy-before-local-Deduce order,
+  and duplicate-without-shadow validation across nested let-shaped slots and
   nested callables;
 - named strategy metadata carried by selected restricted candidates only after
   applicability.
@@ -801,6 +835,8 @@ Not yet general implementation:
 - execution of explicitly headed structured Pack operands;
 - resolved automatic-const capture discovery, capture lifetime checking, and
   representation/layout selection;
+- value-side hole/name/navigation resolution and cross-source-unit binder
+  identity;
 - full runtime overload resolution using these nodes.
 
 The restricted evaluator diagnoses selected `Defaulted` bodies it cannot yet

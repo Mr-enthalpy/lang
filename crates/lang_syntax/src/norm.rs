@@ -701,38 +701,86 @@ pub struct NormHoleDecl {
 }
 
 /// Alpha-normalized lexical identity of a DeduceList binder within one
-/// normalized program.
+/// normalized-program owner.
 ///
 /// The ordinal is allocated by lexical traversal and is intentionally
 /// independent of source spans and source spelling. Spans remain provenance,
-/// not semantic binder identity.
+/// not semantic binder identity. Equality is meaningful only inside the
+/// owning `NormProgram`; build-world identity must pair this local identity
+/// with an owner/source-unit identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HoleBinderId {
-    ordinal: u32,
+    repr: HoleBinderIdRepr,
 }
 
 impl HoleBinderId {
-    const PROVISIONAL_ORDINAL: u32 = u32::MAX;
-
-    fn provisional() -> Self {
+    fn provisional_source() -> Self {
         Self {
-            ordinal: Self::PROVISIONAL_ORDINAL,
+            repr: HoleBinderIdRepr::ProvisionalSource,
+        }
+    }
+
+    fn provisional_generated(key: GeneratedHoleKey) -> Self {
+        Self {
+            repr: HoleBinderIdRepr::ProvisionalGenerated(key),
         }
     }
 
     fn alpha(ordinal: u32) -> Self {
-        Self { ordinal }
+        Self {
+            repr: HoleBinderIdRepr::LocalOrdinal(ordinal),
+        }
     }
 
-    pub fn local_ordinal(self) -> u32 {
-        self.ordinal
+    fn generated_key(self) -> Option<GeneratedHoleKey> {
+        match self.repr {
+            HoleBinderIdRepr::ProvisionalGenerated(key) => Some(key),
+            HoleBinderIdRepr::LocalOrdinal(_) | HoleBinderIdRepr::ProvisionalSource => None,
+        }
     }
+
+    /// Return the owner-scoped ordinal assigned by alpha normalization.
+    ///
+    /// This is not a cross-program or cross-source-unit identity.
+    pub fn local_ordinal(self) -> u32 {
+        match self.repr {
+            HoleBinderIdRepr::LocalOrdinal(ordinal) => ordinal,
+            HoleBinderIdRepr::ProvisionalSource
+            | HoleBinderIdRepr::ProvisionalGenerated(_) => {
+                panic!("provisional hole identity has no local alpha ordinal")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum HoleBinderIdRepr {
+    LocalOrdinal(u32),
+    ProvisionalSource,
+    ProvisionalGenerated(GeneratedHoleKey),
+}
+
+/// Hygienic, generated-syntax-local key used before alpha normalization.
+///
+/// The key is interpreted inside the generated callable scope. It is never
+/// looked up through source spelling, so a generated display name such as `T`
+/// cannot collide with a user-written hole of the same spelling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GeneratedHoleKey {
+    pub rule: NormRule,
+    pub local_ordinal: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct VisibleHole {
     id: HoleBinderId,
-    name: String,
+    key: VisibleHoleKey,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum VisibleHoleKey {
+    SourceName(String),
+    Generated(GeneratedHoleKey),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -950,7 +998,7 @@ pub enum NormOrigin {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NormRule {
     ProductLift,
     ProductMerge,
@@ -1037,10 +1085,13 @@ impl HoleAlphaNormalizer {
         slot: &mut NormBindingSlot,
         inherited: &[VisibleHole],
     ) -> Vec<VisibleHole> {
-        let visible = self.normalize_deduce_list(&mut slot.deduce, inherited);
+        // BindingSlot source order is policy, let, DeduceList, Pattern,
+        // annotation, initializer. The leading policy may see inherited holes
+        // but never a hole declared later by this slot.
         if let Some(policy) = &mut slot.policy {
-            self.normalize_policy_spec(policy, &visible);
+            self.normalize_policy_spec(policy, inherited);
         }
+        let visible = self.normalize_deduce_list(&mut slot.deduce, inherited);
         self.normalize_pattern(&mut slot.value_pattern, &visible);
         if let Some(annotation) = &mut slot.annotation {
             self.normalize_pattern(&mut annotation.pattern, &visible);
@@ -1064,14 +1115,21 @@ impl HoleAlphaNormalizer {
                 self.normalize_pattern(&mut annotation.pattern, &visible);
             }
 
+            let provisional_key = hole.id.generated_key();
             let id = self.fresh_id();
-            let duplicate_of = find_visible_hole(&visible, &hole.name).map(|first| first.id);
+            let duplicate_of = provisional_key
+                .is_none()
+                .then(|| find_visible_source_hole(&visible, &hole.name).map(|first| first.id))
+                .flatten();
             hole.id = id;
             hole.duplicate_of = duplicate_of;
             if duplicate_of.is_none() {
                 visible.push(VisibleHole {
                     id,
-                    name: hole.name.clone(),
+                    key: provisional_key.map_or_else(
+                        || VisibleHoleKey::SourceName(hole.name.clone()),
+                        VisibleHoleKey::Generated,
+                    ),
                 });
             }
         }
@@ -1169,7 +1227,7 @@ impl HoleAlphaNormalizer {
             }
             NormPattern::Pack { inner, .. } => self.normalize_pattern(inner, holes),
             NormPattern::Name { name, origin } => {
-                if let Some(hole) = find_visible_hole(holes, name) {
+                if let Some(hole) = find_visible_source_hole(holes, name) {
                     *pattern = NormPattern::HoleRef {
                         target: hole.id,
                         name: name.clone(),
@@ -1182,8 +1240,10 @@ impl HoleAlphaNormalizer {
                 name,
                 origin,
             } => {
-                if let Some(hole) = find_visible_hole(holes, name) {
+                if let Some(hole) = find_visible_hole_ref(holes, *target, name) {
                     *target = hole.id;
+                } else if (*target).generated_key().is_some() {
+                    panic!("generated hole reference has no hygienic binder in scope");
                 } else {
                     *pattern = NormPattern::Name {
                         name: name.clone(),
@@ -1230,7 +1290,7 @@ impl HoleAlphaNormalizer {
                 }
             }
             NormSkeleton::Name { name, role, origin } => {
-                if let Some(hole) = find_visible_hole(holes, name) {
+                if let Some(hole) = find_visible_source_hole(holes, name) {
                     *skeleton = NormSkeleton::HoleRef {
                         target: hole.id,
                         name: name.clone(),
@@ -1246,8 +1306,10 @@ impl HoleAlphaNormalizer {
                 name,
                 origin,
             } => {
-                if let Some(hole) = find_visible_hole(holes, name) {
+                if let Some(hole) = find_visible_hole_ref(holes, *target, name) {
                     *target = hole.id;
+                } else if (*target).generated_key().is_some() {
+                    panic!("generated skeleton hole reference has no hygienic binder in scope");
                 } else {
                     *skeleton = NormSkeleton::Name {
                         name: name.clone(),
@@ -1295,7 +1357,7 @@ impl HoleAlphaNormalizer {
             for atom in &mut choice.atoms {
                 match atom {
                     NormPolicyAtom::Name { text, origin } => {
-                        if let Some(hole) = find_visible_hole(holes, text) {
+                        if let Some(hole) = find_visible_source_hole(holes, text) {
                             *atom = NormPolicyAtom::HoleRef {
                                 target: hole.id,
                                 text: text.clone(),
@@ -1308,8 +1370,10 @@ impl HoleAlphaNormalizer {
                         text,
                         origin,
                     } => {
-                        if let Some(hole) = find_visible_hole(holes, text) {
+                        if let Some(hole) = find_visible_hole_ref(holes, *target, text) {
                             *target = hole.id;
+                        } else if (*target).generated_key().is_some() {
+                            panic!("generated policy hole reference has no hygienic binder in scope");
                         } else {
                             *atom = NormPolicyAtom::Name {
                                 text: text.clone(),
@@ -2520,8 +2584,9 @@ fn normalize_deduce_list(
 
     if let Some(deduce) = deduce {
         for binder in &deduce.binders {
-            let id = HoleBinderId::provisional();
-            let duplicate_of = find_visible_hole(&visible, &binder.name.text).map(|hole| hole.id);
+            let id = HoleBinderId::provisional_source();
+            let duplicate_of =
+                find_visible_source_hole(&visible, &binder.name.text).map(|hole| hole.id);
             let annotation = binder
                 .annotation
                 .as_ref()
@@ -2539,7 +2604,7 @@ fn normalize_deduce_list(
             if duplicate_of.is_none() {
                 visible.push(VisibleHole {
                     id,
-                    name: binder.name.text.clone(),
+                    key: VisibleHoleKey::SourceName(binder.name.text.clone()),
                 });
             }
         }
@@ -2548,8 +2613,44 @@ fn normalize_deduce_list(
     (normalized, visible)
 }
 
-fn find_visible_hole<'a>(holes: &'a [VisibleHole], name: &str) -> Option<&'a VisibleHole> {
-    holes.iter().rev().find(|hole| hole.name == name)
+fn find_visible_source_hole<'a>(
+    holes: &'a [VisibleHole],
+    name: &str,
+) -> Option<&'a VisibleHole> {
+    holes.iter().rev().find(|hole| {
+        matches!(
+            &hole.key,
+            VisibleHoleKey::SourceName(visible_name) if visible_name == name
+        )
+    })
+}
+
+fn find_visible_generated_hole(
+    holes: &[VisibleHole],
+    key: GeneratedHoleKey,
+) -> Option<&VisibleHole> {
+    holes
+        .iter()
+        .rev()
+        .find(|hole| {
+            matches!(
+                &hole.key,
+                VisibleHoleKey::Generated(visible_key) if *visible_key == key
+            )
+        })
+}
+
+fn find_visible_hole_ref<'a>(
+    holes: &'a [VisibleHole],
+    provisional_target: HoleBinderId,
+    display_name: &str,
+) -> Option<&'a VisibleHole> {
+    provisional_target
+        .generated_key()
+        .map_or_else(
+            || find_visible_source_hole(holes, display_name),
+            |key| find_visible_generated_hole(holes, key),
+        )
 }
 
 fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole]) -> NormPattern {
@@ -2623,9 +2724,9 @@ fn normalize_canonical_pattern(
             },
         },
         CanonicalSkeletonAst::Name { name, .. }
-            if find_visible_hole(holes, &name.text).is_some() =>
+            if find_visible_source_hole(holes, &name.text).is_some() =>
         {
-            let target = find_visible_hole(holes, &name.text)
+            let target = find_visible_source_hole(holes, &name.text)
                 .expect("guard proved visible hole")
                 .id;
             NormPattern::HoleRef {
@@ -2651,7 +2752,7 @@ fn normalize_canonical_pack_operand(
 ) -> NormPattern {
     match skeleton {
         CanonicalSkeletonAst::Name { name, .. }
-            if find_visible_hole(holes, &name.text).is_none() =>
+            if find_visible_source_hole(holes, &name.text).is_none() =>
         {
             NormPattern::Binder {
                 name: name.text.clone(),
@@ -2870,8 +2971,8 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPatte
     // PatternName/PatternNav/HoleRef labels are intentionally distinct from
     // value-side Name/Nav dumps.
     match &atom.kind {
-        AtomKind::Name(name) if find_visible_hole(holes, &name.text).is_some() => {
-            let target = find_visible_hole(holes, &name.text)
+        AtomKind::Name(name) if find_visible_source_hole(holes, &name.text).is_some() => {
+            let target = find_visible_source_hole(holes, &name.text)
                 .expect("guard proved visible hole")
                 .id;
             NormPattern::HoleRef {
@@ -3065,7 +3166,10 @@ fn generated_prefix_negative_closure(span: Span) -> NormClosure {
 }
 
 fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -> NormClosure {
-    let type_hole_id = HoleBinderId::provisional();
+    let type_hole_id = HoleBinderId::provisional_generated(GeneratedHoleKey {
+        rule,
+        local_ordinal: 0,
+    });
     NormClosure {
         placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {

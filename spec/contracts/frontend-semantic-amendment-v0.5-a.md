@@ -317,6 +317,16 @@ A callable head DeduceList scopes capture slots and initializers, parameters,
 call policy, return slot, head clauses, and the complete body. Nested callables
 inherit that environment before adding their own telescope.
 
+BindingSlot order is normative: policy is normalized in the inherited hole
+environment, then the local DeduceList extends the environment for Pattern,
+annotation, and initializer. Generated receiver holes use a hygienic
+generated-syntax key rather than source spelling, so a generated display name
+cannot redeclare or capture an active source hole.
+
+`HoleBinderId` is owner-local to one normalized program. Norm alpha conversion
+rewrites Pattern/policy occurrences; value-side `NormExpr::Name` and ordinary
+navigation-name components remain unresolved for a later resolved-symbol pass.
+
 The scope extension does not alter return BindingSlot syntax. `-> r` binds the
 returned object to the explicit symbol `r`; `-> r: A` adds the postfix
 annotation Pattern `A`, and `-> _: A` leaves the constrained result anonymous.

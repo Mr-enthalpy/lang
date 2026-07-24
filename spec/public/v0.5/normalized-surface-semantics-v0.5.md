@@ -528,6 +528,16 @@ body. Nested callables inherit that active hole environment before extending
 it with their own DeduceList. Ordinary value binders occupy a separate lexical
 environment and do not change Pattern-context hole identity.
 
+Within one BindingSlot, source order remains:
+
+```text
+Policy -> let -> DeduceList -> Pattern -> Annotation -> Initializer
+```
+
+The policy sees inherited holes only. The slot-local DeduceList then extends
+the environment for the following Pattern, annotation, and initializer; it
+does not retroactively bind a name in the leading policy.
+
 Return clauses keep ordinary let-shaped BindingSlot order:
 
 ```lang
@@ -549,7 +559,19 @@ roles. A distinct alpha-normalization step after structural normalization
 allocates fresh lexical ordinals and rewrites scoped Pattern/policy occurrences
 to exact `HoleBinderId` targets. Source spans are provenance, never semantic
 hole identity; alpha-equivalent binder/ref structures are independent of source
-spelling and byte offset.
+spelling and byte offset. The ordinal is owner-local to one `NormProgram`;
+cross-program equality has no semantic meaning.
+
+Compiler-generated receiver holes carry a hygienic generated key before alpha
+conversion. They are not entered in the source-spelling redeclaration table,
+so a generated display name `T` cannot collide with a user-written `<T>`.
+Generated Pattern/policy references follow the hygienic key to that binder.
+
+Ordinary value-side `NormExpr::Name` and ungrouped navigation-name components
+remain unresolved. Callable-wide hole scope is propagated through the whole
+callable, but this Norm pass assigns exact identities only to Pattern/policy
+occurrences. A later resolved-symbol pass owns value-side name/navigation
+identity, including generated navigation such as `field::T`.
 
 The anonymous annotation placeholder `_` is `AnonymousHole`; it is not a named
 `HoleRef` and has no `HoleBinderId`.

@@ -1811,7 +1811,12 @@ normally: `{ x; y; }` contains two body forms.
 > A BindingSlot-local DeduceList remains active through the rest of that slot,
 > including its initializer, and is restored at the slot boundary. These Raw
 > roles are provisional shape data. Post-structural alpha normalization assigns
-> exact ordinal `HoleBinderId` targets; source spans remain provenance.
+> exact owner-local ordinal `HoleBinderId` targets; source spans remain
+> provenance. The leading BindingSlot policy precedes the local DeduceList and
+> therefore sees inherited holes only. Generated receiver holes use hygienic
+> generated keys rather than source spelling. Exact Norm binding currently
+> covers Pattern/policy occurrences; ordinary value-side names/navigation
+> remain for a later resolved-symbol pass.
 
 ### 11.1 Full order
 

@@ -427,6 +427,22 @@ visibility. An export descendant or ancestor may be externally exposed without
 being the original export root, while a private dependency may belong to Wpre
 without entering `Σ_export`.
 
+The current typed helper now carries:
+
+```text
+ExportCandidateView {
+  identity,
+  internal_candidate,
+  external_policy
+}
+```
+
+The namespace export-closure selector supplies every admitted candidate,
+including non-root ancestors/descendants, and the helper derives
+`external_policy` through the const/pure-Pp export projection. It no longer
+returns cloned internal candidates as external views. Full namespace-graph
+installation and external resolver routing remain later integration work.
+
 ## 12. Current Implementation Substrate
 
 The existing build slice already has physical directory skeleton collection,

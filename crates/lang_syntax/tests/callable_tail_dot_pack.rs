@@ -2,8 +2,9 @@ use lang_syntax::{
     normalize_and_validate_patterns, normalize_program, parse, validate_normalized_patterns,
     BindingPatternAst, CanonicalSkeletonAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode,
     ExprKind, FormAst, NormAnnotation, NormBindingSlot, NormClosureBody, NormClosurePlacement,
-    NormDecl, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem, NormPolicyAtom,
-    NormRule, NormValuePolicyPattern, OperatorExprKind, SegmentElementAst, Span,
+    NormDecl, NormExpr, NormForm, NormNavComponent, NormOrigin, NormPattern, NormPatternElem,
+    NormPolicyAtom, NormProductElem, NormRule, NormValuePolicyPattern, OperatorExprKind,
+    SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -792,6 +793,47 @@ fn binding_slot_at(form: &NormForm) -> &NormBindingSlot {
     slot
 }
 
+fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_syntax::NormClosure> {
+    match expr {
+        NormExpr::Closure(closure)
+            if matches!(
+                &closure.origin,
+                NormOrigin::Generated {
+                    rule: closure_rule,
+                    ..
+                } if *closure_rule == rule
+            ) =>
+        {
+            Some(closure)
+        }
+        NormExpr::Call { source, target, .. } => source
+            .elements
+            .iter()
+            .filter_map(|element| match element {
+                NormProductElem::Expr(expr) => Some(expr),
+                NormProductElem::Unit { .. } => None,
+            })
+            .find_map(|expr| find_generated_closure(expr, rule))
+            .or_else(|| find_generated_closure(target, rule)),
+        NormExpr::Product(product) => product.elements.iter().find_map(|element| match element {
+            NormProductElem::Expr(expr) => find_generated_closure(expr, rule),
+            NormProductElem::Unit { .. } => None,
+        }),
+        NormExpr::Nav { components, .. } => components.iter().find_map(|component| match component {
+            NormNavComponent::Group { expr, .. } => find_generated_closure(expr, rule),
+            NormNavComponent::Name { .. }
+            | NormNavComponent::Operator { .. }
+            | NormNavComponent::Error(_) => None,
+        }),
+        NormExpr::Closure(_)
+        | NormExpr::Name { .. }
+        | NormExpr::Literal { .. }
+        | NormExpr::OperatorTarget { .. }
+        | NormExpr::Error(_)
+        | NormExpr::Unsupported { .. } => None,
+    }
+}
+
 #[test]
 fn callable_return_annotation_uses_the_binding_slot_suffix() {
     let output = parsed("let f = <A>() -> r: A => { r };");
@@ -838,6 +880,123 @@ fn callable_return_annotation_uses_the_binding_slot_suffix() {
             .and_then(|returns| returns.annotation.as_ref())
             .is_none(),
         "`-> A r` remains an extraction Pattern and must not be reinterpreted as a type annotation"
+    );
+}
+
+#[test]
+fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
+    let output = parsed(
+        "let f = <T>() => {
+            let dot = .name;
+            let negative = -x;
+            let member = obj..method(x);
+            dot
+        };",
+    );
+    let normalized = normalize_program(&output.program);
+    validate_normalized_patterns(&normalized)
+        .expect("generated receiver holes must not redeclare source T");
+
+    let outer_slot = binding_slot_at(&normalized.forms[0]);
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer closure initializer")
+    else {
+        panic!("expected outer closure");
+    };
+    let source_t = outer
+        .head
+        .as_ref()
+        .expect("outer closure head")
+        .deduce[0]
+        .id;
+    let body = outer.body.user_body().expect("outer body");
+
+    for (index, rule) in [
+        NormRule::DotClosureLowering,
+        NormRule::PrefixNegativeLowering,
+        NormRule::DoubleDotLowering,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let initializer = binding_slot_at(&body.forms[index])
+            .initializer
+            .as_deref()
+            .expect("generated helper initializer");
+        let generated = find_generated_closure(initializer, rule)
+            .unwrap_or_else(|| panic!("missing generated {rule:?} closure"));
+        let head = generated.head.as_ref().expect("generated closure head");
+        let generated_t = &head.deduce[0];
+        assert_eq!(generated_t.name, "T");
+        assert_eq!(generated_t.duplicate_of, None);
+        assert_ne!(
+            generated_t.id, source_t,
+            "generated display spelling T must not capture source T"
+        );
+        let NormPatternElem::BindingSlot(receiver) = &head.params[0] else {
+            panic!("expected generated receiver slot");
+        };
+        assert_eq!(
+            annotation_hole_target(
+                receiver
+                    .annotation
+                    .as_ref()
+                    .expect("generated receiver annotation")
+            ),
+            generated_t.id,
+            "generated reference must follow its hygienic key"
+        );
+    }
+}
+
+#[test]
+fn binding_slot_policy_precedes_its_local_deduce_scope() {
+    let output = parsed("Inner let <Inner> x = value;");
+    let normalized = normalize_program(&output.program);
+    let slot = binding_slot_at(&normalized.forms[0]);
+    let NormValuePolicyPattern::Conjunction(policy) = &slot
+        .policy
+        .as_ref()
+        .expect("leading slot policy")
+        .value_policy
+    else {
+        panic!("expected value policy conjunction");
+    };
+    assert!(matches!(
+        policy.choices[0].atoms.as_slice(),
+        [NormPolicyAtom::Name { text, .. }] if text == "Inner"
+    ));
+    assert_eq!(slot.deduce.len(), 1);
+
+    let output = parsed("let <Outer> (Outer let <Inner> x: Inner) = value;");
+    let normalized = normalize_program(&output.program);
+    let outer = binding_slot_at(&normalized.forms[0]);
+    let outer_id = outer.deduce[0].id;
+    let NormPattern::Product { elements, .. } = &outer.value_pattern else {
+        panic!("expected outer product extraction");
+    };
+    let [NormPatternElem::BindingSlot(inner)] = elements.as_slice() else {
+        panic!("expected nested binding slot");
+    };
+    let NormValuePolicyPattern::Conjunction(policy) = &inner
+        .policy
+        .as_ref()
+        .expect("nested leading policy")
+        .value_policy
+    else {
+        panic!("expected value policy conjunction");
+    };
+    assert!(matches!(
+        policy.choices[0].atoms.as_slice(),
+        [NormPolicyAtom::HoleRef { target, text, .. }]
+            if *target == outer_id && text == "Outer"
+    ));
+    let inner_id = inner.deduce[0].id;
+    assert_eq!(
+        annotation_hole_target(inner.annotation.as_ref().expect("inner annotation")),
+        inner_id
     );
 }
 
@@ -987,8 +1146,8 @@ fn callable_deduce_scope_rejects_nested_active_name_redeclaration() {
 }
 
 #[test]
-fn hole_identity_is_alpha_normalized_not_span_or_spelling_derived() {
-    fn closure_ids(source: &str) -> (lang_syntax::HoleBinderId, lang_syntax::HoleBinderId) {
+fn hole_identity_is_owner_local_and_alpha_graphs_ignore_spelling_and_offset() {
+    fn closure_graph(source: &str) -> (usize, bool) {
         let normalized = normalize_program(&parsed(source).program);
         let closure_slot = binding_slot_at(
             normalized
@@ -1010,16 +1169,16 @@ fn hole_identity_is_alpha_normalized_not_span_or_spelling_derived() {
         };
         let target =
             annotation_hole_target(param.annotation.as_ref().expect("parameter annotation"));
-        (binder, target)
+        (head.deduce.len(), binder == target)
     }
 
-    let a = closure_ids("let f = <A>(x: A) => { x };");
-    let x = closure_ids("let padding = value; let f = <X>(x: X) => { x };");
-    assert_eq!(a.0, a.1);
-    assert_eq!(x.0, x.1);
+    let a = closure_graph("let f = <A>(x: A) => { x };");
+    let x = closure_graph("let padding = value; let f = <X>(x: X) => { x };");
+    assert!(a.1);
+    assert!(x.1);
     assert_eq!(
-        a.0, x.0,
-        "alpha-equivalent callable shapes must not derive identity from spelling or byte offset"
+        a, x,
+        "compare owner-local binder/reference graph shape, never bare IDs across NormPrograms"
     );
 }
 
