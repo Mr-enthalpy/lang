@@ -517,8 +517,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         .resolve_external(&"exported_type")
         .expect("pure Pattern/type candidate remains externally visible");
     assert_eq!(
-        external_type[0].external_policy,
-        external_type[0].internal_candidate.internal_policy,
+        external_type[0].external_policy, external_type[0].internal_candidate.internal_policy,
         "Pv=absent has no value-mutability projection obligation"
     );
 

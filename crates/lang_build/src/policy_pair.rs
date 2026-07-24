@@ -467,10 +467,7 @@ pub fn project_resolved_export_view(
         return Some(projected);
     }
     if !projected.value.mutability.is_empty()
-        && !projected
-            .value
-            .mutability
-            .contains(&ValueMutability::Const)
+        && !projected.value.mutability.contains(&ValueMutability::Const)
     {
         return None;
     }
