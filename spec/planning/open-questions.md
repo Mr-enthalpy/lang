@@ -76,6 +76,12 @@ track:
 - Type values can be equal even when their binding symbols differ.
 - `struct` meta generation creates a fresh type value; ordinary `let` binding
   to an existing type value does not.
+- A let-shaped declaration consumed inside `struct` contributes ordinary Val2
+  material to the current Pattern owner. It is neither a structural member nor
+  restricted to `Pv=absent`; callable values are admitted.
+- `let ()` is the special current-owner call-entry contribution. It creates
+  only that owner's `()` entry and does not synthesize entries for `ref` or
+  `share` child owners.
 
 Still open after this correction:
 
@@ -99,6 +105,13 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
+- Final surface mechanism, if any, for requesting coordinated `()` generation
+  under `T`, `ref::T`, and `share::T`; the current rule requires separate
+  authorized contributions.
+- End-to-end syntax/integration for an externally navigated call-entry
+  injection such as `let ()::ref::T = ...`; the semantic destination and
+  ordinary type-check behavior are fixed, but the current frontend does not
+  claim this complete declaration path.
 
 ### Resolved symbol-first construction direction
 
@@ -176,13 +189,16 @@ Resolved future-design decisions:
   policy product order as well as its body-entry pair. Opposite actual
   qualifiers remain preference inputs rather than being removed by ordinary
   P1 projection.
-- Every callable has invocation-frame slot 0 for its own function object.
-  Ordinary, in-place, meta, and generated closures use the same rule: the first
-  written formal explicitly declares that self-position under any legal
+- Every callable has invocation-frame slot 0 for its caller object. Ordinary,
+  in-place, meta, and generated closures use the same positional rule: the
+  first written formal explicitly declares that self-position under any legal
   spelling, while its actual is supplied implicitly. Only later written
-  formals consume the call-site Product. A head with no written formal retains
-  an unbound semantic self-position. Generated receiver helpers therefore use
-  `[self, val, ...]`, not `[val, ...]`.
+  formals consume the call-site Product. For a standalone function the caller
+  is its function object; for an associated `()` entry it is the object whose
+  type supplied the entry. `CallableOwner` and receiver type are independent.
+  A head with no written formal retains an unbound semantic self-position.
+  Generated receiver helpers therefore use `[self, val, ...]`, not
+  `[val, ...]`.
 - A function-object binding has the unrestricted empty mutability domain by
   default (`const || mut`); only its declaration may crop that internal axis.
   Export derives a separate external view: value-bearing exports expose
@@ -430,7 +446,7 @@ pattern-spaces document, and the function-object-self-and-return-capability
 design note).
 
 Early function return is modeled by calling `self..return(d)` — the current
-function object's built-in return capability. The effect uses a dual-channel
+callable frame's built-in return capability. The effect uses a dual-channel
 model: local branch produces `Done(unit)`, and the final return accumulator
 receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
 pattern-space reduction, not silent discard.

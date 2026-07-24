@@ -50,7 +50,7 @@ Only stages lift. Mutability, visibility, export-root, and value presence come
 from the object declaration.
 
 Each written formal parameter inherits P2 first. The first written formal is
-the callable-object self Pattern even though its actual is passed implicitly;
+the caller-object self Pattern even though its actual is passed implicitly;
 later formals consume the explicit call-site Product. An omitted qualifier
 keeps it unchanged; `const let` / `mut let` restrict only its mutability Pattern
 and do not alter any other component. The function object itself defaults to an empty

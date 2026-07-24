@@ -41,7 +41,7 @@ use crate::{
     pattern_space::{
         StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape,
     },
-    policy_pair::{NamespaceVisibility, PolicyPair, ValuePresence},
+    policy_pair::{NamespaceVisibility, PolicyPair},
 };
 
 pub type StructDecodeResult = Result<TypePatternExprShape, Diagnostic>;
@@ -53,92 +53,128 @@ pub struct DecodedStructPattern {
     pub provenance: Provenance,
 }
 
-/// Associated namespace declaration accepted by the struct/type construction
-/// evaluator. This is distinct from a structural member.
+/// Uninstalled Val2 contribution accepted by the struct/type construction
+/// evaluator. This is distinct from a structural member: it contributes no
+/// Val1 slot and no Pattern/extraction child.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StructAssociatedNamespaceDeclaration {
-    pub name: String,
-    pub visibility: NamespaceVisibility,
-    pub initializer: NormExpr,
-    pub provenance: Provenance,
+pub enum StructAssociatedVal2Contribution {
+    /// Ordinary heterogeneous value entry below the current Pattern owner.
+    NamedValue {
+        name: String,
+        /// `None` preserves the ordinary unannotated namespace-member view.
+        visibility: Option<NamespaceVisibility>,
+        value: NormExpr,
+        /// The already-resolved policy pair of the value being contributed.
+        /// Value-bearing entries are intentionally accepted.
+        value_policy: PolicyPair,
+        provenance: Provenance,
+    },
+    /// Special `()` leaf for the current owner. The implementation expression
+    /// must not be materialized as a standalone closure value merely because
+    /// it occupies an initializer-shaped source position.
+    CallEntry {
+        visibility: Option<NamespaceVisibility>,
+        implementation: NormExpr,
+        implementation_policy: PolicyPair,
+        provenance: Provenance,
+    },
 }
 
-/// Decode `public/private let name = expr` in struct construction context.
+/// Decode `P1 let name = expr` or `P1 let () = expr` in struct construction
+/// context.
 ///
 /// The generic parser still produces an ordinary let-shaped declaration. This
-/// context decoder enforces the narrower semantic contract: one plain binder,
-/// no extraction shape, and an initializer whose resolved value component is
-/// absent.
-pub fn decode_struct_associated_namespace_let(
+/// context decoder distinguishes a named Val2 member from the special local
+/// `()` call entry. Other Product/Sequence/Pack extraction forms remain
+/// invalid. The initializer may be an ordinary value, including a callable;
+/// its resolved pair is preserved for later namespace-delta installation.
+pub fn decode_struct_associated_val2_let(
     decl: &NormDecl,
     resolved_initializer_policy: &PolicyPair,
     provenance: Provenance,
-) -> Result<StructAssociatedNamespaceDeclaration, Diagnostic> {
+) -> Result<StructAssociatedVal2Contribution, Diagnostic> {
     let NormDecl::Let { slot, .. } = decl else {
         return Err(Diagnostic::new(
             DiagnosticSeverity::Error,
-            "struct associated namespace entry must be a let declaration",
+            "struct associated Val2 contribution must be a let declaration",
             Some(provenance),
         ));
     };
-    let NormPattern::Binder { name, .. } = &slot.value_pattern else {
-        return Err(Diagnostic::new(
-            DiagnosticSeverity::Error,
-            "struct associated namespace let requires one plain binder; extraction, Product, Sequence, and Pack patterns are not allowed",
-            Some(provenance),
-        ));
-    };
-    let visibility = struct_namespace_let_visibility(slot.policy.as_ref()).ok_or_else(|| {
-        Diagnostic::new(
-            DiagnosticSeverity::Error,
-            "struct associated namespace let requires `public` or `private` in its declaration policy",
-            Some(provenance.clone()),
-        )
-    })?;
-    if resolved_initializer_policy.value.presence != ValuePresence::Absent {
-        return Err(Diagnostic::new(
-            DiagnosticSeverity::Error,
-            "struct associated namespace let initializer must resolve to Pv = absent",
-            Some(provenance),
-        ));
+    enum Target {
+        Named(String),
+        CallEntry,
     }
+    let target = match &slot.value_pattern {
+        NormPattern::Binder { name, .. } => Target::Named(name.clone()),
+        NormPattern::Product { elements, .. } if elements.is_empty() => Target::CallEntry,
+        _ => {
+            return Err(Diagnostic::new(
+                DiagnosticSeverity::Error,
+                "struct associated Val2 let requires one plain binder or the empty `()` call-entry target; non-empty Product, Sequence, Pack, and extraction patterns are not allowed",
+                Some(provenance),
+            ));
+        }
+    };
+    let visibility = struct_namespace_let_visibility(slot.policy.as_ref(), &provenance)?;
     let Some(initializer) = slot.initializer.as_deref() else {
         return Err(Diagnostic::new(
             DiagnosticSeverity::Error,
-            "struct associated namespace let requires an initializer",
+            "struct associated Val2 let requires an initializer",
             Some(provenance),
         ));
     };
-    Ok(StructAssociatedNamespaceDeclaration {
-        name: name.clone(),
-        visibility,
-        initializer: initializer.clone(),
-        provenance,
+    Ok(match target {
+        Target::Named(name) => StructAssociatedVal2Contribution::NamedValue {
+            name,
+            visibility,
+            value: initializer.clone(),
+            value_policy: resolved_initializer_policy.clone(),
+            provenance,
+        },
+        Target::CallEntry => StructAssociatedVal2Contribution::CallEntry {
+            visibility,
+            implementation: initializer.clone(),
+            implementation_policy: resolved_initializer_policy.clone(),
+            provenance,
+        },
     })
 }
 
 fn struct_namespace_let_visibility(
     policy: Option<&lang_syntax::NormPolicySpec>,
-) -> Option<NamespaceVisibility> {
-    let policy = policy?;
+    provenance: &Provenance,
+) -> Result<Option<NamespaceVisibility>, Diagnostic> {
+    let Some(policy) = policy else {
+        return Ok(None);
+    };
     let NormValuePolicyPattern::Conjunction(conjunction) = &policy.value_policy else {
-        return None;
+        return Ok(None);
     };
     let mut visibility = None;
     for choice in &conjunction.choices {
         for atom in &choice.atoms {
-            match atom {
+            let next = match atom {
                 NormPolicyAtom::Name { text, .. } if text == "public" => {
-                    visibility = Some(NamespaceVisibility::Public)
+                    Some(NamespaceVisibility::Public)
                 }
                 NormPolicyAtom::Name { text, .. } if text == "private" => {
-                    visibility = Some(NamespaceVisibility::Private)
+                    Some(NamespaceVisibility::Private)
                 }
-                _ => {}
+                _ => None,
+            };
+            if let Some(next) = next {
+                if visibility.is_some_and(|current| current != next) {
+                    return Err(Diagnostic::new(
+                        DiagnosticSeverity::Error,
+                        "struct associated Val2 let cannot be both `public` and `private`",
+                        Some(provenance.clone()),
+                    ));
+                }
+                visibility = Some(next);
             }
         }
     }
-    visibility
+    Ok(visibility)
 }
 
 impl DecodedStructPattern {

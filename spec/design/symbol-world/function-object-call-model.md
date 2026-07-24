@@ -40,7 +40,7 @@ Product |> Expr
 2. Obtain `type(Expr)`
 3. Inspect the associated namespace of `type(Expr)`
 4. Find the call entry `()`
-5. Invoke that entry with implicit self + explicit Product
+5. Invoke that entry with implicit caller/self + explicit Product
 
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
@@ -60,7 +60,9 @@ entries without an applicable `()` call entry are discarded.
 
 For `let f = (self) => {};`, the generated anonymous function-object type `F` has the call method under `F` itself: `() :: F`. Not under `ref::F`, `share::F`, or `move::F`.
 
-A directly defined function object call owns its function object internally. Ownership is not written by the user — it is part of the generated function-object call method.
+A directly defined function object call receives that function object as its
+caller/self. Ownership is not written by the user — it is part of the generated
+function-object call method.
 
 ## 5. User-defined callable objects
 
@@ -74,6 +76,22 @@ Product |> object
 User-defined call entries are commonly installed under borrowed associated namespaces (e.g. `() :: ref::T`). The user writes `ref` explicitly; the expression's type becomes `ref::T`, and lookup follows from there. The language does not automatically jump from `T` to `ref::T`.
 
 Direct function objects are not merely sugar for user-defined `ref::T` callables. They have their call method directly under their anonymous function-object type.
+
+The implementation body installed under `()::ref::T` does not thereby acquire
+`ref::T` as its lexical owner. Its `CallableOwner` still owns local symbols,
+Pattern roots, nested callables, and code identity. `ref::T` is instead the
+receiver type of invocation slot 0.
+
+Source navigation is inner-to-outer. `ref::T` therefore means the `ref` child
+owned below `T`. A construction currently authorized to add children of `T`
+may contribute `ref::T`; the reversed spelling `T::ref` would require modifying
+the unrelated outer owner `ref` and is not equivalent.
+
+Likewise, `let ()` inside construction of `T` contributes only `()::T`.
+`()` entries below `ref::T` and `share::T` are independent injections. `move`
+does not require another call namespace because it is the type fixed point
+`T move == T`; borrowing constructs distinct `ref::T` and `share::T` object
+types.
 
 ### 5.1 First-class field-function closures
 
@@ -110,15 +128,46 @@ environment. `E..name(product)` remains separate direct member-call sugar; it
 is not removed by the more general `.name` form. No lookup or dispatch occurs
 during this normalization.
 
+### 5.2 Associated Val2 functions are ordinary function objects
+
+A struct/type construction may contribute ordinary values to the current
+Pattern owner's Val2 namespace:
+
+```lang
+let fun = (self_fun, object: T, ...args) => { ... };
+```
+
+This does not create a special method kind. Invocation of `fun` has:
+
+```text
+slot 0 = the `fun` function object
+slot 1 = object
+slot 2.. = remaining explicit arguments
+```
+
+A virtual-field-like function is the same shape with only `object` after
+`self_fun`. Direct member-call sugar such as `object..fun(args...)` and the
+first-class `.fun` form ultimately call this ordinary associated value; they do
+not turn `object` into slot 0 of `fun`.
+
+The special target `let () = implementation` is different. It installs the
+call entry of the current Pattern owner. Invoking an object of that owner type
+places the object itself in slot 0. No anonymous wrapper closure value becomes
+the caller, and the implementation carrier is not prematurely materialized as
+a standalone value.
+
 ## 6. Implicit `self`
 
 Every callable, including ordinary, in-place, meta, and compiler-generated
-closures, has an implicit first parameter position for the callable object.
+closures, has an implicit first parameter position for the caller object.
 When the source writes any formal position, the first written formal explicitly
 declares the Pattern/binder for that position. Its spelling is unrestricted;
 `self` is conventional rather than reserved.
 
-The call entry `()` always receives the callable object as implicit `self`. The user cannot manually pass this `self`.
+The selected call entry `()` always receives the value being invoked as
+implicit `self`. For a standalone function this value is the function object;
+for an associated call entry it may be a `T`, `ref::T`, `share::T`, or another
+ordinary callable object. The user cannot manually pass this slot.
 
 The source product contains only the explicit user arguments. `ProductObject`, `ArgProductShape`, and `RawArgShape` represent only the explicit product supplied by the user. They do not contain the implicit `self`.
 
@@ -129,7 +178,7 @@ that complete frame:
 
 ```text
 InvocationFrame:
-  slot 0 = selected function-object self view
+  slot 0 = selected caller-object self view
   slot 1..n = explicit argument symbol views
 
 every slot must satisfy its selected associated () entry policy pattern
@@ -167,21 +216,40 @@ Candidate preparation also carries that qualifier outward as the parameter's
 const/mut product-order position. It therefore affects selection between
 callable objects as well as the effective parameter pair seen after entry.
 
-### 6.1 Callable owner, Self, and local pattern construction
+### 6.1 Callable owner, receiver type, and local pattern construction
 
 Every callable, including an in-place closure, has a parent-linked
-`CallableOwner`. Its `Self` is the anonymous type of that owner:
+`CallableOwner`. This is lexical/code identity. It does not universally
+determine the type of slot 0:
 
 ```text
-Self(C) = AnonymousType(CallableOwner(C))
+CallableOwner(C) != ReceiverType(C) in general
+
+standalone closure default:
+  ReceiverType(C) = AnonymousType(CallableOwner(C))
+
+associated () implementation:
+  ReceiverType(C) = type carrying the selected call entry
 ```
 
-Nested paths use source navigation order: current/innermost `Self` first and
-outermost `Self` last. This spelling is not identity. The former synthetic
-`__inner_space` / `__inner_namespace` component is removed from canonical
-ownership. A local `struct` evaluated by an ordinary or `compile` callable
-uses the current callable owner as its ambient Pattern owner. A `compile`
-invocation does not manufacture a meta-style canonical-arguments owner.
+The callable-local `Self` symbol may therefore combine:
+
+```text
+namespace facet = callable-local semantic space
+type facet      = ReceiverType(C)
+value facet     = invocation slot 0
+```
+
+This does not inject callable-local declarations into the named receiver
+type's namespace. Nested owner paths use source navigation order:
+current/innermost `Self` first and outermost `Self` last. This spelling is not
+identity and does not assert that each receiver type is anonymous. The former
+synthetic `__inner_space` / `__inner_namespace` component is removed from
+canonical ownership.
+
+A local `struct` evaluated by an ordinary or `compile` callable uses the
+current callable owner as its ambient Pattern owner. A `compile` invocation
+does not manufacture a meta-style canonical-arguments owner.
 
 An ordinary canonical `meta` invocation is different: symbol construction is
 anchored by a parent-linked
@@ -351,8 +419,9 @@ Product |> Expr
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
    while retaining visible derived companion objects
-7. Determine self mode: () :: F / () :: ref::T / () :: share::T
-8. Build invocation frame: implicit self + explicit shaped product args
+7. Determine receiver binding: caller type `F` / `ref::T` / `share::T` and
+   selected associated `()`
+8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
    parameter pair compatibility, P2 result compatibility with any target
    expectation, stage legality, and require legality
@@ -396,7 +465,9 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - A directly defined function object has an anonymous function-object type.
 - The call entry `()` for a directly defined function object lives under that anonymous type.
 - User-defined callable objects may define `()` under `ref::T` / `share::T` / other associated namespaces.
-- Implicit `self` is always passed by the call mechanism.
+- `CallableOwner` and receiver type are independent semantic facts.
+- Implicit `self` is always the invoked caller object and is passed by the call
+  mechanism.
 - The self role is positional; the first written formal exposes it under an
   ordinary user-chosen binder/Pattern, and `self` is only a conventional
   spelling.
@@ -405,6 +476,10 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - `()` is not an operator.
 - Operator values cannot be namespace/navigation parents.
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
+- Struct-associated named lets contribute ordinary Val2 entries; the special
+  empty target `let ()` contributes the current owner's call entry.
+- A call-entry owner/first-formal mismatch is handled by ordinary invocation
+  type checking, not by a separate declaration validator.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
 - Empty function-object mutability means the unrestricted `const || mut`

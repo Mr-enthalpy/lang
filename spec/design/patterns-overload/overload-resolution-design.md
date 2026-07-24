@@ -334,7 +334,7 @@ matches any target-result expectation, and stage, rank/facet, concept, and
 ordinary-require hard conditions hold. The frame is:
 
 ```text
-slot 0 = implicit callable-object actual
+slot 0 = implicit caller-object actual
          matched by the first written formal, if present
 slot 1..n = explicit source arguments
             matched by written formals 1..n

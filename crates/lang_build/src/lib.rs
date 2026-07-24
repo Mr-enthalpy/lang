@@ -95,8 +95,8 @@ pub use initializer_eval::{
 };
 pub use invocation_frame::{
     CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationExecutionEnv,
-    InvocationFrame, InvocationLookupEnv, ReturnTargetShape, SelfPosition, SelfPositionSource,
-    SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
+    InvocationFrame, InvocationLookupEnv, ReceiverTypeRef, ReturnTargetShape, SelfPosition,
+    SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
@@ -210,15 +210,17 @@ pub use return_target::{
     UnresolvedReturnTargetForm,
 };
 pub use semantic_owner::{
-    AnonymousSelfTypeId, CallableOwnerPlacement, LocalCallableIdentity, LocalGenerationIdentity,
-    LocalSymbolIdentity, OwnerQualificationError, PackageId, ResolvedHoleBinderId,
-    ResolvedPatternRootId, SemanticOwnerGraph, SemanticOwnerGraphId, SemanticOwnerId,
-    SemanticOwnerKind, SemanticOwnerNode, SemanticOwnerQualification, SemanticSymbolIdentity,
+    AnonymousCallableTypeId, CallableOwnerPlacement, CallableReceiverBinding,
+    CallableReceiverBindingSource, CallableReceiverTypeId, LocalCallableIdentity,
+    LocalGenerationIdentity, LocalSymbolIdentity, OwnerQualificationError, PackageId,
+    ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerGraph, SemanticOwnerGraphId,
+    SemanticOwnerId, SemanticOwnerKind, SemanticOwnerNode, SemanticOwnerQualification,
+    SemanticSymbolIdentity,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{
-    decode_struct_associated_namespace_let, decode_struct_type_pattern_expr, DecodedStructPattern,
-    StructAssociatedNamespaceDeclaration,
+    decode_struct_associated_val2_let, decode_struct_type_pattern_expr, DecodedStructPattern,
+    StructAssociatedVal2Contribution,
 };
 pub use type_argument::{
     classify_type_arguments, classify_type_arguments_with_report, TypeArgumentClassificationReport,

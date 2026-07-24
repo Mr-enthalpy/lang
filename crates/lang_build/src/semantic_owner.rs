@@ -39,9 +39,36 @@ pub struct SemanticSymbolIdentity {
     pub local: LocalSymbolIdentity,
 }
 
+/// Anonymous type available when a callable is materialized as a standalone
+/// function object.
+///
+/// This type is derived from lexical/code ownership, but it is not the
+/// universal type of invocation-frame slot 0. An associated `()` entry may
+/// instead bind slot 0 to an independently named receiver type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct AnonymousSelfTypeId {
+pub struct AnonymousCallableTypeId {
     pub callable_owner: SemanticOwnerId,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CallableReceiverTypeId {
+    Anonymous(AnonymousCallableTypeId),
+    Named(SemanticSymbolIdentity),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CallableReceiverBindingSource {
+    StandaloneAnonymousDefault,
+    AssociatedCallEntry,
+}
+
+/// Separates the callable body's lexical/code owner from the type of the
+/// caller object injected into invocation-frame slot 0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CallableReceiverBinding {
+    pub callable_owner: SemanticOwnerId,
+    pub receiver_type: CallableReceiverTypeId,
+    pub source: CallableReceiverBindingSource,
 }
 
 /// Persistent build-side Pattern root identity.
@@ -355,22 +382,53 @@ impl SemanticOwnerGraph {
         false
     }
 
-    pub fn self_type(&self, owner: SemanticOwnerId) -> Option<AnonymousSelfTypeId> {
+    /// Anonymous receiver type used by default if this callable is
+    /// materialized as a standalone function object.
+    pub fn anonymous_callable_type(
+        &self,
+        owner: SemanticOwnerId,
+    ) -> Option<AnonymousCallableTypeId> {
         matches!(
             self.node(owner).map(|node| &node.kind),
             Some(SemanticOwnerKind::Callable { .. })
         )
-        .then_some(AnonymousSelfTypeId {
+        .then_some(AnonymousCallableTypeId {
             callable_owner: owner,
         })
     }
 
-    /// Source-order inner-to-outer `Self` path.
+    pub fn standalone_receiver_binding(
+        &self,
+        owner: SemanticOwnerId,
+    ) -> Option<CallableReceiverBinding> {
+        Some(CallableReceiverBinding {
+            callable_owner: owner,
+            receiver_type: CallableReceiverTypeId::Anonymous(self.anonymous_callable_type(owner)?),
+            source: CallableReceiverBindingSource::StandaloneAnonymousDefault,
+        })
+    }
+
+    pub fn associated_call_entry_receiver_binding(
+        &self,
+        owner: SemanticOwnerId,
+        receiver_type: SemanticSymbolIdentity,
+    ) -> Option<CallableReceiverBinding> {
+        self.anonymous_callable_type(owner)?;
+        (receiver_type.owner.graph == self.graph_id).then_some(CallableReceiverBinding {
+            callable_owner: owner,
+            receiver_type: CallableReceiverTypeId::Named(receiver_type),
+            source: CallableReceiverBindingSource::AssociatedCallEntry,
+        })
+    }
+
+    /// Source-order inner-to-outer callable-local `Self` owner path.
     ///
     /// This is diagnostic material only. Semantic equality uses owner IDs and
-    /// parent edges, never this string.
+    /// parent edges, never this string. The type facet of each `Self` is
+    /// supplied by its `CallableReceiverBinding`; it is not inferred from this
+    /// printable path.
     pub fn printable_self_path(&self, owner: SemanticOwnerId) -> Option<Vec<&'static str>> {
-        self.self_type(owner)?;
+        self.anonymous_callable_type(owner)?;
         let mut components = Vec::new();
         let mut current = Some(owner);
         while let Some(id) = current {
@@ -385,15 +443,18 @@ impl SemanticOwnerGraph {
         Some(components)
     }
 
-    /// Exact callable-owner path in source navigation order: current/innermost
-    /// first, then each enclosing callable.
-    pub fn self_owner_path(&self, owner: SemanticOwnerId) -> Option<Vec<AnonymousSelfTypeId>> {
-        self.self_type(owner)?;
+    /// Exact callable-owner path in source navigation order:
+    /// current/innermost first, then each enclosing callable.
+    pub fn callable_owner_path(&self, owner: SemanticOwnerId) -> Option<Vec<SemanticOwnerId>> {
+        self.anonymous_callable_type(owner)?;
         let mut components = Vec::new();
         let mut current = Some(owner);
         while let Some(id) = current {
-            if let Some(self_type) = self.self_type(id) {
-                components.push(self_type);
+            if matches!(
+                self.node(id).map(|node| &node.kind),
+                Some(SemanticOwnerKind::Callable { .. })
+            ) {
+                components.push(id);
             }
             current = self.parent(id);
         }

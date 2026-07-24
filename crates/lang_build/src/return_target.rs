@@ -48,7 +48,7 @@ pub struct ReturnSelfIdentity {
     /// self; the word `self` is conventional, not semantic.
     ///
     /// Future explicit-target resolution must use the lexical self slot /
-    /// function-object self identity, not text equality.
+    /// callable-frame self identity, not text equality.
     ///
     /// TODO(return-capability): do not reuse this field as the semantic self
     /// identity for return completion. It is only a diagnostic/validation

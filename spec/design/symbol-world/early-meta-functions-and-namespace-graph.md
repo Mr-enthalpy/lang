@@ -649,9 +649,22 @@ generated child namespace attached to the type node.
 What unifies the category is the **role** (companion space of a type object),
 not the origin of its members.
 
+An ordinary let-shaped declaration consumed inside `struct` construction is a
+pending contribution to this companion space:
+
+```lang
+let name = expr
+```
+
+It contributes the initializer's ordinary Val2 value entries, including
+callable values, without adding a structural Val1 slot or Pattern extraction
+member. It is not restricted to `Pv=absent`. `let () = impl` is the special
+current-owner call-entry target. These contributions remain graph-uninstalled
+until the outer struct construction is bound and its `NamespaceDelta` commits.
+
 For `struct`-generated data fields, the generated associated callable is the
 unary special case. The first-class `.name` closure is more general: after its
-callable-object self is injected, it dispatches through the first explicit
+caller/self (the field-function object) is injected, it dispatches through the first explicit
 argument type and may forward a normalized remainder product as additional
 arguments.
 

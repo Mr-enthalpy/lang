@@ -258,12 +258,16 @@ params = [generated self, val: T, ...args]
 `Generated` is not a placement variant.
 
 For every ordinary or in-place closure, the first written formal is the
-explicit Pattern for invocation-frame slot 0. Its actual callable object is
+explicit Pattern for invocation-frame slot 0. Its actual caller object is
 passed implicitly and never belongs to the explicit call-site Product. Written
 formals after it consume that Product in order. The spelling `self` is not
 reserved. A closure with no written formal still has an unbound semantic self
 slot. Prefix-negative, dot-closure, and double-dot generated helpers therefore
 write a generated self formal before their `val` receiver formal.
+
+The Raw/Normalized carrier does not decide the caller's type. Standalone
+function-object materialization and associated `()` installation share this
+positional rule but may supply different receiver types.
 
 This is still an AST/Normalized-AST carrier. Normalization does not materialize
 it as a callable value or allocate a capture environment. Only a later

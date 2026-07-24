@@ -124,7 +124,8 @@ Semantic points:
 2. The `else` branch handles value arguments only.
 
 3. `arg |> <T: type>(self, arg: T) { ... }` binds the generated helper's
-   implicitly passed callable object to its first written formal `self`, then
+   implicitly passed caller object (here the generated helper function object)
+   to its first written formal `self`, then
    binds the explicit value argument `arg` and its first-order type `T`.
 
 4. `(T: has_pass)? |> if { ... }` means: the guarded predicate produces a bool
@@ -205,6 +206,12 @@ borrow-of-borrow-of-borrow
 ```
 
 Once an action lands on `move`, normalization terminates.
+
+The same fixed point applies to callable lookup. Moving a caller of type `T`
+does not create `move::T`; its call entry is still resolved under `T`.
+`ref(x)` and `share(x)` are different because they first construct borrow
+objects of types `ref::T` and `share::T`, whose associated `()` entries may be
+distinct.
 
 ## 7. All pass modes lead to move
 

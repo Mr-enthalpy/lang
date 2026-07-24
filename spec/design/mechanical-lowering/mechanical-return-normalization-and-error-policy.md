@@ -118,7 +118,7 @@ Semantic points:
    - the value branch binds `val`.
 
 6. `return_owner..return(e Error)` is schematic notation for a call to the
-   enclosing function object's return capability. It is deliberately not the
+   enclosing callable frame's return capability. It is deliberately not the
    branch-local self formal.
 
 7. `helper_self` and `branch_self` are ordinary binder spellings for their
@@ -187,8 +187,8 @@ branch.
 
 ## 6. Error Carrier Branch and Return Capability
 
-The default Error behavior may be represented by the visible Error carrier branch
-calling the current function object's return capability:
+The default Error behavior may be represented by the visible Error carrier
+branch calling the current callable frame's return capability:
 
 ```lang
 r |> (branch_self, e Error) {

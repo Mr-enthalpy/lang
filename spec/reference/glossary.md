@@ -150,11 +150,42 @@ A parent-linked semantic identity domain for namespace objects, callable
 anonymous types, canonical meta-invocation instances, and generated objects.
 Semantic identity is `(SemanticOwnerId, local identity)`; source file, span, and
 printable path are provenance only. Every callable, including an in-place
-closure, has a callable owner. Its `Self` denotes that owner's anonymous type.
-Source navigation prints the current/innermost owner first and enclosing owners
-to its right.
+closure, has a callable owner. Standalone closure materialization defaults to
+an anonymous function-object type derived from that owner, but an associated
+call-entry implementation may receive a different named receiver type. Source
+navigation prints the current/innermost callable-local `Self` owner first and
+enclosing owners to its right.
 
-_See also: PatternRoot, PackageBoundary, Mount._
+_See also: CallableReceiverType, PatternRoot, PackageBoundary, Mount._
+
+---
+
+## CallableReceiverType
+
+The type of the caller object injected into invocation-frame slot 0. It is
+independent of `CallableOwner`. For a standalone function object it defaults to
+the owner-derived anonymous function-object type; for an associated `()` entry
+it is the type whose namespace supplied that entry, such as `ref::T`.
+
+The first written formal binds this object by position under any legal spelling.
+Only later formals consume the explicit call-site Product. A mismatch is an
+ordinary invocation type-check failure, not a separate `let ()` declaration
+rule.
+
+_See also: SemanticOwner, Callable Implementation Tail._
+
+---
+
+## Associated Val2 Contribution
+
+A let-shaped declaration consumed inside `struct` construction that adds
+ordinary value-facet material below the current Pattern owner without adding a
+Val1 structural slot or Pattern extraction member. Its initializer may be
+value-bearing and callable. The empty target `()` installs the current owner's
+special call entry. Contributions remain uninstalled until the outer
+construction commits its namespace delta.
+
+_See also: DefaultExtractionView, SemanticOwner._
 
 ---
 
@@ -890,7 +921,7 @@ The head may contain deduce list, capture clause, parameter clause, call-result
 policy clause, return clause, and head clauses. The tail preserves ordinary or
 named user body, compiler-defaulted implementation, or deleted implementation.
 As for every callable placement, the first written formal Pattern denotes the
-implicitly passed callable-object self slot; only later written formals consume
+implicitly passed caller-object self slot; only later written formals consume
 the explicit call-site Product.
 Plain no-`=>` block tails and `[[name]]` stay in-place; the latter is only the
 named-strategy escape that does not steal the established return
@@ -1466,7 +1497,7 @@ _See also: ReturnEvent._
 ## ImplicitNearest return target
 
 A return target indicating the return should target the nearest
-enclosing function-object self. In the parser and normalizer,
+enclosing callable-frame self. In the parser and normalizer,
 `ImplicitNearest` is an unresolved marker. The source form is
 `E return;`. A restricted post-normalization binder resolves the active frame;
 result Pattern delivery remains deferred.

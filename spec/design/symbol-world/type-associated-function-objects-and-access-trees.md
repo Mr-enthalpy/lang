@@ -25,6 +25,13 @@ field::share::T : T share -> field share
 push::T         : (T, value) -> result
 ```
 
+These signatures display only the explicit call-site Product. Every listed
+function object also receives itself in invocation slot 0. Thus an associated
+member-like function written directly as a closure has its function object as
+the first written formal, the `T` object as the second written formal, and any
+remaining arguments afterwards. There is no separate method-receiver calling
+convention.
+
 The first-class surface constructor is:
 
 ```lang
@@ -51,6 +58,26 @@ injected field-function object; `val` remains the first explicit receiver
 argument.
 `E..field(product)` remains the direct member-call sugar.
 
+An ordinary let-shaped declaration consumed by `struct` contributes its
+initializer as Val2 material under the current Pattern owner:
+
+```lang
+let virtual = (self_virtual, object: T) => { ... };
+let method = (self_method, object: T, ...args) => { ... };
+```
+
+The first is virtual-field-like and the second is member-like only by explicit
+parameter shape. Both remain ordinary function objects. By contrast:
+
+```lang
+let () = (object: T) => { ... };
+```
+
+installs the current owner's call entry, so `object` is the implicitly supplied
+slot-0 caller by position. A mismatch between the invoked object type and this
+first formal is an ordinary invocation type error, not a separate declaration
+rule.
+
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form, for example:
 
@@ -60,6 +87,11 @@ val share.field1.field2
 ```
 
 This document does not specify evaluation or lowering for those forms.
+
+Because source navigation is inner-to-outer, `ref::T` denotes the `ref` child
+under owner `T`. A construction authorized to add children of `T` can create
+that path. `T::ref` would instead place `T` below an outer `ref` owner and is
+not the same injection.
 
 Automatic `ref` / `share` argument passing constructs a borrow object and moves
 the borrow handle. Moving a borrow handle keeps the same parent/origin and does

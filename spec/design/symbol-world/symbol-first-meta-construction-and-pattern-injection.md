@@ -1533,6 +1533,46 @@ resolve source Symbol
   -> construct namespace value member
 ```
 
+This is also the expectation of an ordinary let-shaped declaration consumed
+inside `struct` construction:
+
+```lang
+let name = expr
+```
+
+It contributes only to the current Pattern owner's `Val2`/namespace value
+facet:
+
+```text
+Val1 contribution    = none
+Pattern contribution = none
+Val2 contribution    = value entries produced by expr
+```
+
+The initializer is not restricted to type/Pattern material or to `Pv=absent`.
+It may contribute any ordinary heterogeneous value entry, including a callable
+function object. The construction stores this as an uninstalled child
+contribution; it does not mutate the namespace graph during `struct`
+evaluation.
+
+The empty destination `()` is the special call-entry leaf rather than a normal
+value-member name. Inside construction of `T`, `let () = impl` contributes
+`()` below `T` only. A separate `()::ref::T` or `()::share::T` requires a
+separate authorized contribution. The body of an associated `()` entry still
+has its own `CallableOwner`, while invocation-frame slot 0 receives the object
+whose type supplied that entry.
+
+Under equal owner/construction authority, an inner contribution and a later
+inner-to-outer navigated declaration denote the same pending namespace delta:
+
+```text
+struct-local contribution under owner name1::T
+  ==
+later installation at name::name1::T
+```
+
+Neither spelling creates an alias or reroots the initializer's Pattern.
+
 The language must select the expectation from semantic context or an explicit
 rank/facet annotation. It must not guess `PatternChild` merely because the
 right side happens to carry a type or `PatternValue`. Both paths still obey the

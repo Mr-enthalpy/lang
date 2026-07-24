@@ -98,7 +98,7 @@ the compile Pattern stage as a first-class graph facet.
 
 The example's first written formal, spelled `self`, denotes callable-frame slot
 0. This is a positional rule rather than a reserved-name rule: any first
-written formal has the same self role. Its actual callable object is injected
+written formal has the same self role. Its actual caller object is injected
 by invocation after callable resolution; it is not part of the call-site
 explicit product, `ProductObject`, `ArgProductShape`, or `RawArgShape`. The
 explicit user product for the example contains only the user-supplied positions
@@ -466,7 +466,7 @@ restricted source-declared meta-overload subset and leaves the omitted layers
 explicitly deferred.
 
 The invocation frame owns self injection. The callable formal frame has slot 0
-for the function-object self-position and slots 1..n for explicit arguments.
+for the caller-object self-position and slots 1..n for explicit arguments.
 The first source-written formal explicitly declares slot 0's Pattern under any
 legal spelling; later formals align with the explicit Product positions. If no
 formal is written, slot 0 still exists without a source binder.

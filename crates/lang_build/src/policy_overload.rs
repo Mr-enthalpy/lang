@@ -28,9 +28,10 @@ pub struct MutabilityFormalFrame {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MutabilityActualFrame {
-    /// Mutability view of the selected callable object, injected implicitly as
-    /// invocation-frame slot 0.
-    pub self_value: ValueMutability,
+    /// Mutability view of the caller object injected into invocation-frame
+    /// slot 0. For a standalone function this is the function object; for an
+    /// associated `()` entry it is the object whose type supplied that entry.
+    pub caller_value: ValueMutability,
     /// Mutability views supplied by the explicit call-site Product.
     pub explicit_arguments: Vec<ValueMutability>,
 }
@@ -267,14 +268,14 @@ fn frame_arity_matches(formal: &MutabilityFormalFrame, actual: &MutabilityActual
 
 /// Compare the complete callable frame. The self-position participates in the
 /// same product partial order as every explicit argument, but it is supplied
-/// from `actual.self_value`, never from the call-site Product.
+/// from `actual.caller_value`, never from the call-site Product.
 fn compare_frames(
     better: &MutabilityFormalFrame,
     worse: &MutabilityFormalFrame,
     actual: &MutabilityActualFrame,
 ) -> Option<bool> {
     let mut strictly_better = false;
-    match compare_position(better.self_pattern, worse.self_pattern, actual.self_value) {
+    match compare_position(better.self_pattern, worse.self_pattern, actual.caller_value) {
         PositionPreference::Worse => return None,
         PositionPreference::Better => strictly_better = true,
         PositionPreference::Equal => {}

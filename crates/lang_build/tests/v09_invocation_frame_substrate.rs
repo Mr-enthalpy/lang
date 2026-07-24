@@ -3,7 +3,7 @@ use lang_build::{
     CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed, CoreMetaFunction, ExecutionEnv,
     FlattenedProductInvariant, FlattenedProductObject, InvocationCallableRef,
     InvocationExecutionEnv, InvocationFrame, InvocationLookupEnv, MetaInvocationInput,
-    ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom, Provenance,
+    ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom, Provenance, ReceiverTypeRef,
     ReturnTargetShape, SelfPosition, SelfPositionSource, SelfSlotKind, SymbolId,
 };
 
@@ -65,28 +65,37 @@ fn candidate_with_arg_product(arg_product_shape: ArgProductShape) -> PreparedCal
 
 #[test]
 fn self_slot_exists_for_zero_user_argument_callable() {
-    let frame_shape = CallableFrameShape::new_with_self_slot(
+    let frame_shape = CallableFrameShape::from_written_formals(
         0,
         ReturnTargetShape::ImplicitNearest,
-        Provenance::new("zero-user-arg callable"),
+        Provenance::new("head with no written formal"),
     );
 
     assert_eq!(frame_shape.self_slot.slot_index, 0);
+    assert_eq!(
+        frame_shape.self_slot.kind,
+        SelfSlotKind::StandaloneFunctionObject
+    );
+    assert!(!frame_shape.self_slot.has_written_pattern);
     assert_eq!(frame_shape.explicit_parameter_shape.user_parameter_count, 0);
 }
 
 #[test]
-fn callable_object_self_slot_kind_is_preserved_for_unit_callable_shape() {
-    let frame_shape = CallableFrameShape::new_with_self_slot_kind(
-        0,
-        SelfSlotKind::CallableObject,
+fn first_written_formal_is_self_and_only_later_formals_are_explicit_arguments() {
+    let frame_shape = CallableFrameShape::from_written_formals_with_self_kind(
+        3,
+        SelfSlotKind::AssociatedCallReceiver,
         ReturnTargetShape::ImplicitNearest,
-        Provenance::new("callable-object unit shape"),
+        Provenance::new("self plus two explicit parameters"),
     );
 
     assert_eq!(frame_shape.self_slot.slot_index, 0);
-    assert_eq!(frame_shape.self_slot.kind, SelfSlotKind::CallableObject);
-    assert_eq!(frame_shape.explicit_parameter_shape.user_parameter_count, 0);
+    assert_eq!(
+        frame_shape.self_slot.kind,
+        SelfSlotKind::AssociatedCallReceiver
+    );
+    assert!(frame_shape.self_slot.has_written_pattern);
+    assert_eq!(frame_shape.explicit_parameter_shape.user_parameter_count, 2);
 }
 
 #[test]
@@ -116,7 +125,7 @@ fn self_is_not_counted_in_explicit_argument_product() {
 fn declaration_context_call_entry_placeholder_uses_same_frame_model() {
     // This is a frame-substrate test only. It models the empty explicit
     // product of a declaration-context `()` call entry such as
-    // `let ()::ref::T = (self: T ref) => { ... }` without claiming that
+    // `let ()::ref::T = (object: T ref) => { ... }` without claiming that
     // source-level call-entry injection is implemented in this PR.
     let frame = InvocationFrame::new(
         InvocationCallableRef::Placeholder,
@@ -133,7 +142,31 @@ fn declaration_context_call_entry_placeholder_uses_same_frame_model() {
         frame.self_position.source,
         SelfPositionSource::PlaceholderFromCallEntry
     );
+    assert_eq!(
+        frame.self_position.receiver_type,
+        ReceiverTypeRef::UnresolvedFromCaller
+    );
     assert_eq!(frame.explicit_arg_product.arity, 0);
+}
+
+#[test]
+fn associated_call_entry_binds_slot_zero_to_the_invoked_object_type() {
+    let receiver_type = SymbolId(88);
+    let frame = InvocationFrame::new(
+        InvocationCallableRef::Placeholder,
+        SelfPosition::from_associated_call_entry(receiver_type, Provenance::new("ref::T caller")),
+        empty_arg_product_shape(),
+        InvocationLookupEnv::new(PolicyEnv::Runtime),
+        InvocationExecutionEnv::new(ExecutionEnv::Runtime),
+        Provenance::new("associated call-entry frame"),
+    )
+    .expect("valid associated call-entry frame");
+
+    assert_eq!(frame.self_position.slot_index, 0);
+    assert_eq!(
+        frame.self_position.receiver_type,
+        ReceiverTypeRef::ResolvedTypeSymbol(receiver_type)
+    );
 }
 
 #[test]
@@ -160,6 +193,7 @@ fn invocation_frame_rejects_nonzero_self_position() {
         SelfPosition {
             slot_index: 1,
             source: SelfPositionSource::PlaceholderFromCallableSymbol(SymbolId(9)),
+            receiver_type: ReceiverTypeRef::UnresolvedFromCaller,
             provenance: Provenance::new("invalid self position"),
         },
         empty_arg_product_shape(),

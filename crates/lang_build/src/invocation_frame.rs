@@ -4,16 +4,20 @@
 //! callable body entry.
 //!
 //! `ProductObject` / `ArgProductShape` describe only the explicit
-//! user-supplied call product. They do not contain function-object `self`.
+//! user-supplied call product. They do not contain caller `self`.
 //!
 //! `self` is injected by the invocation frame and occupies callable formal slot
 //! 0. Zero-user-argument callables still have a self slot.
 //! When a closure writes any formal position, the first written formal is the
 //! explicit Pattern for this slot regardless of binder spelling. Only later
 //! formals consume the explicit user product.
+//! The injected caller is commonly a standalone function object, but an
+//! associated `()` implementation receives the object on whose type that call
+//! entry was resolved. Callable lexical ownership and caller type are
+//! independent facts.
 //!
 //! Declaration-context `()` call-entry definitions, such as
-//! `let ()::ref::T = (self: T ref) => { ... }`, use the same frame model:
+//! `let ()::ref::T = (object: T ref) => { ... }`, use the same frame model:
 //! formal slot 0 is self-position and the explicit user product remains
 //! separate.
 //!
@@ -38,21 +42,24 @@ pub struct CallableFrameShape {
 }
 
 impl CallableFrameShape {
-    pub fn new_with_self_slot(
-        explicit_parameter_count: usize,
+    /// Derive the callable frame from the number of source-written formal
+    /// positions. Written position 0 exposes the implicitly supplied caller;
+    /// only the remaining positions consume explicit call-site arguments.
+    pub fn from_written_formals(
+        written_formal_count: usize,
         return_target_shape: ReturnTargetShape,
         provenance: Provenance,
     ) -> Self {
-        Self::new_with_self_slot_kind(
-            explicit_parameter_count,
-            SelfSlotKind::FunctionObject,
+        Self::from_written_formals_with_self_kind(
+            written_formal_count,
+            SelfSlotKind::StandaloneFunctionObject,
             return_target_shape,
             provenance,
         )
     }
 
-    pub fn new_with_self_slot_kind(
-        explicit_parameter_count: usize,
+    pub fn from_written_formals_with_self_kind(
+        written_formal_count: usize,
         self_slot_kind: SelfSlotKind,
         return_target_shape: ReturnTargetShape,
         provenance: Provenance,
@@ -61,10 +68,11 @@ impl CallableFrameShape {
             self_slot: SelfSlotShape {
                 slot_index: SELF_SLOT_INDEX,
                 kind: self_slot_kind,
+                has_written_pattern: written_formal_count > 0,
                 provenance: provenance.clone(),
             },
             explicit_parameter_shape: ExplicitParameterShape {
-                user_parameter_count: explicit_parameter_count,
+                user_parameter_count: written_formal_count.saturating_sub(1),
                 provenance: provenance.clone(),
             },
             return_target_shape,
@@ -77,13 +85,14 @@ impl CallableFrameShape {
 pub struct SelfSlotShape {
     pub slot_index: usize,
     pub kind: SelfSlotKind,
+    pub has_written_pattern: bool,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelfSlotKind {
-    FunctionObject,
-    CallableObject,
+    StandaloneFunctionObject,
+    AssociatedCallReceiver,
     PrimitiveCoreObject,
     Placeholder,
 }
@@ -175,6 +184,7 @@ pub enum InvocationCallableRef {
 pub struct SelfPosition {
     pub slot_index: usize,
     pub source: SelfPositionSource,
+    pub receiver_type: ReceiverTypeRef,
     pub provenance: Provenance,
 }
 
@@ -183,6 +193,7 @@ impl SelfPosition {
         Self {
             slot_index: SELF_SLOT_INDEX,
             source: SelfPositionSource::PlaceholderFromCallableSymbol(symbol_id),
+            receiver_type: ReceiverTypeRef::UnresolvedFromCaller,
             provenance,
         }
     }
@@ -191,6 +202,21 @@ impl SelfPosition {
         Self {
             slot_index: SELF_SLOT_INDEX,
             source: SelfPositionSource::PlaceholderFromCallEntry,
+            receiver_type: ReceiverTypeRef::UnresolvedFromCaller,
+            provenance,
+        }
+    }
+
+    /// Record the resolved receiver type of an associated `()` entry.
+    ///
+    /// This constructor deliberately does not compare that type with the first
+    /// written formal. The ordinary invocation/type checker owns that match;
+    /// a future call-entry-specific message may only refine its failure.
+    pub fn from_associated_call_entry(receiver_type: SymbolId, provenance: Provenance) -> Self {
+        Self {
+            slot_index: SELF_SLOT_INDEX,
+            source: SelfPositionSource::PlaceholderFromCallEntry,
+            receiver_type: ReceiverTypeRef::ResolvedTypeSymbol(receiver_type),
             provenance,
         }
     }
@@ -199,9 +225,17 @@ impl SelfPosition {
         Self {
             slot_index: SELF_SLOT_INDEX,
             source: SelfPositionSource::PrimitiveCoreObject,
+            receiver_type: ReceiverTypeRef::PrimitiveCoreType,
             provenance,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReceiverTypeRef {
+    UnresolvedFromCaller,
+    ResolvedTypeSymbol(SymbolId),
+    PrimitiveCoreType,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

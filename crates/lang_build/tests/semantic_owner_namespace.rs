@@ -1,9 +1,10 @@
 use lang_build::{
-    CallableOwnerPlacement, CanonicalFingerprint, ExtractionMemberVisibility,
-    LocalCallableIdentity, LocalGenerationIdentity, LocalSymbolIdentity, MetaInstanceKey,
-    NamespaceLookupFailure, NamespaceNameView, NamespaceSymbolEntry, NamespaceVisibility,
-    OwnerNamespaceGraph, OwnerNamespaceNodeId, OwnerQualificationError, PackageId, Provenance,
-    SemanticOwnerGraph, SemanticOwnerQualification, SemanticSymbolIdentity, SymbolId,
+    CallableOwnerPlacement, CallableReceiverBindingSource, CallableReceiverTypeId,
+    CanonicalFingerprint, ExtractionMemberVisibility, LocalCallableIdentity,
+    LocalGenerationIdentity, LocalSymbolIdentity, MetaInstanceKey, NamespaceLookupFailure,
+    NamespaceNameView, NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph,
+    OwnerNamespaceNodeId, OwnerQualificationError, PackageId, Provenance, SemanticOwnerGraph,
+    SemanticOwnerQualification, SemanticSymbolIdentity, SymbolId,
 };
 use lang_syntax::{NormDecl, NormForm};
 
@@ -39,7 +40,7 @@ fn canonical_meta_key(callee: SymbolId, argument: &str) -> MetaInstanceKey {
 }
 
 #[test]
-fn every_callable_has_parent_linked_owner_and_self_type_without_inner_namespace() {
+fn every_callable_has_parent_linked_owner_and_standalone_anonymous_type_without_inner_namespace() {
     let mut owners = SemanticOwnerGraph::new();
     let package = owners.package_root(PackageId(1), "app");
     let namespace = owners.namespace(package, "main");
@@ -67,9 +68,12 @@ fn every_callable_has_parent_linked_owner_and_self_type_without_inner_namespace(
     assert_eq!(owners.parent(in_place), Some(outer));
     assert_eq!(owners.parent(deeper), Some(in_place));
     assert_eq!(
-        owners.self_type(in_place).unwrap().callable_owner,
+        owners
+            .anonymous_callable_type(in_place)
+            .unwrap()
+            .callable_owner,
         in_place,
-        "in-place closures have their own anonymous Self type"
+        "in-place closures have an anonymous type available for standalone materialization"
     );
     assert_eq!(
         owners.printable_self_path(deeper),
@@ -77,10 +81,9 @@ fn every_callable_has_parent_linked_owner_and_self_type_without_inner_namespace(
     );
     assert_eq!(
         owners
-            .self_owner_path(deeper)
+            .callable_owner_path(deeper)
             .unwrap()
             .into_iter()
-            .map(|self_type| self_type.callable_owner)
             .collect::<Vec<_>>(),
         vec![deeper, in_place, outer],
         "source navigation prints the innermost Self first and outermost Self last"
@@ -114,6 +117,49 @@ fn every_callable_has_parent_linked_owner_and_self_type_without_inner_namespace(
         ),
         in_place,
         "the same parent/local callable key reuses one callable owner"
+    );
+}
+
+#[test]
+fn callable_owner_is_independent_from_associated_call_receiver_type() {
+    let mut owners = SemanticOwnerGraph::new();
+    let package = owners.package_root(PackageId(1), "app");
+    let namespace = owners.namespace(package, "main");
+    let callable = owners.callable(
+        namespace,
+        LocalCallableIdentity(0),
+        CallableOwnerPlacement::Ordinary,
+    );
+
+    let standalone = owners
+        .standalone_receiver_binding(callable)
+        .expect("standalone receiver binding");
+    assert_eq!(standalone.callable_owner, callable);
+    assert_eq!(
+        standalone.source,
+        CallableReceiverBindingSource::StandaloneAnonymousDefault
+    );
+    assert!(matches!(
+        standalone.receiver_type,
+        CallableReceiverTypeId::Anonymous(_)
+    ));
+
+    let ref_t = SemanticSymbolIdentity {
+        owner: namespace,
+        local: LocalSymbolIdentity(77),
+    };
+    let associated = owners
+        .associated_call_entry_receiver_binding(callable, ref_t)
+        .expect("associated call-entry receiver");
+    assert_eq!(associated.callable_owner, callable);
+    assert_eq!(
+        associated.source,
+        CallableReceiverBindingSource::AssociatedCallEntry
+    );
+    assert_eq!(
+        associated.receiver_type,
+        CallableReceiverTypeId::Named(ref_t),
+        "the same callable body owner may receive a named caller type rather than its anonymous standalone type"
     );
 }
 

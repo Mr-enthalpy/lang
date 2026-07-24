@@ -903,7 +903,7 @@ pub struct NormClosureHead {
     /// Source-order formal positions.
     ///
     /// The first written position, when present, denotes the callable
-    /// object's self-position. Invocation supplies that position implicitly;
+    /// caller's self-position. Invocation supplies that position implicitly;
     /// only the remaining positions consume the call-site Product. Consumers
     /// must use `formal_frame()` instead of independently slicing this vector.
     pub params: Vec<NormPatternElem>,
@@ -915,7 +915,7 @@ pub struct NormClosureHead {
 
 #[derive(Clone, Copy, Debug)]
 pub struct NormCallableFormalFrame<'a> {
-    /// The explicitly written Pattern for the implicitly supplied callable
+    /// The explicitly written Pattern for the implicitly supplied caller
     /// object. `None` means the source wrote no formal position; the semantic
     /// invocation frame still has an unbound self-position.
     pub written_self: Option<&'a NormPatternElem>,

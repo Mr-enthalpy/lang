@@ -668,10 +668,12 @@ Closure placement=Ordinary
 
 Formal positions are interpreted uniformly for ordinary and in-place
 closures: the first written position is the explicit Pattern/binder for the
-callable object's self-position, whose actual is supplied implicitly by the
+caller object's self-position, whose actual is supplied implicitly by the
 invocation frame. Only later positions consume the explicit call-site Product.
-The spelling `self` is conventional and may be replaced. A head with no written
-position still has a semantic self-position but no source binder for it.
+For a standalone function this caller is the function object; an associated
+call-entry may supply another receiver object. The spelling `self` is
+conventional and may be replaced. A head with no written position still has a
+semantic self-position but no source binder for it.
 
 ### Extraction skeletons and product extraction
 

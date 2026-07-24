@@ -50,7 +50,7 @@ E (T return);
   => targeted return to resolved T
 ```
 
-where `Self₀` is the current enclosing function-object self,
+where `Self₀` is the current enclosing callable-frame self,
 obtained from the active return-target context at the point
 where the return event is lowered.
 
@@ -60,17 +60,16 @@ then treat that frame as the enclosing self capability.
 
 ## 2. Return Capability Completion
 
-Future return completion is mediated by the function object's return
-capability. That capability is exposed through the function object's
-type-associated namespace as an ordinary callable capability value under the
-anonymous type of `self`, as described in
+Future return completion is mediated by the callable frame's return
+capability. That capability is exposed through the callable-local `Self` space
+as an ordinary callable capability value, as described in
 `spec/design/symbol-world/function-object-self-and-return-capability.md`.
 
 Return is therefore not a parser keyword escape hatch, not an operator, and
 not a compiler-intrinsic control action. The target-binding pass in this PR
 does not execute or invoke that return capability. It only identifies the
 active frame that future completion semantics will use to reach the
-appropriate function-object return capability.
+appropriate callable-frame return capability.
 
 The current target-binding pass records a `BoundReturnEvent` containing the
 return value expression, the unresolved target form, the resolved frame id,
@@ -195,7 +194,7 @@ completions or perform D-reduction.
 | Concept | Current (v0.9) | Future (design) |
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |
-| Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full function-object self capability |
+| Target syntax | Preserved unresolved, then bound by `ReturnTargetBinding` | Resolved to full callable-frame self capability |
 | Implicit return | Binds to nearest active `ReturnTargetFrame` | Lowered/completed through enclosing self capability |
 | Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |

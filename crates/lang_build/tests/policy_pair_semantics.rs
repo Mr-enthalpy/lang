@@ -1035,11 +1035,11 @@ fn candidate(
 }
 
 fn actual_frame(
-    self_value: ValueMutability,
+    caller_value: ValueMutability,
     explicit_arguments: Vec<ValueMutability>,
 ) -> MutabilityActualFrame {
     MutabilityActualFrame {
-        self_value,
+        caller_value,
         explicit_arguments,
     }
 }

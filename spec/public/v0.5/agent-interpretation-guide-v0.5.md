@@ -120,8 +120,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
 - Source navigation is inner-to-outer. A generated call expression used as one
   outer navigation component must be grouped in full:
   `child::(int Vec::std)`.
-- Every callable, including in-place, has a semantic owner and anonymous
-  `Self`. Independent let Patterns/callable heads create Pattern roots;
+- Every callable, including in-place, has a semantic owner and callable-local
+  `Self` space. Standalone closure materialization defaults to an owner-derived
+  anonymous receiver type; an associated `()` entry may use a named receiver
+  type instead. Independent let Patterns/callable heads create Pattern roots;
   duplicate holes fail only within one root.
 - Construction and extraction may be isomorphic; call and extraction are not.
 - `...Q` stays `NormPattern::Pack(Q)`, with one pack per normalized level and

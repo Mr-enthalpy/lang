@@ -1,11 +1,11 @@
 mod support;
 
 use lang_build::{
-    decode_struct_associated_namespace_let, decode_struct_type_pattern_expr,
-    derive_sum_pattern_space, DecodedStructPattern, DiagnosticSeverity, NamespaceVisibility,
-    PatternComponentPolicy, PolicyPair, PolicyStage, Provenance, StageSet, StructLeafTypeExprShape,
-    StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape, ValueComponentPolicy,
-    ValuePresence,
+    decode_struct_associated_val2_let, decode_struct_type_pattern_expr, derive_sum_pattern_space,
+    DecodedStructPattern, DiagnosticSeverity, NamespaceVisibility, PatternComponentPolicy,
+    PolicyPair, PolicyStage, Provenance, StageSet, StructAssociatedVal2Contribution,
+    StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape,
+    ValueComponentPolicy, ValuePresence,
 };
 use lang_syntax::{
     norm::NormNavComponent, NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem,
@@ -589,42 +589,136 @@ fn structural_member_visibility_is_part_of_the_decoded_struct_model() {
     ));
 }
 
+fn resolved_value_pair() -> PolicyPair {
+    PolicyPair {
+        value: ValueComponentPolicy {
+            stages: StageSet::from([PolicyStage::Runtime]),
+            mutability: Default::default(),
+            presence: ValuePresence::Present,
+        },
+        pattern: PatternComponentPolicy {
+            stages: StageSet::from([PolicyStage::Compile]),
+        },
+        namespace_visibility: None,
+        export_root: false,
+    }
+}
+
 #[test]
-fn struct_associated_namespace_let_is_distinct_and_requires_absent_pv() {
-    let parsed = lang_syntax::parse("private let helper = type_value;");
+fn struct_associated_let_contributes_named_val2_without_requiring_absent_pv() {
+    let parsed = lang_syntax::parse("let helper = callable_value;");
     assert!(parsed.diagnostics.is_empty());
     let normalized = lang_syntax::normalize_program(&parsed.program);
     let lang_syntax::NormForm::Let(decl) = &normalized.forms[0] else {
         panic!("expected normalized let");
     };
-    let absent_pair = PolicyPair {
-        value: ValueComponentPolicy {
-            stages: StageSet::new(),
-            mutability: Default::default(),
-            presence: ValuePresence::Absent,
-        },
-        pattern: PatternComponentPolicy {
-            stages: StageSet::from([PolicyStage::Compile]),
-        },
-        namespace_visibility: Some(NamespaceVisibility::Private),
-        export_root: false,
-    };
-    let associated = decode_struct_associated_namespace_let(
-        decl,
-        &absent_pair,
-        provenance("associated namespace declaration"),
-    )
-    .unwrap();
-    assert_eq!(associated.name, "helper");
-    assert_eq!(associated.visibility, NamespaceVisibility::Private);
-
-    let mut value_pair = absent_pair;
-    value_pair.value.presence = ValuePresence::Present;
-    value_pair.value.stages = StageSet::from([PolicyStage::Compile]);
-    assert!(decode_struct_associated_namespace_let(
+    let value_pair = resolved_value_pair();
+    let associated = decode_struct_associated_val2_let(
         decl,
         &value_pair,
-        provenance("value-bearing associated declaration"),
+        provenance("associated Val2 contribution"),
+    )
+    .unwrap();
+    assert!(matches!(
+        associated,
+        StructAssociatedVal2Contribution::NamedValue {
+            name,
+            visibility: None,
+            value_policy,
+            ..
+        } if name == "helper" && value_policy == value_pair
+    ));
+}
+
+#[test]
+fn struct_associated_val2_let_preserves_visibility_and_callable_value() {
+    let parsed = lang_syntax::parse("private let fun = (self_fun, object) => { object };");
+    assert!(parsed.diagnostics.is_empty());
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    let lang_syntax::NormForm::Let(decl) = &normalized.forms[0] else {
+        panic!("expected normalized let");
+    };
+    let associated = decode_struct_associated_val2_let(
+        decl,
+        &resolved_value_pair(),
+        provenance("member-like associated function"),
+    )
+    .unwrap();
+    let StructAssociatedVal2Contribution::NamedValue {
+        visibility, value, ..
+    } = &associated
+    else {
+        panic!("expected a named Val2 value");
+    };
+    assert_eq!(*visibility, Some(NamespaceVisibility::Private));
+    let NormExpr::Closure(closure) = value else {
+        panic!("associated callable value must remain a closure");
+    };
+    let frame = closure
+        .head
+        .as_ref()
+        .expect("headed associated callable")
+        .formal_frame();
+    assert!(matches!(
+        frame.written_self,
+        Some(lang_syntax::NormPatternElem::BindingSlot(slot))
+            if matches!(&slot.value_pattern, lang_syntax::NormPattern::Binder { name, .. }
+                if name == "self_fun")
+    ));
+    assert!(matches!(
+        frame.explicit_parameters,
+        [lang_syntax::NormPatternElem::BindingSlot(slot)]
+            if matches!(&slot.value_pattern, lang_syntax::NormPattern::Binder { name, .. }
+                if name == "object")
+    ));
+}
+
+#[test]
+fn struct_associated_unit_let_is_a_call_entry_not_a_named_closure_value() {
+    let parsed = lang_syntax::parse("let () = (object) => { object };");
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    let lang_syntax::NormForm::Let(decl) = &normalized.forms[0] else {
+        panic!("expected normalized let");
+    };
+    let associated = decode_struct_associated_val2_let(
+        decl,
+        &resolved_value_pair(),
+        provenance("local call entry"),
+    )
+    .unwrap();
+    let StructAssociatedVal2Contribution::CallEntry { implementation, .. } = &associated else {
+        panic!("expected a call-entry contribution");
+    };
+    let NormExpr::Closure(closure) = implementation else {
+        panic!("call entry implementation must remain a closure");
+    };
+    let frame = closure
+        .head
+        .as_ref()
+        .expect("headed call entry")
+        .formal_frame();
+    assert!(matches!(
+        frame.written_self,
+        Some(lang_syntax::NormPatternElem::BindingSlot(slot))
+            if matches!(&slot.value_pattern, lang_syntax::NormPattern::Binder { name, .. }
+                if name == "object")
+    ));
+    assert!(frame.explicit_parameters.is_empty());
+}
+
+#[test]
+fn struct_associated_val2_let_still_rejects_extraction_lhs() {
+    let parsed = lang_syntax::parse("let (a, b) = value;");
+    assert!(parsed.diagnostics.is_empty());
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    let lang_syntax::NormForm::Let(decl) = &normalized.forms[0] else {
+        panic!("expected normalized let");
+    };
+    assert!(decode_struct_associated_val2_let(
+        decl,
+        &resolved_value_pair(),
+        provenance("invalid associated extraction"),
     )
     .is_err());
 }

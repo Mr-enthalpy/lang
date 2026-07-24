@@ -557,7 +557,8 @@ receiver to:
 ```
 
 Normalization produces an in-place `NormClosure` carrier. Its generated first
-formal is the callable-object self-position and is passed implicitly. `T` is
+formal is the caller-object self-position and is passed implicitly. For this
+standalone field-function closure, that caller is its function object. `T` is
 inferred from the following `val` formal—the first explicit call-site
 argument—only when an explicit call context consumes and materializes that
 carrier. It is not captured from a syntactic expression to the left of the dot.
