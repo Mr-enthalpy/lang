@@ -528,7 +528,7 @@ body. Nested callables inherit that active hole environment before extending
 it with their own DeduceList. Ordinary value binders occupy a separate lexical
 environment and do not change Pattern-context hole identity.
 
-Return annotations keep ordinary BindingSlot order:
+Return clauses keep ordinary let-shaped BindingSlot order:
 
 ```lang
 let f = <A>(x: A) -> r: A => {
@@ -537,8 +537,12 @@ let f = <A>(x: A) -> r: A => {
 };
 ```
 
-Use `-> _: A` for an anonymous typed result. A prefix-shaped `-> A r` remains
-an extraction Pattern; it is not a type annotation on `r`.
+`r` is the explicit symbol bound to the returned object. `A` is its postfix
+annotation Pattern. Thus `r` denotes a value for a value-returning callable
+and a type/Pattern object for a callable whose result has that rank; parser
+syntax does not preclassify the binder as a type. Use `-> _: A` when no result
+symbol is bound. A prefix-shaped `-> A r` remains an extraction Pattern; it is
+not a type annotation on `r`.
 
 Raw AST preserves spelling, lexical scope shape, and provisional canonical
 roles. A distinct alpha-normalization step after structural normalization

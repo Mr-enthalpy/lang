@@ -463,8 +463,7 @@ return slot and head clauses
 callable body
 ```
 
-For example, the return type remains a postfix annotation on the return
-binding slot:
+The return clause remains a let-shaped result binding slot:
 
 ```lang
 let f = <A>(x: A) -> r: A => {
@@ -473,8 +472,14 @@ let f = <A>(x: A) -> r: A => {
 };
 ```
 
-The anonymous typed form is `-> _: A`. `-> A r` is an extraction Pattern and
-must not be reinterpreted as the typed-return shorthand `-> r: A`.
+Here `r` is the explicit symbol bound to the returned object, while `A` is the
+postfix annotation Pattern on that binder. If the callable returns an ordinary
+value, `r` denotes that value; if it returns a type/Pattern object, `r` denotes
+that type/Pattern object. The parser does not classify `r` itself as a type.
+
+The anonymous constrained form is `-> _: A`. `-> A r` is an extraction
+Pattern and must not be reinterpreted as the annotated-result shorthand
+`-> r: A`.
 
 Nested callables inherit that active hole environment and extend it with their
 own telescope. Body-local let-shaped DeduceLists extend only their own binding

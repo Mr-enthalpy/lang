@@ -1963,6 +1963,12 @@ Valid return binding-slot examples include:
 -> <T> result pattern: annotation
 ```
 
+In `-> result`, `result` is the explicit binder for the returned object. The
+parser does not decide that the binder is a value or a type: that follows the
+callable's eventual result rank. A suffix `: annotation` constrains the bound
+result. Consequently `-> A r` remains an extraction Pattern and is not parsed
+as a prefix type annotation for `r`.
+
 Return slots reject `with { ... }` in this phase. That restriction is
 contextual parser structure, not a semantic dependency check.
 
