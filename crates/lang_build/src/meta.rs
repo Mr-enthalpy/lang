@@ -454,7 +454,7 @@ fn classify_struct_field_argument(
             Some(atom.provenance().clone()),
         ));
     };
-    let NormExpr::Call { source, target, .. } = expr else {
+    let Some((type_expr, _field_name)) = decompose_struct_field_expr(expr) else {
         return Err(Diagnostic::hard_error(
             "invalid struct syntax: expected a field form like `uint8 a`",
             Some(Provenance::from_norm_origin(
@@ -464,44 +464,12 @@ fn classify_struct_field_argument(
         ));
     };
 
-    if source.elements.len() != 1 {
+    if let NormExpr::Product(product) = type_expr {
         return Err(Diagnostic::hard_error(
             "invalid struct syntax: nested product fields are not supported in v0.8",
             Some(Provenance::from_norm_origin(
-                "struct field source",
-                &source.origin,
-            )),
-        ));
-    }
-
-    let type_expr = match &source.elements[0] {
-        NormProductElem::Expr(NormExpr::Product(product)) => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: nested product fields are not supported in v0.8",
-                Some(Provenance::from_norm_origin(
-                    "nested struct field product",
-                    &product.origin,
-                )),
-            ));
-        }
-        NormProductElem::Expr(expr) => expr,
-        NormProductElem::Unit { origin } => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: unit field type is not supported",
-                Some(Provenance::from_norm_origin(
-                    "unit struct field type",
-                    origin,
-                )),
-            ));
-        }
-    };
-
-    if !matches!(target.as_ref(), NormExpr::Name { .. }) {
-        return Err(Diagnostic::hard_error(
-            "invalid struct syntax: expected a field binder name",
-            Some(Provenance::from_norm_origin(
-                "struct field binder",
-                expr_origin(target),
+                "nested struct field product",
+                &product.origin,
             )),
         ));
     }
@@ -544,6 +512,48 @@ fn classify_struct_field_argument(
         })?;
 
     Ok(type_symbol.id)
+}
+
+fn decompose_struct_field_expr(expr: &NormExpr) -> Option<(&NormExpr, &str)> {
+    let NormExpr::Call { source, target, .. } = expr else {
+        return None;
+    };
+
+    match target.as_ref() {
+        NormExpr::Name { text, .. } => {
+            Some((single_struct_field_source_expr(source)?, text.as_str()))
+        }
+        NormExpr::Call {
+            source: annotation_source,
+            target: annotation_target,
+            ..
+        } if is_struct_member_view_target(annotation_target) => {
+            let NormExpr::Name { text, .. } = single_struct_field_source_expr(annotation_source)?
+            else {
+                return None;
+            };
+            Some((single_struct_field_source_expr(source)?, text.as_str()))
+        }
+        target if is_struct_member_view_target(target) => {
+            decompose_struct_field_expr(single_struct_field_source_expr(source)?)
+        }
+        _ => None,
+    }
+}
+
+fn single_struct_field_source_expr(source: &NormProduct) -> Option<&NormExpr> {
+    match source.elements.as_slice() {
+        [NormProductElem::Expr(expr)] => Some(expr),
+        _ => None,
+    }
+}
+
+fn is_struct_member_view_target(target: &NormExpr) -> bool {
+    matches!(
+        target,
+        NormExpr::OperatorTarget { spelling, .. }
+            if spelling == "[[public]]" || spelling == "[[private]]"
+    )
 }
 
 fn expr_to_source_path(expr: &NormExpr) -> Option<Vec<String>> {
