@@ -1624,7 +1624,7 @@ fn member_visibility_annotation_is_narrow_shape_and_does_not_steal_capture_brack
     );
 
     for non_visibility in ["export", "runtime", "strategy"] {
-        let source = format!("let x = obj[[{non_visibility}]];");
+        let source = format!("let x = obj[[{non_visibility}] => {{ {non_visibility} }}];");
         let output = parsed(&source);
         let dump = lang_syntax::dump_ast(&output.program);
         assert!(
