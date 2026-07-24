@@ -1799,6 +1799,20 @@ normally: `{ x; y; }` contains two body forms.
 
 ## 11. Closure head
 
+> **v0.5-A amendment.** The historical v0.1 text below is retained as the
+> construction baseline. The current parser uses the orthogonal
+> `placement × optional head × implementation` closure shape and let-shaped
+> capture items documented in
+> `spec/contracts/frontend-semantic-amendment-v0.5-a.md`.
+>
+> A callable-head DeduceList is propagated as a lexical Raw parsing environment
+> through capture slots and initializers, parameters, call policy, return,
+> clauses, and the complete body. Nested callables inherit that environment.
+> A BindingSlot-local DeduceList remains active through the rest of that slot,
+> including its initializer, and is restored at the slot boundary. These Raw
+> roles are provisional shape data. Post-structural alpha normalization assigns
+> exact ordinal `HoleBinderId` targets; source spans remain provenance.
+
 ### 11.1 Full order
 
 ```text

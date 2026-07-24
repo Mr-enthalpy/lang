@@ -387,9 +387,16 @@ later binders are not visible in Ti
 active hole names cannot be redeclared or shadowed
 ```
 
-Every declaration carries a source-scoped `HoleBinderId`, and every named
-`HoleRef` targets one exact ID. The display spelling is diagnostic data, not
-semantic identity. `_` is an anonymous hole and targets no declaration.
+Raw AST carries lexical structure, surface spelling, and provisional canonical
+roles. Normalized alpha conversion, not the parser and not a source span,
+allocates each `HoleBinderId`; every named `HoleRef` then targets one exact
+ordinal identity. The display spelling and span are provenance data. `_` is an
+anonymous hole and targets no declaration.
+
+A callable head DeduceList remains active through capture clauses and
+initializers, parameters, call policy, return slot, head clauses, and the
+complete body. Nested callables inherit the active environment and extend it
+with their own telescope. Ordinary value binders do not shadow hole identity.
 
 Normalized source capture items are explicit let-shaped bindings. `[x]` is
 explicit shorthand for `[let x = x]` with an unwritten policy domain; it is not
@@ -400,12 +407,14 @@ no capture set, may resolve outer reads at the embedding layer, and may not
 directly write an outer place.
 
 Explicit-navigation/export checking and automatic capture remain resolved
-semantics, not Raw-to-Norm work. The future rule is that an explicitly
-navigable exported value supplies the const projection for `ImplicitConst`;
-ordinary external call references normally inhabit the same external-symbol
-problem domain. This does not imply an implementation dependency on call
-resolution. Whether an explicit source capture of the same navigable export is
-forbidden remains an open question.
+semantics, not Raw-to-Norm work. External navigation searches the export view;
+internal navigation searches the complete namespace view. A navigable exported
+value supplies the const projection for `ImplicitConst`; ordinary external call
+references normally inhabit the same external-symbol problem domain. This does
+not imply an implementation dependency on call resolution. Explicit and
+automatic capture remain distinct dependency declarations even when they
+resolve to the same source symbol; only later layout may coalesce equivalent
+storage while preserving binder, policy, and provenance.
 
 ## 10. Diagnostics
 

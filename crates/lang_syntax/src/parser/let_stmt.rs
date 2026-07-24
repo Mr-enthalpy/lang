@@ -34,7 +34,13 @@ pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<PolicySpecAst>) ->
         return FormAst::AliasLet(parse_alias_let_body(parser, start, policy));
     }
 
-    let mut slot = parse_binding_slot(parser, BindingSlotContext::Let, None, true);
+    let inherited_deduce = parser.active_deduce_list();
+    let mut slot = parse_binding_slot(
+        parser,
+        BindingSlotContext::Let,
+        inherited_deduce.as_ref(),
+        true,
+    );
     slot.has_let = true;
     slot.policy = policy;
     let span = start.join(slot.span);
@@ -101,6 +107,7 @@ pub fn parse_binding_slot(
     } else {
         None
     };
+    let local_deduce_scope_mark = parser.push_deduce_scope(deduce.as_ref());
 
     if matches!(
         context,
@@ -155,7 +162,7 @@ pub fn parse_binding_slot(
         end = initializer.span;
     }
 
-    BindingSlotAst {
+    let slot = BindingSlotAst {
         policy,
         has_let,
         deduce,
@@ -164,7 +171,9 @@ pub fn parse_binding_slot(
         with_clause,
         initializer,
         span: start.join(end),
-    }
+    };
+    parser.restore_deduce_scope(local_deduce_scope_mark);
+    slot
 }
 
 pub fn parse_product_extract(

@@ -2,8 +2,8 @@ use lang_syntax::{
     normalize_and_validate_patterns, normalize_program, parse, validate_normalized_patterns,
     BindingPatternAst, CanonicalSkeletonAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode,
     ExprKind, FormAst, NormAnnotation, NormBindingSlot, NormClosureBody, NormClosurePlacement,
-    NormDecl, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem, NormRule,
-    OperatorExprKind, SegmentElementAst, Span,
+    NormDecl, NormExpr, NormForm, NormOrigin, NormPattern, NormPatternElem, NormPolicyAtom,
+    NormRule, NormValuePolicyPattern, OperatorExprKind, SegmentElementAst, Span,
 };
 
 fn parsed(source: &str) -> lang_syntax::ParseOutput {
@@ -695,6 +695,29 @@ fn raw_nested_canonical_roles_keep_all_active_deduce_lists() {
 }
 
 #[test]
+fn raw_callable_deduce_environment_reaches_capture_return_body_and_nested_callable() {
+    let output = parsed(
+        "let f = <A>[let A c = source](A x) -> A r => {
+            let A y = x;
+            let g = <B: A>(B z) -> A q => {
+                let A w = z;
+                w
+            };
+            y
+        };",
+    );
+    let dump = lang_syntax::dump_ast(&output.program);
+    assert!(
+        dump.matches("CanonicalName role=Hole name=A").count() >= 6,
+        "outer callable hole must remain lexically visible throughout its callable:\n{dump}"
+    );
+    assert!(
+        dump.matches("CanonicalName role=Hole name=B").count() >= 1,
+        "nested callable must extend the inherited Raw hole environment:\n{dump}"
+    );
+}
+
+#[test]
 fn deduce_telescope_rejects_duplicates_and_does_not_resolve_forward_or_self_refs() {
     for source in ["let <A, A> x = value;", "let <A> (let <A> x) = value;"] {
         let output = parsed(source);
@@ -753,6 +776,202 @@ fn deduce_telescope_rejects_duplicates_and_does_not_resolve_forward_or_self_refs
         Some(NormPattern::HoleRef { target, name, .. })
             if *target == outer_a && name == "A"
     ));
+}
+
+fn annotation_hole_target(annotation: &NormAnnotation) -> lang_syntax::HoleBinderId {
+    let NormPattern::HoleRef { target, .. } = &annotation.pattern else {
+        panic!("expected exact alpha-normalized HoleRef, got {annotation:#?}");
+    };
+    *target
+}
+
+fn binding_slot_at(form: &NormForm) -> &NormBindingSlot {
+    let NormForm::Let(NormDecl::Let { slot, .. }) = form else {
+        panic!("expected normalized let form, got {form:#?}");
+    };
+    slot
+}
+
+#[test]
+fn callable_deduce_scope_covers_capture_params_policy_return_body_and_nested_callable() {
+    let output = parsed(
+        "let f = <A>[let c: A = source](x: A):A -> r: A => {
+            let y: A = x;
+            let g = <B: A>(z: B) -> q: A => {
+                let w: A = z;
+                w
+            };
+            y
+        };",
+    );
+    let normalized = normalize_program(&output.program);
+    let outer_slot = binding_slot_at(&normalized.forms[0]);
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer closure initializer")
+    else {
+        panic!("expected outer closure");
+    };
+    let outer_head = outer.head.as_ref().expect("outer closure head");
+    let outer_a = outer_head.deduce[0].id;
+    assert_eq!(outer_a.local_ordinal(), 0);
+
+    assert_eq!(
+        annotation_hole_target(
+            outer_head.captures[0]
+                .slot
+                .annotation
+                .as_ref()
+                .expect("capture annotation")
+        ),
+        outer_a
+    );
+    let NormPatternElem::BindingSlot(param) = &outer_head.params[0] else {
+        panic!("expected parameter binding slot");
+    };
+    assert_eq!(
+        annotation_hole_target(param.annotation.as_ref().expect("parameter annotation")),
+        outer_a
+    );
+    let Some(call_policy) = &outer_head.call_policy else {
+        panic!("expected call policy");
+    };
+    let NormValuePolicyPattern::Conjunction(call_policy) = &call_policy.value_policy else {
+        panic!("expected conjunction call policy");
+    };
+    assert!(matches!(
+        call_policy.choices[0].atoms.as_slice(),
+        [NormPolicyAtom::HoleRef { target, text, .. }]
+            if *target == outer_a && text == "A"
+    ));
+    assert_eq!(
+        annotation_hole_target(
+            outer_head
+                .returns
+                .as_ref()
+                .and_then(|returns| returns.annotation.as_ref())
+                .expect("return annotation")
+        ),
+        outer_a
+    );
+
+    let outer_body = outer.body.user_body().expect("outer user body");
+    assert_eq!(
+        annotation_hole_target(
+            binding_slot_at(&outer_body.forms[0])
+                .annotation
+                .as_ref()
+                .expect("body-local annotation")
+        ),
+        outer_a
+    );
+
+    let nested_slot = binding_slot_at(&outer_body.forms[1]);
+    let NormExpr::Closure(nested) = nested_slot
+        .initializer
+        .as_deref()
+        .expect("nested closure initializer")
+    else {
+        panic!("expected nested closure");
+    };
+    let nested_head = nested.head.as_ref().expect("nested closure head");
+    let nested_b = nested_head.deduce[0].id;
+    assert_ne!(nested_b, outer_a);
+    assert_eq!(
+        annotation_hole_target(
+            nested_head.deduce[0]
+                .annotation
+                .as_ref()
+                .expect("nested telescope annotation")
+        ),
+        outer_a
+    );
+    let NormPatternElem::BindingSlot(nested_param) = &nested_head.params[0] else {
+        panic!("expected nested parameter");
+    };
+    assert_eq!(
+        annotation_hole_target(
+            nested_param
+                .annotation
+                .as_ref()
+                .expect("nested parameter annotation")
+        ),
+        nested_b
+    );
+    assert_eq!(
+        annotation_hole_target(
+            nested_head
+                .returns
+                .as_ref()
+                .and_then(|returns| returns.annotation.as_ref())
+                .expect("nested return annotation")
+        ),
+        outer_a
+    );
+    let nested_body = nested.body.user_body().expect("nested body");
+    assert_eq!(
+        annotation_hole_target(
+            binding_slot_at(&nested_body.forms[0])
+                .annotation
+                .as_ref()
+                .expect("nested body annotation")
+        ),
+        outer_a
+    );
+}
+
+#[test]
+fn callable_deduce_scope_rejects_nested_active_name_redeclaration() {
+    let output = parsed(
+        "let f = <A>() => {
+            let g = <A>() => { value };
+            g
+        };",
+    );
+    let invalid = normalize_and_validate_patterns(&output.program)
+        .expect_err("nested callable may not redeclare an active hole name");
+    assert!(invalid.pattern_errors.iter().any(|error| matches!(
+        error,
+        lang_syntax::PatternValidationError::DuplicateHole { name, .. } if name == "A"
+    )));
+}
+
+#[test]
+fn hole_identity_is_alpha_normalized_not_span_or_spelling_derived() {
+    fn closure_ids(source: &str) -> (lang_syntax::HoleBinderId, lang_syntax::HoleBinderId) {
+        let normalized = normalize_program(&parsed(source).program);
+        let closure_slot = binding_slot_at(
+            normalized
+                .forms
+                .last()
+                .expect("fixture has closure declaration"),
+        );
+        let NormExpr::Closure(closure) = closure_slot
+            .initializer
+            .as_deref()
+            .expect("closure initializer")
+        else {
+            panic!("expected closure");
+        };
+        let head = closure.head.as_ref().expect("closure head");
+        let binder = head.deduce[0].id;
+        let NormPatternElem::BindingSlot(param) = &head.params[0] else {
+            panic!("expected parameter");
+        };
+        let target =
+            annotation_hole_target(param.annotation.as_ref().expect("parameter annotation"));
+        (binder, target)
+    }
+
+    let a = closure_ids("let f = <A>(x: A) => { x };");
+    let x = closure_ids("let padding = value; let f = <X>(x: X) => { x };");
+    assert_eq!(a.0, a.1);
+    assert_eq!(x.0, x.1);
+    assert_eq!(
+        a.0, x.0,
+        "alpha-equivalent callable shapes must not derive identity from spelling or byte offset"
+    );
 }
 
 #[test]

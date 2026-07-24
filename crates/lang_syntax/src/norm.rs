@@ -619,6 +619,7 @@ fn collect_skeleton_pack_errors(skeleton: &NormSkeleton, errors: &mut Vec<Patter
         }
         NormSkeleton::Wildcard { .. }
         | NormSkeleton::Name { .. }
+        | NormSkeleton::HoleRef { .. }
         | NormSkeleton::Literal { .. }
         | NormSkeleton::Error(_) => {}
     }
@@ -673,6 +674,11 @@ pub enum NormPolicyAtom {
         text: String,
         origin: NormOrigin,
     },
+    HoleRef {
+        target: HoleBinderId,
+        text: String,
+        origin: NormOrigin,
+    },
     Group {
         conjunction: Box<NormPolicyConjunction>,
         origin: NormOrigin,
@@ -694,31 +700,32 @@ pub struct NormHoleDecl {
     pub origin: NormOrigin,
 }
 
-/// Lexical identity of a normalized DeduceList binder within one source
-/// program. Source binders use their unique name span. Generated binders use
-/// the generating expression span and a separate discriminator.
+/// Alpha-normalized lexical identity of a DeduceList binder within one
+/// normalized program.
+///
+/// The ordinal is allocated by lexical traversal and is intentionally
+/// independent of source spans and source spelling. Spans remain provenance,
+/// not semantic binder identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HoleBinderId {
-    anchor_start: usize,
-    anchor_end: usize,
-    discriminator: u8,
+    ordinal: u32,
 }
 
 impl HoleBinderId {
-    fn source(span: Span) -> Self {
+    const PROVISIONAL_ORDINAL: u32 = u32::MAX;
+
+    fn provisional() -> Self {
         Self {
-            anchor_start: span.byte_start,
-            anchor_end: span.byte_end,
-            discriminator: 0,
+            ordinal: Self::PROVISIONAL_ORDINAL,
         }
     }
 
-    fn generated(span: Span) -> Self {
-        Self {
-            anchor_start: span.byte_start,
-            anchor_end: span.byte_end,
-            discriminator: 1,
-        }
+    fn alpha(ordinal: u32) -> Self {
+        Self { ordinal }
+    }
+
+    pub fn local_ordinal(self) -> u32 {
+        self.ordinal
     }
 }
 
@@ -878,6 +885,11 @@ pub enum NormSkeleton {
         role: NormCanonicalNameRole,
         origin: NormOrigin,
     },
+    HoleRef {
+        target: HoleBinderId,
+        name: String,
+        origin: NormOrigin,
+    },
     Nav {
         components: Vec<NormNavComponent>,
         explicit_terminated: bool,
@@ -958,11 +970,374 @@ pub enum NormRule {
     Unsupported,
 }
 
+/// Scope construction and alpha-normalization for DeduceList binders.
+///
+/// Raw parsing preserves lexical spelling and provisional hole roles. This
+/// pass is the sole producer of semantic `HoleBinderId` values: it walks the
+/// normalized tree in lexical order, assigns fresh ordinals, rewrites every
+/// scoped Pattern/policy occurrence to the exact binder, and diagnoses active
+/// name redeclarations through `duplicate_of`.
+#[derive(Default)]
+struct HoleAlphaNormalizer {
+    next_ordinal: u32,
+}
+
+impl HoleAlphaNormalizer {
+    fn fresh_id(&mut self) -> HoleBinderId {
+        let id = HoleBinderId::alpha(self.next_ordinal);
+        self.next_ordinal = self
+            .next_ordinal
+            .checked_add(1)
+            .expect("normalized program contains more than u32::MAX hole binders");
+        id
+    }
+
+    fn normalize_program(&mut self, program: &mut NormProgram, holes: &[VisibleHole]) {
+        for form in &mut program.forms {
+            self.normalize_form(form, holes);
+        }
+    }
+
+    fn normalize_form(&mut self, form: &mut NormForm, holes: &[VisibleHole]) {
+        match form {
+            NormForm::Let(decl) | NormForm::Alias(decl) => self.normalize_decl(decl, holes),
+            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+                self.normalize_expr(expr, holes);
+            }
+            NormForm::ReturnEvent(event) => {
+                self.normalize_expr(&mut event.value, holes);
+                if let NormReturnTargetSyntax::Explicit(target) = &mut event.target {
+                    self.normalize_expr(target, holes);
+                }
+            }
+            NormForm::Error(_) => {}
+        }
+    }
+
+    fn normalize_decl(&mut self, decl: &mut NormDecl, holes: &[VisibleHole]) {
+        match decl {
+            NormDecl::Let { slot, .. } => {
+                self.normalize_slot(slot, holes);
+            }
+            NormDecl::Alias { policy, target, .. } => {
+                if let Some(policy) = policy {
+                    self.normalize_policy_spec(policy, holes);
+                }
+                self.normalize_nav_components(&mut target.components, holes);
+            }
+            NormDecl::Error(_) => {}
+        }
+    }
+
+    /// Normalize a let-shaped slot and return the hole environment visible to
+    /// its following Pattern, annotation, and initializer. The returned
+    /// environment never escapes the slot itself.
+    fn normalize_slot(
+        &mut self,
+        slot: &mut NormBindingSlot,
+        inherited: &[VisibleHole],
+    ) -> Vec<VisibleHole> {
+        let visible = self.normalize_deduce_list(&mut slot.deduce, inherited);
+        if let Some(policy) = &mut slot.policy {
+            self.normalize_policy_spec(policy, &visible);
+        }
+        self.normalize_pattern(&mut slot.value_pattern, &visible);
+        if let Some(annotation) = &mut slot.annotation {
+            self.normalize_pattern(&mut annotation.pattern, &visible);
+        }
+        if let Some(initializer) = &mut slot.initializer {
+            self.normalize_expr(initializer, &visible);
+        }
+        visible
+    }
+
+    fn normalize_deduce_list(
+        &mut self,
+        deduce: &mut [NormHoleDecl],
+        inherited: &[VisibleHole],
+    ) -> Vec<VisibleHole> {
+        let mut visible = inherited.to_vec();
+        for hole in deduce {
+            // A telescope annotation sees ancestors and earlier binders, but
+            // never the binder being declared or a later binder.
+            if let Some(annotation) = &mut hole.annotation {
+                self.normalize_pattern(&mut annotation.pattern, &visible);
+            }
+
+            let id = self.fresh_id();
+            let duplicate_of = find_visible_hole(&visible, &hole.name).map(|first| first.id);
+            hole.id = id;
+            hole.duplicate_of = duplicate_of;
+            if duplicate_of.is_none() {
+                visible.push(VisibleHole {
+                    id,
+                    name: hole.name.clone(),
+                });
+            }
+        }
+        visible
+    }
+
+    fn normalize_expr(&mut self, expr: &mut NormExpr, holes: &[VisibleHole]) {
+        match expr {
+            NormExpr::Call { source, target, .. } => {
+                self.normalize_product(source, holes);
+                self.normalize_expr(target, holes);
+            }
+            NormExpr::Product(product) => self.normalize_product(product, holes),
+            NormExpr::Nav { components, .. } => {
+                self.normalize_nav_components(components, holes);
+            }
+            NormExpr::Closure(closure) => self.normalize_closure(closure, holes),
+            NormExpr::Name { .. }
+            | NormExpr::Literal { .. }
+            | NormExpr::OperatorTarget { .. }
+            | NormExpr::Error(_)
+            | NormExpr::Unsupported { .. } => {}
+        }
+    }
+
+    fn normalize_product(&mut self, product: &mut NormProduct, holes: &[VisibleHole]) {
+        for element in &mut product.elements {
+            if let NormProductElem::Expr(expr) = element {
+                self.normalize_expr(expr, holes);
+            }
+        }
+    }
+
+    fn normalize_closure(&mut self, closure: &mut NormClosure, inherited: &[VisibleHole]) {
+        let visible = if let Some(head) = &mut closure.head {
+            let visible = self.normalize_deduce_list(&mut head.deduce, inherited);
+
+            // Capture initializers are simultaneous with respect to value
+            // binders. Each capture-local DeduceList still scopes that
+            // capture's own initializer.
+            for capture in &mut head.captures {
+                let capture_holes = self.normalize_slot(&mut capture.slot, &visible);
+                self.normalize_expr(&mut capture.initializer, &capture_holes);
+            }
+            for param in &mut head.params {
+                self.normalize_pattern_element(param, &visible);
+            }
+            if let Some(policy) = &mut head.call_policy {
+                self.normalize_policy_spec(policy, &visible);
+            }
+            if let Some(returns) = &mut head.returns {
+                self.normalize_slot(returns, &visible);
+            }
+            for clause in &mut head.clauses {
+                match clause {
+                    NormHeadClause::Require { expr, .. }
+                    | NormHeadClause::Pre { expr, .. }
+                    | NormHeadClause::Post { expr, .. }
+                    | NormHeadClause::LifetimePre { expr, .. }
+                    | NormHeadClause::LifetimePost { expr, .. } => {
+                        self.normalize_expr(expr, &visible);
+                    }
+                    NormHeadClause::Error(_) => {}
+                }
+            }
+            visible
+        } else {
+            inherited.to_vec()
+        };
+
+        match &mut closure.body {
+            NormClosureBody::Block(body) | NormClosureBody::NamedBlock { body, .. } => {
+                self.normalize_program(body, &visible);
+            }
+            NormClosureBody::Defaulted { .. } | NormClosureBody::Delete(_) => {}
+        }
+    }
+
+    fn normalize_pattern_element(
+        &mut self,
+        element: &mut NormPatternElem,
+        holes: &[VisibleHole],
+    ) {
+        match element {
+            NormPatternElem::Pattern(pattern) => self.normalize_pattern(pattern, holes),
+            NormPatternElem::BindingSlot(slot) => {
+                self.normalize_slot(slot, holes);
+            }
+            NormPatternElem::Unit { .. } => {}
+        }
+    }
+
+    fn normalize_pattern(&mut self, pattern: &mut NormPattern, holes: &[VisibleHole]) {
+        match pattern {
+            NormPattern::Product { elements, .. } => {
+                for element in elements {
+                    self.normalize_pattern_element(element, holes);
+                }
+            }
+            NormPattern::Pack { inner, .. } => self.normalize_pattern(inner, holes),
+            NormPattern::Name { name, origin } => {
+                if let Some(hole) = find_visible_hole(holes, name) {
+                    *pattern = NormPattern::HoleRef {
+                        target: hole.id,
+                        name: name.clone(),
+                        origin: origin.clone(),
+                    };
+                }
+            }
+            NormPattern::HoleRef {
+                target,
+                name,
+                origin,
+            } => {
+                if let Some(hole) = find_visible_hole(holes, name) {
+                    *target = hole.id;
+                } else {
+                    *pattern = NormPattern::Name {
+                        name: name.clone(),
+                        origin: origin.clone(),
+                    };
+                }
+            }
+            NormPattern::Nav { components, .. } => {
+                self.normalize_nav_components(components, holes);
+            }
+            NormPattern::Sequence { elements, .. } => {
+                for element in elements {
+                    self.normalize_pattern(element, holes);
+                }
+            }
+            NormPattern::Skeleton { skeleton, .. } => {
+                self.normalize_skeleton(skeleton, holes);
+            }
+            NormPattern::BindingSlot { slot, .. } => {
+                self.normalize_slot(slot, holes);
+            }
+            NormPattern::Binder { .. }
+            | NormPattern::OperatorBinder { .. }
+            | NormPattern::Unit { .. }
+            | NormPattern::AnonymousHole { .. }
+            | NormPattern::Literal { .. }
+            | NormPattern::Error(_)
+            | NormPattern::Unsupported { .. } => {}
+        }
+    }
+
+    fn normalize_skeleton(&mut self, skeleton: &mut NormSkeleton, holes: &[VisibleHole]) {
+        match skeleton {
+            NormSkeleton::Segment { elements, .. } => {
+                for element in elements {
+                    self.normalize_skeleton(element, holes);
+                }
+            }
+            NormSkeleton::Product { elements, .. } => {
+                for element in elements {
+                    if let NormSkeletonElem::Skeleton(skeleton) = element {
+                        self.normalize_skeleton(skeleton, holes);
+                    }
+                }
+            }
+            NormSkeleton::Name { name, role, origin } => {
+                if let Some(hole) = find_visible_hole(holes, name) {
+                    *skeleton = NormSkeleton::HoleRef {
+                        target: hole.id,
+                        name: name.clone(),
+                        origin: origin.clone(),
+                    };
+                } else if *role == NormCanonicalNameRole::Hole {
+                    // Raw roles are provisional lexical hints only.
+                    *role = NormCanonicalNameRole::Unknown;
+                }
+            }
+            NormSkeleton::HoleRef {
+                target,
+                name,
+                origin,
+            } => {
+                if let Some(hole) = find_visible_hole(holes, name) {
+                    *target = hole.id;
+                } else {
+                    *skeleton = NormSkeleton::Name {
+                        name: name.clone(),
+                        role: NormCanonicalNameRole::Unknown,
+                        origin: origin.clone(),
+                    };
+                }
+            }
+            NormSkeleton::Nav { components, .. } => {
+                self.normalize_nav_components(components, holes);
+            }
+            NormSkeleton::Wildcard { .. }
+            | NormSkeleton::Literal { .. }
+            | NormSkeleton::Error(_) => {}
+        }
+    }
+
+    fn normalize_nav_components(
+        &mut self,
+        components: &mut [NormNavComponent],
+        holes: &[VisibleHole],
+    ) {
+        for component in components {
+            if let NormNavComponent::Group { expr, .. } = component {
+                self.normalize_expr(expr, holes);
+            }
+        }
+    }
+
+    fn normalize_policy_spec(&mut self, policy: &mut NormPolicySpec, holes: &[VisibleHole]) {
+        if let NormValuePolicyPattern::Conjunction(conjunction) = &mut policy.value_policy {
+            self.normalize_policy_conjunction(conjunction, holes);
+        }
+        if let Some(conjunction) = &mut policy.pattern_policy {
+            self.normalize_policy_conjunction(conjunction, holes);
+        }
+    }
+
+    fn normalize_policy_conjunction(
+        &mut self,
+        conjunction: &mut NormPolicyConjunction,
+        holes: &[VisibleHole],
+    ) {
+        for choice in &mut conjunction.choices {
+            for atom in &mut choice.atoms {
+                match atom {
+                    NormPolicyAtom::Name { text, origin } => {
+                        if let Some(hole) = find_visible_hole(holes, text) {
+                            *atom = NormPolicyAtom::HoleRef {
+                                target: hole.id,
+                                text: text.clone(),
+                                origin: origin.clone(),
+                            };
+                        }
+                    }
+                    NormPolicyAtom::HoleRef {
+                        target,
+                        text,
+                        origin,
+                    } => {
+                        if let Some(hole) = find_visible_hole(holes, text) {
+                            *target = hole.id;
+                        } else {
+                            *atom = NormPolicyAtom::Name {
+                                text: text.clone(),
+                                origin: origin.clone(),
+                            };
+                        }
+                    }
+                    NormPolicyAtom::Group { conjunction, .. } => {
+                        self.normalize_policy_conjunction(conjunction, holes);
+                    }
+                    NormPolicyAtom::AbsentValuePattern { .. } | NormPolicyAtom::Error(_) => {}
+                }
+            }
+        }
+    }
+}
+
 pub fn normalize_program(raw: &ProgramAst) -> NormProgram {
-    NormProgram {
+    let mut program = NormProgram {
         forms: raw.forms.iter().map(normalize_form).collect(),
         origin: NormOrigin::Source(raw.span),
-    }
+    };
+    HoleAlphaNormalizer::default().normalize_program(&mut program, &[]);
+    program
 }
 
 /// The Pattern-layer-validated handoff for downstream build/semantic
@@ -2149,7 +2524,7 @@ fn normalize_deduce_list(
 
     if let Some(deduce) = deduce {
         for binder in &deduce.binders {
-            let id = HoleBinderId::source(binder.name.span);
+            let id = HoleBinderId::provisional();
             let duplicate_of = find_visible_hole(&visible, &binder.name.text).map(|hole| hole.id);
             let annotation = binder
                 .annotation
@@ -2694,7 +3069,7 @@ fn generated_prefix_negative_closure(span: Span) -> NormClosure {
 }
 
 fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -> NormClosure {
-    let type_hole_id = HoleBinderId::generated(span);
+    let type_hole_id = HoleBinderId::provisional();
     NormClosure {
         placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
@@ -3084,6 +3459,9 @@ fn dump_norm_policy_conjunction(
                 NormPolicyAtom::Name { text, .. } => {
                     line(output, indent + 2, &format!("PolicyAtom Name \"{text}\""));
                 }
+                NormPolicyAtom::HoleRef { text, .. } => {
+                    line(output, indent + 2, &format!("PolicyAtom HoleRef \"{text}\""));
+                }
                 NormPolicyAtom::Group { conjunction, .. } => {
                     line(output, indent + 2, "PolicyAtom Group");
                     dump_norm_policy_conjunction(output, conjunction, indent + 3);
@@ -3358,6 +3736,15 @@ fn dump_skeleton(output: &mut String, skeleton: &NormSkeleton, indent: usize) {
                 "SkeletonName \"{}\" role={} {}",
                 escape_text(name),
                 canonical_role_label(*role),
+                origin_inline(origin)
+            ),
+        ),
+        NormSkeleton::HoleRef { name, origin, .. } => line(
+            output,
+            indent,
+            &format!(
+                "SkeletonHoleRef \"{}\" {}",
+                escape_text(name),
                 origin_inline(origin)
             ),
         ),

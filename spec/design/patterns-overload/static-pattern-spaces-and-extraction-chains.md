@@ -1354,11 +1354,22 @@ Runtime-result function objects contribute complete derived static companion
 objects according to the canonical pair rules; the original runtime body does
 not itself become statically executable.
 
-`export` controls the cross-package visibility boundary for overload
-construction. Within a package, `export` is irrelevant to overload resolution.
-Across packages, only exported symbols appear in the visible pool. Full export
-access control is deferred; the formal pipeline assumes namespace visibility
-has already been applied.
+Authority selects the overload input view before ordinary candidate
+enumeration:
+
+```text
+InternalAuthority -> FullOverloadSet(name) in Σ_full
+ExternalAuthority -> ExportOverloadSet(name) in Σ_export
+ExportOverloadSet = ExternalProjection(FullOverloadSet)
+```
+
+The projection retains candidate identities and may remove candidates that
+have no external view (including value candidates with no const projection).
+It does not build a second symbol universe. Within internal authority, export
+is irrelevant to overload resolution. Across the external boundary, the export
+projection and public reachability have already been applied before the formal
+selection pipeline begins. Wpre/Wseal membership is a separate world-existence
+fact and never selects the overload input view.
 
 ## 13. The Status of `match`
 

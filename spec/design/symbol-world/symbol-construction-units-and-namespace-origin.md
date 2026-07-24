@@ -412,7 +412,20 @@ construction unit must preserve both facts so external traversal can require
 both export closure membership and public reachability.
 
 Private semantic dependencies may enter Wpre to keep an exported interface
-interpretable without becoming externally name-visible.
+interpretable without becoming externally name-visible. Construction therefore
+maintains three independent views:
+
+```text
+Σ_full(N)    complete internal symbols and overloads
+Σ_export(N)  identity-preserving external projection
+Wfinal       Wpre ∪ Wseal world membership
+```
+
+Internal explicit navigation searches `Σ_full`; external explicit navigation
+searches `Σ_export`. Wpre/Wseal membership neither grants nor denies export
+visibility. An export descendant or ancestor may be externally exposed without
+being the original export root, while a private dependency may belong to Wpre
+without entering `Σ_export`.
 
 ## 12. Current Implementation Substrate
 

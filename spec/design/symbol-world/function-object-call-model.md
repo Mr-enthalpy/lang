@@ -192,9 +192,10 @@ The binding created by `let fn = () => { ... }` has no written mutability
 restriction. Its empty typed mutability domain denotes `const || mut`. This is
 the neutral, fully available function-object view; it is not copied from P2.
 An explicit declaration P1 may restrict that domain to one view. The
-namespace-declaration spelling `export let fn = ...` is the sole contextual
-default exception: it elaborates to `export + const`, because `export` and
-`mut` cannot coexist.
+namespace-declaration spelling `export let fn = ...` does not change this
+complete internal view. Export elaboration separately derives the externally
+visible const projection. A written `const || mut` internal view is therefore
+valid when its const projection is non-empty; a `mut`-only value export is not.
 
 ### 7.2 Ordinary closure capture requirements
 
@@ -212,10 +213,10 @@ unwritten, its mutability domain is the neutral `const || mut`; it is not
 automatic const capture. A write to an outer source requires an explicit
 capture projected to a `mut` view. Automatic capture never grants mutability.
 
-Explicit navigation resolves only names retained by the export graph.
-Exported value bindings provide a const view (`export let` defaults to
-`export + const`, and export cannot coexist with mut), so an explicitly
-navigated external callable or value automatically satisfies the
+External explicit navigation resolves through the namespace export view.
+Internal explicit navigation resolves through the complete namespace view and
+does not prove export membership. Exported value views are const-projected, so
+an externally navigated callable or value normally satisfies the
 `ImplicitConst` capture requirement. Ordinary external calls are therefore
 normally backed by automatic const dependencies, not by a source capture list.
 
@@ -223,9 +224,14 @@ Automatic capture and call resolution occupy adjoining problem domains: both
 reason about an external symbol identity and its readable const view. This
 does not require either mechanism to consume the other's output, share a pass,
 or run in a prescribed order. Automatic capture does not skip admissibility or
-select a candidate. Explicitly capturing an already explicitly navigable
-export is redundant; whether to reject that spelling is an open design
-question rather than a rule frozen here.
+select a candidate.
+
+Explicit and automatic capture may resolve to the same source symbol but remain
+distinct dependency declarations. Explicit capture can rename, project policy,
+use a complex initializer, request `mut`, and carry its own diagnostic
+provenance. No frontend or capture-discovery step erases it as redundant.
+Equivalent storage/link requirements may be coalesced only by a later layout
+pass while preserving binder identity, policy, and provenance.
 
 Resolved capture analysis produces abstract dependencies:
 

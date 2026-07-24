@@ -155,6 +155,10 @@ Resolved future-design decisions:
   static phases, and runtime values only in Runtime.
 - Privileged seal scans read the frozen pre-seal world `Wpre`, never symbols
   generated during seal.
+- Namespace state distinguishes the complete internal `Σ_full`, the external
+  projection `Σ_export`, and build-world membership `Wpre ∪ Wseal`.
+  `ExportOverloadSet(name)` is an identity-preserving projection of
+  `FullOverloadSet(name)` rather than a separate symbol universe.
 - Results retain component policy pairs and returned `Val2` objects retain
   their own policy; no whole-result scalar policy is inferred.
 - Compile flow is a mechanical projection of complete symbol flow. Calls stay
@@ -173,9 +177,11 @@ Resolved future-design decisions:
   qualifiers remain preference inputs rather than being removed by ordinary
   P1 projection.
 - A function-object binding has the unrestricted empty mutability domain by
-  default (`const || mut`); only its declaration may crop that axis. An export
-  root is the contextual exception: bare `export let` elaborates as
-  `export + const`, and any written export domain containing `mut` is invalid.
+  default (`const || mut`); only its declaration may crop that internal axis.
+  Export derives a separate external view: value-bearing exports expose
+  `Project_const(Pv):Pp`, while pure `absent:Pp` exports have no mutability
+  requirement. A `mut`-only value export is invalid; `const || mut` remains a
+  valid complete internal view.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
   unpack. Raw `...(a, b)` is preserved but rejected after P normalization
@@ -185,11 +191,13 @@ Resolved future-design decisions:
   contributes one outward specificity node, and internal structure never
   becomes multiple same-level EP nodes.
 - DeduceLists elaborate as left-to-right telescopes with exact
-  `HoleBinderId`-targeted references. Declarations see inherited and preceding
-  holes, not themselves or later declarations; active names cannot be
-  redeclared or shadowed. Parser/Norm recursive preservation and the identity
-  substrate are implemented, while general Pattern-directed execution remains
-  a later consumer.
+  alpha-normalized `HoleBinderId`-targeted references. Declarations see
+  inherited and preceding holes, not themselves or later declarations; active
+  names cannot be redeclared or shadowed. Callable head holes scope captures,
+  parameters, policy, return, clauses, body, and inherited nested callables.
+  Spans are provenance rather than semantic identity. Parser/Norm recursive
+  preservation and the identity substrate are implemented, while general
+  Pattern-directed execution remains a later consumer.
 - Extraction-style result delivery uses the declared return Pattern. Explicit
   writes address its binders separately; a bare tail or targeted return matches
   one result object as `let ResultPattern = expr`.
@@ -201,15 +209,15 @@ Resolved future-design decisions:
   Capture requirements remain abstract dependencies rather than `self` fields
   or layout declarations. In-place candidates are preferred over otherwise tied
   non-in-place candidates after first-order-over-instantiated preference.
-- Explicit navigation reaches exported names, whose const-only export view is
-  eligible for automatic const capture. Ordinary external call dependencies
-  normally fall within automatic const capture. Automatic capture and call
-  resolution share a problem domain around external symbol identity and const
-  visibility, without implying pass ordering, shared intermediate objects, or
-  an implementation dependency. Open: should a source-written capture of an
-  already explicitly navigable export be rejected as redundant, merely
-  diagnosed, or normalized to the same automatic dependency? This decision is
-  deferred until both domains are designed more fully.
+- Internal explicit navigation searches `Σ_full`; external explicit navigation
+  searches the const-projected `Σ_export`; neither is a Wpre/Wseal membership
+  query. Ordinary external call dependencies normally fall within automatic
+  const capture. Automatic capture and call resolution share a problem domain
+  around symbol identity and const visibility, without implying pass ordering,
+  shared intermediate objects, or an implementation dependency. Explicit and
+  automatic capture remain distinct dependency declarations even when they
+  resolve to the same source; later layout alone may coalesce equivalent
+  storage while retaining binder, policy, and provenance.
 - Inferred require retains coarse complete blocks and guarded branch groups,
   conjoins with manual require, and shares one compile-evaluation graph with
   body continuation.

@@ -116,8 +116,11 @@ in expression/operator contexts they may be operator spellings.
 Normalized DeduceLists are left-to-right dependent telescopes. A declaration
 annotation sees inherited and earlier declarations, never itself or later
 declarations. An active hole name cannot be redeclared or shadowed. Each
-declaration has a source-scoped `HoleBinderId`, and a named `HoleRef` targets
-that exact identity rather than merely repeating its spelling.
+declaration receives an alpha-normalized lexical ordinal `HoleBinderId`, and a
+named `HoleRef` targets that exact identity rather than merely repeating its
+spelling. Source spans are provenance, not identity. A callable-head telescope
+scopes captures, parameters, policy, return, clauses, body, and inherited
+nested callables.
 
 _See also: Hole, Strong context, CanonicalSkeleton._
 
@@ -726,13 +729,17 @@ outer value reference. Capture requirements are abstract dependencies: they
 do not declare `self` fields, copy/reference representation, layout, ZST
 status, or ABI.
 
-Explicit navigation reaches only exported names. Because exported values carry
-the required const view, explicitly navigated external values and callable
-targets normally become `ImplicitConst` dependencies. Automatic capture and
-call resolution share the external-symbol-identity/const-view problem domain;
-this does not imply pass ordering or an implementation dependency. Explicitly
-capturing the same navigable export is redundant; whether it is forbidden is
-still open.
+External explicit navigation reaches the namespace export view; internal
+explicit navigation reaches the complete namespace view. Because exported
+value views are const-projected, externally navigated values and callable
+targets normally satisfy `ImplicitConst` dependencies. Automatic capture and
+call resolution share the symbol-identity/const-view problem domain; this does
+not imply pass ordering or an implementation dependency.
+
+An explicit capture and an automatic capture may name the same source but
+remain distinct dependency declarations. Explicit capture can rename, project
+policy, use a complex initializer, request `mut`, and preserve provenance.
+Only a later layout pass may coalesce equivalent storage/link requirements.
 
 _See also: BindingSlot, NormClosure, Materialization._
 
@@ -982,6 +989,26 @@ _See also: Let binding, BindingAnnotation, CanonicalSkeleton._
 
 ---
 
+## Namespace Symbol Views
+
+Three independent sets govern namespace and build-world reasoning:
+
+```text
+Σ_full(N)    complete namespace-internal symbol and overload set
+Σ_export(N)  externally exposed projection of Σ_full(N)
+Wfinal       Wpre ∪ Wseal, materialized/retained/generated build world
+```
+
+Internal explicit resolution searches `Σ_full`; external explicit resolution
+searches `Σ_export`; world membership asks whether a symbol exists in Wpre or
+Wseal. The export overload set preserves the same candidate identities as the
+full set. World membership does not imply export, and export does not imply
+that the symbol itself was an export root.
+
+_See also: Policy Pair, Namespace (source name)._
+
+---
+
 ## Policy Pair
 
 The canonical internal policy representation:
@@ -997,11 +1024,12 @@ is surface shorthand or a derived summary and cannot reconstruct the pair.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
 
-At namespace direct top level, `export` supplies a contextual default on the
-otherwise independent mutability dimension: bare `export let` elaborates as
-`export + const`. A written export domain containing `mut` is invalid. This
-rule belongs to namespace-declaration elaboration, not the generic policy
-parser.
+At namespace direct top level, `export` derives an external view without
+cropping the complete internal `Pv:Pp`. A value-bearing external view is
+`Project_const(Pv):Pp` and therefore requires a non-empty const projection; a
+`mut`-only value export is invalid. A pure `absent:Pp` export has no
+value-mutability obligation. This rule belongs to namespace-declaration
+elaboration, not the generic policy parser.
 
 _See also: PolicyBinding,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._

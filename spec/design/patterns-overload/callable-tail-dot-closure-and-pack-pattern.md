@@ -346,15 +346,17 @@ CaptureOrigin
 Outer writes require an explicit capture whose selected source view contains
 `mut`. Automatic capture never grants `mut`.
 
-An explicitly navigated name is a special, common case. Successful explicit
-navigation requires the target path to be in the export graph. Because bare
-`export let` supplies the contextual `export + const` view and export cannot
-coexist with `mut`, an explicitly navigable value necessarily supplies the
-const projection required by `ImplicitConst`:
+An externally navigated name is a common case: external authority searches the
+namespace export view, and a value-bearing export view is const-projected.
+Internal explicit navigation instead searches the complete namespace-internal
+view and does not prove export membership:
 
 ```text
-ResolveExplicitNavigation(path) = exported symbol s
+ResolveExplicitNavigation(path, ExternalAuthority) = exported symbol s
   -> AutoCapture(C, s, requested_policy = const)
+
+ResolveExplicitNavigation(path, InternalAuthority)
+  -> search Σ_full; export membership is independent
 ```
 
 External callable references therefore normally enter an ordinary closure as
@@ -365,12 +367,20 @@ observation imposes no pass ordering, data flow, shared intermediate object, or
 implementation dependency between them. Automatic capture does not itself
 choose an overload.
 
-Writing an explicit capture for a symbol already available through explicit
-navigation is redundant and is treated as a design smell. Whether such a
-capture should be rejected outright is deliberately left open; the current
-frontend preserves it. Future capture and call-resolution designs should make
-compatible choices about the shared problem domain, without requiring one
-implementation to consume the other.
+An explicit capture and an automatic capture may resolve to the same source
+symbol, but they remain distinct dependency declarations. Explicit capture can
+rename the local binder, request a policy projection, use a complex
+initializer, request `mut`, or preserve source-level dependency and diagnostic
+provenance:
+
+```text
+[let local = external_name] != ImplicitConst(external_name)
+```
+
+No capture is rejected or erased as “redundant” during parsing,
+normalization, or capture discovery. A future environment-layout pass may
+coalesce equivalent storage/link requirements only after preserving binder
+identity, requested policy, and provenance.
 
 ### 2.4 Capture is an abstract dependency
 
@@ -416,7 +426,7 @@ origin/region relation, and storage-or-link category. This is a handoff
 obligation only; copy/move/borrow defaults, region construction, escape rules,
 and ABI remain unfrozen.
 
-### 2.5 DeduceList is an identity-bearing telescope
+### 2.5 DeduceList scope construction and alpha normalization
 
 The let-shaped slots reused by captures, parameters, returns, and nested
 extraction may each carry a DeduceList. Recursive preservation alone is not a
@@ -424,10 +434,11 @@ scope rule. Normalized DeduceLists therefore elaborate as left-to-right
 telescopes:
 
 ```text
-Gamma0 = inherited active holes
-Ti is normalized in Gamma(i-1)
-Ai receives HoleBinderId i
-Gamma_i = Gamma(i-1) extended with Ai
+rho0 = inherited active holes
+Ti is normalized under rho(i-1)
+allocate fresh alpha identity hi for Ai
+if Ai is not already active: rho_i = rho(i-1)[Ai -> hi]
+otherwise: retain an invalid binder for diagnostics and do not extend rho
 ```
 
 Consequently:
@@ -440,9 +451,34 @@ Consequently:
 
 Same-list duplicate names and redeclaration of an active ancestor name are
 errors. A duplicate declaration is retained for diagnostics but does not
-shadow or extend the environment. Each normalized reference carries its exact
-`HoleBinderId`; spelling is retained only for dumps and diagnostics. The
-anonymous `_` placeholder has no named binder identity.
+shadow or extend the environment.
+
+A callable head DeduceList scopes the entire callable:
+
+```text
+remaining Deduce annotations
+capture slots and capture initializers
+parameters and call policy
+return slot and head clauses
+callable body
+```
+
+Nested callables inherit that active hole environment and extend it with their
+own telescope. Body-local let-shaped DeduceLists extend only their own binding
+slot. Hole scope is separate from ordinary value-binder scope; a value binder
+with the same spelling does not retarget a Pattern-context hole occurrence.
+
+Raw AST preserves lexical scope shape, spelling, and provisional name role.
+After structural normalization, an alpha-normalization pass allocates local
+lexical ordinals and rewrites every scoped Pattern/policy occurrence to an
+exact `HoleBinderId`. Source spans remain provenance only. Alpha-equivalent
+sources such as `<A, B: A>` and `<X, Y: X>` therefore have the same binder/ref
+structure regardless of spelling or byte offset. A later build-world identity
+may combine a stable `SourceUnitId × BinderPath`; generated binders may use an
+expansion-instance identity. Neither model treats a source span as semantic
+identity.
+
+The anonymous `_` placeholder has no named binder identity.
 
 ## 3. `.name` is a first-class field-function closure
 
@@ -729,9 +765,10 @@ Implemented substrate:
   retaining explicitly headed structured operands for later semantic checking;
 - typed ordered/unordered operand-admissibility substrate, with stable-top-mode
   discovery left to Pattern-head resolution;
-- left-to-right DeduceList telescope normalization, exact source-scoped
-  `HoleBinderId` references, and duplicate-without-shadow validation across
-  nested let-shaped slots;
+- callable-wide Deduce scope construction plus left-to-right telescope
+  alpha-normalization, exact ordinal `HoleBinderId` references, and
+  duplicate-without-shadow validation across nested let-shaped slots and
+  nested callables;
 - named strategy metadata carried by selected restricted candidates only after
   applicability.
 

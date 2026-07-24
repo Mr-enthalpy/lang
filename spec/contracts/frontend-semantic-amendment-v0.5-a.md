@@ -303,12 +303,19 @@ outward specificity node at its containing level. Captured width and internal
 node count never become multiple same-level EP nodes; structured evidence, when
 legal, remains below the stable operand head.
 
-DeduceLists normalize as left-to-right telescopes. Each declaration receives a
-source-scoped `HoleBinderId`; each `HoleRef` targets that ID rather than only a
-spelling. A declaration annotation sees inherited and preceding binders, not
-the declaration itself or following binders. Same-list and active-ancestor
-duplicates are retained for diagnostics but do not shadow or extend the active
-environment. `_` normalizes as an anonymous hole rather than a named reference.
+DeduceLists normalize as left-to-right telescopes. Raw AST preserves lexical
+scope shape, spelling, and provisional roles. A post-structural
+alpha-normalization pass allocates fresh lexical ordinals and makes each
+`HoleRef` target that exact `HoleBinderId`; source spans remain provenance, not
+semantic identity. A declaration annotation sees inherited and preceding
+binders, not the declaration itself or following binders. Same-list and
+active-ancestor duplicates are retained for diagnostics but do not shadow or
+extend the active environment. `_` normalizes as an anonymous hole rather than
+a named reference.
+
+A callable head DeduceList scopes capture slots and initializers, parameters,
+call policy, return slot, head clauses, and the complete body. Nested callables
+inherit that environment before adding their own telescope.
 
 `normalize_program` remains available for diagnostic dumps and recovery
 inspection. The downstream build handoff is:

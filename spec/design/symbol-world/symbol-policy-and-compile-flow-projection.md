@@ -272,18 +272,11 @@ elaboration. They are rejected in ordinary P1, formal parameters, return
 slots, P2, Pattern interiors, expression policies, and local declarations that
 are not namespace declaration positions.
 
-`export` has the narrower placement rule described in section 9. It also has a
-namespace-context default on the independent mutability axis:
-
-```text
-export let name = expr
-  -> export + const let name = expr
-```
-
-This is not the ordinary empty function-object mutability domain. An explicit
-`export + const` is valid; `export + mut` and
-`export + (const || mut)` are invalid because an export root cannot expose a
-mutable value slice.
+`export` has the narrower placement rule described in section 9. Export
+elaboration derives a separate external view; it does not crop the namespace's
+complete internal declaration view. If the exported symbol has a value facet,
+that external view must have a non-empty `const` projection. A pure
+`absent:Pp` type/Pattern symbol has no value-mutability obligation.
 
 ## 4. P2 normalization
 
@@ -371,9 +364,10 @@ the declaration supplies an empty value-mutability restriction. In the typed
 policy domain, empty here means the complete `const || mut` domain, not “no
 value” and not an unknown third qualifier. A written declaration P1 may crop
 that domain to `const` or `mut`. P2 mutability never propagates into the
-function object during stage lifting. The namespace-context `export` exception
-is deliberate: an exported function-object binding defaults to
-`export + const`, and any written mut domain containing `mut` is rejected.
+function object during stage lifting. Export is not an exception to this
+internal default. The function object's namespace-internal declaration view
+remains the written/unwritten full domain; only its separately derived external
+value view is const-projected.
 
 ## 6. Three execution phases
 
@@ -471,7 +465,47 @@ No phase is inferred ad hoc from the original AST after this projection.
 
 ## 9. Namespace visibility and export
 
-### 9.1 Export roots
+### 9.1 Three independent symbol views
+
+Namespace resolution, external exposure, and compilation-world membership are
+different questions:
+
+```text
+Σ_full(N)    complete namespace-internal symbol/overload set
+Σ_export(N)  externally exposed projection of that set
+Wfinal       Wpre ∪ Wseal, the symbols materialized or retained this build
+```
+
+They are consumed by distinct operations:
+
+```text
+InternalResolve(N, path) searches Σ_full(N)
+ExternalResolve(N, path) searches Σ_export(N)
+WorldMembership(s) asks whether s belongs to Wpre or Wseal
+```
+
+For one name:
+
+```text
+ExportOverloadSet(name)
+  = ExternalProjection(FullOverloadSet(name))
+```
+
+This projection retains the original candidate identities; it does not create
+a second symbol universe. Consequently:
+
+```text
+s in Wpre  does not imply s is exported
+s in Wseal does not imply s is exported
+s is exported does not imply s was itself an export root
+```
+
+Explicit navigation is authority-sensitive. Internal explicit navigation may
+reach the complete namespace-internal view. External explicit navigation is
+restricted to the export projection. Explicit-path success alone therefore
+does not prove export membership.
+
+### 9.2 Export roots and value projection
 
 `export` is allowed only on a direct top-level declaration of one namespace
 construction level:
@@ -480,15 +514,22 @@ construction level:
 export let name = expr;
 ```
 
-At this declaration context, omission of a mutability atom is elaborated as:
+Let `InternalView(s) = Pv:Pp`. Export derives, rather than replaces, a second
+view:
 
 ```text
-export + const
+if Pv = absent:
+  ExternalView(s) = absent:Pp
+
+if Pv is present/optional:
+  require Project_const(Pv) is non-empty
+  ExternalView(s) = Project_const(Pv):Pp
 ```
 
-It is not elaborated as `export + (const || mut)` and then rejected later.
-`export + const` is accepted. `export + mut` and a written export mutability
-choice containing `mut` are rejected before namespace installation.
+Thus an omitted mutability axis and `const || mut` are valid complete internal
+domains because both have a const projection. A `mut`-only value export is
+invalid. `export requires const` is only shorthand for this value-facet
+projection rule; it is not a claim about pure type/Pattern exports.
 
 It is forbidden in function/meta-function bodies, parameters, return slots,
 P2, Pattern interiors, expression policies, ordinary local P1, and any nested
@@ -504,7 +545,7 @@ ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
 All ancestors needed to reach the root and its entire subtree enter the export
 graph. A child cannot close export again; an unrelated sibling is unaffected.
 
-### 9.2 Public/private
+### 9.3 Public/private
 
 `public` and `private` are ordinary hierarchical visibility attributes. A
 public parent may contain a private child, and a private parent may contain a
@@ -516,8 +557,8 @@ ExternallyVisible(path)
   = Exported(path) && PubliclyReachable(path)
 ```
 
-Export closure may retain private dependencies without making them
-name-addressable externally.
+Export closure may retain private dependencies without installing them in
+`Σ_export`.
 
 ## 10. Wpre and seal world
 
@@ -537,7 +578,8 @@ Wpre = least_fixed_point(R)
 Materialized results include only results actually generated in this build,
 not the infinite set a generic meta function might produce for future inputs.
 Wpre can contain non-exported private dependencies solely so the exported
-interface remains interpretable.
+interface remains interpretable. Such membership does not install those
+dependencies in `Σ_export`.
 
 SealStatic generates `Wseal` and finishes with:
 
@@ -556,9 +598,11 @@ ResolveExplicitPath != EnumerateSymbolWorld
 ```
 
 A committed symbol in Wseal can be explicitly resolved by later seal/compile
-code under ordinary construction transaction, name-resolution, dependency, and
-policy rules. Its absence from the current Wpre scan does not make it
-unaddressable.
+code under ordinary construction transaction, name-resolution, dependency,
+authority, and policy rules. Internal authority may resolve it through
+`Σ_full`; external authority still requires a corresponding `Σ_export` view.
+Its absence from the current Wpre scan does not make it unaddressable, and its
+presence in Wseal does not make it exported.
 
 ## 11. Phase execution
 

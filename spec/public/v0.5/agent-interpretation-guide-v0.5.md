@@ -98,7 +98,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
 - DeduceList is a left-to-right telescope of `HoleDecl { id, ... }`. Each
   annotation sees inherited and preceding holes, not its own or following
   declarations. Active names cannot be redeclared or shadowed. A `HoleRef`
-  targets an exact `HoleBinderId`; `_` is an anonymous hole, not a named ref.
+  targets an exact alpha-normalized ordinal `HoleBinderId`; source spans remain
+  provenance. A callable-head telescope scopes captures, parameters, call
+  policy, return, clauses, body, and inherited nested callables. `_` is an
+  anonymous hole, not a named ref.
 - Alias right-hand sides stay unresolved `EntityRef` (dump label `AliasPreserve`),
   never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to

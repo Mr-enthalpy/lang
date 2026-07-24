@@ -81,6 +81,17 @@ OpenStatic, exposes no readable runtime value, but exposes its compile Pattern
 and derived compile companion. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
 
+Explicit-path resolution is authority-sensitive:
+
+```text
+InternalResolve(path) -> Σ_full
+ExternalResolve(path) -> Σ_export
+```
+
+Neither operation is a Wpre/Wseal membership query. A symbol may belong to the
+materialized world without being externally exposed, and an exported view is a
+projection of the same full symbol identity rather than a second symbol.
+
 Ordinary seal code can explicitly resolve committed symbols. Only a
 compiler-known privileged seal function can enumerate the fixed Wpre scan
 domain; Wseal never enlarges it.
@@ -96,17 +107,21 @@ ExternallyVisible(path) = Exported(path) && PubliclyReachable(path)
 
 `export` is legal only at a namespace construction level's direct top-level.
 Public/private may vary at every hierarchy layer and external access checks all
-path components. `export` and `mut` cannot coexist:
+path components. Export retains a complete internal declaration view and
+derives a separate external view:
 
 ```text
-export let x = expr                 -> export + const
-export + const let x = expr         -> valid
-export + mut let x = expr           -> invalid
-export + (const || mut) let x = expr -> invalid
+InternalView(value export) = full Pv:Pp
+ExternalView(value export) = Project_const(Pv):Pp
+InternalView(type export)  = absent:Pp
+ExternalView(type export)  = absent:Pp
 ```
 
-This const default is performed by the namespace-declaration P1 elaborator,
-not by the generic policy parser or function-object stage lifting.
+An omitted mutability domain and a written `const || mut` domain are valid when
+their const projection is non-empty. A `mut`-only value export is invalid. A
+pure type/Pattern export has no value-mutability requirement. This projection
+is performed by namespace-declaration elaboration, not by the generic policy
+parser or function-object stage lifting.
 
 ## 5. Rust substrate
 
@@ -122,6 +137,8 @@ The typed substrate currently provides:
 - explicit resolution followed by phase exposure and facet reads;
 - structural `CompleteSymbolFlow` projection;
 - Wpre and export least-closure helpers;
+- complete and externally projected namespace overload-set carriers that
+  preserve candidate identity;
 - phase-aware overload preference combined with const/mut product order.
 
 The older `PolicyFlag`/`PolicySet` path remains compatibility transport. It is

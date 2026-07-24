@@ -174,7 +174,12 @@ pub enum NamespaceDeclarationPosition {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamespaceDeclarationPolicy {
+    /// The complete namespace-internal declaration view. Export never crops
+    /// this projection.
     pub projection: P1Projection,
+    /// The externally exposed projection derived from the complete internal
+    /// view. `None` means the declaration is not in the export view.
+    pub external_projection: Option<P1Projection>,
     pub visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
 }
@@ -182,9 +187,8 @@ pub struct NamespaceDeclarationPolicy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionObjectDeclarationPolicy {
     /// Empty is the default unrestricted `const || mut` function-object
-    /// domain for a non-export declaration. Namespace declaration elaboration
-    /// always restricts an export root to `const`; an exported function object
-    /// must therefore never reach this carrier with an empty or `mut` domain.
+    /// domain. This is the complete namespace-internal declaration view;
+    /// export const-projection is represented separately and never crops it.
     pub mutability: BTreeSet<ValueMutability>,
     pub namespace_visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
@@ -338,6 +342,51 @@ pub fn compute_wpre<T: Clone + Ord>(
 pub struct NamespaceExportNode<I> {
     pub parent: Option<I>,
     pub visibility: NamespaceVisibility,
+}
+
+/// The complete namespace overload set and its externally exposed projection.
+/// Both views retain the same candidate identities; export does not construct
+/// a second symbol universe.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NamespaceOverloadSets<N, C> {
+    pub full: BTreeMap<N, Vec<C>>,
+    pub exported: BTreeMap<N, Vec<C>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NamespaceResolveAuthority {
+    Internal,
+    External,
+}
+
+impl<N: Ord, C> NamespaceOverloadSets<N, C> {
+    pub fn resolve(&self, name: &N, authority: NamespaceResolveAuthority) -> Option<&[C]> {
+        match authority {
+            NamespaceResolveAuthority::Internal => self.full.get(name),
+            NamespaceResolveAuthority::External => self.exported.get(name),
+        }
+        .map(Vec::as_slice)
+    }
+}
+
+/// Project external overload views from the complete namespace sets while
+/// preserving each candidate's existing identity.
+pub fn project_export_overload_sets<N: Clone + Ord, C: Clone>(
+    full: BTreeMap<N, Vec<C>>,
+    mut externally_visible: impl FnMut(&N, &C) -> bool,
+) -> NamespaceOverloadSets<N, C> {
+    let exported = full
+        .iter()
+        .filter_map(|(name, candidates)| {
+            let projected = candidates
+                .iter()
+                .filter(|candidate| externally_visible(name, candidate))
+                .cloned()
+                .collect::<Vec<_>>();
+            (!projected.is_empty()).then(|| (name.clone(), projected))
+        })
+        .collect();
+    NamespaceOverloadSets { full, exported }
 }
 
 /// Compute `PathAncestors(root) ∪ Subtree(root)` for every export root.
@@ -614,11 +663,12 @@ pub fn elaborate_namespace_declaration_policy(
     let Some(policy) = policy else {
         return Ok(NamespaceDeclarationPolicy {
             projection: P1Projection::Infer,
+            external_projection: None,
             visibility: None,
             export_root: false,
         });
     };
-    let (mut projection, namespace, export_root) =
+    let (projection, namespace, export_root) =
         elaborate_p1_components(policy, provenance.clone())?;
     let visibility = one_namespace(&namespace, provenance.clone())?;
     if export_root && position != NamespaceDeclarationPosition::DirectTopLevel {
@@ -627,23 +677,29 @@ pub fn elaborate_namespace_declaration_policy(
             provenance,
         ));
     }
-    if export_root {
-        restrict_export_root_to_const(&mut projection, provenance.clone())?;
-    }
+    let external_projection = export_root
+        .then(|| project_export_view(&projection, provenance.clone()))
+        .transpose()?;
     Ok(NamespaceDeclarationPolicy {
         projection,
+        external_projection,
         visibility,
         export_root,
     })
 }
 
-fn restrict_export_root_to_const(
-    projection: &mut P1Projection,
+/// Build the external export view without modifying the complete internal P1.
+///
+/// Value-bearing policies must expose a non-empty const projection. A pure
+/// Pattern/type pair (`Pv = absent`) has no value-mutability obligation.
+pub fn project_export_view(
+    projection: &P1Projection,
     provenance: Provenance,
-) -> Result<(), Diagnostic> {
-    let mutability = match projection {
-        P1Projection::ValueDominant { value } => &mut value.mutability,
-        P1Projection::Pair(pair) => &mut pair.value.mutability,
+) -> Result<P1Projection, Diagnostic> {
+    let mut projected = projection.clone();
+    let value = match &mut projected {
+        P1Projection::ValueDominant { value } => value,
+        P1Projection::Pair(pair) => &mut pair.value,
         P1Projection::Infer => {
             return Err(policy_error(
                 "an export root requires an explicit namespace declaration policy",
@@ -652,16 +708,19 @@ fn restrict_export_root_to_const(
         }
     };
 
-    if mutability.contains(&ValueMutability::Mut) {
+    if value.presence == ValuePresence::Absent {
+        return Ok(projected);
+    }
+    if !value.mutability.is_empty()
+        && !value.mutability.contains(&ValueMutability::Const)
+    {
         return Err(policy_error(
-            "export and mut cannot coexist; an export root exposes only its const value slice",
+            "a value-bearing export requires a non-empty const projection",
             provenance,
         ));
     }
-    if mutability.is_empty() {
-        mutability.insert(ValueMutability::Const);
-    }
-    Ok(())
+    value.mutability = BTreeSet::from([ValueMutability::Const]);
+    Ok(projected)
 }
 
 fn elaborate_p1_components(
@@ -1007,6 +1066,14 @@ fn parse_atom(
                 ));
             }
         },
+        NormPolicyAtom::HoleRef { text, .. } => {
+            return Err(policy_error(
+                format!(
+                    "DeduceList hole `{text}` is not yet a concrete typed policy atom"
+                ),
+                provenance,
+            ));
+        }
         NormPolicyAtom::Group { conjunction, .. } => {
             return parse_component(conjunction, allow_absent, provenance);
         }

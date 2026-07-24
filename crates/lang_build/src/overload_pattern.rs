@@ -394,6 +394,7 @@ fn collect_restricted_skeleton(
     match skeleton {
         NormSkeleton::Wildcard { .. } => *has_discard = true,
         NormSkeleton::Name { name, .. } => alternatives.push(name.clone()),
+        NormSkeleton::HoleRef { name, .. } => alternatives.push(name.clone()),
         NormSkeleton::Segment { elements, .. } => {
             for element in elements {
                 collect_restricted_skeleton(element, has_discard, alternatives);

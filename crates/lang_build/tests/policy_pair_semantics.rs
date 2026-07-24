@@ -6,10 +6,11 @@ use lang_build::{
     elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
     elaborate_namespace_declaration_policy, expose_policy_slice, externally_visible,
     function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
-    project_p1, publicly_reachable, read_pattern, read_value, resolve_explicit_path,
-    select_by_mutability_product, select_policy_overload, BuiltinPrivilegedSealFunction,
-    CompleteFlowNode, CompleteSymbolFlow, FunctionObjectDeclarationPolicy, MutabilityPattern,
-    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
+    project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
+    resolve_explicit_path, select_by_mutability_product, select_policy_overload,
+    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
+    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceResolveAuthority, NamespaceVisibility, P1Projection,
     PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
     PolicyOverloadSelection, PolicyResultEntry, PolicyStage, Provenance, SealWorldSnapshot,
     StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
@@ -296,22 +297,31 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         NamespaceDeclarationPosition::DirectTopLevel,
         Provenance::new("namespace top-level"),
     )
-    .expect("export defaults to a const value slice independently of visibility");
+    .expect("export derives a const external view independently of visibility");
     assert!(declaration.export_root);
     assert_eq!(declaration.visibility, Some(NamespaceVisibility::Public));
     let P1Projection::ValueDominant { value } = &declaration.projection else {
         panic!("single namespace policy must elaborate as value-dominant P1");
     };
+    assert!(
+        value.mutability.is_empty(),
+        "export must not crop the complete namespace-internal declaration view"
+    );
+    let Some(P1Projection::ValueDominant {
+        value: external_value,
+    }) = &declaration.external_projection
+    else {
+        panic!("export root must carry an external value view");
+    };
     assert_eq!(
-        value.mutability,
+        external_value.mutability,
         mutability(&[ValueMutability::Const]),
-        "bare export declaration policy is export + const, not export + (const || mut)"
+        "bare export derives a const external projection"
     );
     let function_declaration = function_object_declaration_policy(&declaration);
-    assert_eq!(
-        function_declaration.mutability,
-        mutability(&[ValueMutability::Const]),
-        "function-object declaration formation must preserve the contextual const export slice"
+    assert!(
+        function_declaration.mutability.is_empty(),
+        "function-object formation consumes the complete internal declaration view"
     );
 
     let explicit_const = elaborate_namespace_declaration_policy(
@@ -324,27 +334,150 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         panic!("single namespace policy must elaborate as value-dominant P1");
     };
     assert_eq!(value.mutability, mutability(&[ValueMutability::Const]));
+    assert!(matches!(
+        explicit_const.external_projection,
+        Some(P1Projection::ValueDominant { ref value })
+            if value.mutability == mutability(&[ValueMutability::Const])
+    ));
 
-    for source in [
-        "export + mut + runtime",
-        "export + (const || mut) + runtime",
-    ] {
-        assert!(
-            elaborate_namespace_declaration_policy(
-                Some(&policy_spec(source)),
-                NamespaceDeclarationPosition::DirectTopLevel,
-                Provenance::new(source),
-            )
-            .is_err(),
-            "`{source}` must not retain a mut export slice"
-        );
-    }
+    let broad_internal = elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + (const || mut) + runtime")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("broad internal export"),
+    )
+    .expect("a full const-or-mut internal view has a valid const export projection");
+    assert!(matches!(
+        broad_internal.projection,
+        P1Projection::ValueDominant { ref value }
+            if value.mutability
+                == mutability(&[ValueMutability::Const, ValueMutability::Mut])
+    ));
+    assert!(matches!(
+        broad_internal.external_projection,
+        Some(P1Projection::ValueDominant { ref value })
+            if value.mutability == mutability(&[ValueMutability::Const])
+    ));
+
+    assert!(elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + mut + runtime")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("mut-only export"),
+    )
+    .is_err());
+
+    let type_only = elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + S : compile")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("type-only export"),
+    )
+    .expect("a pure Pattern/type export has no value-mutability obligation");
+    assert!(matches!(
+        type_only.external_projection,
+        Some(P1Projection::Pair(ref pair))
+            if pair.value.presence == ValuePresence::Absent
+                && pair.value.mutability.is_empty()
+    ));
+
     assert!(elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + runtime")),
         NamespaceDeclarationPosition::Local,
         Provenance::new("local export"),
     )
     .is_err());
+}
+
+#[test]
+fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct Candidate {
+        identity: u32,
+        has_const_view: bool,
+    }
+
+    let full = BTreeMap::from([
+        (
+            "f",
+            vec![
+                Candidate {
+                    identity: 1,
+                    has_const_view: true,
+                },
+                Candidate {
+                    identity: 2,
+                    has_const_view: false,
+                },
+            ],
+        ),
+        (
+            "private_dependency",
+            vec![Candidate {
+                identity: 3,
+                has_const_view: true,
+            }],
+        ),
+    ]);
+    let views = project_export_overload_sets(full, |name, candidate| {
+        *name == "f" && candidate.has_const_view
+    });
+
+    assert_eq!(
+        views
+            .resolve(&"f", NamespaceResolveAuthority::Internal)
+            .expect("full overload set")
+            .iter()
+            .map(|candidate| candidate.identity)
+            .collect::<Vec<_>>(),
+        vec![1, 2]
+    );
+    assert_eq!(
+        views
+            .resolve(&"f", NamespaceResolveAuthority::External)
+            .expect("export projection")
+            .iter()
+            .map(|candidate| candidate.identity)
+            .collect::<Vec<_>>(),
+        vec![1]
+    );
+    assert!(views
+        .resolve(
+            &"private_dependency",
+            NamespaceResolveAuthority::Internal
+        )
+        .is_some());
+    assert!(views
+        .resolve(
+            &"private_dependency",
+            NamespaceResolveAuthority::External
+        )
+        .is_none());
+
+    let wpre = compute_wpre(
+        WpreRoots {
+            exported_symbols: vec!["f"],
+            materialized_results_of_exported_meta_functions: vec![],
+            parameter_dependencies_of_exported_meta_functions: vec![],
+        },
+        |symbol| {
+            if *symbol == "f" {
+                vec!["private_dependency"]
+            } else {
+                vec![]
+            }
+        },
+    );
+    assert!(
+        wpre.contains("private_dependency"),
+        "Wpre may retain a private semantic dependency"
+    );
+    assert!(
+        views
+            .resolve(
+                &"private_dependency",
+                NamespaceResolveAuthority::External
+            )
+            .is_none(),
+        "world membership must not install an external export view"
+    );
 }
 
 #[test]

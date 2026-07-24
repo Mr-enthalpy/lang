@@ -81,6 +81,16 @@ fn form_span(form: &FormAst) -> Span {
     }
 }
 
+fn parse_callable_body_block(
+    parser: &mut Parser<'_>,
+    head: &FnHeadPrefixAst,
+) -> BodyBlockAst {
+    let mark = parser.push_deduce_scope(head.deduce.as_ref());
+    let body = parse_body_block(parser);
+    parser.restore_deduce_scope(mark);
+    body
+}
+
 // -- Closure entry from atom parser --
 
 pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
@@ -109,7 +119,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.cursor.consume_symbol(Symbol::FatArrow).is_some() {
         parser.ungate_keep_diagnostics();
         if parser.cursor.at_symbol(Symbol::LBrace) {
-            let block = parse_body_block(parser);
+            let block = parse_callable_body_block(parser, &head);
             let span = head.span.join(block.span);
             let body = ClosureBodyAst::Block(block);
             return Some(closure_atom(
@@ -186,7 +196,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span: token.span,
             };
             if parser.cursor.at_symbol(Symbol::LBrace) {
-                let block = parse_body_block(parser);
+                let block = parse_callable_body_block(parser, &head);
                 let body_span = strategy.span.join(block.span);
                 let span = head.span.join(block.span);
                 return Some(closure_atom(
@@ -233,7 +243,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         parser.ungate_keep_diagnostics();
         let Some(strategy) = parse_overload_strategy_annotation(parser) else {
             let end = if parser.cursor.at_symbol(Symbol::LBrace) {
-                parse_body_block(parser).span
+                parse_callable_body_block(parser, &head).span
             } else {
                 parser.recover_to_form_boundary();
                 parser.cursor.current_span()
@@ -263,7 +273,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
                 span: error_span,
             });
         }
-        let body = parse_body_block(parser);
+        let body = parse_callable_body_block(parser, &head);
         let span = head.span.join(body.span);
         if let Some(error) = reject_in_place_capture(parser, &head, span) {
             return Some(error);
@@ -282,7 +292,7 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
 
     if parser.cursor.at_symbol(Symbol::LBrace) {
         parser.ungate_keep_diagnostics();
-        let body = parse_body_block(parser);
+        let body = parse_callable_body_block(parser, &head);
         let span = head.span.join(body.span);
         if let Some(error) = reject_in_place_capture(parser, &head, span) {
             return Some(error);
@@ -525,15 +535,19 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
+    let deduce_scope_mark = parser.push_deduce_scope(deduce.as_ref());
+
     let captures =
         if parser.cursor.at_symbol(Symbol::LBracket) && !at_complete_strategy_tail(parser) {
-            Some(parse_capture_clause(parser))
+            let inherited = parser.active_deduce_list();
+            Some(parse_capture_clause(parser, inherited.as_ref()))
         } else {
             None
         };
 
     let params = if parser.cursor.at_symbol(Symbol::LParen) {
-        Some(parse_param_clause(parser, deduce.as_ref()))
+        let inherited = parser.active_deduce_list();
+        Some(parse_param_clause(parser, inherited.as_ref()))
     } else {
         None
     };
@@ -558,7 +572,8 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
     };
 
     let returns = if parser.cursor.consume_symbol(Symbol::ThinArrow).is_some() {
-        Some(parse_return_clause(parser))
+        let inherited = parser.active_deduce_list();
+        Some(parse_return_clause(parser, inherited.as_ref()))
     } else {
         None
     };
@@ -567,6 +582,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
 
     let end = parser.cursor.current_span();
     let span = start.join(end);
+    parser.restore_deduce_scope(deduce_scope_mark);
 
     if deduce.is_none() && captures.is_none() && params.is_none() && clauses.is_empty() {
         return None;
@@ -705,7 +721,10 @@ fn parse_head_clauses(parser: &mut Parser<'_>) -> Vec<HeadClauseAst> {
 
 // -- Capture clause --
 
-fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
+fn parse_capture_clause(
+    parser: &mut Parser<'_>,
+    inherited_deduce: Option<&crate::DeduceListAst>,
+) -> CaptureClauseAst {
     let lbracket = parser
         .cursor
         .consume_symbol(Symbol::LBracket)
@@ -723,7 +742,12 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
         }
 
         if capture_item_is_explicit_binding(parser) {
-            let mut slot = parse_binding_slot(parser, BindingSlotContext::Capture, None, true);
+            let mut slot = parse_binding_slot(
+                parser,
+                BindingSlotContext::Capture,
+                inherited_deduce,
+                true,
+            );
             let missing_initializer_span = parser.cursor.current_span();
             let initializer = slot.initializer.take().unwrap_or_else(|| {
                 error_expr(
@@ -827,9 +851,17 @@ fn parse_param_clause(
 
 // -- Return clause --
 
-fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
+fn parse_return_clause(
+    parser: &mut Parser<'_>,
+    inherited_deduce: Option<&crate::DeduceListAst>,
+) -> ReturnClauseAst {
     let start = parser.cursor.current_span();
-    let slot = parse_binding_slot(parser, BindingSlotContext::Return, None, false);
+    let slot = parse_binding_slot(
+        parser,
+        BindingSlotContext::Return,
+        inherited_deduce,
+        false,
+    );
     let end = slot.span;
     ReturnClauseAst {
         slot,

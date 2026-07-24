@@ -522,6 +522,19 @@ annotation. Same-list duplicates and redeclaration of any active ancestor hole
 are errors; DeduceList holes do not shadow. `HoleBinderId`, rather than the
 display spelling, records the exact declaration targeted by a `HoleRef`.
 
+A callable head DeduceList scopes the callable's capture slots and
+initializers, parameters, call policy, return slot, head clauses, and complete
+body. Nested callables inherit that active hole environment before extending
+it with their own DeduceList. Ordinary value binders occupy a separate lexical
+environment and do not change Pattern-context hole identity.
+
+Raw AST preserves spelling, lexical scope shape, and provisional canonical
+roles. A distinct alpha-normalization step after structural normalization
+allocates fresh lexical ordinals and rewrites scoped Pattern/policy occurrences
+to exact `HoleBinderId` targets. Source spans are provenance, never semantic
+hole identity; alpha-equivalent binder/ref structures are independent of source
+spelling and byte offset.
+
 The anonymous annotation placeholder `_` is `AnonymousHole`; it is not a named
 `HoleRef` and has no `HoleBinderId`.
 
@@ -765,14 +778,21 @@ stage may add an `ImplicitConst` requirement for an otherwise uncaptured free
 outer value reference. That later operation requires symbol resolution and
 const-slice projection and therefore is not normalization.
 
-In later resolved semantics, explicit navigation succeeds only for exported
-paths. Such values have the export-required const view, so explicit-navigation
-dependencies—including ordinary external call targets—normally become
-automatic const capture requirements. Automatic capture and call resolution
-therefore touch the same problem domain—external symbol identity and readable
-const view—but this does not prescribe pass ordering, data flow, or an
-implementation dependency. Explicit source capture of an already explicitly
-navigable export is redundant; whether it should become an error remains open.
+In later resolved semantics, external explicit navigation searches the export
+view, while internal explicit navigation searches the complete namespace view.
+Value-bearing export views are const-projected, so dependencies reached with
+external authority—including ordinary external call targets—normally satisfy
+automatic const-capture requirements. Automatic capture and call resolution
+therefore touch the same problem domain—symbol identity and readable const
+view—but this does not prescribe pass ordering, data flow, or an implementation
+dependency.
+
+Explicit and automatic capture remain distinct even when they resolve to the
+same source symbol. Explicit capture may rename, project policy, use a complex
+initializer, request `mut`, and preserve distinct provenance. Parsing,
+normalization, and capture discovery neither reject nor erase it as redundant.
+A future layout pass may coalesce equivalent storage/link requirements only
+while preserving binder identity, policy, and provenance.
 
 Resolved capture requirements are abstract dependencies, not a declaration of
 `self` fields, capture-by-value/reference representation, field order, ZST

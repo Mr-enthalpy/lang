@@ -1,6 +1,6 @@
 use crate::{
-    Diagnostic, DiagnosticCode, ErrorAst, ExprAst, ExprKind, FormAst, ProgramAst, ReturnEventAst,
-    ReturnTargetAst, Span, Symbol, Token, TokenKind,
+    BinderDeclAst, DeduceListAst, Diagnostic, DiagnosticCode, ErrorAst, ExprAst, ExprKind, FormAst,
+    ProgramAst, ReturnEventAst, ReturnTargetAst, Span, Symbol, Token, TokenKind,
 };
 
 use super::{
@@ -13,6 +13,7 @@ pub struct Parser<'tokens> {
     diagnostics: Vec<Diagnostic>,
     nesting_depth: usize,
     diagnostic_gates: Vec<Vec<Diagnostic>>,
+    active_holes: Vec<BinderDeclAst>,
 }
 
 impl<'tokens> Parser<'tokens> {
@@ -22,7 +23,32 @@ impl<'tokens> Parser<'tokens> {
             diagnostics,
             nesting_depth: 0,
             diagnostic_gates: Vec::new(),
+            active_holes: Vec::new(),
         }
+    }
+
+    pub(super) fn active_deduce_list(&self) -> Option<DeduceListAst> {
+        let first = self.active_holes.first()?;
+        let last = self
+            .active_holes
+            .last()
+            .expect("non-empty active hole environment");
+        Some(DeduceListAst {
+            binders: self.active_holes.clone(),
+            span: first.span.join(last.span),
+        })
+    }
+
+    pub(super) fn push_deduce_scope(&mut self, local: Option<&DeduceListAst>) -> usize {
+        let mark = self.active_holes.len();
+        if let Some(local) = local {
+            self.active_holes.extend(local.binders.iter().cloned());
+        }
+        mark
+    }
+
+    pub(super) fn restore_deduce_scope(&mut self, mark: usize) {
+        self.active_holes.truncate(mark);
     }
 
     pub fn parse_program(&mut self) -> ProgramAst {
