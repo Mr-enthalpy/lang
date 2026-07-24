@@ -415,22 +415,25 @@ self-root requirement on a returned type value. It may freely return an
 already existing value:
 
 ```lang
-let identity = (t: type): compile -> r: type => {
+let identity = (self, t: type): compile -> r: type => {
     r = t;
     r;
 };
 ```
 
 When a `compile` body uses a local `struct`, ordinary function-object scope
-rules apply. Its ambient owner is the function object's internal Self frame,
-diagnostically sketched as:
+rules apply. Its ambient lexical/Pattern owner is the current
+`CallableOwner` and that owner's callable-local `Self` space. This statement
+does not determine the invocation receiver type. Standalone function-object
+materialization defaults to an anonymous callable type derived from the owner;
+an associated `()` implementation may instead bind invocation slot 0 and the
+type facet of its local `Self` to a named receiver such as `ref::T`.
 
-```text
-topname::__inner_space::Self
-```
-
-or the eventual canonical identity chosen for that Self frame. It is not a
-meta-instance scope such as `(canonical_arguments meta_function_name)`.
+Nested paths print in source order, current/innermost callable-local `Self`
+first and outermost `Self` last, but identity is the parent-linked owner graph.
+No `__inner_space` or `__inner_namespace` node participates in canonical
+ownership. This owner is not a meta-instance owner such as
+`MetaInstanceOwner(meta_function, canonical_arguments)`.
 
 ### 4.3 Ordinary `meta`
 
@@ -464,7 +467,7 @@ M = MetaInstanceScope(callee_symbol, canonical_arguments)
 For:
 
 ```lang
-let f = (t: type): meta -> r: symbol => { ... };
+let f = (self, t: type): meta -> r: symbol => { ... };
 ```
 
 the diagnostic navigation projection of `M` is:
@@ -523,12 +526,12 @@ scope. It is not equality of rendered strings.
 Consequently, both of these meta bodies are invalid:
 
 ```lang
-let f = (t: type): meta -> r: symbol => {
+let f = (self, t: type): meta -> r: symbol => {
     r = t;
     r;
 };
 
-let fn = (t: type): meta -> r: symbol => {
+let fn = (self, t: type): meta -> r: symbol => {
     r = uint8;
     r;
 };
@@ -542,7 +545,7 @@ Neither value may directly replace the return symbol's required type root.
 A legal meta construction builds under its own scope:
 
 ```lang
-let f = (t: type): meta -> r: symbol => {
+let f = (self, t: type): meta -> r: symbol => {
     r = (t inner) |> struct;
     r;
 };
@@ -558,7 +561,7 @@ External `PatternValue`s may be members of the self-rooted type; they may not
 replace the root. For example:
 
 ```lang
-let fn = (t: type): meta -> r: symbol => {
+let fn = (self, t: type): meta -> r: symbol => {
     let t1::r = bool;
     r;
 };
@@ -746,7 +749,7 @@ syntax contains a distinguished outer pattern name.
 Example:
 
 ```lang
-let f = (t: symbol): meta -> r: symbol {
+let f = (self, t: symbol): meta -> r: symbol {
     r = (t first, t second) |> struct;
 };
 ```
@@ -769,7 +772,7 @@ The fully resolved pattern is:
 The single-field form uses the same rule:
 
 ```lang
-let f = (t: symbol): meta -> r: symbol {
+let f = (self, t: symbol): meta -> r: symbol {
     r = (t first) |> struct;
 };
 ```
@@ -1535,6 +1538,46 @@ resolve source Symbol
   -> project/read ordinary value
   -> construct namespace value member
 ```
+
+This is also the expectation of an ordinary let-shaped declaration consumed
+inside `struct` construction:
+
+```lang
+let name = expr
+```
+
+It contributes only to the current Pattern owner's `Val2`/namespace value
+facet:
+
+```text
+Val1 contribution    = none
+Pattern contribution = none
+Val2 contribution    = value entries produced by expr
+```
+
+The initializer is not restricted to type/Pattern material or to `Pv=absent`.
+It may contribute any ordinary heterogeneous value entry, including a callable
+function object. The construction stores this as an uninstalled child
+contribution; it does not mutate the namespace graph during `struct`
+evaluation.
+
+The empty destination `()` is the special call-entry leaf rather than a normal
+value-member name. Inside construction of `T`, `let () = impl` contributes
+`()` below `T` only. A separate `()::ref::T` or `()::share::T` requires a
+separate authorized contribution. The body of an associated `()` entry still
+has its own `CallableOwner`, while invocation-frame slot 0 receives the object
+whose type supplied that entry.
+
+Under equal owner/construction authority, an inner contribution and a later
+inner-to-outer navigated declaration denote the same pending namespace delta:
+
+```text
+struct-local contribution under owner name1::T
+  ==
+later installation at name::name1::T
+```
+
+Neither spelling creates an alias or reroots the initializer's Pattern.
 
 The language must select the expectation from semantic context or an explicit
 rank/facet annotation. It must not guess `PatternChild` merely because the

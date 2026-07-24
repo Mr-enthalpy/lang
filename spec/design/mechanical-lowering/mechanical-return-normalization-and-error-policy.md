@@ -71,12 +71,12 @@ language-shaped form:
 (r: type)? |>
   if { r; } |>
   else {
-      r |> <T: type>(r: T) {
+      r |> <T: type>(helper_self, r: T) {
           (T |> has(Error))? |>
               if {
-                  r |> (e Error) {
-                      self..return(e Error);
-                  } |> (val: _) {
+                  r |> (branch_self, e Error) {
+                      return_owner..return(e Error);
+                  } |> (branch_self, val: _) {
                       val;
                   };
               } |>
@@ -98,8 +98,10 @@ Semantic points:
 
 2. The `else` branch handles value returns only.
 
-3. `r |> <T: type>(r: T) { ... }` is rank-pattern / type-binding shape. It binds
-   the first-order type `T` of value `r`, then runs guarded predicates over `T`.
+3. `r |> <T: type>(helper_self, r: T) { ... }` is rank-pattern /
+   type-binding shape. The generated helper's first written formal binds its
+   implicitly passed callable object; the next formal binds value `r` and its
+   first-order type `T`, then the body runs guarded predicates over `T`.
 
 4. `(T |> has(Error))? |> if { ... }` explicitly peels one top Pattern layer
    from the bool result. The branch chain could also read the bool Pattern
@@ -108,19 +110,23 @@ Semantic points:
    does the error branch run. The branch that is not entered creates no
    `Error` lookup obligation.
 
-5. `r |> (e Error) { ... } |> (val: _) { ... }` is the Error-carrier branch
-   shape inside the guarded `T |> has(Error)` branch:
+5. `r |> (branch_self, e Error) { ... } |> (branch_self, val: _) { ... }` is
+   the Error-carrier branch shape inside the guarded `T |> has(Error)` branch:
+   - each branch's first written formal binds that branch callable's implicit
+     self slot;
    - the Error branch binds `e Error`;
    - the value branch binds `val`.
 
-6. `self..return(e Error)` is a call to the current outer function object's
-   return capability.
+6. `return_owner..return(e Error)` is schematic notation for a call to the
+   enclosing callable frame's return capability. It is deliberately not the
+   branch-local self formal.
 
-7. `self` is not an ordinary user name, local variable, or textually captured
-   object. It is the invocation-frame position of the current outer function
-   object, determined during symbol lookup / invocation-frame construction.
+7. `helper_self` and `branch_self` are ordinary binder spellings for their
+   respective callables' first formal position. The self role is positional,
+   not attached to the spelling `self`; each actual callable object is passed
+   implicitly in invocation-frame slot 0.
 
-8. `self..return(e Error)` is not an exception throw, runtime exception,
+8. `return_owner..return(e Error)` is not an exception throw, runtime exception,
    throw/catch operation, or compiler-intrinsic jump. It is the return
    capability exposed by the current function object. The capability has a
    special semantic effect, but it is still entered through symbol / capability
@@ -171,7 +177,7 @@ If T |> has(Error) is false:
   Error / default return capability is not required
 
 If T |> has(Error) is true:
-  the branch containing self..return(e Error) is entered
+  the branch containing return_owner..return(e Error) is entered
   the current policy/capability environment must permit that return capability
 ```
 
@@ -181,13 +187,13 @@ branch.
 
 ## 6. Error Carrier Branch and Return Capability
 
-The default Error behavior may be represented by the visible Error carrier branch
-calling the current function object's return capability:
+The default Error behavior may be represented by the visible Error carrier
+branch calling the current callable frame's return capability:
 
 ```lang
-r |> (e Error) {
-    self..return(e Error);
-} |> (val: _) {
+r |> (branch_self, e Error) {
+    return_owner..return(e Error);
+} |> (branch_self, val: _) {
     val;
 };
 ```
@@ -204,24 +210,32 @@ A library-level Error handler may be factored as an ordinary callable, but the
 mechanical example in this document uses the direct source-shaped branch form so
 that the capability boundary is explicit.
 
-### 6.1 `self` in Inserted Return Normalization
+### 6.1 Callable self and the enclosing return owner
 
-The `self` used in `self..return(e Error)` is not resolved as an ordinary user
+The `return_owner` used in `return_owner..return(e Error)` is not a new
+source-level keyword. It is schematic notation for the already resolved
+enclosing callable-object identity whose return capability is being targeted.
+Every generated helper and branch is itself a callable: if it writes formals,
+its first formal binds its own implicitly passed self object. Consequently the
+branch-local first formal must not be confused with the enclosing return owner.
+
+The enclosing return owner is not resolved merely as an ordinary user
 name. It denotes the current outer function object's invocation-frame position.
 The symbol lookup / invocation preparation phase determines this position.
 
-The inserted normalization action may refer to that position, but user code does
-not capture it by spelling a local variable named `self`.
+The inserted normalization action may refer to that resolved position without
+depending on the source spelling chosen for the outer callable's first formal.
 
 ```text
-self is a position, not a name.
+the self role is a position;
+`self` is only a conventional binder spelling.
 ```
 
-### 6.2 `self..return(d)` — the Function Object's Built-In Return Capability
+### 6.2 `return_owner..return(d)` — the Function Object's Built-In Return Capability
 
-`self..return(d)` is the current function object's built-in return capability.
-It is lookupable through the current function-object capability position, but its
-semantic effect is special:
+`return_owner..return(d)` denotes the enclosing function object's built-in
+return capability. It is lookupable through the resolved function-object
+capability position, but its semantic effect is special:
 
 1. **Local pattern/type-check channel**: it completes the current branch with
    `Done(unit)`. The branch contributes no further pattern material to the
@@ -231,16 +245,17 @@ semantic effect is special:
    final return accumulator, independently of the local branch pattern space.
 
 3. **Lifetime postcondition**: the return capability declares that the
-   return-relevant mutable capability of `self` is consumed / closed after the
-   call. The lifetime checker trusts the declared contract: it checks the call
-   precondition before the call, then trusts the declared postcondition after the
-   call. It does **not** inspect implementation bodies to rediscover
-   control-flow facts. This is a name-and-contract system — checking happens at
-   the call boundary, not through body-level control-flow analysis.
+   return-relevant mutable capability of the enclosing callable object is
+   consumed / closed after the call. The lifetime checker trusts the declared
+   contract: it checks the call precondition before the call, then trusts the
+   declared postcondition after the call. It does **not** inspect implementation
+   bodies to rediscover control-flow facts. This is a name-and-contract system —
+   checking happens at the call boundary, not through body-level control-flow
+   analysis.
 
-Thus when the Error branch calls `self..return(e Error)`, the result is not an
-exception jump or a compiler intrinsic. It is an early return through the
-function object's exposed return capability.
+Thus when the Error branch calls `return_owner..return(e Error)`, the result is
+not an exception jump or a compiler intrinsic. It is an early return through
+the enclosing function object's exposed return capability.
 
 ## 7. Ordinary Function Behavior
 
@@ -269,7 +284,7 @@ An annotation such as:
 
 makes the use of the default error-return capability be blocked by policy. If
 automatic return normalization actually enters the `T |> has(Error)` branch and
-requires `self..return(e Error)` through the default capability, a compile-time
+requires `return_owner..return(e Error)` through the default capability, a compile-time
 error is produced.
 
 If `T |> has(Error)` is false:
@@ -282,7 +297,7 @@ Error / default return capability is not required.
 If `T |> has(Error)` is true:
 
 ```text
-the branch containing self..return(e Error) is entered;
+the branch containing return_owner..return(e Error) is entered;
 this requires the current policy/capability environment to permit that return capability.
 ```
 
@@ -449,4 +464,4 @@ model specified here, and this document does not depend on them for its meaning.
   `T |> has(Error)` branch relies on the control-flow-local meta evaluation
   substrate: the false branch has no Error lookup or return-capability
   obligation, and the true branch alone checks the Error carrier branch and
-  `self..return(e Error)` capability.
+  `return_owner..return(e Error)` capability.

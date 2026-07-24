@@ -61,8 +61,9 @@ namespace graph projection and in future meta object invocation.
 - **Dependencies** — define the static build-graph ordering and the dependency
   fingerprint flow: a dependency's fingerprint participates in the dependent's
   cache key.
-- **Mount table** — defines the paths at which dependency namespace roots are
-  projected into the current compilation graph, including optional aliases.
+- **Mount table** — defines alternative paths that redirect to existing
+  dependency namespace roots, including optional aliases. A mount never copies
+  the target namespace or changes target symbol identity.
 - **Export surface** — defines which symbols, namespaces, and callables an
   external lookup may see. It is a visibility boundary projected into the
   namespace graph, not a source-level import/export pair.
@@ -93,6 +94,11 @@ The source language sees namespace paths after projection, not manifest clauses.
 Mounting a dependency makes its namespace root resolvable through the namespace
 graph. Source code then refers to namespace paths such as `Vec::std`; it never
 writes manifest clauses, import statements, or mount directives.
+
+Package identity is explicit semantic metadata. Physical directories may feed
+namespace assembly, but a directory name is neither package identity nor symbol
+identity. A nested `PackageBoundary { package_id }` overrides the inherited
+package domain for its subtree.
 
 ## 5. Current implementation boundary
 

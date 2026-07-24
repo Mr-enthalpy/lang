@@ -10,35 +10,62 @@ pub enum MutabilityPattern {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PolicyOverloadCandidate<I> {
     pub id: I,
-    pub parameter_policies: Vec<MutabilityPattern>,
+    pub formal_frame: MutabilityFormalFrame,
     pub result_policy: Option<MutabilityPattern>,
     pub is_delete: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MutabilityFormalFrame {
+    /// Policy Pattern of callable-frame slot 0. The first source-written
+    /// formal occupies this position. If no formal is written, the implicit
+    /// self-position remains and uses the unspecified Pattern.
+    pub self_pattern: MutabilityPattern,
+    /// Policy Patterns for source-written positions after the first one.
+    /// These consume the explicit call-site Product.
+    pub explicit_parameter_patterns: Vec<MutabilityPattern>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MutabilityActualFrame {
+    /// Mutability view of the caller object injected into invocation-frame
+    /// slot 0. For a standalone function this is the function object; for an
+    /// associated `()` entry it is the object whose type supplied that entry.
+    pub caller_value: ValueMutability,
+    /// Mutability views supplied by the explicit call-site Product.
+    pub explicit_arguments: Vec<ValueMutability>,
+}
+
 impl<I> PolicyOverloadCandidate<I> {
-    /// Build the externally comparable candidate policy from elaborated
-    /// formal parameters. The const/mut slice is not body-local metadata: it
-    /// is copied into the product-order positions used to select this
-    /// candidate from its overload set.
+    /// Build the externally comparable candidate policy from source-order
+    /// elaborated formals. The first written formal is the explicitly declared
+    /// Pattern for the implicitly passed self-position; only later formals
+    /// consume the call-site Product.
     pub fn from_formal_patterns(
         id: I,
         parameters: &[FormalPolicyPattern],
         result_policy: Option<MutabilityPattern>,
         is_delete: bool,
     ) -> Self {
+        let mut patterns = parameters.iter().map(formal_mutability_pattern);
+        let self_pattern = patterns.next().unwrap_or(MutabilityPattern::Unspecified);
         Self {
             id,
-            parameter_policies: parameters
-                .iter()
-                .map(|formal| match formal.mutability {
-                    Some(ValueMutability::Const) => MutabilityPattern::Const,
-                    Some(ValueMutability::Mut) => MutabilityPattern::Mut,
-                    None => MutabilityPattern::Unspecified,
-                })
-                .collect(),
+            formal_frame: MutabilityFormalFrame {
+                self_pattern,
+                explicit_parameter_patterns: patterns.collect(),
+            },
             result_policy,
             is_delete,
         }
+    }
+}
+
+fn formal_mutability_pattern(formal: &FormalPolicyPattern) -> MutabilityPattern {
+    match formal.mutability {
+        Some(ValueMutability::Const) => MutabilityPattern::Const,
+        Some(ValueMutability::Mut) => MutabilityPattern::Mut,
+        None => MutabilityPattern::Unspecified,
     }
 }
 
@@ -63,12 +90,12 @@ pub enum PolicyOverloadSelection<I> {
 
 pub fn select_by_mutability_product<I: Clone>(
     candidates: &[PolicyOverloadCandidate<I>],
-    arguments: &[ValueMutability],
+    actual_frame: &MutabilityActualFrame,
     target_result: Option<ValueMutability>,
 ) -> PolicyOverloadSelection<I> {
     let admissible = candidates
         .iter()
-        .filter(|candidate| candidate.parameter_policies.len() == arguments.len())
+        .filter(|candidate| frame_arity_matches(&candidate.formal_frame, actual_frame))
         .collect::<Vec<_>>();
     if admissible.is_empty() {
         return PolicyOverloadSelection::NoCandidate;
@@ -80,7 +107,7 @@ pub fn select_by_mutability_product<I: Clone>(
         .filter(|(candidate_index, candidate)| {
             !admissible.iter().enumerate().any(|(other_index, other)| {
                 *candidate_index != other_index
-                    && dominates(other, candidate, arguments, target_result)
+                    && dominates(other, candidate, actual_frame, target_result)
             })
         })
         .map(|(_, candidate)| *candidate)
@@ -103,7 +130,7 @@ pub fn select_by_mutability_product<I: Clone>(
 
 pub fn select_policy_overload<I: Clone>(
     candidates: &[PhaseOverloadCandidate<I>],
-    arguments: &[ValueMutability],
+    actual_frame: &MutabilityActualFrame,
     target_result: Option<ValueMutability>,
     phase: Phase,
 ) -> PolicyOverloadSelection<I> {
@@ -112,7 +139,7 @@ pub fn select_policy_overload<I: Clone>(
         .filter(|candidate| {
             candidate.fully_admissible
                 && candidate.stage.visible_at(phase)
-                && candidate.candidate.parameter_policies.len() == arguments.len()
+                && frame_arity_matches(&candidate.candidate.formal_frame, actual_frame)
         })
         .collect::<Vec<_>>();
     if admissible.is_empty() {
@@ -125,7 +152,7 @@ pub fn select_policy_overload<I: Clone>(
         .filter(|(candidate_index, candidate)| {
             !admissible.iter().enumerate().any(|(other_index, other)| {
                 *candidate_index != other_index
-                    && phase_dominates(other, candidate, arguments, target_result, phase)
+                    && phase_dominates(other, candidate, actual_frame, target_result, phase)
             })
         })
         .map(|(_, candidate)| *candidate)
@@ -149,24 +176,17 @@ pub fn select_policy_overload<I: Clone>(
 fn phase_dominates<I>(
     better: &PhaseOverloadCandidate<I>,
     worse: &PhaseOverloadCandidate<I>,
-    arguments: &[ValueMutability],
+    actual_frame: &MutabilityActualFrame,
     target_result: Option<ValueMutability>,
     phase: Phase,
 ) -> bool {
-    let mut strictly_better = false;
-    for ((better_policy, worse_policy), argument) in better
-        .candidate
-        .parameter_policies
-        .iter()
-        .zip(&worse.candidate.parameter_policies)
-        .zip(arguments)
-    {
-        match compare_position(*better_policy, *worse_policy, *argument) {
-            PositionPreference::Worse => return false,
-            PositionPreference::Better => strictly_better = true,
-            PositionPreference::Equal => {}
-        }
-    }
+    let Some(mut strictly_better) = compare_frames(
+        &better.candidate.formal_frame,
+        &worse.candidate.formal_frame,
+        actual_frame,
+    ) else {
+        return false;
+    };
 
     if let Some(target_result) = target_result {
         let better_result = better
@@ -216,22 +236,14 @@ fn compare_stage_specificity(
 fn dominates<I>(
     better: &PolicyOverloadCandidate<I>,
     worse: &PolicyOverloadCandidate<I>,
-    arguments: &[ValueMutability],
+    actual_frame: &MutabilityActualFrame,
     target_result: Option<ValueMutability>,
 ) -> bool {
-    let mut strictly_better = false;
-    for ((better_policy, worse_policy), argument) in better
-        .parameter_policies
-        .iter()
-        .zip(&worse.parameter_policies)
-        .zip(arguments)
-    {
-        match compare_position(*better_policy, *worse_policy, *argument) {
-            PositionPreference::Worse => return false,
-            PositionPreference::Better => strictly_better = true,
-            PositionPreference::Equal => {}
-        }
-    }
+    let Some(mut strictly_better) =
+        compare_frames(&better.formal_frame, &worse.formal_frame, actual_frame)
+    else {
+        return false;
+    };
 
     if let Some(target_result) = target_result {
         let better_result = better
@@ -248,6 +260,40 @@ fn dominates<I>(
     }
 
     strictly_better
+}
+
+fn frame_arity_matches(formal: &MutabilityFormalFrame, actual: &MutabilityActualFrame) -> bool {
+    formal.explicit_parameter_patterns.len() == actual.explicit_arguments.len()
+}
+
+/// Compare the complete callable frame. The self-position participates in the
+/// same product partial order as every explicit argument, but it is supplied
+/// from `actual.caller_value`, never from the call-site Product.
+fn compare_frames(
+    better: &MutabilityFormalFrame,
+    worse: &MutabilityFormalFrame,
+    actual: &MutabilityActualFrame,
+) -> Option<bool> {
+    let mut strictly_better = false;
+    match compare_position(better.self_pattern, worse.self_pattern, actual.caller_value) {
+        PositionPreference::Worse => return None,
+        PositionPreference::Better => strictly_better = true,
+        PositionPreference::Equal => {}
+    }
+
+    for ((better_policy, worse_policy), argument) in better
+        .explicit_parameter_patterns
+        .iter()
+        .zip(&worse.explicit_parameter_patterns)
+        .zip(&actual.explicit_arguments)
+    {
+        match compare_position(*better_policy, *worse_policy, *argument) {
+            PositionPreference::Worse => return None,
+            PositionPreference::Better => strictly_better = true,
+            PositionPreference::Equal => {}
+        }
+    }
+    Some(strictly_better)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

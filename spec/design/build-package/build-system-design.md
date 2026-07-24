@@ -84,8 +84,9 @@ This is only an analogy. The implementation may use source packages, static
 libraries, dynamic libraries, interface metadata, cached build artifacts,
 remote packages, or other distribution forms.
 
-The essential operation is: mount a library's namespace root into the
-compilation namespace graph.
+The essential operation is: create a redirect edge from a chosen local path to
+the library's existing namespace root. Mounting never copies the target
+namespace or creates new symbol identities.
 
 For example, a build manifest may say:
 
@@ -96,6 +97,13 @@ mount mylib from package mylib
 
 After this, source code may refer to `Vec::std` and `Vec3::vector::math::mylib`
 without writing any source-level import.
+
+The graph records explicit `PackageBoundary { package_id }` metadata.
+`PackageOf(node)` is determined by the nearest such ancestor, not by guessing
+from a physical directory spelling. When mount traversal crosses from the
+query package to a target package, resolution switches from `FullNameView` to
+`ExternalNameView`; public/private is then checked on every access-path
+component.
 
 The build system controls: which libraries are mounted, which namespace roots
 they provide, which versions are selected, which artifacts are used, which

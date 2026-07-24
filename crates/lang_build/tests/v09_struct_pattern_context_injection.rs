@@ -31,6 +31,7 @@ fn generated_struct_value(
                 field_name: "x".to_string(),
                 field_type_symbol_id: SymbolId(50),
                 field_index: 0,
+                visibility: lang_build::StructuralMemberVisibility::Public,
                 provenance: field_provenance.clone(),
             }],
             return_slot_semantics: ReturnSlotSemantics::Generate,
@@ -42,6 +43,7 @@ fn generated_struct_value(
             name: "x".to_string(),
             type_symbol_id: SymbolId(50),
             index: 0,
+            visibility: lang_build::StructuralMemberVisibility::Public,
             pattern_head: None,
             provenance: field_provenance,
         }],
@@ -357,10 +359,6 @@ fn local_context_uses_place_identity_not_rendered_path_identity() {
         state.pattern_heads.get(owner_head).unwrap().display_name,
         "Name"
     );
-    assert_ne!(
-        state.pattern_heads.get(owner_head).unwrap().display_name,
-        "Name::__inner_ns::Self"
-    );
 }
 
 #[test]
@@ -399,6 +397,50 @@ fn binding_generated_type_at_root_uses_generated_fallback() {
             .expect("struct binding exposes extraction interface")
             .owner_pattern_head,
         Some(owner_head)
+    );
+}
+
+#[test]
+fn private_structural_member_remains_in_full_type_but_not_default_extraction() {
+    let snapshot = NamespaceGraphSnapshot::new();
+    let mut state = TypeMaterializationState::default();
+    let mut value = generated_struct_value(TypeDefinitionInstanceId(0));
+    let default_identity = compute_type_definition_instance_id(&value.identity_material);
+    value.identity_material.field_signature_material[0].visibility =
+        lang_build::StructuralMemberVisibility::Private;
+    value.fields[0].visibility = lang_build::StructuralMemberVisibility::Private;
+    value.type_definition_id = compute_type_definition_instance_id(&value.identity_material);
+    assert_ne!(
+        default_identity, value.type_definition_id,
+        "structural visibility participates in generated type identity"
+    );
+
+    let expansion = bind_meta_invocation_value_result_with_materialization_state(
+        lang_build::MetaInvocationValue::GeneratedTypeDefinitionValue(value),
+        &snapshot,
+        snapshot.root_node(),
+        "PrivateFieldType",
+        provenance("bind private structural field"),
+        &mut state,
+    )
+    .expect("private structural field type binds successfully");
+    let type_object = type_payload(&expansion.replacement_object);
+
+    assert_eq!(type_object.fields.len(), 1);
+    assert_eq!(
+        type_object.fields[0].visibility,
+        lang_build::StructuralMemberVisibility::Private,
+        "the full structural representation retains private fields"
+    );
+    assert!(
+        type_object
+            .extraction_interface
+            .as_ref()
+            .expect("generated struct has a default extraction view")
+            .exposed_view
+            .fields
+            .is_empty(),
+        "the default extraction view excludes private fields"
     );
 }
 

@@ -43,6 +43,7 @@ This amendment therefore classifies each delta explicitly:
 | Malformed-tail `ErrorAst` recovery | Hard recovery correction | Invalid source must not become a legal empty user body. |
 | Global one-pack validation | New post-normalization invariant | Parser-local counting cannot enforce a normalized-level invariant across every binding slot. |
 | DeduceList telescope and exact `HoleBinderId` references | Normalized binding correction | A string-only `HoleRef` cannot identify its declaration or define forward/self/duplicate behavior in nested let-shaped slots. |
+| First written formal = callable self-position | Normalized formal-frame correction | Invocation already injects callable self as slot 0. Treating the first written Pattern as an explicit user argument split one position into two incompatible meanings and made generated receiver helpers consume their own callable object as the business receiver. |
 
 ## 2. Version boundary
 
@@ -251,9 +252,22 @@ A `.name`-generated closure therefore has:
 ```text
 placement = InPlace
 origin.rule = DotClosureLowering
+params = [generated self, val: T, ...args]
 ```
 
 `Generated` is not a placement variant.
+
+For every ordinary or in-place closure, the first written formal is the
+explicit Pattern for invocation-frame slot 0. Its actual caller object is
+passed implicitly and never belongs to the explicit call-site Product. Written
+formals after it consume that Product in order. The spelling `self` is not
+reserved. A closure with no written formal still has an unbound semantic self
+slot. Prefix-negative, dot-closure, and double-dot generated helpers therefore
+write a generated self formal before their `val` receiver formal.
+
+The Raw/Normalized carrier does not decide the caller's type. Standalone
+function-object materialization and associated `()` installation share this
+positional rule but may supply different receiver types.
 
 This is still an AST/Normalized-AST carrier. Normalization does not materialize
 it as a callable value or allocate a capture environment. Only a later
@@ -303,6 +317,12 @@ outward specificity node at its containing level. Captured width and internal
 node count never become multiple same-level EP nodes; structured evidence, when
 legal, remains below the stable operand head.
 
+> Superseded identity rule: the following paragraph records the v0.5-A
+> telescope substrate. v0.6 retains left-to-right telescope order but replaces
+> active-ancestor uniqueness with same-`PatternRoot` uniqueness and permits a
+> new independent Pattern root to shadow inherited names. The persistent
+> identity is qualified by `SemanticOwnerId`.
+
 DeduceLists normalize as left-to-right telescopes. Raw AST preserves lexical
 scope shape, spelling, and provisional roles. A post-structural
 alpha-normalization pass allocates fresh lexical ordinals and makes each
@@ -349,7 +369,8 @@ normalize_and_validate_patterns
 Only `PatternValidatedNormProgram` may enter declaration harvesting. This
 makes the normalized Pattern rules an enforced handoff rather than an optional
 caller convention. It is the sole authority for pack cardinality,
-non-canonical bare-Product Pack operands, and active-telescope duplicate holes:
+non-canonical bare-Product Pack operands, and same-`PatternRoot` duplicate holes
+under the superseding v0.6 owner amendment:
 the parser constructs every syntactically formed
 `BindingPatternAst::Pack` and diagnoses only local syntax such as a missing
 inner Pattern. It does not count packs or claim knowledge of normalized

@@ -49,9 +49,11 @@ Stage(P1v) = Stage(P2v) || Stage(P2p)
 Only stages lift. Mutability, visibility, export-root, and value presence come
 from the object declaration.
 
-Each written formal parameter inherits P2 first. An omitted qualifier keeps it
-unchanged; `const let` / `mut let` restrict only its mutability Pattern and do
-not alter any other component. The function object itself defaults to an empty
+Each written formal parameter inherits P2 first. The first written formal is
+the caller-object self Pattern even though its actual is passed implicitly;
+later formals consume the explicit call-site Product. An omitted qualifier
+keeps it unchanged; `const let` / `mut let` restrict only its mutability Pattern
+and do not alter any other component. The function object itself defaults to an empty
 mutability restriction, whose typed-domain meaning is the full
 `const || mut` choice; an explicit declaration P1 may crop it. Namespace
 declaration elaboration does not crop this complete internal view merely
@@ -93,6 +95,20 @@ ExternalResolve(path) -> Σ_export
 Neither operation is a Wpre/Wseal membership query. A symbol may belong to the
 materialized world without being externally exposed, and an exported view is a
 projection of the same full symbol identity rather than a second symbol.
+
+The final authority is derived from package crossing. Lookup inside the same
+package can consume `FullNameView`; after a path or mount enters another
+package, lookup consumes `ExternalNameView`. A non-export declaration is
+lexically visible from descendant semantic owners in the same package, but not
+from an unrelated sibling merely because the sibling shares that package:
+
+```text
+LexicalInternalVisible(s, query)
+  = SamePackage(DeclOwner(s), query)
+    && AncestorOrSelf(DeclOwner(s), Owner(query))
+```
+
+This is separate from public/private path reachability and from export.
 
 Ordinary seal code can explicitly resolve committed symbols. Only a
 compiler-known privileged seal function can enumerate the fixed Wpre scan
@@ -150,6 +166,20 @@ are filtered from `Σ_export`; `absent:Pp` candidates enter unchanged. The
 generic policy parser and function-object stage lifting do not perform these
 operations.
 
+Namespace and Pattern consumers use three projections rather than treating
+export as one universal visibility bit:
+
+```text
+FullNameView          complete package-internal name/overload view
+ExternalNameView      export-retained, publicly reachable external candidates
+DefaultExtractionView structural members exposed by default extraction
+```
+
+A private structural member remains in the full structural representation but
+is absent from `DefaultExtractionView`. This is only the hard default boundary;
+a future custom `?` design owns richer extraction-interface construction.
+`Wpre/Wseal` membership remains orthogonal to all three views.
+
 ## 5. Rust substrate
 
 The typed substrate currently provides:
@@ -170,6 +200,9 @@ The typed substrate currently provides:
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.
+- a parent-linked semantic-owner graph plus an owner-aware namespace forest
+  substrate with explicit package boundaries, identity-preserving mount
+  redirects, Full/External view routing, and typed lookup failures.
 
 The older `PolicyFlag`/`PolicySet` path remains compatibility transport. It is
 lossy: it cannot represent choice syntax, Pattern association after cropping,

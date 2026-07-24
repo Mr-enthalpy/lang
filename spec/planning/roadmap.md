@@ -30,6 +30,13 @@ Canonical matching is later than Normalized AST.
 Closure materialization is later than Normalized AST.
 NLL/drop insertion is later than Normalized AST.
 
+The current v0.6 slice includes typed semantic-owner identity, callable and
+meta-instance owner nesting, Pattern-root alpha boundaries, owner-qualified
+hole handoff, Full/External/DefaultExtraction views, explicit package-boundary
+metadata, identity-preserving mount redirects, and narrow struct-member
+visibility carriers. It does not claim persistent manifest parsing, general
+name resolution, custom `?`, closure materialization, or backend integration.
+
 ---
 
 ### v0.1 — Raw AST Frontend — completed

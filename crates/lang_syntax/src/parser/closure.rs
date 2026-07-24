@@ -236,7 +236,21 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         });
     }
 
-    if at_strategy_annotation_candidate(parser) {
+    let only_parenthesized_head = head.deduce.is_none()
+        && head.captures.is_none()
+        && head.params.is_some()
+        && head.call_policy.is_none()
+        && head.returns.is_none()
+        && head.clauses.is_empty();
+    let member_visibility_suffix = super::atom::token_index_starts_member_visibility_annotation(
+        parser,
+        parser.cursor.current_index(),
+    );
+    let complete_strategy_tail = at_complete_strategy_tail(parser);
+
+    if at_strategy_annotation_candidate(parser)
+        && !(only_parenthesized_head && member_visibility_suffix && !complete_strategy_tail)
+    {
         parser.ungate_keep_diagnostics();
         let Some(strategy) = parse_overload_strategy_annotation(parser) else {
             let end = if parser.cursor.at_symbol(Symbol::LBrace) {

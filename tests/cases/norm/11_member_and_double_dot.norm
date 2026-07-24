@@ -22,6 +22,18 @@ NormProgram origin=Source@1:1[0..25]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(DotClosureLowering)@1:1[0..9]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@1:1[0..9]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(DotClosureLowering)@1:1[0..9]
                       annotation:
                         AnnotationPattern origin=Generated(DotClosureLowering)@1:1[0..9]
@@ -77,6 +89,18 @@ NormProgram origin=Source@1:1[0..25]
                       AnnotationPattern origin=Generated(DoubleDotLowering)@2:1[11..25]
                         PatternName "type" origin=Generated(DoubleDotLowering)@2:1[11..25]
                 params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "self" origin=Generated(DoubleDotLowering)@2:1[11..25]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(DoubleDotLowering)@2:1[11..25]
                       deduce:

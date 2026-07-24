@@ -115,13 +115,13 @@ in expression/operator contexts they may be operator spellings.
 
 Normalized DeduceLists are left-to-right dependent telescopes. A declaration
 annotation sees inherited and earlier declarations, never itself or later
-declarations. An active hole name cannot be redeclared or shadowed. Each
-declaration receives an alpha-normalized, owner-local lexical ordinal
-`HoleBinderId`, and a named `HoleRef` targets that exact identity rather than
-merely repeating its spelling. The `AlphaOwner` is the complete normalized
-tree produced by one root `normalize_program` invocation; nested body
-`NormProgram` nodes share it. IDs from distinct alpha owners are not directly
-comparable. Source spans are provenance, not identity. Generated
+declarations. A hole name cannot be repeated within one `PatternRoot`; a new
+independent Pattern root may shadow an inherited spelling. Each declaration
+receives an alpha-normalized `HoleBinderId` qualified by callable owner,
+Pattern root, and root-local ordinal, and a named `HoleRef` targets that exact
+identity rather than merely repeating its spelling. Build integration maps the
+frontend owner to a persistent `SemanticOwnerId`. Source spans are provenance,
+not identity. Generated
 receiver holes use hygienic generated keys rather than source spelling. A
 callable-head telescope scopes captures, parameters, policy, return, clauses,
 body, and inherited nested callables. Within a BindingSlot, policy precedes
@@ -141,6 +141,117 @@ spelling with `CanonicalNameRole::Hole`; normalized uses carry an exact
 and targets no DeduceList declaration.
 
 _See also: DeduceList, CanonicalSkeleton._
+
+---
+
+## SemanticOwner
+
+A parent-linked semantic identity domain for namespace objects, callable
+anonymous types, canonical meta-invocation instances, and generated objects.
+Semantic identity is `(SemanticOwnerId, local identity)`; source file, span, and
+printable path are provenance only. Every callable, including an in-place
+closure, has a callable owner. Standalone closure materialization defaults to
+an anonymous function-object type derived from that owner, but an associated
+call-entry implementation may receive a different named receiver type. Source
+navigation prints the current/innermost callable-local `Self` owner first and
+enclosing owners to its right.
+
+_See also: CallableReceiverType, PatternRoot, PackageBoundary, Mount._
+
+---
+
+## CallableReceiverType
+
+The type of the caller object injected into invocation-frame slot 0. It is
+independent of `CallableOwner`. For a standalone function object it defaults to
+the owner-derived anonymous function-object type; for an associated `()` entry
+it is the type whose namespace supplied that entry, such as `ref::T`.
+
+The first written formal binds this object by position under any legal spelling.
+Only later formals consume the explicit call-site Product. A mismatch is an
+ordinary invocation type-check failure, not a separate `let ()` declaration
+rule.
+
+_See also: SemanticOwner, Callable Implementation Tail._
+
+---
+
+## Associated Val2 Contribution
+
+A let-shaped declaration consumed inside `struct` construction that adds
+ordinary value-facet material below the current Pattern owner without adding a
+Val1 structural slot or Pattern extraction member. Its initializer may be
+value-bearing and callable. The empty target `()` installs the current owner's
+special call entry. Contributions remain uninstalled until the outer
+construction commits its namespace delta.
+
+_See also: DefaultExtractionView, SemanticOwner._
+
+---
+
+## PatternRoot
+
+One independent Pattern/extraction alpha boundary inside a `SemanticOwner`.
+Nested BindingSlots, Products, Sequences, annotations, DeduceLists, and Pack
+operands inside an extraction retain the same root. An independent let Pattern
+or callable head creates a new root. Hole names are unique within one root;
+different roots may use normal lexical shadowing.
+
+_See also: DeduceList, Hole, SemanticOwner._
+
+---
+
+## FullNameView
+
+The complete package-internal namespace and overload view. Same-package
+descendant owners may use an ancestor's non-export entries through lexical
+lookup. Unrelated siblings do not acquire that visibility merely by sharing a
+package.
+
+_See also: ExternalNameView, DefaultExtractionView._
+
+---
+
+## ExternalNameView
+
+The identity-preserving external namespace projection used after lookup crosses
+a package boundary. It requires export-retention admission, public reachability
+through every access-path component, and an externally eligible candidate
+policy view.
+
+_See also: FullNameView, PackageBoundary, Mount._
+
+---
+
+## DefaultExtractionView
+
+The structural Pattern view exposed by default extraction. It is distinct from
+both name views. Private structural members remain in the full structural model
+but are absent from this view. Rich custom `?` construction remains future
+design.
+
+_See also: FullNameView, ExternalNameView._
+
+---
+
+## PackageBoundary
+
+Build/namespace metadata assigning a stable `PackageId` to a namespace subtree.
+`PackageOf(node)` uses the nearest boundary ancestor. Physical directory names
+do not define package or symbol identity.
+
+_See also: Mount, SemanticOwner._
+
+---
+
+## Mount
+
+A namespace-graph redirect edge from an alternative access path to an existing
+target node. Mount traversal may cross a package boundary and switch to
+`ExternalNameView`, but it never copies the target symbol or changes its
+identity.
+
+_See also: PackageBoundary, ExternalNameView._
 
 ---
 
@@ -768,11 +879,15 @@ forbidden; local mutation and effectful calls remain possible. An
 otherwise tied in-place candidate is preferred after the
 first-order-over-instantiated filter.
 
-> **Explicit self position for return:** A headless in-place closure
-> has no self target and cannot express early return. Early return
-> examples that target a specific closure should use an in-place
-> closure with an explicit product/extraction head carrying the
-> self position, e.g.:
+> **Explicit self position for return:** A headless in-place closure still has
+> a callable owner, a callable-local `Self` space, and an invocation-frame
+> caller/self slot, but it has no written binder for that slot. If it is later
+> materialized as a standalone function object, its receiver type defaults to
+> the owner-derived anonymous callable type; that default is not part of
+> return-target identity. The headless form therefore cannot name its own
+> return target through a first-formal binder. Early-return examples that
+> target a specific closure should use an in-place closure with an explicit
+> product/extraction head carrying the self position, e.g.:
 >
 > ```lang
 > (<Self: type> self: Self) {
@@ -808,6 +923,9 @@ explicit head and a callable implementation tail.
 The head may contain deduce list, capture clause, parameter clause, call-result
 policy clause, return clause, and head clauses. The tail preserves ordinary or
 named user body, compiler-defaulted implementation, or deleted implementation.
+As for every callable placement, the first written formal Pattern denotes the
+implicitly passed caller-object self slot; only later written formals consume
+the explicit call-site Product.
 Plain no-`=>` block tails and `[[name]]` stay in-place; the latter is only the
 named-strategy escape that does not steal the established return
 extraction-pattern parse.
@@ -849,7 +967,7 @@ _See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution P
 The downstream handoff produced by `normalize_and_validate_patterns` after all
 currently enforced global normalized Pattern invariants have passed: one Pack
 per structural level, no bare Product Pack operand, and no duplicate
-DeduceList hole in the active telescope. Its certificate is intentionally
+DeduceList hole in one `PatternRoot`. Its certificate is intentionally
 narrow: it does not prove ordered/unordered Pack applicability, stable
 Pattern-head identity, complete matching support, parser-diagnostic absence,
 or recovery freedom. `normalize_program` alone remains useful for
@@ -863,7 +981,9 @@ _See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._
 
 The first-class expression `.name`, normalized to a generated in-place
 `NormClosure` carrier shaped as
-`(val: T, ...args) { (val, args) |> name::T }`. `E.name` is compact
+`(self, val: T, ...args) { (val, args) |> name::T }`. The generated first
+formal is the implicitly supplied callable object; `val` is the first explicit
+call-site argument. `E.name` is compact
 `E |> .name`; `.name` itself captures no receiver. After lowering it is an
 ordinary expression. Replacing it with a bound equivalent must preserve the
 same pipe/product binding spine, and no normalizer rule may inspect
@@ -1380,7 +1500,7 @@ _See also: ReturnEvent._
 ## ImplicitNearest return target
 
 A return target indicating the return should target the nearest
-enclosing function-object self. In the parser and normalizer,
+enclosing callable-frame self. In the parser and normalizer,
 `ImplicitNearest` is an unresolved marker. The source form is
 `E return;`. A restricted post-normalization binder resolves the active frame;
 result Pattern delivery remains deferred.

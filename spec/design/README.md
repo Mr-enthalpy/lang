@@ -32,6 +32,7 @@ has one normative owner inside the staging area:
 |---|---|---|
 | Symbol-first resolution, facets, `compile` / `meta`, `struct` / `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
 | Namespace origin, construction-unit ownership, physical contribution authority, cross-file closure | `symbol-world/symbol-construction-units-and-namespace-origin.md` | Build-phase application, implementation gap, and link |
+| Semantic owner identity, PatternRoot alpha boundary, namespace views, package boundary, and mount redirects | `../contracts/v0.6-semantic-owner-namespace-graph.md` | Historical context and implementation mapping only |
 | Canonical `Pv:Pp`, contextual binding `P1`, result `P2`, function-object stage derivation, seal visibility/snapshot, const/mut product order, no scalar result policy, mechanical compile projection, companions, match staging, and coarse automatic require | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Implementation mapping, invocation handoff, pattern algebra, and links |
 | Current `PatternHeadId` registry/materialization substrate | `../contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` | No claim of final owner resolution |
 | Pattern/argument shape adaptation before overload qualification | `patterns-overload/pattern-normalization-and-first-order-overload.md` | Structural handoff only; no competing policy or final selection rules |

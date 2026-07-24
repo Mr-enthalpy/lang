@@ -62,6 +62,18 @@ NormProgram origin=Source@1:1[0..47]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(PrefixNegativeLowering)@4:1[22..24]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(PrefixNegativeLowering)@4:1[22..24]
                       annotation:
                         AnnotationPattern origin=Generated(PrefixNegativeLowering)@4:1[22..24]
@@ -128,6 +140,18 @@ NormProgram origin=Source@1:1[0..47]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(PrefixNegativeLowering)@6:1[31..39]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(PrefixNegativeLowering)@6:1[31..39]
                       annotation:
                         AnnotationPattern origin=Generated(PrefixNegativeLowering)@6:1[31..39]
@@ -177,6 +201,18 @@ NormProgram origin=Source@1:1[0..47]
                                 AnnotationPattern origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                                   PatternName "type" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                           params:
+                            BindingSlotElem
+                              BindingSlot let=false origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                deduce:
+                                  None
+                                value_pattern:
+                                  Binder "self" origin=Generated(PrefixNegativeLowering)@7:5[45..47]
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
                             BindingSlotElem
                               BindingSlot let=false origin=Generated(PrefixNegativeLowering)@7:5[45..47]
                                 deduce:

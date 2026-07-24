@@ -27,6 +27,7 @@ pub mod model;
 pub mod normalized_call;
 pub mod overload_pattern;
 pub mod overload_set;
+pub mod owner_namespace;
 pub mod pattern_head;
 pub mod pattern_space;
 pub mod phase_flow;
@@ -35,6 +36,7 @@ pub mod policy_overload;
 pub mod policy_pair;
 pub mod product_shape;
 pub mod return_target;
+pub mod semantic_owner;
 pub mod source;
 pub mod struct_decoder;
 pub mod type_argument;
@@ -93,8 +95,8 @@ pub use initializer_eval::{
 };
 pub use invocation_frame::{
     CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationExecutionEnv,
-    InvocationFrame, InvocationLookupEnv, ReturnTargetShape, SelfPosition, SelfPositionSource,
-    SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
+    InvocationFrame, InvocationLookupEnv, ReceiverTypeRef, ReturnTargetShape, SelfPosition,
+    SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
@@ -153,6 +155,10 @@ pub use overload_set::{
     RestrictedOverloadFailure, RestrictedOverloadFailureKind, SelectedOverloadCandidate,
     VisibilityView,
 };
+pub use owner_namespace::{
+    ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult, NamespaceNameView,
+    NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNode, OwnerNamespaceNodeId,
+};
 pub use pattern_head::{
     nav_component_name, LocalPatternPlaceId, PatternExpectation, PatternFieldMaterialization,
     PatternHead, PatternHeadId, PatternHeadKind, PatternHeadMaterialization, PatternHeadOrigin,
@@ -161,8 +167,9 @@ pub use pattern_head::{
 };
 pub use pattern_space::{
     bool_branch_space_for_tests, bool_pattern_aliases_for_tests, derive_sum_pattern_space,
-    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, SumPatternAlternative,
-    SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape, TypePatternExprShape,
+    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, StructuralMemberVisibility,
+    SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape,
+    TypePatternExprShape,
 };
 pub use phase_flow::{
     classify_static_task, enumerate_value_facet, expose_policy_slice, project_complete_symbol_flow,
@@ -172,8 +179,9 @@ pub use phase_flow::{
 };
 pub use policy_expr::elaborate_declaration_policy_expr;
 pub use policy_overload::{
-    select_by_mutability_product, select_policy_overload, MutabilityPattern,
-    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection,
+    select_by_mutability_product, select_policy_overload, MutabilityActualFrame,
+    MutabilityFormalFrame, MutabilityPattern, PhaseOverloadCandidate, PolicyOverloadCandidate,
+    PolicyOverloadSelection,
 };
 pub use policy_pair::{
     compute_export_retention_closure, compute_wpre, derive_function_object_p1,
@@ -201,8 +209,19 @@ pub use return_target::{
     ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
     UnresolvedReturnTargetForm,
 };
+pub use semantic_owner::{
+    AnonymousCallableTypeId, CallableOwnerPlacement, CallableReceiverBinding,
+    CallableReceiverBindingSource, CallableReceiverTypeId, LocalCallableIdentity,
+    LocalGenerationIdentity, LocalSymbolIdentity, OwnerQualificationError, PackageId,
+    ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerGraph, SemanticOwnerGraphId,
+    SemanticOwnerId, SemanticOwnerKind, SemanticOwnerNode, SemanticOwnerQualification,
+    SemanticSymbolIdentity,
+};
 pub use source::SourceFragment;
-pub use struct_decoder::{decode_struct_type_pattern_expr, DecodedStructPattern};
+pub use struct_decoder::{
+    decode_struct_associated_val2_let, decode_struct_type_pattern_expr, DecodedStructPattern,
+    StructAssociatedVal2Contribution,
+};
 pub use type_argument::{
     classify_type_arguments, classify_type_arguments_with_report, TypeArgumentClassificationReport,
 };

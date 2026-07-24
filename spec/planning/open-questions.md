@@ -76,6 +76,12 @@ track:
 - Type values can be equal even when their binding symbols differ.
 - `struct` meta generation creates a fresh type value; ordinary `let` binding
   to an existing type value does not.
+- A let-shaped declaration consumed inside `struct` contributes ordinary Val2
+  material to the current Pattern owner. It is neither a structural member nor
+  restricted to `Pv=absent`; callable values are admitted.
+- `let ()` is the special current-owner call-entry contribution. It creates
+  only that owner's `()` entry and does not synthesize entries for `ref` or
+  `share` child owners.
 
 Still open after this correction:
 
@@ -99,6 +105,13 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
+- Final surface mechanism, if any, for requesting coordinated `()` generation
+  under `T`, `ref::T`, and `share::T`; the current rule requires separate
+  authorized contributions.
+- End-to-end syntax/integration for an externally navigated call-entry
+  injection such as `let ()::ref::T = ...`; the semantic destination and
+  ordinary type-check behavior are fixed, but the current frontend does not
+  claim this complete declaration path.
 
 ### Resolved symbol-first construction direction
 
@@ -176,6 +189,16 @@ Resolved future-design decisions:
   policy product order as well as its body-entry pair. Opposite actual
   qualifiers remain preference inputs rather than being removed by ordinary
   P1 projection.
+- Every callable has invocation-frame slot 0 for its caller object. Ordinary,
+  in-place, meta, and generated closures use the same positional rule: the
+  first written formal explicitly declares that self-position under any legal
+  spelling, while its actual is supplied implicitly. Only later written
+  formals consume the call-site Product. For a standalone function the caller
+  is its function object; for an associated `()` entry it is the object whose
+  type supplied the entry. `CallableOwner` and receiver type are independent.
+  A head with no written formal retains an unbound semantic self-position.
+  Generated receiver helpers therefore use `[self, val, ...]`, not
+  `[val, ...]`.
 - A function-object binding has the unrestricted empty mutability domain by
   default (`const || mut`); only its declaration may crop that internal axis.
   Export derives a separate external view: value-bearing exports expose
@@ -199,15 +222,15 @@ Resolved future-design decisions:
 - DeduceLists elaborate as left-to-right telescopes with exact
   alpha-normalized `HoleBinderId`-targeted Pattern/policy references.
   Declarations see inherited and preceding holes, not themselves or later
-  declarations; active source names cannot be redeclared or shadowed. A
-  BindingSlot policy precedes its local DeduceList. Generated receiver holes
-  use hygienic generated keys and do not collide with source spelling.
+  declarations. Names are unique within one `PatternRoot`; an independent let
+  Pattern or nested callable head creates a new root and may shadow inherited
+  names. A BindingSlot policy precedes its local DeduceList. Generated receiver
+  holes use hygienic generated keys and do not collide with source spelling.
   Callable head holes scope captures, parameters, policy, return, clauses,
   body, and inherited nested callables. Spans are provenance rather than
-  semantic identity. An `AlphaOwner` is the complete normalized tree produced
-  by one root `normalize_program` invocation; nested body `NormProgram` nodes
-  share that owner's ordinal space. A local ordinal has meaning only when
-  paired with that owner.
+  semantic identity. Frontend identities carry normalization owner, callable
+  owner, Pattern root, and root-local binder; build integration maps the
+  callable owner to persistent `SemanticOwnerId`.
   Value-side names/navigation remain unresolved for a later resolved-symbol
   pass. Parser/Norm recursive preservation and the Pattern/policy identity
   substrate are implemented, while general Pattern-directed execution remains
@@ -253,6 +276,12 @@ Implemented substrate after this correction:
   entries remain in `Σ_full` and are omitted from `Σ_export`. Namespace-graph
   installation supplies the persistent admission facts. Retention membership
   is not itself export status; `Σ_export` is the external candidate set.
+- `lang_build` now also provides a parent-linked `SemanticOwnerGraph`,
+  owner-derived standalone anonymous callable types, independent receiver
+  bindings, canonical meta-instance interning, owner-qualified Pattern/hole
+  carriers, and an owner-aware namespace forest with explicit
+  `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
+  view routing, `DefaultExtractionView`, and typed lookup failures.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -276,24 +305,30 @@ Not implemented after this correction:
 - Alias forwarding under policy projection, type checking, and runtime IR.
 
 Build-world integration gates (not blockers for the current frontend/build
-substrate PR):
+substrate):
 
-- `HoleBinderId` is currently a local ordinal with ordinary Rust
-  `Eq`/`Ord`/`Hash`. Before any consumer combines multiple root normalization
-  trees, identity must become owner-qualified:
+- Owner/root qualification is implemented. Persistent/incremental restoration
+  of `SemanticOwnerGraphId`, stable syntax-node local keys, and serialized
+  meta-instance construction keys remains unfrozen; byte offsets must not be
+  substituted for those keys.
+
+- `SemanticOwnerQualification` currently verifies exact mapping presence and
+  rejects a conflicting remap. It does not yet prove that the whole frontend
+  owner tree embeds homomorphically into the persistent tree:
 
   ```text
-  AlphaHoleId = AlphaOwnerId × LocalHoleBinderId
+  Map(Parent_frontend(x)) = Parent_persistent(Map(x))
   ```
 
-  Alternatively, rename and encapsulate the current carrier as
-  `LocalHoleBinderId` so it cannot circulate without its `AlphaOwner`.
-  Stable cross-source-unit owner identity remains intentionally unfrozen.
+  Establishing that proof is a P1 gate before multi-root persistent owner
+  harvesting; it is not a reason to reopen the owner/Pattern-root semantics.
 
-- `NamespaceOverloadSets.exported` currently omits a symbol when its projected
-  candidate list is empty. This is sufficient for `Σ_export` set semantics,
-  but a future external resolver diagnostic carrier must preserve symbol-level
-  facts even for an empty candidate subset, for example:
+- The new owner-aware namespace graph already preserves typed failures
+  (`Unresolved`, non-retention, private path, no eligible candidate, missing
+  mount target, and missing package boundary). The legacy
+  `NamespaceOverloadSets.exported` compatibility map still omits a symbol when
+  its projected candidate list is empty. Its eventual migration should retain
+  symbol-level admission facts even for an empty candidate subset, for example:
 
   ```text
   ExternalSymbolView {
@@ -302,13 +337,23 @@ substrate PR):
   }
   ```
 
-  That layer must distinguish at least `Unresolved`,
-  `NotInExportRetentionClosure`, `PrivatePath`, and
-  `NoConstExportableCandidate`.
+  It must map onto the typed owner-namespace failure carrier rather than
+  collapsing back to `None`.
 
 - The restricted v0.8 overload selector still reports
   `UnsupportedExternalVisibility`. The implemented scope is the export-view
-  carrier and projection substrate, not end-to-end external overload routing.
+  carrier and persistent namespace resolver substrate, not complete migration
+  of legacy namespace consumers or end-to-end external overload routing. Those
+  two connections remain a P1 integration gate, not a core semantic blocker.
+
+- Custom `?` construction of a richer extraction interface remains open.
+  Private structural members are already excluded from the default extraction
+  view and form a hard non-disclosure boundary; this does not define the
+  eventual custom-question protocol.
+
+- The build API carries package-boundary and mount metadata, but no manifest
+  file format, registry/version solver, dynamic loading, or binary namespace
+  serialization is frozen.
 
 Still open for later design:
 
@@ -414,7 +459,7 @@ pattern-spaces document, and the function-object-self-and-return-capability
 design note).
 
 Early function return is modeled by calling `self..return(d)` — the current
-function object's built-in return capability. The effect uses a dual-channel
+callable frame's built-in return capability. The effect uses a dual-channel
 model: local branch produces `Done(unit)`, and the final return accumulator
 receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
 pattern-space reduction, not silent discard.

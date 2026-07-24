@@ -96,11 +96,13 @@ Conversely, a single P2 `runtime` normalizes canonically to `runtime:compile`.
 Current flat transport records the runtime value stage but does not yet install
 the compile Pattern stage as a first-class graph facet.
 
-The written `self` formal denotes the callable frame's explicit slot 0
-self-position. It is injected by invocation after callable resolution; it is not
-part of the call-site explicit product, `ProductObject`, `ArgProductShape`, or
-`RawArgShape`. The explicit user product for the example contains only the
-user-supplied positions after slot 0.
+The example's first written formal, spelled `self`, denotes callable-frame slot
+0. This is a positional rule rather than a reserved-name rule: any first
+written formal has the same self role. Its actual caller object is injected
+by invocation after callable resolution; it is not part of the call-site
+explicit product, `ProductObject`, `ArgProductShape`, or `RawArgShape`. The
+explicit user product for the example contains only the user-supplied positions
+after the first written formal.
 
 ## 0.2 v0.8 default initializer evaluation
 
@@ -464,10 +466,16 @@ restricted source-declared meta-overload subset and leaves the omitted layers
 explicitly deferred.
 
 The invocation frame owns self injection. The callable formal frame has slot 0
-for the function-object self-position and slots…388 tokens truncated…synthesizing an anonymous function-object type, injecting `()`
-into that type's associated space, and then binding the resulting
-function-object value to `name`. This is a future elaboration direction, not
-implemented by the current substrate.
+for the caller-object self-position and slots 1..n for explicit arguments.
+The first source-written formal explicitly declares slot 0's Pattern under any
+legal spelling; later formals align with the explicit Product positions. If no
+formal is written, slot 0 still exists without a source binder.
+
+The complete declaration path for a function object still requires
+synthesizing its anonymous function-object type, injecting `()` into that
+type's associated space, and then binding the resulting function-object value
+to `name`. This is a future elaboration direction, not implemented by the
+current substrate.
 
 The current v0.8 direct-callable shortcut may use a placeholder
 `InvocationFrame` until full target value → target type → `()` call-entry

@@ -395,6 +395,9 @@ fn operator_expr_contains_name(op: &crate::OperatorExprAst, name: &str) -> bool 
                 crate::NavComponentAst::Group(expr) => expression_contains_name(expr, name),
                 _ => false,
             }),
+            crate::AtomKind::MemberViewAnnotation { object, .. } => {
+                matches!(&object.kind, crate::AtomKind::Name(n) if &n.text == name)
+            }
             _ => false,
         },
         crate::OperatorExprKind::Product(prod) => prod.elements.iter().any(|el| match el {

@@ -1,6 +1,7 @@
-# Function Object Self and Return Capability
+# Callable Self and Return Capability
 
-**Status: Future design boundary. Not current implementation behavior.**
+**Status: Canonical semantic boundary with typed frontend/build substrate.
+End-to-end invocation and lifetime behavior remain future work.**
 
 **Canonical definition.** This document is the authoritative definition of
 `self`, the return capability, and its lifetime contract. Other documents
@@ -14,24 +15,33 @@ the semantics:
 
 This document defines the design boundary for `self`, the built-in return
 capability, and the lifetime contract associated with early function return.
-It does **not** claim that any of this is currently implemented.
+The normalized formal-frame projection, generated-helper shape, restricted
+callable arity, return-target substrate, and mutability product-order carrier
+implement this positional boundary. Full name resolution, callable-object
+materialization, return-capability execution, and lifetime checking remain
+future work.
 
 The content here is a constraint target — later implementation phases that
 introduce lifetime checking, borrow states, or return-capability calls must
 respect these design invariants.
 
-## 2. `self` as implicit function-object parameter
+## 2. `self` as implicit caller parameter
 
-Every function receives an implicit first parameter: the function object
-itself.
+Every callable, ordinary or in-place, has an invocation-frame slot 0 containing
+the caller object selected by the call-entry lookup.
 
 ```text
-self
+self-position
 ```
 
-This is a positional slot, not a user-visible name. The user does not write
-`self` in the argument product — it is injected by the invocation mechanism
-after the call entry `()` has been resolved.
+The semantic role is positional, not tied to a reserved name. If a parameter
+position is written, the first written formal is the explicit Pattern/binder
+for this self-position. The source spelling may be `self`, `this`, `callable`,
+or any other legal Pattern; `self` is only the conventional spelling.
+
+The corresponding actual is never written in the call-site argument Product.
+It is injected by the invocation mechanism after the call entry `()` has been
+resolved.
 
 `self` is **not** part of `ProductObject`, `ArgProductShape`, or
 `RawArgShape`. These represent only the explicit user-supplied argument
@@ -47,31 +57,41 @@ call-site explicit product:
   does not contain self
 
 callable formal frame:
-  slot 0 = function-object self-position
+  slot 0 = caller self-position
   slot 1..n = user parameter positions
 
 invocation frame:
   resolves the callable / call entry
-  injects the function object itself into slot 0
+  injects the invoked caller object into slot 0
   passes the explicit user product into slots 1..n
 ```
 
-The first written formal position denotes the function-object self-position,
-not an ordinary user parameter. A zero-user-argument callable still has slot 0
-as its self-position and has no user argument slots. Declaration-context `()`
-call-entry definitions follow the same invocation model: `()` is the call
-entry, the explicit user product is empty, and the invocation frame injects the
-function object into slot 0.
+The first written formal position denotes the caller self-position,
+not an ordinary user parameter. Only written positions after the first consume
+the explicit call-site Product. A callable that writes no formal position still
+has slot 0 as an unbound self-position and has no user argument slots.
+Declaration-context `()` call-entry definitions follow the same invocation
+model: `()` is the call entry and the invocation frame injects the object whose
+type supplied that entry into slot 0.
 
 For declaration-context call-entry injection, the self-position may have a
 non-anonymous type such as `T ref` in:
 
 ```lang
-let ()::ref::T = (self: T ref) => { ... }
+let ()::ref::T = (object: T ref) => { ... }
 ```
 
-The same rule still holds: self is slot 0 and is not part of the explicit
-argument product.
+The same rule still holds: `object` is self by position, is passed implicitly,
+and is not part of the explicit argument product. Its spelling has no semantic
+role.
+
+The body above has a lexical `CallableOwner` independent from `ref::T`.
+Standalone materialization of an ordinary closure defaults slot 0 to its
+owner-derived anonymous function-object type; associated call-entry
+installation instead uses the selected receiver type. If the actual caller
+type does not satisfy the first formal Pattern, ordinary invocation type
+checking rejects it. This design adds no earlier special consistency check for
+`let ()`; a future diagnostic may refine the general type-mismatch report.
 
 `self` is not an invisible ambient environment and not an ordinary
 user-supplied argument. It belongs to the invocation / callable frame boundary,
@@ -83,32 +103,36 @@ instance keys.
 Normal continuation within a function body implicitly requires the current
 block/function `self` capability to remain borrowable. This is the ordinary
 borrow that allows the function body to:
-- access the function object's own fields or captured state;
+- access the caller object's available state (including stored closure state
+  for a standalone function object);
 - call further methods or capabilities on `self`;
 - pass `self` as a receiver to other functions.
 
 The implicit borrow is not written by the user. It is an automatic consequence
 of being inside the function body.
 
-## 4. `return` as a built-in capability under the anonymous type of `self`
+## 4. `return` as a built-in capability under the callable-local `Self` space
 
-The current function object has a built-in return capability:
+The current callable frame has a built-in return capability:
 
 ```text
 return
 ```
 
-This capability is lookupable under the anonymous type of `self`. It is not an
+This capability is lookupable under the current frame's callable-local `Self`
+space. That space belongs to `CallableOwner`; it is not replaced by a named
+receiver type when a body implements an associated `()` entry. It is not an
 operator, not a keyword, and not a compiler intrinsic escape hatch. It is an
-ordinary callable value exposed by the function object's type-associated
+ordinary callable capability exposed by the callable frame.
+
+The self-position is not a path segment and is not identified by the spelling
+`self`. A first-formal binder makes the injected object visible under that
+source binder. Independently, the callable-local type anchor is described as
+`Self` when discussing type-associated lookup or diagnostic rendering.
+
+The return capability is associated with the callable's self-frame and return
+target identity, not inferred from the receiver type's ordinary associated
 namespace.
-
-`self` itself is not a user-visible source name and should not be modeled as a
-path segment. It is a positional slot. The corresponding function-object type
-anchor may be described as `Self` when discussing type-associated lookup or
-diagnostic rendering.
-
-The return capability is associated with the function-object type / self-frame.
 A targeted return form such as:
 
 ```text
@@ -167,7 +191,7 @@ does not require a mutable borrow of `self`.
 
 `Error.handle(e, self)` may call `self..return(error)` as its default
 behavior. This is not an exception mechanism. It is an ordinary call through
-the function object's return capability, subject to the same lifetime
+the callable frame's return capability, subject to the same lifetime
 postcondition: after the error handler invokes `self..return(error)`, the
 current branch is complete, `Done(unit)` is contributed to the local pattern
 space, and `Done(error)` is contributed to the final return accumulator.

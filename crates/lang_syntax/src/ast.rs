@@ -355,7 +355,8 @@ pub enum AtomKind {
         explicit_terminated: bool,
     },
     /// First-class field-function closure. Unlike `MemberSugar`, this node
-    /// does not capture a receiver; its first argument determines `T`.
+    /// does not capture a receiver; its first explicit call-site argument
+    /// determines `T` after invocation injects the generated self formal.
     DotClosure {
         selector: SelectorAst,
     },
@@ -374,8 +375,22 @@ pub enum AtomKind {
         operator: OperatorNameAst,
         args: ProductExprAst,
     },
+    /// Narrow postfix structural-member view annotation.
+    ///
+    /// This remains generic Raw AST shape. Only the struct decoder interprets
+    /// it as member visibility; it is not an arbitrary PolicySpec.
+    MemberViewAnnotation {
+        object: Box<AtomAst>,
+        visibility: MemberVisibilityAst,
+    },
     Closure(ClosureAst),
     Error(ErrorAst),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemberVisibilityAst {
+    Public,
+    Private,
 }
 
 // --- Closure AST ---

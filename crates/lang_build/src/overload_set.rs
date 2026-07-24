@@ -509,7 +509,8 @@ fn applicable_candidate_from_symbol(
             Some(source_callable.provenance.clone()),
         ))
     })?;
-    let explicit_params = &head.params[1..];
+    let formal_frame = head.formal_frame();
+    let explicit_params = formal_frame.explicit_parameters;
     validate_parameter_pack_levels(explicit_params)
         .map_err(CandidateApplicabilityFailure::UnsupportedParameterPattern)?;
     if !parameter_arity_matches(explicit_params, args.len()) {
@@ -616,11 +617,7 @@ fn callable_shape_compatible(closure: &NormClosure, explicit_arity: usize) -> bo
     let Some(head) = &closure.head else {
         return false;
     };
-    if !parameter_arity_matches(&head.params[1..], explicit_arity) {
-        return false;
-    }
-    matches!(head.params.first(), Some(NormPatternElem::BindingSlot(slot))
-        if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self"))
+    parameter_arity_matches(head.formal_frame().explicit_parameters, explicit_arity)
 }
 
 fn param_is_pack(element: &NormPatternElem) -> bool {

@@ -166,6 +166,12 @@ fn double_bracket_strategy_uses_one_closure_head_boundary_in_every_context() {
     let dump = lang_syntax::dump_norm_program(&normalized);
     assert!(dump.contains("Closure placement=InPlace"), "{dump}");
     assert!(dump.contains("UserBody strategy=Named(s)"), "{dump}");
+
+    let private_named = normalized_closure("let f = () [[private]] { value };");
+    assert!(matches!(
+        private_named.body,
+        NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "private"
+    ));
 }
 
 #[test]
@@ -382,9 +388,19 @@ fn dot_name_is_a_first_class_field_function_closure() {
         }
     ));
     let head = closure.head.as_ref().unwrap();
-    assert_eq!(head.params.len(), 2);
+    assert_eq!(head.params.len(), 3);
     assert!(matches!(
-        &head.params[1],
+        head.formal_frame().written_self,
+        Some(NormPatternElem::BindingSlot(slot))
+            if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self")
+    ));
+    assert!(matches!(
+        &head.formal_frame().explicit_parameters[0],
+        NormPatternElem::BindingSlot(slot)
+            if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "val")
+    ));
+    assert!(matches!(
+        &head.formal_frame().explicit_parameters[1],
         NormPatternElem::BindingSlot(slot)
             if matches!(&slot.value_pattern, NormPattern::Pack { inner, .. }
                 if matches!(inner.as_ref(), NormPattern::Binder { name, .. } if name == "args"))
@@ -464,10 +480,10 @@ fn compact_member_then_space_argument_remains_an_outer_call() {
 
 #[test]
 fn pack_is_pattern_only_and_normalized_validation_owns_layer_cardinality() {
-    let closure = normalized_closure("let f = (val: T, ...args) -> r => { r };");
+    let closure = normalized_closure("let f = (self, val: T, ...args) -> r => { r };");
     let head = closure.head.as_ref().unwrap();
     assert!(matches!(
-        &head.params[1],
+        &head.formal_frame().explicit_parameters[1],
         NormPatternElem::BindingSlot(slot)
             if matches!(&slot.value_pattern, NormPattern::Pack { .. })
     ));
@@ -858,7 +874,7 @@ fn deduce_telescope_rejects_duplicates_and_does_not_resolve_forward_or_self_refs
     for source in ["let <A, A> x = value;", "let <A> (let <A> x) = value;"] {
         let output = parsed(source);
         let invalid = normalize_and_validate_patterns(&output.program)
-            .expect_err("same-list and active-scope duplicate holes must fail");
+            .expect_err("same-PatternRoot duplicate holes must fail");
         assert!(invalid.pattern_errors.iter().any(|error| matches!(
             error,
             lang_syntax::PatternValidationError::DuplicateHole { name, .. } if name == "A"
@@ -1067,7 +1083,13 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
             generated_t.id, source_t,
             "generated display spelling T must not capture source T"
         );
-        let NormPatternElem::BindingSlot(receiver) = &head.params[0] else {
+        let formal_frame = head.formal_frame();
+        assert!(matches!(
+            formal_frame.written_self,
+            Some(NormPatternElem::BindingSlot(slot))
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self")
+        ));
+        let NormPatternElem::BindingSlot(receiver) = &formal_frame.explicit_parameters[0] else {
             panic!("expected generated receiver slot");
         };
         assert_eq!(
@@ -1081,6 +1103,45 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
             "generated reference must follow its hygienic key"
         );
     }
+}
+
+#[test]
+fn first_written_formal_is_self_for_ordinary_and_in_place_closures() {
+    for (source, expected_placement) in [
+        (
+            "let f = (receiver, value) => { value };",
+            NormClosurePlacement::Ordinary,
+        ),
+        (
+            "let f = (receiver, value) { value };",
+            NormClosurePlacement::InPlace,
+        ),
+    ] {
+        let closure = normalized_closure(source);
+        assert_eq!(closure.placement, expected_placement);
+        let frame = closure
+            .head
+            .as_ref()
+            .expect("headed closure")
+            .formal_frame();
+        assert!(matches!(
+            frame.written_self,
+            Some(NormPatternElem::BindingSlot(slot))
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
+                    if name == "receiver")
+        ));
+        assert!(matches!(
+            frame.explicit_parameters,
+            [NormPatternElem::BindingSlot(slot)]
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
+                    if name == "value")
+        ));
+    }
+
+    let zero = normalized_closure("let f = () => { value };");
+    let zero_frame = zero.head.as_ref().expect("headed closure").formal_frame();
+    assert!(zero_frame.written_self.is_none());
+    assert!(zero_frame.explicit_parameters.is_empty());
 }
 
 #[test]
@@ -1262,19 +1323,150 @@ fn callable_deduce_scope_covers_capture_params_policy_return_body_and_nested_cal
 }
 
 #[test]
-fn callable_deduce_scope_rejects_nested_active_name_redeclaration() {
+fn nested_callable_starts_a_new_pattern_root_and_may_shadow_outer_hole() {
     let output = parsed(
         "let f = <A>() => {
-            let g = <A>() => { value };
+            let g = <A>(x: A) => { x };
             g
         };",
     );
-    let invalid = normalize_and_validate_patterns(&output.program)
-        .expect_err("nested callable may not redeclare an active hole name");
-    assert!(invalid.pattern_errors.iter().any(|error| matches!(
-        error,
-        lang_syntax::PatternValidationError::DuplicateHole { name, .. } if name == "A"
-    )));
+    let validated = normalize_and_validate_patterns(&output.program)
+        .expect("a nested callable head is a new PatternRoot");
+    let outer_slot = binding_slot_at(&validated.as_program().forms[0]);
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer initializer")
+    else {
+        panic!("expected outer closure");
+    };
+    let outer_a = outer.head.as_ref().expect("outer head").deduce[0].id;
+    let nested_slot = binding_slot_at(&outer.body.user_body().expect("outer body").forms[0]);
+    let NormExpr::Closure(nested) = nested_slot
+        .initializer
+        .as_deref()
+        .expect("nested initializer")
+    else {
+        panic!("expected nested closure");
+    };
+    let nested_head = nested.head.as_ref().expect("nested head");
+    let inner_a = nested_head.deduce[0].id;
+    assert_ne!(outer_a.pattern_root(), inner_a.pattern_root());
+    assert_ne!(outer_a, inner_a);
+    let NormPatternElem::BindingSlot(param) = &nested_head.params[0] else {
+        panic!("expected nested parameter");
+    };
+    assert_eq!(
+        annotation_hole_target(param.annotation.as_ref().expect("parameter annotation")),
+        inner_a,
+        "the inner spelling resolves to the inner PatternRoot"
+    );
+}
+
+#[test]
+fn body_local_let_starts_a_new_pattern_root_and_may_shadow_callable_hole() {
+    let output = parsed(
+        "let f = <A>() => {
+            let <A> x: A = value;
+            x
+        };",
+    );
+    let validated = normalize_and_validate_patterns(&output.program)
+        .expect("a body-local let is a new PatternRoot");
+    let outer_slot = binding_slot_at(&validated.as_program().forms[0]);
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer initializer")
+    else {
+        panic!("expected outer closure");
+    };
+    let outer_a = outer.head.as_ref().expect("outer head").deduce[0].id;
+    let local_slot = binding_slot_at(&outer.body.user_body().expect("outer body").forms[0]);
+    let local_a = local_slot.deduce[0].id;
+    assert_eq!(
+        outer_a.pattern_root().owner,
+        local_a.pattern_root().owner,
+        "both roots belong to the same callable owner"
+    );
+    assert_ne!(outer_a.pattern_root(), local_a.pattern_root());
+    assert_ne!(outer_a, local_a);
+    assert_eq!(
+        annotation_hole_target(local_slot.annotation.as_ref().expect("local annotation")),
+        local_a,
+        "the local extraction root shadows the callable-head spelling"
+    );
+}
+
+#[test]
+fn independent_let_patterns_may_reuse_hole_spelling_with_distinct_roots() {
+    let output = parsed("let <A> x = left; let <A> y = right;");
+    let validated = normalize_and_validate_patterns(&output.program)
+        .expect("independent let patterns are distinct PatternRoots");
+    let first = binding_slot_at(&validated.as_program().forms[0]).deduce[0].id;
+    let second = binding_slot_at(&validated.as_program().forms[1]).deduce[0].id;
+    assert_ne!(first.pattern_root(), second.pattern_root());
+    assert_ne!(first, second);
+}
+
+#[test]
+fn normalized_callable_owners_are_parent_linked_for_ordinary_and_in_place_closures() {
+    let output = parsed(
+        "let f = <A>() => {
+            let g = <A>() { value };
+            g
+        };",
+    );
+    let normalized = normalize_program(&output.program);
+    let outer_slot = binding_slot_at(&normalized.forms[0]);
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer initializer")
+    else {
+        panic!("expected outer closure");
+    };
+    let outer_owner = outer.semantic_owner.expect("every callable has an owner");
+    let nested_slot = binding_slot_at(&outer.body.user_body().expect("outer body").forms[0]);
+    let NormExpr::Closure(nested) = nested_slot
+        .initializer
+        .as_deref()
+        .expect("nested initializer")
+    else {
+        panic!("expected nested closure");
+    };
+    let nested_owner = nested
+        .semantic_owner
+        .expect("in-place callable has its own owner");
+    assert_eq!(nested_owner.parent, outer_owner.id);
+    assert_ne!(nested_owner.id, outer_owner.id);
+    assert_eq!(
+        outer.head.as_ref().unwrap().deduce[0]
+            .id
+            .pattern_root()
+            .owner,
+        outer_owner.id
+    );
+    assert_eq!(
+        nested.head.as_ref().unwrap().deduce[0]
+            .id
+            .pattern_root()
+            .owner,
+        nested_owner.id
+    );
+
+    let bare = normalize_program(&parsed("let h = { value };").program);
+    let bare_slot = binding_slot_at(&bare.forms[0]);
+    let NormExpr::Closure(bare_in_place) =
+        bare_slot.initializer.as_deref().expect("bare initializer")
+    else {
+        panic!("expected bare in-place closure");
+    };
+    assert_eq!(bare_in_place.placement, NormClosurePlacement::InPlace);
+    assert!(
+        bare_in_place.semantic_owner.is_some(),
+        "a headless in-place closure also owns Self and nested semantic objects"
+    );
 }
 
 #[test]
@@ -1350,6 +1542,112 @@ fn closure_placement_is_independent_of_head_presence_and_strategy() {
             output.diagnostics.is_empty(),
             "headed in-place closure supplies its own extraction head in `{fixture}`:\n{}",
             lang_syntax::dump_diagnostics(&output.diagnostics)
+        );
+    }
+}
+
+#[test]
+fn member_visibility_annotation_is_narrow_shape_and_does_not_steal_capture_bracket_calls() {
+    let output = parsed("let field = uint8 secret [[private]];");
+    assert!(
+        output.diagnostics.is_empty(),
+        "{}",
+        lang_syntax::dump_diagnostics(&output.diagnostics)
+    );
+    let dump = lang_syntax::dump_ast(&output.program);
+    assert!(dump.contains("MemberViewAnnotation Private"), "{dump}");
+
+    let normalized = normalize_program(&output.program);
+    let initializer = binding_slot_at(&normalized.forms[0])
+        .initializer
+        .as_deref()
+        .expect("initializer");
+    fn contains_member_view_rule(expr: &NormExpr) -> bool {
+        match expr {
+            NormExpr::Call {
+                source,
+                target,
+                origin,
+            } => {
+                matches!(
+                    origin,
+                    NormOrigin::Generated {
+                        rule: NormRule::MemberViewAnnotationLowering,
+                        ..
+                    }
+                ) || source.elements.iter().any(|element| match element {
+                    NormProductElem::Expr(expr) => contains_member_view_rule(expr),
+                    NormProductElem::Unit { .. } => false,
+                }) || contains_member_view_rule(target)
+            }
+            NormExpr::Product(product) => product.elements.iter().any(|element| match element {
+                NormProductElem::Expr(expr) => contains_member_view_rule(expr),
+                NormProductElem::Unit { .. } => false,
+            }),
+            NormExpr::Closure(closure) => closure
+                .body
+                .user_body()
+                .map(|body| {
+                    body.forms.iter().any(|form| match form {
+                        NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+                            contains_member_view_rule(expr)
+                        }
+                        _ => false,
+                    })
+                })
+                .unwrap_or(false),
+            _ => false,
+        }
+    }
+    assert!(contains_member_view_rule(initializer));
+
+    let struct_input = parsed("(uint8 secret [[private]]) |> struct;");
+    assert!(
+        struct_input.diagnostics.is_empty(),
+        "a member annotation inside a parenthesized struct input must not be stolen as a malformed closure strategy:\n{}",
+        lang_syntax::dump_diagnostics(&struct_input.diagnostics)
+    );
+    assert!(
+        lang_syntax::dump_ast(&struct_input.program).contains("MemberViewAnnotation Private"),
+        "the parenthesized member annotation must remain in the ordinary expression tree"
+    );
+
+    let bracket = parsed("let x = obj[[cap] => { cap }];");
+    assert!(
+        bracket.diagnostics.is_empty(),
+        "complete capture-closure bracket-call remains legal:\n{}",
+        lang_syntax::dump_diagnostics(&bracket.diagnostics)
+    );
+    assert!(
+        lang_syntax::dump_ast(&bracket.program).contains("BracketCallSugar"),
+        "member visibility lookahead must not steal ordinary bracket-call syntax"
+    );
+
+    for non_visibility in ["export", "runtime", "strategy"] {
+        let source = format!("let x = obj[[{non_visibility}] => {{ {non_visibility} }}];");
+        let output = parsed(&source);
+        let dump = lang_syntax::dump_ast(&output.program);
+        assert!(
+            !dump.contains("MemberViewAnnotation"),
+            "`[[{non_visibility}]]` is not the narrow member-view slot:\n{dump}"
+        );
+        assert!(
+            dump.contains("BracketCallSugar"),
+            "non-visibility bracket syntax stays in the ordinary suffix algebra:\n{dump}"
+        );
+    }
+
+    for strategy in ["public", "private"] {
+        let source = format!("let f = () [[{strategy}]] {{ value }};");
+        let output = parsed(&source);
+        let dump = lang_syntax::dump_ast(&output.program);
+        assert!(
+            dump.contains(&format!("OverloadStrategy {strategy}")),
+            "a complete callable tail remains the stronger strategy context:\n{dump}"
+        );
+        assert!(
+            !dump.contains("MemberViewAnnotation"),
+            "the postfix member slot must not steal a callable strategy tail:\n{dump}"
         );
     }
 }

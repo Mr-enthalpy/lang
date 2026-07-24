@@ -25,7 +25,10 @@ use crate::{
     },
     normalized_call::extract_single_call_site,
     pattern_head::TypeMaterializationState,
-    policy_metadata, policy_set_meta_runtime, policy_set_runtime,
+    pattern_space::StructuralMemberVisibility,
+    policy_metadata,
+    policy_pair::NamespaceVisibility,
+    policy_set_meta_runtime, policy_set_runtime,
     product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
 };
@@ -451,7 +454,7 @@ fn classify_struct_field_argument(
             Some(atom.provenance().clone()),
         ));
     };
-    let NormExpr::Call { source, target, .. } = expr else {
+    let NormExpr::Call { target, .. } = expr else {
         return Err(Diagnostic::hard_error(
             "invalid struct syntax: expected a field form like `uint8 a`",
             Some(Provenance::from_norm_origin(
@@ -460,45 +463,22 @@ fn classify_struct_field_argument(
             )),
         ));
     };
-
-    if source.elements.len() != 1 {
-        return Err(Diagnostic::hard_error(
-            "invalid struct syntax: nested product fields are not supported in v0.8",
-            Some(Provenance::from_norm_origin(
-                "struct field source",
-                &source.origin,
-            )),
-        ));
-    }
-
-    let type_expr = match &source.elements[0] {
-        NormProductElem::Expr(NormExpr::Product(product)) => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: nested product fields are not supported in v0.8",
-                Some(Provenance::from_norm_origin(
-                    "nested struct field product",
-                    &product.origin,
-                )),
-            ));
-        }
-        NormProductElem::Expr(expr) => expr,
-        NormProductElem::Unit { origin } => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: unit field type is not supported",
-                Some(Provenance::from_norm_origin(
-                    "unit struct field type",
-                    origin,
-                )),
-            ));
-        }
-    };
-
-    if !matches!(target.as_ref(), NormExpr::Name { .. }) {
+    let Some((type_expr, _field_name)) = decompose_struct_field_expr(expr) else {
         return Err(Diagnostic::hard_error(
             "invalid struct syntax: expected a field binder name",
             Some(Provenance::from_norm_origin(
                 "struct field binder",
                 expr_origin(target),
+            )),
+        ));
+    };
+
+    if let NormExpr::Product(product) = type_expr {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: nested product fields are not supported in v0.8",
+            Some(Provenance::from_norm_origin(
+                "nested struct field product",
+                &product.origin,
             )),
         ));
     }
@@ -541,6 +521,48 @@ fn classify_struct_field_argument(
         })?;
 
     Ok(type_symbol.id)
+}
+
+fn decompose_struct_field_expr(expr: &NormExpr) -> Option<(&NormExpr, &str)> {
+    let NormExpr::Call { source, target, .. } = expr else {
+        return None;
+    };
+
+    match target.as_ref() {
+        NormExpr::Name { text, .. } => {
+            Some((single_struct_field_source_expr(source)?, text.as_str()))
+        }
+        NormExpr::Call {
+            source: annotation_source,
+            target: annotation_target,
+            ..
+        } if is_struct_member_view_target(annotation_target) => {
+            let NormExpr::Name { text, .. } = single_struct_field_source_expr(annotation_source)?
+            else {
+                return None;
+            };
+            Some((single_struct_field_source_expr(source)?, text.as_str()))
+        }
+        target if is_struct_member_view_target(target) => {
+            decompose_struct_field_expr(single_struct_field_source_expr(source)?)
+        }
+        _ => None,
+    }
+}
+
+fn single_struct_field_source_expr(source: &NormProduct) -> Option<&NormExpr> {
+    match source.elements.as_slice() {
+        [NormProductElem::Expr(expr)] => Some(expr),
+        _ => None,
+    }
+}
+
+fn is_struct_member_view_target(target: &NormExpr) -> bool {
+    matches!(
+        target,
+        NormExpr::OperatorTarget { spelling, .. }
+            if spelling == "[[public]]" || spelling == "[[private]]"
+    )
 }
 
 fn expr_to_source_path(expr: &NormExpr) -> Option<Vec<String>> {
@@ -639,6 +661,12 @@ fn insert_field_projection_layer(
             provenance.clone(),
         );
         symbol.policy_metadata.policy_set = policy_set_meta_runtime();
+        symbol.visibility_metadata.namespace_visibility = Some(match field.visibility {
+            StructuralMemberVisibility::Default | StructuralMemberVisibility::Public => {
+                NamespaceVisibility::Public
+            }
+            StructuralMemberVisibility::Private => NamespaceVisibility::Private,
+        });
         symbol.generation_origin = Some("core::struct field projection".to_string());
         symbol.cache_key_fragment = Some(format!(
             "field:{}:{}:{projection:?}",
@@ -858,6 +886,7 @@ fn bind_generated_type_definition_value(
                 name: field.name.clone(),
                 type_symbol_id: field.type_symbol_id,
                 pattern_head: field.pattern_head,
+                visibility: field.visibility,
                 provenance: field.provenance.clone(),
             })
             .collect(),
@@ -940,12 +969,14 @@ fn generated_type_extraction_interface(
             owner_pattern_head,
             fields: fields
                 .iter()
+                .filter(|field| field.visibility != StructuralMemberVisibility::Private)
                 .map(|field| NamedExtractionField {
                     label: field.name.clone(),
                     field_type_symbol_id: field.type_symbol_id,
                     field_pattern_head: field.pattern_head,
                     field_index: field.index,
                     projection: FieldProjection::Value,
+                    visibility: field.visibility,
                     provenance: field.provenance.clone(),
                 })
                 .collect(),

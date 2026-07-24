@@ -1672,6 +1672,58 @@ fn generated_type_definition_semantic_eq_includes_pattern_heads() {
 }
 
 #[test]
+fn source_member_visibility_reaches_generated_struct_field_material() {
+    let parsed = lang_syntax::parse("let PrivateFieldType = (uint8 secret [[private]]) |> struct;");
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "{}",
+        lang_syntax::dump_diagnostics(&parsed.diagnostics)
+    );
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    let [lang_syntax::NormForm::Let(lang_syntax::NormDecl::Let { slot, .. })] =
+        normalized.forms.as_slice()
+    else {
+        panic!("expected one normalized struct binding");
+    };
+    let initializer = slot.initializer.as_deref().expect("struct initializer");
+    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
+        .expect("empty world with core");
+    let result = expand_meta_initializer_via_invocation(
+        initializer,
+        world.snapshot(),
+        world.package_root_node(),
+        "PrivateFieldType",
+        &world.package_context(),
+        PolicyEnv::OpenStatic,
+        ExecutionEnv::OpenStatic,
+        CandidateBuildIdentityPlaceholder::default(),
+        Provenance::new("private structural member driver"),
+        None,
+    )
+    .expect("the struct driver preserves structural visibility");
+    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+        panic!("struct binding must materialize a TypeObject");
+    };
+
+    assert_eq!(type_object.fields.len(), 1);
+    assert_eq!(type_object.fields[0].name, "secret");
+    assert_eq!(
+        type_object.fields[0].visibility,
+        lang_build::StructuralMemberVisibility::Private
+    );
+    assert!(
+        type_object
+            .extraction_interface
+            .as_ref()
+            .expect("struct has a default extraction view")
+            .exposed_view
+            .fields
+            .is_empty(),
+        "the source-level private member is retained structurally but hidden from default extraction"
+    );
+}
+
+#[test]
 fn struct_decoder_uses_pattern_head_registry() {
     let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
         .expect("empty world with core");
@@ -1828,6 +1880,7 @@ fn type_definition_identity_material_equality_ignores_field_provenance() {
             field_name: "a".to_string(),
             field_type_symbol_id: SymbolId(2),
             field_index: 0,
+            visibility: lang_build::StructuralMemberVisibility::Public,
             provenance: Provenance::new("left field provenance"),
         }],
         return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
@@ -1842,6 +1895,7 @@ fn type_definition_identity_material_equality_ignores_field_provenance() {
             field_name: "a".to_string(),
             field_type_symbol_id: SymbolId(2),
             field_index: 0,
+            visibility: lang_build::StructuralMemberVisibility::Public,
             provenance: Provenance::new("right field provenance"),
         }],
         return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,

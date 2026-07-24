@@ -89,6 +89,18 @@ NormProgram origin=Source@1:1[0..162]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(DotClosureLowering)@6:1[55..64]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@6:1[55..64]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(DotClosureLowering)@6:1[55..64]
                       annotation:
                         AnnotationPattern origin=Generated(DotClosureLowering)@6:1[55..64]
@@ -144,6 +156,18 @@ NormProgram origin=Source@1:1[0..162]
                       AnnotationPattern origin=Generated(DotClosureLowering)@7:1[66..77]
                         PatternName "type" origin=Generated(DotClosureLowering)@7:1[66..77]
                 params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DotClosureLowering)@7:1[66..77]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "self" origin=Generated(DotClosureLowering)@7:1[66..77]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(DotClosureLowering)@7:1[66..77]
                       deduce:
@@ -209,6 +233,18 @@ NormProgram origin=Source@1:1[0..162]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@8:1[79..92]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(DoubleDotLowering)@8:1[79..92]
                       annotation:
                         AnnotationPattern origin=Generated(DoubleDotLowering)@8:1[79..92]
@@ -249,6 +285,18 @@ NormProgram origin=Source@1:1[0..162]
                       AnnotationPattern origin=Generated(DoubleDotLowering)@9:1[94..109]
                         PatternName "type" origin=Generated(DoubleDotLowering)@9:1[94..109]
                 params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@9:1[94..109]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "self" origin=Generated(DoubleDotLowering)@9:1[94..109]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(DoubleDotLowering)@9:1[94..109]
                       deduce:
@@ -303,6 +351,18 @@ NormProgram origin=Source@1:1[0..162]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(DoubleDotLowering)@10:1[111..126]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@10:1[111..126]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(DoubleDotLowering)@10:1[111..126]
                       annotation:
                         AnnotationPattern origin=Generated(DoubleDotLowering)@10:1[111..126]
@@ -351,6 +411,18 @@ NormProgram origin=Source@1:1[0..162]
                       deduce:
                         None
                       value_pattern:
+                        Binder "self" origin=Generated(DoubleDotLowering)@11:1[128..143]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@11:1[128..143]
+                      deduce:
+                        None
+                      value_pattern:
                         Binder "val" origin=Generated(DoubleDotLowering)@11:1[128..143]
                       annotation:
                         AnnotationPattern origin=Generated(DoubleDotLowering)@11:1[128..143]
@@ -394,6 +466,18 @@ NormProgram origin=Source@1:1[0..162]
                       AnnotationPattern origin=Generated(DoubleDotLowering)@12:1[145..162]
                         PatternName "type" origin=Generated(DoubleDotLowering)@12:1[145..162]
                 params:
+                  BindingSlotElem
+                    BindingSlot let=false origin=Generated(DoubleDotLowering)@12:1[145..162]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "self" origin=Generated(DoubleDotLowering)@12:1[145..162]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
                   BindingSlotElem
                     BindingSlot let=false origin=Generated(DoubleDotLowering)@12:1[145..162]
                       deduce:

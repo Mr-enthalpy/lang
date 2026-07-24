@@ -303,13 +303,16 @@ Dump label:      PrefixNegativeLowering
 ```text
 -x
 => x |> generated closure:
-   <T: type>(val: T) => { (zero::T, val) |> - }
+   <T: type>(self, val: T) => { (zero::T, val) |> - }
 ```
 
 ```text
 Prefix negative is not an overloadable prefix operator identity.
 Only the generated binary `-` participates in later operator lookup.
 No operator lookup occurs during normalization.
+The generated `self` formal is the explicitly represented Pattern for the
+implicitly supplied helper object; `val` consumes the first explicit source
+argument.
 ```
 
 ### First-class dot closure and compact member sugar
@@ -322,7 +325,7 @@ Dump label:      DotClosureLowering
 ```text
 .field
 => generated closure:
-   <T: type>(val: T, ...args) { (val, args) |> field::T }
+   <T: type>(self, val: T, ...args) { (val, args) |> field::T }
 
 obj.field
 => obj |> .field
@@ -337,6 +340,9 @@ Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
 normalized target is the same generated in-place `NormClosure` carrier.
 `MemberLowering` records that compact wrapper; it does not define a second
 member semantic system.
+The generated first formal denotes the helper closure's own self-position and
+is passed implicitly. `val`, not `self`, receives the first explicit call-site
+argument and determines `T`.
 After atom lowering, `.field` is an ordinary `NormExpr`. Its generated origin
 cannot change pipe/product association, absorb following items, bypass
 first-product-only, or replace legality repair. Compact `obj.field`
@@ -348,6 +354,23 @@ Normalization creates only the carrier above. A later explicit binding or call
 context may materialize it; another expression context preserves/composes the
 carrier without allocating a function object or capture environment.
 
+### Narrow structural member-view annotation
+
+The v0.6 owner/view amendment adds one exact postfix Raw shape:
+
+```lang
+E name [[public]]
+E name [[private]]
+```
+
+The parser recognizes only those two complete annotations, so ordinary bracket
+calls such as `obj[[cap] => { cap }]` and `obj[[strategy]]` retain their prior
+shape. Normalization encodes the suffix through ordinary call structure with
+`MemberViewAnnotationLowering`; it does not assign general policy or member
+semantics. Only the later `struct` consumer interprets it as structural member
+metadata. The slot is not available for `runtime`, `seal`, `const`, `export`,
+or arbitrary names.
+
 ### Double-dot sugar
 
 ```text
@@ -358,7 +381,7 @@ Dump label:      DoubleDotLowering
 ```text
 obj..method(args...)
 => obj |> generated closure:
-   <T: type>(val: T) => { (val, args...) |> method::T }
+   <T: type>(self, val: T) => { (val, args...) |> method::T }
 ```
 
 ### Bracket sugar
@@ -518,14 +541,16 @@ DeduceLists elaborate as left-to-right dependent telescopes. If
 `Ti` is interpreted in `Γ(i-1)` and only afterwards is `Ai` added. Therefore
 `<A, B: A>` refers to the preceding `A`, while `<A: B, B>` does not resolve the
 first annotation to the later `B`. A declaration is not visible in its own
-annotation. Same-list duplicates and redeclaration of any active ancestor hole
-are errors; DeduceList holes do not shadow. `HoleBinderId`, rather than the
+annotation. Hole spellings must be unique within one `PatternRoot`; an
+independent `let` Pattern or nested callable head starts a new root and may
+lexically shadow an inherited spelling. `HoleBinderId`, rather than the
 display spelling, records the exact declaration targeted by a `HoleRef`.
 
 A callable head DeduceList scopes the callable's capture slots and
 initializers, parameters, call policy, return slot, head clauses, and complete
-body. Nested callables inherit that active hole environment before extending
-it with their own DeduceList. Ordinary value binders occupy a separate lexical
+body. Nested callables inherit that active hole environment, allocate a new
+callable semantic owner and `PatternRoot`, and then extend the environment with
+their own DeduceList. Ordinary value binders occupy a separate lexical
 environment and do not change Pattern-context hole identity.
 
 Within one BindingSlot, source order remains:
@@ -541,7 +566,7 @@ does not retroactively bind a name in the leading policy.
 Return clauses keep ordinary let-shaped BindingSlot order:
 
 ```lang
-let f = <A>(x: A) -> r: A => {
+let f = <A>(self, x: A) -> r: A => {
     let y: A = x;
     y
 };
@@ -556,14 +581,22 @@ not a type annotation on `r`.
 
 Raw AST preserves spelling, lexical scope shape, and provisional canonical
 roles. A distinct alpha-normalization step after structural normalization
-allocates fresh lexical ordinals and rewrites scoped Pattern/policy occurrences
-to exact `HoleBinderId` targets. Source spans are provenance, never semantic
-hole identity; alpha-equivalent binder/ref structures are independent of source
-spelling and byte offset. One root `normalize_program` invocation establishes
-an `AlphaOwner` for its complete normalized tree. Nested closure-body
-`NormProgram` nodes share that owner and ordinal space, so their references may
-target an outer callable's hole directly. A bare ordinal from another
-`AlphaOwner` has no comparable semantic meaning.
+allocates callable owners, `PatternRoot` boundaries, and root-local binder
+ordinals, then rewrites scoped Pattern/policy occurrences to exact
+`HoleBinderId` targets. Source spans are provenance, never semantic hole
+identity; alpha-equivalent binder/ref structures are independent of source
+spelling and byte offset. The frontend identity is collision-safe across root
+normalizations and carries:
+
+```text
+AlphaOwnerId × NormSemanticOwnerId × PatternRootLocalId × HoleLocalId
+```
+
+When material enters the build graph, the frontend callable owner is mapped to
+a persistent `SemanticOwnerId`; the cross-pass identity becomes
+`SemanticOwnerId × PatternRootLocalId × HoleLocalId`. Nested callable bodies
+inherit outer references but allocate a distinct callable owner and Pattern
+root for their own head.
 
 Compiler-generated receiver holes carry a hygienic generated key before alpha
 conversion. They are not entered in the source-spelling redeclaration table,
@@ -619,18 +652,28 @@ let <T> x: U Option::std = y
 Closure head example (head dump label `ClosureNormalize`):
 
 ```text
-<T: type>(val: T) => { val }
+<T: type>(self, val: T) => { val }
 
 Closure placement=Ordinary
   head: ClosureHead
     deduce:
       HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )
     params:
+      BindingSlot "self"
       BindingSlot "val" with annotation AnnotationPattern( HoleRef "T" )
   body: NormBody          // recursively normalized as forms/expressions
 ```
 
 `type` and `T` here are not runtime expressions.
+
+Formal positions are interpreted uniformly for ordinary and in-place
+closures: the first written position is the explicit Pattern/binder for the
+caller object's self-position, whose actual is supplied implicitly by the
+invocation frame. Only later positions consume the explicit call-site Product.
+For a standalone function this caller is the function object; an associated
+call-entry may supply another receiver object. The spelling `self` is
+conventional and may be replaced. A head with no written position still has a
+semantic self-position but no source binder for it.
 
 ### Extraction skeletons and product extraction
 
@@ -682,7 +725,7 @@ scope is deliberately exact:
 ```text
 one Pack per normalized structural level
 no bare Product as a Pack operand
-no duplicate DeduceList hole in the active telescope
+no duplicate DeduceList hole in one PatternRoot
 ```
 
 It does not prove order-sensitive Pack applicability, stable Pattern-head
@@ -848,6 +891,29 @@ initializer, request `mut`, and preserve distinct provenance. Parsing,
 normalization, and capture discovery neither reject nor erase it as redundant.
 A future layout pass may coalesce equivalent storage/link requirements only
 while preserving binder identity, policy, and provenance.
+
+### Semantic-owner and namespace-view handoff
+
+The v0.6 build handoff derives long-lived identity from a parent-linked
+`SemanticOwner`, not a file, span, or printable path. Every callable, including
+an in-place closure, has a `CallableOwner` and callable-local `Self` space.
+Standalone function-object materialization derives an anonymous callable type
+from that owner. An associated `()` implementation may instead bind the type
+facet of its local `Self` and invocation slot 0 to a named receiver type.
+`CallableOwner` and receiver type are independent semantic facts.
+
+Source navigation remains inner-to-outer; a complete generated meta-call scope
+used as an outer component is grouped, as in `child::(int Vec::std)`.
+
+Each independent let Pattern and callable head establishes a `PatternRoot`.
+Nested Pattern structure remains in that root. Same-root hole duplicates fail;
+a different root may lexically shadow an inherited spelling.
+
+Namespace consumers keep `FullNameView`, `ExternalNameView`, and
+`DefaultExtractionView` separate. Package-boundary crossing selects the
+external view; mount metadata redirects to an existing namespace without
+copying symbol identity. Private structural members remain in the full
+structural model but are omitted from default extraction.
 
 Resolved capture requirements are abstract dependencies, not a declaration of
 `self` fields, capture-by-value/reference representation, field order, ZST

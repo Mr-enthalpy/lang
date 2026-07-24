@@ -56,7 +56,13 @@ fn source_parameter(source: &str) -> NormPatternElem {
     let Some(NormExpr::Closure(closure)) = slot.initializer.as_deref() else {
         panic!("expected closure initializer");
     };
-    closure.head.as_ref().unwrap().params[1].clone()
+    closure
+        .head
+        .as_ref()
+        .unwrap()
+        .formal_frame()
+        .explicit_parameters[0]
+        .clone()
 }
 
 #[test]

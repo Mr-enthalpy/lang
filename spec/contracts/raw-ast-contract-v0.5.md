@@ -7,6 +7,7 @@ This contract is defined as:
 ```text
 closed Raw AST v0.2 freeze
 + Frontend Semantic Amendment v0.5-A
++ v0.6 Semantic Owner / Namespace Graph Amendment
 = current Raw AST contract v0.5
 ```
 
@@ -14,6 +15,9 @@ The v0.1/v0.2/v0.3 documents are historical snapshots and are not edited to
 retroactively contain this surface. The complete change classification and
 migration boundary are recorded in
 [`frontend-semantic-amendment-v0.5-a.md`](frontend-semantic-amendment-v0.5-a.md).
+The later owner/view refinement and its narrow member-view syntax are recorded
+in
+[`v0.6-semantic-owner-namespace-graph.md`](v0.6-semantic-owner-namespace-graph.md).
 
 ## 1. Pipeline and boundary
 
@@ -110,7 +114,18 @@ and not CompleteStrategyTail
 
 A leading `[[` is a malformed-strategy recovery candidate only after a
 parameter clause, call policy, return clause, or head clause has independently
-closed the capture slot. Deduce alone does not close it.
+closed the capture slot. Deduce alone does not close it. There is one narrow
+ambiguity repair: when the speculative head consists only of a parenthesized
+parameter candidate and the cursor is at complete `[[public]]` or
+`[[private]]` without a following block, closure speculation must backtrack so
+the ordinary grouped expression can consume the member-view suffix. Thus:
+
+```lang
+(uint8 secret [[private]]) |> struct
+```
+
+is not a malformed `[[strategy]]` callable tail. A complete
+`[[public]] { ... }` / `[[private]] { ... }` remains a strategy tail.
 
 Thus all of these are closure heads:
 
@@ -131,6 +146,22 @@ obj[[cap] => { cap }]
 ()[[cap] => { cap }]
 (a + b)[[cap] => { cap }]
 ```
+
+The v0.6 amendment reserves exactly two complete atom-postfix shapes:
+
+```text
+MemberViewAnnotation
+  ::= "[[" "public" "]]"
+   |  "[[" "private" "]]"
+```
+
+They produce `AtomKind::MemberViewAnnotation { object, visibility }`. The
+recognizer requires the complete shape. Complete strategy-tail classification
+still wins when a block follows; a bare narrow member annotation is allowed to
+defeat only the speculative parenthesized-head case above. Therefore
+`() [[public]] { ... }` remains a named callable strategy tail. Every other
+bracket payload remains ordinary `BracketCallSugar`.
+The parser assigns no struct, policy, or namespace meaning to the node.
 
 After `=>`, implementation selection examines the full local tail:
 
@@ -244,10 +275,14 @@ Normalization alone defines:
 
 ```text
 .name
-  -> (val: T, ...args) {
+  -> (self, val: T, ...args) {
        (val, args) |> name::T
      }
 ```
+
+The generated first formal is the helper closure's explicit self Pattern and
+is supplied implicitly by invocation. `val` is the first formal supplied from
+the explicit call-site Product.
 
 After this one lowering, the result is an ordinary expression. No pipe,
 product, or legality-repair rule may inspect `DotClosureLowering` provenance to
@@ -368,7 +403,7 @@ current proof scope is exactly:
 ```text
 one Pack per normalized Product/Sequence level
 no bare Product Pack operand
-no duplicate DeduceList hole in an active telescope
+no duplicate DeduceList hole in one PatternRoot
 ```
 
 It does not prove ordered/unordered Pack applicability, stable Pattern-head
@@ -377,6 +412,13 @@ or that the program contains no recovered `NormExpr::Error`; consumers that
 require those properties need distinct resolved-stage checks or certificates.
 
 ## 9. Deduce telescope and capture dependency boundary
+
+> Historical v0.5 snapshot. The v0.6 semantic-owner amendment supersedes this
+> section's active-ancestor no-shadow rule and whole-normalization-root alpha
+> owner. Current semantics use same-`PatternRoot` uniqueness, cross-root
+> lexical shadowing, callable semantic owners, and owner/root-qualified hole
+> identity. Raw AST shape remains historical input; semantic identity is not a
+> Raw AST fact.
 
 Normalized DeduceLists are left-to-right telescopes:
 

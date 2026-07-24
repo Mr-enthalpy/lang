@@ -31,11 +31,17 @@
 //! type `SymbolId` through the existing field classification path. That
 //! classification still only handles simple `Name` and `Nav` type paths.
 
-use lang_syntax::{NormExpr, NormProduct, NormProductElem};
+use lang_syntax::{
+    NormDecl, NormExpr, NormPattern, NormPolicyAtom, NormProduct, NormProductElem,
+    NormValuePolicyPattern,
+};
 
 use crate::{
     model::{Diagnostic, DiagnosticSeverity, Provenance},
-    pattern_space::{StructLeafTypeExprShape, SymbolPathShape, TypePatternExprShape},
+    pattern_space::{
+        StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape,
+    },
+    policy_pair::{NamespaceVisibility, PolicyPair},
 };
 
 pub type StructDecodeResult = Result<TypePatternExprShape, Diagnostic>;
@@ -45,6 +51,130 @@ pub type StructDecodeResult = Result<TypePatternExprShape, Diagnostic>;
 pub struct DecodedStructPattern {
     pub type_pattern_expr: TypePatternExprShape,
     pub provenance: Provenance,
+}
+
+/// Uninstalled Val2 contribution accepted by the struct/type construction
+/// evaluator. This is distinct from a structural member: it contributes no
+/// Val1 slot and no Pattern/extraction child.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum StructAssociatedVal2Contribution {
+    /// Ordinary heterogeneous value entry below the current Pattern owner.
+    NamedValue {
+        name: String,
+        /// `None` preserves the ordinary unannotated namespace-member view.
+        visibility: Option<NamespaceVisibility>,
+        value: NormExpr,
+        /// The already-resolved policy pair of the value being contributed.
+        /// Value-bearing entries are intentionally accepted.
+        value_policy: PolicyPair,
+        provenance: Provenance,
+    },
+    /// Special `()` leaf for the current owner. The implementation expression
+    /// must not be materialized as a standalone closure value merely because
+    /// it occupies an initializer-shaped source position.
+    CallEntry {
+        visibility: Option<NamespaceVisibility>,
+        implementation: NormExpr,
+        implementation_policy: PolicyPair,
+        provenance: Provenance,
+    },
+}
+
+/// Decode `P1 let name = expr` or `P1 let () = expr` in struct construction
+/// context.
+///
+/// The generic parser still produces an ordinary let-shaped declaration. This
+/// context decoder distinguishes a named Val2 member from the special local
+/// `()` call entry. Other Product/Sequence/Pack extraction forms remain
+/// invalid. The initializer may be an ordinary value, including a callable;
+/// its resolved pair is preserved for later namespace-delta installation.
+pub fn decode_struct_associated_val2_let(
+    decl: &NormDecl,
+    resolved_initializer_policy: &PolicyPair,
+    provenance: Provenance,
+) -> Result<StructAssociatedVal2Contribution, Diagnostic> {
+    let NormDecl::Let { slot, .. } = decl else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated Val2 contribution must be a let declaration",
+            Some(provenance),
+        ));
+    };
+    enum Target {
+        Named(String),
+        CallEntry,
+    }
+    let target = match &slot.value_pattern {
+        NormPattern::Binder { name, .. } => Target::Named(name.clone()),
+        NormPattern::Product { elements, .. } if elements.is_empty() => Target::CallEntry,
+        _ => {
+            return Err(Diagnostic::new(
+                DiagnosticSeverity::Error,
+                "struct associated Val2 let requires one plain binder or the empty `()` call-entry target; non-empty Product, Sequence, Pack, and extraction patterns are not allowed",
+                Some(provenance),
+            ));
+        }
+    };
+    let visibility = struct_namespace_let_visibility(slot.policy.as_ref(), &provenance)?;
+    let Some(initializer) = slot.initializer.as_deref() else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated Val2 let requires an initializer",
+            Some(provenance),
+        ));
+    };
+    Ok(match target {
+        Target::Named(name) => StructAssociatedVal2Contribution::NamedValue {
+            name,
+            visibility,
+            value: initializer.clone(),
+            value_policy: resolved_initializer_policy.clone(),
+            provenance,
+        },
+        Target::CallEntry => StructAssociatedVal2Contribution::CallEntry {
+            visibility,
+            implementation: initializer.clone(),
+            implementation_policy: resolved_initializer_policy.clone(),
+            provenance,
+        },
+    })
+}
+
+fn struct_namespace_let_visibility(
+    policy: Option<&lang_syntax::NormPolicySpec>,
+    provenance: &Provenance,
+) -> Result<Option<NamespaceVisibility>, Diagnostic> {
+    let Some(policy) = policy else {
+        return Ok(None);
+    };
+    let NormValuePolicyPattern::Conjunction(conjunction) = &policy.value_policy else {
+        return Ok(None);
+    };
+    let mut visibility = None;
+    for choice in &conjunction.choices {
+        for atom in &choice.atoms {
+            let next = match atom {
+                NormPolicyAtom::Name { text, .. } if text == "public" => {
+                    Some(NamespaceVisibility::Public)
+                }
+                NormPolicyAtom::Name { text, .. } if text == "private" => {
+                    Some(NamespaceVisibility::Private)
+                }
+                _ => None,
+            };
+            if let Some(next) = next {
+                if visibility.is_some_and(|current| current != next) {
+                    return Err(Diagnostic::new(
+                        DiagnosticSeverity::Error,
+                        "struct associated Val2 let cannot be both `public` and `private`",
+                        Some(provenance.clone()),
+                    ));
+                }
+                visibility = Some(next);
+            }
+        }
+    }
+    Ok(visibility)
 }
 
 impl DecodedStructPattern {
@@ -141,8 +271,21 @@ fn decode_call(
 ) -> StructDecodeResult {
     match target {
         NormExpr::Name { text: name, .. } => decode_call_with_name_target(source, name, provenance),
+        NormExpr::Call {
+            source: annotation_source,
+            target: annotation_target,
+            ..
+        } => decode_call_with_member_view_annotation(
+            source,
+            annotation_source,
+            annotation_target,
+            provenance,
+        ),
         NormExpr::OperatorTarget { spelling, .. } => {
             match spelling.as_str() {
+                "[[public]]" | "[[private]]" => {
+                    decode_completed_member_view_annotation(source, target, provenance)
+                }
                 "|" => {
                     // Canonical sum: | directly decodes as Sum
                     decode_sum_from_source(source, provenance)
@@ -176,6 +319,115 @@ fn decode_call(
             ),
             Some(provenance),
         )),
+    }
+}
+
+/// Decode the alternative ordinary-call association
+/// `(type_expr |> field_name) |> [[private]]`.
+///
+/// The member-view syntax remains a narrow postfix. Supporting this shape as
+/// well as `type_expr |> (field_name |> [[private]])` keeps struct
+/// interpretation independent of generic space-call association.
+fn decode_completed_member_view_annotation(
+    annotation_source: &NormProduct,
+    annotation_target: &NormExpr,
+    provenance: Provenance,
+) -> StructDecodeResult {
+    let visibility = member_visibility_from_target(annotation_target).ok_or_else(|| {
+        Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member annotation accepts only `[[public]]` or `[[private]]`".to_string(),
+            Some(provenance.clone()),
+        )
+    })?;
+    let mut elements = annotation_source
+        .elements
+        .iter()
+        .filter_map(|element| match element {
+            NormProductElem::Expr(expr) => Some(expr),
+            NormProductElem::Unit { .. } => None,
+        });
+    let Some(NormExpr::Call {
+        source: member_source,
+        target: member_target,
+        ..
+    }) = elements.next()
+    else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility must annotate one complete structural member".to_string(),
+            Some(provenance),
+        ));
+    };
+    if elements.next().is_some() {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility annotated more than one structural member".to_string(),
+            Some(provenance),
+        ));
+    }
+    let NormExpr::Name { text: name, .. } = member_target.as_ref() else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility must follow one field binder name".to_string(),
+            Some(provenance),
+        ));
+    };
+    Ok(
+        decode_call_with_name_target(member_source, name, provenance)?
+            .with_structural_visibility(visibility),
+    )
+}
+
+fn decode_call_with_member_view_annotation(
+    member_source: &NormProduct,
+    annotation_source: &NormProduct,
+    annotation_target: &NormExpr,
+    provenance: Provenance,
+) -> StructDecodeResult {
+    let visibility = member_visibility_from_target(annotation_target).ok_or_else(|| {
+        Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member annotation accepts only `[[public]]` or `[[private]]`".to_string(),
+            Some(provenance.clone()),
+        )
+    })?;
+    let mut elements = annotation_source
+        .elements
+        .iter()
+        .filter_map(|element| match element {
+            NormProductElem::Expr(expr) => Some(expr),
+            NormProductElem::Unit { .. } => None,
+        });
+    let Some(NormExpr::Name { text: name, .. }) = elements.next() else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility annotation must follow the member name".to_string(),
+            Some(provenance),
+        ));
+    };
+    if elements.next().is_some() {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility annotation has more than one annotated target".to_string(),
+            Some(provenance),
+        ));
+    }
+    Ok(
+        decode_call_with_name_target(member_source, name, provenance)?
+            .with_structural_visibility(visibility),
+    )
+}
+
+fn member_visibility_from_target(target: &NormExpr) -> Option<StructuralMemberVisibility> {
+    match target {
+        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[public]]" => {
+            Some(StructuralMemberVisibility::Public)
+        }
+        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[private]]" => {
+            Some(StructuralMemberVisibility::Private)
+        }
+        _ => None,
     }
 }
 

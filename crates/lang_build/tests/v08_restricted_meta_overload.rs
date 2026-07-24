@@ -139,6 +139,14 @@ fn same_name_plus_declarations_do_not_overwrite_each_other() {
 }
 
 #[test]
+fn restricted_overload_uses_first_formal_position_not_self_spelling() {
+    assert_eq!(
+        forwarded_type_name(invoke_named("int receiver_named", "receiver_named")),
+        "int"
+    );
+}
+
+#[test]
 fn plus_overload_set_is_built_from_namespace_graph_children() {
     let world = world();
     let site = call_site("unit + unit");

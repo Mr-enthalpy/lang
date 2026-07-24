@@ -39,6 +39,78 @@ projection, compile companions, and automatic require are canonicalized in
 document owns the pattern-space residual and `Done` algebra that those flows
 consume; it does not define a parallel control-flow system for require.
 
+### Structural member visibility and associated Val2 contributions
+
+The `struct` consumer retains its structural leaf order:
+
+```text
+E name
+```
+
+Its semantic result is the complete symbol-pattern object:
+
+```text
+StructResult(T) = Val1_T × Pattern_T × Val2_T
+```
+
+Structural leaves contribute object structure and the construction/extraction
+Pattern together with generated field-function Val2 material. This does not
+mean every child declaration is structural. The operational construction/
+extraction correspondence is carried by those Val2 function objects over the
+Pattern shape, not by treating Val2 itself as another structural field list.
+
+It additionally accepts a narrow postfix member-view slot:
+
+```lang
+E name [[public]]
+E name [[private]]
+```
+
+Only `public` and `private` are admitted here. This slot is not a general
+`PolicySpec`, and it does not admit stage, mutability, export, or arbitrary
+strategy names. Unannotated, explicitly public, and private are distinct source
+facts (`Default | Public | Private`), although both Default and Public are
+included in the current default extraction view. The visibility fact is part
+of structural/type identity material; changing it is not a provenance-only
+edit.
+
+The structural representation retains all three. A private structural member
+is excluded from `DefaultExtractionView`; it is not deleted from the full
+Pattern/type representation.
+
+A struct/type construction scope may separately consume:
+
+```lang
+let helper = value;
+private let helper = callable_value;
+public let helper = type_value;
+let () = call_entry_body;
+```
+
+as an associated Val2 contribution to the current Pattern owner. A named LHS
+must be one ordinary binder, not Product/Sequence/Pack extraction. Its
+initializer may be any ordinary value-facet material, including a function
+object or type/Pattern value; `Pv = absent` is not required. The contribution
+does not add a Val1 slot or Pattern member and does not enter the default
+extraction product. Conversely, `E name [[private]]` remains a structural
+member and is not associated-let sugar.
+
+The empty target `()` is the one additional LHS. It installs the current
+Pattern owner's special call entry rather than contributing an ordinary value
+named `()`. The first written formal of that implementation receives the
+invoked object in slot 0. A named callable contribution instead receives its
+own function object in slot 0, so a traditional object receiver appears in its
+second written formal.
+
+Associated contributions remain part of the uninstalled struct construction
+until the outer binding installs one namespace delta. Writing the equivalent
+inner-to-outer destination path after construction produces the same delta;
+the inner spelling does not mutate the global namespace graph while `struct`
+is still evaluating.
+
+Future custom `?` semantics may construct a richer extraction interface, but
+this substrate does not implement that system.
+
 ## 0.1 v0.8 boundary
 
 v0.8 does not implement the full pattern-space and extraction-chain model in
@@ -639,7 +711,9 @@ self..return(d);
 ()
 ```
 
-This uses the current function object's built-in return capability `return`, which is lookupable under the anonymous type of `self`. The effect has two channels:
+This uses the current callable frame's built-in return capability `return`,
+which is lookupable under its callable-local `Self` space. The effect has two
+channels:
 
 1. **Local pattern/type-check channel**: the branch completes with `Done(unit)`. The trailing `()` is an explicit unit expression, not a silent completion. The local pattern space becomes `A - S + Done(unit)`, and `unit` is later absorbed as the zero element of `+`. No further same-level pattern material is contributed by this branch.
 
@@ -660,7 +734,7 @@ Concretely: if a block's final expression evaluates to a value `V`, and there is
 Its core shape can be approximated as:
 
 ```text
-match := (x: _) => { x }
+match := (self, x: _) => { x }
 ```
 
 The `_` parameter explicitly consumes the current pattern space. The body returns `x`.
@@ -924,7 +998,7 @@ an explicit capability value.
 ### 7.5 Function return from inside a deeper branch
 
 Returning from the enclosing function inside a deeper branch is represented by
-calling the current function object's built-in return capability.
+calling the current callable frame's built-in return capability.
 
 Conceptually:
 
@@ -936,12 +1010,12 @@ self..return(d);
 means:
 
 ```text
-1. invoke the function object's return capability with d;
+1. invoke the callable frame's return capability with d;
 2. locally complete the current branch block with unit.
 ```
 
 The first expression is an ordinary call expression whose target is the
-`return` capability lookupable under the anonymous type of `self`. Its result
+`return` capability lookupable under the callable-local `Self` space. Its result
 must also be consumed according to the universal result-consumption rule. The
 canonical form above treats it as the explicit function-return action and then
 makes the branch itself return unit.
@@ -1014,7 +1088,7 @@ same block-local result rule as every other block.
 For example:
 
 ```lang
-let id = (t: type): compile -> r: type => {
+let id = (self, t: type): compile -> r: type => {
     r = t;
     r;
 };
@@ -1024,7 +1098,7 @@ This compile body computes a `PatternValue`. A meta body instead constructs a
 `SymbolConstructionValue`, for example:
 
 ```lang
-let box = (t: type): meta -> r: symbol => {
+let box = (self, t: type): meta -> r: symbol => {
     r = (t inner) |> struct;
     r;
 };
@@ -1396,7 +1470,7 @@ non-additivity of closed control-pattern spaces with unrelated patterns
 A conventional `match` may exist in the standard package. It is not privileged syntax, not a separate matching semantics, and not compiler-intrinsic control flow. It is an identity closing consumer:
 
 ```text
-match := (x: _) => { x }
+match := (self, x: _) => { x }
 ```
 
 Its name is appropriate because it expresses intent: close the current extraction chain, require the current pattern space to be consumed, and expose the closed result to the enclosing context as a completed result.

@@ -73,6 +73,10 @@ let f = (self, x: int): runtime -> r: int => {
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
     assert_eq!(report.frames.len(), 1);
     assert_eq!(report.frames[0].return_slot.name.as_deref(), Some("r"));
+    assert!(
+        report.frames[0].callable_self_owner.is_some(),
+        "return Self is anchored to the callable-local lexical owner"
+    );
     assert_eq!(
         report.frames[0].self_identity.as_ref().unwrap().name,
         "self"
@@ -222,6 +226,28 @@ let f = (self): runtime -> r: int => {
         lang_build::UnresolvedReturnTargetForm::Explicit(NormExpr::Name { text, .. })
             if text == "self"
     ));
+}
+
+#[test]
+fn first_written_formal_is_self_even_when_its_name_is_not_self() {
+    let report = bind_closure(
+        r#"
+let f = (callable, x): runtime -> r: int => {
+    x |> (callable return);
+};
+"#,
+    );
+
+    assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
+    assert_eq!(
+        report.frames[0].self_identity.as_ref().unwrap().name,
+        "callable"
+    );
+    assert_eq!(report.bound_events.len(), 1);
+    assert_eq!(
+        active_frame_id(&report.bound_events[0]),
+        report.frames[0].frame_id.0
+    );
 }
 
 #[test]

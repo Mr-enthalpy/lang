@@ -597,6 +597,15 @@ fn dump_atom(output: &mut String, atom: &AtomAst, indent: usize) {
             line(output, indent + 1, "args:");
             dump_product(output, args, indent + 2);
         }
+        AtomKind::MemberViewAnnotation { object, visibility } => {
+            line(
+                output,
+                indent,
+                &format!("MemberViewAnnotation {visibility:?}"),
+            );
+            line(output, indent + 1, "object:");
+            dump_atom(output, object, indent + 2);
+        }
         AtomKind::Closure(closure) => dump_closure(output, closure, indent),
         AtomKind::Error(error) => {
             line(
