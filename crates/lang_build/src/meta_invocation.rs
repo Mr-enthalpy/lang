@@ -1130,12 +1130,57 @@ fn struct_field_name_from_atom(
         NormProductElem::Expr(_) => {}
     }
 
-    let field_name = struct_field_name_from_target(target, atom.provenance(), callee_symbol_id)?;
+    let field_name = if matches!(
+        target.as_ref(),
+        NormExpr::OperatorTarget { spelling, .. }
+            if spelling == "[[public]]" || spelling == "[[private]]"
+    ) {
+        struct_field_name_from_completed_annotation_source(
+            source,
+            atom.provenance(),
+            callee_symbol_id,
+        )?
+    } else {
+        struct_field_name_from_target(target, atom.provenance(), callee_symbol_id)?
+    };
 
     Ok((
         field_name,
         Provenance::from_norm_origin("struct field", origin),
     ))
+}
+
+fn struct_field_name_from_completed_annotation_source(
+    source: &lang_syntax::NormProduct,
+    provenance: &Provenance,
+    callee_symbol_id: SymbolId,
+) -> Result<String, Diagnostic> {
+    let mut elements = source.elements.iter().filter_map(|element| match element {
+        NormProductElem::Expr(expr) => Some(expr),
+        NormProductElem::Unit { .. } => None,
+    });
+    let Some(NormExpr::Call { target, .. }) = elements.next() else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: member visibility must annotate one complete field",
+            Some(provenance.clone()),
+        )
+        .with_symbol_context(callee_symbol_id));
+    };
+    if elements.next().is_some() {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: member visibility annotated more than one field",
+            Some(provenance.clone()),
+        )
+        .with_symbol_context(callee_symbol_id));
+    }
+    let NormExpr::Name { text, .. } = target.as_ref() else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: member visibility must follow one field binder name",
+            Some(provenance.clone()),
+        )
+        .with_symbol_context(callee_symbol_id));
+    };
+    Ok(text.clone())
 }
 
 fn struct_field_name_from_target(

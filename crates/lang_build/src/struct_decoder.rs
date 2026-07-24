@@ -247,6 +247,9 @@ fn decode_call(
         ),
         NormExpr::OperatorTarget { spelling, .. } => {
             match spelling.as_str() {
+                "[[public]]" | "[[private]]" => {
+                    decode_completed_member_view_annotation(source, target, provenance)
+                }
                 "|" => {
                     // Canonical sum: | directly decodes as Sum
                     decode_sum_from_source(source, provenance)
@@ -283,27 +286,76 @@ fn decode_call(
     }
 }
 
+/// Decode the alternative ordinary-call association
+/// `(type_expr |> field_name) |> [[private]]`.
+///
+/// The member-view syntax remains a narrow postfix. Supporting this shape as
+/// well as `type_expr |> (field_name |> [[private]])` keeps struct
+/// interpretation independent of generic space-call association.
+fn decode_completed_member_view_annotation(
+    annotation_source: &NormProduct,
+    annotation_target: &NormExpr,
+    provenance: Provenance,
+) -> StructDecodeResult {
+    let visibility = member_visibility_from_target(annotation_target).ok_or_else(|| {
+        Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member annotation accepts only `[[public]]` or `[[private]]`".to_string(),
+            Some(provenance.clone()),
+        )
+    })?;
+    let mut elements = annotation_source
+        .elements
+        .iter()
+        .filter_map(|element| match element {
+            NormProductElem::Expr(expr) => Some(expr),
+            NormProductElem::Unit { .. } => None,
+        });
+    let Some(NormExpr::Call {
+        source: member_source,
+        target: member_target,
+        ..
+    }) = elements.next()
+    else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility must annotate one complete structural member".to_string(),
+            Some(provenance),
+        ));
+    };
+    if elements.next().is_some() {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility annotated more than one structural member".to_string(),
+            Some(provenance),
+        ));
+    }
+    let NormExpr::Name { text: name, .. } = member_target.as_ref() else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility must follow one field binder name".to_string(),
+            Some(provenance),
+        ));
+    };
+    Ok(
+        decode_call_with_name_target(member_source, name, provenance)?
+            .with_structural_visibility(visibility),
+    )
+}
+
 fn decode_call_with_member_view_annotation(
     member_source: &NormProduct,
     annotation_source: &NormProduct,
     annotation_target: &NormExpr,
     provenance: Provenance,
 ) -> StructDecodeResult {
-    let visibility = match annotation_target {
-        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[public]]" => {
-            StructuralMemberVisibility::Public
-        }
-        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[private]]" => {
-            StructuralMemberVisibility::Private
-        }
-        _ => {
-            return Err(Diagnostic::new(
-                DiagnosticSeverity::Error,
-                "struct member annotation accepts only `[[public]]` or `[[private]]`".to_string(),
-                Some(provenance),
-            ))
-        }
-    };
+    let visibility = member_visibility_from_target(annotation_target).ok_or_else(|| {
+        Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member annotation accepts only `[[public]]` or `[[private]]`".to_string(),
+            Some(provenance.clone()),
+        )
+    })?;
     let mut elements = annotation_source
         .elements
         .iter()
@@ -329,6 +381,18 @@ fn decode_call_with_member_view_annotation(
         decode_call_with_name_target(member_source, name, provenance)?
             .with_structural_visibility(visibility),
     )
+}
+
+fn member_visibility_from_target(target: &NormExpr) -> Option<StructuralMemberVisibility> {
+    match target {
+        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[public]]" => {
+            Some(StructuralMemberVisibility::Public)
+        }
+        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[private]]" => {
+            Some(StructuralMemberVisibility::Private)
+        }
+        _ => None,
+    }
 }
 
 /// Decode a call with a Name target.
