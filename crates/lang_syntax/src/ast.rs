@@ -355,7 +355,8 @@ pub enum AtomKind {
         explicit_terminated: bool,
     },
     /// First-class field-function closure. Unlike `MemberSugar`, this node
-    /// does not capture a receiver; its first argument determines `T`.
+    /// does not capture a receiver; its first explicit call-site argument
+    /// determines `T` after invocation injects the generated self formal.
     DotClosure {
         selector: SelectorAst,
     },

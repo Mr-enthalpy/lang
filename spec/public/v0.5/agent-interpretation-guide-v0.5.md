@@ -55,7 +55,9 @@ See `normalized-surface-semantics-v0.5.md` §3–§7 for the full rules. Preserv
 - `expr |> Product` is never the intended normalized result.
 - Operator / dot-closure / member / double-dot / bracket sugar lower into the same
   product-call skeleton with preserved provenance; they are not resolved.
-- `.name` lowers independently to `(val: T, ...args) { (val, args) |> name::T }`;
+- `.name` lowers independently to
+  `(self, val: T, ...args) { (val, args) |> name::T }`; the generated `self`
+  formal is implicitly supplied, while `val` is the first explicit argument;
   `E.name` mechanically uses that same closure. After lowering, `.name` is an
   ordinary expression: replacing it with `let d = .name` must preserve the
   general pipe/product binding spine. Never inspect `DotClosureLowering`

@@ -100,7 +100,7 @@ The inserted action can be described schematically in language-shaped form:
 (arg: type)? |>
   if { arg; } |>
   else {
-      arg |> <T: type>(arg: T) {
+      arg |> <T: type>(self, arg: T) {
           (T: has_pass)? |>
               if {
                   arg;
@@ -123,8 +123,9 @@ Semantic points:
 
 2. The `else` branch handles value arguments only.
 
-3. `arg |> <T: type>(arg: T) { ... }` binds the first-order type `T` of value
-   argument `arg`.
+3. `arg |> <T: type>(self, arg: T) { ... }` binds the generated helper's
+   implicitly passed callable object to its first written formal `self`, then
+   binds the explicit value argument `arg` and its first-order type `T`.
 
 4. `(T: has_pass)? |> if { ... }` means: the guarded predicate produces a bool
    symbol and `?` explicitly peels one top Pattern layer. The branch could read

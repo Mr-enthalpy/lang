@@ -334,8 +334,10 @@ matches any target-result expectation, and stage, rank/facet, concept, and
 ordinary-require hard conditions hold. The frame is:
 
 ```text
-slot 0 = implicit self
+slot 0 = implicit callable-object actual
+         matched by the first written formal, if present
 slot 1..n = explicit source arguments
+            matched by written formals 1..n
 ```
 
 No independent self policy plane is introduced. Pair-policy matching of frame
@@ -517,8 +519,11 @@ For a mut actual value:
 mut > unspecified > const
 ```
 
-Across implicit self, explicit parameters, and a target result policy when one
-is actually supplied, compare candidates by product order. Candidate `f`
+Across the first written self formal, later explicit parameters, and a target
+result policy when one is actually supplied, compare candidates by product
+order. The self actual is injected rather than taken from the call-site
+Product, but its formal const/mut restriction participates in the same order.
+Candidate `f`
 dominates `g` iff `f` is no worse at every compared position and strictly
 better at at least one.
 

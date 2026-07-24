@@ -650,9 +650,10 @@ What unifies the category is the **role** (companion space of a type object),
 not the origin of its members.
 
 For `struct`-generated data fields, the generated associated callable is the
-unary special case. The first-class `.name` closure is more general: it
-dispatches through the first argument type and may forward a normalized
-remainder product as additional arguments.
+unary special case. The first-class `.name` closure is more general: after its
+callable-object self is injected, it dispatches through the first explicit
+argument type and may forward a normalized remainder product as additional
+arguments.
 
 The unary generated-field shape is:
 

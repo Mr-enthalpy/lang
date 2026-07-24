@@ -486,7 +486,7 @@ callable body
 The return clause remains a let-shaped result binding slot:
 
 ```lang
-let f = <A>(x: A) -> r: A => {
+let f = <A>(self, x: A) -> r: A => {
     let y: A = x;
     y
 };
@@ -551,16 +551,18 @@ Raw AST preserves it as `DotClosure(name)`. It normalizes independently of any
 receiver to:
 
 ```lang
-(val: T, ...args) {
+(self, val: T, ...args) {
     (val, args) |> name::T
 }
 ```
 
-Normalization produces an in-place `NormClosure` carrier. `T` is inferred from
-the first formal argument only when an explicit call context consumes and
-materializes that carrier. It is not captured from a syntactic expression to
-the left of the dot. A binding context may also materialize the carrier; other
-expression contexts merely preserve or compose the closure expression.
+Normalization produces an in-place `NormClosure` carrier. Its generated first
+formal is the callable-object self-position and is passed implicitly. `T` is
+inferred from the following `val` formal—the first explicit call-site
+argument—only when an explicit call context consumes and materializes that
+carrier. It is not captured from a syntactic expression to the left of the dot.
+A binding context may also materialize the carrier; other expression contexts
+merely preserve or compose the closure expression.
 
 The compact suffix is defined through that same atom:
 
@@ -632,7 +634,7 @@ callable parameters, return slots, and nested binding Patterns:
 ```lang
 let ...rest = value;
 let (head, ...rest) = value;
-let f = (...args) -> ...result => { ... };
+let f = (self, ...args) -> ...result => { ... };
 ```
 
 These positions share syntax/normalization only. Their later semantic consumer

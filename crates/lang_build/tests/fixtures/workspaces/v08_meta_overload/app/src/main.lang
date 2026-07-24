@@ -60,3 +60,9 @@ meta || runtime let runtime_body =
 {
   r === t;
 };
+
+meta || runtime let receiver_named =
+  (callable, t: type): meta -> let r: type =>
+{
+  r === t;
+};

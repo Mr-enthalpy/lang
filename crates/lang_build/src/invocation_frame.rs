@@ -8,6 +8,9 @@
 //!
 //! `self` is injected by the invocation frame and occupies callable formal slot
 //! 0. Zero-user-argument callables still have a self slot.
+//! When a closure writes any formal position, the first written formal is the
+//! explicit Pattern for this slot regardless of binder spelling. Only later
+//! formals consume the explicit user product.
 //!
 //! Declaration-context `()` call-entry definitions, such as
 //! `let ()::ref::T = (self: T ref) => { ... }`, use the same frame model:

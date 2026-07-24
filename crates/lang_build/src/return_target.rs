@@ -43,9 +43,12 @@ pub enum ReturnFrameOwner {
 pub struct ReturnSelfIdentity {
     /// Temporary v0.9 identity placeholder.
     ///
-    /// This is the normalized binder spelling currently available to the
-    /// return-target substrate. Future explicit-target resolution must use the
-    /// lexical self slot / function-object self identity, not text equality.
+    /// This is the normalized spelling bound by the first written formal
+    /// position, whatever that spelling is. That position denotes callable
+    /// self; the word `self` is conventional, not semantic.
+    ///
+    /// Future explicit-target resolution must use the lexical self slot /
+    /// function-object self identity, not text equality.
     ///
     /// TODO(return-capability): do not reuse this field as the semantic self
     /// identity for return completion. It is only a diagnostic/validation
@@ -62,7 +65,7 @@ pub struct ReturnTargetFrame {
     pub self_identity: Option<ReturnSelfIdentity>,
     /// Anonymous callable type that gives source `Self` its semantic identity.
     /// This is present for every alpha-normalized callable, including in-place
-    /// closures, independently of the temporary explicit `self` binder path.
+    /// closures, independently of the temporary written-self binder path.
     pub anonymous_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
     pub origin: NormOrigin,
 }
@@ -403,22 +406,31 @@ fn return_slot_ref(closure: &NormClosure) -> ReturnSlotRef {
 
 fn self_identity_from_closure(closure: &NormClosure) -> Option<ReturnSelfIdentity> {
     let head = closure.head.as_ref()?;
-    head.params.iter().find_map(|param| match param {
+    match head.formal_frame().written_self? {
         NormPatternElem::BindingSlot(slot) => match &slot.value_pattern {
-            NormPattern::Binder { name, origin } if name == "self" => Some(ReturnSelfIdentity {
+            NormPattern::Binder { name, origin } => Some(ReturnSelfIdentity {
                 name: name.clone(),
+                origin: origin.clone(),
+            }),
+            NormPattern::OperatorBinder { spelling, origin } => Some(ReturnSelfIdentity {
+                name: spelling.clone(),
                 origin: origin.clone(),
             }),
             _ => None,
         },
-        NormPatternElem::Pattern(NormPattern::Binder { name, origin }) if name == "self" => {
-            Some(ReturnSelfIdentity {
+        NormPatternElem::Pattern(pattern) => match pattern {
+            NormPattern::Binder { name, origin } => Some(ReturnSelfIdentity {
                 name: name.clone(),
                 origin: origin.clone(),
-            })
-        }
+            }),
+            NormPattern::OperatorBinder { spelling, origin } => Some(ReturnSelfIdentity {
+                name: spelling.clone(),
+                origin: origin.clone(),
+            }),
+            _ => None,
+        },
         _ => None,
-    })
+    }
 }
 
 fn binding_slot_name(slot: &NormBindingSlot) -> Option<String> {

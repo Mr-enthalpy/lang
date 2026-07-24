@@ -43,6 +43,7 @@ This amendment therefore classifies each delta explicitly:
 | Malformed-tail `ErrorAst` recovery | Hard recovery correction | Invalid source must not become a legal empty user body. |
 | Global one-pack validation | New post-normalization invariant | Parser-local counting cannot enforce a normalized-level invariant across every binding slot. |
 | DeduceList telescope and exact `HoleBinderId` references | Normalized binding correction | A string-only `HoleRef` cannot identify its declaration or define forward/self/duplicate behavior in nested let-shaped slots. |
+| First written formal = callable self-position | Normalized formal-frame correction | Invocation already injects callable self as slot 0. Treating the first written Pattern as an explicit user argument split one position into two incompatible meanings and made generated receiver helpers consume their own callable object as the business receiver. |
 
 ## 2. Version boundary
 
@@ -251,9 +252,18 @@ A `.name`-generated closure therefore has:
 ```text
 placement = InPlace
 origin.rule = DotClosureLowering
+params = [generated self, val: T, ...args]
 ```
 
 `Generated` is not a placement variant.
+
+For every ordinary or in-place closure, the first written formal is the
+explicit Pattern for invocation-frame slot 0. Its actual callable object is
+passed implicitly and never belongs to the explicit call-site Product. Written
+formals after it consume that Product in order. The spelling `self` is not
+reserved. A closure with no written formal still has an unbound semantic self
+slot. Prefix-negative, dot-closure, and double-dot generated helpers therefore
+write a generated self formal before their `val` receiver formal.
 
 This is still an AST/Normalized-AST carrier. Normalization does not materialize
 it as a callable value or allocate a capture environment. Only a later

@@ -176,6 +176,13 @@ Resolved future-design decisions:
   policy product order as well as its body-entry pair. Opposite actual
   qualifiers remain preference inputs rather than being removed by ordinary
   P1 projection.
+- Every callable has invocation-frame slot 0 for its own function object.
+  Ordinary, in-place, meta, and generated closures use the same rule: the first
+  written formal explicitly declares that self-position under any legal
+  spelling, while its actual is supplied implicitly. Only later written
+  formals consume the call-site Product. A head with no written formal retains
+  an unbound semantic self-position. Generated receiver helpers therefore use
+  `[self, val, ...]`, not `[val, ...]`.
 - A function-object binding has the unrestricted empty mutability domain by
   default (`const || mut`); only its declaration may crop that internal axis.
   Export derives a separate external view: value-bearing exports expose

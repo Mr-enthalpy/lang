@@ -303,13 +303,16 @@ Dump label:      PrefixNegativeLowering
 ```text
 -x
 => x |> generated closure:
-   <T: type>(val: T) => { (zero::T, val) |> - }
+   <T: type>(self, val: T) => { (zero::T, val) |> - }
 ```
 
 ```text
 Prefix negative is not an overloadable prefix operator identity.
 Only the generated binary `-` participates in later operator lookup.
 No operator lookup occurs during normalization.
+The generated `self` formal is the explicitly represented Pattern for the
+implicitly supplied helper object; `val` consumes the first explicit source
+argument.
 ```
 
 ### First-class dot closure and compact member sugar
@@ -322,7 +325,7 @@ Dump label:      DotClosureLowering
 ```text
 .field
 => generated closure:
-   <T: type>(val: T, ...args) { (val, args) |> field::T }
+   <T: type>(self, val: T, ...args) { (val, args) |> field::T }
 
 obj.field
 => obj |> .field
@@ -337,6 +340,9 @@ Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
 normalized target is the same generated in-place `NormClosure` carrier.
 `MemberLowering` records that compact wrapper; it does not define a second
 member semantic system.
+The generated first formal denotes the helper closure's own self-position and
+is passed implicitly. `val`, not `self`, receives the first explicit call-site
+argument and determines `T`.
 After atom lowering, `.field` is an ordinary `NormExpr`. Its generated origin
 cannot change pipe/product association, absorb following items, bypass
 first-product-only, or replace legality repair. Compact `obj.field`
@@ -375,7 +381,7 @@ Dump label:      DoubleDotLowering
 ```text
 obj..method(args...)
 => obj |> generated closure:
-   <T: type>(val: T) => { (val, args...) |> method::T }
+   <T: type>(self, val: T) => { (val, args...) |> method::T }
 ```
 
 ### Bracket sugar
@@ -560,7 +566,7 @@ does not retroactively bind a name in the leading policy.
 Return clauses keep ordinary let-shaped BindingSlot order:
 
 ```lang
-let f = <A>(x: A) -> r: A => {
+let f = <A>(self, x: A) -> r: A => {
     let y: A = x;
     y
 };
@@ -646,18 +652,26 @@ let <T> x: U Option::std = y
 Closure head example (head dump label `ClosureNormalize`):
 
 ```text
-<T: type>(val: T) => { val }
+<T: type>(self, val: T) => { val }
 
 Closure placement=Ordinary
   head: ClosureHead
     deduce:
       HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )
     params:
+      BindingSlot "self"
       BindingSlot "val" with annotation AnnotationPattern( HoleRef "T" )
   body: NormBody          // recursively normalized as forms/expressions
 ```
 
 `type` and `T` here are not runtime expressions.
+
+Formal positions are interpreted uniformly for ordinary and in-place
+closures: the first written position is the explicit Pattern/binder for the
+callable object's self-position, whose actual is supplied implicitly by the
+invocation frame. Only later positions consume the explicit call-site Product.
+The spelling `self` is conventional and may be replaced. A head with no written
+position still has a semantic self-position but no source binder for it.
 
 ### Extraction skeletons and product extraction
 

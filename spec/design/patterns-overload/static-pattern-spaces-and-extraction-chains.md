@@ -703,7 +703,7 @@ Concretely: if a block's final expression evaluates to a value `V`, and there is
 Its core shape can be approximated as:
 
 ```text
-match := (x: _) => { x }
+match := (self, x: _) => { x }
 ```
 
 The `_` parameter explicitly consumes the current pattern space. The body returns `x`.
@@ -1057,7 +1057,7 @@ same block-local result rule as every other block.
 For example:
 
 ```lang
-let id = (t: type): compile -> r: type => {
+let id = (self, t: type): compile -> r: type => {
     r = t;
     r;
 };
@@ -1067,7 +1067,7 @@ This compile body computes a `PatternValue`. A meta body instead constructs a
 `SymbolConstructionValue`, for example:
 
 ```lang
-let box = (t: type): meta -> r: symbol => {
+let box = (self, t: type): meta -> r: symbol => {
     r = (t inner) |> struct;
     r;
 };
@@ -1439,7 +1439,7 @@ non-additivity of closed control-pattern spaces with unrelated patterns
 A conventional `match` may exist in the standard package. It is not privileged syntax, not a separate matching semantics, and not compiler-intrinsic control flow. It is an identity closing consumer:
 
 ```text
-match := (x: _) => { x }
+match := (self, x: _) => { x }
 ```
 
 Its name is appropriate because it expresses intent: close the current extraction chain, require the current pattern space to be consumed, and expose the closed result to the enclosing context as a completed result.

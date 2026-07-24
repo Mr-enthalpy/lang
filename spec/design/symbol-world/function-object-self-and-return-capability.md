@@ -1,6 +1,7 @@
 # Function Object Self and Return Capability
 
-**Status: Future design boundary. Not current implementation behavior.**
+**Status: Canonical semantic boundary with typed frontend/build substrate.
+End-to-end invocation and lifetime behavior remain future work.**
 
 **Canonical definition.** This document is the authoritative definition of
 `self`, the return capability, and its lifetime contract. Other documents
@@ -14,7 +15,11 @@ the semantics:
 
 This document defines the design boundary for `self`, the built-in return
 capability, and the lifetime contract associated with early function return.
-It does **not** claim that any of this is currently implemented.
+The normalized formal-frame projection, generated-helper shape, restricted
+callable arity, return-target substrate, and mutability product-order carrier
+implement this positional boundary. Full name resolution, callable-object
+materialization, return-capability execution, and lifetime checking remain
+future work.
 
 The content here is a constraint target — later implementation phases that
 introduce lifetime checking, borrow states, or return-capability calls must
@@ -22,16 +27,21 @@ respect these design invariants.
 
 ## 2. `self` as implicit function-object parameter
 
-Every function receives an implicit first parameter: the function object
-itself.
+Every callable, ordinary or in-place, has an invocation-frame slot 0 containing
+the callable object itself.
 
 ```text
-self
+self-position
 ```
 
-This is a positional slot, not a user-visible name. The user does not write
-`self` in the argument product — it is injected by the invocation mechanism
-after the call entry `()` has been resolved.
+The semantic role is positional, not tied to a reserved name. If a parameter
+position is written, the first written formal is the explicit Pattern/binder
+for this self-position. The source spelling may be `self`, `this`, `callable`,
+or any other legal Pattern; `self` is only the conventional spelling.
+
+The corresponding actual is never written in the call-site argument Product.
+It is injected by the invocation mechanism after the call entry `()` has been
+resolved.
 
 `self` is **not** part of `ProductObject`, `ArgProductShape`, or
 `RawArgShape`. These represent only the explicit user-supplied argument
@@ -57,11 +67,12 @@ invocation frame:
 ```
 
 The first written formal position denotes the function-object self-position,
-not an ordinary user parameter. A zero-user-argument callable still has slot 0
-as its self-position and has no user argument slots. Declaration-context `()`
-call-entry definitions follow the same invocation model: `()` is the call
-entry, the explicit user product is empty, and the invocation frame injects the
-function object into slot 0.
+not an ordinary user parameter. Only written positions after the first consume
+the explicit call-site Product. A callable that writes no formal position still
+has slot 0 as an unbound self-position and has no user argument slots.
+Declaration-context `()` call-entry definitions follow the same invocation
+model: `()` is the call entry, the explicit user product is empty, and the
+invocation frame injects the function object into slot 0.
 
 For declaration-context call-entry injection, the self-position may have a
 non-anonymous type such as `T ref` in:
@@ -103,9 +114,10 @@ operator, not a keyword, and not a compiler intrinsic escape hatch. It is an
 ordinary callable value exposed by the function object's type-associated
 namespace.
 
-`self` itself is not a user-visible source name and should not be modeled as a
-path segment. It is a positional slot. The corresponding function-object type
-anchor may be described as `Self` when discussing type-associated lookup or
+The self-position is not a path segment and is not identified by the spelling
+`self`. A first-formal binder makes the injected object visible under that
+source binder. Independently, the corresponding anonymous function-object type
+anchor is described as `Self` when discussing type-associated lookup or
 diagnostic rendering.
 
 The return capability is associated with the function-object type / self-frame.

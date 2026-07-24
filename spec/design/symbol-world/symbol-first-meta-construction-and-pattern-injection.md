@@ -415,7 +415,7 @@ self-root requirement on a returned type value. It may freely return an
 already existing value:
 
 ```lang
-let identity = (t: type): compile -> r: type => {
+let identity = (self, t: type): compile -> r: type => {
     r = t;
     r;
 };
@@ -461,7 +461,7 @@ M = MetaInstanceScope(callee_symbol, canonical_arguments)
 For:
 
 ```lang
-let f = (t: type): meta -> r: symbol => { ... };
+let f = (self, t: type): meta -> r: symbol => { ... };
 ```
 
 the diagnostic navigation projection of `M` is:
@@ -520,12 +520,12 @@ scope. It is not equality of rendered strings.
 Consequently, both of these meta bodies are invalid:
 
 ```lang
-let f = (t: type): meta -> r: symbol => {
+let f = (self, t: type): meta -> r: symbol => {
     r = t;
     r;
 };
 
-let fn = (t: type): meta -> r: symbol => {
+let fn = (self, t: type): meta -> r: symbol => {
     r = uint8;
     r;
 };
@@ -539,7 +539,7 @@ Neither value may directly replace the return symbol's required type root.
 A legal meta construction builds under its own scope:
 
 ```lang
-let f = (t: type): meta -> r: symbol => {
+let f = (self, t: type): meta -> r: symbol => {
     r = (t inner) |> struct;
     r;
 };
@@ -555,7 +555,7 @@ External `PatternValue`s may be members of the self-rooted type; they may not
 replace the root. For example:
 
 ```lang
-let fn = (t: type): meta -> r: symbol => {
+let fn = (self, t: type): meta -> r: symbol => {
     let t1::r = bool;
     r;
 };
@@ -743,7 +743,7 @@ syntax contains a distinguished outer pattern name.
 Example:
 
 ```lang
-let f = (t: symbol): meta -> r: symbol {
+let f = (self, t: symbol): meta -> r: symbol {
     r = (t first, t second) |> struct;
 };
 ```
@@ -766,7 +766,7 @@ The fully resolved pattern is:
 The single-field form uses the same rule:
 
 ```lang
-let f = (t: symbol): meta -> r: symbol {
+let f = (self, t: symbol): meta -> r: symbol {
     r = (t first) |> struct;
 };
 ```

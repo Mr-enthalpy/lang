@@ -179,8 +179,9 @@ pub use phase_flow::{
 };
 pub use policy_expr::elaborate_declaration_policy_expr;
 pub use policy_overload::{
-    select_by_mutability_product, select_policy_overload, MutabilityPattern,
-    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection,
+    select_by_mutability_product, select_policy_overload, MutabilityActualFrame,
+    MutabilityFormalFrame, MutabilityPattern, PhaseOverloadCandidate, PolicyOverloadCandidate,
+    PolicyOverloadSelection,
 };
 pub use policy_pair::{
     compute_export_retention_closure, compute_wpre, derive_function_object_p1,

@@ -114,7 +114,18 @@ and not CompleteStrategyTail
 
 A leading `[[` is a malformed-strategy recovery candidate only after a
 parameter clause, call policy, return clause, or head clause has independently
-closed the capture slot. Deduce alone does not close it.
+closed the capture slot. Deduce alone does not close it. There is one narrow
+ambiguity repair: when the speculative head consists only of a parenthesized
+parameter candidate and the cursor is at complete `[[public]]` or
+`[[private]]` without a following block, closure speculation must backtrack so
+the ordinary grouped expression can consume the member-view suffix. Thus:
+
+```lang
+(uint8 secret [[private]]) |> struct
+```
+
+is not a malformed `[[strategy]]` callable tail. A complete
+`[[public]] { ... }` / `[[private]] { ... }` remains a strategy tail.
 
 Thus all of these are closure heads:
 
@@ -145,9 +156,11 @@ MemberViewAnnotation
 ```
 
 They produce `AtomKind::MemberViewAnnotation { object, visibility }`. The
-recognizer requires the complete shape and runs only after closure-head
-classification, so `() [[public]] { ... }` remains a named callable strategy
-tail. Every other bracket payload remains ordinary `BracketCallSugar`.
+recognizer requires the complete shape. Complete strategy-tail classification
+still wins when a block follows; a bare narrow member annotation is allowed to
+defeat only the speculative parenthesized-head case above. Therefore
+`() [[public]] { ... }` remains a named callable strategy tail. Every other
+bracket payload remains ordinary `BracketCallSugar`.
 The parser assigns no struct, policy, or namespace meaning to the node.
 
 After `=>`, implementation selection examines the full local tail:
@@ -262,10 +275,14 @@ Normalization alone defines:
 
 ```text
 .name
-  -> (val: T, ...args) {
+  -> (self, val: T, ...args) {
        (val, args) |> name::T
      }
 ```
+
+The generated first formal is the helper closure's explicit self Pattern and
+is supplied implicitly by invocation. `val` is the first formal supplied from
+the explicit call-site Product.
 
 After this one lowering, the result is an ordinary expression. No pipe,
 product, or legality-repair rule may inspect `DotClosureLowering` provenance to

@@ -9,9 +9,9 @@ use lang_build::{
     project_export_overload_sets, project_p1, project_resolved_export_view, publicly_reachable,
     read_pattern, read_value, resolve_explicit_path, select_by_mutability_product,
     select_policy_overload, BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    ExportAdmission, FunctionObjectDeclarationPolicy, MutabilityPattern,
-    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
-    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
+    ExportAdmission, FunctionObjectDeclarationPolicy, MutabilityActualFrame, MutabilityFormalFrame,
+    MutabilityPattern, NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility,
+    P1Projection, PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
     PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyStage, Provenance,
     ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
     ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
@@ -1017,14 +1017,30 @@ fn compile_projection_is_mechanical_and_preserves_control_structure() {
 
 fn candidate(
     id: &'static str,
-    parameter_policies: Vec<MutabilityPattern>,
+    frame_patterns: Vec<MutabilityPattern>,
     is_delete: bool,
 ) -> PolicyOverloadCandidate<&'static str> {
+    let mut frame_patterns = frame_patterns.into_iter();
     PolicyOverloadCandidate {
         id,
-        parameter_policies,
+        formal_frame: MutabilityFormalFrame {
+            self_pattern: frame_patterns
+                .next()
+                .unwrap_or(MutabilityPattern::Unspecified),
+            explicit_parameter_patterns: frame_patterns.collect(),
+        },
         result_policy: None,
         is_delete,
+    }
+}
+
+fn actual_frame(
+    self_value: ValueMutability,
+    explicit_arguments: Vec<ValueMutability>,
+) -> MutabilityActualFrame {
+    MutabilityActualFrame {
+        self_value,
+        explicit_arguments,
     }
 }
 
@@ -1036,11 +1052,11 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
         candidate("mut", vec![MutabilityPattern::Mut], false),
     ];
     assert_eq!(
-        select_by_mutability_product(&single, &[ValueMutability::Const], None),
+        select_by_mutability_product(&single, &actual_frame(ValueMutability::Const, vec![]), None),
         PolicyOverloadSelection::Selected("const")
     );
     assert_eq!(
-        select_by_mutability_product(&single, &[ValueMutability::Mut], None),
+        select_by_mutability_product(&single, &actual_frame(ValueMutability::Mut, vec![]), None),
         PolicyOverloadSelection::Selected("mut")
     );
 
@@ -1059,7 +1075,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     assert!(matches!(
         select_by_mutability_product(
             &crossed,
-            &[ValueMutability::Const, ValueMutability::Const],
+            &actual_frame(ValueMutability::Const, vec![ValueMutability::Const]),
             None
         ),
         PolicyOverloadSelection::Ambiguous(_)
@@ -1070,7 +1086,7 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
         candidate("wide", vec![MutabilityPattern::Unspecified], false),
     ];
     assert_eq!(
-        select_by_mutability_product(&delete, &[ValueMutability::Const], None),
+        select_by_mutability_product(&delete, &actual_frame(ValueMutability::Const, vec![]), None),
         PolicyOverloadSelection::RejectedByDelete("const-delete")
     );
 }
@@ -1098,6 +1114,21 @@ fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
     )
     .expect("mut formal");
 
+    let split = PolicyOverloadCandidate::from_formal_patterns(
+        "split",
+        &[const_formal.clone(), mut_formal.clone()],
+        None,
+        false,
+    );
+    assert_eq!(
+        split.formal_frame,
+        MutabilityFormalFrame {
+            self_pattern: MutabilityPattern::Const,
+            explicit_parameter_patterns: vec![MutabilityPattern::Mut],
+        },
+        "the first written formal is the self policy position; only later formals consume explicit arguments"
+    );
+
     let candidates = vec![
         PolicyOverloadCandidate::from_formal_patterns("const", &[const_formal], None, false),
         PolicyOverloadCandidate::from_formal_patterns(
@@ -1110,11 +1141,19 @@ fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
     ];
 
     assert_eq!(
-        select_by_mutability_product(&candidates, &[ValueMutability::Const], None),
+        select_by_mutability_product(
+            &candidates,
+            &actual_frame(ValueMutability::Const, vec![]),
+            None
+        ),
         PolicyOverloadSelection::Selected("const")
     );
     assert_eq!(
-        select_by_mutability_product(&candidates, &[ValueMutability::Mut], None),
+        select_by_mutability_product(
+            &candidates,
+            &actual_frame(ValueMutability::Mut, vec![]),
+            None
+        ),
         PolicyOverloadSelection::Selected("mut")
     );
 }
@@ -1124,25 +1163,35 @@ fn target_result_only_orders_candidates_when_the_context_supplies_it() {
     let candidates = vec![
         PolicyOverloadCandidate {
             id: "const-result",
-            parameter_policies: vec![MutabilityPattern::Unspecified],
+            formal_frame: MutabilityFormalFrame {
+                self_pattern: MutabilityPattern::Unspecified,
+                explicit_parameter_patterns: vec![],
+            },
             result_policy: Some(MutabilityPattern::Const),
             is_delete: false,
         },
         PolicyOverloadCandidate {
             id: "mut-result",
-            parameter_policies: vec![MutabilityPattern::Unspecified],
+            formal_frame: MutabilityFormalFrame {
+                self_pattern: MutabilityPattern::Unspecified,
+                explicit_parameter_patterns: vec![],
+            },
             result_policy: Some(MutabilityPattern::Mut),
             is_delete: false,
         },
     ];
     assert!(matches!(
-        select_by_mutability_product(&candidates, &[ValueMutability::Const], None),
+        select_by_mutability_product(
+            &candidates,
+            &actual_frame(ValueMutability::Const, vec![]),
+            None
+        ),
         PolicyOverloadSelection::Ambiguous(_)
     ));
     assert_eq!(
         select_by_mutability_product(
             &candidates,
-            &[ValueMutability::Const],
+            &actual_frame(ValueMutability::Const, vec![]),
             Some(ValueMutability::Const)
         ),
         PolicyOverloadSelection::Selected("const-result")
@@ -1164,7 +1213,12 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
         },
     ];
     assert_eq!(
-        select_policy_overload(&open, &[ValueMutability::Const], None, Phase::OpenStatic),
+        select_policy_overload(
+            &open,
+            &actual_frame(ValueMutability::Const, vec![]),
+            None,
+            Phase::OpenStatic
+        ),
         PolicyOverloadSelection::Selected("meta")
     );
 
@@ -1181,7 +1235,12 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
         },
     ];
     assert_eq!(
-        select_policy_overload(&seal, &[ValueMutability::Mut], None, Phase::SealStatic),
+        select_policy_overload(
+            &seal,
+            &actual_frame(ValueMutability::Mut, vec![]),
+            None,
+            Phase::SealStatic
+        ),
         PolicyOverloadSelection::Selected("seal")
     );
 
@@ -1198,7 +1257,12 @@ fn phase_stage_preference_is_part_of_the_partial_order() {
         },
     ];
     assert!(matches!(
-        select_policy_overload(&crossed, &[ValueMutability::Const], None, Phase::OpenStatic),
+        select_policy_overload(
+            &crossed,
+            &actual_frame(ValueMutability::Const, vec![]),
+            None,
+            Phase::OpenStatic
+        ),
         PolicyOverloadSelection::Ambiguous(_)
     ));
 }

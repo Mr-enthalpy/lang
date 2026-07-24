@@ -848,11 +848,12 @@ forbidden; local mutation and effectful calls remain possible. An
 otherwise tied in-place candidate is preferred after the
 first-order-over-instantiated filter.
 
-> **Explicit self position for return:** A headless in-place closure
-> has no self target and cannot express early return. Early return
-> examples that target a specific closure should use an in-place
-> closure with an explicit product/extraction head carrying the
-> self position, e.g.:
+> **Explicit self position for return:** A headless in-place closure still has
+> an anonymous callable type and invocation-frame self slot, but it has no
+> written binder for that slot. It therefore cannot name its own return target
+> through a first-formal binder. Early-return examples that target a specific
+> closure should use an in-place closure with an explicit
+> product/extraction head carrying the self position, e.g.:
 >
 > ```lang
 > (<Self: type> self: Self) {
@@ -888,6 +889,9 @@ explicit head and a callable implementation tail.
 The head may contain deduce list, capture clause, parameter clause, call-result
 policy clause, return clause, and head clauses. The tail preserves ordinary or
 named user body, compiler-defaulted implementation, or deleted implementation.
+As for every callable placement, the first written formal Pattern denotes the
+implicitly passed callable-object self slot; only later written formals consume
+the explicit call-site Product.
 Plain no-`=>` block tails and `[[name]]` stay in-place; the latter is only the
 named-strategy escape that does not steal the established return
 extraction-pattern parse.
@@ -943,7 +947,9 @@ _See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._
 
 The first-class expression `.name`, normalized to a generated in-place
 `NormClosure` carrier shaped as
-`(val: T, ...args) { (val, args) |> name::T }`. `E.name` is compact
+`(self, val: T, ...args) { (val, args) |> name::T }`. The generated first
+formal is the implicitly supplied callable object; `val` is the first explicit
+call-site argument. `E.name` is compact
 `E |> .name`; `.name` itself captures no receiver. After lowering it is an
 ordinary expression. Replacing it with a bound equivalent must preserve the
 same pipe/product binding spine, and no normalizer rule may inspect

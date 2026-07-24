@@ -81,13 +81,15 @@ Direct function objects are not merely sugar for user-defined `ref::T` callables
 receiver to:
 
 ```lang
-(val: T, ...args) {
+(self, val: T, ...args) {
     (val, args) |> name::T
 }
 ```
 
-The first argument supplies `T`; `...args` is a Pattern remainder binding, not
-a pack type. Consequently `.name` can be stored and passed independently.
+`self` is the generated first formal for the implicitly passed field-function
+object. The first explicit call-site argument binds `val` and supplies `T`;
+`...args` is a Pattern remainder binding, not a pack type. Consequently
+`.name` can be stored and passed independently.
 After `.name` becomes that ordinary function-object expression, its origin
 grants no call-binding privilege. In particular, for `let d = .name`:
 
@@ -110,7 +112,11 @@ during this normalization.
 
 ## 6. Implicit `self`
 
-Every function has an implicit first parameter position: `self`. This is a positional position, not a user-visible name. Applies to all functions, including meta functions.
+Every callable, including ordinary, in-place, meta, and compiler-generated
+closures, has an implicit first parameter position for the callable object.
+When the source writes any formal position, the first written formal explicitly
+declares the Pattern/binder for that position. Its spelling is unrestricted;
+`self` is conventional rather than reserved.
 
 The call entry `()` always receives the callable object as implicit `self`. The user cannot manually pass this `self`.
 
@@ -128,6 +134,16 @@ InvocationFrame:
 
 every slot must satisfy its selected associated () entry policy pattern
 ```
+
+The formal/call-site alignment is:
+
+```text
+written formal 0       <- implicitly injected callable object
+written formal 1..n    <- explicit call-site Product positions 0..n-1
+```
+
+A head with no written formal still has invocation-frame slot 0, but it does
+not bind that object to a source Pattern.
 
 No separate self-policy plane is required. Independently, the function
 object's available stage view is derived from its result P2:
@@ -381,7 +397,9 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - The call entry `()` for a directly defined function object lives under that anonymous type.
 - User-defined callable objects may define `()` under `ref::T` / `share::T` / other associated namespaces.
 - Implicit `self` is always passed by the call mechanism.
-- Implicit `self` is positional, not a user-visible name.
+- The self role is positional; the first written formal exposes it under an
+  ordinary user-chosen binder/Pattern, and `self` is only a conventional
+  spelling.
 - Implicit `self` is not part of `ProductObject` / `ArgProductShape`.
 - The user cannot manually pass implicit `self`.
 - `()` is not an operator.

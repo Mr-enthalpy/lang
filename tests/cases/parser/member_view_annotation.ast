@@ -23,3 +23,25 @@ Program
               MemberViewAnnotation Public
                 object:
                   Name visible
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Group
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name uint8
+                      OperatorExpr
+                        Atom
+                          MemberViewAnnotation Private
+                            object:
+                              Name secret
+        Segment has_incoming=true
+          OperatorExpr
+            Atom
+              Name struct

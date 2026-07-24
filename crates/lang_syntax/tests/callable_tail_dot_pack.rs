@@ -166,6 +166,12 @@ fn double_bracket_strategy_uses_one_closure_head_boundary_in_every_context() {
     let dump = lang_syntax::dump_norm_program(&normalized);
     assert!(dump.contains("Closure placement=InPlace"), "{dump}");
     assert!(dump.contains("UserBody strategy=Named(s)"), "{dump}");
+
+    let private_named = normalized_closure("let f = () [[private]] { value };");
+    assert!(matches!(
+        private_named.body,
+        NormClosureBody::NamedBlock { ref strategy, .. } if strategy == "private"
+    ));
 }
 
 #[test]
@@ -382,9 +388,19 @@ fn dot_name_is_a_first_class_field_function_closure() {
         }
     ));
     let head = closure.head.as_ref().unwrap();
-    assert_eq!(head.params.len(), 2);
+    assert_eq!(head.params.len(), 3);
     assert!(matches!(
-        &head.params[1],
+        head.formal_frame().written_self,
+        Some(NormPatternElem::BindingSlot(slot))
+            if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self")
+    ));
+    assert!(matches!(
+        &head.formal_frame().explicit_parameters[0],
+        NormPatternElem::BindingSlot(slot)
+            if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "val")
+    ));
+    assert!(matches!(
+        &head.formal_frame().explicit_parameters[1],
         NormPatternElem::BindingSlot(slot)
             if matches!(&slot.value_pattern, NormPattern::Pack { inner, .. }
                 if matches!(inner.as_ref(), NormPattern::Binder { name, .. } if name == "args"))
@@ -464,10 +480,10 @@ fn compact_member_then_space_argument_remains_an_outer_call() {
 
 #[test]
 fn pack_is_pattern_only_and_normalized_validation_owns_layer_cardinality() {
-    let closure = normalized_closure("let f = (val: T, ...args) -> r => { r };");
+    let closure = normalized_closure("let f = (self, val: T, ...args) -> r => { r };");
     let head = closure.head.as_ref().unwrap();
     assert!(matches!(
-        &head.params[1],
+        &head.formal_frame().explicit_parameters[1],
         NormPatternElem::BindingSlot(slot)
             if matches!(&slot.value_pattern, NormPattern::Pack { .. })
     ));
@@ -1067,7 +1083,13 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
             generated_t.id, source_t,
             "generated display spelling T must not capture source T"
         );
-        let NormPatternElem::BindingSlot(receiver) = &head.params[0] else {
+        let formal_frame = head.formal_frame();
+        assert!(matches!(
+            formal_frame.written_self,
+            Some(NormPatternElem::BindingSlot(slot))
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self")
+        ));
+        let NormPatternElem::BindingSlot(receiver) = &formal_frame.explicit_parameters[0] else {
             panic!("expected generated receiver slot");
         };
         assert_eq!(
@@ -1081,6 +1103,45 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
             "generated reference must follow its hygienic key"
         );
     }
+}
+
+#[test]
+fn first_written_formal_is_self_for_ordinary_and_in_place_closures() {
+    for (source, expected_placement) in [
+        (
+            "let f = (receiver, value) => { value };",
+            NormClosurePlacement::Ordinary,
+        ),
+        (
+            "let f = (receiver, value) { value };",
+            NormClosurePlacement::InPlace,
+        ),
+    ] {
+        let closure = normalized_closure(source);
+        assert_eq!(closure.placement, expected_placement);
+        let frame = closure
+            .head
+            .as_ref()
+            .expect("headed closure")
+            .formal_frame();
+        assert!(matches!(
+            frame.written_self,
+            Some(NormPatternElem::BindingSlot(slot))
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
+                    if name == "receiver")
+        ));
+        assert!(matches!(
+            frame.explicit_parameters,
+            [NormPatternElem::BindingSlot(slot)]
+                if matches!(&slot.value_pattern, NormPattern::Binder { name, .. }
+                    if name == "value")
+        ));
+    }
+
+    let zero = normalized_closure("let f = () => { value };");
+    let zero_frame = zero.head.as_ref().expect("headed closure").formal_frame();
+    assert!(zero_frame.written_self.is_none());
+    assert!(zero_frame.explicit_parameters.is_empty());
 }
 
 #[test]
@@ -1539,6 +1600,17 @@ fn member_visibility_annotation_is_narrow_shape_and_does_not_steal_capture_brack
         }
     }
     assert!(contains_member_view_rule(initializer));
+
+    let struct_input = parsed("(uint8 secret [[private]]) |> struct;");
+    assert!(
+        struct_input.diagnostics.is_empty(),
+        "a member annotation inside a parenthesized struct input must not be stolen as a malformed closure strategy:\n{}",
+        lang_syntax::dump_diagnostics(&struct_input.diagnostics)
+    );
+    assert!(
+        lang_syntax::dump_ast(&struct_input.program).contains("MemberViewAnnotation Private"),
+        "the parenthesized member annotation must remain in the ordinary expression tree"
+    );
 
     let bracket = parsed("let x = obj[[cap] => { cap }];");
     assert!(

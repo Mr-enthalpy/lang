@@ -900,11 +900,42 @@ pub enum NormClosurePlacement {
 pub struct NormClosureHead {
     pub deduce: Vec<NormHoleDecl>,
     pub captures: Vec<NormCapture>,
+    /// Source-order formal positions.
+    ///
+    /// The first written position, when present, denotes the callable
+    /// object's self-position. Invocation supplies that position implicitly;
+    /// only the remaining positions consume the call-site Product. Consumers
+    /// must use `formal_frame()` instead of independently slicing this vector.
     pub params: Vec<NormPatternElem>,
     pub call_policy: Option<NormPolicySpec>,
     pub returns: Option<NormBindingSlot>,
     pub clauses: Vec<NormHeadClause>,
     pub origin: NormOrigin,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NormCallableFormalFrame<'a> {
+    /// The explicitly written Pattern for the implicitly supplied callable
+    /// object. `None` means the source wrote no formal position; the semantic
+    /// invocation frame still has an unbound self-position.
+    pub written_self: Option<&'a NormPatternElem>,
+    /// Formals supplied from the explicit call-site Product.
+    pub explicit_parameters: &'a [NormPatternElem],
+}
+
+impl NormClosureHead {
+    pub fn formal_frame(&self) -> NormCallableFormalFrame<'_> {
+        match self.params.split_first() {
+            Some((written_self, explicit_parameters)) => NormCallableFormalFrame {
+                written_self: Some(written_self),
+                explicit_parameters,
+            },
+            None => NormCallableFormalFrame {
+                written_self: None,
+                explicit_parameters: &[],
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -3388,26 +3419,41 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                 origin: NormOrigin::Generated { rule, span },
             }],
             captures: Vec::new(),
-            params: vec![NormPatternElem::BindingSlot(NormBindingSlot {
-                policy: None,
-                has_let: false,
-                deduce: Vec::new(),
-                value_pattern: NormPattern::Binder {
-                    name: "val".to_string(),
-                    origin: NormOrigin::Generated { rule, span },
-                },
-                annotation: Some(NormAnnotation {
-                    pattern: NormPattern::HoleRef {
-                        target: type_hole_id,
-                        name: "T".to_string(),
+            params: vec![
+                NormPatternElem::BindingSlot(NormBindingSlot {
+                    policy: None,
+                    has_let: false,
+                    deduce: Vec::new(),
+                    value_pattern: NormPattern::Binder {
+                        name: "self".to_string(),
                         origin: NormOrigin::Generated { rule, span },
                     },
+                    annotation: None,
+                    with_clause: None,
+                    initializer: None,
                     origin: NormOrigin::Generated { rule, span },
                 }),
-                with_clause: None,
-                initializer: None,
-                origin: NormOrigin::Generated { rule, span },
-            })],
+                NormPatternElem::BindingSlot(NormBindingSlot {
+                    policy: None,
+                    has_let: false,
+                    deduce: Vec::new(),
+                    value_pattern: NormPattern::Binder {
+                        name: "val".to_string(),
+                        origin: NormOrigin::Generated { rule, span },
+                    },
+                    annotation: Some(NormAnnotation {
+                        pattern: NormPattern::HoleRef {
+                            target: type_hole_id,
+                            name: "T".to_string(),
+                            origin: NormOrigin::Generated { rule, span },
+                        },
+                        origin: NormOrigin::Generated { rule, span },
+                    }),
+                    with_clause: None,
+                    initializer: None,
+                    origin: NormOrigin::Generated { rule, span },
+                }),
+            ],
             call_policy: None,
             returns: None,
             clauses: Vec::new(),

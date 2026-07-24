@@ -159,11 +159,24 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
 
     assert_eq!(
         head.params.len(),
-        if has_remainder_pack { 2 } else { 1 },
-        "unexpected generated receiver/pack params: {:#?}",
+        if has_remainder_pack { 3 } else { 2 },
+        "unexpected generated self/receiver/pack params: {:#?}",
         head.params
     );
     if let NormPatternElem::BindingSlot(slot) = &head.params[0] {
+        assert!(matches!(
+            &slot.value_pattern,
+            NormPattern::Binder { name, .. } if name == "self"
+        ));
+        assert!(slot.annotation.is_none());
+    } else {
+        panic!(
+            "expected generated self binding slot, got {:#?}",
+            head.params[0]
+        );
+    }
+
+    if let NormPatternElem::BindingSlot(slot) = &head.params[1] {
         assert!(matches!(
             &slot.value_pattern,
             NormPattern::Binder { name, .. } if name == "val"
@@ -175,13 +188,13 @@ fn expect_generated_receiver_head(closure: &NormClosure, rule: NormRule, has_rem
     } else {
         panic!(
             "expected generated receiver binding slot, got {:#?}",
-            head.params[0]
+            head.params[1]
         );
     }
 
     if has_remainder_pack {
         assert!(matches!(
-            &head.params[1],
+            &head.params[2],
             NormPatternElem::BindingSlot(slot)
                 if matches!(&slot.value_pattern, NormPattern::Pack { inner, .. }
                     if matches!(inner.as_ref(), NormPattern::Binder { name, .. }

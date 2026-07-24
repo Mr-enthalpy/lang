@@ -34,7 +34,7 @@ The first-class surface constructor is:
 and normalizes to a function object shaped as:
 
 ```lang
-(val: T, ...args) { (val, args) |> field::T }
+(self, val: T, ...args) { (val, args) |> field::T }
 ```
 
 Thus `E.field` mechanically lowers to `E |> .field`; `.field` itself is
@@ -46,7 +46,9 @@ override the ordinary continuation and legality-repair rules. Compact
 `E.field P` likewise lowers `E.field` first and then resumes the general
 expression rules. `...args` is a Pattern remainder matcher only. Existing
 product normalization forwards the bound remainder; no pack type or unpack
-operator is introduced.
+operator is introduced. The generated `self` formal binds the implicitly
+injected field-function object; `val` remains the first explicit receiver
+argument.
 `E..field(product)` remains the direct member-call sugar.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
