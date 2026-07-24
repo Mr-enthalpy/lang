@@ -528,6 +528,18 @@ body. Nested callables inherit that active hole environment before extending
 it with their own DeduceList. Ordinary value binders occupy a separate lexical
 environment and do not change Pattern-context hole identity.
 
+Return annotations keep ordinary BindingSlot order:
+
+```lang
+let f = <A>(x: A) -> r: A => {
+    let y: A = x;
+    y
+};
+```
+
+Use `-> _: A` for an anonymous typed result. A prefix-shaped `-> A r` remains
+an extraction Pattern; it is not a type annotation on `r`.
+
 Raw AST preserves spelling, lexical scope shape, and provisional canonical
 roles. A distinct alpha-normalization step after structural normalization
 allocates fresh lexical ordinals and rewrites scoped Pattern/policy occurrences

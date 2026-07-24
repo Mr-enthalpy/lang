@@ -463,6 +463,19 @@ return slot and head clauses
 callable body
 ```
 
+For example, the return type remains a postfix annotation on the return
+binding slot:
+
+```lang
+let f = <A>(x: A) -> r: A => {
+    let y: A = x;
+    y
+};
+```
+
+The anonymous typed form is `-> _: A`. `-> A r` is an extraction Pattern and
+must not be reinterpreted as the typed-return shorthand `-> r: A`.
+
 Nested callables inherit that active hole environment and extend it with their
 own telescope. Body-local let-shaped DeduceLists extend only their own binding
 slot. Hole scope is separate from ordinary value-binder scope; a value binder

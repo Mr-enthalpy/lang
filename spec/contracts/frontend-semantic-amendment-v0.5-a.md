@@ -317,6 +317,10 @@ A callable head DeduceList scopes capture slots and initializers, parameters,
 call policy, return slot, head clauses, and the complete body. Nested callables
 inherit that environment before adding their own telescope.
 
+The scope extension does not alter return BindingSlot syntax. A named typed
+return is `-> r: A`, and the anonymous form is `-> _: A`; `-> A r` remains an
+extraction Pattern rather than a prefix type annotation.
+
 `normalize_program` remains available for diagnostic dumps and recovery
 inspection. The downstream build handoff is:
 

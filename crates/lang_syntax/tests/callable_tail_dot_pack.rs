@@ -697,10 +697,10 @@ fn raw_nested_canonical_roles_keep_all_active_deduce_lists() {
 #[test]
 fn raw_callable_deduce_environment_reaches_capture_return_body_and_nested_callable() {
     let output = parsed(
-        "let f = <A>[let A c = source](A x) -> A r => {
-            let A y = x;
-            let g = <B: A>(B z) -> A q => {
-                let A w = z;
+        "let f = <A>[let c: A = source](x: A) -> r: A => {
+            let y: A = x;
+            let g = <B: A>(z: B) -> q: A => {
+                let w: A = z;
                 w
             };
             y
@@ -790,6 +790,55 @@ fn binding_slot_at(form: &NormForm) -> &NormBindingSlot {
         panic!("expected normalized let form, got {form:#?}");
     };
     slot
+}
+
+#[test]
+fn callable_return_annotation_uses_the_binding_slot_suffix() {
+    let output = parsed("let f = <A>() -> r: A => { r };");
+    let normalized = normalize_program(&output.program);
+    let outer_slot = binding_slot_at(&normalized.forms[0]);
+    let NormExpr::Closure(closure) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("closure initializer")
+    else {
+        panic!("expected closure");
+    };
+    let head = closure.head.as_ref().expect("closure head");
+    let return_slot = head.returns.as_ref().expect("return slot");
+    assert!(matches!(
+        &return_slot.pattern,
+        NormPattern::Binder { name, .. } if name == "r"
+    ));
+    assert_eq!(
+        annotation_hole_target(
+            return_slot
+                .annotation
+                .as_ref()
+                .expect("postfix return annotation")
+        ),
+        head.deduce[0].id
+    );
+
+    let prefix_shaped = parsed("let g = <A>() -> A r => { r };");
+    let normalized = normalize_program(&prefix_shaped.program);
+    let outer_slot = binding_slot_at(&normalized.forms[0]);
+    let NormExpr::Closure(closure) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("closure initializer")
+    else {
+        panic!("expected closure");
+    };
+    assert!(
+        closure
+            .head
+            .as_ref()
+            .and_then(|head| head.returns.as_ref())
+            .and_then(|returns| returns.annotation.as_ref())
+            .is_none(),
+        "`-> A r` remains an extraction Pattern and must not be reinterpreted as a type annotation"
+    );
 }
 
 #[test]
