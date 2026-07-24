@@ -8,13 +8,13 @@ use lang_build::{
     function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
     project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
     resolve_explicit_path, select_by_mutability_product, select_policy_overload,
-    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    ExportAdmission, FunctionObjectDeclarationPolicy, MutabilityPattern,
-    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
-    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
-    PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyStage, Provenance,
-    ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
-    ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
+    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow, ExportAdmission,
+    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
+    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair,
+    PolicyResultEntry, PolicyStage, Provenance, ResolvedCandidatePolicy, SealWorldSnapshot,
+    StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
+    ValuePresence, WpreRoots,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
