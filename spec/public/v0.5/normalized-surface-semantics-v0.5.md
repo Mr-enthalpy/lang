@@ -825,7 +825,10 @@ Declaration-side `P1Projection` first applies to actual RHS/result entries and
 produces a resolved internal `PolicyPair`. Only that complete pair may become
 an external candidate policy: its value component is const-projected and its
 associated Pattern component is preserved. Export-closure membership admits
-symbols, while mut-only overload candidates remain in the complete internal
+only the export-graph dimension; external exposure additionally requires every
+path component to be publicly reachable. A private child and public
+descendants behind it therefore remain internal even inside the export closure. Among
+admitted symbols, mut-only overload candidates remain in the complete internal
 set and are omitted from the external overload set. Pure `absent:Pp`
 candidates enter unchanged. A direct source `export + mut` root remains an
 invalid declaration.

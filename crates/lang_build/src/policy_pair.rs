@@ -181,8 +181,9 @@ pub struct NamespaceDeclarationPolicy {
     /// writes `export`. This is an early validation/preview only:
     /// `None` does not prove that the declaration is absent from the eventual
     /// export view, because `ExportClosure(root)` may admit ancestors and
-    /// descendants. Namespace graph integration must project every admitted
-    /// candidate through `project_export_overload_sets`.
+    /// descendants. Namespace graph integration must combine closure
+    /// membership with public path reachability before projecting candidates
+    /// through `project_export_overload_sets`.
     pub external_projection: Option<P1Projection>,
     pub visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
@@ -368,6 +369,23 @@ pub struct ResolvedCandidatePolicy {
     pub pair: PolicyPair,
 }
 
+/// Namespace-level facts required before a symbol may contribute candidate
+/// views to `Sigma_export`.
+///
+/// Export-closure membership alone is not sufficient: every component of the
+/// externally navigated path must also pass public/private reachability.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExportAdmission {
+    pub in_export_closure: bool,
+    pub publicly_reachable: bool,
+}
+
+impl ExportAdmission {
+    pub fn is_externally_exposed(self) -> bool {
+        self.in_export_closure && self.publicly_reachable
+    }
+}
+
 /// The complete namespace overload set and its externally exposed candidate
 /// views. Export views retain internal candidate identity but carry a distinct
 /// policy projection.
@@ -418,20 +436,20 @@ impl<N: Ord, I, C> NamespaceOverloadSets<N, I, C> {
 
 /// Project external overload views from the complete namespace sets.
 ///
-/// Export-closure membership is a symbol/name-level predicate. Candidate
-/// eligibility is a separate operation over the resolved internal
+/// `ExportAdmission` combines export-closure membership with public path
+/// reachability. Only externally exposed symbols are considered. Candidate
+/// policy eligibility is then a separate operation over each resolved internal
 /// `PolicyPair`: candidates without a const value slice remain in `full` but
 /// are omitted from `exported`. Direct source declarations that explicitly
-/// write `export + mut` are rejected earlier by
-/// `project_export_root_preview`.
+/// write `export + mut` are rejected earlier by `project_export_root_preview`.
 pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
     full: BTreeMap<N, Vec<C>>,
-    mut symbol_in_export_closure: impl FnMut(&N) -> bool,
+    mut external_admission: impl FnMut(&N) -> ExportAdmission,
     mut resolve_candidate: impl FnMut(&C) -> (I, ResolvedCandidatePolicy),
 ) -> NamespaceOverloadSets<N, I, C> {
     let mut exported = BTreeMap::new();
     for (name, candidates) in &full {
-        if !symbol_in_export_closure(name) {
+        if !external_admission(name).is_externally_exposed() {
             continue;
         }
         let mut projected = Vec::new();

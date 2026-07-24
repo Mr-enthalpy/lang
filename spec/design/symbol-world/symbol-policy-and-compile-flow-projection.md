@@ -571,24 +571,35 @@ ExportCandidateView {
   external_policy: PolicyPair
 }
 
-if Symbol(candidate) ∈ ExportClosure:
+ExportAdmission {
+  in_export_closure,
+  publicly_reachable
+}
+
+if admission.in_export_closure && admission.publicly_reachable:
   internal_policy := ResolveCandidatePolicy(candidate)
   external_policy := Project_const(internal_policy.Pv):internal_policy.Pp
 ```
 
-Export-closure membership is decided at symbol/name level. It does not
-arbitrarily select individual overloads. Within an exported symbol's complete
-overload set, every candidate whose resolved pair has a const value projection
-enters `Σ_export`; a mut-only candidate remains in `Σ_full` but has no external
-candidate view. A pure `absent:Pp` candidate enters unchanged.
+Export-closure membership and public path reachability are separate
+symbol/name-level facts; both are required before a symbol contributes to
+`Σ_export`. In particular, a private child in an exported subtree and every
+descendant reached through that private path remain absent externally even
+when those symbols belong to `ExportClosure`.
+
+Admission does not arbitrarily select individual overloads. Within an admitted
+symbol's complete overload set, every candidate whose resolved pair has a
+const value projection enters `Σ_export`; a mut-only candidate remains in
+`Σ_full` but has no external candidate view. A pure `absent:Pp` candidate
+enters unchanged.
 
 A direct source declaration that explicitly writes `export + mut` is still
 invalid at declaration elaboration. This direct-root error is distinct from
 filtering a mut-only member of an otherwise exported full overload set.
 
-Ancestors and descendants admitted by the final export closure need not be
-export roots and may have used `P1Projection::Infer`; their resolved candidate
-pairs are projected in exactly the same way.
+Ancestors and descendants admitted by the final external-exposure check need
+not be export roots and may have used `P1Projection::Infer`; their resolved
+candidate pairs are projected in exactly the same way.
 `NamespaceDeclarationPolicy.external_projection` is only an early
 direct-root validation/preview; `None` on a non-root declaration does not mean
 that the eventual namespace export view lacks that declaration.

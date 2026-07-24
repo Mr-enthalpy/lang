@@ -1010,12 +1010,14 @@ searches `Σ_export`; world membership asks whether a symbol exists in Wpre or
 Wseal. The export overload set preserves the same candidate identities as the
 full set, but every external candidate carries a separately const-projected
 resolved `PolicyPair` rather than a declaration-side `P1Projection` or a clone
-of its complete internal policy. Export-closure membership admits symbols;
-within each admitted full overload set, mut-only candidates remain internal
+of its complete internal policy. External admission requires both
+export-closure membership and public reachability through the full path.
+Within each admitted full overload set, mut-only candidates remain internal
 and candidates with const (or pure `Pp`) views enter the external set.
-Export-closure ancestors and descendants receive this projection even when
-they are not export roots. World membership does not imply export, and export
-does not imply that the symbol itself was an export root.
+Publicly reachable export-closure ancestors and descendants receive this
+projection even when they are not export roots. World membership does not
+imply export, and export does not imply that the symbol itself was an export
+root.
 
 _See also: Policy Pair, Namespace (source name)._
 

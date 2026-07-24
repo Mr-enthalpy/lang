@@ -244,10 +244,11 @@ Implemented substrate after this correction:
   `ExportCandidateView { identity, internal_candidate, external_policy:
   PolicyPair }` transformation, and phase/const-mut product-order test
   substrate. The direct declaration `external_projection` remains a
-  root-local `P1Projection` preview. Export-closure membership is symbol-level;
-  among an admitted symbol's resolved candidates, mut-only entries remain in
+  root-local `P1Projection` preview. External admission requires both
+  symbol-level export-closure membership and public path reachability; among
+  an admitted symbol's resolved candidates, mut-only entries remain in
   `Σ_full` and are omitted from `Σ_export`. Namespace-graph installation
-  supplies final membership.
+  supplies the persistent admission facts.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 

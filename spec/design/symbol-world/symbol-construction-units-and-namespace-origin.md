@@ -434,6 +434,11 @@ ResolvedCandidatePolicy {
   pair: PolicyPair
 }
 
+ExportAdmission {
+  in_export_closure,
+  publicly_reachable
+}
+
 ExportCandidateView {
   identity,
   internal_candidate,
@@ -442,13 +447,17 @@ ExportCandidateView {
 ```
 
 Declaration-side `P1Projection` is first applied to actual RHS/result entries.
-The namespace export closure then admits symbols, including non-root
-ancestors/descendants; it does not act as an arbitrary per-candidate
-eligibility callback. For each admitted symbol, the helper derives an external
-`PolicyPair` from every resolved candidate pair that has a const value slice
-(or has `Pv = absent`). Mut-only candidates remain in the full overload set and
-are absent from the external overload set. A direct source `export + mut` root
-is rejected earlier as an invalid declaration.
+Namespace external admission then requires both export-closure membership and
+public reachability through every path component. The export closure alone is
+not sufficient: a private child and public descendants behind it remain
+internal. This admission is symbol-level and does not act as an arbitrary
+per-candidate eligibility callback.
+
+For each admitted symbol, the helper derives an external `PolicyPair` from
+every resolved candidate pair that has a const value slice (or has
+`Pv = absent`). Mut-only candidates remain in the full overload set and are
+absent from the external overload set. A direct source `export + mut` root is
+rejected earlier as an invalid declaration.
 
 The helper no longer returns cloned internal policies as external views.
 Full namespace-graph installation and external resolver routing remain later

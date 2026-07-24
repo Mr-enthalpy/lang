@@ -54,9 +54,11 @@ unchanged; `const let` / `mut let` restrict only its mutability Pattern and do
 not alter any other component. The function object itself defaults to an empty
 mutability restriction, whose typed-domain meaning is the full
 `const || mut` choice; an explicit declaration P1 may crop it. Namespace
-declaration elaboration has one intentional exception: bare `export let`
-defaults the independent mutability axis to `const`. Any written export policy
-whose mutability domain contains `mut` is invalid.
+declaration elaboration does not crop this complete internal view merely
+because the declaration is exported. A value-bearing exported candidate must
+admit a const projection. Its external candidate view is const-projected; a
+mut-only value candidate is therefore externally ineligible, while
+`const || mut` is valid.
 
 Formal elaboration has two consumers of the same result: the entered callable
 body receives the effective pair, and overload candidate formation copies the
@@ -125,9 +127,11 @@ That preview remains declaration-side `P1Projection`; it is not a resolved
 external policy.
 
 After declaration projection has been applied to actual RHS/result entries,
-each candidate carries a resolved `PolicyPair`. Export closure then admits
-symbols—including non-root ancestors or descendants—and each externally
-eligible candidate is transformed into an identity-preserving
+each candidate carries a resolved `PolicyPair`. External admission then
+requires both export-closure membership and public reachability through every
+path component. For each admitted symbol—including non-root ancestors or
+descendants—every policy-eligible candidate is transformed into an
+identity-preserving
 `ExportCandidateView` whose external policy is another complete `PolicyPair`.
 The Pattern component is preserved. Mut-only candidates stay in `Σ_full` and
 are filtered from `Σ_export`; `absent:Pp` candidates enter unchanged. The
@@ -149,6 +153,8 @@ The typed substrate currently provides:
 - structural `CompleteSymbolFlow` projection;
 - Wpre and export least-closure helpers;
 - complete and externally projected namespace overload-set carriers that
+  require a typed `ExportAdmission { in_export_closure,
+  publicly_reachable }` before projection and
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.

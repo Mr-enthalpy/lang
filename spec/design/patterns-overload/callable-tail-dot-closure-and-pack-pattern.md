@@ -509,8 +509,9 @@ lexical ordinals and rewrites every scoped Pattern/policy occurrence to an
 exact `HoleBinderId`. Source spans remain provenance only. Alpha-equivalent
 sources such as `<A, B: A>` and `<X, Y: X>` therefore have the same binder/ref
 graph structure regardless of spelling or byte offset. A `HoleBinderId`
-ordinal is meaningful only with its owning `NormProgram`; IDs from distinct
-programs are not compared directly. A later build-world identity may combine
+ordinal is meaningful only with its owning root-tree `AlphaOwner`; nested
+closure-body `NormProgram` nodes share that owner, while IDs from distinct
+owners are not compared directly. A later build-world identity may combine
 a stable `SourceUnitId × BinderPath`; generated binders may use an
 expansion-instance identity. Neither model treats a source span as semantic
 identity.

@@ -388,9 +388,10 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
 - Empty function-object mutability means the unrestricted `const || mut`
-  domain; an explicit declaration P1 may crop it. Export-root declaration
-  elaboration instead defaults to `const` and rejects any domain containing
-  `mut`.
+  domain; an explicit declaration P1 may crop it. Export does not crop the
+  complete namespace-internal domain. A value-bearing external candidate view
+  projects that domain to const; `const || mut` is valid, while mut-only has no
+  external candidate view.
 - Written formal parameters inherit P2 exactly outside the optional const/mut
   Pattern axis.
 - Ordinary closures distinguish explicit, explicit-inferred-binder, and

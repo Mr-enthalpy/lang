@@ -9,12 +9,12 @@ use lang_build::{
     project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
     resolve_explicit_path, select_by_mutability_product, select_policy_overload,
     BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
-    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair,
-    PolicyResultEntry, PolicyStage, Provenance, ResolvedCandidatePolicy, SealWorldSnapshot,
-    StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
-    ValuePresence, WpreRoots,
+    ExportAdmission, FunctionObjectDeclarationPolicy, MutabilityPattern,
+    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
+    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
+    PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyStage, Provenance,
+    ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
+    ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -419,6 +419,68 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         namespace_visibility: None,
         export_root: false,
     };
+    fn namespace_path<'a>(
+        nodes: &BTreeMap<&'a str, NamespaceExportNode<&'a str>>,
+        symbol: &'a str,
+    ) -> Vec<&'a str> {
+        let mut reversed = Vec::new();
+        let mut current = Some(symbol);
+        while let Some(id) = current {
+            reversed.push(id);
+            current = nodes.get(id).and_then(|node| node.parent);
+        }
+        reversed.reverse();
+        reversed
+    }
+
+    let nodes = BTreeMap::from([
+        (
+            "f",
+            NamespaceExportNode {
+                parent: None,
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "exported_child",
+            NamespaceExportNode {
+                parent: Some("f"),
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "private_child",
+            NamespaceExportNode {
+                parent: Some("f"),
+                visibility: NamespaceVisibility::Private,
+            },
+        ),
+        (
+            "public_behind_private",
+            NamespaceExportNode {
+                parent: Some("private_child"),
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "exported_type",
+            NamespaceExportNode {
+                parent: Some("f"),
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "private_dependency",
+            NamespaceExportNode {
+                parent: None,
+                visibility: NamespaceVisibility::Private,
+            },
+        ),
+    ]);
+    let export_closure = compute_export_closure(&nodes, ["f"]);
+    assert!(export_closure.contains("private_child"));
+    assert!(export_closure.contains("public_behind_private"));
+
     let full = BTreeMap::from([
         (
             "f",
@@ -447,9 +509,17 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
             }],
         ),
         (
-            "private_dependency",
+            "private_child",
             vec![Candidate {
                 identity: 3,
+                export_root: false,
+                internal_policy: runtime_value(BTreeSet::new()),
+            }],
+        ),
+        (
+            "public_behind_private",
+            vec![Candidate {
+                identity: 7,
                 export_root: false,
                 internal_policy: runtime_value(BTreeSet::new()),
             }],
@@ -462,10 +532,21 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
                 internal_policy: type_only(),
             }],
         ),
+        (
+            "private_dependency",
+            vec![Candidate {
+                identity: 8,
+                export_root: false,
+                internal_policy: runtime_value(BTreeSet::new()),
+            }],
+        ),
     ]);
     let views = project_export_overload_sets(
         full,
-        |name| matches!(*name, "f" | "exported_child" | "exported_type"),
+        |name| ExportAdmission {
+            in_export_closure: export_closure.contains(*name),
+            publicly_reachable: publicly_reachable(&nodes, namespace_path(&nodes, *name)),
+        },
         |candidate| {
             (
                 candidate.identity,
@@ -517,6 +598,17 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         external_child[0].internal_candidate.internal_policy.pattern
     );
 
+    assert!(views.resolve_internal(&"private_child").is_some());
+    assert!(
+        views.resolve_external(&"private_child").is_none(),
+        "a private export-closure member is not externally exposed"
+    );
+    assert!(views.resolve_internal(&"public_behind_private").is_some());
+    assert!(
+        views.resolve_external(&"public_behind_private").is_none(),
+        "a public descendant behind a private path is not externally exposed"
+    );
+
     let external_type = views
         .resolve_external(&"exported_type")
         .expect("pure Pattern/type candidate remains externally visible");
@@ -536,7 +628,11 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         },
         |symbol| {
             if *symbol == "f" {
-                vec!["private_dependency"]
+                vec![
+                    "private_child",
+                    "public_behind_private",
+                    "private_dependency",
+                ]
             } else {
                 vec![]
             }
@@ -546,6 +642,8 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         wpre.contains("private_dependency"),
         "Wpre may retain a private semantic dependency"
     );
+    assert!(wpre.contains("private_child"));
+    assert!(wpre.contains("public_behind_private"));
     assert!(
         views.resolve_external(&"private_dependency").is_none(),
         "world membership must not install an external export view"
@@ -561,7 +659,10 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     )]);
     let mut_only_views = project_export_overload_sets(
         mut_only,
-        |_| true,
+        |_| ExportAdmission {
+            in_export_closure: true,
+            publicly_reachable: true,
+        },
         |candidate| {
             (
                 candidate.identity,
