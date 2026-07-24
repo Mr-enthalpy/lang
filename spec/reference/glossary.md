@@ -115,13 +115,13 @@ in expression/operator contexts they may be operator spellings.
 
 Normalized DeduceLists are left-to-right dependent telescopes. A declaration
 annotation sees inherited and earlier declarations, never itself or later
-declarations. An active hole name cannot be redeclared or shadowed. Each
-declaration receives an alpha-normalized, owner-local lexical ordinal
-`HoleBinderId`, and a named `HoleRef` targets that exact identity rather than
-merely repeating its spelling. The `AlphaOwner` is the complete normalized
-tree produced by one root `normalize_program` invocation; nested body
-`NormProgram` nodes share it. IDs from distinct alpha owners are not directly
-comparable. Source spans are provenance, not identity. Generated
+declarations. A hole name cannot be repeated within one `PatternRoot`; a new
+independent Pattern root may shadow an inherited spelling. Each declaration
+receives an alpha-normalized `HoleBinderId` qualified by callable owner,
+Pattern root, and root-local ordinal, and a named `HoleRef` targets that exact
+identity rather than merely repeating its spelling. Build integration maps the
+frontend owner to a persistent `SemanticOwnerId`. Source spans are provenance,
+not identity. Generated
 receiver holes use hygienic generated keys rather than source spelling. A
 callable-head telescope scopes captures, parameters, policy, return, clauses,
 body, and inherited nested callables. Within a BindingSlot, policy precedes
@@ -141,6 +141,86 @@ spelling with `CanonicalNameRole::Hole`; normalized uses carry an exact
 and targets no DeduceList declaration.
 
 _See also: DeduceList, CanonicalSkeleton._
+
+---
+
+## SemanticOwner
+
+A parent-linked semantic identity domain for namespace objects, callable
+anonymous types, canonical meta-invocation instances, and generated objects.
+Semantic identity is `(SemanticOwnerId, local identity)`; source file, span, and
+printable path are provenance only. Every callable, including an in-place
+closure, has a callable owner. Its `Self` denotes that owner's anonymous type.
+Source navigation prints the current/innermost owner first and enclosing owners
+to its right.
+
+_See also: PatternRoot, PackageBoundary, Mount._
+
+---
+
+## PatternRoot
+
+One independent Pattern/extraction alpha boundary inside a `SemanticOwner`.
+Nested BindingSlots, Products, Sequences, annotations, DeduceLists, and Pack
+operands inside an extraction retain the same root. An independent let Pattern
+or callable head creates a new root. Hole names are unique within one root;
+different roots may use normal lexical shadowing.
+
+_See also: DeduceList, Hole, SemanticOwner._
+
+---
+
+## FullNameView
+
+The complete package-internal namespace and overload view. Same-package
+descendant owners may use an ancestor's non-export entries through lexical
+lookup. Unrelated siblings do not acquire that visibility merely by sharing a
+package.
+
+_See also: ExternalNameView, DefaultExtractionView._
+
+---
+
+## ExternalNameView
+
+The identity-preserving external namespace projection used after lookup crosses
+a package boundary. It requires export-retention admission, public reachability
+through every access-path component, and an externally eligible candidate
+policy view.
+
+_See also: FullNameView, PackageBoundary, Mount._
+
+---
+
+## DefaultExtractionView
+
+The structural Pattern view exposed by default extraction. It is distinct from
+both name views. Private structural members remain in the full structural model
+but are absent from this view. Rich custom `?` construction remains future
+design.
+
+_See also: FullNameView, ExternalNameView._
+
+---
+
+## PackageBoundary
+
+Build/namespace metadata assigning a stable `PackageId` to a namespace subtree.
+`PackageOf(node)` uses the nearest boundary ancestor. Physical directory names
+do not define package or symbol identity.
+
+_See also: Mount, SemanticOwner._
+
+---
+
+## Mount
+
+A namespace-graph redirect edge from an alternative access path to an existing
+target node. Mount traversal may cross a package boundary and switch to
+`ExternalNameView`, but it never copies the target symbol or changes its
+identity.
+
+_See also: PackageBoundary, ExternalNameView._
 
 ---
 
@@ -849,7 +929,7 @@ _See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution P
 The downstream handoff produced by `normalize_and_validate_patterns` after all
 currently enforced global normalized Pattern invariants have passed: one Pack
 per structural level, no bare Product Pack operand, and no duplicate
-DeduceList hole in the active telescope. Its certificate is intentionally
+DeduceList hole in one `PatternRoot`. Its certificate is intentionally
 narrow: it does not prove ordered/unordered Pack applicability, stable
 Pattern-head identity, complete matching support, parser-diagnostic absence,
 or recovery freedom. `normalize_program` alone remains useful for

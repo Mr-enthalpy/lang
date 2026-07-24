@@ -73,6 +73,10 @@ let f = (self, x: int): runtime -> r: int => {
     assert!(report.diagnostics.is_empty(), "{:#?}", report.diagnostics);
     assert_eq!(report.frames.len(), 1);
     assert_eq!(report.frames[0].return_slot.name.as_deref(), Some("r"));
+    assert!(
+        report.frames[0].anonymous_self_owner.is_some(),
+        "return Self is anchored to the callable's anonymous semantic owner"
+    );
     assert_eq!(
         report.frames[0].self_identity.as_ref().unwrap().name,
         "self"

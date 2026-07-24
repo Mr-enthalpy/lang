@@ -85,6 +85,7 @@ pub struct NamedExtractionField {
     pub field_pattern_head: Option<PatternHeadId>,
     pub field_index: usize,
     pub projection: FieldProjection,
+    pub visibility: crate::pattern_space::StructuralMemberVisibility,
     pub provenance: Provenance,
 }
 
@@ -307,5 +308,6 @@ impl NamedExtractionField {
             && self.field_pattern_head == other.field_pattern_head
             && self.field_index == other.field_index
             && self.projection == other.projection
+            && self.visibility == other.visibility
     }
 }

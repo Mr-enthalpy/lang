@@ -97,10 +97,11 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   multi-term annotation → `PatternSequence`.
 - DeduceList is a left-to-right telescope of `HoleDecl { id, ... }`. Each
   annotation sees inherited and preceding holes, not its own or following
-  declarations. Active names cannot be redeclared or shadowed. A `HoleRef`
-  targets an exact alpha-normalized ordinal `HoleBinderId` within the
-  `AlphaOwner` established by one root normalization; nested body
-  `NormProgram` nodes share that owner. Source spans remain provenance.
+  declarations. Names are unique inside one `PatternRoot`; independent let
+  Patterns and nested callable heads create new roots and may shadow inherited
+  names. A `HoleRef` targets an exact owner/root-qualified `HoleBinderId`.
+  Frontend owners are mapped to persistent `SemanticOwnerId`s before
+  multi-root build comparison. Source spans remain provenance.
   BindingSlot policy precedes its local DeduceList.
   Generated receiver holes use hygienic keys, not source spelling. A
   callable-head telescope scopes captures, parameters, call policy, return,
@@ -111,6 +112,15 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   never `NormExpr`.
 - Pattern-side names are not ordinary call targets and must not fall back to
   ordinary value/function lookup.
+- `E name [[public/private]]` is a narrow structural member-view annotation
+  consumed by `struct`; it is not a general policy slot. Other `[[...]]`
+  suffixes remain in the ordinary bracket-call/closure-tail grammar.
+- Source navigation is inner-to-outer. A generated call expression used as one
+  outer navigation component must be grouped in full:
+  `child::(int Vec::std)`.
+- Every callable, including in-place, has a semantic owner and anonymous
+  `Self`. Independent let Patterns/callable heads create Pattern roots;
+  duplicate holes fail only within one root.
 - Construction and extraction may be isomorphic; call and extraction are not.
 - `...Q` stays `NormPattern::Pack(Q)`, with one pack per normalized level and
   no RHS unpack counterpart. The grammar is shared by every binding slot
@@ -128,7 +138,7 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
   evidence below a stable operand head belongs to the next preserved level.
 - Run the global normalized-Pattern validator before downstream build.
   It is the sole authority for pack cardinality, bare-Product Pack rejection,
-  and active-telescope hole uniqueness. The parser preserves syntactically
+  and same-PatternRoot hole uniqueness. The parser preserves syntactically
   formed Pack nodes and diagnoses only local malformed syntax.
 
 Quick pattern-context lowering checklist:

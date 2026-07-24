@@ -32,6 +32,31 @@ dependency graph.
 From the package graph, produce a mount table mapping each dependency's
 namespace root to its resolved origin. Resolve mount conflicts by policy.
 
+The v0.6 typed substrate models namespace assembly as an ownership/containment
+forest plus redirect edges:
+
+```text
+PackageBoundary { package_id }
+Mount { target: existing NamespaceNodeId }
+```
+
+`PackageOf(node)` is the nearest package-boundary ancestor. A mount is an
+alternative access path, not copied ownership:
+
+```text
+Identity(resolve(x::mount_path)) = Identity(resolve(x::target_path))
+```
+
+Crossing from the query package into the mounted target package switches
+subsequent lookup from `FullNameView` to `ExternalNameView` and retains typed
+failure causes such as private path, non-retention, no externally eligible
+candidate, missing target, and missing package boundary.
+
+The notation above follows source order: the selected inner symbol is leftmost
+and the outer mount/namespace components follow to the right. A graph resolver
+may reverse the component list mechanically for outer-to-inner containment
+traversal.
+
 ### Build Phase C: physical namespace skeleton
 
 Walk source roots to build the physical namespace skeleton from directory
@@ -62,6 +87,9 @@ physical directory contribution authority
 type-facet single installation
 cross-file reopening prohibition
 NamespaceDelta atomicity
+semantic-owner identity
+package-derived FullNameView / ExternalNameView routing
+default extraction projection
 ```
 
 One source unit may fully construct a new direct-child subtree in its own delta.

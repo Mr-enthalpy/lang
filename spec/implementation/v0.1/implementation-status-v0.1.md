@@ -7,13 +7,13 @@ rules in `ast-construction-v0.1.md`, `operator-design.md`, or
 `diagnostics-v0.1.md`.
 
 **Current stage:** Implementation baseline remains v0.1/v0.2 Raw AST frontend;
-current active design stage is v0.3 — Normalized AST Specification.
+the active stage is v0.6 — Build / Namespace Graph Bootstrap.
 
 The implementation listed here is the stable frontend baseline: lexer/parser
 skeleton, `lex` / `parse`, Raw AST categories, token/AST/diagnostic dumps,
 diagnostics infrastructure, and golden-test expectations are frozen contract
-material from the completed v0.2 stage. The current active design stage is
-v0.3 — Normalized AST Specification. No parser behavior change unless a hard
+material from the completed v0.2 stage. v0.3/v0.4/v0.5 are complete; the
+current active stage is v0.6. No parser behavior change unless a hard
 correctness error is identified against the call-composition architecture.
 
 This document records what the current codebase implements. It is not
@@ -38,6 +38,7 @@ only records what it currently does.
 | OperatorExpr (prefix-negative `-x`, postfix, binary) | `implemented-syntax` | `operator.rs` | `operator-design.md` + `ast-construction-v0.1.md` §7.3 | Prefix `-x` is Raw AST preservation only; future normalization rewrites it to typed-zero binary `-`. Postfix and binary are Raw AST sugar only. No lookup or lowering in v0.1. |
 | `::` navigation suffix | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.4 | `NavPath` node in AtomAst and OperatorExprAst; components preserved source-order inner-to-outer. Parenthesized scope expressions after `::` are preserved as grouped outer components; a grouped expression as the innermost component (`(int Vec::std)::ns`) emits `InvalidNavComponent`. |
 | `.` member sugar | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.5 | `MemberSugar` node. Text selector only. Numeric selectors removed. |
+| Structural member view suffix (`[[public]]` / `[[private]]`) | `amended-v0.6-syntax` | `atom.rs`, `ast.rs`, `norm.rs` | `v0.6-semantic-owner-namespace-graph.md` | Exact narrow postfix shape only. Other bracket payloads remain `BracketCallSugar`; no struct meaning is assigned by the parser. |
 | `..` double-dot sugar | `implemented-syntax` | `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.6 | `DoubleDotSugar` node. Requires selector + product form. |
 | `obj[args...]` bracket-call sugar | `implemented-syntax` | `atom.rs`, `operator.rs`, `product.rs` | `ast-construction-v0.1.md` §8.7 | `BracketCallSugar` node (atom + operator layer); operator spelling `[]`; bracket payload is a product form. Source-preserving; no indexing/slicing/container semantics, no lowering. `obj[]` valid. |
 | `[]` operator spelling | `implemented-syntax` | `token.rs`, `let_stmt.rs`, `atom.rs`, `operator.rs` | `ast-construction-v0.1.md` §8.7 | Contextual paired operator name (not a single lexer token). Bindable/aliasable/referable in operator-name positions (binder, alias binder, entity-ref innermost component). No semantics. |
@@ -48,7 +49,7 @@ only records what it currently does.
 | In-place closure (bare `{}`) | `implemented-syntax` | `closure.rs`, `ast.rs` | `ast-construction-v0.1.md` §10 | Bare `{ ... }` in atom position is an in-place closure (`Closure InPlace`). No capture clause, no parameters, no head clauses, and no implicit unit extraction input. |
 | Headed closure (`FnHeadPrefix` + implementation tail) | `amended-v0.5-syntax` | `closure.rs`, `ast.rs`, `norm.rs` | `frontend-semantic-amendment-v0.5-a.md` | Placement, optional head, and implementation are orthogonal. `=>` forms are ordinary; headed no-`=>` blocks remain in-place. Closure AST only; no callable materialization. |
 | Capture clause (let-shaped explicit/inferred items) | `amended-v0.5-syntax` | `closure.rs`, `let_stmt.rs`, `ast.rs`, `norm.rs` | `frontend-semantic-amendment-v0.5-a.md` | Capture items preserve explicit BindingSlot+initializer or inferred initializer shape. Normalization elaborates every item to `NormCapture`; no capture resolution or layout. |
-| Closure head Deduce scope | `amended-v0.5-syntax` | `closure.rs`, `form.rs`, `let_stmt.rs`, `norm.rs` | `ast-construction-v0.1.md` §11 amendment note | The head Deduce environment reaches capture, parameter, call policy, return, clauses, body, and inherited nested callables. BindingSlot policy sees inherited holes before the local Deduce scope reaches Pattern/annotation/initializer. Generated receiver holes use hygienic keys. Raw roles are provisional; alpha normalization assigns `HoleBinderId` targets within one root-tree `AlphaOwner` to Pattern/policy occurrences, while value-side names remain unresolved. |
+| Closure head Deduce scope | `amended-v0.6-semantics` | `closure.rs`, `form.rs`, `let_stmt.rs`, `norm.rs` | `v0.6-semantic-owner-namespace-graph.md` | The head Deduce environment reaches capture, parameter, call policy, return, clauses, body, and inherited nested callables. BindingSlot policy sees inherited holes before local Deduce. Alpha normalization allocates callable owners and Pattern-root-qualified identities; same-root duplicates fail and new roots may shadow. Generated receiver holes remain hygienic. |
 | Head clauses (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) | `implemented-syntax` | `closure.rs`, `let_stmt.rs`, `pipe.rs` | `ast-construction-v0.1.md` §11.7 | Parsed as `HeadClauseAst` tail of `FnHeadPrefixAst`. Exactly one expression slot per clause; no contract/lifetime/resource/type/rank/predicate validation. Active only in the closure-head clause tail; ordinary names elsewhere. `acquire` is an ordinary name (the earlier `acquire` direction is replaced by `pre`/`post`). |
 | Canonical skeleton | `parser-preserved-only` | `canonical.rs` | `ast-construction-v0.1.md` §6 | AST preserved; no matching, destructuring, or admissibility semantics. |
 | Match-style expressions | `parser-preserved-only` | (expression parsing) | `ast-construction-v0.1.md` §12 | `match` is ordinary Name. No MatchExpr. Arms parse as closure AST. |
@@ -56,7 +57,7 @@ only records what it currently does.
 | Alias binding (`let binder === EntityRef`) | `implemented-syntax` | `let_stmt.rs`, `policy.rs`, `ast.rs`, `token.rs` | `ast-construction-v0.1.md` §16 + `entity-alias-design.md` | Raw AST preservation only. No alias semantics, lookup, target validation, or operator identity validation. EntityRef parsed only in alias-let RHS. Optional `PolicySpec` prefix preserved. |
 | EntityRef parser (alias RHS subset) | `implemented-syntax` | `let_stmt.rs` | `entity-ref-design.md` + `ast-construction-v0.1.md` §16 | Only inside `let binder === ...`. Not a general expression parser mode. |
 | Alias RHS boundary checking | `implemented-syntax` | `form.rs`, `let_stmt.rs` | `entity-alias-design.md` | Hard-only boundary: `;`, `}`, EOF. Newline promotion removed. Residual tokens before a hard boundary produce `UnexpectedAliasRhsExpression`. |
-| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 32 DiagnosticCode variants. 4 lexer, 17 parser (including 1 optional/not-guaranteed-emitted), 3 return, 3 operator, 5 alias. |
+| Diagnostic taxonomy | `implemented-syntax` | `diagnostic.rs` | `diagnostics-v0.1.md` | 33 current `DiagnosticCode` variants after the v0.5-A amendment. The frozen v0.2 inventory remains 32; the compatibility `MultiplePackPatternsAtSameLevel` code is retained even though normalized Pattern validation is now the sole authority for that invariant. |
 | `InvalidAliasBinder` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Reserved; not currently emitted by parser. |
 | `UnusedClosureAst` diagnostic | `diagnostic-only` | `diagnostic.rs` | `diagnostics-v0.1.md` | Optional; not guaranteed to be emitted in current parser. |
 | Golden tests | `implemented-syntax` | `tests/lexer_golden.rs`, `tests/parser_golden.rs`, `tests/diagnostics_golden.rs` | `ast-construction-v0.1.md` §15 | Covers lexer, parser/AST, and diagnostics. Stable hand-written dump format. |
@@ -72,6 +73,6 @@ workspace smoke tests).
 
 | Category | Count |
 |---|---|
-| Lexer golden cases | 25 |
-| Parser golden cases | 325 |
+| Lexer golden cases | 28 |
+| Parser golden cases | 334 |
 | Diagnostic golden cases | 43 |

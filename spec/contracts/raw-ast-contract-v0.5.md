@@ -7,6 +7,7 @@ This contract is defined as:
 ```text
 closed Raw AST v0.2 freeze
 + Frontend Semantic Amendment v0.5-A
++ v0.6 Semantic Owner / Namespace Graph Amendment
 = current Raw AST contract v0.5
 ```
 
@@ -14,6 +15,9 @@ The v0.1/v0.2/v0.3 documents are historical snapshots and are not edited to
 retroactively contain this surface. The complete change classification and
 migration boundary are recorded in
 [`frontend-semantic-amendment-v0.5-a.md`](frontend-semantic-amendment-v0.5-a.md).
+The later owner/view refinement and its narrow member-view syntax are recorded
+in
+[`v0.6-semantic-owner-namespace-graph.md`](v0.6-semantic-owner-namespace-graph.md).
 
 ## 1. Pipeline and boundary
 
@@ -131,6 +135,20 @@ obj[[cap] => { cap }]
 ()[[cap] => { cap }]
 (a + b)[[cap] => { cap }]
 ```
+
+The v0.6 amendment reserves exactly two complete atom-postfix shapes:
+
+```text
+MemberViewAnnotation
+  ::= "[[" "public" "]]"
+   |  "[[" "private" "]]"
+```
+
+They produce `AtomKind::MemberViewAnnotation { object, visibility }`. The
+recognizer requires the complete shape and runs only after closure-head
+classification, so `() [[public]] { ... }` remains a named callable strategy
+tail. Every other bracket payload remains ordinary `BracketCallSugar`.
+The parser assigns no struct, policy, or namespace meaning to the node.
 
 After `=>`, implementation selection examines the full local tail:
 
@@ -368,7 +386,7 @@ current proof scope is exactly:
 ```text
 one Pack per normalized Product/Sequence level
 no bare Product Pack operand
-no duplicate DeduceList hole in an active telescope
+no duplicate DeduceList hole in one PatternRoot
 ```
 
 It does not prove ordered/unordered Pack applicability, stable Pattern-head
@@ -377,6 +395,13 @@ or that the program contains no recovered `NormExpr::Error`; consumers that
 require those properties need distinct resolved-stage checks or certificates.
 
 ## 9. Deduce telescope and capture dependency boundary
+
+> Historical v0.5 snapshot. The v0.6 semantic-owner amendment supersedes this
+> section's active-ancestor no-shadow rule and whole-normalization-root alpha
+> owner. Current semantics use same-`PatternRoot` uniqueness, cross-root
+> lexical shadowing, callable semantic owners, and owner/root-qualified hole
+> identity. Raw AST shape remains historical input; semantic identity is not a
+> Raw AST fact.
 
 Normalized DeduceLists are left-to-right telescopes:
 

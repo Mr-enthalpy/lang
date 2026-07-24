@@ -398,6 +398,11 @@ fn member_basic() {
 }
 
 #[test]
+fn member_view_annotation() {
+    assert_parser_case("member_view_annotation", false);
+}
+
+#[test]
 fn member_numeric() {
     assert_parser_case("member_numeric", false);
 }

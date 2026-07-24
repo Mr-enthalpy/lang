@@ -41,7 +41,7 @@
 //! `MetaInvocationInput::placeholder_invocation_frame` records this boundary
 //! without replacing the shortcut with full call-entry resolution.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use lang_syntax::{NormExpr, NormProductElem};
 
@@ -61,7 +61,10 @@ use crate::{
         PatternFieldMaterialization, PatternHeadId, PatternMaterializationContext,
         TypeMaterializationState,
     },
-    pattern_space::{derive_sum_pattern_space, SumPatternSpaceShape, TypePatternExprShape},
+    pattern_space::{
+        derive_sum_pattern_space, StructuralMemberVisibility, SumPatternSpaceShape,
+        TypePatternExprShape,
+    },
     product_shape::{NonValueArgKind, ProductAtom, RawArgValueClass},
     struct_decoder::DecodedStructPattern,
 };
@@ -401,6 +404,7 @@ pub struct FieldSignatureMaterial {
     pub field_name: String,
     pub field_type_symbol_id: SymbolId,
     pub field_index: usize,
+    pub visibility: StructuralMemberVisibility,
     pub provenance: Provenance,
 }
 
@@ -409,6 +413,7 @@ impl PartialEq for FieldSignatureMaterial {
         self.field_name == other.field_name
             && self.field_type_symbol_id == other.field_type_symbol_id
             && self.field_index == other.field_index
+            && self.visibility == other.visibility
     }
 }
 
@@ -419,6 +424,7 @@ pub struct GeneratedFieldDefinition {
     pub name: String,
     pub type_symbol_id: SymbolId,
     pub index: usize,
+    pub visibility: StructuralMemberVisibility,
     pub pattern_head: Option<PatternHeadId>,
     pub provenance: Provenance,
 }
@@ -428,6 +434,7 @@ impl GeneratedFieldDefinition {
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.type_symbol_id == other.type_symbol_id
+            && self.visibility == other.visibility
             && self.index == other.index
             && self.pattern_head == other.pattern_head
     }
@@ -519,6 +526,11 @@ pub fn compute_type_definition_instance_id(
         h.write_str_field(&field.field_name);
         h.write_field(&field.field_type_symbol_id.0.to_le_bytes());
         h.write_field(&(field.field_index as u64).to_le_bytes());
+        h.write_field(&[match field.visibility {
+            StructuralMemberVisibility::Default => 0,
+            StructuralMemberVisibility::Public => 1,
+            StructuralMemberVisibility::Private => 2,
+        }]);
     }
     let sem = match material.return_slot_semantics {
         ReturnSlotSemantics::Forward => 0u8,
@@ -774,7 +786,11 @@ fn invoke_struct_type_definition(
     }
 
     let field_signature_material =
-        match field_signature_material_from_candidate(candidate, &input.provenance) {
+        match field_signature_material_from_candidate(
+            candidate,
+            input.struct_decoded_pattern.as_ref(),
+            &input.provenance,
+        ) {
             Ok(fields) => fields,
             Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
         };
@@ -801,6 +817,7 @@ fn invoke_struct_type_definition(
             name: field.field_name.clone(),
             type_symbol_id: field.field_type_symbol_id,
             index: field.field_index,
+            visibility: field.visibility,
             pattern_head: None,
             provenance: field.provenance.clone(),
         })
@@ -964,8 +981,16 @@ fn owner_display_name_from_type_pattern_expr(expr: &TypePatternExprShape) -> Opt
 
 fn field_signature_material_from_candidate(
     candidate: &PreparedCallableCandidate,
+    decoded: Option<&crate::struct_decoder::DecodedStructPattern>,
     provenance: &Provenance,
 ) -> Result<Vec<FieldSignatureMaterial>, Diagnostic> {
+    let mut decoded_visibility = BTreeMap::new();
+    if let Some(decoded) = decoded {
+        collect_structural_member_visibility(
+            &decoded.type_pattern_expr,
+            &mut decoded_visibility,
+        );
+    }
     let mut fields = Vec::new();
     let mut seen_names = BTreeSet::new();
 
@@ -1008,15 +1033,48 @@ fn field_signature_material_from_candidate(
             )
             .with_symbol_context(candidate.callee_symbol_id));
         }
+        let visibility = decoded_visibility
+            .get(&field_name)
+            .copied()
+            .unwrap_or(StructuralMemberVisibility::Default);
         fields.push(FieldSignatureMaterial {
             field_name,
             field_type_symbol_id: type_symbol_id,
             field_index: raw_arg.index,
+            visibility,
             provenance: field_provenance,
         });
     }
 
     Ok(fields)
+}
+
+fn collect_structural_member_visibility(
+    pattern: &TypePatternExprShape,
+    output: &mut BTreeMap<String, StructuralMemberVisibility>,
+) {
+    match pattern {
+        TypePatternExprShape::Leaf {
+            local_pattern_name,
+            visibility,
+            ..
+        } => {
+            output.insert(local_pattern_name.clone(), *visibility);
+        }
+        TypePatternExprShape::Product { elements, .. } => {
+            for element in elements {
+                collect_structural_member_visibility(element, output);
+            }
+        }
+        TypePatternExprShape::Sum { alternatives, .. } => {
+            for alternative in alternatives {
+                collect_structural_member_visibility(alternative, output);
+            }
+        }
+        TypePatternExprShape::Named { child, .. } => {
+            collect_structural_member_visibility(child, output);
+        }
+    }
 }
 
 fn struct_field_name_from_atom(
@@ -1076,19 +1134,55 @@ fn struct_field_name_from_atom(
         NormProductElem::Expr(_) => {}
     }
 
-    let field_name = match target.as_ref() {
-        NormExpr::Name { text, .. } => text.clone(),
-        _ => {
-            return Err(Diagnostic::hard_error(
-                "invalid struct syntax: expected a field binder name",
-                Some(atom.provenance().clone()),
-            )
-            .with_symbol_context(callee_symbol_id));
-        }
-    };
+    let field_name =
+        struct_field_name_from_target(target, atom.provenance(), callee_symbol_id)?;
 
     Ok((
         field_name,
         Provenance::from_norm_origin("struct field", origin),
     ))
+}
+
+fn struct_field_name_from_target(
+    target: &NormExpr,
+    provenance: &Provenance,
+    callee_symbol_id: SymbolId,
+) -> Result<String, Diagnostic> {
+    match target {
+        NormExpr::Name { text, .. } => Ok(text.clone()),
+        NormExpr::Call {
+            source,
+            target: annotation,
+            ..
+        } if matches!(
+            annotation.as_ref(),
+            NormExpr::OperatorTarget { spelling, .. }
+                if spelling == "[[public]]" || spelling == "[[private]]"
+        ) => {
+            let mut elements = source.elements.iter().filter_map(|element| match element {
+                NormProductElem::Expr(expr) => Some(expr),
+                NormProductElem::Unit { .. } => None,
+            });
+            let Some(NormExpr::Name { text, .. }) = elements.next() else {
+                return Err(Diagnostic::hard_error(
+                    "invalid struct syntax: member visibility must annotate one field binder name",
+                    Some(provenance.clone()),
+                )
+                .with_symbol_context(callee_symbol_id));
+            };
+            if elements.next().is_some() {
+                return Err(Diagnostic::hard_error(
+                    "invalid struct syntax: member visibility annotated more than one field target",
+                    Some(provenance.clone()),
+                )
+                .with_symbol_context(callee_symbol_id));
+            }
+            Ok(text.clone())
+        }
+        _ => Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field binder name",
+            Some(provenance.clone()),
+        )
+        .with_symbol_context(callee_symbol_id)),
+    }
 }

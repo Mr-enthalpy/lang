@@ -31,11 +31,18 @@
 //! type `SymbolId` through the existing field classification path. That
 //! classification still only handles simple `Name` and `Nav` type paths.
 
-use lang_syntax::{NormExpr, NormProduct, NormProductElem};
+use lang_syntax::{
+    NormDecl, NormExpr, NormPattern, NormPolicyAtom, NormProduct, NormProductElem,
+    NormValuePolicyPattern,
+};
 
 use crate::{
     model::{Diagnostic, DiagnosticSeverity, Provenance},
-    pattern_space::{StructLeafTypeExprShape, SymbolPathShape, TypePatternExprShape},
+    pattern_space::{
+        StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape,
+        TypePatternExprShape,
+    },
+    policy_pair::{NamespaceVisibility, PolicyPair, ValuePresence},
 };
 
 pub type StructDecodeResult = Result<TypePatternExprShape, Diagnostic>;
@@ -45,6 +52,94 @@ pub type StructDecodeResult = Result<TypePatternExprShape, Diagnostic>;
 pub struct DecodedStructPattern {
     pub type_pattern_expr: TypePatternExprShape,
     pub provenance: Provenance,
+}
+
+/// Associated namespace declaration accepted by the struct/type construction
+/// evaluator. This is distinct from a structural member.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StructAssociatedNamespaceDeclaration {
+    pub name: String,
+    pub visibility: NamespaceVisibility,
+    pub initializer: NormExpr,
+    pub provenance: Provenance,
+}
+
+/// Decode `public/private let name = expr` in struct construction context.
+///
+/// The generic parser still produces an ordinary let-shaped declaration. This
+/// context decoder enforces the narrower semantic contract: one plain binder,
+/// no extraction shape, and an initializer whose resolved value component is
+/// absent.
+pub fn decode_struct_associated_namespace_let(
+    decl: &NormDecl,
+    resolved_initializer_policy: &PolicyPair,
+    provenance: Provenance,
+) -> Result<StructAssociatedNamespaceDeclaration, Diagnostic> {
+    let NormDecl::Let { slot, .. } = decl else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated namespace entry must be a let declaration",
+            Some(provenance),
+        ));
+    };
+    let NormPattern::Binder { name, .. } = &slot.value_pattern else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated namespace let requires one plain binder; extraction, Product, Sequence, and Pack patterns are not allowed",
+            Some(provenance),
+        ));
+    };
+    let visibility = struct_namespace_let_visibility(slot.policy.as_ref()).ok_or_else(|| {
+        Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated namespace let requires `public` or `private` in its declaration policy",
+            Some(provenance.clone()),
+        )
+    })?;
+    if resolved_initializer_policy.value.presence != ValuePresence::Absent {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated namespace let initializer must resolve to Pv = absent",
+            Some(provenance),
+        ));
+    }
+    let Some(initializer) = slot.initializer.as_deref() else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct associated namespace let requires an initializer",
+            Some(provenance),
+        ));
+    };
+    Ok(StructAssociatedNamespaceDeclaration {
+        name: name.clone(),
+        visibility,
+        initializer: initializer.clone(),
+        provenance,
+    })
+}
+
+fn struct_namespace_let_visibility(
+    policy: Option<&lang_syntax::NormPolicySpec>,
+) -> Option<NamespaceVisibility> {
+    let policy = policy?;
+    let NormValuePolicyPattern::Conjunction(conjunction) = &policy.value_policy else {
+        return None;
+    };
+    let mut visibility = None;
+    for choice in &conjunction.choices {
+        for atom in &choice.atoms {
+            match atom {
+                NormPolicyAtom::Name { text, .. } if text == "public" => {
+                    visibility = Some(NamespaceVisibility::Public)
+                }
+                NormPolicyAtom::Name { text, .. } if text == "private" => {
+                    visibility = Some(NamespaceVisibility::Private)
+                }
+                _ => {}
+            }
+        }
+    }
+    visibility
 }
 
 impl DecodedStructPattern {
@@ -141,6 +236,16 @@ fn decode_call(
 ) -> StructDecodeResult {
     match target {
         NormExpr::Name { text: name, .. } => decode_call_with_name_target(source, name, provenance),
+        NormExpr::Call {
+            source: annotation_source,
+            target: annotation_target,
+            ..
+        } => decode_call_with_member_view_annotation(
+            source,
+            annotation_source,
+            annotation_target,
+            provenance,
+        ),
         NormExpr::OperatorTarget { spelling, .. } => {
             match spelling.as_str() {
                 "|" => {
@@ -177,6 +282,52 @@ fn decode_call(
             Some(provenance),
         )),
     }
+}
+
+fn decode_call_with_member_view_annotation(
+    member_source: &NormProduct,
+    annotation_source: &NormProduct,
+    annotation_target: &NormExpr,
+    provenance: Provenance,
+) -> StructDecodeResult {
+    let visibility = match annotation_target {
+        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[public]]" => {
+            StructuralMemberVisibility::Public
+        }
+        NormExpr::OperatorTarget { spelling, .. } if spelling == "[[private]]" => {
+            StructuralMemberVisibility::Private
+        }
+        _ => {
+            return Err(Diagnostic::new(
+                DiagnosticSeverity::Error,
+                "struct member annotation accepts only `[[public]]` or `[[private]]`"
+                    .to_string(),
+                Some(provenance),
+            ))
+        }
+    };
+    let mut elements = annotation_source.elements.iter().filter_map(|element| match element {
+        NormProductElem::Expr(expr) => Some(expr),
+        NormProductElem::Unit { .. } => None,
+    });
+    let Some(NormExpr::Name { text: name, .. }) = elements.next() else {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility annotation must follow the member name".to_string(),
+            Some(provenance),
+        ));
+    };
+    if elements.next().is_some() {
+        return Err(Diagnostic::new(
+            DiagnosticSeverity::Error,
+            "struct member visibility annotation has more than one annotated target".to_string(),
+            Some(provenance),
+        ));
+    }
+    Ok(
+        decode_call_with_name_target(member_source, name, provenance)?
+            .with_structural_visibility(visibility),
+    )
 }
 
 /// Decode a call with a Name target.

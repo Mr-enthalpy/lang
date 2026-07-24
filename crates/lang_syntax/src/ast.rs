@@ -374,8 +374,22 @@ pub enum AtomKind {
         operator: OperatorNameAst,
         args: ProductExprAst,
     },
+    /// Narrow postfix structural-member view annotation.
+    ///
+    /// This remains generic Raw AST shape. Only the struct decoder interprets
+    /// it as member visibility; it is not an arbitrary PolicySpec.
+    MemberViewAnnotation {
+        object: Box<AtomAst>,
+        visibility: MemberVisibilityAst,
+    },
     Closure(ClosureAst),
     Error(ErrorAst),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemberVisibilityAst {
+    Public,
+    Private,
 }
 
 // --- Closure AST ---

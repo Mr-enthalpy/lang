@@ -1605,6 +1605,15 @@ calculation, and checking.
 `[` in expression-suffix position begins a bracket call; `[` at closure-head
 prefix position begins a capture clause. The distinction is purely contextual.
 
+> **v0.6 owner/view amendment.** The atom suffix parser additionally preserves
+> the exact narrow shapes `object[[public]]` and `object[[private]]` as
+> `MemberViewAnnotation`. The recognizer requires the complete
+> `[[ Name ]]` shape and accepts only those two names. Any other `[[...`
+> sequence remains ordinary bracket-call syntax, including
+> `obj[[cap] => { cap }]`; the new suffix may not steal that older valid form.
+> Normalization encodes the annotation through ordinary call structure, and
+> only the later `struct` consumer assigns structural-member meaning.
+
 ## 9. Product form
 
 ### 9.1 Syntax
@@ -1811,8 +1820,9 @@ normally: `{ x; y; }` contains two body forms.
 > A BindingSlot-local DeduceList remains active through the rest of that slot,
 > including its initializer, and is restored at the slot boundary. These Raw
 > roles are provisional shape data. Post-structural alpha normalization assigns
-> exact local ordinal `HoleBinderId` targets inside one root-tree
-> `AlphaOwner`; nested closure-body `NormProgram` nodes share that owner.
+> callable owners and Pattern-root-qualified `HoleBinderId` targets. Same-root
+> duplicate names are invalid; an independent let Pattern or nested callable
+> head starts a new Pattern root and may shadow an inherited spelling.
 > Source spans remain provenance. The leading BindingSlot policy precedes the local DeduceList and
 > therefore sees inherited holes only. Generated receiver holes use hygienic
 > generated keys rather than source spelling. Exact Norm binding currently

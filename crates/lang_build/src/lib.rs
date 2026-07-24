@@ -25,6 +25,7 @@ pub mod meta_invocation;
 pub mod meta_key;
 pub mod model;
 pub mod normalized_call;
+pub mod owner_namespace;
 pub mod overload_pattern;
 pub mod overload_set;
 pub mod pattern_head;
@@ -35,6 +36,7 @@ pub mod policy_overload;
 pub mod policy_pair;
 pub mod product_shape;
 pub mod return_target;
+pub mod semantic_owner;
 pub mod source;
 pub mod struct_decoder;
 pub mod type_argument;
@@ -140,6 +142,11 @@ pub use model::{
     VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
+pub use owner_namespace::{
+    ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult,
+    NamespaceNameView, NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNode,
+    OwnerNamespaceNodeId,
+};
 pub use overload_pattern::{
     decode_param_pattern, match_pack_param_pattern, match_param_pattern,
     overload_args_from_classified_shape, pack_operand_is_admissible, OverloadArgShape,
@@ -161,8 +168,9 @@ pub use pattern_head::{
 };
 pub use pattern_space::{
     bool_branch_space_for_tests, bool_pattern_aliases_for_tests, derive_sum_pattern_space,
-    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, SumPatternAlternative,
-    SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape, TypePatternExprShape,
+    PatternSymbolAlias, SelectedSumPattern, StructLeafTypeExprShape, StructuralMemberVisibility,
+    SumPatternAlternative, SumPatternPayloadShape, SumPatternSpaceShape, SymbolPathShape,
+    TypePatternExprShape,
 };
 pub use phase_flow::{
     classify_static_task, enumerate_value_facet, expose_policy_slice, project_complete_symbol_flow,
@@ -201,8 +209,18 @@ pub use return_target::{
     ReturnTargetBindingReport, ReturnTargetFrame, ReturnTargetStack, UnboundReturnEvent,
     UnresolvedReturnTargetForm,
 };
+pub use semantic_owner::{
+    AnonymousSelfTypeId, CallableOwnerPlacement, LocalCallableIdentity,
+    LocalGenerationIdentity, LocalSymbolIdentity, OwnerQualificationError, PackageId,
+    ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerGraph, SemanticOwnerGraphId,
+    SemanticOwnerId, SemanticOwnerKind, SemanticOwnerNode, SemanticOwnerQualification,
+    SemanticSymbolIdentity,
+};
 pub use source::SourceFragment;
-pub use struct_decoder::{decode_struct_type_pattern_expr, DecodedStructPattern};
+pub use struct_decoder::{
+    decode_struct_associated_namespace_let, decode_struct_type_pattern_expr,
+    DecodedStructPattern, StructAssociatedNamespaceDeclaration,
+};
 pub use type_argument::{
     classify_type_arguments, classify_type_arguments_with_report, TypeArgumentClassificationReport,
 };

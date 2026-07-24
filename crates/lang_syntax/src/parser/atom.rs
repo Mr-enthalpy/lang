@@ -1,6 +1,6 @@
 use crate::{
-    AtomAst, AtomKind, DiagnosticCode, ErrorAst, NameAst, NavComponentAst, OperatorNameAst,
-    OperatorSpelling, SelectorAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, DiagnosticCode, ErrorAst, MemberVisibilityAst, NameAst, NavComponentAst,
+    OperatorNameAst, OperatorSpelling, SelectorAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -90,6 +90,17 @@ pub fn parse_atom(
                 );
                 break;
             }
+        } else if let Some((visibility, annotation_span)) =
+            try_parse_member_visibility_annotation(parser)
+        {
+            let span = atom.span.join(annotation_span);
+            atom = AtomAst {
+                kind: AtomKind::MemberViewAnnotation {
+                    object: Box::new(atom),
+                    visibility,
+                },
+                span,
+            };
         } else if parser.cursor.at_symbol(Symbol::LBracket) {
             let args = parse_bracket_product_expr(parser);
             let operator = OperatorNameAst {
@@ -111,6 +122,42 @@ pub fn parse_atom(
     }
 
     Some(atom)
+}
+
+/// Parse the narrow postfix `[[public]]` / `[[private]]` shape.
+///
+/// The complete local shape is required, so ordinary bracket-call payloads
+/// such as `obj[[cap] => { cap }]` remain untouched.
+fn try_parse_member_visibility_annotation(
+    parser: &mut Parser<'_>,
+) -> Option<(MemberVisibilityAst, Span)> {
+    let start_index = parser.cursor.current_index();
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(start_index);
+    if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return None;
+    }
+    let (second_index, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+    if !matches!(second.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return None;
+    }
+    let (name_index, name) = parser.cursor.peek_at_skip_trivia(second_index + 1);
+    let visibility = match (name.kind.clone(), name.text.as_str()) {
+        (TokenKind::Name, "public") => MemberVisibilityAst::Public,
+        (TokenKind::Name, "private") => MemberVisibilityAst::Private,
+        _ => return None,
+    };
+    let (first_close_index, first_close) = parser.cursor.peek_at_skip_trivia(name_index + 1);
+    if !matches!(first_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return None;
+    }
+    let (second_close_index, second_close) =
+        parser.cursor.peek_at_skip_trivia(first_close_index + 1);
+    if !matches!(second_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return None;
+    }
+
+    parser.cursor.set_index(second_close_index + 1);
+    Some((visibility, first.span.join(second_close.span)))
 }
 
 fn parse_atom_base(parser: &mut Parser<'_>) -> Option<AtomAst> {

@@ -151,23 +151,25 @@ Candidate preparation also carries that qualifier outward as the parameter's
 const/mut product-order position. It therefore affects selection between
 callable objects as well as the effective parameter pair seen after entry.
 
-### 6.1 Internal Self frame and local pattern construction
+### 6.1 Callable owner, Self, and local pattern construction
 
-An ordinary function object owns an internal symbol/pattern space for local
-construction. Its diagnostic path may be sketched as:
+Every callable, including an in-place closure, has a parent-linked
+`CallableOwner`. Its `Self` is the anonymous type of that owner:
 
 ```text
-topname::__inner_space::Self
+Self(C) = AnonymousType(CallableOwner(C))
 ```
 
-The exact eventual Self-frame identity is still future design. The invariant is
-that a local `struct` evaluated by an ordinary or `compile` callable uses this
-function-object internal scope as its ambient pattern owner. A `compile`
-invocation does not manufacture a meta-style `(canonical_arguments name)`
-symbol layer.
+Nested paths use source navigation order: current/innermost `Self` first and
+outermost `Self` last. This spelling is not identity. The former synthetic
+`__inner_space` / `__inner_namespace` component is removed from canonical
+ownership. A local `struct` evaluated by an ordinary or `compile` callable
+uses the current callable owner as its ambient Pattern owner. A `compile`
+invocation does not manufacture a meta-style canonical-arguments owner.
 
 An ordinary canonical `meta` invocation is different: symbol construction is
-anchored by its own `MetaInstanceScope(callee_symbol, canonical_arguments)`.
+anchored by a parent-linked
+`MetaInstanceOwner(callee_symbol, canonical_arguments)`.
 Ordinary meta callables still use the implicit-self mechanics described above,
 but their returned type construction is rooted in the meta-instance scope.
 

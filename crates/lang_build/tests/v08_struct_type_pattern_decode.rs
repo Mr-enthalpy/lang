@@ -1,8 +1,11 @@
 mod support;
 
 use lang_build::{
-    decode_struct_type_pattern_expr, derive_sum_pattern_space, DecodedStructPattern,
-    DiagnosticSeverity, Provenance, StructLeafTypeExprShape, SymbolPathShape, TypePatternExprShape,
+    decode_struct_associated_namespace_let, decode_struct_type_pattern_expr,
+    derive_sum_pattern_space, DecodedStructPattern, DiagnosticSeverity, NamespaceVisibility,
+    PatternComponentPolicy, PolicyPair, PolicyStage, Provenance, StageSet,
+    StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape,
+    TypePatternExprShape, ValueComponentPolicy, ValuePresence,
 };
 use lang_syntax::{
     norm::NormNavComponent, NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem,
@@ -33,6 +36,35 @@ fn call_type_field(type_name: &str, field_name: &str) -> NormExpr {
         },
         target: Box::new(NormExpr::Name {
             text: field_name.to_string(),
+            origin: fake_origin(),
+        }),
+        origin: fake_origin(),
+    }
+}
+
+fn annotated_field(type_name: &str, field_name: &str, visibility: &str) -> NormExpr {
+    NormExpr::Call {
+        source: NormProduct {
+            elements: vec![NormProductElem::Expr(NormExpr::Name {
+                text: type_name.to_string(),
+                origin: fake_origin(),
+            })],
+            origin: fake_origin(),
+        },
+        target: Box::new(NormExpr::Call {
+            source: NormProduct {
+                elements: vec![NormProductElem::Expr(NormExpr::Name {
+                    text: field_name.to_string(),
+                    origin: fake_origin(),
+                })],
+                origin: fake_origin(),
+            },
+            target: Box::new(NormExpr::OperatorTarget {
+                spelling: format!("[[{visibility}]]"),
+                fixity: NormOperatorFixity::Postfix,
+                arity: 1,
+                origin: fake_origin(),
+            }),
             origin: fake_origin(),
         }),
         origin: fake_origin(),
@@ -514,4 +546,85 @@ fn derive_sum_space_from_decoded_sum_of_products() {
         .map(|a| a.label.as_str())
         .collect();
     assert_eq!(labels, vec!["if", "else"]);
+}
+
+#[test]
+fn structural_member_visibility_is_part_of_the_decoded_struct_model() {
+    let default =
+        decode_struct_type_pattern_expr(&call_type_field("uint8", "ordinary"), provenance("field"))
+            .unwrap();
+    assert!(matches!(
+        default,
+        TypePatternExprShape::Leaf {
+            visibility: StructuralMemberVisibility::Default,
+            ..
+        }
+    ));
+
+    let private = decode_struct_type_pattern_expr(
+        &annotated_field("uint8", "secret", "private"),
+        provenance("private field"),
+    )
+    .unwrap();
+    assert!(matches!(
+        private,
+        TypePatternExprShape::Leaf {
+            local_pattern_name,
+            visibility: StructuralMemberVisibility::Private,
+            ..
+        } if local_pattern_name == "secret"
+    ));
+
+    let public = decode_struct_type_pattern_expr(
+        &annotated_field("uint8", "visible", "public"),
+        provenance("public field"),
+    )
+    .unwrap();
+    assert!(matches!(
+        public,
+        TypePatternExprShape::Leaf {
+            visibility: StructuralMemberVisibility::Public,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn struct_associated_namespace_let_is_distinct_and_requires_absent_pv() {
+    let parsed = lang_syntax::parse("private let helper = type_value;");
+    assert!(parsed.diagnostics.is_empty());
+    let normalized = lang_syntax::normalize_program(&parsed.program);
+    let lang_syntax::NormForm::Let(decl) = &normalized.forms[0] else {
+        panic!("expected normalized let");
+    };
+    let absent_pair = PolicyPair {
+        value: ValueComponentPolicy {
+            stages: StageSet::new(),
+            mutability: Default::default(),
+            presence: ValuePresence::Absent,
+        },
+        pattern: PatternComponentPolicy {
+            stages: StageSet::from([PolicyStage::Compile]),
+        },
+        namespace_visibility: Some(NamespaceVisibility::Private),
+        export_root: false,
+    };
+    let associated = decode_struct_associated_namespace_let(
+        decl,
+        &absent_pair,
+        provenance("associated namespace declaration"),
+    )
+    .unwrap();
+    assert_eq!(associated.name, "helper");
+    assert_eq!(associated.visibility, NamespaceVisibility::Private);
+
+    let mut value_pair = absent_pair;
+    value_pair.value.presence = ValuePresence::Present;
+    value_pair.value.stages = StageSet::from([PolicyStage::Compile]);
+    assert!(decode_struct_associated_namespace_let(
+        decl,
+        &value_pair,
+        provenance("value-bearing associated declaration"),
+    )
+    .is_err());
 }

@@ -1,0 +1,2 @@
+uint8 field [[private]];
+uint16 visible [[public]]

@@ -39,6 +39,49 @@ projection, compile companions, and automatic require are canonicalized in
 document owns the pattern-space residual and `Done` algebra that those flows
 consume; it does not define a parallel control-flow system for require.
 
+### Structural member visibility and associated namespace declarations
+
+The `struct` consumer retains its structural leaf order:
+
+```text
+E name
+```
+
+It additionally accepts a narrow postfix member-view slot:
+
+```lang
+E name [[public]]
+E name [[private]]
+```
+
+Only `public` and `private` are admitted here. This slot is not a general
+`PolicySpec`, and it does not admit stage, mutability, export, or arbitrary
+strategy names. Unannotated, explicitly public, and private are distinct source
+facts (`Default | Public | Private`), although both Default and Public are
+included in the current default extraction view. The visibility fact is part
+of structural/type identity material; changing it is not a provenance-only
+edit.
+
+The structural representation retains all three. A private structural member
+is excluded from `DefaultExtractionView`; it is not deleted from the full
+Pattern/type representation.
+
+A struct/type construction scope may separately consume:
+
+```lang
+private let Helper = TypeExpr;
+public let Helper = TypeExpr;
+```
+
+as an associated namespace declaration. Its LHS must be one ordinary binder,
+not Product/Sequence/Pack extraction, and the resolved initializer result must
+have `Pv = absent`. This declaration is not a structural member and does not
+enter the default extraction product. Conversely, `E name [[private]]` remains
+a structural member and is not namespace-let sugar.
+
+Future custom `?` semantics may construct a richer extraction interface, but
+this substrate does not implement that system.
+
 ## 0.1 v0.8 boundary
 
 v0.8 does not implement the full pattern-space and extraction-chain model in

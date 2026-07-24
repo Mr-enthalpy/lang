@@ -434,11 +434,13 @@ scope rule. Normalized DeduceLists therefore elaborate as left-to-right
 telescopes:
 
 ```text
-rho0 = inherited active holes
+rho0 = inherited visible holes
 Ti is normalized under rho(i-1)
 allocate fresh alpha identity hi for Ai
-if Ai is not already active: rho_i = rho(i-1)[Ai -> hi]
-otherwise: retain an invalid binder for diagnostics and do not extend rho
+if Ai is not already declared in this PatternRoot:
+    rho_i = rho(i-1)[Ai -> hi]
+otherwise:
+    retain an invalid binder for diagnostics and do not extend rho
 ```
 
 Consequently:
@@ -449,9 +451,10 @@ Consequently:
 <A: A>      // no self-reference unless an ancestor A was already active
 ```
 
-Same-list duplicate names and redeclaration of an active ancestor name are
-errors. A duplicate declaration is retained for diagnostics but does not
-shadow or extend the environment.
+Same-list duplicate names and redeclarations in nested BindingSlots of the
+same `PatternRoot` are errors. An inherited spelling from a different
+`PatternRoot` may be shadowed. A same-root duplicate declaration is retained
+for diagnostics but does not shadow or extend the environment.
 
 A BindingSlot preserves source order:
 
@@ -498,23 +501,27 @@ The anonymous constrained form is `-> _: A`. `-> A r` is an extraction
 Pattern and must not be reinterpreted as the annotated-result shorthand
 `-> r: A`.
 
-Nested callables inherit that active hole environment and extend it with their
-own telescope. Body-local let-shaped DeduceLists extend only their own binding
-slot. Hole scope is separate from ordinary value-binder scope; a value binder
-with the same spelling does not retarget a Pattern-context hole occurrence.
+Nested callables inherit the visible hole environment, allocate a new callable
+semantic owner and a new callable-head `PatternRoot`, and may shadow inherited
+hole spellings. A body-local let Pattern likewise creates an independent root.
+Nested BindingSlots, Products, Sequences, annotations, and Pack operands inside
+one extraction retain the containing root. Hole scope is separate from ordinary
+value-binder scope; a value binder with the same spelling does not retarget a
+Pattern-context hole occurrence.
 
 Raw AST preserves lexical scope shape, spelling, and provisional name role.
-After structural normalization, an alpha-normalization pass allocates local
-lexical ordinals and rewrites every scoped Pattern/policy occurrence to an
-exact `HoleBinderId`. Source spans remain provenance only. Alpha-equivalent
+After structural normalization, an alpha-normalization pass allocates callable
+owners, `PatternRoot` identities, and root-local binder ordinals, then rewrites
+every scoped Pattern/policy occurrence to an exact `HoleBinderId`. Source spans
+remain provenance only. Alpha-equivalent
 sources such as `<A, B: A>` and `<X, Y: X>` therefore have the same binder/ref
-graph structure regardless of spelling or byte offset. A `HoleBinderId`
-ordinal is meaningful only with its owning root-tree `AlphaOwner`; nested
-closure-body `NormProgram` nodes share that owner, while IDs from distinct
-owners are not compared directly. A later build-world identity may combine
-a stable `SourceUnitId × BinderPath`; generated binders may use an
-expansion-instance identity. Neither model treats a source span as semantic
-identity.
+graph structure regardless of spelling or byte offset. Frontend identity
+carries `AlphaOwnerId × NormSemanticOwnerId × PatternRootLocalId ×
+HoleLocalId`. Before multi-root build comparison, the Norm owner is mapped to
+a persistent `SemanticOwnerId`, yielding `SemanticOwnerId ×
+PatternRootLocalId × HoleLocalId`. `SourceUnitId × LocalHoleId` is not the
+semantic identity; a source unit remains provenance or an owner-construction
+input.
 
 Compiler-generated receiver holes do not enter the source-name redeclaration
 table. Before alpha conversion, a generated declaration and its Pattern/policy
@@ -818,10 +825,10 @@ Implemented substrate:
 - typed ordered/unordered operand-admissibility substrate, with stable-top-mode
   discovery left to Pattern-head resolution;
 - callable-wide Deduce scope construction plus left-to-right telescope
-  alpha-normalization, `HoleBinderId` Pattern/policy references local to the
-  complete root-tree `AlphaOwner`, generated receiver hygiene, BindingSlot
-  policy-before-local-Deduce order, and duplicate-without-shadow validation
-  across nested let-shaped slots and nested callables;
+  alpha-normalization, semantic callable owners, Pattern-root-qualified
+  `HoleBinderId` Pattern/policy references, generated receiver hygiene,
+  BindingSlot policy-before-local-Deduce order, same-root duplicate validation,
+  and cross-root lexical shadowing;
 - named strategy metadata carried by selected restricted candidates only after
   applicability.
 

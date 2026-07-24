@@ -422,15 +422,12 @@ let identity = (t: type): compile -> r: type => {
 ```
 
 When a `compile` body uses a local `struct`, ordinary function-object scope
-rules apply. Its ambient owner is the function object's internal Self frame,
-diagnostically sketched as:
-
-```text
-topname::__inner_space::Self
-```
-
-or the eventual canonical identity chosen for that Self frame. It is not a
-meta-instance scope such as `(canonical_arguments meta_function_name)`.
+rules apply. Its ambient owner is the current callable owner and its anonymous
+`Self` type. Nested paths print in source order, current/innermost `Self` first
+and outermost `Self` last, but identity is the parent-linked owner graph. No
+`__inner_space` or `__inner_namespace` node participates in canonical
+ownership. This owner is not a meta-instance owner such as
+`MetaInstanceOwner(meta_function, canonical_arguments)`.
 
 ### 4.3 Ordinary `meta`
 

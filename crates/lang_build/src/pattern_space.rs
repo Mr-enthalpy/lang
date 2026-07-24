@@ -90,6 +90,13 @@ impl StructLeafTypeExprShape {
 // Type-pattern expression shape
 // ---------------------------------------------------------------------------
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum StructuralMemberVisibility {
+    Default,
+    Public,
+    Private,
+}
+
 /// Shape-level representation of a product/sum type-pattern expression.
 ///
 /// Naming convention:
@@ -115,6 +122,7 @@ pub enum TypePatternExprShape {
     Leaf {
         external_type_expr: StructLeafTypeExprShape,
         local_pattern_name: String,
+        visibility: StructuralMemberVisibility,
         provenance: Provenance,
     },
 
@@ -138,6 +146,7 @@ pub enum TypePatternExprShape {
     Named {
         child: Box<TypePatternExprShape>,
         pattern_name: String,
+        visibility: StructuralMemberVisibility,
         provenance: Provenance,
     },
 }
@@ -151,6 +160,7 @@ impl TypePatternExprShape {
         Self::Leaf {
             external_type_expr,
             local_pattern_name: local_pattern_name.into(),
+            visibility: StructuralMemberVisibility::Default,
             provenance,
         }
     }
@@ -177,8 +187,27 @@ impl TypePatternExprShape {
         Self::Named {
             child: Box::new(child),
             pattern_name: pattern_name.into(),
+            visibility: StructuralMemberVisibility::Default,
             provenance,
         }
+    }
+
+    pub fn with_structural_visibility(
+        mut self,
+        visibility: StructuralMemberVisibility,
+    ) -> Self {
+        match &mut self {
+            Self::Leaf {
+                visibility: member_visibility,
+                ..
+            }
+            | Self::Named {
+                visibility: member_visibility,
+                ..
+            } => *member_visibility = visibility,
+            Self::Product { .. } | Self::Sum { .. } => {}
+        }
+        self
     }
 
     /// Semantic equality: compares structural identity without provenance.
@@ -188,14 +217,16 @@ impl TypePatternExprShape {
                 TypePatternExprShape::Leaf {
                     external_type_expr: e1,
                     local_pattern_name: n1,
+                    visibility: v1,
                     ..
                 },
                 TypePatternExprShape::Leaf {
                     external_type_expr: e2,
                     local_pattern_name: n2,
+                    visibility: v2,
                     ..
                 },
-            ) => e1.semantic_eq(e2) && n1 == n2,
+            ) => e1.semantic_eq(e2) && n1 == n2 && v1 == v2,
             (
                 TypePatternExprShape::Product { elements: es1, .. },
                 TypePatternExprShape::Product { elements: es2, .. },
@@ -216,14 +247,16 @@ impl TypePatternExprShape {
                 TypePatternExprShape::Named {
                     child: c1,
                     pattern_name: n1,
+                    visibility: v1,
                     ..
                 },
                 TypePatternExprShape::Named {
                     child: c2,
                     pattern_name: n2,
+                    visibility: v2,
                     ..
                 },
-            ) => c1.semantic_eq(c2) && n1 == n2,
+            ) => c1.semantic_eq(c2) && n1 == n2 && v1 == v2,
             _ => false,
         }
     }
@@ -385,6 +418,7 @@ pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatter
             child,
             pattern_name,
             provenance,
+            ..
         } => match child.as_ref() {
             TypePatternExprShape::Sum {
                 alternatives,
@@ -458,6 +492,7 @@ fn alt_to_sum_alternative(alt: &TypePatternExprShape) -> Option<SumPatternAltern
             child,
             pattern_name,
             provenance,
+            ..
         } => {
             let payload = match child.as_ref() {
                 TypePatternExprShape::Product { elements, .. } => Some(

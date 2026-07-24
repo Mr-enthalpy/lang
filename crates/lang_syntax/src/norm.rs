@@ -6,18 +6,21 @@
 //! This prototype records that boundary; explicit bridge syntax/lowering is
 //! future work unless it is already present in Raw AST.
 
-use std::collections::BTreeSet;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use crate::{
     AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
     BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole, CanonicalProductElementAst,
     CanonicalSkeletonAst, CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst,
     DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
-    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
-    PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
-    ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
-    SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
+    HeadClauseAst, LetAliasAst, LetAst, MemberVisibilityAst, NavComponentAst, OperatorExprAst,
+    OperatorExprKind, OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst,
+    PolicyChoiceAst, PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst,
+    ProductExtractAst, ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst,
+    SegmentElementAst, SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -694,22 +697,44 @@ pub struct NormHoleDecl {
     pub id: HoleBinderId,
     pub name: String,
     pub annotation: Option<NormAnnotation>,
-    /// Present only on an invalid redeclaration. DeduceLists are telescopes and
-    /// monotonically extend the active hole environment; they never shadow.
+    /// Present only on an invalid redeclaration inside the same PatternRoot.
+    /// A new PatternRoot may lexically shadow an inherited spelling.
     pub duplicate_of: Option<HoleBinderId>,
     pub origin: NormOrigin,
 }
 
-/// Alpha-normalized lexical identity of a DeduceList binder within one
-/// `AlphaOwner`: the complete normalized tree produced by one root
-/// `normalize_program` invocation.
+/// Opaque identity of one root normalization tree.
 ///
-/// The ordinal is allocated by lexical traversal and is intentionally
-/// independent of source spans and source spelling. Spans remain provenance,
-/// not semantic binder identity. Nested `NormProgram` nodes in closure bodies
-/// share their root tree's owner and ordinal space. Equality is meaningful
-/// only inside that owner; build-world identity must pair this local identity
-/// with an owner/source-unit identity.
+/// It prevents accidental equality between local identities produced by
+/// distinct normalization invocations. It is not a source-unit identity and
+/// is replaced/qualified by the persistent semantic owner graph at build
+/// integration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct AlphaOwnerId(u64);
+
+/// Frontend owner identity used while alpha-normalizing one normalized tree.
+///
+/// Callable owners form a parent-linked tree through [`NormCallableOwner`].
+/// Source spans and spellings never participate in equality.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NormSemanticOwnerId {
+    pub alpha_owner: AlphaOwnerId,
+    pub local_owner: u32,
+}
+
+/// One independent extraction/Pattern alpha boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PatternRootId {
+    pub owner: NormSemanticOwnerId,
+    pub local_root: u32,
+}
+
+/// Alpha-normalized lexical identity of a DeduceList binder.
+///
+/// Equality is safe across multiple Pattern roots in the same process because
+/// the identity carries the normalization owner, callable owner, PatternRoot,
+/// and root-local binder ordinal. Persistent build identity later maps the
+/// frontend owner to a resolved `SemanticOwnerId`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HoleBinderId {
     repr: HoleBinderIdRepr,
@@ -728,28 +753,37 @@ impl HoleBinderId {
         }
     }
 
-    fn alpha(ordinal: u32) -> Self {
+    fn alpha(root: PatternRootId, local_binder: u32) -> Self {
         Self {
-            repr: HoleBinderIdRepr::LocalOrdinal(ordinal),
+            repr: HoleBinderIdRepr::Alpha {
+                root,
+                local_binder,
+            },
         }
     }
 
     fn generated_key(self) -> Option<GeneratedHoleKey> {
         match self.repr {
             HoleBinderIdRepr::ProvisionalGenerated(key) => Some(key),
-            HoleBinderIdRepr::LocalOrdinal(_) | HoleBinderIdRepr::ProvisionalSource => None,
+            HoleBinderIdRepr::Alpha { .. } | HoleBinderIdRepr::ProvisionalSource => None,
         }
     }
 
-    /// Return the `AlphaOwner`-scoped ordinal assigned by alpha normalization.
-    ///
-    /// Nested `NormProgram` nodes in the same root tree share this ordinal
-    /// space. This is not a cross-owner or cross-source-unit identity.
+    /// Return the PatternRoot-local ordinal assigned by alpha normalization.
     pub fn local_ordinal(self) -> u32 {
         match self.repr {
-            HoleBinderIdRepr::LocalOrdinal(ordinal) => ordinal,
+            HoleBinderIdRepr::Alpha { local_binder, .. } => local_binder,
             HoleBinderIdRepr::ProvisionalSource | HoleBinderIdRepr::ProvisionalGenerated(_) => {
                 panic!("provisional hole identity has no local alpha ordinal")
+            }
+        }
+    }
+
+    pub fn pattern_root(self) -> PatternRootId {
+        match self.repr {
+            HoleBinderIdRepr::Alpha { root, .. } => root,
+            HoleBinderIdRepr::ProvisionalSource | HoleBinderIdRepr::ProvisionalGenerated(_) => {
+                panic!("provisional hole identity has no PatternRoot")
             }
         }
     }
@@ -757,7 +791,10 @@ impl HoleBinderId {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum HoleBinderIdRepr {
-    LocalOrdinal(u32),
+    Alpha {
+        root: PatternRootId,
+        local_binder: u32,
+    },
     ProvisionalSource,
     ProvisionalGenerated(GeneratedHoleKey),
 }
@@ -795,10 +832,19 @@ pub struct NormWithClause {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormClosure {
+    /// Assigned by the alpha pass for every callable, including in-place
+    /// closures. `None` exists only in the pre-alpha construction interval.
+    pub semantic_owner: Option<NormCallableOwner>,
     pub placement: NormClosurePlacement,
     pub head: Option<NormClosureHead>,
     pub body: NormClosureBody,
     pub origin: NormOrigin,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NormCallableOwner {
+    pub id: NormSemanticOwnerId,
+    pub parent: NormSemanticOwnerId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1012,6 +1058,7 @@ pub enum NormRule {
     MemberLowering,
     DoubleDotLowering,
     BracketCallLowering,
+    MemberViewAnnotationLowering,
     BranchNameExpansion,
     AliasPreserve,
     ClosureNormalize,
@@ -1022,60 +1069,137 @@ pub enum NormRule {
 
 /// Scope construction and alpha-normalization for DeduceList binders.
 ///
-/// Raw parsing preserves lexical spelling and provisional hole roles. This
-/// pass is the sole producer of semantic `HoleBinderId` values: it walks the
-/// normalized tree in lexical order, assigns fresh ordinals, rewrites every
-/// scoped Pattern/policy occurrence to the exact binder, and diagnoses active
-/// name redeclarations through `duplicate_of`.
-#[derive(Default)]
+/// The pass allocates callable owners and Pattern roots, then assigns
+/// PatternRoot-local binders. Duplicate detection consults only declarations
+/// made in the current PatternRoot; inherited holes remain visible for lookup
+/// but may be shadowed by a new root.
 struct HoleAlphaNormalizer {
-    next_ordinal: u32,
+    alpha_owner: AlphaOwnerId,
+    next_owner: u32,
+    next_root_by_owner: BTreeMap<NormSemanticOwnerId, u32>,
+    next_binder_by_root: BTreeMap<PatternRootId, u32>,
+}
+
+static NEXT_ALPHA_OWNER: AtomicU64 = AtomicU64::new(1);
+
+impl Default for HoleAlphaNormalizer {
+    fn default() -> Self {
+        Self {
+            alpha_owner: AlphaOwnerId(NEXT_ALPHA_OWNER.fetch_add(1, Ordering::Relaxed)),
+            next_owner: 1,
+            next_root_by_owner: BTreeMap::new(),
+            next_binder_by_root: BTreeMap::new(),
+        }
+    }
 }
 
 impl HoleAlphaNormalizer {
-    fn fresh_id(&mut self) -> HoleBinderId {
-        let id = HoleBinderId::alpha(self.next_ordinal);
-        self.next_ordinal = self
-            .next_ordinal
-            .checked_add(1)
-            .expect("normalized program contains more than u32::MAX hole binders");
-        id
-    }
-
-    fn normalize_program(&mut self, program: &mut NormProgram, holes: &[VisibleHole]) {
-        for form in &mut program.forms {
-            self.normalize_form(form, holes);
+    fn root_owner(&self) -> NormSemanticOwnerId {
+        NormSemanticOwnerId {
+            alpha_owner: self.alpha_owner,
+            local_owner: 0,
         }
     }
 
-    fn normalize_form(&mut self, form: &mut NormForm, holes: &[VisibleHole]) {
+    fn fresh_callable_owner(&mut self, parent: NormSemanticOwnerId) -> NormCallableOwner {
+        let id = NormSemanticOwnerId {
+            alpha_owner: self.alpha_owner,
+            local_owner: self.next_owner,
+        };
+        self.next_owner = self
+            .next_owner
+            .checked_add(1)
+            .expect("normalized program contains more than u32::MAX callable owners");
+        NormCallableOwner { id, parent }
+    }
+
+    fn fresh_pattern_root(&mut self, owner: NormSemanticOwnerId) -> PatternRootId {
+        let local_root = self.next_root_by_owner.entry(owner).or_insert(0);
+        let root = PatternRootId {
+            owner,
+            local_root: *local_root,
+        };
+        *local_root = local_root
+            .checked_add(1)
+            .expect("semantic owner contains more than u32::MAX Pattern roots");
+        root
+    }
+
+    fn fresh_id(&mut self, root: PatternRootId) -> HoleBinderId {
+        let local_binder = self.next_binder_by_root.entry(root).or_insert(0);
+        let id = HoleBinderId::alpha(root, *local_binder);
+        *local_binder = local_binder
+            .checked_add(1)
+            .expect("PatternRoot contains more than u32::MAX hole binders");
+        id
+    }
+
+    fn normalize_program(
+        &mut self,
+        program: &mut NormProgram,
+        holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
+    ) {
+        for form in &mut program.forms {
+            self.normalize_form(form, holes, owner);
+        }
+    }
+
+    fn normalize_form(
+        &mut self,
+        form: &mut NormForm,
+        holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
+    ) {
         match form {
-            NormForm::Let(decl) | NormForm::Alias(decl) => self.normalize_decl(decl, holes),
+            NormForm::Let(decl) => {
+                let root = self.fresh_pattern_root(owner);
+                let mut declared = BTreeMap::new();
+                self.normalize_decl(decl, holes, root, &mut declared);
+            }
+            NormForm::Alias(decl) => {
+                self.normalize_alias_decl(decl, holes, owner);
+            }
             NormForm::Expr(expr) | NormForm::TailValue(expr) => {
-                self.normalize_expr(expr, holes);
+                self.normalize_expr(expr, holes, owner);
             }
             NormForm::ReturnEvent(event) => {
-                self.normalize_expr(&mut event.value, holes);
+                self.normalize_expr(&mut event.value, holes, owner);
                 if let NormReturnTargetSyntax::Explicit(target) = &mut event.target {
-                    self.normalize_expr(target, holes);
+                    self.normalize_expr(target, holes, owner);
                 }
             }
             NormForm::Error(_) => {}
         }
     }
 
-    fn normalize_decl(&mut self, decl: &mut NormDecl, holes: &[VisibleHole]) {
+    fn normalize_decl(
+        &mut self,
+        decl: &mut NormDecl,
+        holes: &[VisibleHole],
+        root: PatternRootId,
+        declared: &mut BTreeMap<String, HoleBinderId>,
+    ) {
         match decl {
             NormDecl::Let { slot, .. } => {
-                self.normalize_slot(slot, holes);
+                self.normalize_slot(slot, holes, root, declared);
             }
-            NormDecl::Alias { policy, target, .. } => {
-                if let Some(policy) = policy {
-                    self.normalize_policy_spec(policy, holes);
-                }
-                self.normalize_nav_components(&mut target.components, holes);
-            }
+            NormDecl::Alias { .. } => self.normalize_alias_decl(decl, holes, root.owner),
             NormDecl::Error(_) => {}
+        }
+    }
+
+    fn normalize_alias_decl(
+        &mut self,
+        decl: &mut NormDecl,
+        holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
+    ) {
+        if let NormDecl::Alias { policy, target, .. } = decl {
+            if let Some(policy) = policy {
+                self.normalize_policy_spec(policy, holes);
+            }
+            self.normalize_nav_components(&mut target.components, holes, owner);
         }
     }
 
@@ -1086,6 +1210,8 @@ impl HoleAlphaNormalizer {
         &mut self,
         slot: &mut NormBindingSlot,
         inherited: &[VisibleHole],
+        root: PatternRootId,
+        declared: &mut BTreeMap<String, HoleBinderId>,
     ) -> Vec<VisibleHole> {
         // BindingSlot source order is policy, let, DeduceList, Pattern,
         // annotation, initializer. The leading policy may see inherited holes
@@ -1093,13 +1219,13 @@ impl HoleAlphaNormalizer {
         if let Some(policy) = &mut slot.policy {
             self.normalize_policy_spec(policy, inherited);
         }
-        let visible = self.normalize_deduce_list(&mut slot.deduce, inherited);
-        self.normalize_pattern(&mut slot.value_pattern, &visible);
+        let visible = self.normalize_deduce_list(&mut slot.deduce, inherited, root, declared);
+        self.normalize_pattern(&mut slot.value_pattern, &visible, root, declared);
         if let Some(annotation) = &mut slot.annotation {
-            self.normalize_pattern(&mut annotation.pattern, &visible);
+            self.normalize_pattern(&mut annotation.pattern, &visible, root, declared);
         }
         if let Some(initializer) = &mut slot.initializer {
-            self.normalize_expr(initializer, &visible);
+            self.normalize_expr(initializer, &visible, root.owner);
         }
         visible
     }
@@ -1108,24 +1234,29 @@ impl HoleAlphaNormalizer {
         &mut self,
         deduce: &mut [NormHoleDecl],
         inherited: &[VisibleHole],
+        root: PatternRootId,
+        declared: &mut BTreeMap<String, HoleBinderId>,
     ) -> Vec<VisibleHole> {
         let mut visible = inherited.to_vec();
         for hole in deduce {
             // A telescope annotation sees ancestors and earlier binders, but
             // never the binder being declared or a later binder.
             if let Some(annotation) = &mut hole.annotation {
-                self.normalize_pattern(&mut annotation.pattern, &visible);
+                self.normalize_pattern(&mut annotation.pattern, &visible, root, declared);
             }
 
             let provisional_key = hole.id.generated_key();
-            let id = self.fresh_id();
+            let id = self.fresh_id(root);
             let duplicate_of = provisional_key
                 .is_none()
-                .then(|| find_visible_source_hole(&visible, &hole.name).map(|first| first.id))
+                .then(|| declared.get(&hole.name).copied())
                 .flatten();
             hole.id = id;
             hole.duplicate_of = duplicate_of;
             if duplicate_of.is_none() {
+                if provisional_key.is_none() {
+                    declared.insert(hole.name.clone(), id);
+                }
                 visible.push(VisibleHole {
                     id,
                     key: provisional_key.map_or_else(
@@ -1138,17 +1269,22 @@ impl HoleAlphaNormalizer {
         visible
     }
 
-    fn normalize_expr(&mut self, expr: &mut NormExpr, holes: &[VisibleHole]) {
+    fn normalize_expr(
+        &mut self,
+        expr: &mut NormExpr,
+        holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
+    ) {
         match expr {
             NormExpr::Call { source, target, .. } => {
-                self.normalize_product(source, holes);
-                self.normalize_expr(target, holes);
+                self.normalize_product(source, holes, owner);
+                self.normalize_expr(target, holes, owner);
             }
-            NormExpr::Product(product) => self.normalize_product(product, holes),
+            NormExpr::Product(product) => self.normalize_product(product, holes, owner),
             NormExpr::Nav { components, .. } => {
-                self.normalize_nav_components(components, holes);
+                self.normalize_nav_components(components, holes, owner);
             }
-            NormExpr::Closure(closure) => self.normalize_closure(closure, holes),
+            NormExpr::Closure(closure) => self.normalize_closure(closure, holes, owner),
             NormExpr::Name { .. }
             | NormExpr::Literal { .. }
             | NormExpr::OperatorTarget { .. }
@@ -1157,33 +1293,54 @@ impl HoleAlphaNormalizer {
         }
     }
 
-    fn normalize_product(&mut self, product: &mut NormProduct, holes: &[VisibleHole]) {
+    fn normalize_product(
+        &mut self,
+        product: &mut NormProduct,
+        holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
+    ) {
         for element in &mut product.elements {
             if let NormProductElem::Expr(expr) = element {
-                self.normalize_expr(expr, holes);
+                self.normalize_expr(expr, holes, owner);
             }
         }
     }
 
-    fn normalize_closure(&mut self, closure: &mut NormClosure, inherited: &[VisibleHole]) {
+    fn normalize_closure(
+        &mut self,
+        closure: &mut NormClosure,
+        inherited: &[VisibleHole],
+        parent_owner: NormSemanticOwnerId,
+    ) {
+        let callable_owner = self.fresh_callable_owner(parent_owner);
+        closure.semantic_owner = Some(callable_owner);
         let visible = if let Some(head) = &mut closure.head {
-            let visible = self.normalize_deduce_list(&mut head.deduce, inherited);
+            let root = self.fresh_pattern_root(callable_owner.id);
+            let mut declared = BTreeMap::new();
+            let visible =
+                self.normalize_deduce_list(&mut head.deduce, inherited, root, &mut declared);
 
             // Capture initializers are simultaneous with respect to value
             // binders. Each capture-local DeduceList still scopes that
-            // capture's own initializer.
+            // capture's own initializer, but remains in the callable-head
+            // PatternRoot.
             for capture in &mut head.captures {
-                let capture_holes = self.normalize_slot(&mut capture.slot, &visible);
-                self.normalize_expr(&mut capture.initializer, &capture_holes);
+                let capture_holes =
+                    self.normalize_slot(&mut capture.slot, &visible, root, &mut declared);
+                self.normalize_expr(
+                    &mut capture.initializer,
+                    &capture_holes,
+                    callable_owner.id,
+                );
             }
             for param in &mut head.params {
-                self.normalize_pattern_element(param, &visible);
+                self.normalize_pattern_element(param, &visible, root, &mut declared);
             }
             if let Some(policy) = &mut head.call_policy {
                 self.normalize_policy_spec(policy, &visible);
             }
             if let Some(returns) = &mut head.returns {
-                self.normalize_slot(returns, &visible);
+                self.normalize_slot(returns, &visible, root, &mut declared);
             }
             for clause in &mut head.clauses {
                 match clause {
@@ -1192,7 +1349,7 @@ impl HoleAlphaNormalizer {
                     | NormHeadClause::Post { expr, .. }
                     | NormHeadClause::LifetimePre { expr, .. }
                     | NormHeadClause::LifetimePost { expr, .. } => {
-                        self.normalize_expr(expr, &visible);
+                        self.normalize_expr(expr, &visible, callable_owner.id);
                     }
                     NormHeadClause::Error(_) => {}
                 }
@@ -1204,30 +1361,46 @@ impl HoleAlphaNormalizer {
 
         match &mut closure.body {
             NormClosureBody::Block(body) | NormClosureBody::NamedBlock { body, .. } => {
-                self.normalize_program(body, &visible);
+                self.normalize_program(body, &visible, callable_owner.id);
             }
             NormClosureBody::Defaulted { .. } | NormClosureBody::Delete(_) => {}
         }
     }
 
-    fn normalize_pattern_element(&mut self, element: &mut NormPatternElem, holes: &[VisibleHole]) {
+    fn normalize_pattern_element(
+        &mut self,
+        element: &mut NormPatternElem,
+        holes: &[VisibleHole],
+        root: PatternRootId,
+        declared: &mut BTreeMap<String, HoleBinderId>,
+    ) {
         match element {
-            NormPatternElem::Pattern(pattern) => self.normalize_pattern(pattern, holes),
+            NormPatternElem::Pattern(pattern) => {
+                self.normalize_pattern(pattern, holes, root, declared)
+            }
             NormPatternElem::BindingSlot(slot) => {
-                self.normalize_slot(slot, holes);
+                self.normalize_slot(slot, holes, root, declared);
             }
             NormPatternElem::Unit { .. } => {}
         }
     }
 
-    fn normalize_pattern(&mut self, pattern: &mut NormPattern, holes: &[VisibleHole]) {
+    fn normalize_pattern(
+        &mut self,
+        pattern: &mut NormPattern,
+        holes: &[VisibleHole],
+        root: PatternRootId,
+        declared: &mut BTreeMap<String, HoleBinderId>,
+    ) {
         match pattern {
             NormPattern::Product { elements, .. } => {
                 for element in elements {
-                    self.normalize_pattern_element(element, holes);
+                    self.normalize_pattern_element(element, holes, root, declared);
                 }
             }
-            NormPattern::Pack { inner, .. } => self.normalize_pattern(inner, holes),
+            NormPattern::Pack { inner, .. } => {
+                self.normalize_pattern(inner, holes, root, declared)
+            }
             NormPattern::Name { name, origin } => {
                 if let Some(hole) = find_visible_source_hole(holes, name) {
                     *pattern = NormPattern::HoleRef {
@@ -1254,18 +1427,18 @@ impl HoleAlphaNormalizer {
                 }
             }
             NormPattern::Nav { components, .. } => {
-                self.normalize_nav_components(components, holes);
+                self.normalize_nav_components(components, holes, root.owner);
             }
             NormPattern::Sequence { elements, .. } => {
                 for element in elements {
-                    self.normalize_pattern(element, holes);
+                    self.normalize_pattern(element, holes, root, declared);
                 }
             }
             NormPattern::Skeleton { skeleton, .. } => {
-                self.normalize_skeleton(skeleton, holes);
+                self.normalize_skeleton(skeleton, holes, root.owner);
             }
             NormPattern::BindingSlot { slot, .. } => {
-                self.normalize_slot(slot, holes);
+                self.normalize_slot(slot, holes, root, declared);
             }
             NormPattern::Binder { .. }
             | NormPattern::OperatorBinder { .. }
@@ -1277,17 +1450,22 @@ impl HoleAlphaNormalizer {
         }
     }
 
-    fn normalize_skeleton(&mut self, skeleton: &mut NormSkeleton, holes: &[VisibleHole]) {
+    fn normalize_skeleton(
+        &mut self,
+        skeleton: &mut NormSkeleton,
+        holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
+    ) {
         match skeleton {
             NormSkeleton::Segment { elements, .. } => {
                 for element in elements {
-                    self.normalize_skeleton(element, holes);
+                    self.normalize_skeleton(element, holes, owner);
                 }
             }
             NormSkeleton::Product { elements, .. } => {
                 for element in elements {
                     if let NormSkeletonElem::Skeleton(skeleton) = element {
-                        self.normalize_skeleton(skeleton, holes);
+                        self.normalize_skeleton(skeleton, holes, owner);
                     }
                 }
             }
@@ -1321,7 +1499,7 @@ impl HoleAlphaNormalizer {
                 }
             }
             NormSkeleton::Nav { components, .. } => {
-                self.normalize_nav_components(components, holes);
+                self.normalize_nav_components(components, holes, owner);
             }
             NormSkeleton::Wildcard { .. }
             | NormSkeleton::Literal { .. }
@@ -1333,10 +1511,11 @@ impl HoleAlphaNormalizer {
         &mut self,
         components: &mut [NormNavComponent],
         holes: &[VisibleHole],
+        owner: NormSemanticOwnerId,
     ) {
         for component in components {
             if let NormNavComponent::Group { expr, .. } = component {
-                self.normalize_expr(expr, holes);
+                self.normalize_expr(expr, holes, owner);
             }
         }
     }
@@ -1400,7 +1579,9 @@ pub fn normalize_program(raw: &ProgramAst) -> NormProgram {
         forms: raw.forms.iter().map(normalize_form).collect(),
         origin: NormOrigin::Source(raw.span),
     };
-    HoleAlphaNormalizer::default().normalize_program(&mut program, &[]);
+    let mut alpha = HoleAlphaNormalizer::default();
+    let root_owner = alpha.root_owner();
+    alpha.normalize_program(&mut program, &[], root_owner);
     program
 }
 
@@ -1926,9 +2107,39 @@ fn normalize_atom(atom: &AtomAst) -> NormExpr {
             operator,
             args,
         } => normalize_bracket_call_sugar(normalize_atom(object), operator, args, atom.span),
+        AtomKind::MemberViewAnnotation { object, visibility } => {
+            normalize_member_view_annotation(normalize_atom(object), *visibility, atom.span)
+        }
         AtomKind::Closure(closure) => NormExpr::Closure(normalize_closure(closure)),
         AtomKind::Error(error) => NormExpr::Error(normalize_error(error)),
     }
+}
+
+fn normalize_member_view_annotation(
+    object: NormExpr,
+    visibility: MemberVisibilityAst,
+    span: Span,
+) -> NormExpr {
+    let spelling = match visibility {
+        MemberVisibilityAst::Public => "[[public]]",
+        MemberVisibilityAst::Private => "[[private]]",
+    };
+    make_call(
+        source_product_from_expr(object, span),
+        NormExpr::OperatorTarget {
+            spelling: spelling.to_string(),
+            fixity: NormOperatorFixity::Postfix,
+            arity: 1,
+            origin: NormOrigin::Generated {
+                rule: NormRule::MemberViewAnnotationLowering,
+                span,
+            },
+        },
+        NormOrigin::Generated {
+            rule: NormRule::MemberViewAnnotationLowering,
+            span,
+        },
+    )
 }
 
 fn normalize_operator_sugar(
@@ -2194,6 +2405,7 @@ fn normalize_closure(closure: &ClosureAst) -> NormClosure {
         }),
     };
     NormClosure {
+        semantic_owner: None,
         placement: match closure.placement {
             ClosurePlacementAst::InPlace => NormClosurePlacement::InPlace,
             ClosurePlacementAst::Ordinary => NormClosurePlacement::Ordinary,
@@ -2589,8 +2801,6 @@ fn normalize_deduce_list(
     if let Some(deduce) = deduce {
         for binder in &deduce.binders {
             let id = HoleBinderId::provisional_source();
-            let duplicate_of =
-                find_visible_source_hole(&visible, &binder.name.text).map(|hole| hole.id);
             let annotation = binder
                 .annotation
                 .as_ref()
@@ -2599,18 +2809,16 @@ fn normalize_deduce_list(
                 id,
                 name: binder.name.text.clone(),
                 annotation,
-                duplicate_of,
+                duplicate_of: None,
                 origin: NormOrigin::Generated {
                     rule: NormRule::PatternNormalize,
                     span: binder.span,
                 },
             });
-            if duplicate_of.is_none() {
-                visible.push(VisibleHole {
-                    id,
-                    key: VisibleHoleKey::SourceName(binder.name.text.clone()),
-                });
-            }
+            visible.push(VisibleHole {
+                id,
+                key: VisibleHoleKey::SourceName(binder.name.text.clone()),
+            });
         }
     }
 
@@ -2996,6 +3204,11 @@ fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPatte
             explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
+        AtomKind::MemberViewAnnotation { .. } => NormPattern::Unsupported {
+            raw_kind_summary: "member visibility annotation outside struct value context"
+                .to_string(),
+            origin: NormOrigin::Source(atom.span),
+        },
         AtomKind::Error(error) => NormPattern::Error(normalize_error(error)),
         other => NormPattern::Unsupported {
             raw_kind_summary: annotation_atom_pattern_summary(other),
@@ -3167,6 +3380,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
         local_ordinal: 0,
     });
     NormClosure {
+        semantic_owner: None,
         placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
             deduce: vec![NormHoleDecl {
@@ -3333,6 +3547,9 @@ fn annotation_atom_pattern_summary(kind: &AtomKind) -> String {
         AtomKind::MemberSugar { .. } => "member sugar in annotation pattern".to_string(),
         AtomKind::DoubleDotSugar { .. } => "double-dot sugar in annotation pattern".to_string(),
         AtomKind::BracketCallSugar { .. } => "bracket-call sugar in annotation pattern".to_string(),
+        AtomKind::MemberViewAnnotation { .. } => {
+            "member visibility annotation in annotation pattern".to_string()
+        }
         AtomKind::Closure(_) => "closure in annotation pattern".to_string(),
         _ => "unsupported annotation atom pattern".to_string(),
     }
@@ -4176,6 +4393,7 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::MemberLowering => "MemberLowering",
         NormRule::DoubleDotLowering => "DoubleDotLowering",
         NormRule::BracketCallLowering => "BracketCallLowering",
+        NormRule::MemberViewAnnotationLowering => "MemberViewAnnotationLowering",
         NormRule::BranchNameExpansion => "BranchNameExpansion",
         NormRule::AliasPreserve => "AliasPreserve",
         NormRule::ClosureNormalize => "ClosureNormalize",

@@ -587,6 +587,7 @@ pub struct TypeField {
     pub name: String,
     pub type_symbol_id: SymbolId,
     pub pattern_head: Option<PatternHeadId>,
+    pub visibility: crate::pattern_space::StructuralMemberVisibility,
     pub provenance: Provenance,
 }
 

@@ -199,15 +199,15 @@ Resolved future-design decisions:
 - DeduceLists elaborate as left-to-right telescopes with exact
   alpha-normalized `HoleBinderId`-targeted Pattern/policy references.
   Declarations see inherited and preceding holes, not themselves or later
-  declarations; active source names cannot be redeclared or shadowed. A
-  BindingSlot policy precedes its local DeduceList. Generated receiver holes
-  use hygienic generated keys and do not collide with source spelling.
+  declarations. Names are unique within one `PatternRoot`; an independent let
+  Pattern or nested callable head creates a new root and may shadow inherited
+  names. A BindingSlot policy precedes its local DeduceList. Generated receiver
+  holes use hygienic generated keys and do not collide with source spelling.
   Callable head holes scope captures, parameters, policy, return, clauses,
   body, and inherited nested callables. Spans are provenance rather than
-  semantic identity. An `AlphaOwner` is the complete normalized tree produced
-  by one root `normalize_program` invocation; nested body `NormProgram` nodes
-  share that owner's ordinal space. A local ordinal has meaning only when
-  paired with that owner.
+  semantic identity. Frontend identities carry normalization owner, callable
+  owner, Pattern root, and root-local binder; build integration maps the
+  callable owner to persistent `SemanticOwnerId`.
   Value-side names/navigation remain unresolved for a later resolved-symbol
   pass. Parser/Norm recursive preservation and the Pattern/policy identity
   substrate are implemented, while general Pattern-directed execution remains
@@ -253,6 +253,12 @@ Implemented substrate after this correction:
   entries remain in `Σ_full` and are omitted from `Σ_export`. Namespace-graph
   installation supplies the persistent admission facts. Retention membership
   is not itself export status; `Σ_export` is the external candidate set.
+- `lang_build` now also provides a parent-linked `SemanticOwnerGraph`,
+  callable anonymous-`Self` identity, canonical meta-instance interning,
+  owner-qualified Pattern/hole carriers, and an owner-aware namespace forest
+  with explicit `PackageBoundary`, identity-preserving `Mount`, package-derived
+  Full/External view routing, `DefaultExtractionView`, and typed lookup
+  failures.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -276,24 +282,19 @@ Not implemented after this correction:
 - Alias forwarding under policy projection, type checking, and runtime IR.
 
 Build-world integration gates (not blockers for the current frontend/build
-substrate PR):
+substrate):
 
-- `HoleBinderId` is currently a local ordinal with ordinary Rust
-  `Eq`/`Ord`/`Hash`. Before any consumer combines multiple root normalization
-  trees, identity must become owner-qualified:
+- Owner/root qualification is implemented. Persistent/incremental restoration
+  of `SemanticOwnerGraphId`, stable syntax-node local keys, and serialized
+  meta-instance construction keys remains unfrozen; byte offsets must not be
+  substituted for those keys.
 
-  ```text
-  AlphaHoleId = AlphaOwnerId × LocalHoleBinderId
-  ```
-
-  Alternatively, rename and encapsulate the current carrier as
-  `LocalHoleBinderId` so it cannot circulate without its `AlphaOwner`.
-  Stable cross-source-unit owner identity remains intentionally unfrozen.
-
-- `NamespaceOverloadSets.exported` currently omits a symbol when its projected
-  candidate list is empty. This is sufficient for `Σ_export` set semantics,
-  but a future external resolver diagnostic carrier must preserve symbol-level
-  facts even for an empty candidate subset, for example:
+- The new owner-aware namespace graph already preserves typed failures
+  (`Unresolved`, non-retention, private path, no eligible candidate, missing
+  mount target, and missing package boundary). The legacy
+  `NamespaceOverloadSets.exported` compatibility map still omits a symbol when
+  its projected candidate list is empty. Its eventual migration should retain
+  symbol-level admission facts even for an empty candidate subset, for example:
 
   ```text
   ExternalSymbolView {
@@ -302,13 +303,21 @@ substrate PR):
   }
   ```
 
-  That layer must distinguish at least `Unresolved`,
-  `NotInExportRetentionClosure`, `PrivatePath`, and
-  `NoConstExportableCandidate`.
+  It must map onto the typed owner-namespace failure carrier rather than
+  collapsing back to `None`.
 
 - The restricted v0.8 overload selector still reports
   `UnsupportedExternalVisibility`. The implemented scope is the export-view
   carrier and projection substrate, not end-to-end external overload routing.
+
+- Custom `?` construction of a richer extraction interface remains open.
+  Private structural members are already excluded from the default extraction
+  view and form a hard non-disclosure boundary; this does not define the
+  eventual custom-question protocol.
+
+- The build API carries package-boundary and mount metadata, but no manifest
+  file format, registry/version solver, dynamic loading, or binary namespace
+  serialization is frozen.
 
 Still open for later design:
 

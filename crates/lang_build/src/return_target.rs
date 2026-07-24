@@ -60,6 +60,10 @@ pub struct ReturnTargetFrame {
     pub return_slot: ReturnSlotRef,
     pub owner: ReturnFrameOwner,
     pub self_identity: Option<ReturnSelfIdentity>,
+    /// Anonymous callable type that gives source `Self` its semantic identity.
+    /// This is present for every alpha-normalized callable, including in-place
+    /// closures, independently of the temporary explicit `self` binder path.
+    pub anonymous_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
     pub origin: NormOrigin,
 }
 
@@ -79,6 +83,7 @@ impl ReturnTargetStack {
         owner: ReturnFrameOwner,
         return_slot: ReturnSlotRef,
         self_identity: Option<ReturnSelfIdentity>,
+        anonymous_self_owner: Option<lang_syntax::NormSemanticOwnerId>,
         origin: NormOrigin,
     ) -> ReturnTargetFrame {
         let frame = ReturnTargetFrame {
@@ -86,6 +91,7 @@ impl ReturnTargetStack {
             return_slot,
             owner,
             self_identity,
+            anonymous_self_owner,
             origin,
         };
         self.next_id += 1;
@@ -196,9 +202,15 @@ impl ReturnTargetBinder {
     pub fn enter_returnable_closure(&mut self, closure: &NormClosure, owner: ReturnFrameOwner) {
         let return_slot = return_slot_ref(closure);
         let self_identity = self_identity_from_closure(closure);
+        let anonymous_self_owner = closure.semantic_owner.map(|owner| owner.id);
         let frame =
-            self.stack
-                .push_frame(owner, return_slot, self_identity, closure.origin.clone());
+            self.stack.push_frame(
+                owner,
+                return_slot,
+                self_identity,
+                anonymous_self_owner,
+                closure.origin.clone(),
+            );
         self.report.frames.push(frame);
 
         if let Some(program) = closure.body.user_body() {

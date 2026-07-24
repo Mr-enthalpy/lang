@@ -25,7 +25,9 @@ use crate::{
     },
     normalized_call::extract_single_call_site,
     pattern_head::TypeMaterializationState,
+    pattern_space::StructuralMemberVisibility,
     policy_metadata, policy_set_meta_runtime, policy_set_runtime,
+    policy_pair::NamespaceVisibility,
     product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
 };
@@ -639,6 +641,12 @@ fn insert_field_projection_layer(
             provenance.clone(),
         );
         symbol.policy_metadata.policy_set = policy_set_meta_runtime();
+        symbol.visibility_metadata.namespace_visibility = Some(match field.visibility {
+            StructuralMemberVisibility::Default | StructuralMemberVisibility::Public => {
+                NamespaceVisibility::Public
+            }
+            StructuralMemberVisibility::Private => NamespaceVisibility::Private,
+        });
         symbol.generation_origin = Some("core::struct field projection".to_string());
         symbol.cache_key_fragment = Some(format!(
             "field:{}:{}:{projection:?}",
@@ -858,6 +866,7 @@ fn bind_generated_type_definition_value(
                 name: field.name.clone(),
                 type_symbol_id: field.type_symbol_id,
                 pattern_head: field.pattern_head,
+                visibility: field.visibility,
                 provenance: field.provenance.clone(),
             })
             .collect(),
@@ -940,12 +949,14 @@ fn generated_type_extraction_interface(
             owner_pattern_head,
             fields: fields
                 .iter()
+                .filter(|field| field.visibility != StructuralMemberVisibility::Private)
                 .map(|field| NamedExtractionField {
                     label: field.name.clone(),
                     field_type_symbol_id: field.type_symbol_id,
                     field_pattern_head: field.pattern_head,
                     field_index: field.index,
                     projection: FieldProjection::Value,
+                    visibility: field.visibility,
                     provenance: field.provenance.clone(),
                 })
                 .collect(),

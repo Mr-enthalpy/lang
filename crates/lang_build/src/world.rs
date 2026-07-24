@@ -226,7 +226,7 @@ impl CompilationWorld {
                             .to_string()
                     }
                     lang_syntax::PatternValidationError::DuplicateHole { name, .. } => format!(
-                        "DeduceList hole `{name}` duplicates an already visible hole; hole scopes do not shadow"
+                        "DeduceList hole `{name}` duplicates a declaration in the same PatternRoot; a new PatternRoot may shadow"
                     ),
                 };
                 Diagnostic::hard_error(

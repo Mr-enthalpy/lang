@@ -303,6 +303,12 @@ outward specificity node at its containing level. Captured width and internal
 node count never become multiple same-level EP nodes; structured evidence, when
 legal, remains below the stable operand head.
 
+> Superseded identity rule: the following paragraph records the v0.5-A
+> telescope substrate. v0.6 retains left-to-right telescope order but replaces
+> active-ancestor uniqueness with same-`PatternRoot` uniqueness and permits a
+> new independent Pattern root to shadow inherited names. The persistent
+> identity is qualified by `SemanticOwnerId`.
+
 DeduceLists normalize as left-to-right telescopes. Raw AST preserves lexical
 scope shape, spelling, and provisional roles. A post-structural
 alpha-normalization pass allocates fresh lexical ordinals and makes each
@@ -349,7 +355,8 @@ normalize_and_validate_patterns
 Only `PatternValidatedNormProgram` may enter declaration harvesting. This
 makes the normalized Pattern rules an enforced handoff rather than an optional
 caller convention. It is the sole authority for pack cardinality,
-non-canonical bare-Product Pack operands, and active-telescope duplicate holes:
+non-canonical bare-Product Pack operands, and same-`PatternRoot` duplicate holes
+under the superseding v0.6 owner amendment:
 the parser constructs every syntactically formed
 `BindingPatternAst::Pack` and diagnoses only local syntax such as a missing
 inner Pattern. It does not count packs or claim knowledge of normalized
