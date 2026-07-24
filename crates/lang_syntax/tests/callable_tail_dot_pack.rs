@@ -819,12 +819,14 @@ fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_synta
             NormProductElem::Expr(expr) => find_generated_closure(expr, rule),
             NormProductElem::Unit { .. } => None,
         }),
-        NormExpr::Nav { components, .. } => components.iter().find_map(|component| match component {
-            NormNavComponent::Group { expr, .. } => find_generated_closure(expr, rule),
-            NormNavComponent::Name { .. }
-            | NormNavComponent::Operator { .. }
-            | NormNavComponent::Error(_) => None,
-        }),
+        NormExpr::Nav { components, .. } => {
+            components.iter().find_map(|component| match component {
+                NormNavComponent::Group { expr, .. } => find_generated_closure(expr, rule),
+                NormNavComponent::Name { .. }
+                | NormNavComponent::Operator { .. }
+                | NormNavComponent::Error(_) => None,
+            })
+        }
         NormExpr::Closure(_)
         | NormExpr::Name { .. }
         | NormExpr::Literal { .. }
@@ -905,12 +907,7 @@ fn generated_receiver_holes_are_hygienic_inside_source_t_scope() {
     else {
         panic!("expected outer closure");
     };
-    let source_t = outer
-        .head
-        .as_ref()
-        .expect("outer closure head")
-        .deduce[0]
-        .id;
+    let source_t = outer.head.as_ref().expect("outer closure head").deduce[0].id;
     let body = outer.body.user_body().expect("outer body");
 
     for (index, rule) in [

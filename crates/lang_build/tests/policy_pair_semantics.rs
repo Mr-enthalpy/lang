@@ -8,13 +8,12 @@ use lang_build::{
     function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
     project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
     resolve_explicit_path, select_by_mutability_product, select_policy_overload,
-    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    ExportCandidateProjection, FunctionObjectDeclarationPolicy, MutabilityPattern,
-    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
-    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
-    PolicyOverloadSelection, PolicyResultEntry, PolicyStage, Provenance, SealWorldSnapshot,
-    StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
-    ValuePresence, WpreRoots,
+    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow, ExportCandidateProjection,
+    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
+    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyResultEntry,
+    PolicyStage, Provenance, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
+    ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -444,13 +443,11 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         ),
     ]);
     let views = project_export_overload_sets(full, |name, candidate| {
-        candidate
-            .export_member
-            .then(|| ExportCandidateProjection {
-                identity: candidate.identity,
-                internal_policy: candidate.internal_policy.clone(),
-                provenance: Provenance::new(format!("export candidate {name}")),
-            })
+        candidate.export_member.then(|| ExportCandidateProjection {
+            identity: candidate.identity,
+            internal_policy: candidate.internal_policy.clone(),
+            provenance: Provenance::new(format!("export candidate {name}")),
+        })
     })
     .expect("all selected export-closure candidates have a const projection");
 
@@ -463,9 +460,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
             .collect::<Vec<_>>(),
         vec![1, 2]
     );
-    let external_f = views
-        .resolve_external(&"f")
-        .expect("export candidate view");
+    let external_f = views.resolve_external(&"f").expect("export candidate view");
     assert_eq!(
         external_f
             .iter()

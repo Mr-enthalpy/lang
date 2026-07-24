@@ -745,8 +745,7 @@ impl HoleBinderId {
     pub fn local_ordinal(self) -> u32 {
         match self.repr {
             HoleBinderIdRepr::LocalOrdinal(ordinal) => ordinal,
-            HoleBinderIdRepr::ProvisionalSource
-            | HoleBinderIdRepr::ProvisionalGenerated(_) => {
+            HoleBinderIdRepr::ProvisionalSource | HoleBinderIdRepr::ProvisionalGenerated(_) => {
                 panic!("provisional hole identity has no local alpha ordinal")
             }
         }
@@ -1373,7 +1372,9 @@ impl HoleAlphaNormalizer {
                         if let Some(hole) = find_visible_hole_ref(holes, *target, text) {
                             *target = hole.id;
                         } else if (*target).generated_key().is_some() {
-                            panic!("generated policy hole reference has no hygienic binder in scope");
+                            panic!(
+                                "generated policy hole reference has no hygienic binder in scope"
+                            );
                         } else {
                             *atom = NormPolicyAtom::Name {
                                 text: text.clone(),
@@ -2613,10 +2614,7 @@ fn normalize_deduce_list(
     (normalized, visible)
 }
 
-fn find_visible_source_hole<'a>(
-    holes: &'a [VisibleHole],
-    name: &str,
-) -> Option<&'a VisibleHole> {
+fn find_visible_source_hole<'a>(holes: &'a [VisibleHole], name: &str) -> Option<&'a VisibleHole> {
     holes.iter().rev().find(|hole| {
         matches!(
             &hole.key,
@@ -2629,15 +2627,12 @@ fn find_visible_generated_hole(
     holes: &[VisibleHole],
     key: GeneratedHoleKey,
 ) -> Option<&VisibleHole> {
-    holes
-        .iter()
-        .rev()
-        .find(|hole| {
-            matches!(
-                &hole.key,
-                VisibleHoleKey::Generated(visible_key) if *visible_key == key
-            )
-        })
+    holes.iter().rev().find(|hole| {
+        matches!(
+            &hole.key,
+            VisibleHoleKey::Generated(visible_key) if *visible_key == key
+        )
+    })
 }
 
 fn find_visible_hole_ref<'a>(
@@ -2645,12 +2640,10 @@ fn find_visible_hole_ref<'a>(
     provisional_target: HoleBinderId,
     display_name: &str,
 ) -> Option<&'a VisibleHole> {
-    provisional_target
-        .generated_key()
-        .map_or_else(
-            || find_visible_source_hole(holes, display_name),
-            |key| find_visible_generated_hole(holes, key),
-        )
+    provisional_target.generated_key().map_or_else(
+        || find_visible_source_hole(holes, display_name),
+        |key| find_visible_generated_hole(holes, key),
+    )
 }
 
 fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole]) -> NormPattern {
