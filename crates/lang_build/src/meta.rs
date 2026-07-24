@@ -454,12 +454,21 @@ fn classify_struct_field_argument(
             Some(atom.provenance().clone()),
         ));
     };
-    let Some((type_expr, _field_name)) = decompose_struct_field_expr(expr) else {
+    let NormExpr::Call { target, .. } = expr else {
         return Err(Diagnostic::hard_error(
             "invalid struct syntax: expected a field form like `uint8 a`",
             Some(Provenance::from_norm_origin(
                 "struct field expression",
                 expr_origin(expr),
+            )),
+        ));
+    };
+    let Some((type_expr, _field_name)) = decompose_struct_field_expr(expr) else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field binder name",
+            Some(Provenance::from_norm_origin(
+                "struct field binder",
+                expr_origin(target),
             )),
         ));
     };
