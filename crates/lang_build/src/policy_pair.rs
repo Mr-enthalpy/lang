@@ -668,8 +668,7 @@ pub fn elaborate_namespace_declaration_policy(
             export_root: false,
         });
     };
-    let (projection, namespace, export_root) =
-        elaborate_p1_components(policy, provenance.clone())?;
+    let (projection, namespace, export_root) = elaborate_p1_components(policy, provenance.clone())?;
     let visibility = one_namespace(&namespace, provenance.clone())?;
     if export_root && position != NamespaceDeclarationPosition::DirectTopLevel {
         return Err(policy_error(
@@ -711,9 +710,7 @@ pub fn project_export_view(
     if value.presence == ValuePresence::Absent {
         return Ok(projected);
     }
-    if !value.mutability.is_empty()
-        && !value.mutability.contains(&ValueMutability::Const)
-    {
+    if !value.mutability.is_empty() && !value.mutability.contains(&ValueMutability::Const) {
         return Err(policy_error(
             "a value-bearing export requires a non-empty const projection",
             provenance,
@@ -1068,9 +1065,7 @@ fn parse_atom(
         },
         NormPolicyAtom::HoleRef { text, .. } => {
             return Err(policy_error(
-                format!(
-                    "DeduceList hole `{text}` is not yet a concrete typed policy atom"
-                ),
+                format!("DeduceList hole `{text}` is not yet a concrete typed policy atom"),
                 provenance,
             ));
         }

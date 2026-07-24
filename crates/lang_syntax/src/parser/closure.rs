@@ -81,10 +81,7 @@ fn form_span(form: &FormAst) -> Span {
     }
 }
 
-fn parse_callable_body_block(
-    parser: &mut Parser<'_>,
-    head: &FnHeadPrefixAst,
-) -> BodyBlockAst {
+fn parse_callable_body_block(parser: &mut Parser<'_>, head: &FnHeadPrefixAst) -> BodyBlockAst {
     let mark = parser.push_deduce_scope(head.deduce.as_ref());
     let body = parse_body_block(parser);
     parser.restore_deduce_scope(mark);
@@ -742,12 +739,8 @@ fn parse_capture_clause(
         }
 
         if capture_item_is_explicit_binding(parser) {
-            let mut slot = parse_binding_slot(
-                parser,
-                BindingSlotContext::Capture,
-                inherited_deduce,
-                true,
-            );
+            let mut slot =
+                parse_binding_slot(parser, BindingSlotContext::Capture, inherited_deduce, true);
             let missing_initializer_span = parser.cursor.current_span();
             let initializer = slot.initializer.take().unwrap_or_else(|| {
                 error_expr(
@@ -856,12 +849,7 @@ fn parse_return_clause(
     inherited_deduce: Option<&crate::DeduceListAst>,
 ) -> ReturnClauseAst {
     let start = parser.cursor.current_span();
-    let slot = parse_binding_slot(
-        parser,
-        BindingSlotContext::Return,
-        inherited_deduce,
-        false,
-    );
+    let slot = parse_binding_slot(parser, BindingSlotContext::Return, inherited_deduce, false);
     let end = slot.span;
     ReturnClauseAst {
         slot,

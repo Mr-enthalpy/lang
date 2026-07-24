@@ -439,16 +439,10 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         vec![1]
     );
     assert!(views
-        .resolve(
-            &"private_dependency",
-            NamespaceResolveAuthority::Internal
-        )
+        .resolve(&"private_dependency", NamespaceResolveAuthority::Internal)
         .is_some());
     assert!(views
-        .resolve(
-            &"private_dependency",
-            NamespaceResolveAuthority::External
-        )
+        .resolve(&"private_dependency", NamespaceResolveAuthority::External)
         .is_none());
 
     let wpre = compute_wpre(
@@ -471,10 +465,7 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     );
     assert!(
         views
-            .resolve(
-                &"private_dependency",
-                NamespaceResolveAuthority::External
-            )
+            .resolve(&"private_dependency", NamespaceResolveAuthority::External)
             .is_none(),
         "world membership must not install an external export view"
     );

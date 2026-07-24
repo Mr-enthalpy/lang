@@ -1150,11 +1150,7 @@ impl HoleAlphaNormalizer {
         }
     }
 
-    fn normalize_pattern_element(
-        &mut self,
-        element: &mut NormPatternElem,
-        holes: &[VisibleHole],
-    ) {
+    fn normalize_pattern_element(&mut self, element: &mut NormPatternElem, holes: &[VisibleHole]) {
         match element {
             NormPatternElem::Pattern(pattern) => self.normalize_pattern(pattern, holes),
             NormPatternElem::BindingSlot(slot) => {
@@ -3460,7 +3456,11 @@ fn dump_norm_policy_conjunction(
                     line(output, indent + 2, &format!("PolicyAtom Name \"{text}\""));
                 }
                 NormPolicyAtom::HoleRef { text, .. } => {
-                    line(output, indent + 2, &format!("PolicyAtom HoleRef \"{text}\""));
+                    line(
+                        output,
+                        indent + 2,
+                        &format!("PolicyAtom HoleRef \"{text}\""),
+                    );
                 }
                 NormPolicyAtom::Group { conjunction, .. } => {
                     line(output, indent + 2, "PolicyAtom Group");
