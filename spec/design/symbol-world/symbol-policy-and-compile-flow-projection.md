@@ -545,22 +545,50 @@ ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
 All ancestors needed to reach the root and its entire subtree enter the export
 graph. A child cannot close export again; an unrelated sibling is unaffected.
 
-The typed substrate represents this as a candidate transformation, not a
-candidate clone:
+The declaration spelling and the resolved candidate view are different
+layers:
+
+```text
+declaration_projection: P1Projection
+
+RHS/result entries
+  -> ApplyDeclarationProjection
+  -> ResolvedCandidatePolicy { pair: PolicyPair }
+```
+
+Only the resolved pair can be projected into the external interface.
+`P1Projection::Infer` is a valid declaration request, and
+`P1Projection::ValueDominant` does not yet carry the associated `Pp`; neither
+is an external candidate policy.
+
+The typed substrate therefore represents export as an identity-preserving
+candidate transformation:
 
 ```text
 ExportCandidateView {
   identity,
   internal_candidate,
-  external_policy
+  external_policy: PolicyPair
 }
 
-ProjectExportCandidate(candidate, ExportClosure membership)
-  = external_policy := Project_const(candidate.internal_policy)
+if Symbol(candidate) ∈ ExportClosure:
+  internal_policy := ResolveCandidatePolicy(candidate)
+  external_policy := Project_const(internal_policy.Pv):internal_policy.Pp
 ```
 
-Every candidate admitted by the final export closure is transformed,
-including ancestors and descendants that are not themselves export roots.
+Export-closure membership is decided at symbol/name level. It does not
+arbitrarily select individual overloads. Within an exported symbol's complete
+overload set, every candidate whose resolved pair has a const value projection
+enters `Σ_export`; a mut-only candidate remains in `Σ_full` but has no external
+candidate view. A pure `absent:Pp` candidate enters unchanged.
+
+A direct source declaration that explicitly writes `export + mut` is still
+invalid at declaration elaboration. This direct-root error is distinct from
+filtering a mut-only member of an otherwise exported full overload set.
+
+Ancestors and descendants admitted by the final export closure need not be
+export roots and may have used `P1Projection::Infer`; their resolved candidate
+pairs are projected in exactly the same way.
 `NamespaceDeclarationPolicy.external_projection` is only an early
 direct-root validation/preview; `None` on a non-root declaration does not mean
 that the eventual namespace export view lacks that declaration.

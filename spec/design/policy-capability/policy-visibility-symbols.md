@@ -121,10 +121,18 @@ An omitted mutability domain and a written `const || mut` domain are valid when
 their const projection is non-empty. A `mut`-only value export is invalid. A
 pure type/Pattern export has no value-mutability requirement. This projection
 is previewed/validated for a direct root by namespace-declaration elaboration.
-After export closure is known, every admitted candidate—including a non-root
-ancestor or descendant—is transformed into an identity-preserving
-`ExportCandidateView` with its own external policy. The generic policy parser
-and function-object stage lifting do not perform either operation.
+That preview remains declaration-side `P1Projection`; it is not a resolved
+external policy.
+
+After declaration projection has been applied to actual RHS/result entries,
+each candidate carries a resolved `PolicyPair`. Export closure then admits
+symbols—including non-root ancestors or descendants—and each externally
+eligible candidate is transformed into an identity-preserving
+`ExportCandidateView` whose external policy is another complete `PolicyPair`.
+The Pattern component is preserved. Mut-only candidates stay in `Σ_full` and
+are filtered from `Σ_export`; `absent:Pp` candidates enter unchanged. The
+generic policy parser and function-object stage lifting do not perform these
+operations.
 
 ## 5. Rust substrate
 
@@ -141,8 +149,8 @@ The typed substrate currently provides:
 - structural `CompleteSymbolFlow` projection;
 - Wpre and export least-closure helpers;
 - complete and externally projected namespace overload-set carriers that
-  preserve candidate identity while storing a distinct external policy on
-  each `ExportCandidateView`;
+  preserve candidate identity while storing a distinct resolved `PolicyPair`
+  on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.
 
 The older `PolicyFlag`/`PolicySet` path remains compatibility transport. It is

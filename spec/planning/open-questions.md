@@ -181,7 +181,10 @@ Resolved future-design decisions:
   Export derives a separate external view: value-bearing exports expose
   `Project_const(Pv):Pp`, while pure `absent:Pp` exports have no mutability
   requirement. A `mut`-only value export is invalid; `const || mut` remains a
-  valid complete internal view.
+  valid complete internal view. This projection consumes the resolved internal
+  `PolicyPair` after declaration-side P1 application. Direct `export + mut`
+  roots are rejected; mut-only overload members of an exported symbol remain
+  in `Σ_full` and are omitted from `Σ_export`.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
   unpack. Raw `...(a, b)` is preserved but rejected after P normalization
@@ -198,7 +201,10 @@ Resolved future-design decisions:
   use hygienic generated keys and do not collide with source spelling.
   Callable head holes scope captures, parameters, policy, return, clauses,
   body, and inherited nested callables. Spans are provenance rather than
-  semantic identity, and each ordinal is owner-local to one NormProgram.
+  semantic identity. An `AlphaOwner` is the complete normalized tree produced
+  by one root `normalize_program` invocation; nested body `NormProgram` nodes
+  share that owner's ordinal space. A local ordinal has meaning only when
+  paired with that owner.
   Value-side names/navigation remain unresolved for a later resolved-symbol
   pass. Parser/Norm recursive preservation and the Pattern/policy identity
   substrate are implemented, while general Pattern-directed execution remains
@@ -234,10 +240,14 @@ Implemented substrate after this correction:
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
   flow projection, Wpre/export closure, candidate-level
-  `ExportCandidateView { identity, internal_candidate, external_policy }`
-  transformation, and phase/const-mut product-order test substrate. The
-  direct declaration `external_projection` remains a root-local preview;
-  namespace-graph installation supplies final export-closure membership.
+  `ResolvedCandidatePolicy { pair: PolicyPair }` to
+  `ExportCandidateView { identity, internal_candidate, external_policy:
+  PolicyPair }` transformation, and phase/const-mut product-order test
+  substrate. The direct declaration `external_projection` remains a
+  root-local `P1Projection` preview. Export-closure membership is symbol-level;
+  among an admitted symbol's resolved candidates, mut-only entries remain in
+  `Σ_full` and are omitted from `Σ_export`. Namespace-graph installation
+  supplies final membership.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 

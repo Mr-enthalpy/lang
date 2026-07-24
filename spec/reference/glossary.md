@@ -118,8 +118,10 @@ annotation sees inherited and earlier declarations, never itself or later
 declarations. An active hole name cannot be redeclared or shadowed. Each
 declaration receives an alpha-normalized, owner-local lexical ordinal
 `HoleBinderId`, and a named `HoleRef` targets that exact identity rather than
-merely repeating its spelling. IDs from distinct normalized-program owners are
-not directly comparable. Source spans are provenance, not identity. Generated
+merely repeating its spelling. The `AlphaOwner` is the complete normalized
+tree produced by one root `normalize_program` invocation; nested body
+`NormProgram` nodes share it. IDs from distinct alpha owners are not directly
+comparable. Source spans are provenance, not identity. Generated
 receiver holes use hygienic generated keys rather than source spelling. A
 callable-head telescope scopes captures, parameters, policy, return, clauses,
 body, and inherited nested callables. Within a BindingSlot, policy precedes
@@ -1007,10 +1009,13 @@ Internal explicit resolution searches `Σ_full`; external explicit resolution
 searches `Σ_export`; world membership asks whether a symbol exists in Wpre or
 Wseal. The export overload set preserves the same candidate identities as the
 full set, but every external candidate carries a separately const-projected
-policy view rather than cloning its complete internal policy. Export-closure
-ancestors and descendants receive this projection even when they are not
-export roots. World membership does not imply export, and export does not
-imply that the symbol itself was an export root.
+resolved `PolicyPair` rather than a declaration-side `P1Projection` or a clone
+of its complete internal policy. Export-closure membership admits symbols;
+within each admitted full overload set, mut-only candidates remain internal
+and candidates with const (or pure `Pp`) views enter the external set.
+Export-closure ancestors and descendants receive this projection even when
+they are not export roots. World membership does not imply export, and export
+does not imply that the symbol itself was an export root.
 
 _See also: Policy Pair, Namespace (source name)._
 

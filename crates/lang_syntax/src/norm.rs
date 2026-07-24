@@ -701,12 +701,14 @@ pub struct NormHoleDecl {
 }
 
 /// Alpha-normalized lexical identity of a DeduceList binder within one
-/// normalized-program owner.
+/// `AlphaOwner`: the complete normalized tree produced by one root
+/// `normalize_program` invocation.
 ///
 /// The ordinal is allocated by lexical traversal and is intentionally
 /// independent of source spans and source spelling. Spans remain provenance,
-/// not semantic binder identity. Equality is meaningful only inside the
-/// owning `NormProgram`; build-world identity must pair this local identity
+/// not semantic binder identity. Nested `NormProgram` nodes in closure bodies
+/// share their root tree's owner and ordinal space. Equality is meaningful
+/// only inside that owner; build-world identity must pair this local identity
 /// with an owner/source-unit identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HoleBinderId {
@@ -739,9 +741,10 @@ impl HoleBinderId {
         }
     }
 
-    /// Return the owner-scoped ordinal assigned by alpha normalization.
+    /// Return the `AlphaOwner`-scoped ordinal assigned by alpha normalization.
     ///
-    /// This is not a cross-program or cross-source-unit identity.
+    /// Nested `NormProgram` nodes in the same root tree share this ordinal
+    /// space. This is not a cross-owner or cross-source-unit identity.
     pub fn local_ordinal(self) -> u32 {
         match self.repr {
             HoleBinderIdRepr::LocalOrdinal(ordinal) => ordinal,

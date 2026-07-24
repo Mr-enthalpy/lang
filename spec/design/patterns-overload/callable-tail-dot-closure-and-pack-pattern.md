@@ -817,10 +817,10 @@ Implemented substrate:
 - typed ordered/unordered operand-admissibility substrate, with stable-top-mode
   discovery left to Pattern-head resolution;
 - callable-wide Deduce scope construction plus left-to-right telescope
-  alpha-normalization, owner-local `HoleBinderId` Pattern/policy references,
-  generated receiver hygiene, BindingSlot policy-before-local-Deduce order,
-  and duplicate-without-shadow validation across nested let-shaped slots and
-  nested callables;
+  alpha-normalization, `HoleBinderId` Pattern/policy references local to the
+  complete root-tree `AlphaOwner`, generated receiver hygiene, BindingSlot
+  policy-before-local-Deduce order, and duplicate-without-shadow validation
+  across nested let-shaped slots and nested callables;
 - named strategy metadata carried by selected restricted candidates only after
   applicability.
 

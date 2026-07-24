@@ -358,16 +358,14 @@ pub struct NamespaceExportNode<I> {
 pub struct ExportCandidateView<I, C> {
     pub identity: I,
     pub internal_candidate: C,
-    pub external_policy: P1Projection,
+    pub external_policy: PolicyPair,
 }
 
-/// Input selected by namespace export-closure membership before candidate
-/// policy projection.
+/// Resolved internal candidate view after its declaration-side `P1Projection`
+/// has already been applied to the actual RHS/result entries.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExportCandidateProjection<I> {
-    pub identity: I,
-    pub internal_policy: P1Projection,
-    pub provenance: Provenance,
+pub struct ResolvedCandidatePolicy {
+    pub pair: PolicyPair,
 }
 
 /// The complete namespace overload set and its externally exposed candidate
@@ -418,29 +416,32 @@ impl<N: Ord, I, C> NamespaceOverloadSets<N, I, C> {
     }
 }
 
-/// Project external overload views from the complete namespace sets while
-/// preserving each candidate's existing identity and transforming every
-/// selected candidate policy through `project_export_view`.
+/// Project external overload views from the complete namespace sets.
 ///
-/// The selector represents final export-closure membership, not merely the
-/// declaration's `export_root` bit. This allows ancestors and descendants
-/// admitted by `ExportClosure(root)` to receive the same candidate-level
-/// external policy projection.
+/// Export-closure membership is a symbol/name-level predicate. Candidate
+/// eligibility is a separate operation over the resolved internal
+/// `PolicyPair`: candidates without a const value slice remain in `full` but
+/// are omitted from `exported`. Direct source declarations that explicitly
+/// write `export + mut` are rejected earlier by
+/// `project_export_root_preview`.
 pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
     full: BTreeMap<N, Vec<C>>,
-    mut select_export_candidate: impl FnMut(&N, &C) -> Option<ExportCandidateProjection<I>>,
-) -> Result<NamespaceOverloadSets<N, I, C>, Diagnostic> {
+    mut symbol_in_export_closure: impl FnMut(&N) -> bool,
+    mut resolve_candidate: impl FnMut(&C) -> (I, ResolvedCandidatePolicy),
+) -> NamespaceOverloadSets<N, I, C> {
     let mut exported = BTreeMap::new();
     for (name, candidates) in &full {
+        if !symbol_in_export_closure(name) {
+            continue;
+        }
         let mut projected = Vec::new();
         for candidate in candidates {
-            let Some(selected) = select_export_candidate(name, candidate) else {
+            let (identity, internal_policy) = resolve_candidate(candidate);
+            let Some(external_policy) = project_resolved_export_view(&internal_policy) else {
                 continue;
             };
-            let external_policy =
-                project_export_view(&selected.internal_policy, selected.provenance)?;
             projected.push(ExportCandidateView {
-                identity: selected.identity,
+                identity,
                 internal_candidate: candidate.clone(),
                 external_policy,
             });
@@ -449,7 +450,32 @@ pub fn project_export_overload_sets<N: Clone + Ord, I, C: Clone>(
             exported.insert(name.clone(), projected);
         }
     }
-    Ok(NamespaceOverloadSets { full, exported })
+    NamespaceOverloadSets { full, exported }
+}
+
+/// Derive the externally readable pair from an already resolved internal
+/// candidate view.
+///
+/// This function never accepts `P1Projection`: declaration projection has
+/// already happened. The Pattern component is preserved exactly. A
+/// value-bearing candidate without a const slice is not externally eligible.
+pub fn project_resolved_export_view(
+    internal_policy: &ResolvedCandidatePolicy,
+) -> Option<PolicyPair> {
+    let mut projected = internal_policy.pair.clone();
+    if projected.value.presence == ValuePresence::Absent {
+        return Some(projected);
+    }
+    if !projected.value.mutability.is_empty()
+        && !projected
+            .value
+            .mutability
+            .contains(&ValueMutability::Const)
+    {
+        return None;
+    }
+    projected.value.mutability = BTreeSet::from([ValueMutability::Const]);
+    Some(projected)
 }
 
 /// Compute `PathAncestors(root) ∪ Subtree(root)` for every export root.
@@ -740,7 +766,7 @@ pub fn elaborate_namespace_declaration_policy(
         ));
     }
     let external_projection = export_root
-        .then(|| project_export_view(&projection, provenance.clone()))
+        .then(|| project_export_root_preview(&projection, provenance.clone()))
         .transpose()?;
     Ok(NamespaceDeclarationPolicy {
         projection,
@@ -750,11 +776,14 @@ pub fn elaborate_namespace_declaration_policy(
     })
 }
 
-/// Build the external export view without modifying the complete internal P1.
+/// Validate and preview a direct export-root declaration without modifying its
+/// complete internal P1 request.
 ///
-/// Value-bearing policies must expose a non-empty const projection. A pure
-/// Pattern/type pair (`Pv = absent`) has no value-mutability obligation.
-pub fn project_export_view(
+/// This is not the final candidate view: `P1Projection::ValueDominant` still
+/// lacks the associated resolved Pattern component. Final external views are
+/// produced only from `ResolvedCandidatePolicy` by
+/// `project_resolved_export_view`.
+pub fn project_export_root_preview(
     projection: &P1Projection,
     provenance: Provenance,
 ) -> Result<P1Projection, Diagnostic> {

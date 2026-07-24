@@ -430,18 +430,29 @@ without entering `Σ_export`.
 The current typed helper now carries:
 
 ```text
+ResolvedCandidatePolicy {
+  pair: PolicyPair
+}
+
 ExportCandidateView {
   identity,
   internal_candidate,
-  external_policy
+  external_policy: PolicyPair
 }
 ```
 
-The namespace export-closure selector supplies every admitted candidate,
-including non-root ancestors/descendants, and the helper derives
-`external_policy` through the const/pure-Pp export projection. It no longer
-returns cloned internal candidates as external views. Full namespace-graph
-installation and external resolver routing remain later integration work.
+Declaration-side `P1Projection` is first applied to actual RHS/result entries.
+The namespace export closure then admits symbols, including non-root
+ancestors/descendants; it does not act as an arbitrary per-candidate
+eligibility callback. For each admitted symbol, the helper derives an external
+`PolicyPair` from every resolved candidate pair that has a const value slice
+(or has `Pv = absent`). Mut-only candidates remain in the full overload set and
+are absent from the external overload set. A direct source `export + mut` root
+is rejected earlier as an invalid declaration.
+
+The helper no longer returns cloned internal policies as external views.
+Full namespace-graph installation and external resolver routing remain later
+integration work.
 
 ## 12. Current Implementation Substrate
 

@@ -323,9 +323,12 @@ annotation, and initializer. Generated receiver holes use a hygienic
 generated-syntax key rather than source spelling, so a generated display name
 cannot redeclare or capture an active source hole.
 
-`HoleBinderId` is owner-local to one normalized program. Norm alpha conversion
-rewrites Pattern/policy occurrences; value-side `NormExpr::Name` and ordinary
-navigation-name components remain unresolved for a later resolved-symbol pass.
+`HoleBinderId` is local to an `AlphaOwner`: the complete normalized tree
+produced by one root `normalize_program` invocation. Nested closure-body
+`NormProgram` nodes share the same owner and ordinal space. Norm alpha
+conversion rewrites Pattern/policy occurrences; value-side `NormExpr::Name`
+and ordinary navigation-name components remain unresolved for a later
+resolved-symbol pass.
 
 The scope extension does not alter return BindingSlot syntax. `-> r` binds the
 returned object to the explicit symbol `r`; `-> r: A` adds the postfix

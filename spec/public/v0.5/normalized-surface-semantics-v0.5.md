@@ -559,8 +559,11 @@ roles. A distinct alpha-normalization step after structural normalization
 allocates fresh lexical ordinals and rewrites scoped Pattern/policy occurrences
 to exact `HoleBinderId` targets. Source spans are provenance, never semantic
 hole identity; alpha-equivalent binder/ref structures are independent of source
-spelling and byte offset. The ordinal is owner-local to one `NormProgram`;
-cross-program equality has no semantic meaning.
+spelling and byte offset. One root `normalize_program` invocation establishes
+an `AlphaOwner` for its complete normalized tree. Nested closure-body
+`NormProgram` nodes share that owner and ordinal space, so their references may
+target an outer callable's hole directly. A bare ordinal from another
+`AlphaOwner` has no comparable semantic meaning.
 
 Compiler-generated receiver holes carry a hygienic generated key before alpha
 conversion. They are not entered in the source-spelling redeclaration table,
@@ -818,7 +821,16 @@ const-slice projection and therefore is not normalization.
 
 In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
-Value-bearing export views are const-projected, so dependencies reached with
+Declaration-side `P1Projection` first applies to actual RHS/result entries and
+produces a resolved internal `PolicyPair`. Only that complete pair may become
+an external candidate policy: its value component is const-projected and its
+associated Pattern component is preserved. Export-closure membership admits
+symbols, while mut-only overload candidates remain in the complete internal
+set and are omitted from the external overload set. Pure `absent:Pp`
+candidates enter unchanged. A direct source `export + mut` root remains an
+invalid declaration.
+
+Value-bearing export views are therefore const-projected, so dependencies reached with
 external authority—including ordinary external call targets—normally satisfy
 automatic const-capture requirements. Automatic capture and call resolution
 therefore touch the same problem domain—symbol identity and readable const

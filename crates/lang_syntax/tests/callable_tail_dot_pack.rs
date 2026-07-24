@@ -1143,7 +1143,7 @@ fn callable_deduce_scope_rejects_nested_active_name_redeclaration() {
 }
 
 #[test]
-fn hole_identity_is_owner_local_and_alpha_graphs_ignore_spelling_and_offset() {
+fn hole_identity_is_alpha_owner_local_and_graphs_ignore_spelling_and_offset() {
     fn closure_graph(source: &str) -> (usize, bool) {
         let normalized = normalize_program(&parsed(source).program);
         let closure_slot = binding_slot_at(
@@ -1175,7 +1175,7 @@ fn hole_identity_is_owner_local_and_alpha_graphs_ignore_spelling_and_offset() {
     assert!(x.1);
     assert_eq!(
         a, x,
-        "compare owner-local binder/reference graph shape, never bare IDs across NormPrograms"
+        "compare binder/reference graph shape, never bare IDs across distinct AlphaOwners"
     );
 }
 

@@ -8,12 +8,13 @@ use lang_build::{
     function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
     project_export_overload_sets, project_p1, publicly_reachable, read_pattern, read_value,
     resolve_explicit_path, select_by_mutability_product, select_policy_overload,
-    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow, ExportCandidateProjection,
+    BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
     FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
     NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
-    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyResultEntry,
-    PolicyStage, Provenance, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
-    ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
+    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair,
+    PolicyResultEntry, PolicyStage, Provenance, ResolvedCandidatePolicy, SealWorldSnapshot,
+    StageSet, StaticTaskDisposition, SymbolEntry, ValueComponentPolicy, ValueMutability,
+    ValuePresence, WpreRoots,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
 
@@ -390,16 +391,28 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
     #[derive(Clone, Debug, PartialEq, Eq)]
     struct Candidate {
         identity: u32,
-        export_member: bool,
         export_root: bool,
-        internal_policy: P1Projection,
+        internal_policy: PolicyPair,
     }
 
-    let runtime_value = |mutability: BTreeSet<ValueMutability>| P1Projection::ValueDominant {
+    let runtime_value = |mutability: BTreeSet<ValueMutability>| PolicyPair {
         value: ValueComponentPolicy {
             stages: stages(&[PolicyStage::Runtime]),
             mutability,
             presence: ValuePresence::Present,
+        },
+        pattern: PatternComponentPolicy {
+            stages: stages(&[PolicyStage::Compile]),
+        },
+    };
+    let type_only = || PolicyPair {
+        value: ValueComponentPolicy {
+            stages: StageSet::new(),
+            mutability: BTreeSet::new(),
+            presence: ValuePresence::Absent,
+        },
+        pattern: PatternComponentPolicy {
+            stages: stages(&[PolicyStage::Compile]),
         },
     };
     let full = BTreeMap::from([
@@ -408,13 +421,11 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
             vec![
                 Candidate {
                     identity: 1,
-                    export_member: true,
                     export_root: true,
                     internal_policy: runtime_value(BTreeSet::new()),
                 },
                 Candidate {
                     identity: 2,
-                    export_member: false,
                     export_root: false,
                     internal_policy: runtime_value(mutability(&[ValueMutability::Mut])),
                 },
@@ -424,7 +435,6 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
             "exported_child",
             vec![Candidate {
                 identity: 4,
-                export_member: true,
                 export_root: false,
                 internal_policy: runtime_value(mutability(&[
                     ValueMutability::Const,
@@ -436,20 +446,31 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
             "private_dependency",
             vec![Candidate {
                 identity: 3,
-                export_member: false,
                 export_root: false,
                 internal_policy: runtime_value(BTreeSet::new()),
             }],
         ),
+        (
+            "exported_type",
+            vec![Candidate {
+                identity: 5,
+                export_root: false,
+                internal_policy: type_only(),
+            }],
+        ),
     ]);
-    let views = project_export_overload_sets(full, |name, candidate| {
-        candidate.export_member.then(|| ExportCandidateProjection {
-            identity: candidate.identity,
-            internal_policy: candidate.internal_policy.clone(),
-            provenance: Provenance::new(format!("export candidate {name}")),
-        })
-    })
-    .expect("all selected export-closure candidates have a const projection");
+    let views = project_export_overload_sets(
+        full,
+        |name| matches!(*name, "f" | "exported_child" | "exported_type"),
+        |candidate| {
+            (
+                candidate.identity,
+                ResolvedCandidatePolicy {
+                    pair: candidate.internal_policy.clone(),
+                },
+            )
+        },
+    );
 
     assert_eq!(
         views
@@ -469,21 +490,37 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         vec![1]
     );
     assert_eq!(external_f[0].internal_candidate.identity, 1);
-    assert!(matches!(
-        &external_f[0].external_policy,
-        P1Projection::ValueDominant { value }
-            if value.mutability == mutability(&[ValueMutability::Const])
-    ));
+    assert_eq!(
+        external_f[0].external_policy.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
+    assert_eq!(
+        external_f[0].external_policy.pattern,
+        external_f[0].internal_candidate.internal_policy.pattern,
+        "external projection preserves the resolved associated Pp"
+    );
 
     let external_child = views
         .resolve_external(&"exported_child")
         .expect("export-closure descendant receives an external candidate view");
     assert!(!external_child[0].internal_candidate.export_root);
-    assert!(matches!(
-        &external_child[0].external_policy,
-        P1Projection::ValueDominant { value }
-            if value.mutability == mutability(&[ValueMutability::Const])
-    ));
+    assert_eq!(
+        external_child[0].external_policy.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
+    assert_eq!(
+        external_child[0].external_policy.pattern,
+        external_child[0].internal_candidate.internal_policy.pattern
+    );
+
+    let external_type = views
+        .resolve_external(&"exported_type")
+        .expect("pure Pattern/type candidate remains externally visible");
+    assert_eq!(
+        external_type[0].external_policy,
+        external_type[0].internal_candidate.internal_policy,
+        "Pv=absent has no value-mutability projection obligation"
+    );
 
     assert!(views.resolve_internal(&"private_dependency").is_some());
     assert!(views.resolve_external(&"private_dependency").is_none());
@@ -511,25 +548,37 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         "world membership must not install an external export view"
     );
 
-    let invalid = BTreeMap::from([(
-        "bad_export",
+    let mut_only = BTreeMap::from([(
+        "mut_only_member",
         vec![Candidate {
-            identity: 5,
-            export_member: true,
+            identity: 6,
             export_root: false,
             internal_policy: runtime_value(mutability(&[ValueMutability::Mut])),
         }],
     )]);
+    let mut_only_views = project_export_overload_sets(
+        mut_only,
+        |_| true,
+        |candidate| {
+            (
+                candidate.identity,
+                ResolvedCandidatePolicy {
+                    pair: candidate.internal_policy.clone(),
+                },
+            )
+        },
+    );
     assert!(
-        project_export_overload_sets(invalid, |name, candidate| {
-            Some(ExportCandidateProjection {
-                identity: candidate.identity,
-                internal_policy: candidate.internal_policy.clone(),
-                provenance: Provenance::new(format!("export candidate {name}")),
-            })
-        })
-        .is_err(),
-        "every selected export-closure candidate must pass const policy projection"
+        mut_only_views
+            .resolve_internal(&"mut_only_member")
+            .is_some(),
+        "a mut-only overload remains in Sigma_full"
+    );
+    assert!(
+        mut_only_views
+            .resolve_external(&"mut_only_member")
+            .is_none(),
+        "a mut-only overload has no candidate view in Sigma_export"
     );
 }
 

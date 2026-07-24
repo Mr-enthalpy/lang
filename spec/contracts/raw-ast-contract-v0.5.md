@@ -390,8 +390,10 @@ active hole names cannot be redeclared or shadowed
 Raw AST carries lexical structure, surface spelling, and provisional canonical
 roles. Normalized alpha conversion, not the parser and not a source span,
 allocates each `HoleBinderId`; every named `HoleRef` then targets one exact
-owner-local ordinal identity. The display spelling and span are provenance
-data; IDs from distinct `NormProgram` owners are not directly comparable.
+owner-local ordinal identity. Here the owner is one root normalization and its
+complete normalized tree, not each nested closure-body `NormProgram`. The
+display spelling and span are provenance data; bare local IDs from distinct
+`AlphaOwner`s are not directly comparable.
 Generated receiver holes use a hygienic generated key rather than their
 display spelling. `_` is an anonymous hole and targets no declaration.
 

@@ -98,8 +98,10 @@ See `normalized-surface-semantics-v0.5.md` §8–§10 for the full rules. Preser
 - DeduceList is a left-to-right telescope of `HoleDecl { id, ... }`. Each
   annotation sees inherited and preceding holes, not its own or following
   declarations. Active names cannot be redeclared or shadowed. A `HoleRef`
-  targets an exact owner-local alpha-normalized ordinal `HoleBinderId`; source
-  spans remain provenance. BindingSlot policy precedes its local DeduceList.
+  targets an exact alpha-normalized ordinal `HoleBinderId` within the
+  `AlphaOwner` established by one root normalization; nested body
+  `NormProgram` nodes share that owner. Source spans remain provenance.
+  BindingSlot policy precedes its local DeduceList.
   Generated receiver holes use hygienic keys, not source spelling. A
   callable-head telescope scopes captures, parameters, call policy, return,
   clauses, body, and inherited nested callables. Exact Norm binding covers
