@@ -25,6 +25,7 @@ pub enum Symbol {
     Colon,
     Equal,
     Dot,
+    Ellipsis,
     DotDot,
     ColonColon,
     PipeGreater,

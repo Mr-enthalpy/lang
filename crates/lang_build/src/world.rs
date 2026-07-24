@@ -26,9 +26,9 @@ use crate::{
     policy_expr::{elaborate_declaration_policy_expr, legacy_policy_set_from_pair},
     policy_metadata,
     policy_pair::{
-        derive_function_object_p1, elaborate_namespace_declaration_policy, normalize_p2_policy,
-        FunctionObjectDeclarationPolicy, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
-        P1Projection,
+        derive_function_object_p1, elaborate_namespace_declaration_policy,
+        function_object_declaration_policy, normalize_p2_policy, NamespaceDeclarationPolicy,
+        NamespaceDeclarationPosition,
     },
     policy_set_meta_runtime, policy_set_runtime,
     return_target::{
@@ -198,9 +198,8 @@ impl CompilationWorld {
         namespace: NamespaceNodeId,
     ) -> Result<(), BuildError> {
         let parsed = lang_syntax::parse(&unit.content);
-        let normalized = lang_syntax::normalize_program(&parsed.program);
         let provenance = unit.provenance.clone();
-        let diagnostics = parsed
+        let mut diagnostics = parsed
             .diagnostics
             .iter()
             .map(|diagnostic| {
@@ -214,9 +213,41 @@ impl CompilationWorld {
                 )
             })
             .collect::<Vec<_>>();
+        let normalized = lang_syntax::normalize_and_validate_patterns(&parsed.program);
+        if let Err(invalid) = &normalized {
+            diagnostics.extend(invalid.pattern_errors.iter().map(|error| {
+                let message = match error {
+                    lang_syntax::PatternValidationError::MultiplePacks(error) => format!(
+                        "Pattern contains {} pack nodes at one normalized structural level",
+                        error.pack_count
+                    ),
+                    lang_syntax::PatternValidationError::NonCanonicalPackOperand { .. } => {
+                        "Pack operand is a bare Product without a stable top Pattern; write a whole-remainder binder/discard or an explicitly headed structured Pattern"
+                            .to_string()
+                    }
+                    lang_syntax::PatternValidationError::DuplicateHole { name, .. } => format!(
+                        "DeduceList hole `{name}` duplicates an already visible hole; hole scopes do not shadow"
+                    ),
+                };
+                Diagnostic::hard_error(
+                    message,
+                    Some(Provenance::from_norm_origin(
+                        "global normalized Pattern validation",
+                        error.origin(),
+                    )),
+                )
+            }));
+        }
         self.diagnostics.extend(diagnostics.clone());
 
-        self.harvest_program(namespace, &normalized, &unit.canonical_path)?;
+        let normalized = match normalized {
+            Ok(validated) => {
+                self.harvest_program(namespace, validated.as_program(), &unit.canonical_path)?;
+                validated.into_program()
+            }
+            Err(invalid) => invalid.program,
+        };
+
         self.source_fragments.push(SourceFragment {
             path: unit.canonical_path.clone(),
             namespace,
@@ -893,27 +924,6 @@ fn result_policy_from_closure(
     normalize_p2_policy(annotation, provenance)
 }
 
-fn function_object_declaration_policy(
-    declaration: &NamespaceDeclarationPolicy,
-) -> FunctionObjectDeclarationPolicy {
-    let mutability = match &declaration.projection {
-        P1Projection::Infer => FunctionObjectDeclarationPolicy::default(),
-        P1Projection::ValueDominant { value } => FunctionObjectDeclarationPolicy {
-            mutability: value.mutability.clone(),
-            ..FunctionObjectDeclarationPolicy::default()
-        },
-        P1Projection::Pair(pair) => FunctionObjectDeclarationPolicy {
-            mutability: pair.value.mutability.clone(),
-            ..FunctionObjectDeclarationPolicy::default()
-        },
-    };
-    FunctionObjectDeclarationPolicy {
-        mutability: mutability.mutability,
-        namespace_visibility: declaration.visibility,
-        export_root: declaration.export_root,
-    }
-}
-
 fn ensure_return_policy_supported(
     closure: &NormClosure,
     provenance: Provenance,
@@ -1108,8 +1118,10 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         NormPattern::Binder { origin, .. }
         | NormPattern::OperatorBinder { origin, .. }
         | NormPattern::Product { origin, .. }
+        | NormPattern::Pack { origin, .. }
         | NormPattern::Unit { origin }
         | NormPattern::HoleRef { origin, .. }
+        | NormPattern::AnonymousHole { origin }
         | NormPattern::Name { origin, .. }
         | NormPattern::Literal { origin, .. }
         | NormPattern::Nav { origin, .. }

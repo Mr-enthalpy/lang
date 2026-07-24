@@ -1,0 +1,273 @@
+NormProgram origin=Source@1:1[0..231]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..60]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..60]
+          deduce:
+            None
+          value_pattern:
+            Binder "explicit" origin=Source@1:5[4..12]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@1:16[15..60]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@1:16[15..54]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Source@1:17[16..29]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:17[16..29]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "x" origin=Source@1:21[20..21]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Name "outer" origin=Source@1:25[24..29]
+                    Capture origin=Source@1:32[31..48]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:32[31..48]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "y" origin=Source@1:32[31..32]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Call origin=Derived(PipeFallback; ordinary expression-chain growth)@1:36[35..48]
+                          source:
+                            Product origin=Generated(ProductLift)@1:36[35..41]
+                              elements:
+                                ExprElem
+                                  Name "source" origin=Source@1:36[35..41]
+                          target:
+                            Name "target" origin=Source@1:43[42..48]
+                  params:
+                    None
+              body:
+                NormBody origin=Source@1:56[55..60]
+                  forms:
+                    Form TailValue
+                      Name "x" origin=Source@1:58[57..58]
+    Form Let
+      Decl Let origin=Source@2:1[62..106]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[66..106]
+          deduce:
+            None
+          value_pattern:
+            Binder "inferred" origin=Source@2:5[66..74]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@2:16[77..106]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@2:16[77..100]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@2:17[78..81]
+                      slot:
+                        BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@2:17[78..81]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "x" origin=Derived(CaptureNameInference; unique free non-call bare name)@2:17[78..81]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Call origin=Derived(PipeFallback; ordinary expression-chain growth)@2:17[78..81]
+                          source:
+                            Product origin=Generated(ProductLift)@2:17[78..79]
+                              elements:
+                                ExprElem
+                                  Name "x" origin=Source@2:17[78..79]
+                          target:
+                            Name "x" origin=Source@2:19[80..81]
+                    Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@2:22[83..94]
+                      slot:
+                        BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@2:22[83..94]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "x" origin=Derived(CaptureNameInference; unique free non-call bare name)@2:22[83..94]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Call origin=Derived(PipeFallback; no following source product)@2:32[93..94]
+                          source:
+                            Product origin=Source@2:22[83..89]
+                              elements:
+                                ExprElem
+                                  Name "x" origin=Source@2:23[84..85]
+                                ExprElem
+                                  Name "x" origin=Source@2:26[87..88]
+                          target:
+                            Name "x" origin=Source@2:32[93..94]
+                  params:
+                    None
+              body:
+                NormBody origin=Source@2:40[101..106]
+                  forms:
+                    Form TailValue
+                      Name "x" origin=Source@2:42[103..104]
+    Form Let
+      Decl Let origin=Source@3:1[108..148]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[112..148]
+          deduce:
+            None
+          value_pattern:
+            Binder "ambiguous" origin=Source@3:5[112..121]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@3:17[124..148]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@3:17[124..142]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@3:18[125..136]
+                      slot:
+                        BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@3:18[125..136]
+                          deduce:
+                            None
+                          value_pattern:
+                            Pattern Error
+                              Error "capture shorthand requires exactly one free non-call bare name; found x, y" origin=Derived(CaptureNameInference; ambiguous capture shorthand)@3:18[125..136]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Call origin=Derived(PipeFallback; no following source product)@3:28[135..136]
+                          source:
+                            Product origin=Source@3:18[125..131]
+                              elements:
+                                ExprElem
+                                  Name "x" origin=Source@3:19[126..127]
+                                ExprElem
+                                  Name "y" origin=Source@3:22[129..130]
+                          target:
+                            Name "z" origin=Source@3:28[135..136]
+                  params:
+                    None
+              body:
+                NormBody origin=Source@3:36[143..148]
+                  forms:
+                    Form TailValue
+                      Name "z" origin=Source@3:38[145..146]
+    Form Let
+      Decl Let origin=Source@4:1[150..197]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[154..197]
+          deduce:
+            None
+          value_pattern:
+            Binder "nested" origin=Source@4:5[154..160]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@4:14[163..197]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@4:14[163..187]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@4:15[164..180]
+                      slot:
+                        BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@4:15[164..180]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "cap" origin=Derived(CaptureNameInference; unique free non-call bare name)@4:15[164..180]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Closure placement=Ordinary origin=Source@4:15[164..180]
+                          head:
+                            ClosureHead origin=Generated(ClosureNormalize)@4:15[164..172]
+                              deduce:
+                                None
+                              captures:
+                                Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@4:16[165..168]
+                                  slot:
+                                    BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@4:16[165..168]
+                                      deduce:
+                                        None
+                                      value_pattern:
+                                        Binder "cap" origin=Derived(CaptureNameInference; unique free non-call bare name)@4:16[165..168]
+                                      annotation:
+                                        None
+                                      with_clause:
+                                        None
+                                      initializer:
+                                        None
+                                  initializer:
+                                    Name "cap" origin=Source@4:16[165..168]
+                              params:
+                                None
+                          body:
+                            NormBody origin=Source@4:24[173..180]
+                              forms:
+                                Form TailValue
+                                  Name "cap" origin=Source@4:26[175..178]
+                  params:
+                    None
+              body:
+                NormBody origin=Source@4:39[188..197]
+                  forms:
+                    Form TailValue
+                      Name "value" origin=Source@4:41[190..195]
+    Form Let
+      Decl Let origin=Source@5:1[199..229]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[203..229]
+          deduce:
+            HoleDecl "T" origin=Generated(PatternNormalize)@5:6[204..205]
+              annotation:
+                None
+          value_pattern:
+            PatternSequence origin=Generated(PatternNormalize)@5:9[207..223]
+              elements:
+                PatternSkeleton origin=Generated(PatternNormalize)@5:9[207..211]
+                  SkeletonName "head" role=NodeName origin=Source@5:9[207..211]
+                Pack origin=Source@5:14[212..219]
+                  Binder "rest" origin=Source@5:17[215..219]
+                HoleRef "T" origin=Source@5:22[220..221]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "value" origin=Source@5:26[224..229]

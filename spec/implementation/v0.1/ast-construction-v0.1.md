@@ -1799,6 +1799,26 @@ normally: `{ x; y; }` contains two body forms.
 
 ## 11. Closure head
 
+> **v0.5-A amendment.** The historical v0.1 text below is retained as the
+> construction baseline. The current parser uses the orthogonal
+> `placement × optional head × implementation` closure shape and let-shaped
+> capture items documented in
+> `spec/contracts/frontend-semantic-amendment-v0.5-a.md`.
+>
+> A callable-head DeduceList is propagated as a lexical Raw parsing environment
+> through capture slots and initializers, parameters, call policy, return,
+> clauses, and the complete body. Nested callables inherit that environment.
+> A BindingSlot-local DeduceList remains active through the rest of that slot,
+> including its initializer, and is restored at the slot boundary. These Raw
+> roles are provisional shape data. Post-structural alpha normalization assigns
+> exact local ordinal `HoleBinderId` targets inside one root-tree
+> `AlphaOwner`; nested closure-body `NormProgram` nodes share that owner.
+> Source spans remain provenance. The leading BindingSlot policy precedes the local DeduceList and
+> therefore sees inherited holes only. Generated receiver holes use hygienic
+> generated keys rather than source spelling. Exact Norm binding currently
+> covers Pattern/policy occurrences; ordinary value-side names/navigation
+> remain for a later resolved-symbol pass.
+
 ### 11.1 Full order
 
 ```text
@@ -1948,6 +1968,12 @@ Valid return binding-slot examples include:
 -> let result: annotation
 -> <T> result pattern: annotation
 ```
+
+In `-> result`, `result` is the explicit binder for the returned object. The
+parser does not decide that the binder is a value or a type: that follows the
+callable's eventual result rank. A suffix `: annotation` constrains the bound
+result. Consequently `-> A r` remains an extraction Pattern and is not parsed
+as a prefix type annotation for `r`.
 
 Return slots reject `with { ... }` in this phase. That restriction is
 contextual parser structure, not a semantic dependency check.

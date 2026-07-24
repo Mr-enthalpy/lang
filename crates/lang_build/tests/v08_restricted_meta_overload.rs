@@ -7,7 +7,7 @@ use lang_build::{
     ProductMaterialRole, Provenance, ResolveExpectation, ResolverCode,
     RestrictedMetaInvocationOutcome, RestrictedOverloadFailureKind, VisibilityView,
 };
-use lang_syntax::{NormExpr, NormForm};
+use lang_syntax::{NormExpr, NormForm, NormOverloadStrategy};
 use support::{build_fixture_error, build_single_fixture_world, fixture_source_root};
 
 fn world() -> CompilationWorld {
@@ -306,6 +306,15 @@ fn unit_named_pattern_matches_unit_and_does_not_match_int() {
     assert_eq!(forwarded_type_name(invoke("unit + int")), "int");
     let selected = plus_selection("int + int").expect("generic selected");
     assert_eq!(selected.specificity.sum_depth, 2);
+}
+
+#[test]
+fn named_strategy_metadata_is_carried_only_after_candidate_applicability() {
+    let selected = plus_selection("int + int").expect("generic named-strategy candidate selected");
+    assert_eq!(
+        selected.overload_strategy,
+        NormOverloadStrategy::Named("prefer_explicit".to_string())
+    );
 }
 
 #[test]

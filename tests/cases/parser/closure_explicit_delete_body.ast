@@ -17,17 +17,11 @@ Program
               Segment has_incoming=false
                 OperatorExpr
                   Atom
-                    Closure Explicit
+                    Closure Ordinary
                       FnHeadPrefix
                         params:
                           ParamClause
                             extract:
                               elements:
                       Delete
-                        message
-                          Expr
-                            Pipe
-                              Segment has_incoming=false
-                                OperatorExpr
-                                  Atom
-                                    StringLiteral "\"closure delete\""
+                        message StringLiteral "closure delete"

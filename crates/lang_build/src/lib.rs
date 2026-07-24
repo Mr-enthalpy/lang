@@ -141,8 +141,10 @@ pub use model::{
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
 pub use overload_pattern::{
-    decode_param_pattern, match_param_pattern, overload_args_from_classified_shape,
-    OverloadArgShape, PatternMatchOutcome, RestrictedParamPattern, SpecificityTuple,
+    decode_param_pattern, match_pack_param_pattern, match_param_pattern,
+    overload_args_from_classified_shape, pack_operand_is_admissible, OverloadArgShape,
+    PackOperandClass, PatternLayerOrder, PatternMatchOutcome, RestrictedParamPattern,
+    SpecificityTuple,
 };
 pub use overload_set::{
     construct_c0, invoke_restricted_meta_overload, invoke_restricted_meta_overload_with_policy,
@@ -174,15 +176,18 @@ pub use policy_overload::{
     PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection,
 };
 pub use policy_pair::{
-    compute_export_closure, compute_wpre, derive_function_object_p1,
+    compute_export_retention_closure, compute_wpre, derive_function_object_p1,
     elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
-    elaborate_namespace_declaration_policy, externally_visible, normalize_p2_policy, project_p1,
-    publicly_reachable, BuiltinPrivilegedSealFunction, FormalPolicyPattern, FunctionMember,
-    FunctionMemberKind, FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView,
-    FunctionSliceStage, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
-    PolicyPair, PolicyResultEntry, PolicyStage, SealWorldSnapshot, StageSet, ValueComponentPolicy,
-    ValueMutability, ValuePresence, WpreRoots,
+    elaborate_namespace_declaration_policy, externally_visible, function_object_declaration_policy,
+    normalize_p2_policy, project_export_overload_sets, project_export_root_preview, project_p1,
+    project_resolved_export_view, publicly_reachable, BuiltinPrivilegedSealFunction,
+    ExportAdmission, ExportCandidateView, FormalPolicyPattern, FunctionMember, FunctionMemberKind,
+    FunctionObject, FunctionObjectDeclarationPolicy, FunctionObjectView, FunctionSliceStage,
+    NamespaceCandidateSetRef, NamespaceDeclarationPolicy, NamespaceDeclarationPosition,
+    NamespaceExportNode, NamespaceOverloadSets, NamespaceResolveAuthority, NamespaceVisibility,
+    P1Projection, PatternComponentPolicy, Phase, PolicyPair, PolicyResultEntry, PolicyStage,
+    ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability,
+    ValuePresence, WpreRoots,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

@@ -66,6 +66,7 @@ fn parse_canonical_element(
     let token = parser.cursor.peek_non_trivia();
 
     match &token.kind {
+        TokenKind::Symbol(Symbol::Ellipsis) => Some(parse_canonical_pack(parser, deduce)),
         TokenKind::Symbol(Symbol::LParen) => Some(parse_canonical_product_extract(parser, deduce)),
         TokenKind::Name if token.text == "_" => {
             let token = parser.cursor.bump_non_trivia();
@@ -80,6 +81,31 @@ fn parse_canonical_element(
             })
         }
         _ => None,
+    }
+}
+
+fn parse_canonical_pack(parser: &mut Parser<'_>, deduce: &DeduceListAst) -> CanonicalSkeletonAst {
+    let ellipsis = parser
+        .cursor
+        .consume_symbol(Symbol::Ellipsis)
+        .expect("parse_canonical_pack at `...`");
+    let inner = if let Some(inner) = parse_canonical_element(parser, deduce) {
+        inner
+    } else {
+        let span = parser.cursor.current_span();
+        parser.error(
+            DiagnosticCode::ExpectedName,
+            "expected a Pattern primary after `...`",
+            span,
+        );
+        CanonicalSkeletonAst::Error(
+            parser.error_ast("expected a Pattern primary after `...`", span),
+        )
+    };
+    let span = ellipsis.span.join(canonical_skeleton_span(&inner));
+    CanonicalSkeletonAst::Pack {
+        inner: Box::new(inner),
+        span,
     }
 }
 
@@ -223,5 +249,18 @@ fn recover_to_canonical_boundary(parser: &mut Parser<'_>) {
         && !parser.is_form_boundary()
     {
         parser.cursor.bump_non_trivia();
+    }
+}
+
+fn canonical_skeleton_span(skeleton: &CanonicalSkeletonAst) -> crate::Span {
+    match skeleton {
+        CanonicalSkeletonAst::Segment { span, .. }
+        | CanonicalSkeletonAst::Pack { span, .. }
+        | CanonicalSkeletonAst::ProductExtract { span, .. }
+        | CanonicalSkeletonAst::Wildcard { span }
+        | CanonicalSkeletonAst::Name { span, .. }
+        | CanonicalSkeletonAst::NavPath { span, .. }
+        | CanonicalSkeletonAst::Literal { span, .. } => *span,
+        CanonicalSkeletonAst::Error(error) => error.span,
     }
 }

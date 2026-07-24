@@ -119,6 +119,13 @@ pub enum PolicyAtomAst {
 pub enum BindingPatternAst {
     Binder(BinderNameAst),
     Product(ProductExtractAst),
+    /// Match the remaining normalized nodes at this structural level. The
+    /// ellipsis is pattern-side syntax only; it does not construct a pack
+    /// value or introduce a right-value unpack operator.
+    Pack {
+        inner: Box<BindingPatternAst>,
+        span: Span,
+    },
     Skeleton(CanonicalSkeletonAst),
     Error(ErrorAst),
 }
@@ -174,6 +181,12 @@ pub enum CanonicalNameRole {
 pub enum CanonicalSkeletonAst {
     Segment {
         elements: Vec<CanonicalSkeletonAst>,
+        span: Span,
+    },
+    /// Pattern-side remainder constructor inside a canonical Sequence. It
+    /// binds only the immediately following canonical primary.
+    Pack {
+        inner: Box<CanonicalSkeletonAst>,
         span: Span,
     },
     ProductExtract {
@@ -341,6 +354,11 @@ pub enum AtomKind {
         components: Vec<NavComponentAst>,
         explicit_terminated: bool,
     },
+    /// First-class field-function closure. Unlike `MemberSugar`, this node
+    /// does not capture a receiver; its first argument determines `T`.
+    DotClosure {
+        selector: SelectorAst,
+    },
     MemberSugar {
         object: Box<AtomAst>,
         selector: SelectorAst,
@@ -363,33 +381,38 @@ pub enum AtomKind {
 // --- Closure AST ---
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ClosureAst {
-    InPlace(InPlaceClosureAst),
-    Explicit(ExplicitClosureAst),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InPlaceClosureAst {
-    pub body: BodyBlockAst,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExplicitClosureAst {
-    pub head: FnHeadPrefixAst,
+pub struct ClosureAst {
+    pub placement: ClosurePlacementAst,
+    pub head: Option<FnHeadPrefixAst>,
     pub body: ClosureBodyAst,
     pub span: Span,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ClosurePlacementAst {
+    InPlace,
+    Ordinary,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClosureBodyAst {
     Block(BodyBlockAst),
+    NamedBlock {
+        strategy: NameAst,
+        block: BodyBlockAst,
+        span: Span,
+    },
+    Defaulted {
+        default_name: NameAst,
+        span: Span,
+    },
     Delete(DeleteBodyAst),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteBodyAst {
-    pub message: ExprAst,
+    /// Source spelling of the optional string literal, including quotes.
+    pub message: Option<String>,
     pub delete_name: NameAst,
     pub span: Span,
 }
@@ -432,9 +455,17 @@ pub struct CaptureClauseAst {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CaptureItemAst {
-    pub expr: ExprAst,
-    pub span: Span,
+pub enum CaptureItemAst {
+    /// A full let-shaped binding. `let` may be omitted when no policy prefix
+    /// needs it as an anchor.
+    Explicit {
+        slot: BindingSlotAst,
+        initializer: ExprAst,
+        span: Span,
+    },
+    /// Source-preserving capture shorthand. Normalization must infer exactly
+    /// one free non-call bare name and elaborate this into a binding.
+    Inferred { initializer: ExprAst, span: Span },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

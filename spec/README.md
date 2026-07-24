@@ -51,11 +51,20 @@ documentation only; it adds no semantic passes.
 | `normalized-surface-semantics-v0.5.md` | Published; authoritative for current normalized surface behavior | Public explanation of the normalized surface: source-product continuation and call binding, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
 | `agent-interpretation-guide-v0.5.md` | Published; normative for agents | Normative guidance for coding/documentation agents: how to interpret source without importing conventional call assumptions. |
 
-## Frozen v0.2 frontend input authority
+## Current Raw AST amendment and contract
+
+The current frontend no longer claims to be the unchanged v0.2 parser. Read:
+
+| File | Authority | Role |
+|---|---|---|
+| `contracts/frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Classifies hard structural corrections separately from new syntax and preserves the v0.1/v0.2/v0.3 historical snapshots. |
+| `contracts/raw-ast-contract-v0.5.md` | Normative current Raw AST contract | Defines the amended lexer/parser/Raw-AST surface, independent closure placement/provenance, and `PatternValidatedNormProgram` handoff. |
+
+## Frozen v0.2 frontend input history
 
 **`spec/public/v0.2/`** — Frozen frontend input contract. v0.2 is closed but
-remains authoritative for the Raw AST input surface that the normalizer
-consumes.
+remains authoritative for the v0.2 historical surface. It must not be edited
+to make later amendments appear original.
 
 | File | Authority | Role |
 |---|---|---|
@@ -72,17 +81,17 @@ consumes.
 |---|---|---|
 | `glossary.md` | Normative for terminology | Resolves naming ambiguity across all documents. |
 
-## Implementation backing
+## Historical implementation backing
 
-**`spec/implementation/v0.1/`** — Implementation backing documents. Read
-these only for parser implementation repair, diagnostic implementation
-repair, factual inventory checks, or archaeology.
+**`spec/implementation/v0.1/`** — Closed v0.1 implementation snapshots. Read
+these for parser archaeology and the pre-amendment baseline, then apply v0.5-A
+and the current v0.5 contract.
 
 | File | Authority | Role |
 |---|---|---|
-| `ast-construction-v0.1.md` | Normative for parser implementation behavior | Defines every syntax rule, AST shape, and parser constraint. Implementation-level backing reference. |
-| `diagnostics-v0.1.md` | Normative for diagnostic implementation behavior | Defines diagnostic categories, span policy, and recovery behavior. Implementation-level reference. |
-| `implementation-status-v0.1.md` | Authoritative factual inventory | Records the current implementation status of every feature. Does not define parser rules. |
+| `ast-construction-v0.1.md` | Historical v0.1 parser snapshot | Defines the closed v0.1 syntax/AST baseline. |
+| `diagnostics-v0.1.md` | Historical v0.1 diagnostic snapshot | Defines the closed v0.1 diagnostic and recovery baseline. |
+| `implementation-status-v0.1.md` | Historical v0.1 inventory | Records implementation status at the v0.1 snapshot, not current amended facts. |
 
 ## Contract and handoff documents
 
@@ -94,6 +103,8 @@ ordinary syntax understanding.
 |---|---|---|
 | `raw-ast-contract-v0.1.md` | Normative contract for future normalization | Defines Raw AST invariants that future normalization passes may rely on. |
 | `raw-ast-contract-freeze-v0.2.md` | Normative for v0.2 contract freeze | Defines v0.2 freeze boundary, allowed work, forbidden work, and handoff requirements for v0.3. |
+| `frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Records each post-freeze correction/extension without rewriting the frozen documents. |
+| `raw-ast-contract-v0.5.md` | Normative current contract | Defines the current amended Raw AST and validated-normalization boundary. |
 | `v0.3-normalization-handoff-checklist.md` | Normative for v0.3 handoff readiness; non-normative for final Normalized AST design | Checklist of may-assume, must-not-assume, required input families, diagnostic/recovery inputs, normalization obligations, and open v0.3 questions. |
 | `v0.4-normalization-prototype-notes.md` | Normative for the v0.4 normalization boundary | Records what the v0.4 Raw AST → Normalized AST prototype/hardening delivered and the boundary it must not cross (value/pattern separation, annotation patterns, unresolved operator/alias targets, `Unsupported` visibility, no pattern-space/semantic behavior). |
 | `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; not current public behavior | Preserves extraction and current v0.8/v0.9 construction-substrate boundaries; its old formal `r =`/`r ===` return split is superseded by the canonical symbol-first design note. |
@@ -196,7 +207,7 @@ Read these for the v0.3 Normalized AST design baseline (historical):
 
 ### Frozen v0.2 frontend input
 
-Read these for the frozen Raw AST input surface:
+Read these as the frozen Raw AST historical surface:
 
 1. `spec/public/v0.2/lexical-syntax-v0.2.md` - Understand the public lexical syntax.
 2. `spec/public/v0.2/concrete-syntax-v0.2.md` - Understand the public concrete syntax.
@@ -204,15 +215,20 @@ Read these for the frozen Raw AST input surface:
 4. `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` - Inspect the frozen Raw AST construct inventory.
 5. `spec/reference/glossary.md` - Resolve terminology ambiguity.
 
+Then read:
+
+1. `spec/contracts/frontend-semantic-amendment-v0.5-a.md`
+2. `spec/contracts/raw-ast-contract-v0.5.md`
+
 ### Extended implementer reading order
 
 Read these only when implementing, auditing, or repairing the frontend.
 
 1. `spec/implementation/v0.1/ast-construction-v0.1.md` - Implement the parser.
 2. `spec/implementation/v0.1/diagnostics-v0.1.md` - Diagnostic catalog (implementation-level reference).
-3. `spec/implementation/v0.1/implementation-status-v0.1.md` - Know current implementation facts.
-4. `spec/contracts/raw-ast-contract-v0.1.md` - Know Raw AST invariants for normalization.
-5. `spec/contracts/raw-ast-contract-freeze-v0.2.md` - Know v0.2 freeze boundary and v0.3 handoff.
+3. `spec/implementation/v0.1/implementation-status-v0.1.md` - Know the historical v0.1 implementation snapshot.
+4. `spec/contracts/frontend-semantic-amendment-v0.5-a.md` - Apply the versioned delta.
+5. `spec/contracts/raw-ast-contract-v0.5.md` - Know current amended facts.
 6. `spec/history/v0.1/operator-design.md` - Understand operator syntax rules.
 7. `spec/history/v0.1/resolved-questions.md` - Understand resolved design decisions.
 
@@ -243,9 +259,10 @@ Then read within each block as needed. Scope boundaries are in
 
 ## Spec priority
 
-For current normalized surface behavior, `spec/public/v0.5/` is the reader-facing
-authority. For frozen Raw AST input syntax, `spec/public/v0.2/` remains
-authoritative.
+For current normalized surface behavior, `spec/public/v0.5/` is the
+reader-facing authority. `spec/public/v0.2/` remains authoritative only for
+the frozen historical Raw AST snapshot; v0.5-A and `raw-ast-contract-v0.5.md`
+define the current amended parser contract.
 
 The implementation and golden snapshots remain the factual behavior source.
 

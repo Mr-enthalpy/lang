@@ -279,6 +279,28 @@ value equality never inserts `?`
 ordinary expression evaluation never inserts `?`
 ```
 
+### 3.1 Callable result extraction uses the same binding judgment
+
+A callable return slot is a binding Pattern, including when it is a product
+extraction:
+
+```lang
+-> (r first, d second)
+```
+
+Explicit writes in the body address `r` and `d` separately. A bare terminal
+expression instead supplies one result object under the expectation:
+
+```text
+let (r first, d second) = expr
+```
+
+`expr return` and `expr (Self return)` use that same whole-result Pattern after
+the active return frame has been selected. The explicit `Self` spelling changes
+only which output frame receives the value, not how that frame decomposes it.
+No special multi-return container, implicit `?`, or parallel assignment rule is
+introduced.
+
 ## 4. Equality Examples
 
 Equality never inserts `?`, but product normal form participates directly in

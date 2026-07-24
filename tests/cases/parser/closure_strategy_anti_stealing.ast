@@ -1,0 +1,263 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x0
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    BracketCallSugar operator="[]"
+                      object:
+                        Name obj
+                      args:
+                        Product
+                          elements:
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Closure Ordinary
+                                        FnHeadPrefix
+                                          captures:
+                                            CaptureClause
+                                              items:
+                                                CaptureItem Inferred
+                                                  initializer:
+                                                    Expr
+                                                      Pipe
+                                                        Segment has_incoming=false
+                                                          OperatorExpr
+                                                            Atom
+                                                              Name cap
+                                        BodyBlock
+                                          forms:
+                                            ExprForm
+                                              Expr
+                                                Pipe
+                                                  Segment has_incoming=false
+                                                    OperatorExpr
+                                                      Atom
+                                                        Name cap
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x1
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  BracketCallSugar operator="[]"
+                    object:
+                      Product
+                        elements:
+                    args:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Closure Ordinary
+                                      FnHeadPrefix
+                                        captures:
+                                          CaptureClause
+                                            items:
+                                              CaptureItem Inferred
+                                                initializer:
+                                                  Expr
+                                                    Pipe
+                                                      Segment has_incoming=false
+                                                        OperatorExpr
+                                                          Atom
+                                                            Name cap
+                                      BodyBlock
+                                        forms:
+                                          ExprForm
+                                            Expr
+                                              Pipe
+                                                Segment has_incoming=false
+                                                  OperatorExpr
+                                                    Atom
+                                                      Name cap
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x2
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    BracketCallSugar operator="[]"
+                      object:
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  OperatorSugar fixity=Binary operator="+"
+                                    lhs:
+                                      Atom
+                                        Name a
+                                    rhs:
+                                      Atom
+                                        Name b
+                      args:
+                        Product
+                          elements:
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Closure Ordinary
+                                        FnHeadPrefix
+                                          captures:
+                                            CaptureClause
+                                              items:
+                                                CaptureItem Inferred
+                                                  initializer:
+                                                    Expr
+                                                      Pipe
+                                                        Segment has_incoming=false
+                                                          OperatorExpr
+                                                            Atom
+                                                              Name cap
+                                        BodyBlock
+                                          forms:
+                                            ExprForm
+                                              Expr
+                                                Pipe
+                                                  Segment has_incoming=false
+                                                    OperatorExpr
+                                                      Atom
+                                                        Name cap
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f0
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  Binder
+                                    TextName r
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      OverloadStrategy default
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name r
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f1
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  Binder
+                                    TextName r
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      OverloadStrategy delete
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name r

@@ -1,0 +1,5 @@
+let x0 = obj[[cap] => { cap }];
+let x1 = ()[[cap] => { cap }];
+let x2 = (a + b)[[cap] => { cap }];
+let f0 = () -> r => default { r };
+let f1 = () -> r => delete { r };

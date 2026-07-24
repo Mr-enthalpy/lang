@@ -270,7 +270,7 @@ The notation is normalized, not raw source: `(x)` here is a normalized source
 Product, and a nested `(a, b)` is a preserved product element, not a flattened
 list.
 
-## 7. Operator / Member / Double-Dot / Bracket Sugar
+## 7. Operator / Dot Closure / Member / Double-Dot / Bracket Sugar
 
 All of these are normalization-level lowering into the same product-call
 skeleton. None of them perform lookup, dispatch, or resolution.
@@ -312,18 +312,41 @@ Only the generated binary `-` participates in later operator lookup.
 No operator lookup occurs during normalization.
 ```
 
-### Member sugar
+### First-class dot closure and compact member sugar
 
 ```text
-Conceptual rule: member lowering
-Dump label:      MemberLowering
+Conceptual rule: dot-closure lowering
+Dump label:      DotClosureLowering
 ```
 
 ```text
+.field
+=> generated closure:
+   <T: type>(val: T, ...args) { (val, args) |> field::T }
+
 obj.field
-=> obj |> generated closure:
-   <T: type>(val: T) => { (val) |> field::T }
+=> obj |> .field
+
+let d = .field
+BindingShape(P1 |> .field P2)
+== BindingShape(P1 |> d P2)
 ```
+
+`.field` is independently usable and does not capture a left-hand receiver.
+Raw `MemberSugar(obj, field)` may preserve the compact source shape, but its
+normalized target is the same generated in-place `NormClosure` carrier.
+`MemberLowering` records that compact wrapper; it does not define a second
+member semantic system.
+After atom lowering, `.field` is an ordinary `NormExpr`. Its generated origin
+cannot change pipe/product association, absorb following items, bypass
+first-product-only, or replace legality repair. Compact `obj.field`
+mechanically produces `obj |> .field`, then returns that ordinary expression
+to the existing suffix and space-binding environment.
+
+“First-class expression” does not mean “eagerly materialized value.”
+Normalization creates only the carrier above. A later explicit binding or call
+context may materialize it; another expression context preserves/composes the
+carrier without allocating a function object or capture environment.
 
 ### Double-dot sugar
 
@@ -360,8 +383,9 @@ Explicit `()` inside brackets is a user-written Unit product: obj[()] => (obj, (
 
 ### Shared boundary
 
-In the generated closures, `T` and `val` are local generated binders, and the
-receiver becomes the call's source product (a `ProductLift`).
+In the generated closures, `T`, `val`, and dot-closure `args` are local
+generated binders, and the receiver becomes the call's source product (a
+`ProductLift`). `...args` is a Pattern remainder binding, not a pack type.
 
 ```text
 `field::T` and `method::T` are unresolved navigation targets.
@@ -482,12 +506,78 @@ Each declared hole is a `HoleDecl` in the binding site's `deduce` list; a use of
 that hole inside an annotation is a `HoleRef`:
 
 ```text
-HoleDecl   declares a hole in a DeduceList (e.g. `<T>` -> HoleDecl "T")
-HoleRef    references a declared hole inside a pattern (e.g. annotation `T` -> HoleRef "T")
+HoleDecl   { id: HoleBinderId, spelling, annotation, origin }
+HoleRef    { target: HoleBinderId, spelling, origin }
 ```
 
 A `HoleDecl` may itself carry an annotation pattern (e.g. `<T: type>` declares
 `T` with annotation `PatternName "type"`).
+
+DeduceLists elaborate as left-to-right dependent telescopes. If
+`<A1: T1, ..., An: Tn>` occurs with inherited hole environment `Γ0`, then
+`Ti` is interpreted in `Γ(i-1)` and only afterwards is `Ai` added. Therefore
+`<A, B: A>` refers to the preceding `A`, while `<A: B, B>` does not resolve the
+first annotation to the later `B`. A declaration is not visible in its own
+annotation. Same-list duplicates and redeclaration of any active ancestor hole
+are errors; DeduceList holes do not shadow. `HoleBinderId`, rather than the
+display spelling, records the exact declaration targeted by a `HoleRef`.
+
+A callable head DeduceList scopes the callable's capture slots and
+initializers, parameters, call policy, return slot, head clauses, and complete
+body. Nested callables inherit that active hole environment before extending
+it with their own DeduceList. Ordinary value binders occupy a separate lexical
+environment and do not change Pattern-context hole identity.
+
+Within one BindingSlot, source order remains:
+
+```text
+Policy -> let -> DeduceList -> Pattern -> Annotation -> Initializer
+```
+
+The policy sees inherited holes only. The slot-local DeduceList then extends
+the environment for the following Pattern, annotation, and initializer; it
+does not retroactively bind a name in the leading policy.
+
+Return clauses keep ordinary let-shaped BindingSlot order:
+
+```lang
+let f = <A>(x: A) -> r: A => {
+    let y: A = x;
+    y
+};
+```
+
+`r` is the explicit symbol bound to the returned object. `A` is its postfix
+annotation Pattern. Thus `r` denotes a value for a value-returning callable
+and a type/Pattern object for a callable whose result has that rank; parser
+syntax does not preclassify the binder as a type. Use `-> _: A` when no result
+symbol is bound. A prefix-shaped `-> A r` remains an extraction Pattern; it is
+not a type annotation on `r`.
+
+Raw AST preserves spelling, lexical scope shape, and provisional canonical
+roles. A distinct alpha-normalization step after structural normalization
+allocates fresh lexical ordinals and rewrites scoped Pattern/policy occurrences
+to exact `HoleBinderId` targets. Source spans are provenance, never semantic
+hole identity; alpha-equivalent binder/ref structures are independent of source
+spelling and byte offset. One root `normalize_program` invocation establishes
+an `AlphaOwner` for its complete normalized tree. Nested closure-body
+`NormProgram` nodes share that owner and ordinal space, so their references may
+target an outer callable's hole directly. A bare ordinal from another
+`AlphaOwner` has no comparable semantic meaning.
+
+Compiler-generated receiver holes carry a hygienic generated key before alpha
+conversion. They are not entered in the source-spelling redeclaration table,
+so a generated display name `T` cannot collide with a user-written `<T>`.
+Generated Pattern/policy references follow the hygienic key to that binder.
+
+Ordinary value-side `NormExpr::Name` and ungrouped navigation-name components
+remain unresolved. Callable-wide hole scope is propagated through the whole
+callable, but this Norm pass assigns exact identities only to Pattern/policy
+occurrences. A later resolved-symbol pass owns value-side name/navigation
+identity, including generated navigation such as `field::T`.
+
+The anonymous annotation placeholder `_` is `AnonymousHole`; it is not a named
+`HoleRef` and has no `HoleBinderId`.
 
 ### Annotation is pattern-side / classifier-pattern material
 
@@ -531,7 +621,7 @@ Closure head example (head dump label `ClosureNormalize`):
 ```text
 <T: type>(val: T) => { val }
 
-Closure kind=Explicit
+Closure placement=Ordinary
   head: ClosureHead
     deduce:
       HoleDecl "T" with annotation AnnotationPattern( PatternName "type" )
@@ -552,6 +642,7 @@ pattern-side structures preserved for later checking:
 (x,)          -> PatternProduct[ Binder "x", Unit ]
 (,x)          -> PatternProduct[ Unit, Binder "x" ]
 (x,,y)        -> PatternProduct[ Binder "x", Unit, Binder "y" ]
+(x, ...rest)  -> PatternProduct[ Binder "x", Pack(Binder "rest") ]
 _ Pair::std   -> PatternSkeleton( SkeletonWildcard, SkeletonNav["Pair","std"] )
 T Pair::std   -> PatternSkeleton( SkeletonName "T" role=Hole, SkeletonNav["Pair","std"] )
 ```
@@ -562,8 +653,87 @@ No totality check, pattern matching, extraction applicability check,
 exhaustiveness check, or residual propagation occurs at normalization.
 ```
 
-There is no type checking, kind checking, or hole-validity checking beyond local
-DeduceList recognition. `Option::std` / `Pair::std` are not resolved, and
+At most one `Pack` may occur at each normalized structural level; nested
+levels are independent. The pack remains Pattern-side only. Normalization does
+not create a pack value, variadic ABI class, runtime container, or RHS unpack
+operator.
+
+The common post-normalization `validate_normalized_patterns` pass enforces that
+limit over all `NormBindingSlot` consumers: top-level and local `let`,
+parameters, returns, annotations, and nested Pattern levels. Both `Product`
+and `Sequence` count their direct pack children before recursive validation.
+This pass is the sole authority for normalized-level pack cardinality. The
+parser preserves all syntactically formed `BindingPatternAst::Pack` nodes and
+reports only local syntax failures such as a missing inner Pattern; it neither
+counts packs nor predicts normalized structural levels.
+
+`normalize_program` remains available to dump recovered or invalid normalized
+structure. Downstream build installation instead uses:
+
+```text
+normalize_and_validate_patterns
+  -> PatternValidatedNormProgram
+  |  PatternInvalidNormProgram
+```
+
+Only the Pattern-validated wrapper enters world harvesting. Its current proof
+scope is deliberately exact:
+
+```text
+one Pack per normalized structural level
+no bare Product as a Pack operand
+no duplicate DeduceList hole in the active telescope
+```
+
+It does not prove order-sensitive Pack applicability, stable Pattern-head
+identity, full matching support, or absence of recovered `NormExpr::Error`.
+
+`Pack` is part of the general binding-pattern grammar. It is preserved in
+every binding-slot context—ordinary/local `let`, product extraction, callable
+parameters, callable return slots, and nested binding Patterns—not only in
+parameter lists. Normalization does not assign those contexts their later
+matching semantics.
+
+Ellipsis may also occur as a direct child of a canonical Pattern Sequence:
+
+```text
+PatternSequence ::= PatternTerm*
+PatternTerm     ::= "..." PatternPrimary | PatternPrimary
+
+a ...x b       -> NormPattern::Sequence[a, Pack(x), b]
+...(x, y)      -> Raw Pack(Product[x, y]), rejected after P normalization
+...((x, y) pair)
+                -> Pack(Sequence[Product[x, y], PatternName "pair"])
+```
+
+The prefix constructor consumes one immediate Pattern primary, not the rest of
+the Sequence. A bare Product supplies no stable top mode after P normalization,
+so `Pack` cannot make that flattened boundary semantic again. The parser keeps
+`...(x, y)` for recovery and auditing, but the normalized Pattern validator
+rejects it. An ordered layer may later admit a structured operand only when its
+P-normal form retains a stable top mode, as in `...((x, y) pair)`. At an
+unordered named layer, only a whole-remainder binder/discard (possibly under a
+transparent let-shaped slot) is admissible. Order and stable-top-mode checks
+belong to later resolved Pattern semantics.
+
+`Pack` and `BindingSlot` are transparent to the normalized-level cardinality
+rule; only Product and Sequence establish structural levels.
+
+Every Pack contributes exactly one outward specificity node at its containing
+level:
+
+```text
+...rest -> one explicit-Pack node
+..._    -> one Pack-discard node
+...Q    -> one outward Pack position
+```
+
+Captured width and the number of nodes inside `Q` never create more same-level
+Pack evidence. For `...((a, b) pair)`, evidence for `pair` and its inner
+structure belongs to the preserved next level, not to two flattened EP nodes.
+
+There is no type checking, kind checking, Pattern-head resolution, or general
+matching at normalization. `Option::std` / `Pair::std` are not resolved, and
 whether `T Option::std` is a legal type pattern is not decided.
 
 ### Policy pair preservation
@@ -588,6 +758,192 @@ Normalization does not decide whether a single
 component is P1 value-dominant projection or P2 shorthand, validate pair stage
 rules, or interpret const/mut/namespace atoms. Those are semantic policy
 elaboration in `design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+
+### Capture binding elaboration
+
+An ordinary closure capture clause is a list of let-shaped bindings:
+
+```text
+CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
+
+CaptureItem
+  ::= PolicySpec "let" BindingCore "=" Expr
+   |  "let" BindingCore "=" Expr
+   |  BindingCore "=" Expr
+   |  Expr
+```
+
+The first three forms are explicit captures. `let` may be omitted when no
+policy prefix needs to be anchored. They reuse the ordinary `BindingSlot`
+surface and normalization path; form-level alias `===` is not imported into a
+capture item.
+
+The final form is shorthand. Normalization first forms the ordinary call
+structure of `Expr`, then collects its distinct free bare names whose concrete
+occurrences are not direct callable targets. Exactly one distinct name `n`
+elaborates the item as `let n = Expr`; zero or multiple candidates produce a
+retained normalization error. Call-target role is local to each call node and
+duplicate occurrences of the same text count once:
+
+```text
+[x]                 -> [let x = x]
+[x x]               -> [let x = x |> x]
+[x y z]             -> [let x = x y z]
+[(x, x) |> x]       -> [let x = (x, x) |> x]
+[(x, y) |> z]       -> inference error
+[(1, 2) |> make]    -> inference error
+```
+
+Nested closure parameters, local lets, Patterns, and capture binders do not
+pollute the outer inference set. All initializers in one capture clause are
+interpreted in the enclosing pre-capture environment, so capture bindings are
+simultaneous rather than a sequential let block.
+
+After normalization every capture has one shape:
+
+```text
+NormCapture {
+  slot: NormBindingSlot,
+  initializer: NormExpr,
+  origin: NormOrigin
+}
+```
+
+This is syntax-directed capture binding elaboration, not closure environment
+layout, name resolution, or materialization.
+
+These source-written captures are explicit requirements. In particular,
+`[x]` means explicit `[let x = x]` with the ordinary unwritten capture policy
+domain (`const || mut`); it is not an automatic const capture. A later resolved
+stage may add an `ImplicitConst` requirement for an otherwise uncaptured free
+outer value reference. That later operation requires symbol resolution and
+const-slice projection and therefore is not normalization.
+
+In later resolved semantics, external explicit navigation searches the export
+view, while internal explicit navigation searches the complete namespace view.
+Declaration-side `P1Projection` first applies to actual RHS/result entries and
+produces a resolved internal `PolicyPair`. Only that complete pair may become
+an external candidate policy: its value component is const-projected and its
+associated Pattern component is preserved. Export-retention-closure membership
+admits only the graph-retention dimension; external exposure additionally
+requires every path component to be publicly reachable. A private child and
+public descendants behind it therefore remain internal even inside the
+retention closure. Among admitted symbols, mut-only overload candidates remain
+in the complete internal set and are omitted from the external overload set.
+Pure `absent:Pp` candidates enter unchanged, subject to the structural
+invariant that absent Pv has neither value stages nor value mutability. Thus
+`const + S : compile`, `mut + S : compile`, and their `export` forms are
+invalid. A direct source `export + mut` root remains an invalid declaration.
+
+Value-bearing export views are therefore const-projected, so dependencies reached with
+external authority—including ordinary external call targets—normally satisfy
+automatic const-capture requirements. Automatic capture and call resolution
+therefore touch the same problem domain—symbol identity and readable const
+view—but this does not prescribe pass ordering, data flow, or an implementation
+dependency.
+
+Explicit and automatic capture remain distinct even when they resolve to the
+same source symbol. Explicit capture may rename, project policy, use a complex
+initializer, request `mut`, and preserve distinct provenance. Parsing,
+normalization, and capture discovery neither reject nor erase it as redundant.
+A future layout pass may coalesce equivalent storage/link requirements only
+while preserving binder identity, policy, and provenance.
+
+Resolved capture requirements are abstract dependencies, not a declaration of
+`self` fields, capture-by-value/reference representation, field order, ZST
+status, or ABI layout. An ordinary closure that writes an outer place must have
+an explicit capture able to project a `mut` view; automatic capture never grants
+mutability. An in-place closure has no capture list or capture set, resolves
+outer reads at its embedding layer, and may not directly write an outer place.
+
+For example, an exported ordinary closure's source dependency is explicit:
+
+```lang
+mut let internal_state = ...;
+
+export let exported_fn =
+    [internal_state]() => {
+        use internal_state;
+    };
+```
+
+The dependency does not export `internal_state` and does not by itself require
+an environment field. Before a callable is materialized, every resolved
+capture requirement must lower to a lifetime-checkable source/access/storage
+form. Concrete lifetime, borrow/move/copy, escape, layout, and ABI rules remain
+future work.
+
+### Callable implementation tail
+
+Closure normalization preserves one of:
+
+```text
+Block(body)                         -> ordinary user body
+NamedBlock(strategy, body)          -> named strategy + user body
+Defaulted                           -> compiler-default implementation request
+Delete(message: optional String)    -> selected-candidate rejection
+```
+
+`=> strategy { ... }` and the no-`=>` escape `[[strategy]] { ... }` normalize
+to the same `NamedBlock`. The legacy-looking `() -> r name { ... }` is not
+reinterpreted: `name` remains return extraction material. This layer preserves
+strategy metadata but does not execute a strategy, synthesize a default body,
+or perform overload selection.
+
+Closure placement is orthogonal to head presence and implementation:
+
+```text
+{ ... }                              -> InPlace, head=None
+() -> r name { ... }                 -> InPlace, head=Some
+() -> r [[strategy]] { ... }         -> InPlace, head=Some
+() -> r => { ... }                   -> Ordinary, head=Some
+() -> r => strategy { ... }          -> Ordinary, head=Some
+() -> r => default/delete            -> Ordinary, head=Some
+```
+
+`[[strategy]]` does not change placement. In-place closures cannot spell a
+capture list; `[x] { ... }` remains an error. A malformed callable tail
+normalizes as `NormExpr::Error`, never as a legal empty `Block`.
+
+Product-versus-closure classification, and the decision to bypass an available
+capture slot, recognize only the complete local tail shape `[[Name]] {`.
+A DeduceList alone does not close the capture slot. Thus
+`<T> [[cap] => { cap }] () => { value }` parses the bracketed closure as a
+capture item, while `<T> [[strategy]] { value }` has the complete strategy
+tail. A leading `[[` may be treated as a malformed strategy candidate only
+after parameters, call policy, return syntax, or a head clause has independently
+closed the capture slot and established the strong context.
+
+Ordinary atom/operator postfix parsing does not exclude `[[`, so
+`obj[[cap] => { cap }]`, `()[[cap] => { cap }]`, and
+`(a + b)[[cap] => { cap }]` remain bracket calls with capture-closure
+arguments.
+
+After `=>`, `Name Block` is selected before the bare contextual forms.
+Therefore `=> default { ... }` and `=> delete { ... }` are named strategy
+bodies, while bare `=> default` and `=> delete` remain `Defaulted` and
+`Delete`.
+
+The message-bearing form is intentionally limited to a source string literal:
+
+```text
+=> ("message") delete
+```
+
+The historical `(message_expr) delete` surface is not retained in v0.5 because
+delete messages are static compiler diagnostic text rather than evaluated
+expressions.
+
+Normalized closure placement and origin are separate fields:
+
+```text
+NormClosure.placement = InPlace | Ordinary
+NormClosure.origin    = Source | Generated(rule) | Derived(rule)
+```
+
+Generated provenance never replaces placement. In particular the closure
+generated for `.name` has `placement=InPlace` and
+`origin=Generated(DotClosureLowering)`.
 
 ## 10. Alias Preservation
 
@@ -670,6 +1026,7 @@ Generated:
   ProductLift
   OperatorLowering
   PrefixNegativeLowering
+  DotClosureLowering
   MemberLowering
   DoubleDotLowering
   BracketCallLowering
@@ -705,9 +1062,10 @@ fixtures in `tests/cases/norm/`.
 The normalized surface does not perform name resolution, type/kind checking,
 operator lookup, operator overload resolution, alias target resolution,
 namespace resolution, pattern-head resolution, canonical matching, closure
-materialization, capture analysis, ownership/NLL/drop, effect interpretation,
-runtime evaluation, or code generation. It does not turn Normalized AST into
-HIR.
+materialization, capture-environment analysis, ownership/NLL/drop, effect
+interpretation, runtime evaluation, or code generation. The syntax-directed
+capture-name inference described above is not semantic environment analysis.
+The normalized surface does not turn Normalized AST into HIR.
 
 A source Product is never a conventional argument list. There is no callee-first
 call, method dispatch, field lookup, resolved function call, operator overload

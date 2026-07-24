@@ -5,14 +5,7 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Explicit
-                FnHeadPrefix
-                  params:
-                    ParamClause
-                      extract:
-                        elements:
-                BodyBlock
-                  forms:
+              Error "invalid parenthesized callable tail"
   ExprForm
     Expr
       Pipe

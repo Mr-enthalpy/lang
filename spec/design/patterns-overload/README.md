@@ -14,6 +14,10 @@ Pattern normalization and the candidate model that feeds invocation:
 - first-order type-value candidate adaptation, applicability, specificity
 - the full overload-resolution vision
 - static pattern spaces and extraction chains
+- callable implementation tails, first-class dot closures, and Pattern
+  remainder packs
+- in-place closure candidate metadata and its fixed preference position; lazy
+  embedding lookup/capture boundaries are owned by the function-object model
 
 Resolved pattern owners, `struct` / functional `inject`, and the rule that fully
 named direct-child layers normalize to `Set<PatternValue>` while any bare child
@@ -55,10 +59,12 @@ candidate preparation, not runtime overload resolution.
 - `pattern-normalization-and-first-order-overload.md` — the earlier
   candidate-preparation subset.
 - `overload-resolution-design.md` — the broader, later full overload-resolution
-  vision, including fully admissible set `A`, ordered preference filters, and
-  must-select consistency.
+  vision, including fully admissible set `A`, ordered preference filters
+  (including in-place over non-in-place), and must-select consistency.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
   extraction-chain semantics.
+- `callable-tail-dot-closure-and-pack-pattern.md` — the canonical connection
+  between callable implementation/strategy tails, `.name`, and `...args`.
 
 ## Reading order
 

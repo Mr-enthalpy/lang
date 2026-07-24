@@ -76,6 +76,11 @@ The current target-binding pass records a `BoundReturnEvent` containing the
 return value expression, the unresolved target form, the resolved frame id,
 and provenance.
 
+The selected frame also retains its complete normalized return binding slot,
+including an extraction/product Pattern. It does not collapse
+`-> (r first, d second)` to one synthetic result name. Pattern-directed value
+delivery remains a later pass.
+
 ## 3. Future Return Completion
 
 Targeted return produces a `Done_Return` completion:
@@ -127,6 +132,42 @@ At boundary matching Selfᵢ:
 D-reduction is a future semantic concept. It is not implemented
 in the current parser, normalizer, or build evaluator.
 
+### 5.1 Result delivery is ordinary Pattern binding
+
+For a callable declared with an extraction result:
+
+```lang
+-> (r first, d second)
+```
+
+there is no extra anonymous aggregate output slot that can be written as a
+shortcut. Explicit body writes address the bound outputs `r` and `d`
+separately. Alternatively, a bare terminal expression delivers one result
+object and is checked exactly as the ordinary binding judgment:
+
+```text
+Deliver(expr, frame)
+  == expect that `let (r first, d second) = expr` can match
+```
+
+The same whole-Pattern delivery applies to early-return terminals after target
+selection:
+
+```text
+expr return
+expr (Self return)
+```
+
+The first selects the nearest active frame; the second selects the explicitly
+named active Self frame. Their result matching rule is identical. Only the
+return-target layer differs. A nested explicit target therefore does not
+introduce a second tuple-assignment, decomposition, or return-value algebra.
+
+Bare tail delivery and `Done_Return` delivery both read the declared result
+Pattern directly. They do not insert `?`; they do not broadcast one expression
+to each output binder; and they do not synthesize positional outputs outside
+the normal Pattern matcher.
+
 ## 6. Non-Local Target Propagation
 
 A return targeted at `Selfᵢ` propagates through intermediate
@@ -158,6 +199,8 @@ completions or perform D-reduction.
 | Implicit return | Binds to nearest active `ReturnTargetFrame` | Lowered/completed through enclosing self capability |
 | Explicit self target | Attempts active self-frame match; does not silently fall back to nearest | Full self capability object |
 | Nested unmaterialized closure return | Preserved as unbound nested closure material | Bound when the closure is materialized/elaborated as its own body |
+| Return binding slot | Complete normalized slot/Pattern retained on the target frame | Used as `let ResultPattern = expr` expectation |
+| Extraction-result delivery | Not executed | Explicit writes target each binder; a terminal expression matches the whole result Pattern |
 | `Done_Return` | Not represented | Semantic IR concept |
 | D-reduction | Not implemented | Future boundary action |
 | `Done(unit)` contribution | Not implemented | Local pattern completeness |
@@ -186,6 +229,12 @@ The current `ReturnSelfIdentity` is a placeholder derived from normalized
 binder spelling because full lexical self-slot / function-object identity is
 not wired into this substrate yet. Future explicit self-target resolution
 must use lexical slot identity, not text equality on the spelling `self`.
+
+`ReturnSlotRef.binding_slot` deliberately retains the complete
+`NormBindingSlot`. `ReturnSlotRef.name` is only a convenience for the current
+single-binder diagnostic substrate and is `None` for a product/extraction
+return. Future result delivery must consume `binding_slot`; it must not rebuild
+the result Pattern from `name`.
 
 The build-layer source callable hook currently runs this pass as validation.
 It rejects malformed return targets but does not store bound events in

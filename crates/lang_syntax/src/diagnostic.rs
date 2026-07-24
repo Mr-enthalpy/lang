@@ -19,6 +19,7 @@ pub enum DiagnosticCode {
     UnclosedBrace,
     InvalidDeduceList,
     InvalidCanonicalSkeleton,
+    MultiplePackPatternsAtSameLevel,
     InvalidClosureHead,
     InvalidOperatorExpression,
     ChainedNonAssociativeOperator,

@@ -11,7 +11,8 @@ use crate::{
 /// stage/legacy-export portion to the current flat resolver substrate.
 ///
 /// The canonical result is [`P1Projection`]. This adapter must not be used to
-/// reconstruct value mutability, value presence, or the pattern component.
+/// reconstruct value mutability, value presence, the pattern component, or the
+/// separate const-projected external export view.
 pub fn elaborate_declaration_policy_expr(
     policy: Option<&NormPolicySpec>,
     fallback_provenance: Provenance,

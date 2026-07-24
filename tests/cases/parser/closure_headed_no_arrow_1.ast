@@ -5,4 +5,4 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Error "invalid headed closure without `=>`"
+              Error "capture list is not allowed on an in-place closure"

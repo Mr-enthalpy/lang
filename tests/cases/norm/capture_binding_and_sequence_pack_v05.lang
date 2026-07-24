@@ -1,0 +1,5 @@
+let explicit = [let x = outer, y = source target]() => { x };
+let inferred = [x x, (x, x) |> x]() => { x };
+let ambiguous = [(x, y) |> z]() => { z };
+let nested = [[cap] => { cap }] () => { value };
+let <T> head ...rest T = value;

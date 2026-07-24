@@ -24,7 +24,32 @@ design question; it is the next post-v0.5 roadmap track.
 The following points are resolved for the v0.6 namespace graph / early-meta
 track:
 
-- Fields are unary function objects in type-associated companion spaces.
+- Generated data fields are unary function objects; the first-class `.name`
+  constructor generalizes the same first-argument dispatch to ordinary
+  remainder arguments without creating a separate member system.
+- Once `.name` is lowered, it is an ordinary expression. Its provenance does
+  not alter how `P1 |> E P2` associates; replacing `.name` with a bound
+  equivalent must preserve the general pipe/product spine. Compact `E.name`
+  mechanically uses the same core. Direct `..name(product)` remains the
+  distinct direct member-call simulation and is not redundant.
+- The post-v0.2 parser changes are versioned by frontend amendment v0.5-A and
+  Raw AST contract v0.5; the closed v0.1/v0.2/v0.3 documents remain historical
+  snapshots.
+- Closure placement and generated provenance are independent in both Raw and
+  Normalized AST. Generated dot closures retain `InPlace` placement.
+- Product-versus-closure classification and capture-slot bypass recognize only
+  the complete `[[Name]] {` tail. Deduce alone leaves capture available; the
+  weaker `[[` recovery candidate is confined to independently proven
+  post-capture closure heads and never disables ordinary bracket-call suffixes.
+- Ordinary capture items are let-shaped bindings. A naked capture expression
+  is retained as shorthand only when normalization finds exactly one distinct
+  free non-call bare name; all initializers use the pre-capture environment.
+- Pack is a direct canonical Pattern Sequence child as well as a Product child.
+  The parser preserves Pack shape, while the normalized Pattern validator alone
+  owns the one-pack-per-Product-or-Sequence-level invariant.
+- Build-world harvesting consumes `PatternValidatedNormProgram` from
+  `normalize_and_validate_patterns`. This proves only global normalized
+  Pattern invariants; it does not claim recovery-free syntax.
 - `ref` and `share` are namespace subspaces, not reserved field names.
 - Function-object names and namespace-subspace names may be identical under the
   same parent when they occupy different child-name roles.
@@ -130,6 +155,10 @@ Resolved future-design decisions:
   static phases, and runtime values only in Runtime.
 - Privileged seal scans read the frozen pre-seal world `Wpre`, never symbols
   generated during seal.
+- Namespace state distinguishes the complete internal `Σ_full`, the external
+  projection `Σ_export`, and build-world membership `Wpre ∪ Wseal`.
+  `ExportOverloadSet(name)` is an identity-preserving projection of
+  `FullOverloadSet(name)` rather than a separate symbol universe.
 - Results retain component policy pairs and returned `Val2` objects retain
   their own policy; no whole-result scalar policy is inferred.
 - Compile flow is a mechanical projection of complete symbol flow. Calls stay
@@ -141,6 +170,68 @@ Resolved future-design decisions:
 - `const`/`mut` is a `Pv` dimension. Multi-position preference uses product
   partial order; delete members remain candidates and may be the unique maximal
   rejection.
+- Written formal parameters inherit their callable P2. `const let` / `mut let`
+  restrict only the inherited mutability Pattern; all other P2 dimensions are
+  invariant. The resulting qualifier is exported into the candidate's external
+  policy product order as well as its body-entry pair. Opposite actual
+  qualifiers remain preference inputs rather than being removed by ordinary
+  P1 projection.
+- A function-object binding has the unrestricted empty mutability domain by
+  default (`const || mut`); only its declaration may crop that internal axis.
+  Export derives a separate external view: value-bearing exports expose
+  `Project_const(Pv):Pp`, while pure `absent:Pp` exports have no mutability
+  requirement. A `mut`-only value export is invalid; `const || mut` remains a
+  valid complete internal view. This projection consumes the resolved internal
+  `PolicyPair` after declaration-side P1 application. Direct `export + mut`
+  roots are rejected; mut-only overload members of an exported symbol remain
+  in `Σ_full` and are omitted from `Σ_export`. `Pv = absent` is structurally
+  empty on the value side: both value stages and value mutability are empty.
+  P1 elaboration, P2 normalization, and resolved export projection reject flat
+  compatibility carriers that attach either subdimension to absent Pv.
+- `...Q` is available in every let-shaped binding slot, not only parameters.
+  It remains one Pattern remainder constructor, never a pack type or RHS
+  unpack. Raw `...(a, b)` is preserved but rejected after P normalization
+  because the bare Product has no stable top mode. At an ordered level,
+  explicitly headed structure such as `...((a, b) pair)` may be admissible;
+  unordered levels accept only a whole-remainder binder/discard. Every Pack
+  contributes one outward specificity node, and internal structure never
+  becomes multiple same-level EP nodes.
+- DeduceLists elaborate as left-to-right telescopes with exact
+  alpha-normalized `HoleBinderId`-targeted Pattern/policy references.
+  Declarations see inherited and preceding holes, not themselves or later
+  declarations; active source names cannot be redeclared or shadowed. A
+  BindingSlot policy precedes its local DeduceList. Generated receiver holes
+  use hygienic generated keys and do not collide with source spelling.
+  Callable head holes scope captures, parameters, policy, return, clauses,
+  body, and inherited nested callables. Spans are provenance rather than
+  semantic identity. An `AlphaOwner` is the complete normalized tree produced
+  by one root `normalize_program` invocation; nested body `NormProgram` nodes
+  share that owner's ordinal space. A local ordinal has meaning only when
+  paired with that owner.
+  Value-side names/navigation remain unresolved for a later resolved-symbol
+  pass. Parser/Norm recursive preservation and the Pattern/policy identity
+  substrate are implemented, while general Pattern-directed execution remains
+  a later consumer.
+- Extraction-style result delivery uses the declared return Pattern. Explicit
+  writes address its binders separately; a bare tail or targeted return matches
+  one result object as `let ResultPattern = expr`.
+- In-place closures may contribute callable overload candidates. They have no
+  capture list, defer unresolved outer reads to the embedding layer, gain no
+  capture set, and may not directly write an outer place. Ordinary closures
+  have explicit source captures plus future resolved automatic-const
+  requirements; `[x]` is explicit `[let x = x]`, not automatic capture.
+  Capture requirements remain abstract dependencies rather than `self` fields
+  or layout declarations. In-place candidates are preferred over otherwise tied
+  non-in-place candidates after first-order-over-instantiated preference.
+- Internal explicit navigation searches `Σ_full`; external explicit navigation
+  searches the const-projected `Σ_export`; neither is a Wpre/Wseal membership
+  query. Ordinary external call dependencies normally fall within automatic
+  const capture. Automatic capture and call resolution share a problem domain
+  around symbol identity and const visibility, without implying pass ordering,
+  shared intermediate objects, or an implementation dependency. Explicit and
+  automatic capture remain distinct dependency declarations even when they
+  resolve to the same source; later layout alone may coalesce equivalent
+  storage while retaining binder, policy, and provenance.
 - Inferred require retains coarse complete blocks and guarded branch groups,
   conjoins with manual require, and shares one compile-evaluation graph with
   body continuation.
@@ -151,8 +242,17 @@ Implemented substrate after this correction:
   and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
-  flow projection, Wpre/export closure, and phase/const-mut product-order test
-  substrate.
+  flow projection, Wpre/export-retention closure, candidate-level
+  `ResolvedCandidatePolicy { pair: PolicyPair, provenance }` to
+  `ExportCandidateView { identity, internal_candidate, external_policy:
+  PolicyPair }` transformation, and phase/const-mut product-order test
+  substrate. The direct declaration `external_projection` remains a
+  root-local `P1Projection` preview. External admission requires both
+  symbol-level export-retention-closure membership and public path
+  reachability; among an admitted symbol's resolved candidates, mut-only
+  entries remain in `Σ_full` and are omitted from `Σ_export`. Namespace-graph
+  installation supplies the persistent admission facts. Retention membership
+  is not itself export status; `Σ_export` is the external candidate set.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -161,12 +261,54 @@ Not implemented after this correction:
 - Storing and checking canonical `Pv:Pp` on every symbol/value object.
 - Storing policy-pair views on every namespace entry and routing every build
   operation through the typed P1 projection.
+- Connecting the candidate-level export-view projector to the persistent
+  namespace graph and authority-sensitive external resolver.
 - Integrating structural compile-flow projection with the complete evaluator.
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call
   execution checker.
+- Closure materialization, lazy embedding-layer lookup for in-place closures,
+  and the in-place-over-non-in-place overload filter.
+- Result Pattern delivery/D-reduction; the current return-target substrate only
+  retains the complete return binding slot and selects a restricted active
+  frame.
 - Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
+
+Build-world integration gates (not blockers for the current frontend/build
+substrate PR):
+
+- `HoleBinderId` is currently a local ordinal with ordinary Rust
+  `Eq`/`Ord`/`Hash`. Before any consumer combines multiple root normalization
+  trees, identity must become owner-qualified:
+
+  ```text
+  AlphaHoleId = AlphaOwnerId × LocalHoleBinderId
+  ```
+
+  Alternatively, rename and encapsulate the current carrier as
+  `LocalHoleBinderId` so it cannot circulate without its `AlphaOwner`.
+  Stable cross-source-unit owner identity remains intentionally unfrozen.
+
+- `NamespaceOverloadSets.exported` currently omits a symbol when its projected
+  candidate list is empty. This is sufficient for `Σ_export` set semantics,
+  but a future external resolver diagnostic carrier must preserve symbol-level
+  facts even for an empty candidate subset, for example:
+
+  ```text
+  ExternalSymbolView {
+    admission,
+    candidates
+  }
+  ```
+
+  That layer must distinguish at least `Unresolved`,
+  `NotInExportRetentionClosure`, `PrivatePath`, and
+  `NoConstExportableCandidate`.
+
+- The restricted v0.8 overload selector still reports
+  `UnsupportedExternalVisibility`. The implemented scope is the export-view
+  carrier and projection substrate, not end-to-end external overload routing.
 
 Still open for later design:
 
@@ -174,7 +316,10 @@ Still open for later design:
   another spelling);
 - the complete runtime reflection object model;
 - the semantics of any additional future policy stage;
-- the final public spelling for overload-strategy metadata;
+- which named overload strategies beyond compiler-known
+  `must_select_if_qualified` are provided, and each rule's monotone comparison
+  semantics (the source spelling `=> name {}` / no-`=>` `[[name]] {}` is now
+  fixed);
 - how source code references a derived compile companion and associates an
   explicit replacement;
 - whether default companion suppression is permitted and which equivalent

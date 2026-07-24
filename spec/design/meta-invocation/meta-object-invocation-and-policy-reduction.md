@@ -45,14 +45,22 @@ namespace graph overload candidates
 This path remains graph-installation-free. It does not install namespace graph
 deltas; binding or materialization remains the graph-installation boundary.
 
-Supported selected body forms:
+Supported/preserved selected implementation forms:
 
-- delete body, such as `("message") delete`, returns
+- bare delete or message delete returns
   `MetaInvocationResult::Diagnostic(...)`;
-- the transitional simple forwarding body, such as `{ r === t; }` or
+- ordinary and named user bodies share the same evaluator path; the
+  transitional simple forwarding body, such as `{ r === t; }` or
   `{ r === unit; }`, returns
   `MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(...))` when
   the forwarded type-pattern value is available in the graph.
+- `Defaulted` is preserved as a distinct compiler-generation request; the
+  restricted evaluator diagnoses it until a callable-kind default generator is
+  available.
+
+Named strategy metadata is carried on the selected candidate only after
+restricted applicability. This slice does not execute arbitrary named strategy
+rules and does not grant `default` an implicit priority.
 
 This `r === ...` behavior describes only the restricted v0.8 evaluator that is
 currently implemented. The final formal meta model uses `r = ...` to populate a
@@ -414,7 +422,8 @@ Reading the layers from the top:
   invocation frame (implicit self plus explicit arguments), and whose hard
   concept/require/result checks pass.
 - The **preference filters** apply entry preference, concept ordering,
-  extraction specificity, and first-order preference only after full
+  extraction specificity, first-order preference, in-place-over-non-in-place
+  preference, and named strategy rules only after full
   admissibility and in one fixed normative order. Each filter is independent
   of candidate enumeration/source declaration order; filters are not assumed
   to commute.

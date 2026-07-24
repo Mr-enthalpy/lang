@@ -8,7 +8,7 @@ NormProgram origin=Source@1:1[0..2]
               ExprElem
                 Name "x" origin=Source@1:2[1..2]
         target:
-          Closure kind=Generated(PrefixNegativeLowering) origin=Generated(PrefixNegativeLowering)@1:1[0..2]
+          Closure placement=InPlace origin=Generated(PrefixNegativeLowering)@1:1[0..2]
             head:
               ClosureHead origin=Generated(PrefixNegativeLowering)@1:1[0..2]
                 deduce:

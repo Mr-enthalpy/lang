@@ -1,8 +1,7 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
-    DeleteBodyAst, DiagnosticCode, ExplicitClosureAst, ExprAst, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, InPlaceClosureAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol,
-    TokenKind,
+    ClosurePlacementAst, DeleteBodyAst, DiagnosticCode, ExprAst, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -82,16 +81,25 @@ fn form_span(form: &FormAst) -> Span {
     }
 }
 
+fn parse_callable_body_block(parser: &mut Parser<'_>, head: &FnHeadPrefixAst) -> BodyBlockAst {
+    let mark = parser.push_deduce_scope(head.deduce.as_ref());
+    let body = parse_body_block(parser);
+    parser.restore_deduce_scope(mark);
+    body
+}
+
 // -- Closure entry from atom parser --
 
 pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.cursor.at_symbol(Symbol::LBrace) {
         let body = parse_body_block(parser);
         let span = body.span;
-        return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::InPlace(InPlaceClosureAst { body, span })),
+        return Some(closure_atom(
+            ClosurePlacementAst::InPlace,
+            None,
+            ClosureBodyAst::Block(body),
             span,
-        });
+        ));
     }
 
     let saved = parser.cursor.current_index();
@@ -108,90 +116,190 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     if parser.cursor.consume_symbol(Symbol::FatArrow).is_some() {
         parser.ungate_keep_diagnostics();
         if parser.cursor.at_symbol(Symbol::LBrace) {
-            let block = parse_body_block(parser);
+            let block = parse_callable_body_block(parser, &head);
             let span = head.span.join(block.span);
             let body = ClosureBodyAst::Block(block);
-            return Some(AtomAst {
-                kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                    head,
-                    body,
-                    span,
-                })),
+            return Some(closure_atom(
+                ClosurePlacementAst::Ordinary,
+                Some(head),
+                body,
                 span,
-            });
+            ));
         }
         if parser.cursor.at_symbol(Symbol::LParen) {
             match parse_delete_body(parser) {
                 Some(delete_body) => {
                     let span = head.span.join(delete_body.span);
-                    return Some(AtomAst {
-                        kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                            head,
-                            body: ClosureBodyAst::Delete(delete_body),
-                            span,
-                        })),
+                    return Some(closure_atom(
+                        ClosurePlacementAst::Ordinary,
+                        Some(head),
+                        ClosureBodyAst::Delete(delete_body),
                         span,
-                    });
+                    ));
                 }
                 None => {
                     parser.recover_to_form_boundary();
-                    let body_start = parser.cursor.current_span();
+                    let error_end = parser.cursor.current_span();
                     parser.error(
                         DiagnosticCode::InvalidClosureHead,
                         "expected `)` then `delete` after `=>`",
-                        body_start,
+                        error_end,
                     );
-                    let body = ClosureBodyAst::Block(BodyBlockAst {
-                        forms: Vec::new(),
-                        span: body_start,
-                    });
-                    let span = head.span.join(body_start);
+                    let span = head.span.join(error_end);
                     return Some(AtomAst {
-                        kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                            head,
-                            body,
-                            span,
-                        })),
+                        kind: AtomKind::Error(
+                            parser.error_ast("invalid parenthesized callable tail", span),
+                        ),
                         span,
                     });
                 }
             }
         }
+        if matches!(parser.cursor.peek_non_trivia().kind, TokenKind::Name) {
+            let followed_by_block = matches!(
+                parser.cursor.peek_next_non_trivia().kind,
+                TokenKind::Symbol(Symbol::LBrace)
+            );
+            if !followed_by_block && parser.cursor.at_name("delete") {
+                let delete_body = parse_bare_delete_body(parser);
+                let span = head.span.join(delete_body.span);
+                return Some(closure_atom(
+                    ClosurePlacementAst::Ordinary,
+                    Some(head),
+                    ClosureBodyAst::Delete(delete_body),
+                    span,
+                ));
+            }
+            if !followed_by_block && parser.cursor.at_name("default") {
+                let token = parser.cursor.bump_non_trivia();
+                let span = head.span.join(token.span);
+                return Some(closure_atom(
+                    ClosurePlacementAst::Ordinary,
+                    Some(head),
+                    ClosureBodyAst::Defaulted {
+                        default_name: NameAst {
+                            text: token.text.clone(),
+                            span: token.span,
+                        },
+                        span: token.span,
+                    },
+                    span,
+                ));
+            }
+
+            let token = parser.cursor.bump_non_trivia();
+            let strategy = NameAst {
+                text: token.text.clone(),
+                span: token.span,
+            };
+            if parser.cursor.at_symbol(Symbol::LBrace) {
+                let block = parse_callable_body_block(parser, &head);
+                let body_span = strategy.span.join(block.span);
+                let span = head.span.join(block.span);
+                return Some(closure_atom(
+                    ClosurePlacementAst::Ordinary,
+                    Some(head),
+                    ClosureBodyAst::NamedBlock {
+                        strategy,
+                        block,
+                        span: body_span,
+                    },
+                    span,
+                ));
+            }
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected `{` after named overload strategy in callable tail",
+                strategy.span,
+            );
+            parser.recover_to_form_boundary();
+            let error_span = head.span.join(strategy.span);
+            return Some(AtomAst {
+                kind: AtomKind::Error(parser.error_ast(
+                    "invalid named-strategy callable tail without body",
+                    error_span,
+                )),
+                span: error_span,
+            });
+        }
         parser.recover_to_form_boundary();
         let body_start = parser.cursor.current_span();
         parser.error(
             DiagnosticCode::InvalidClosureHead,
-            "expected `{` or `(message) delete` after `=>`",
+            "expected `{`, `delete`, `(string) delete`, `default`, or `strategy { ... }` after `=>`",
             body_start,
         );
-        let body = ClosureBodyAst::Block(BodyBlockAst {
-            forms: Vec::new(),
-            span: body_start,
-        });
         let span = head.span.join(body_start);
         return Some(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::Explicit(ExplicitClosureAst {
-                head,
-                body,
-                span,
-            })),
+            kind: AtomKind::Error(parser.error_ast("invalid callable implementation tail", span)),
             span,
         });
     }
 
+    if at_strategy_annotation_candidate(parser) {
+        parser.ungate_keep_diagnostics();
+        let Some(strategy) = parse_overload_strategy_annotation(parser) else {
+            let end = if parser.cursor.at_symbol(Symbol::LBrace) {
+                parse_callable_body_block(parser, &head).span
+            } else {
+                parser.recover_to_form_boundary();
+                parser.cursor.current_span()
+            };
+            let error_span = head.span.join(end);
+            return Some(AtomAst {
+                kind: AtomKind::Error(
+                    parser.error_ast("invalid `[[strategy]]` callable tail", error_span),
+                ),
+                span: error_span,
+            });
+        };
+        if !parser.cursor.at_symbol(Symbol::LBrace) {
+            let span = parser.cursor.current_span();
+            parser.error(
+                DiagnosticCode::InvalidClosureHead,
+                "expected `{` after `[[strategy]]` callable tail annotation",
+                span,
+            );
+            parser.recover_to_form_boundary();
+            let error_span = head.span.join(span);
+            return Some(AtomAst {
+                kind: AtomKind::Error(parser.error_ast(
+                    "invalid `[[strategy]]` callable tail without body",
+                    error_span,
+                )),
+                span: error_span,
+            });
+        }
+        let body = parse_callable_body_block(parser, &head);
+        let span = head.span.join(body.span);
+        if let Some(error) = reject_in_place_capture(parser, &head, span) {
+            return Some(error);
+        }
+        return Some(closure_atom(
+            ClosurePlacementAst::InPlace,
+            Some(head),
+            ClosureBodyAst::NamedBlock {
+                strategy,
+                block: body,
+                span,
+            },
+            span,
+        ));
+    }
+
     if parser.cursor.at_symbol(Symbol::LBrace) {
         parser.ungate_keep_diagnostics();
-        parser.error(
-            DiagnosticCode::InvalidClosureHead,
-            "closure head before `{` requires `=>`; in-place closure cannot have captures or parameters",
-            head.span,
-        );
-        let body = parse_body_block(parser);
+        let body = parse_callable_body_block(parser, &head);
         let span = head.span.join(body.span);
-        return Some(AtomAst {
-            kind: AtomKind::Error(parser.error_ast("invalid headed closure without `=>`", span)),
+        if let Some(error) = reject_in_place_capture(parser, &head, span) {
+            return Some(error);
+        }
+        return Some(closure_atom(
+            ClosurePlacementAst::InPlace,
+            Some(head),
+            ClosureBodyAst::Block(body),
             span,
-        });
+        ));
     }
 
     parser.cursor.set_index(saved);
@@ -199,9 +307,46 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
     None
 }
 
+fn closure_atom(
+    placement: ClosurePlacementAst,
+    head: Option<FnHeadPrefixAst>,
+    body: ClosureBodyAst,
+    span: Span,
+) -> AtomAst {
+    AtomAst {
+        kind: AtomKind::Closure(ClosureAst {
+            placement,
+            head,
+            body,
+            span,
+        }),
+        span,
+    }
+}
+
+fn reject_in_place_capture(
+    parser: &mut Parser<'_>,
+    head: &FnHeadPrefixAst,
+    closure_span: Span,
+) -> Option<AtomAst> {
+    let capture = head.captures.as_ref()?;
+    parser.error(
+        DiagnosticCode::InvalidClosureHead,
+        "in-place closure cannot have a capture list; add `=>` for an ordinary closure",
+        capture.span,
+    );
+    Some(AtomAst {
+        kind: AtomKind::Error(parser.error_ast(
+            "capture list is not allowed on an in-place closure",
+            closure_span,
+        )),
+        span: closure_span,
+    })
+}
+
 // -- Delete body --
 
-/// Parse `(message_expr) delete` after `=>`.
+/// Parse `(string_literal) delete` after `=>`.
 ///
 /// Caller has already verified that the cursor is at `(`.
 /// Returns `None` if the grouped expression or the `delete` name
@@ -209,15 +354,16 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
 fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
     let lparen = parser.cursor.consume_symbol(Symbol::LParen)?;
 
-    // Parse the message expression, terminated by `)`
-    let message = parse_expr_until(parser, |p| p.cursor.at_symbol(Symbol::RParen));
-    if super::form::expression_contains_name(&message, "return") {
+    let message_token = parser.cursor.peek_non_trivia();
+    if !matches!(message_token.kind, TokenKind::StringLiteral) {
         parser.error(
-            DiagnosticCode::ReturnExpressionNotAllowed,
-            "return is only allowed as a block terminal form",
-            message.span,
+            DiagnosticCode::InvalidClosureHead,
+            "delete message must be a string literal",
+            message_token.span,
         );
+        return None;
     }
+    let message = parser.cursor.bump_non_trivia().text.clone();
 
     let _rparen = match parser.cursor.consume_symbol(Symbol::RParen) {
         Some(tok) => tok.span,
@@ -247,13 +393,132 @@ fn parse_delete_body(parser: &mut Parser<'_>) -> Option<DeleteBodyAst> {
 
     let span = lparen.span.join(delete_token.span);
     Some(DeleteBodyAst {
-        message,
+        message: Some(message),
         delete_name: NameAst {
             text: "delete".to_string(),
             span: delete_token.span,
         },
         span,
     })
+}
+
+fn parse_bare_delete_body(parser: &mut Parser<'_>) -> DeleteBodyAst {
+    let token = parser
+        .cursor
+        .consume_name("delete")
+        .expect("parse_bare_delete_body at `delete`");
+    DeleteBodyAst {
+        message: None,
+        delete_name: NameAst {
+            text: token.text.clone(),
+            span: token.span,
+        },
+        span: token.span,
+    }
+}
+
+fn at_complete_strategy_tail(parser: &Parser<'_>) -> bool {
+    token_index_starts_complete_strategy_tail(parser, parser.cursor.current_index())
+}
+
+fn at_strategy_annotation_candidate(parser: &Parser<'_>) -> bool {
+    token_index_starts_strategy_annotation_candidate(parser, parser.cursor.current_index())
+}
+
+fn token_index_starts_strategy_annotation_candidate(parser: &Parser<'_>, from: usize) -> bool {
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(from);
+    if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return false;
+    }
+    let (_, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+    matches!(second.kind, TokenKind::Symbol(Symbol::LBracket))
+}
+
+/// A strategy annotation closes a still-available capture slot only when its
+/// complete local tail shape is present. `[[Name]]` alone may still be the
+/// beginning of a capture-clause expression.
+pub(super) fn token_index_starts_complete_strategy_tail(parser: &Parser<'_>, from: usize) -> bool {
+    let (first_index, first) = parser.cursor.peek_at_skip_trivia(from);
+    if !matches!(first.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return false;
+    }
+    let (second_index, second) = parser.cursor.peek_at_skip_trivia(first_index + 1);
+    if !matches!(second.kind, TokenKind::Symbol(Symbol::LBracket)) {
+        return false;
+    }
+    let (name_index, name) = parser.cursor.peek_at_skip_trivia(second_index + 1);
+    if !matches!(name.kind, TokenKind::Name) {
+        return false;
+    }
+    let (first_close_index, first_close) = parser.cursor.peek_at_skip_trivia(name_index + 1);
+    if !matches!(first_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return false;
+    }
+    let (second_close_index, second_close) =
+        parser.cursor.peek_at_skip_trivia(first_close_index + 1);
+    if !matches!(second_close.kind, TokenKind::Symbol(Symbol::RBracket)) {
+        return false;
+    }
+    let (_, block) = parser.cursor.peek_at_skip_trivia(second_close_index + 1);
+    matches!(block.kind, TokenKind::Symbol(Symbol::LBrace))
+}
+
+/// The single strong-context lookahead used when a parenthesized form could be
+/// either an ordinary Product or the parameter clause of a closure head.
+///
+/// Keep every continuation that proves `FnHeadPrefix` here. Callers in the
+/// segment and operator parsers must not maintain their own approximations.
+pub(super) fn token_index_starts_closure_head_continuation(
+    parser: &Parser<'_>,
+    from: usize,
+) -> bool {
+    let (_, token) = parser.cursor.peek_at_skip_trivia(from);
+    matches!(
+        token.kind,
+        TokenKind::Symbol(Symbol::Colon | Symbol::ThinArrow | Symbol::FatArrow | Symbol::LBrace)
+    ) || token_index_starts_head_clause(parser, from)
+        || token_index_starts_complete_strategy_tail(parser, from)
+}
+
+pub(super) fn at_callable_implementation_tail(parser: &mut Parser<'_>) -> bool {
+    parser.cursor.at_symbol(Symbol::FatArrow)
+        || parser.cursor.at_symbol(Symbol::LBrace)
+        // This helper is called only after another closure-head component has
+        // already established the strong context. A leading `[[` can therefore
+        // stop the current head slot so the tail parser can retain an error
+        // node for a malformed annotation.
+        || at_strategy_annotation_candidate(parser)
+}
+
+fn parse_overload_strategy_annotation(parser: &mut Parser<'_>) -> Option<NameAst> {
+    let first = parser.cursor.consume_symbol(Symbol::LBracket)?;
+    parser.cursor.consume_symbol(Symbol::LBracket)?;
+    let token = parser.cursor.peek_non_trivia();
+    let name = if matches!(token.kind, TokenKind::Name) {
+        let token = parser.cursor.bump_non_trivia();
+        NameAst {
+            text: token.text.clone(),
+            span: token.span,
+        }
+    } else {
+        parser.error(
+            DiagnosticCode::ExpectedName,
+            "expected overload strategy name inside `[[...]]`",
+            token.span,
+        );
+        return None;
+    };
+    if parser.cursor.consume_symbol(Symbol::RBracket).is_none()
+        || parser.cursor.consume_symbol(Symbol::RBracket).is_none()
+    {
+        parser.error(
+            DiagnosticCode::UnclosedBracket,
+            "expected closing `]]` after overload strategy name",
+            first.span.join(name.span),
+        );
+        return None;
+    }
+    Some(name)
 }
 
 // -- FnHeadPrefix --
@@ -267,14 +532,19 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
-    let captures = if parser.cursor.at_symbol(Symbol::LBracket) {
-        Some(parse_capture_clause(parser))
-    } else {
-        None
-    };
+    let deduce_scope_mark = parser.push_deduce_scope(deduce.as_ref());
+
+    let captures =
+        if parser.cursor.at_symbol(Symbol::LBracket) && !at_complete_strategy_tail(parser) {
+            let inherited = parser.active_deduce_list();
+            Some(parse_capture_clause(parser, inherited.as_ref()))
+        } else {
+            None
+        };
 
     let params = if parser.cursor.at_symbol(Symbol::LParen) {
-        Some(parse_param_clause(parser, deduce.as_ref()))
+        let inherited = parser.active_deduce_list();
+        Some(parse_param_clause(parser, inherited.as_ref()))
     } else {
         None
     };
@@ -290,8 +560,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         }
         let policy = parse_policy_spec_until(parser, |p| {
             p.cursor.at_symbol(Symbol::ThinArrow)
-                || p.cursor.at_symbol(Symbol::FatArrow)
-                || p.cursor.at_symbol(Symbol::LBrace)
+                || at_callable_implementation_tail(p)
                 || p.is_form_boundary()
         });
         Some(policy)
@@ -300,7 +569,8 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
     };
 
     let returns = if parser.cursor.consume_symbol(Symbol::ThinArrow).is_some() {
-        Some(parse_return_clause(parser))
+        let inherited = parser.active_deduce_list();
+        Some(parse_return_clause(parser, inherited.as_ref()))
     } else {
         None
     };
@@ -309,6 +579,7 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
 
     let end = parser.cursor.current_span();
     let span = start.join(end);
+    parser.restore_deduce_scope(deduce_scope_mark);
 
     if deduce.is_none() && captures.is_none() && params.is_none() && clauses.is_empty() {
         return None;
@@ -383,6 +654,7 @@ pub(super) fn at_head_clause_keyword(parser: &Parser<'_>) -> bool {
 fn clause_expr_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
+        || at_complete_strategy_tail(parser)
         || parser.is_form_boundary()
         || at_head_clause_keyword(parser)
 }
@@ -446,7 +718,10 @@ fn parse_head_clauses(parser: &mut Parser<'_>) -> Vec<HeadClauseAst> {
 
 // -- Capture clause --
 
-fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
+fn parse_capture_clause(
+    parser: &mut Parser<'_>,
+    inherited_deduce: Option<&crate::DeduceListAst>,
+) -> CaptureClauseAst {
     let lbracket = parser
         .cursor
         .consume_symbol(Symbol::LBracket)
@@ -463,18 +738,37 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
             break;
         }
 
-        let expr = parse_expr_until(parser, |p| {
-            p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
-        });
-        if super::form::expression_contains_name(&expr, "return") {
-            parser.error(
-                DiagnosticCode::ReturnExpressionNotAllowed,
-                "return is only allowed as a block terminal form",
-                expr.span,
-            );
+        if capture_item_is_explicit_binding(parser) {
+            let mut slot =
+                parse_binding_slot(parser, BindingSlotContext::Capture, inherited_deduce, true);
+            let missing_initializer_span = parser.cursor.current_span();
+            let initializer = slot.initializer.take().unwrap_or_else(|| {
+                error_expr(
+                    parser,
+                    "expected `=` in capture binding",
+                    missing_initializer_span,
+                )
+            });
+            let span = slot.span.join(initializer.span);
+            items.push(CaptureItemAst::Explicit {
+                slot,
+                initializer,
+                span,
+            });
+        } else {
+            let initializer = parse_expr_until(parser, |p| {
+                p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
+            });
+            if super::form::expression_contains_name(&initializer, "return") {
+                parser.error(
+                    DiagnosticCode::ReturnExpressionNotAllowed,
+                    "return is only allowed as a block terminal form",
+                    initializer.span,
+                );
+            }
+            let span = initializer.span;
+            items.push(CaptureItemAst::Inferred { initializer, span });
         }
-        let span = expr.span;
-        items.push(CaptureItemAst { expr, span });
 
         if parser.cursor.consume_symbol(Symbol::Comma).is_none() {
             break;
@@ -500,6 +794,43 @@ fn parse_capture_clause(parser: &mut Parser<'_>) -> CaptureClauseAst {
     }
 }
 
+fn capture_item_is_explicit_binding(parser: &Parser<'_>) -> bool {
+    let mut index = parser.cursor.current_index();
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+
+    loop {
+        let (token_index, token) = parser.cursor.peek_at_skip_trivia(index);
+        match token.kind {
+            TokenKind::Eof | TokenKind::Symbol(Symbol::Semicolon) => return false,
+            TokenKind::Symbol(Symbol::Comma)
+                if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+            {
+                return false;
+            }
+            TokenKind::Symbol(Symbol::RBracket)
+                if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+            {
+                return false;
+            }
+            TokenKind::Symbol(Symbol::Equal)
+                if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 =>
+            {
+                return true;
+            }
+            TokenKind::Symbol(Symbol::LParen) => paren_depth += 1,
+            TokenKind::Symbol(Symbol::RParen) => paren_depth = paren_depth.saturating_sub(1),
+            TokenKind::Symbol(Symbol::LBracket) => bracket_depth += 1,
+            TokenKind::Symbol(Symbol::RBracket) => bracket_depth = bracket_depth.saturating_sub(1),
+            TokenKind::Symbol(Symbol::LBrace) => brace_depth += 1,
+            TokenKind::Symbol(Symbol::RBrace) => brace_depth = brace_depth.saturating_sub(1),
+            _ => {}
+        }
+        index = token_index.saturating_add(1);
+    }
+}
+
 // -- Param clause --
 
 fn parse_param_clause(
@@ -513,9 +844,12 @@ fn parse_param_clause(
 
 // -- Return clause --
 
-fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
+fn parse_return_clause(
+    parser: &mut Parser<'_>,
+    inherited_deduce: Option<&crate::DeduceListAst>,
+) -> ReturnClauseAst {
     let start = parser.cursor.current_span();
-    let slot = parse_binding_slot(parser, BindingSlotContext::Return, None, false);
+    let slot = parse_binding_slot(parser, BindingSlotContext::Return, inherited_deduce, false);
     let end = slot.span;
     ReturnClauseAst {
         slot,
@@ -525,7 +859,6 @@ fn parse_return_clause(parser: &mut Parser<'_>) -> ReturnClauseAst {
 
 fn at_call_policy_boundary(parser: &mut Parser<'_>) -> bool {
     parser.cursor.at_symbol(Symbol::ThinArrow)
-        || parser.cursor.at_symbol(Symbol::FatArrow)
-        || parser.cursor.at_symbol(Symbol::LBrace)
+        || at_callable_implementation_tail(parser)
         || parser.is_form_boundary()
 }

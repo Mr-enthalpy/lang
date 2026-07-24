@@ -13,14 +13,41 @@ distinction.
 
 ## Field Functions and Projection Spaces
 
-Fields are unary function objects installed in a type-associated companion
-space:
+Fields and member-like operations are function objects installed in a
+type-associated companion space. A field is the unary special case; a
+member-like operation may consume a receiver plus ordinary remaining
+arguments:
 
 ```text
 field::T        : T       -> field
 field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
+push::T         : (T, value) -> result
 ```
+
+The first-class surface constructor is:
+
+```lang
+.field
+```
+
+and normalizes to a function object shaped as:
+
+```lang
+(val: T, ...args) { (val, args) |> field::T }
+```
+
+Thus `E.field` mechanically lowers to `E |> .field`; `.field` itself is
+independently storable/transportable. After that one lowering, `.field` is an
+ordinary expression: `E |> .field P` and `E |> d P` (where `d` is bound to
+`.field`) must use exactly the same general pipe/product binding path. No rule
+may inspect `DotClosureLowering` provenance to absorb `P`, end a target, or
+override the ordinary continuation and legality-repair rules. Compact
+`E.field P` likewise lowers `E.field` first and then resumes the general
+expression rules. `...args` is a Pattern remainder matcher only. Existing
+product normalization forwards the bound remainder; no pack type or unpack
+operator is introduced.
+`E..field(product)` remains the direct member-call sugar.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form, for example:

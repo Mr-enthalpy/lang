@@ -30,6 +30,27 @@ Future lifetime work must take the already unique ordinary overload result as
 input and may validate it only within rules introduced by that future design.
 It may not reopen type/policy overload resolution.
 
+The only positive handoff obligation established for closure capture is:
+
+```text
+ResolvedCaptureRequirement
+  -> CheckableCaptureForm {
+       source_place,
+       requested_access_view,
+       origin_or_region_relation,
+       storage_or_link_category
+     }
+  -> future LifetimeValidation
+  -> future RepresentationSelection
+```
+
+No capture may enter a materialized callable entity through an implicit,
+uncheckable representation side channel. This obligation does not define the
+lifetime algorithm, borrow/move/copy defaults, region construction, escape
+rules, static-link treatment, closure ABI, or environment layout. It also does
+not permit lifetime checking to reopen the already unique ordinary overload
+result.
+
 Related canonical contracts:
 
 - [`../patterns-overload/overload-resolution-design.md`](../patterns-overload/overload-resolution-design.md)

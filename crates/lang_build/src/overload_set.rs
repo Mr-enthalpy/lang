@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use lang_syntax::{
-    NormClosure, NormClosureBody, NormExpr, NormForm, NormPattern, NormPatternElem, NormProductElem,
+    validate_pack_pattern_element_level, validate_pack_pattern_layers, NormClosure,
+    NormClosureBody, NormExpr, NormForm, NormOverloadStrategy, NormPattern, NormPatternElem,
+    NormProductElem,
 };
 
 use crate::{
@@ -18,8 +20,9 @@ use crate::{
         SymbolPayload,
     },
     overload_pattern::{
-        decode_param_pattern, match_param_pattern, overload_args_from_classified_shape,
-        OverloadArgShape, RestrictedParamPattern, SpecificityTuple,
+        decode_param_pattern, match_pack_param_pattern, match_param_pattern,
+        overload_args_from_classified_shape, OverloadArgShape, RestrictedParamPattern,
+        SpecificityTuple,
     },
     product_shape::ProductMaterialRole,
     type_argument::classify_type_arguments_with_report,
@@ -69,7 +72,11 @@ pub struct SelectedOverloadCandidate {
     pub symbol: SymbolObject,
     pub source_callable: SourceCallableObject,
     pub bindings: BTreeMap<String, OverloadArgShape>,
+    pub pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub specificity: SpecificityTuple,
+    /// Static metadata carried into the fully-admissible candidate set. The
+    /// restricted selector does not invent semantics for arbitrary names.
+    pub overload_strategy: NormOverloadStrategy,
     pub return_slot_name: String,
 }
 
@@ -148,7 +155,9 @@ struct ApplicableCandidate {
     symbol: SymbolObject,
     source_callable: SourceCallableObject,
     bindings: BTreeMap<String, OverloadArgShape>,
+    pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     specificity: SpecificityTuple,
+    overload_strategy: NormOverloadStrategy,
     return_slot_name: String,
 }
 
@@ -416,7 +425,9 @@ pub fn select_restricted_meta_overload_structured(
             symbol: candidate.symbol.clone(),
             source_callable: candidate.source_callable.clone(),
             bindings: candidate.bindings.clone(),
+            pack_bindings: candidate.pack_bindings.clone(),
             specificity: candidate.specificity,
+            overload_strategy: candidate.overload_strategy.clone(),
             return_slot_name: candidate.return_slot_name.clone(),
         }),
         [] => unreachable!("maximal candidates are built from a non-empty list"),
@@ -498,12 +509,14 @@ fn applicable_candidate_from_symbol(
             Some(source_callable.provenance.clone()),
         ))
     })?;
-    if head.params.len() != args.len() + 1 {
+    let explicit_params = &head.params[1..];
+    validate_parameter_pack_levels(explicit_params)
+        .map_err(CandidateApplicabilityFailure::UnsupportedParameterPattern)?;
+    if !parameter_arity_matches(explicit_params, args.len()) {
         return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
             Diagnostic::hard_error(
                 format!(
-                    "overload candidate arity mismatch: expected {} explicit args, got {}",
-                    head.params.len().saturating_sub(1),
+                    "overload candidate arity mismatch: parameter pattern cannot consume {} explicit args",
                     args.len()
                 ),
                 Some(source_callable.provenance.clone()),
@@ -515,7 +528,11 @@ fn applicable_candidate_from_symbol(
         .map_err(CandidateApplicabilityFailure::UnsupportedCandidateShape)?;
     let mut specificity = SpecificityTuple::default();
     let mut bindings = BTreeMap::new();
-    for (param, arg) in head.params.iter().skip(1).zip(args) {
+    let mut pack_bindings = BTreeMap::new();
+    let pack_index = explicit_params.iter().position(param_is_pack);
+    let fixed_suffix = pack_index.map_or(0, |index| explicit_params.len() - index - 1);
+
+    for (index, param) in explicit_params.iter().enumerate() {
         let pattern = decode_param_pattern(param);
         if let RestrictedParamPattern::Unsupported { reason, provenance } = &pattern {
             return Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(
@@ -525,30 +542,102 @@ fn applicable_candidate_from_symbol(
                 ),
             ));
         }
-        let outcome = match_param_pattern(&pattern, arg)
-            .map_err(CandidateApplicabilityFailure::Inapplicable)?;
+        let outcome = if Some(index) == pack_index {
+            let remainder_end = args.len() - fixed_suffix;
+            match_pack_param_pattern(&pattern, &args[index..remainder_end])
+                .map_err(CandidateApplicabilityFailure::Inapplicable)?
+        } else {
+            let arg_index = if let Some(pack_index) = pack_index {
+                if index < pack_index {
+                    index
+                } else {
+                    args.len() - (explicit_params.len() - index)
+                }
+            } else {
+                index
+            };
+            match_param_pattern(&pattern, &args[arg_index])
+                .map_err(CandidateApplicabilityFailure::Inapplicable)?
+        };
         specificity = specificity.add(outcome.specificity);
         bindings.extend(outcome.bindings);
+        pack_bindings.extend(outcome.pack_bindings);
     }
 
+    let overload_strategy = source_callable.closure.body.overload_strategy();
     Ok(ApplicableCandidate {
         symbol: symbol.clone(),
         source_callable,
         bindings,
+        pack_bindings,
         specificity,
+        overload_strategy,
         return_slot_name,
     })
+}
+
+fn validate_parameter_pack_levels(params: &[NormPatternElem]) -> Result<(), Diagnostic> {
+    if let Err(error) = validate_pack_pattern_element_level(params) {
+        return Err(Diagnostic::hard_error(
+            format!(
+                "parameter Pattern contains {} pack nodes at one normalized structural level",
+                error.pack_count
+            ),
+            Some(Provenance::from_norm_origin(
+                "duplicate parameter pack level",
+                &error.origin,
+            )),
+        ));
+    }
+
+    for param in params {
+        let pattern = match param {
+            NormPatternElem::Pattern(pattern) => pattern,
+            NormPatternElem::BindingSlot(slot) => &slot.value_pattern,
+            NormPatternElem::Unit { .. } => continue,
+        };
+        if let Err(error) = validate_pack_pattern_layers(pattern) {
+            return Err(Diagnostic::hard_error(
+                format!(
+                    "parameter Pattern contains {} pack nodes at one normalized structural level",
+                    error.pack_count
+                ),
+                Some(Provenance::from_norm_origin(
+                    "duplicate nested parameter pack level",
+                    &error.origin,
+                )),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn callable_shape_compatible(closure: &NormClosure, explicit_arity: usize) -> bool {
     let Some(head) = &closure.head else {
         return false;
     };
-    if head.params.len() != explicit_arity + 1 {
+    if !parameter_arity_matches(&head.params[1..], explicit_arity) {
         return false;
     }
     matches!(head.params.first(), Some(NormPatternElem::BindingSlot(slot))
         if matches!(&slot.value_pattern, NormPattern::Binder { name, .. } if name == "self"))
+}
+
+fn param_is_pack(element: &NormPatternElem) -> bool {
+    matches!(
+        element,
+        NormPatternElem::BindingSlot(slot)
+            if matches!(&slot.value_pattern, NormPattern::Pack { .. })
+    )
+}
+
+fn parameter_arity_matches(params: &[NormPatternElem], explicit_arity: usize) -> bool {
+    let pack_count = params.iter().filter(|param| param_is_pack(param)).count();
+    match pack_count {
+        0 => params.len() == explicit_arity,
+        1 => explicit_arity >= params.len().saturating_sub(1),
+        _ => false,
+    }
 }
 
 fn return_slot_name(closure: &NormClosure) -> Result<String, Diagnostic> {
@@ -596,9 +685,14 @@ fn evaluate_selected_source_meta_body(
                 kind: RestrictedOverloadFailureKind::SelectedDeleteBodyDiagnostic,
             })
         }
-        NormClosureBody::Block(program) => {
+        NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
             evaluate_block_body(snapshot, resolver_context, selected, program)
         }
+        NormClosureBody::Defaulted { .. } => Err(selected_body_failure(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            "selected defaulted callable requires compiler default-implementation materialization",
+        )),
     }
 }
 
@@ -738,6 +832,13 @@ fn evaluate_block_body(
     }
     if let Some(bound) = selected.bindings.get(&rhs_name) {
         return forwarded_type_value(selected, bound.type_symbol_id);
+    }
+    if selected.pack_bindings.contains_key(&rhs_name) {
+        return Err(unsupported_body(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            "selected meta body pack forwarding relies on ordinary product normalization and is outside the restricted type-only evaluator",
+        ));
     }
     let resolved = snapshot.capability().resolve_type_object_with_policy(
         &rhs_name,
@@ -880,7 +981,9 @@ fn expr_refs_selected_or_local_binding(
 ) -> bool {
     match expr {
         NormExpr::Name { text, .. } => {
-            selected.bindings.contains_key(text) || local_names.contains(text)
+            selected.bindings.contains_key(text)
+                || selected.pack_bindings.contains_key(text)
+                || local_names.contains(text)
         }
         NormExpr::Call { source, target, .. } => {
             expr_refs_selected_or_local_binding(target, selected, local_names)

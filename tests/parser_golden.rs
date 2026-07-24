@@ -36,6 +36,97 @@ fn assert_parser_case(name: &str, expect_diagnostics: bool) {
     }
 }
 
+fn project_current_closures_to_v02(dump: &str) -> Result<Vec<&'static str>, String> {
+    let lines = dump.lines().collect::<Vec<_>>();
+    let mut projected = Vec::new();
+
+    for (index, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        let placement = match trimmed {
+            "Closure InPlace" => "InPlace",
+            "Closure Ordinary" => "Ordinary",
+            _ => continue,
+        };
+        let indent = line.len() - trimmed.len();
+        let mut has_head = false;
+        let mut body = None;
+
+        for child in &lines[index + 1..] {
+            let child_trimmed = child.trim_start();
+            if child_trimmed.is_empty() {
+                continue;
+            }
+            let child_indent = child.len() - child_trimmed.len();
+            if child_indent <= indent {
+                break;
+            }
+            if child_indent != indent + 2 {
+                continue;
+            }
+            match child_trimmed {
+                "FnHeadPrefix" => has_head = true,
+                "BodyBlock" => body = Some("Block"),
+                "Delete" => body = Some("Delete"),
+                other if other.starts_with("OverloadStrategy ") => body = Some("NamedBlock"),
+                "Defaulted" => body = Some("Defaulted"),
+                _ => {}
+            }
+        }
+
+        match (placement, has_head, body) {
+            ("InPlace", false, Some("Block")) => projected.push("I"),
+            ("Ordinary", true, Some("Block" | "Delete")) => projected.push("E"),
+            other => {
+                return Err(format!(
+                    "closure at dump line {} has no v0.2 projection: {other:?}",
+                    index + 1
+                ));
+            }
+        }
+    }
+
+    Ok(projected)
+}
+
+#[test]
+fn every_legacy_v02_valid_fixture_preserves_closure_projection() {
+    let baseline = include_str!("cases/parser/legacy_v02_closure_projection.txt");
+    let cases = baseline
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        cases.len(),
+        216,
+        "the baseline must enumerate every v0.2 parser fixture that was valid at the amendment boundary"
+    );
+
+    for entry in cases {
+        let (name, expected) = entry
+            .split_once('|')
+            .expect("legacy projection entry uses `case|projection`");
+        let source = fs::read_to_string(case_path(name, "lang")).expect("read legacy source");
+        let output = lang_syntax::parse(&source);
+        assert!(
+            output.diagnostics.is_empty(),
+            "legacy-valid fixture `{name}` gained diagnostics:\n{}",
+            lang_syntax::dump_diagnostics(&output.diagnostics)
+        );
+
+        let projected = project_current_closures_to_v02(&lang_syntax::dump_ast(&output.program))
+            .unwrap_or_else(|error| panic!("legacy fixture `{name}`: {error}"));
+        let actual = if projected.is_empty() {
+            "-".to_string()
+        } else {
+            projected.join(",")
+        };
+        assert_eq!(
+            actual, expected,
+            "legacy closure projection changed for `{name}`"
+        );
+    }
+}
+
 #[test]
 fn expr_name() {
     assert_parser_case("expr_name", false);
@@ -573,12 +664,12 @@ fn closure_explicit_full_head() {
 
 #[test]
 fn closure_prefixed_inline() {
-    assert_parser_case("closure_prefixed_inline", true);
+    assert_parser_case("closure_prefixed_inline", false);
 }
 
 #[test]
 fn closure_prefixed_inline_params() {
-    assert_parser_case("closure_prefixed_inline_params", true);
+    assert_parser_case("closure_prefixed_inline_params", false);
 }
 
 #[test]
@@ -638,7 +729,7 @@ fn binding_param_with_items() {
 
 #[test]
 fn closure_in_product_match_style() {
-    assert_parser_case("closure_in_product_match_style", true);
+    assert_parser_case("closure_in_product_match_style", false);
 }
 
 #[test]
@@ -682,18 +773,28 @@ fn invalid_closure_acquire_not_parsed() {
 }
 
 #[test]
-fn invalid_closure_headed_no_arrow_1() {
-    assert_parser_case("invalid_closure_headed_no_arrow_1", true);
+fn closure_headed_no_arrow_1() {
+    assert_parser_case("closure_headed_no_arrow_1", true);
 }
 
 #[test]
-fn invalid_closure_headed_no_arrow_2() {
-    assert_parser_case("invalid_closure_headed_no_arrow_2", true);
+fn closure_headed_no_arrow_2() {
+    assert_parser_case("closure_headed_no_arrow_2", true);
 }
 
 #[test]
-fn invalid_closure_headed_no_arrow_3() {
-    assert_parser_case("invalid_closure_headed_no_arrow_3", true);
+fn closure_headed_no_arrow_3() {
+    assert_parser_case("closure_headed_no_arrow_3", false);
+}
+
+#[test]
+fn closure_strategy_boundaries() {
+    assert_parser_case("closure_strategy_boundaries", false);
+}
+
+#[test]
+fn closure_strategy_anti_stealing() {
+    assert_parser_case("closure_strategy_anti_stealing", false);
 }
 
 #[test]
@@ -728,17 +829,17 @@ fn head_clause_only_head() {
 
 #[test]
 fn head_clause_inline_empty_params() {
-    assert_parser_case("head_clause_inline_empty_params", true);
+    assert_parser_case("head_clause_inline_empty_params", false);
 }
 
 #[test]
 fn head_clause_inline_pre_post() {
-    assert_parser_case("head_clause_inline_pre_post", true);
+    assert_parser_case("head_clause_inline_pre_post", false);
 }
 
 #[test]
 fn head_clause_inline_only_head() {
-    assert_parser_case("head_clause_inline_only_head", true);
+    assert_parser_case("head_clause_inline_only_head", false);
 }
 
 #[test]
@@ -949,6 +1050,11 @@ fn closure_capture_simple() {
 #[test]
 fn closure_capture_multiple() {
     assert_parser_case("closure_capture_multiple", false);
+}
+
+#[test]
+fn closure_capture_bindings_v05() {
+    assert_parser_case("closure_capture_bindings_v05", false);
 }
 
 #[test]

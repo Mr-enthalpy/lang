@@ -1,7 +1,7 @@
 use crate::{
-    AtomAst, AtomKind, ClosureAst, DiagnosticCode, ExprAst, ExprKind, InPlaceClosureAst, NameAst,
-    OperatorExprAst, OperatorExprKind, PipeExprAst, ProductElementAst, ProductExprAst, SegmentAst,
-    SegmentElementAst, Span, Symbol, TokenKind,
+    AtomAst, AtomKind, ClosureAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode, ExprAst,
+    ExprKind, NameAst, OperatorExprAst, OperatorExprKind, PipeExprAst, ProductElementAst,
+    ProductExprAst, SegmentAst, SegmentElementAst, Span, Symbol, TokenKind,
 };
 
 use super::{
@@ -152,7 +152,7 @@ fn parse_segment(
         if let Some(element) = parse_segment_element(parser, &mut stop) {
             if allow_pipe_branch_sugar
                 && !has_product_head
-                && is_in_place_closure_segment_element(&element)
+                && is_headless_in_place_closure_segment_element(&element)
             {
                 if !current_headless_closure_diagnosed {
                     diagnose_unheaded_incoming_closure(parser, &element);
@@ -316,7 +316,12 @@ fn pipe_branch_body(parser: &mut Parser<'_>) -> SegmentElementAst {
     let span = body.span;
     SegmentElementAst::OperatorExpr(OperatorExprAst {
         kind: OperatorExprKind::Atom(AtomAst {
-            kind: AtomKind::Closure(ClosureAst::InPlace(InPlaceClosureAst { body, span })),
+            kind: AtomKind::Closure(ClosureAst {
+                placement: ClosurePlacementAst::InPlace,
+                head: None,
+                body: ClosureBodyAst::Block(body),
+                span,
+            }),
             span,
         }),
         span,
@@ -355,19 +360,19 @@ fn parse_segment_element(
     match class {
         ParenClassification::Product => {
             // Check if this is a closure param clause before parsing as Product.
-            // A `(...)` followed by `:`, `=>`, `->`, `{`, or a head-clause
-            // keyword (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`)
-            // is a closure-head parameter clause rather than a product
-            // expression.
+            // A `(...)` followed by any centralized closure-head continuation
+            // is a parameter clause rather than an ordinary Product.
             if let Some(idx) = after_idx {
+                if super::closure::token_index_starts_closure_head_continuation(parser, idx) {
+                    let op_expr = parse_operator_expr(parser, stop)?;
+                    return Some(SegmentElementAst::OperatorExpr(op_expr));
+                }
                 let (_, after) = parser.cursor.peek_at_skip_trivia(idx);
-                if matches!(
-                    after.kind,
-                    TokenKind::Symbol(
-                        Symbol::Colon | Symbol::FatArrow | Symbol::LBrace | Symbol::ThinArrow
-                    )
-                ) || super::closure::token_index_starts_head_clause(parser, idx)
-                {
+                if matches!(after.kind, TokenKind::Symbol(Symbol::LBracket)) {
+                    // A Product followed by `[...]` remains in the ordinary
+                    // postfix-expression path. This preserves cases such as
+                    // `()[[capture] => { ... }]`; only a complete
+                    // `[[Name]] {` continuation above proves a closure head.
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }
@@ -400,28 +405,33 @@ fn empty_error_segment(parser: &Parser<'_>, message: &str, span: Span) -> Segmen
     }
 }
 
-fn is_in_place_closure_segment_element(element: &SegmentElementAst) -> bool {
+fn is_headless_in_place_closure_segment_element(element: &SegmentElementAst) -> bool {
     match element {
         SegmentElementAst::OperatorExpr(op_expr) => {
-            operator_expr_contains_in_place_closure(op_expr)
+            operator_expr_contains_headless_in_place_closure(op_expr)
         }
         SegmentElementAst::Product(_) => false,
     }
 }
 
-fn operator_expr_contains_in_place_closure(op_expr: &OperatorExprAst) -> bool {
+fn operator_expr_contains_headless_in_place_closure(op_expr: &OperatorExprAst) -> bool {
     match &op_expr.kind {
-        OperatorExprKind::Atom(atom) => {
-            matches!(atom.kind, AtomKind::Closure(ClosureAst::InPlace(_)))
-        }
+        OperatorExprKind::Atom(atom) => matches!(
+            atom.kind,
+            AtomKind::Closure(ClosureAst {
+                placement: ClosurePlacementAst::InPlace,
+                head: None,
+                ..
+            })
+        ),
         OperatorExprKind::Product(_) => false,
-        OperatorExprKind::OperatorSugar { args, .. } => {
-            args.iter().any(operator_expr_contains_in_place_closure)
-        }
+        OperatorExprKind::OperatorSugar { args, .. } => args
+            .iter()
+            .any(operator_expr_contains_headless_in_place_closure),
         OperatorExprKind::MemberSugar { object, .. }
         | OperatorExprKind::DoubleDotSugar { object, .. }
         | OperatorExprKind::BracketCallSugar { object, .. } => {
-            operator_expr_contains_in_place_closure(object)
+            operator_expr_contains_headless_in_place_closure(object)
         }
         OperatorExprKind::NavPath { .. } | OperatorExprKind::Error(_) => false,
     }

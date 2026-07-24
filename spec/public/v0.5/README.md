@@ -19,7 +19,10 @@ behavior, especially:
 
 - source-product continuation and call binding;
 - product / group / target boundaries;
-- operator / member / bracket sugar as normalization-level lowering;
+- operator / first-class dot closure / member / bracket sugar as
+  normalization-level lowering;
+- let-shaped capture binding, callable implementation tails, and Pattern
+  remainder packs including canonical Sequence children;
 - value-side vs pattern-side separation;
 - annotation patterns and DeduceList holes;
 - origin / provenance and error / `Unsupported` visibility at the normalized
@@ -49,6 +52,14 @@ current behavior; future design docs do not.
 
 The v0.4 normalization boundary that v0.5 stabilizes is recorded in
 [`../../contracts/v0.4-normalization-prototype-notes.md`](../../contracts/v0.4-normalization-prototype-notes.md).
+
+The parser/Raw-AST changes added after the closed v0.2 freeze are versioned
+separately. Read
+[`../../contracts/frontend-semantic-amendment-v0.5-a.md`](../../contracts/frontend-semantic-amendment-v0.5-a.md)
+for the delta classification and
+[`../../contracts/raw-ast-contract-v0.5.md`](../../contracts/raw-ast-contract-v0.5.md)
+for the current contract. The files under `public/v0.2/` remain unchanged
+historical snapshots.
 
 ## Future boundary
 

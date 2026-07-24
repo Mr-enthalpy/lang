@@ -1335,7 +1335,7 @@ multi-pass preference pipeline eliminate candidates:
 | 2 | **Pattern + type matching** | Remove structurally inapplicable call entries. |
 | 3 | **Full admissibility** | Form `A` using parameter/receiver policy pairs, target-result constraints when present, stage legality, expected result rank/facet, concept/require legality, and other hard compile/type checks. |
 | 4 | **Const/mut maxima** | Apply the product partial order across all constrained positions; no score or lexicographic fallback is allowed. |
-| 5 | **Preference filters** | Apply configured entry preference, concept ordering, extraction specificity, and first-order preference in fixed order. |
+| 5 | **Preference filters** | Apply configured entry preference, concept ordering, extraction specificity, first-order preference, in-place-over-non-in-place preference, then named strategy rules in fixed order. |
 | 6 | **Ordinary uniqueness** | Produce the ordinary final survivor set. |
 | 7 | **Must-select consistency** | If `A` contains a strategy-bearing candidate, it must be the sole final survivor; multiple admissible must-select candidates fail. |
 
@@ -1354,11 +1354,27 @@ Runtime-result function objects contribute complete derived static companion
 objects according to the canonical pair rules; the original runtime body does
 not itself become statically executable.
 
-`export` controls the cross-package visibility boundary for overload
-construction. Within a package, `export` is irrelevant to overload resolution.
-Across packages, only exported symbols appear in the visible pool. Full export
-access control is deferred; the formal pipeline assumes namespace visibility
-has already been applied.
+Authority selects the overload input view before ordinary candidate
+enumeration:
+
+```text
+InternalAuthority -> FullOverloadSet(name) in Σ_full
+ExternalAuthority -> ExportOverloadSet(name) in Σ_export
+ExportOverloadSet = ExternalProjection(FullOverloadSet)
+```
+
+The projection retains candidate identities and may remove candidates that
+have no external view (including value candidates with no const projection).
+It operates on each candidate's resolved `PolicyPair` after declaration-side
+`P1Projection` has been applied; it never treats `Infer` or
+`ValueDominant` as a completed external policy. Symbol admission first
+requires export-retention-closure membership and public reachability through the full
+path; candidate const eligibility then determines the projected subset.
+It does not build a second symbol universe. Within internal authority, export
+is irrelevant to overload resolution. Across the external boundary, the export
+projection and public reachability have already been applied before the formal
+selection pipeline begins. Wpre/Wseal membership is a separate world-existence
+fact and never selects the overload input view.
 
 ## 13. The Status of `match`
 
@@ -1403,13 +1419,14 @@ The Normalized AST stage should preserve the necessary boundaries:
 value-side material remains NormExpr
 pattern-side material remains NormPattern
 annotation remains AnnotationPattern
-DeduceList declares holes
-HoleRef and PatternName remain distinct
+DeduceList declares an identity-bearing left-to-right hole telescope
+HoleRef(target=HoleBinderId) and PatternName remain distinct
 alias target remains EntityRef
 operators remain unresolved structural targets
 postfix ? remains operator-shaped syntax
 _ remains pattern-side explicit consumer material
 bare branch-name arm sugar remains only the fixed elaboration into (_ name)
+...Q remains a Pattern-side remainder node, checked per normalized level
 ```
 
 Normalized AST must not implement:
@@ -1440,7 +1457,8 @@ The Normalized AST only needs to preserve enough structure for later phases to d
 NormExpr::Name("P")        value-side ordinary name
 NormPattern::Name("P")     pattern-side unresolved material
 NormPattern::Nav(...)      pattern-side unresolved navigation material
-NormPattern::HoleRef("T")  DeduceList-bound hole
+NormPattern::HoleRef(target=T_id, spelling="T")
+                             exact DeduceList-bound hole
 OperatorTarget("?")        postfix one-layer top-Pattern-view syntax material
 Pattern-side "_"           explicit consumption pattern
 ```
@@ -1486,6 +1504,7 @@ The core of the design is:
 13. This non-additivity is guaranteed by package-owned operator implementations, non-reopenable namespaces, and absence of unrestricted lookup.
 14. Construction and extraction may be isomorphic; call and extraction are not.
 15. The compiler is not a theorem prover. It invokes locatable, restricted, author-defined meta-operations.
+16. `...Q` matches one normalized-level remainder; it is not a pack type or RHS spread operation.
 ```
 
 Exhaustiveness is therefore not a privilege of special `match` syntax. It is an ordinary consequence of pattern-space residuals, `Done` isolation, explicit closing, result consumption, and closed-pattern reduction.
@@ -1633,67 +1652,62 @@ structured carrier material; final public `struct` result rank is
 symbols into the namespace graph — only binding/materialization installs
 `NamespaceDelta`.
 
-## 19. `delete` — Meta-Stage Non-Constructible Branch
+## 19. Callable Implementation Tail and Pattern Remainders
 
-A `delete` body terminates an explicit closure with a non-constructible result:
+`delete` is one implementation form in the common callable tail, not an
+isolated syntax exception:
 
 ```lang
-(<...> (params)): meta -> let r: symbol
-  => ("reason message") delete
+=> { ... }
+=> strategy_name { ... }
+=> default
+=> delete
+=> ("reason message") delete
 ```
 
-### Semantics
+Without `=>`, `[[strategy_name]] { ... }` supplies named strategy metadata.
+Plain `() -> r name { ... }` retains the old return extraction-pattern parse;
+the parser never backtracks `name` into a strategy.
 
-- `delete` is a meta-stage non-constructible result. It does not return a value,
-  does not produce `unit`, does not panic, and is not a runtime function call.
-- A `delete` closure body is produced by a selected meta-operation: the
-  overload candidate can be selected, but once the meta body is evaluated, it
-  produces a static diagnostic carrying the message.
-- `delete` is not candidate mismatch. A `=> ("msg") delete` overload can
-  outrank a generic fallback, preventing the fallback from being selected.
-- `delete` is only valid in meta bodies. Runtime-only function bodies with
-  `=> ("msg") delete` are rejected at build/check stage.
+Ordinary closure captures are let-shaped bindings. `[let x = E]` and
+`[x = E]` are explicit; `[E]` is shorthand only when normalized `E` has one
+distinct free non-call bare name. Capture initializers are simultaneous in the
+pre-capture environment. Only the complete `[[Name]] {` tail can bypass an
+available capture slot, and Deduce alone does not close that slot.
 
-### Parser / AST / Normalizer
+The normalized implementation is `UserBody(strategy, body)`, `Defaulted`, or
+`Deleted(message?)`. A named strategy is attached to the candidate and becomes
+relevant only after full admissibility. It cannot repair Pattern, phase,
+parameter, or result-policy mismatch, and it cannot open a second overload
+selection. `default` requests compiler synthesis for the callable kind but
+grants no preference merely because of its spelling. A delete candidate
+participates normally and diagnoses only if uniquely selected.
 
-- `delete` is lexed as `Name`, not as a keyword. It is recognized only in the
-  strong context `=> (...) delete`.
-- The message inside `(...)` is parsed as an ordinary `message_expr`. Currently
-  a string literal is the primary supported form; arbitrary product or
-  formatting payloads are not yet guaranteed.
-- Raw AST: `ExplicitClosureAst.body: ClosureBodyAst` with variant
-  `Delete(DeleteBodyAst { message: ExprAst, delete_name: NameAst, span })`.
-- Normalized AST: `NormClosure.body: NormClosureBody` with variant
-  `Delete(NormDeleteBody { message: NormExpr, origin })`.
-- The normalizer does **not** lower `delete` to ordinary call form
-  (`Call(source=msg, target=Name("delete"))`). The norm golden test
-  `closure_delete_body` proves this explicitly.
-- The normalizer does **not** lower `delete` to ordinary call form
-  (`Call(source=msg, target=Name("delete"))`).
+`...Q` is the Pattern-side remainder matcher. At each normalized structural
+level, at most one pack node may occur; nested levels are independent. At an
+unordered named level it captures the nodes left after explicit named matches,
+and only a whole-remainder binder/discard is admissible. At an ordered level it
+captures the usual contiguous remainder; a structured operand is admissible
+only if its P-normal form retains a stable top mode, for example
+`...((a, b) pair)`. The captured remainder is ordinary normalized product
+material, not a new pack value/type, and there is no RHS unpack operator.
 
-### Invariants
+Pack is also a direct canonical Pattern Sequence child:
+`a ...x b -> Sequence[a, Pack(x), b]`. Ellipsis binds one following Pattern
+primary. Product and Sequence establish structural levels; Pack and
+BindingSlot are transparent. The parser preserves every formed Pack node and
+the normalized Pattern validator alone owns per-level cardinality. Raw
+`...(a, b)` is preserved but rejected after P normalization because Pack
+cannot reify the bare Product boundary that Product normalization removes.
 
-```text
-delete does not return a value.
-delete does not produce unit.
-delete does not panic.
-delete is not assert.
-delete is not a runtime call.
-delete produces a static diagnostic when the selected meta body is evaluated.
-A delete candidate can be selected; selection + execution = diagnostic.
-InPlace closures (`{ ... }`) are unaffected.
-delete is only valid in meta bodies.
-```
+Pack specificity is independent of captured length and operand width. Every
+Pack contributes one outward node at its containing level: `...a` is one
+explicit-Pack node and `..._` one Pack-discard node. For a legal headed
+operand, inner evidence remains below its stable top mode at the next
+structural level and is not flattened into multiple same-level EP nodes. At
+equal structural-depth evidence, ordinary explicit matches outrank explicit
+packs, which outrank ordinary discards, which outrank pack discards.
 
-### Build/check semantics
-
-A build-level semantic substrate (`lang_build::meta_body`) enforces:
-- A `Delete` closure body is legal only in static construction execution
-  (`ClosureBodyExecutionEnv::OpenStatic` or
-  `ClosureBodyExecutionEnv::SealStatic`).
-- Runtime-only `Delete` bodies are rejected with a static diagnostic.
-- Evaluating a selected meta `Delete` body produces a hard static diagnostic
-  carrying the delete message (currently string literal messages).
-- `Block` closure bodies remain unaffected.
-- `delete` does not produce a `MetaInvocationValue`, is not a `CoreMetaFunction`,
-  and is not routed through `assert` or `panic`.
+The complete syntax, AST mapping, `.name` connection, and implementation
+boundary are canonical in
+`callable-tail-dot-closure-and-pack-pattern.md`.

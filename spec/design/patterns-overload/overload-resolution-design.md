@@ -53,6 +53,8 @@ Implemented for this slice:
 - restricted parameter extraction-pattern applicability;
 - current body-entry eligibility for demanded meta execution;
 - a restricted extraction-pattern specificity prototype using the tuple in §4;
+- callable-tail strategy metadata, default/delete implementation variants, and
+  restricted remainder-pack applicability;
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
@@ -71,6 +73,8 @@ Explicitly not implemented in v0.8:
 - full runtime overload resolution;
 - concept legality or concept ordering;
 - first-order instantiation preference;
+- in-place closure materialization, lazy embedding lookup, or the B5
+  in-place-over-non-in-place preference;
 - ADL, unrestricted lookup, or global search for all symbols of a name;
 - D/Done reduction or control-flow pattern transformation;
 - guarded branch invocation, short-circuit invocation, or full meta block
@@ -153,6 +157,8 @@ language. It defines:
 - how `must_select_if_qualified` activates from `A` and constrains the final
   result without closing an
   entire overload name
+- how source-named overload strategies attach to a callable implementation and
+  operate only after the fully admissible set exists
 - a compact judgment form
 
 This document does **not** define:
@@ -215,7 +221,7 @@ Visible(C, External)
 
 - **Internal** lookup: all children of the current namespace are candidates.
   `export` is irrelevant.
-- **External** lookup: the path must be in the export closure and every path
+- **External** lookup: the path must be in the export-retention closure and every path
   segment must pass ordinary public/private reachability. Export-root and
   visibility are independent dimensions.
 
@@ -364,8 +370,10 @@ in C0, hard admissibility, and every ordinary preference filter. Preparing its
 associated `()` propagates the object strategy into the candidate.
 
 Must-select is not a hidden fallback, infinite priority, or a rule closing the
-entire overload name. Candidate source spelling remains unresolved; `@` is
-reserved for lifetime policy operations.
+entire overload name. User-written strategy metadata uses
+`=> strategy_name { ... }`; `[[strategy_name]] { ... }` is the no-`=>`
+disambiguation form. `@` remains reserved for lifetime policy operations. See
+`callable-tail-dot-closure-and-pack-pattern.md`.
 
 ---
 
@@ -396,14 +404,35 @@ C(P, E) = nodes of E explicitly visited by pattern P
             literal match
             type / rank match
             discard _
+            pack matcher ...Q
 ```
 
 ```text
 D(P, E) = { n ∈ C(P, E) | the corresponding pattern node is
-           explicit discard _ }
+           explicit ordinary discard _ }
 
-M(P, E) = C(P, E) \ D(P, E)       -- matched (non-discard) nodes
+M(P, E)  = ordinary non-discard explicit nodes
+EP(P, E) = explicit pack-binding nodes
+DP(P, E) = pack-discard nodes (..._)
 ```
+
+The number of remainder elements absorbed never contributes specificity.
+Every Pack supplies exactly one outward pack-class evidence node at its
+containing structural level:
+
+```text
+...a -> one EP
+..._ -> one DP
+...Q -> one outward Pack position
+```
+
+Raw `...(a, b)` cannot supply structured evidence: the bare Product has no
+stable top mode after P normalization and is rejected by the normalized
+Pattern handoff. If an ordered layer later admits an explicitly headed operand
+such as `...((a, b) pair)`, evidence for `pair` and its internal `a`/`b`
+structure belongs below the stable head at the next preserved structural
+level. It is not flattened into two same-level EP nodes. Unordered named
+levels admit only a whole-remainder binder/discard.
 
 ### 4.2 Specificity tuple
 
@@ -412,7 +441,10 @@ specificity(P, E) =
   (
     max depth(n)   for n ∈ C(P, E),    -- deepest explicit penetration
     Σ depth(n)     for n ∈ C(P, E),    -- total explicit depth contribution
-    |M(P, E)|                           -- non-discard explicit node count
+    |M(P, E)|,                          -- ordinary explicit match count
+    |EP(P, E)|,                         -- explicit pack match count
+    |D(P, E)|,                          -- ordinary discard count
+    |DP(P, E)|                          -- pack discard count
   )
 ```
 
@@ -431,12 +463,12 @@ constructor match" problem:
    the primary signal.
 2. If maximum depth is tied, the pattern with greater total depth
    contribution wins.
-3. If total depth is tied, the pattern with more non-discard explicit
-   nodes wins — explicit binders and constructor matches carry more
-   semantic weight than `_` discards.
+3. If total depth is tied, node-class evidence is compared in the order
+   `ordinary explicit > explicit pack > ordinary discard > pack discard`.
 
-Discard `_` contributes depth because it asserts the user knows and
-requires that structure. But at equal depth totals, more binders win.
+Discard `_` contributes depth because it asserts the user knows and requires
+that structure. At equal depth totals, a Pack never gains specificity from the
+number of elements absorbed or from internal operand width at the same level.
 
 ### 4.4 Examples
 
@@ -527,6 +559,8 @@ B1  = MaxEntryPreference(Bp)
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
+B5  = PreferInPlaceOverNonInPlace(B4)
+B6  = ApplyNamedStrategyRules(B5, A)
 
 M = {
   c in A
@@ -545,8 +579,8 @@ f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-The named filters execute in exactly the normative `Bp`, then `B1` through
-`B4`, order.
+The filters execute in exactly the normative `Bp`, then `B1` through `B6`,
+order.
 Candidate iteration and source declaration order do not affect an individual
 filter, but filters are not assumed to commute.
 
@@ -619,19 +653,37 @@ overload, ordering, refinement, or second selection; ordinary overload must
 already be unique, as bounded by
 `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-### 5.7 Bp and B1–B4: Preference filters
+### 5.7 Bp and B1–B6: Preference filters
 
 Only fully admissible candidates enter preference filtering:
 
 - **Bp Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
   policy only when the context supplies one.
+  Each parameter position is taken from its elaborated formal policy Pattern:
+  the callable P2 is inherited first, then an optional `const let` / `mut let`
+  slice supplies `Const` / `Mut`; omission supplies `Unspecified`. This carrier
+  is part of the externally compared candidate, not merely the body-entry
+  environment.
 - **B1 Entry preference**: apply any configured entry preference.
 - **B2 Concept ordering**: keep maximal legal candidates under the future
   concept-order poset.
 - **B3 Extraction specificity**: apply the lexicographic rank from §4.
 - **B4 First-order preference**: if otherwise tied, prefer a first-order object
   over an instantiated object.
+- **B5 In-place preference**: if otherwise tied after B4, prefer an embedded
+  in-place closure candidate over a non-in-place closure candidate. Closure
+  kind is candidate metadata, not hard admissibility, and this filter cannot
+  rescue an inapplicable in-place closure. An in-place closure remains bound
+  to its embedding control-flow layer, has no capture list, and resolves lazy
+  outer reads when used at that layer. Headed no-`=>` and `[[strategy]]`
+  closures retain this same in-place candidate metadata; head presence does
+  not imply ordinary placement.
+- **B6 Named strategy rules**: apply strategy metadata carried by
+  `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
+  A strategy rule is monotone, side-effect-free, independent of iteration
+  order, and restricted to candidates already in `A`; it cannot restart
+  lookup or make an inadmissible candidate viable.
 
 Each stage only removes candidates. First-order preference does not override
 extraction specificity; a deeper applicable generic pattern may outrank a
@@ -650,12 +702,12 @@ M = {
 }
 
 M is empty:
-  |B4| = 1 -> select the unique candidate
-  |B4| = 0 -> error: no matching overload
-  |B4| > 1 -> error: ambiguous overload
+  |B6| = 1 -> select the unique candidate
+  |B6| = 0 -> error: no matching overload
+  |B6| > 1 -> error: ambiguous overload
 
 M = {m}:
-  B4 = {m} -> select m
+  B6 = {m} -> select m
   otherwise -> error: admissible must-select object was not uniquely selected
 
 |M| > 1:
@@ -707,10 +759,12 @@ B1  = MaxEntryPreference(Bp)
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
+B5  = PreferInPlaceOverNonInPlace(B4)
+B6  = ApplyNamedStrategyRules(B5, A)
 M   = MustSelectMembers(A)
 
-OrdinaryUnique(B4, f)
-MustSelectConsistent(M, B4, f)
+OrdinaryUnique(B6, f)
+MustSelectConsistent(M, B6, f)
 ────────────────────────────────────
   Γ; V; Phase ⊢ name(args) ⇓ f
 ```
@@ -734,11 +788,14 @@ current substrate for, but not a complete implementation of,
 `VisiblePolicyViews`.
 
 The later restricted v0.8 path implements bounded structural applicability,
-meta body-entry checking, and extraction specificity for selected source
-callables. Separate pair-model tests cover P1/P2 elaboration and const/mut
-product ordering, but the restricted resolver does not yet carry full pairs
-through candidate preparation, derive compile companions, enforce
-`must_select_if_qualified`, or replace its existing specificity selector.
+meta body-entry checking, extraction specificity for selected source
+callables, one remainder pack at each normalized parameter level, and
+propagation of source-named strategy metadata after applicability. It does not
+execute arbitrary named strategy rules. Separate pair-model tests cover P1/P2
+elaboration and const/mut product ordering, but the restricted resolver does
+not yet carry full pairs through candidate preparation, derive compile
+companions, enforce `must_select_if_qualified`, or replace its existing
+specificity selector.
 
 ---
 
@@ -774,6 +831,7 @@ no lifetime overload, refinement, ABI class, or second selection stage.
 | Document | Relationship |
 |---|---|
 | `static-pattern-spaces-and-extraction-chains.md` §12 | Summary overview of overload resolution; this document is the formal specification |
+| `callable-tail-dot-closure-and-pack-pattern.md` | Callable implementation/strategy tail, first-class `.name`, and remainder-pack matching |
 | `pattern-normalization-and-first-order-overload.md` | Earlier, narrower candidate-preparation subset (pattern normalization + first-order type-value candidate model) feeding meta object invocation; not full runtime overload resolution |
 | `mechanical-argument-passing-and-move-fixed-point.md` | Pass-mode adaptation (move/ref/share/copy/in) is separate from type/rank compatibility; `move` does not create a new type value |
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |

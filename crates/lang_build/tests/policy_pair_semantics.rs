@@ -2,16 +2,18 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use lang_build::{
     bool_branch_space_for_tests, bool_pattern_aliases_for_tests, classify_static_task,
-    compute_export_closure, compute_wpre, derive_function_object_p1,
+    compute_export_retention_closure, compute_wpre, derive_function_object_p1,
     elaborate_binding_p1_projection, elaborate_formal_policy_pattern,
     elaborate_namespace_declaration_policy, expose_policy_slice, externally_visible,
-    normalize_p2_policy, project_complete_symbol_flow, project_p1, publicly_reachable,
+    function_object_declaration_policy, normalize_p2_policy, project_complete_symbol_flow,
+    project_export_overload_sets, project_p1, project_resolved_export_view, publicly_reachable,
     read_pattern, read_value, resolve_explicit_path, select_by_mutability_product,
     select_policy_overload, BuiltinPrivilegedSealFunction, CompleteFlowNode, CompleteSymbolFlow,
-    FunctionObjectDeclarationPolicy, MutabilityPattern, NamespaceDeclarationPosition,
-    NamespaceExportNode, NamespaceVisibility, P1Projection, PatternComponentPolicy, Phase,
-    PhaseOverloadCandidate, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyResultEntry,
-    PolicyStage, Provenance, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
+    ExportAdmission, FunctionObjectDeclarationPolicy, MutabilityPattern,
+    NamespaceDeclarationPosition, NamespaceExportNode, NamespaceVisibility, P1Projection,
+    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyOverloadCandidate,
+    PolicyOverloadSelection, PolicyPair, PolicyResultEntry, PolicyStage, Provenance,
+    ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, StaticTaskDisposition, SymbolEntry,
     ValueComponentPolicy, ValueMutability, ValuePresence, WpreRoots,
 };
 use lang_syntax::{NormDecl, NormForm, NormPolicySpec};
@@ -118,6 +120,76 @@ fn policy_algebra_rejects_cross_dimension_choice_and_same_dimension_conjunction(
 }
 
 #[test]
+fn absent_value_component_cannot_carry_stage_or_mutability_subdimensions() {
+    let absent = normalize_p2_policy(
+        &policy_spec("S : compile"),
+        Provenance::new("valid absent P2"),
+    )
+    .expect("a structurally empty absent Pv with compile Pp remains valid");
+    assert_eq!(absent.value.presence, ValuePresence::Absent);
+    assert!(absent.value.stages.is_empty());
+    assert!(absent.value.mutability.is_empty());
+
+    for source in ["const + S : compile", "mut + S : compile"] {
+        let policy = policy_spec(source);
+        assert!(
+            normalize_p2_policy(&policy, Provenance::new(format!("P2 {source}"))).is_err(),
+            "`{source}` must not form a P2 with mutability attached to absent Pv"
+        );
+        assert!(
+            elaborate_binding_p1_projection(Some(&policy), Provenance::new(format!("P1 {source}")))
+                .is_err(),
+            "`{source}` must not form a P1 with mutability attached to absent Pv"
+        );
+    }
+
+    for source in ["export + const + S : compile", "export + mut + S : compile"] {
+        assert!(
+            elaborate_namespace_declaration_policy(
+                Some(&policy_spec(source)),
+                NamespaceDeclarationPosition::DirectTopLevel,
+                Provenance::new(source),
+            )
+            .is_err(),
+            "`{source}` must not attach mutability to an absent exported Pv"
+        );
+    }
+
+    for (label, value_stages, value_mutability) in [
+        (
+            "absent with stage",
+            stages(&[PolicyStage::Runtime]),
+            BTreeSet::new(),
+        ),
+        (
+            "absent with mutability",
+            StageSet::new(),
+            mutability(&[ValueMutability::Const]),
+        ),
+    ] {
+        let invalid = ResolvedCandidatePolicy {
+            pair: PolicyPair {
+                value: ValueComponentPolicy {
+                    stages: value_stages,
+                    mutability: value_mutability,
+                    presence: ValuePresence::Absent,
+                },
+                pattern: PatternComponentPolicy {
+                    stages: stages(&[PolicyStage::Compile]),
+                },
+                namespace_visibility: None,
+                export_root: false,
+            },
+            provenance: Provenance::new(label),
+        };
+        assert!(
+            project_resolved_export_view(&invalid).is_err(),
+            "resolved export projection must reject {label}"
+        );
+    }
+}
+
+#[test]
 fn p2_single_policy_normalization_uses_compile_for_runtime_only() {
     let cases = [
         ("meta", vec![PolicyStage::Meta], vec![PolicyStage::Meta]),
@@ -218,10 +290,40 @@ fn p1_value_dominant_projection_restricts_the_actual_slice() {
 
 #[test]
 fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
-    let formal =
-        elaborate_formal_policy_pattern(Some(&policy_spec("const")), Provenance::new("formal"))
-            .expect("const formal pattern");
+    let inherited_p2 = normalize_p2_policy(
+        &policy_spec("runtime:compile"),
+        Provenance::new("formal inherited P2"),
+    )
+    .expect("valid inherited P2");
+    let unspecified =
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("unspecified formal"))
+            .expect("omitted formal policy inherits P2");
+    assert_eq!(unspecified.effective_pair, inherited_p2);
+    assert_eq!(unspecified.mutability, None);
+
+    let formal = elaborate_formal_policy_pattern(
+        Some(&policy_spec("const")),
+        &inherited_p2,
+        Provenance::new("formal"),
+    )
+    .expect("const formal pattern");
     assert_eq!(formal.mutability, Some(ValueMutability::Const));
+    assert_eq!(
+        formal.effective_pair.value.stages,
+        inherited_p2.value.stages
+    );
+    assert_eq!(
+        formal.effective_pair.pattern, inherited_p2.pattern,
+        "formal const/mut syntax must not change the inherited Pattern policy"
+    );
+    assert_eq!(
+        formal.effective_pair.value.presence,
+        inherited_p2.value.presence
+    );
+    assert_eq!(
+        formal.effective_pair.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
 
     for source in ["public", "private", "export"] {
         assert!(elaborate_binding_p1_projection(
@@ -231,25 +333,437 @@ fn formal_and_namespace_policy_contexts_are_not_binding_queries() {
         .is_err());
         assert!(elaborate_formal_policy_pattern(
             Some(&policy_spec(source)),
+            &inherited_p2,
             Provenance::new(source)
         )
         .is_err());
     }
+    for source in ["runtime", "compile", "seal", "const + runtime"] {
+        assert!(
+            elaborate_formal_policy_pattern(
+                Some(&policy_spec(source)),
+                &inherited_p2,
+                Provenance::new(source)
+            )
+            .is_err(),
+            "formal `{source}` must not replace inherited P2 dimensions"
+        );
+    }
+
+    let const_only_p2 = normalize_p2_policy(
+        &policy_spec("const + runtime:compile"),
+        Provenance::new("const-only inherited P2"),
+    )
+    .expect("valid const-only P2");
+    assert!(elaborate_formal_policy_pattern(
+        Some(&policy_spec("mut")),
+        &const_only_p2,
+        Provenance::new("expanding mut formal")
+    )
+    .is_err());
 
     let declaration = elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + public + runtime")),
         NamespaceDeclarationPosition::DirectTopLevel,
         Provenance::new("namespace top-level"),
     )
-    .expect("independent export and visibility attributes");
+    .expect("export derives a const external view independently of visibility");
     assert!(declaration.export_root);
     assert_eq!(declaration.visibility, Some(NamespaceVisibility::Public));
+    let P1Projection::ValueDominant { value } = &declaration.projection else {
+        panic!("single namespace policy must elaborate as value-dominant P1");
+    };
+    assert!(
+        value.mutability.is_empty(),
+        "export must not crop the complete namespace-internal declaration view"
+    );
+    let Some(P1Projection::ValueDominant {
+        value: external_value,
+    }) = &declaration.external_projection
+    else {
+        panic!("export root must carry an external value view");
+    };
+    assert_eq!(
+        external_value.mutability,
+        mutability(&[ValueMutability::Const]),
+        "bare export derives a const external projection"
+    );
+    let function_declaration = function_object_declaration_policy(&declaration);
+    assert!(
+        function_declaration.mutability.is_empty(),
+        "function-object formation consumes the complete internal declaration view"
+    );
+
+    let explicit_const = elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + const + runtime")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("explicit const export"),
+    )
+    .expect("export + const is valid");
+    let P1Projection::ValueDominant { value } = explicit_const.projection else {
+        panic!("single namespace policy must elaborate as value-dominant P1");
+    };
+    assert_eq!(value.mutability, mutability(&[ValueMutability::Const]));
+    assert!(matches!(
+        explicit_const.external_projection,
+        Some(P1Projection::ValueDominant { ref value })
+            if value.mutability == mutability(&[ValueMutability::Const])
+    ));
+
+    let broad_internal = elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + (const || mut) + runtime")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("broad internal export"),
+    )
+    .expect("a full const-or-mut internal view has a valid const export projection");
+    assert!(matches!(
+        broad_internal.projection,
+        P1Projection::ValueDominant { ref value }
+            if value.mutability
+                == mutability(&[ValueMutability::Const, ValueMutability::Mut])
+    ));
+    assert!(matches!(
+        broad_internal.external_projection,
+        Some(P1Projection::ValueDominant { ref value })
+            if value.mutability == mutability(&[ValueMutability::Const])
+    ));
+
+    assert!(elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + mut + runtime")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("mut-only export"),
+    )
+    .is_err());
+
+    let type_only = elaborate_namespace_declaration_policy(
+        Some(&policy_spec("export + S : compile")),
+        NamespaceDeclarationPosition::DirectTopLevel,
+        Provenance::new("type-only export"),
+    )
+    .expect("a pure Pattern/type export has no value-mutability obligation");
+    assert!(matches!(
+        type_only.external_projection,
+        Some(P1Projection::Pair(ref pair))
+            if pair.value.presence == ValuePresence::Absent
+                && pair.value.mutability.is_empty()
+    ));
+
     assert!(elaborate_namespace_declaration_policy(
         Some(&policy_spec("export + runtime")),
         NamespaceDeclarationPosition::Local,
         Provenance::new("local export"),
     )
     .is_err());
+}
+
+#[test]
+fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct Candidate {
+        identity: u32,
+        export_root: bool,
+        internal_policy: PolicyPair,
+    }
+
+    let runtime_value = |mutability: BTreeSet<ValueMutability>| PolicyPair {
+        value: ValueComponentPolicy {
+            stages: stages(&[PolicyStage::Runtime]),
+            mutability,
+            presence: ValuePresence::Present,
+        },
+        pattern: PatternComponentPolicy {
+            stages: stages(&[PolicyStage::Compile]),
+        },
+        namespace_visibility: None,
+        export_root: false,
+    };
+    let type_only = || PolicyPair {
+        value: ValueComponentPolicy {
+            stages: StageSet::new(),
+            mutability: BTreeSet::new(),
+            presence: ValuePresence::Absent,
+        },
+        pattern: PatternComponentPolicy {
+            stages: stages(&[PolicyStage::Compile]),
+        },
+        namespace_visibility: None,
+        export_root: false,
+    };
+    fn namespace_path<'a>(
+        nodes: &BTreeMap<&'a str, NamespaceExportNode<&'a str>>,
+        symbol: &'a str,
+    ) -> Vec<&'a str> {
+        let mut reversed = Vec::new();
+        let mut current = Some(symbol);
+        while let Some(id) = current {
+            reversed.push(id);
+            current = nodes.get(id).and_then(|node| node.parent);
+        }
+        reversed.reverse();
+        reversed
+    }
+
+    let nodes = BTreeMap::from([
+        (
+            "f",
+            NamespaceExportNode {
+                parent: None,
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "exported_child",
+            NamespaceExportNode {
+                parent: Some("f"),
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "private_child",
+            NamespaceExportNode {
+                parent: Some("f"),
+                visibility: NamespaceVisibility::Private,
+            },
+        ),
+        (
+            "public_behind_private",
+            NamespaceExportNode {
+                parent: Some("private_child"),
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "exported_type",
+            NamespaceExportNode {
+                parent: Some("f"),
+                visibility: NamespaceVisibility::Public,
+            },
+        ),
+        (
+            "private_dependency",
+            NamespaceExportNode {
+                parent: None,
+                visibility: NamespaceVisibility::Private,
+            },
+        ),
+    ]);
+    let export_retention_closure = compute_export_retention_closure(&nodes, ["f"]);
+    assert!(export_retention_closure.contains("private_child"));
+    assert!(export_retention_closure.contains("public_behind_private"));
+
+    let full = BTreeMap::from([
+        (
+            "f",
+            vec![
+                Candidate {
+                    identity: 1,
+                    export_root: true,
+                    internal_policy: runtime_value(BTreeSet::new()),
+                },
+                Candidate {
+                    identity: 2,
+                    export_root: false,
+                    internal_policy: runtime_value(mutability(&[ValueMutability::Mut])),
+                },
+            ],
+        ),
+        (
+            "exported_child",
+            vec![Candidate {
+                identity: 4,
+                export_root: false,
+                internal_policy: runtime_value(mutability(&[
+                    ValueMutability::Const,
+                    ValueMutability::Mut,
+                ])),
+            }],
+        ),
+        (
+            "private_child",
+            vec![Candidate {
+                identity: 3,
+                export_root: false,
+                internal_policy: runtime_value(BTreeSet::new()),
+            }],
+        ),
+        (
+            "public_behind_private",
+            vec![Candidate {
+                identity: 7,
+                export_root: false,
+                internal_policy: runtime_value(BTreeSet::new()),
+            }],
+        ),
+        (
+            "exported_type",
+            vec![Candidate {
+                identity: 5,
+                export_root: false,
+                internal_policy: type_only(),
+            }],
+        ),
+        (
+            "private_dependency",
+            vec![Candidate {
+                identity: 8,
+                export_root: false,
+                internal_policy: runtime_value(BTreeSet::new()),
+            }],
+        ),
+    ]);
+    let views = project_export_overload_sets(
+        full,
+        |name| ExportAdmission {
+            in_export_retention_closure: export_retention_closure.contains(*name),
+            publicly_reachable: publicly_reachable(&nodes, namespace_path(&nodes, *name)),
+        },
+        |candidate| {
+            (
+                candidate.identity,
+                ResolvedCandidatePolicy {
+                    pair: candidate.internal_policy.clone(),
+                    provenance: Provenance::new(format!(
+                        "resolved candidate {}",
+                        candidate.identity
+                    )),
+                },
+            )
+        },
+    )
+    .expect("all resolved candidates satisfy the value-component invariant");
+
+    assert_eq!(
+        views
+            .resolve_internal(&"f")
+            .expect("full overload set")
+            .iter()
+            .map(|candidate| candidate.identity)
+            .collect::<Vec<_>>(),
+        vec![1, 2]
+    );
+    let external_f = views.resolve_external(&"f").expect("export candidate view");
+    assert_eq!(
+        external_f
+            .iter()
+            .map(|candidate| candidate.identity)
+            .collect::<Vec<_>>(),
+        vec![1]
+    );
+    assert_eq!(external_f[0].internal_candidate.identity, 1);
+    assert_eq!(
+        external_f[0].external_policy.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
+    assert_eq!(
+        external_f[0].external_policy.pattern,
+        external_f[0].internal_candidate.internal_policy.pattern,
+        "external projection preserves the resolved associated Pp"
+    );
+
+    let external_child = views
+        .resolve_external(&"exported_child")
+        .expect("public retention-closure descendant receives an external candidate view");
+    assert!(!external_child[0].internal_candidate.export_root);
+    assert_eq!(
+        external_child[0].external_policy.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
+    assert_eq!(
+        external_child[0].external_policy.pattern,
+        external_child[0].internal_candidate.internal_policy.pattern
+    );
+
+    assert!(views.resolve_internal(&"private_child").is_some());
+    assert!(
+        views.resolve_external(&"private_child").is_none(),
+        "a private export-retention-closure member is not externally exposed"
+    );
+    assert!(views.resolve_internal(&"public_behind_private").is_some());
+    assert!(
+        views.resolve_external(&"public_behind_private").is_none(),
+        "a public descendant behind a private path is not externally exposed"
+    );
+
+    let external_type = views
+        .resolve_external(&"exported_type")
+        .expect("pure Pattern/type candidate remains externally visible");
+    assert_eq!(
+        external_type[0].external_policy, external_type[0].internal_candidate.internal_policy,
+        "Pv=absent has no value-mutability projection obligation"
+    );
+
+    assert!(views.resolve_internal(&"private_dependency").is_some());
+    assert!(views.resolve_external(&"private_dependency").is_none());
+
+    let wpre = compute_wpre(
+        WpreRoots {
+            exported_symbols: vec!["f"],
+            materialized_results_of_exported_meta_functions: vec![],
+            parameter_dependencies_of_exported_meta_functions: vec![],
+        },
+        |symbol| {
+            if *symbol == "f" {
+                vec![
+                    "private_child",
+                    "public_behind_private",
+                    "private_dependency",
+                ]
+            } else {
+                vec![]
+            }
+        },
+    );
+    assert!(
+        wpre.contains("private_dependency"),
+        "Wpre may retain a private semantic dependency"
+    );
+    assert!(wpre.contains("private_child"));
+    assert!(wpre.contains("public_behind_private"));
+    assert!(
+        views.resolve_external(&"private_dependency").is_none(),
+        "world membership must not install an external export view"
+    );
+
+    let mut_only = BTreeMap::from([(
+        "mut_only_member",
+        vec![Candidate {
+            identity: 6,
+            export_root: false,
+            internal_policy: runtime_value(mutability(&[ValueMutability::Mut])),
+        }],
+    )]);
+    let mut_only_views = project_export_overload_sets(
+        mut_only,
+        |_| ExportAdmission {
+            in_export_retention_closure: true,
+            publicly_reachable: true,
+        },
+        |candidate| {
+            (
+                candidate.identity,
+                ResolvedCandidatePolicy {
+                    pair: candidate.internal_policy.clone(),
+                    provenance: Provenance::new(format!(
+                        "resolved candidate {}",
+                        candidate.identity
+                    )),
+                },
+            )
+        },
+    )
+    .expect("mut-only is externally ineligible, not structurally invalid");
+    assert!(
+        mut_only_views
+            .resolve_internal(&"mut_only_member")
+            .is_some(),
+        "a mut-only overload remains in Sigma_full"
+    );
+    assert!(
+        mut_only_views
+            .resolve_external(&"mut_only_member")
+            .is_none(),
+        "a mut-only overload has no candidate view in Sigma_export"
+    );
 }
 
 #[test]
@@ -262,7 +776,7 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
     let object = derive_function_object_p1(
         &result,
         &FunctionObjectDeclarationPolicy {
-            mutability: mutability(&[ValueMutability::Mut]),
+            mutability: mutability(&[ValueMutability::Const]),
             namespace_visibility: Some(NamespaceVisibility::Private),
             export_root: true,
         },
@@ -272,8 +786,11 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         stages(&[PolicyStage::Seal, PolicyStage::Runtime])
     );
     assert_eq!(object.pattern.stages, stages(&[PolicyStage::Seal]));
-    assert_eq!(object.value.mutability, mutability(&[ValueMutability::Mut]));
-    assert!(!object.value.mutability.contains(&ValueMutability::Const));
+    assert_eq!(
+        object.value.mutability,
+        mutability(&[ValueMutability::Const])
+    );
+    assert!(!object.value.mutability.contains(&ValueMutability::Mut));
     assert_eq!(
         object.namespace_visibility,
         Some(NamespaceVisibility::Private)
@@ -291,7 +808,30 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         stages(&[PolicyStage::Compile, PolicyStage::Runtime])
     );
     assert_eq!(object.pattern.stages, stages(&[PolicyStage::Compile]));
+    assert!(
+        object.value.mutability.is_empty(),
+        "empty function-object mutability is the unconstrained const || mut domain"
+    );
     assert!(!object.export_root);
+
+    let const_projection = elaborate_binding_p1_projection(
+        Some(&policy_spec("const")),
+        Provenance::new("const function-object P1"),
+    )
+    .expect("const P1 projection");
+    let object_entry = PolicyResultEntry {
+        value: Some("function-object"),
+        value_policy: object.value.clone(),
+        pattern: "function-pattern",
+        pattern_policy: object.pattern.clone(),
+    };
+    let selected = project_p1(&const_projection, &[object_entry]);
+    assert_eq!(selected.len(), 1);
+    assert_eq!(
+        selected[0].value_policy.mutability,
+        mutability(&[ValueMutability::Const]),
+        "an explicit declaration/P1 restriction crops the unconstrained domain"
+    );
 }
 
 #[test]
@@ -388,7 +928,7 @@ fn wpre_is_the_least_semantic_dependency_closure_of_export_roots() {
 }
 
 #[test]
-fn export_closure_and_public_path_reachability_are_independent() {
+fn export_retention_closure_and_public_path_reachability_are_independent() {
     let nodes = BTreeMap::from([
         (
             0,
@@ -426,13 +966,24 @@ fn export_closure_and_public_path_reachability_are_independent() {
             },
         ),
     ]);
-    let exported = compute_export_closure(&nodes, [1]);
-    assert_eq!(exported, BTreeSet::from([0, 1, 3, 4]));
-    assert!(!exported.contains(&2), "siblings do not inherit export");
+    let export_retention_closure = compute_export_retention_closure(&nodes, [1]);
+    assert_eq!(export_retention_closure, BTreeSet::from([0, 1, 3, 4]));
+    assert!(
+        !export_retention_closure.contains(&2),
+        "siblings do not enter the export-retention closure"
+    );
     assert!(publicly_reachable(&nodes, [0, 1]));
     assert!(!publicly_reachable(&nodes, [0, 1, 3]));
-    assert!(exported.contains(&4), "private descendants remain exported");
-    assert!(!externally_visible(&4, &exported, &nodes, [0, 1, 3, 4]));
+    assert!(
+        export_retention_closure.contains(&4),
+        "private descendants remain export-retention-closure members"
+    );
+    assert!(!externally_visible(
+        &4,
+        &export_retention_closure,
+        &nodes,
+        [0, 1, 3, 4]
+    ));
 }
 
 #[test]
@@ -521,6 +1072,50 @@ fn const_mut_selection_uses_product_partial_order_and_delete_is_normal() {
     assert_eq!(
         select_by_mutability_product(&delete, &[ValueMutability::Const], None),
         PolicyOverloadSelection::RejectedByDelete("const-delete")
+    );
+}
+
+#[test]
+fn formal_p2_mutability_slice_is_exported_to_the_overload_product_order() {
+    let inherited_p2 = normalize_p2_policy(
+        &policy_spec("runtime:compile"),
+        Provenance::new("overload formal P2"),
+    )
+    .expect("valid inherited P2");
+    let const_formal = elaborate_formal_policy_pattern(
+        Some(&policy_spec("const")),
+        &inherited_p2,
+        Provenance::new("const formal"),
+    )
+    .expect("const formal");
+    let unspecified_formal =
+        elaborate_formal_policy_pattern(None, &inherited_p2, Provenance::new("unspecified formal"))
+            .expect("unspecified formal");
+    let mut_formal = elaborate_formal_policy_pattern(
+        Some(&policy_spec("mut")),
+        &inherited_p2,
+        Provenance::new("mut formal"),
+    )
+    .expect("mut formal");
+
+    let candidates = vec![
+        PolicyOverloadCandidate::from_formal_patterns("const", &[const_formal], None, false),
+        PolicyOverloadCandidate::from_formal_patterns(
+            "unspecified",
+            &[unspecified_formal],
+            None,
+            false,
+        ),
+        PolicyOverloadCandidate::from_formal_patterns("mut", &[mut_formal], None, false),
+    ];
+
+    assert_eq!(
+        select_by_mutability_product(&candidates, &[ValueMutability::Const], None),
+        PolicyOverloadSelection::Selected("const")
+    );
+    assert_eq!(
+        select_by_mutability_product(&candidates, &[ValueMutability::Mut], None),
+        PolicyOverloadSelection::Selected("mut")
     );
 }
 

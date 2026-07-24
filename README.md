@@ -14,8 +14,10 @@ v0.3 is the completed Normalized AST specification baseline.
 v0.4 is the completed Raw AST -> Normalized AST prototype / hardening checkpoint.
 For current public documentation, see `spec/public/v0.5/`.
 
-The Raw AST frontend surface (lexer, parser, AST, diagnostics, golden tests)
-is frozen contract material. The v0.4 normalizer lowers Raw AST into a
+The v0.2 Raw AST frontend surface remains frozen historical contract material.
+The current parser surface is versioned by the v0.5-A frontend amendment and
+the Raw AST v0.5 contract; the historical v0.1/v0.2/v0.3 documents are not
+rewritten. The v0.4 normalizer lowers Raw AST into a
 desugared, non-semantic Normalized AST with a stable dump and golden tests.
 v0.5 stabilizes the normalized surface semantics and resets the public
 documentation structure; it adds no semantic passes. v0.6 begins the
@@ -26,7 +28,10 @@ slice.
 Documentation pointers:
 
 - Current public documentation: `spec/public/v0.5/`
-- Frozen Raw AST input surface: `spec/public/v0.2/`
+- Current Raw AST contract: `spec/contracts/raw-ast-contract-v0.5.md`
+- Versioned delta from the frozen v0.2 surface:
+  `spec/contracts/frontend-semantic-amendment-v0.5-a.md`
+- Frozen historical Raw AST input surface: `spec/public/v0.2/`
 - Normalized AST specification baseline (historical): `spec/history/v0.3/`
 - Completed Raw AST -> Normalized AST prototype/hardening notes:
   `spec/contracts/v0.4-normalization-prototype-notes.md`
@@ -48,6 +53,8 @@ Read these for the completed public normalized surface behavior:
 | `spec/public/v0.5/normalized-surface-semantics-v0.5.md` | Published normalized surface semantics (call/product/pipe binding, value/pattern boundaries, origin visibility, non-goals) |
 | `spec/public/v0.5/agent-interpretation-guide-v0.5.md` | How agents should interpret source without conventional call assumptions |
 | `spec/contracts/v0.4-normalization-prototype-notes.md` | The v0.4 normalization boundary |
+| `spec/contracts/frontend-semantic-amendment-v0.5-a.md` | Versioned parser/Raw-AST amendment over the frozen v0.2 snapshot |
+| `spec/contracts/raw-ast-contract-v0.5.md` | Current amended Raw AST and validated-normalization handoff |
 
 ### v0.3 Normalized AST design history
 
@@ -61,10 +68,11 @@ publishes the public surface. The v0.3 specification is now historical:
 | `spec/history/v0.3/normalized-ast-design-history-v0.3.md` | N-AST design questions, resolutions, audit trail, reset-debt log |
 | `spec/contracts/v0.3-normalization-handoff-checklist.md` | v0.3 handoff snapshot (may-assume, must-not-assume, required inputs) |
 
-### Frozen v0.2 frontend input authority
+### Frozen v0.2 frontend input history
 
-The v0.2 public frontend specification set remains authoritative for the frozen
-Raw AST input surface. Read these for the input contract the normalizer consumes:
+The v0.2 public frontend specification set remains authoritative for what was
+frozen at v0.2. Read it as a historical baseline, then apply v0.5-A and the
+current v0.5 contract for the parser input the normalizer consumes today:
 
 | Document | Purpose |
 |---|---|
@@ -81,12 +89,14 @@ documents remain present, but they are not part of the normal public reading pat
 
 | Category | Directory | Document | Purpose |
 |---|---|---|---|
-| Implementation | `spec/implementation/v0.1/` | `ast-construction-v0.1.md` | AST construction rules — implementation-level backing reference |
-| Implementation | `spec/implementation/v0.1/` | `diagnostics-v0.1.md` | Diagnostic categories, span policy, recovery — implementation-level backing reference |
-| Implementation | `spec/implementation/v0.1/` | `implementation-status-v0.1.md` | Authoritative factual inventory of current implementation status |
+| Implementation history | `spec/implementation/v0.1/` | `ast-construction-v0.1.md` | Closed v0.1 parser-construction snapshot |
+| Implementation history | `spec/implementation/v0.1/` | `diagnostics-v0.1.md` | Closed v0.1 diagnostic/recovery snapshot |
+| Implementation history | `spec/implementation/v0.1/` | `implementation-status-v0.1.md` | Closed v0.1 implementation inventory |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.1.md` | Raw AST invariants for future normalization |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-freeze-v0.2.md` | v0.2 freeze boundary, allowed/forbidden work, v0.3 handoff |
 | Contract / handoff | `spec/contracts/` | `v0.3-normalization-handoff-checklist.md` | v0.3 normalization handoff: may-assume, must-not-assume, required inputs, open v0.3 questions |
+| Contract / handoff | `spec/contracts/` | `frontend-semantic-amendment-v0.5-a.md` | Classifies the post-freeze structural corrections and new syntax amendments |
+| Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.5.md` | Current Raw AST shape and validated normalization handoff |
 | Contract / handoff | `spec/contracts/` | `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; old formal meta-return split superseded by the symbol-first design |
 | Contract / handoff | `spec/contracts/` | `v0.8-meta-construction-agent-constraints.md` | Draft v0.8-adjacent guardrails for shared build/symbol/product/policy/meta construction boundaries |
 | Contract / handoff | `spec/contracts/` | `v0.9-pattern-head-identity-and-explicit-navigation.md` | Bare-name/explicit-navigation contract plus current registry-backed PatternHeadId substrate and future owner-resolution handoff |
@@ -150,9 +160,9 @@ They describe intended semantics, not currently implemented public behavior.
 Start with `spec/public/v0.5/README.md` for current v0.5 public documentation.
 Read `spec/history/v0.3/` for the v0.3 Normalized AST design baseline
 (historical).
-Read `spec/public/v0.2/lexical-syntax-v0.2.md` when you need the frozen Raw AST
-input contract. Read `spec/public/v0.2/concrete-syntax-v0.2.md` for parsed
-syntax and `spec/public/v0.2/diagnostics-recovery-v0.2.md` for error behavior.
+Read `spec/public/v0.2/` for the frozen historical Raw AST baseline. Read
+`spec/contracts/frontend-semantic-amendment-v0.5-a.md` and
+`spec/contracts/raw-ast-contract-v0.5.md` for the current parser contract.
 
 ## Language surface
 
@@ -162,9 +172,9 @@ syntax and `spec/public/v0.2/diagnostics-recovery-v0.2.md` for error behavior.
   surface semantics: how source is read and lowered into Normalized AST
   (call / product / pipe binding, value/pattern boundaries, sugar lowering,
   origin / `Unsupported` visibility, and non-goals).
-- **Frozen input layer** — `spec/public/v0.2/`. The Raw AST frontend
-  (lexer / parser / diagnostics) is the frozen input syntax the normalizer
-  consumes.
+- **Raw AST input layer** — `spec/public/v0.2/` is the frozen historical
+  baseline; v0.5-A plus `raw-ast-contract-v0.5.md` define the amended input the
+  normalizer consumes.
 - **Implemented lowering layer** — the v0.4 normalizer lowers Raw AST into a
   desugared, non-semantic Normalized AST; its boundary is recorded in
   `spec/contracts/v0.4-normalization-prototype-notes.md`.
@@ -279,7 +289,8 @@ lang diag path/to/file.lang
 
 The repository has golden coverage for lexer, parser/AST, diagnostics, and
 normalized AST (`tests/normalized_golden.rs`, `tests/cases/norm/`).
-See `spec/implementation/v0.1/implementation-status-v0.1.md` for the current test count.
+Run `cargo test` for the current test inventory; the v0.1 implementation-status
+document intentionally retains its historical count.
 
 ## Non-goals (current)
 
@@ -313,7 +324,7 @@ Read these for the v0.3 Normalized AST design baseline (historical):
 
 ### Frozen v0.2 frontend input
 
-Read these for the frozen Raw AST input surface:
+Read these as the frozen Raw AST historical surface:
 
 1. `spec/public/v0.2/lexical-syntax-v0.2.md` — Understand the frozen lexical syntax.
 2. `spec/public/v0.2/concrete-syntax-v0.2.md` — Understand the frozen concrete syntax.
@@ -321,18 +332,25 @@ Read these for the frozen Raw AST input surface:
 4. `spec/public/v0.2/raw-ast-frozen-surface-v0.2.md` — Inspect the frozen Raw AST construct inventory.
 5. `spec/reference/glossary.md` — Resolve terminology.
 
+Then read the current delta and contract:
+
+1. `spec/contracts/frontend-semantic-amendment-v0.5-a.md`
+2. `spec/contracts/raw-ast-contract-v0.5.md`
+
 ### Extended implementer reading
 
 Read these only when implementing, auditing, or repairing the frontend.
 
 1. `spec/implementation/v0.1/ast-construction-v0.1.md` — Implement the parser.
 2. `spec/implementation/v0.1/diagnostics-v0.1.md` — Diagnostic catalog (implementation-level reference).
-3. `spec/implementation/v0.1/implementation-status-v0.1.md` — Know current implementation facts.
-4. `spec/contracts/raw-ast-contract-v0.1.md` — Know Raw AST invariants for normalization.
-5. `spec/contracts/raw-ast-contract-freeze-v0.2.md` — Know v0.2 freeze boundary and v0.3 handoff.
-6. `spec/history/v0.1/operator-design.md` — Understand operator syntax and lookup boundaries.
-7. `spec/history/v0.1/resolved-questions.md` — Understand resolved design decisions.
-8. `spec/history/v0.1/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
+3. `spec/implementation/v0.1/implementation-status-v0.1.md` — Know the historical v0.1 implementation snapshot.
+4. `spec/contracts/raw-ast-contract-v0.1.md` — Know the historical Raw AST invariants.
+5. `spec/contracts/raw-ast-contract-freeze-v0.2.md` — Know the v0.2 freeze boundary.
+6. `spec/contracts/frontend-semantic-amendment-v0.5-a.md` — Apply the versioned post-freeze changes.
+7. `spec/contracts/raw-ast-contract-v0.5.md` — Know the current Raw AST and validation handoff.
+8. `spec/history/v0.1/operator-design.md` — Understand operator syntax and lookup boundaries.
+9. `spec/history/v0.1/resolved-questions.md` — Understand resolved design decisions.
+10. `spec/history/v0.1/frontend-v0.1.md` — Understand the pipeline (v0.1 overview).
 
 ### Future design and planning
 

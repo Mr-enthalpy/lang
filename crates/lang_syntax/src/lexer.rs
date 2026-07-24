@@ -431,12 +431,13 @@ impl<'src> Lexer<'src> {
 
     fn lex_operator_or_symbol(&mut self) -> bool {
         // Longest-match priority order across operators and structural symbols:
-        //   1. 3-char operators:   <<=  >>=
-        //   2. 2-char structural:  =>   ->   |>   ..   ::
-        //   3. 2-char operators:   ++   --
-        //   4. 2-char operators:   +=   -=   *=   /=   &=   |=   &&   ||
-        //   5. 2-char operators:   <=   >=   ==   !=
-        //   6. 2-char operators:   <<   >>
+        //   1. 3-char structural:  ===  ...
+        //   2. 3-char operators:   <<=  >>=
+        //   3. 2-char structural:  =>   ->   |>   ..   ::
+        //   4. 2-char operators:   ++   --
+        //   5. 2-char operators:   +=   -=   *=   /=   &=   |=   &&   ||
+        //   6. 2-char operators:   <=   >=   ==   !=
+        //   7. 2-char operators:   <<   >>
         //   7. 1-char operators:   +  -  *  /  !  &  |  @  ~  ^  $  ?
         //   8. 1-char structural:  <  >  =  .  :  ,  ;  (  )  [  ]  {  }
 
@@ -447,6 +448,14 @@ impl<'src> Lexer<'src> {
             self.advance_char();
             self.advance_char();
             self.push_token(TokenKind::Symbol(Symbol::TripleEqual), start);
+            return true;
+        }
+        if self.starts_with("...") {
+            let start = self.mark();
+            self.advance_char();
+            self.advance_char();
+            self.advance_char();
+            self.push_token(TokenKind::Symbol(Symbol::Ellipsis), start);
             return true;
         }
 

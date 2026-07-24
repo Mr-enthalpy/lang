@@ -17,7 +17,7 @@ P1 has three contextual elaborators:
 
 ```text
 ordinary binding P1          -> identity-preserving slice restriction
-formal parameter policy      -> const/mut overload pattern
+formal parameter policy      -> inherit P2, then optional const/mut-only pattern slice
 namespace declaration policy -> visibility plus optional export-root
 ```
 
@@ -49,6 +49,22 @@ Stage(P1v) = Stage(P2v) || Stage(P2p)
 Only stages lift. Mutability, visibility, export-root, and value presence come
 from the object declaration.
 
+Each written formal parameter inherits P2 first. An omitted qualifier keeps it
+unchanged; `const let` / `mut let` restrict only its mutability Pattern and do
+not alter any other component. The function object itself defaults to an empty
+mutability restriction, whose typed-domain meaning is the full
+`const || mut` choice; an explicit declaration P1 may crop it. Namespace
+declaration elaboration does not crop this complete internal view merely
+because the declaration is exported. A value-bearing exported candidate must
+admit a const projection. Its external candidate view is const-projected; a
+mut-only value candidate is therefore externally ineligible, while
+`const || mut` is valid.
+
+Formal elaboration has two consumers of the same result: the entered callable
+body receives the effective pair, and overload candidate formation copies the
+qualifier into that parameter's external const/mut product-order position.
+Neither consumer may reconstruct a different policy.
+
 ## 3. Phase mapping
 
 ```text
@@ -67,6 +83,17 @@ OpenStatic, exposes no readable runtime value, but exposes its compile Pattern
 and derived compile companion. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
 
+Explicit-path resolution is authority-sensitive:
+
+```text
+InternalResolve(path) -> Σ_full
+ExternalResolve(path) -> Σ_export
+```
+
+Neither operation is a Wpre/Wseal membership query. A symbol may belong to the
+materialized world without being externally exposed, and an exported view is a
+projection of the same full symbol identity rather than a second symbol.
+
 Ordinary seal code can explicitly resolve committed symbols. Only a
 compiler-known privileged seal function can enumerate the fixed Wpre scan
 domain; Wseal never enlarges it.
@@ -76,13 +103,52 @@ domain; Wseal never enlarges it.
 Export-root and public/private are independent:
 
 ```text
-ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
+ExportRetentionClosure(s) = PathAncestors(s) ∪ Subtree(s)
 ExternallyVisible(path) = Exported(path) && PubliclyReachable(path)
 ```
 
 `export` is legal only at a namespace construction level's direct top-level.
 Public/private may vary at every hierarchy layer and external access checks all
-path components.
+path components. Export retains a complete internal declaration view and
+derives a separate external view:
+
+```text
+InternalView(value export) = full Pv:Pp
+ExternalView(value export) = Project_const(Pv):Pp
+InternalView(type export)  = absent:Pp
+ExternalView(type export)  = absent:Pp
+```
+
+The absent value form has no hidden value subdimensions:
+
+```text
+Pv = absent
+  => value stages = ∅
+  && value mutability = ∅
+```
+
+Accordingly `const + S : compile` and `mut + S : compile` are invalid before
+export projection; adding `export` does not make either form valid.
+
+An omitted mutability domain and a written `const || mut` domain are valid when
+their const projection is non-empty. A `mut`-only value export is invalid. A
+pure type/Pattern export has no value-mutability requirement. This projection
+is previewed/validated for a direct root by namespace-declaration elaboration.
+That preview remains declaration-side `P1Projection`; it is not a resolved
+external policy.
+
+After declaration projection has been applied to actual RHS/result entries,
+each candidate carries a resolved `PolicyPair`. External admission then
+requires both export-retention-closure membership and public reachability
+through every
+path component. For each admitted symbol—including non-root ancestors or
+descendants—every policy-eligible candidate is transformed into an
+identity-preserving
+`ExportCandidateView` whose external policy is another complete `PolicyPair`.
+The Pattern component is preserved. Mut-only candidates stay in `Σ_full` and
+are filtered from `Σ_export`; `absent:Pp` candidates enter unchanged. The
+generic policy parser and function-object stage lifting do not perform these
+operations.
 
 ## 5. Rust substrate
 
@@ -91,11 +157,18 @@ The typed substrate currently provides:
 - dedicated `PolicyConjunctionAst`, `PolicyChoiceAst`, and `PolicyAtomAst`;
 - `PolicyPair` with typed dimensions and `Phase` with exactly three variants;
 - separate binding/formal/namespace elaborators;
+- formal elaboration that receives inherited P2 explicitly and preserves all
+  non-mutability dimensions;
 - P2 normalization and stage-only function-object derivation;
 - owned P1 restricted views rather than reference-only filtering;
 - explicit resolution followed by phase exposure and facet reads;
 - structural `CompleteSymbolFlow` projection;
-- Wpre and export least-closure helpers;
+- Wpre and export-retention least-closure helpers;
+- complete and externally projected namespace overload-set carriers that
+  require a typed `ExportAdmission { in_export_retention_closure,
+  publicly_reachable }` before projection and
+  preserve candidate identity while storing a distinct resolved `PolicyPair`
+  on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.
 
 The older `PolicyFlag`/`PolicySet` path remains compatibility transport. It is

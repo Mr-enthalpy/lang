@@ -1,0 +1,121 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Explicit
+                                slot:
+                                  BindingSlot let=true
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Binder
+                                        TextName x
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name outer
+                              CaptureItem Explicit
+                                slot:
+                                  BindingSlot let=false
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Binder
+                                        TextName y
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name source
+                                        OperatorExpr
+                                          Atom
+                                            Name target
+                              CaptureItem Explicit
+                                slot:
+                                  BindingSlot let=true
+                                    policy:
+                                      PolicySpec
+                                        value_policy:
+                                          PolicyConjunction
+                                            PolicyChoice
+                                              PolicyAtom Name "runtime"
+                                        pattern_policy:
+                                          None
+                                    deduce:
+                                      DeduceList
+                                        binders:
+                                          BinderDecl name=T
+                                            annotation:
+                                              None
+                                    pattern:
+                                      Binder
+                                        TextName z
+                                    annotation:
+                                      AnnotationExpr
+                                        Expr
+                                          Pipe
+                                            Segment has_incoming=false
+                                              OperatorExpr
+                                                Atom
+                                                  Name T
+                                    with_clause:
+                                      Empty
+                                    initializer:
+                                      None
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name seed
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name x

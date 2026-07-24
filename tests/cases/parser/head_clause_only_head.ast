@@ -5,7 +5,7 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Explicit
+              Closure Ordinary
                 FnHeadPrefix
                   clauses:
                     Require

@@ -15,6 +15,7 @@ use super::{
 #[derive(Clone, Copy)]
 pub enum BindingSlotContext {
     Let,
+    Capture,
     Param,
     Return,
 }
@@ -33,7 +34,13 @@ pub fn parse_let_form(parser: &mut Parser<'_>, policy: Option<PolicySpecAst>) ->
         return FormAst::AliasLet(parse_alias_let_body(parser, start, policy));
     }
 
-    let mut slot = parse_binding_slot(parser, BindingSlotContext::Let, None, true);
+    let inherited_deduce = parser.active_deduce_list();
+    let mut slot = parse_binding_slot(
+        parser,
+        BindingSlotContext::Let,
+        inherited_deduce.as_ref(),
+        true,
+    );
     slot.has_let = true;
     slot.policy = policy;
     let span = start.join(slot.span);
@@ -70,7 +77,16 @@ pub fn parse_binding_slot(
             "alias binding must appear as a standalone form",
             span,
         );
-        parser.recover_to_form_boundary();
+        if matches!(context, BindingSlotContext::Capture) {
+            while !parser.cursor.at_eof()
+                && !parser.cursor.at_symbol(Symbol::Comma)
+                && !parser.cursor.at_symbol(Symbol::RBracket)
+            {
+                parser.cursor.bump_non_trivia();
+            }
+        } else {
+            parser.recover_to_form_boundary();
+        }
         let end = parser.cursor.current_span();
         return BindingSlotAst {
             policy: None,
@@ -91,8 +107,12 @@ pub fn parse_binding_slot(
     } else {
         None
     };
+    let local_deduce_scope_mark = parser.push_deduce_scope(deduce.as_ref());
 
-    if matches!(context, BindingSlotContext::Let) {
+    if matches!(
+        context,
+        BindingSlotContext::Let | BindingSlotContext::Capture
+    ) {
         if let Some(deduce) = &deduce {
             if deduce.binders.is_empty() {
                 parser.error(
@@ -104,8 +124,8 @@ pub fn parse_binding_slot(
         }
     }
 
-    let pattern =
-        parse_binding_pattern(parser, context, has_let, deduce.as_ref(), inherited_deduce);
+    let active_deduce = merge_active_deduce(inherited_deduce, deduce.as_ref(), start);
+    let pattern = parse_binding_pattern(parser, context, has_let, Some(&active_deduce));
     let mut end = binding_pattern_span(&pattern);
 
     let annotation = parse_binding_annotation(parser, context);
@@ -133,16 +153,16 @@ pub fn parse_binding_slot(
         None
     };
 
-    let initializer = if matches!(context, BindingSlotContext::Let) {
-        Some(parse_let_value(parser, require_initializer))
-    } else {
-        None
+    let initializer = match context {
+        BindingSlotContext::Let => Some(parse_let_value(parser, require_initializer)),
+        BindingSlotContext::Capture => Some(parse_capture_value(parser, require_initializer)),
+        BindingSlotContext::Param | BindingSlotContext::Return => None,
     };
     if let Some(initializer) = &initializer {
         end = initializer.span;
     }
 
-    BindingSlotAst {
+    let slot = BindingSlotAst {
         policy,
         has_let,
         deduce,
@@ -151,7 +171,9 @@ pub fn parse_binding_slot(
         with_clause,
         initializer,
         span: start.join(end),
-    }
+    };
+    parser.restore_deduce_scope(local_deduce_scope_mark);
+    slot
 }
 
 pub fn parse_product_extract(
@@ -238,10 +260,7 @@ fn parse_slot_policy_and_let(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
 ) -> (Option<PolicySpecAst>, bool) {
-    if !matches!(
-        context,
-        BindingSlotContext::Param | BindingSlotContext::Return
-    ) {
+    if matches!(context, BindingSlotContext::Let) {
         return (None, false);
     }
 
@@ -269,9 +288,12 @@ fn slot_policy_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) ->
             parser.cursor.at_symbol(Symbol::Comma) || parser.cursor.at_symbol(Symbol::RParen)
         }
         BindingSlotContext::Return => {
-            parser.cursor.at_symbol(Symbol::FatArrow)
-                || parser.cursor.at_symbol(Symbol::LBrace)
-                || parser.cursor.at_name("with")
+            super::closure::at_callable_implementation_tail(parser) || parser.cursor.at_name("with")
+        }
+        BindingSlotContext::Capture => {
+            parser.cursor.at_symbol(Symbol::Equal)
+                || parser.cursor.at_symbol(Symbol::Comma)
+                || parser.cursor.at_symbol(Symbol::RBracket)
         }
         BindingSlotContext::Let => true,
     }
@@ -281,14 +303,30 @@ fn parse_binding_pattern(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
     _has_let: bool,
-    local_deduce: Option<&DeduceListAst>,
-    inherited_deduce: Option<&DeduceListAst>,
+    active_deduce: Option<&DeduceListAst>,
 ) -> BindingPatternAst {
     let token = parser.cursor.peek_non_trivia();
+
+    if parser.cursor.at_symbol(Symbol::Ellipsis) {
+        let empty_deduce;
+        let deduce_ref = match active_deduce {
+            Some(deduce) => deduce,
+            None => {
+                empty_deduce = DeduceListAst {
+                    binders: vec![],
+                    span: parser.cursor.current_span(),
+                };
+                &empty_deduce
+            }
+        };
+        let skeleton = parse_canonical_skeleton(parser, deduce_ref);
+        return canonical_pack_or_sequence_binding_pattern(skeleton);
+    }
 
     if at_binding_pattern_boundary(parser, context) {
         let message = match context {
             BindingSlotContext::Let => "expected binding pattern after `let`",
+            BindingSlotContext::Capture => "expected capture binding pattern",
             BindingSlotContext::Param => "expected parameter binding pattern",
             BindingSlotContext::Return => "expected return binding pattern after `->`",
         };
@@ -299,12 +337,14 @@ fn parse_binding_pattern(
     if parser.cursor.at_symbol(Symbol::LParen) {
         let element_context = match context {
             BindingSlotContext::Return => BindingSlotContext::Return,
-            BindingSlotContext::Let | BindingSlotContext::Param => BindingSlotContext::Param,
+            BindingSlotContext::Let | BindingSlotContext::Capture | BindingSlotContext::Param => {
+                BindingSlotContext::Param
+            }
         };
         return BindingPatternAst::Product(parse_product_extract(
             parser,
             element_context,
-            local_deduce.or(inherited_deduce),
+            active_deduce,
         ));
     }
 
@@ -313,7 +353,7 @@ fn parse_binding_pattern(
         || matches!(token.kind, TokenKind::IntLiteral | TokenKind::StringLiteral)
     {
         let empty_deduce;
-        let deduce_ref = match local_deduce.or(inherited_deduce) {
+        let deduce_ref = match active_deduce {
             Some(deduce) => deduce,
             None => {
                 empty_deduce = DeduceListAst {
@@ -348,11 +388,33 @@ fn parse_binding_pattern(
 
     let message = match context {
         BindingSlotContext::Let => "expected binding pattern after `let`",
+        BindingSlotContext::Capture => "expected capture binding pattern",
         BindingSlotContext::Param => "expected parameter binding pattern",
         BindingSlotContext::Return => "expected return binding pattern after `->`",
     };
     parser.error(DiagnosticCode::ExpectedName, message, token.span);
     BindingPatternAst::Error(parser.error_ast(message, token.span))
+}
+
+fn merge_active_deduce(
+    inherited: Option<&DeduceListAst>,
+    local: Option<&DeduceListAst>,
+    fallback_span: Span,
+) -> DeduceListAst {
+    let mut binders = Vec::new();
+    if let Some(inherited) = inherited {
+        binders.extend(inherited.binders.iter().cloned());
+    }
+    if let Some(local) = local {
+        binders.extend(local.binders.iter().cloned());
+    }
+    let span = match (inherited, local) {
+        (Some(inherited), Some(local)) => inherited.span.join(local.span),
+        (Some(inherited), None) => inherited.span,
+        (None, Some(local)) => local.span,
+        (None, None) => fallback_span,
+    };
+    DeduceListAst { binders, span }
 }
 
 fn starts_skeleton_name(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {
@@ -367,23 +429,23 @@ fn starts_skeleton_name(parser: &mut Parser<'_>, context: BindingSlotContext) ->
     if matches!(
         context,
         BindingSlotContext::Param | BindingSlotContext::Return
-    ) && next_token_starts_head_clause(parser)
-    {
-        return false;
+    ) {
+        let (current_index, _) = parser
+            .cursor
+            .peek_at_skip_trivia(parser.cursor.current_index());
+        if super::closure::token_index_starts_closure_head_continuation(parser, current_index + 1) {
+            return false;
+        }
     }
     !is_binding_pattern_stop_kind(&next.kind, context)
 }
 
-// Head clauses (`require`/`pre`/`post`/`lifetime pre`/`lifetime post`) only act
-// as binding-slot boundaries inside closure-head parameter and return slots.
-fn next_token_starts_head_clause(parser: &Parser<'_>) -> bool {
-    let (current_index, _) = parser
-        .cursor
-        .peek_at_skip_trivia(parser.cursor.current_index());
-    super::closure::token_index_starts_head_clause(parser, current_index + 1)
-}
-
 fn at_binding_pattern_boundary(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool {
+    if matches!(context, BindingSlotContext::Return)
+        && super::closure::at_callable_implementation_tail(parser)
+    {
+        return true;
+    }
     if matches!(
         context,
         BindingSlotContext::Param | BindingSlotContext::Return
@@ -399,9 +461,14 @@ fn is_binding_pattern_stop_kind(kind: &TokenKind, context: BindingSlotContext) -
     match kind {
         TokenKind::Eof => true,
         TokenKind::Symbol(Symbol::Colon | Symbol::Comma | Symbol::RParen) => true,
-        TokenKind::Symbol(Symbol::Equal) if matches!(context, BindingSlotContext::Let) => true,
-        TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace)
-            if matches!(context, BindingSlotContext::Return) =>
+        TokenKind::Symbol(Symbol::RBracket) if matches!(context, BindingSlotContext::Capture) => {
+            true
+        }
+        TokenKind::Symbol(Symbol::Equal)
+            if matches!(
+                context,
+                BindingSlotContext::Let | BindingSlotContext::Capture
+            ) =>
         {
             true
         }
@@ -487,9 +554,16 @@ fn annotation_stop(parser: &mut Parser<'_>, context: BindingSlotContext) -> bool
     parser.cursor.at_name("with")
         || parser.cursor.at_symbol(Symbol::Comma)
         || parser.cursor.at_symbol(Symbol::RParen)
+        || (matches!(context, BindingSlotContext::Capture)
+            && parser.cursor.at_symbol(Symbol::RBracket))
         || parser.cursor.at_symbol(Symbol::FatArrow)
         || parser.cursor.at_symbol(Symbol::LBrace)
-        || (matches!(context, BindingSlotContext::Let) && parser.cursor.at_symbol(Symbol::Equal))
+        || (matches!(context, BindingSlotContext::Return)
+            && super::closure::at_callable_implementation_tail(parser))
+        || (matches!(
+            context,
+            BindingSlotContext::Let | BindingSlotContext::Capture
+        ) && parser.cursor.at_symbol(Symbol::Equal))
         || (matches!(
             context,
             BindingSlotContext::Param | BindingSlotContext::Return
@@ -515,6 +589,38 @@ fn parse_let_value(parser: &mut Parser<'_>, require_initializer: bool) -> ExprAs
             parser.recover_to_form_boundary();
         }
         error_expr(parser, "expected `=` in let", span)
+    }
+}
+
+fn parse_capture_value(parser: &mut Parser<'_>, require_initializer: bool) -> ExprAst {
+    if parser.cursor.consume_symbol(Symbol::Equal).is_some() {
+        let expr = parse_expr_until(parser, |parser| {
+            parser.cursor.at_symbol(Symbol::Comma) || parser.cursor.at_symbol(Symbol::RBracket)
+        });
+        if super::form::expression_contains_name(&expr, "return") {
+            parser.error(
+                DiagnosticCode::ReturnExpressionNotAllowed,
+                "return is only allowed as a block terminal form",
+                expr.span,
+            );
+        }
+        expr
+    } else {
+        let span = parser.cursor.current_span();
+        if require_initializer {
+            parser.error(
+                DiagnosticCode::ExpectedEqual,
+                "expected `=` in capture binding",
+                span,
+            );
+            while !parser.cursor.at_eof()
+                && !parser.cursor.at_symbol(Symbol::Comma)
+                && !parser.cursor.at_symbol(Symbol::RBracket)
+            {
+                parser.cursor.bump_non_trivia();
+            }
+        }
+        error_expr(parser, "expected `=` in capture binding", span)
     }
 }
 
@@ -918,6 +1024,7 @@ fn binding_pattern_span(pattern: &BindingPatternAst) -> Span {
     match pattern {
         BindingPatternAst::Binder(name) => binder_name_span(name),
         BindingPatternAst::Product(product) => product.span,
+        BindingPatternAst::Pack { span, .. } => *span,
         BindingPatternAst::Skeleton(skeleton) => skeleton_span(skeleton),
         BindingPatternAst::Error(error) => error.span,
     }
@@ -941,12 +1048,36 @@ fn binding_annotation_span(annotation: &BindingAnnotationAst) -> Span {
 fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
     match skeleton {
         CanonicalSkeletonAst::Segment { span, .. } => *span,
+        CanonicalSkeletonAst::Pack { span, .. } => *span,
         CanonicalSkeletonAst::ProductExtract { span, .. } => *span,
         CanonicalSkeletonAst::Wildcard { span } => *span,
         CanonicalSkeletonAst::Name { span, .. } => *span,
         CanonicalSkeletonAst::NavPath { span, .. } => *span,
         CanonicalSkeletonAst::Literal { span, .. } => *span,
         CanonicalSkeletonAst::Error(error) => error.span,
+    }
+}
+
+fn canonical_pack_or_sequence_binding_pattern(skeleton: CanonicalSkeletonAst) -> BindingPatternAst {
+    match skeleton {
+        CanonicalSkeletonAst::Pack { inner, span } => BindingPatternAst::Pack {
+            inner: Box::new(canonical_pack_inner_binding_pattern(*inner)),
+            span,
+        },
+        other => BindingPatternAst::Skeleton(other),
+    }
+}
+
+fn canonical_pack_inner_binding_pattern(skeleton: CanonicalSkeletonAst) -> BindingPatternAst {
+    match skeleton {
+        CanonicalSkeletonAst::Pack { inner, span } => BindingPatternAst::Pack {
+            inner: Box::new(canonical_pack_inner_binding_pattern(*inner)),
+            span,
+        },
+        CanonicalSkeletonAst::Name { name, role, .. } if role != crate::CanonicalNameRole::Hole => {
+            BindingPatternAst::Binder(BinderNameAst::Text(name))
+        }
+        other => BindingPatternAst::Skeleton(other),
     }
 }
 

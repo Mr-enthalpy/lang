@@ -1,7 +1,8 @@
 # Glossary
 
-Definitions are specific to this repository's v0.1/v0.2 usage. Terms may have different
-meanings in general PL theory.
+Definitions are specific to this repository. Versioned entries distinguish the
+frozen v0.1/v0.2 historical surface from the amended v0.5 contract. Terms may
+have different meanings in general PL theory.
 
 ---
 
@@ -10,7 +11,7 @@ meanings in general PL theory.
 The maintenance and contract-stabilization window after the completed v0.1 Raw
 AST Frontend. During this window richer literal spelling and the pipe
 branch-name shorthand were implemented as the final v0.1.w additions. v0.1.w
-is now closed; the project has entered v0.2.
+is now closed; it was followed by the now-closed v0.2 freeze.
 
 _See also: Raw AST, v0.2 Raw AST Contract Freeze._
 
@@ -18,13 +19,36 @@ _See also: Raw AST, v0.2 Raw AST Contract Freeze._
 
 ## v0.2 Raw AST Contract Freeze
 
-The current active stage after v0.1.w closure. The Raw AST frontend input
-surface is frozen by default. Work in this stage is documentation
-reconciliation, consistency repair, contract freeze checklist, and preparation
-of the exact boundary that v0.3 Normalized AST Specification will consume.
-`v0.2` is not a parser-expansion phase and does not implement Normalized AST.
+The closed historical stage after v0.1.w. It froze the then-current Raw AST
+frontend input and prepared the exact boundary consumed by v0.3. Its documents
+remain historical snapshots and are not rewritten for later parser changes.
+`v0.2` was not a parser-expansion phase and did not implement Normalized AST.
 
-_See also: v0.1.w, Raw AST, Normalized AST, raw-ast-contract-freeze-v0.2.md._
+_See also: v0.1.w, Frontend Semantic Amendment v0.5-A, Raw AST,
+Normalized AST, raw-ast-contract-freeze-v0.2.md._
+
+---
+
+## Frontend Semantic Amendment v0.5-A
+
+The versioned amendment that classifies post-v0.2 parser changes without
+rewriting the frozen history. Closure orthogonalization and malformed-tail
+error preservation are hard structural corrections; `DotClosure` is a
+normalization-driven extension; `Ellipsis`/Pack and callable-tail alternatives
+are new syntax amendments.
+
+_See also: v0.2 Raw AST Contract Freeze, Raw AST Contract v0.5._
+
+---
+
+## Raw AST Contract v0.5
+
+The current Raw AST contract obtained by applying Frontend Semantic Amendment
+v0.5-A to the frozen v0.2 baseline. It defines the 20-symbol/33-diagnostic
+surface, callable tail, first-class dot closure, Pattern pack, orthogonal
+closure placement, and validated normalized handoff.
+
+_See also: Frontend Semantic Amendment v0.5-A, PatternValidatedNormProgram._
 
 ---
 
@@ -89,15 +113,32 @@ binding contexts such as extract-let binders, closure heads, parameter binders,
 and return binders. Outside these contexts, `<` and `>` are ordinary symbols;
 in expression/operator contexts they may be operator spellings.
 
+Normalized DeduceLists are left-to-right dependent telescopes. A declaration
+annotation sees inherited and earlier declarations, never itself or later
+declarations. An active hole name cannot be redeclared or shadowed. Each
+declaration receives an alpha-normalized, owner-local lexical ordinal
+`HoleBinderId`, and a named `HoleRef` targets that exact identity rather than
+merely repeating its spelling. The `AlphaOwner` is the complete normalized
+tree produced by one root `normalize_program` invocation; nested body
+`NormProgram` nodes share it. IDs from distinct alpha owners are not directly
+comparable. Source spans are provenance, not identity. Generated
+receiver holes use hygienic generated keys rather than source spelling. A
+callable-head telescope scopes captures, parameters, policy, return, clauses,
+body, and inherited nested callables. Within a BindingSlot, policy precedes
+the local DeduceList. Norm exact binding covers Pattern/policy occurrences;
+value-side names and navigation remain unresolved.
+
 _See also: Hole, Strong context, CanonicalSkeleton._
 
 ---
 
 ## Hole
 
-A name declared in a `DeduceList` that acts as a wildcard standing for an
-unknown type or value in following syntax. Holes appear inside a
-`CanonicalSkeleton` with the `CanonicalNameRole::Hole` annotation.
+A binder declared in a `DeduceList` that acts as a wildcard standing for an
+unknown type or value in following syntax. Raw canonical parsing may mark its
+spelling with `CanonicalNameRole::Hole`; normalized uses carry an exact
+`HoleBinderId`. The anonymous `_` annotation placeholder is not a named Hole
+and targets no DeduceList declaration.
 
 _See also: DeduceList, CanonicalSkeleton._
 
@@ -106,9 +147,11 @@ _See also: DeduceList, CanonicalSkeleton._
 ## CanonicalSkeleton
 
 A syntactic pattern used in extraction contexts (extract-let binder, extract
-parameter, extract return). The skeleton is a sequence of `CanonicalElement`
-items. In v0.1, the parser builds canonical skeleton AST but does not execute
-matching.
+parameter, extract return). The historical skeleton is a sequence of
+`CanonicalElement` items. Under v0.5-A, Ellipsis may occur as a direct
+canonical Pattern Sequence child and normalizes to `NormPattern::Pack` inside
+`NormPattern::Sequence`; it is not hidden as a new skeleton atom. The parser
+builds shape only and does not execute matching.
 
 All canonical skeleton golden tests in v0.1 are parser preservation tests.
 No semantic meaning (matching, destructuring, equality, constructor
@@ -173,6 +216,7 @@ The smallest self-contained expression unit. Atoms include:
 - `Group(PipeExpr)`
 - `Closure(ClosureAst)`
 - `NavPath(components)` (components are `NavComponentAst` in source order)
+- `DotClosure(selector)` (leading `.name`; no captured receiver)
 - `MemberSugar(object, selector)` (selector is `SelectorAst`)
 - `DoubleDotSugar(object, selector, args)` (selector is `SelectorAst`)
 - `BracketCallSugar(object, operator, args)` (`obj[args...]`; operator spelling `[]`, `args` is a `ProductExprAst`)
@@ -181,6 +225,8 @@ The smallest self-contained expression unit. Atoms include:
 Atoms are constructed by parsing a base and then folding suffixes (`::`, `.`,
 `..`, `[...]` bracket call, and postfix operators). Operator sugar itself is
 stored at the `OperatorExpr` layer, not as a general `Atom` variant.
+
+Leading `.name` is a base atom, distinct from suffix folding.
 
 `BracketCallSugar` is source-preserving sugar for the operator spelling `[]`; it
 is not indexing/slicing/container access. The `[]` operator is a contextual
@@ -192,7 +238,8 @@ _See also: ClosureAST, ProductForm, OperatorSugar, PostfixOperator, SelectorAst,
 
 ## SelectorAst
 
-A name-like construct appearing in suffix position after `.` or `..`.
+A name-like construct appearing after leading `.` or in suffix position after
+`.` or `..`.
 In the current parser phase:
 
 ```text
@@ -326,7 +373,9 @@ prepared call candidate. It activates only when that candidate belongs to the
 fully admissible set `A`. One admissible must-select candidate must be the sole
 final preference survivor; several admissible must-select candidates conflict.
 The strategy is not infinite priority and does not forbid non-overlapping
-same-name overloads. No `@`-prefixed source spelling is frozen for it.
+same-name overloads. Source strategy metadata uses `=> name { ... }`, with
+`[[name]] { ... }` as the no-`=>` disambiguation form; `@` remains lifetime
+syntax.
 
 _See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
 
@@ -369,11 +418,17 @@ The priority rule that determines which overload candidate is selected when
 multiple candidates survive initial filtering. In this design, overload
 specificity is **extraction-pattern specificity**: candidates are ranked by
 how deeply their extraction pattern penetrates the unified construction-
-expression tree of the call operand. A larger total depth score means a more
-specific candidate. Specificity does not depend on declaration order or an
-ad-hoc conversion-rank table. This extraction-only rank is not a const/mut
-fitness score and never resolves candidates that remain incomparable under the
-const/mut product order.
+expression tree of the call operand. Structural depth evidence is compared
+before node-class evidence. At equal depth, ordinary explicit matches outrank
+explicit pack matches, which outrank ordinary discards, which outrank pack
+discards. Captured length never changes the count. A simple pack has one
+outward evidence node. Raw `...(a, b)` is non-canonical, and a legal headed
+structured operand still contributes only one outward Pack node at its
+containing level; internal evidence stays below the stable head at the next
+structural level.
+Specificity does not depend on declaration order or an ad-hoc conversion-rank
+table. This extraction-only rank is not a const/mut fitness score and never
+resolves candidates that remain incomparable under the const/mut product order.
 
 _See also: OverloadCandidate, OverloadResolutionPipeline,
 `spec/design/patterns-overload/overload-resolution-design.md` §4._
@@ -388,9 +443,12 @@ and every hard structural, Pattern, policy-pair, stage, target-result, concept,
 and ordinary-require check first form fully admissible set `A`. Const/mut then
 uses product partial order across all constrained positions; no total score or
 lexicographic fallback resolves incomparable candidates. Remaining
-side-effect-free preference filters apply in one fixed normative order. Each
+side-effect-free preference filters apply in one fixed normative order:
+entry, concept, extraction, first-order-over-instantiated,
+in-place-over-non-in-place, then named strategy rules. Each
 filter is independent of candidate enumeration order; filters are not assumed
-to commute. Delete members participate normally, and ordinary uniqueness is
+to commute. A named strategy only sees fully admissible candidates and cannot
+restart lookup. Delete members participate normally, and ordinary uniqueness is
 constrained by `must_select_if_qualified` strategies activated from `A`.
 
 Lifetime policy is not a type/compile candidate filter. This revision defines
@@ -619,32 +677,96 @@ _See also: OperatorSugar._
 ## ClosureAST
 
 The AST representation of a closure literal before materialization into a
-callable object. Two forms:
+callable object:
 
-- **InPlaceClosureAst**: Bare `{ ... }` in atom position. An in-place control-flow
-  closure with no capture clause, parameters, or head clauses.
-- **ExplicitClosureAst**: `FnHeadPrefix => { ... }`. A headed closure that
-  requires `=>` between the head and body.
+```text
+ClosureAst {
+  placement: InPlace | Ordinary,
+  head: Option<FnHeadPrefixAst>,
+  body: ClosureBodyAst
+}
+```
+
+Placement and head presence are orthogonal. Bare `{ ... }` is headless
+in-place; a headed block without `=>` remains in-place; `=>` selects ordinary
+placement.
 
 > **Distinction**: `ClosureAST` is **not** `ClosureObject`. Closure literals
 > produce AST first. A later semantic pass may materialize closure AST into
 > callable objects.
 
-> **Distinction**: Bare `{ ... }` in atom position is an `InPlaceClosureAst`,
+> **Distinction**: Bare `{ ... }` in atom position is an in-place `ClosureAst`,
 > not a normal block expression.
 
-_See also: InPlaceClosureAST, ExplicitClosureAST, ClosureObject, Materialization._
+_See also: ClosurePlacement, InPlaceClosureAST, OrdinaryClosureAST,
+ClosureObject, Materialization._
+
+---
+
+## ClosurePlacement
+
+The independent closure dimension `InPlace | Ordinary`. A no-`=>` body is
+in-place even when it has a head or `[[strategy]]`; `=>` selects ordinary
+placement. Placement is not inferred from `head.is_some()`.
+
+_See also: ClosureAST, InPlaceClosureAST, OrdinaryClosureAST._
+
+---
+
+## Capture Clause
+
+The ordinary-closure head component `[CaptureItem, ...]`. Each item is a
+let-shaped binding: `[let x = E]` and `[x = E]` are explicit forms, while
+`[E]` is shorthand only when normalized `E` has exactly one distinct free bare
+name occurrence that is not a direct callable target. Policy-bearing captures
+retain `let` to anchor the binding policy.
+
+Capture initializers are simultaneous: every initializer sees the enclosing
+environment before the clause. Normalization removes the explicit/inferred
+surface distinction and produces `NormCapture { slot, initializer, origin }`.
+This does not perform name resolution, environment layout, or closure
+materialization.
+
+Every source-written item is an explicit capture requirement. `[x]` is
+shorthand for `[let x = x]` with the ordinary unwritten capture-policy domain
+(`const || mut`), not an automatic const capture. A future resolved stage may
+add a separate `ImplicitConst` requirement for an otherwise uncaptured free
+outer value reference. Capture requirements are abstract dependencies: they
+do not declare `self` fields, copy/reference representation, layout, ZST
+status, or ABI.
+
+External explicit navigation reaches the namespace export view; internal
+explicit navigation reaches the complete namespace view. Because exported
+value views are const-projected, externally navigated values and callable
+targets normally satisfy `ImplicitConst` dependencies. Automatic capture and
+call resolution share the symbol-identity/const-view problem domain; this does
+not imply pass ordering or an implementation dependency.
+
+An explicit capture and an automatic capture may name the same source but
+remain distinct dependency declarations. Explicit capture can rename, project
+policy, use a complex initializer, request `mut`, and preserve provenance.
+Only a later layout pass may coalesce equivalent storage/link requirements.
+
+_See also: BindingSlot, NormClosure, Materialization._
 
 ---
 
 ## InPlaceClosureAST
 
-A bare `{ ... }` in atom position that produces an in-place closure. It has no
-capture clause, no parameter clause, no return clause, and no head clauses. It
-is the Raw AST representation of a control-flow-embedding closure block.
-Having no extraction head is not the same as having a unit extraction pattern:
-a headless in-place closure accepts no extracted input, including no implicit
-unit input.
+A `ClosureAst` whose placement is `InPlace`. It may be the bare, headless
+`{ ... }` form or a headed no-`=>` block, optionally with `[[strategy]]`.
+In-place closures never have capture lists or independent capture
+environments. Having no extraction head is not the same as having a unit
+extraction pattern: a headless in-place closure accepts no extracted input,
+including no implicit unit input.
+
+In future callable materialization it may contribute an overload candidate
+while remaining tied to its embedding control-flow layer. Unresolved outer
+reads are resolved lazily at that layer; no capture list is required or
+allowed. Direct writes to a place outside the closure-local scope are
+forbidden; local mutation and effectful calls remain possible. An
+otherwise tied in-place candidate is preferred after the
+first-order-over-instantiated filter.
 
 > **Explicit self position for return:** A headless in-place closure
 > has no self target and cannot express early return. Early return
@@ -671,25 +793,115 @@ unit input.
 > syntax in the explicit target position, resolved later by
 > semantic target binding.
 >
-> The example fragment above is a product/extraction-head + in-place
-> closure structural illustration. In current concrete syntax, this
-> shape is accepted as an incoming pipe / branch form (e.g.,
-> `x |> (<A: type> a: A) { ... }` or `(<A: type> a: A) { ... }`
-> in branch position). It is not a standalone closure literal
-> grammar.
+> The example fragment above is a headed in-place closure. The same shape is
+> accepted as a standalone expression atom or in an incoming pipe/branch form;
+> its placement remains in-place in either context.
 
-_See also: ClosureAST, ExplicitClosureAST._
+_See also: ClosureAST, OrdinaryClosureAST._
 
 ---
 
-## ExplicitClosureAST
+## OrdinaryClosureAST
 
-A closure literal with an explicit head and `=>`: `FnHeadPrefix => BodyBlock`.
+A closure literal whose placement is `Ordinary`, selected by `=>`. It has an
+explicit head and a callable implementation tail.
 The head may contain deduce list, capture clause, parameter clause, call-result
-policy clause, return clause, and head clauses. The body is a form block. Headed closures
-without `=>` (e.g., `[](){}` or `(x){x}`) are rejected.
+policy clause, return clause, and head clauses. The tail preserves ordinary or
+named user body, compiler-defaulted implementation, or deleted implementation.
+Plain no-`=>` block tails and `[[name]]` stay in-place; the latter is only the
+named-strategy escape that does not steal the established return
+extraction-pattern parse.
 
 _See also: ClosureAST, InPlaceClosureAST, FnHeadPrefix._
+
+---
+
+## NormClosure
+
+The normalized closure carrier. It stores
+`placement: NormClosurePlacement`, optional normalized head, implementation
+body, and `NormOrigin` independently. `NormClosurePlacement` is only
+`InPlace | Ordinary`; generated lowering provenance belongs to
+`NormOrigin::Generated`, never to placement.
+
+_See also: ClosurePlacement, Origin, Dot Closure._
+
+---
+
+## Callable Implementation Tail
+
+The single syntax slot that describes a callable implementation and optional
+overload strategy. It normalizes to `UserBody(Ordinary|Named, body)`,
+`Defaulted`, or `Deleted(message?)`. `=> name {}` and `[[name]] {}` carry the
+same named strategy. Strategy metadata participates only after full
+admissibility and never creates a second overload pass. Product/closure
+classification and capture-slot bypass require the complete `[[Name]] {`
+shape; Deduce alone leaves capture parsing available, and the weaker `[[`
+prefix is recovery-only after a later head component has proved the strong
+context.
+
+_See also: OrdinaryClosureAST, Fully Admissible Candidate, Overload Resolution Pipeline._
+
+---
+
+## PatternValidatedNormProgram
+
+The downstream handoff produced by `normalize_and_validate_patterns` after all
+currently enforced global normalized Pattern invariants have passed: one Pack
+per structural level, no bare Product Pack operand, and no duplicate
+DeduceList hole in the active telescope. Its certificate is intentionally
+narrow: it does not prove ordered/unordered Pack applicability, stable
+Pattern-head identity, complete matching support, parser-diagnostic absence,
+or recovery freedom. `normalize_program` alone remains useful for
+diagnostic/recovery dumps but does not authorize build-world harvesting.
+
+_See also: Normalized AST, Pack Pattern, Raw AST Contract v0.5._
+
+---
+
+## Dot Closure
+
+The first-class expression `.name`, normalized to a generated in-place
+`NormClosure` carrier shaped as
+`(val: T, ...args) { (val, args) |> name::T }`. `E.name` is compact
+`E |> .name`; `.name` itself captures no receiver. After lowering it is an
+ordinary expression. Replacing it with a bound equivalent must preserve the
+same pipe/product binding spine, and no normalizer rule may inspect
+`DotClosureLowering` provenance to absorb surrounding syntax. Only explicit
+binding or call context materializes the carrier as a value; normalization and
+other expression contexts do not. `..name` remains direct member-call sugar.
+
+_See also: Atom, Function Object, Call normalization._
+
+---
+
+## Pack Pattern
+
+The Pattern-side remainder form `...Q`. It matches the unmatched portion of
+one normalized structural level and then applies `Q`. Each level permits one
+pack; nested levels are independent. It is not a value/type/ABI category and
+has no RHS unpack counterpart. Every Pack contributes one outward specificity
+node, independent of captured length and internal node count.
+
+At an unordered named layer only a whole-remainder binder/discard (including a
+transparent let-shaped slot) is admissible. At an ordered layer a structured
+operand may be meaningful only if its P-normal form retains a stable top mode,
+for example `...((a, b) pair)`. Raw `...(a, b)` is preserved by the parser but
+rejected after P normalization: Pack cannot reify the bare Product boundary
+that ordinary Product normalization removes. Internal evidence below a stable
+operand head belongs to the next preserved level; it is never flattened into
+multiple same-level EP nodes.
+
+Pack is valid syntax in every let-shaped binding slot, including ordinary/local
+let, parameter, return, and nested product extraction; it is not a
+parameter-only variadic form. It may be a direct canonical Pattern Sequence
+child: `a ...x b` normalizes as `Sequence[a, Pack(x), b]`. Ellipsis consumes one
+following Pattern primary. Only Product and Sequence establish cardinality
+levels; Pack and BindingSlot are transparent. The parser preserves all formed
+Pack nodes, and the normalized Pattern validator is the sole authority for
+cardinality and the bare-Product rejection.
+
+_See also: Pattern normalization, Overload Specificity._
 
 ---
 
@@ -709,8 +921,12 @@ _See also: ClosureAST, Materialization._
 ## Materialization
 
 The future semantic pass that converts `ClosureAST` into a `ClosureObject`.
-Materialization involves capture analysis, environment layout, and callable
-object construction. This is not implemented in v0.1.
+Before this pass, resolved capture dependencies must first become
+lifetime-checkable source/access/storage-or-link forms. Materialization may
+then select static links, constant embedding, zero-layout dependencies, stack
+environments, stored checked references, or other future representations. A
+capture list is not itself an environment-field declaration. This is not
+implemented in v0.1.
 
 _See also: ClosureAST, ClosureObject._
 
@@ -779,6 +995,36 @@ _See also: Let binding, BindingAnnotation, CanonicalSkeleton._
 
 ---
 
+## Namespace Symbol Views
+
+Three independent sets govern namespace and build-world reasoning:
+
+```text
+Σ_full(N)    complete namespace-internal symbol and overload set
+Σ_export(N)  externally exposed projection of Σ_full(N)
+Wfinal       Wpre ∪ Wseal, materialized/retained/generated build world
+```
+
+Internal explicit resolution searches `Σ_full`; external explicit resolution
+searches `Σ_export`; world membership asks whether a symbol exists in Wpre or
+Wseal. The export overload set preserves the same candidate identities as the
+full set, but every external candidate carries a separately const-projected
+resolved `PolicyPair` rather than a declaration-side `P1Projection` or a clone
+of its complete internal policy. External admission requires both
+export-retention-closure membership and public reachability through the full
+path.
+Within each admitted full overload set, mut-only candidates remain internal
+and candidates with const (or pure `Pp`) views enter the external set.
+Publicly reachable export-retention-closure ancestors and descendants receive this
+projection even when they are not export roots. World membership does not
+imply export, and export does not imply that the symbol itself was an export
+root. Retention-closure membership is graph/interface-construction input, not
+synonymous with membership in `Σ_export`.
+
+_See also: Policy Pair, Namespace (source name)._
+
+---
+
 ## Policy Pair
 
 The canonical internal policy representation:
@@ -793,6 +1039,16 @@ ordinary namespace visibility, and export-root are typed orthogonal dimensions. 
 is surface shorthand or a derived summary and cannot reconstruct the pair.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
+
+At namespace direct top level, `export` derives an external view without
+cropping the complete internal `Pv:Pp`. A value-bearing external view is
+`Project_const(Pv):Pp` and therefore requires a non-empty const projection; a
+`mut`-only value export is invalid. A pure `absent:Pp` export has no
+value-mutability obligation. More strongly, absent Pv has no value stages and
+no value-mutability domain at all; `const + S : compile` and
+`mut + S : compile` are invalid before namespace export is considered. This
+rule is checked by P1/P2 elaboration and resolved export projection rather than
+being inferred from export alone.
 
 _See also: PolicyBinding,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
@@ -1096,7 +1352,10 @@ _See also: TailValue, ReturnTargetSyntax, Control-flow end event._
 
 The last expression form in a body block, normalized as
 `NormForm::TailValue(NormExpr)`. A block result / tail value,
-not early return.
+not early return. For an extraction-style callable result it supplies one
+object expected to match the complete declared return Pattern, as in
+`let ResultPattern = expr`; it does not assign one value to every output
+binder.
 
 _See also: ReturnEvent, Control-flow end event._
 
@@ -1111,7 +1370,8 @@ NormReturnTargetSyntax ::=
 ```
 
 `ImplicitNearest` represents a return targeted at the nearest
-enclosing self (resolved in a future semantic phase).
+enclosing self. The current restricted build pass binds it to an active
+`ReturnTargetFrame`; full lexical self-capability resolution remains future.
 `Explicit(NormExpr)` preserves the explicit target syntax
 without resolution.
 
@@ -1122,7 +1382,8 @@ _See also: ReturnEvent._
 A return target indicating the return should target the nearest
 enclosing function-object self. In the parser and normalizer,
 `ImplicitNearest` is an unresolved marker. The source form is
-`E return;`. Resolution is deferred to a later semantic phase.
+`E return;`. A restricted post-normalization binder resolves the active frame;
+result Pattern delivery remains deferred.
 
 _See also: ReturnTargetSyntax, Explicit return target._
 
@@ -1134,7 +1395,9 @@ normalizer, `Explicit(NormExpr)`. Source forms are
 `E |> (T return);` and `E (T return);`.
 
 The explicit target syntax `T` is not resolved by parser or
-normalizer. Resolution is deferred.
+normalizer. The restricted build binder supports active name targets through a
+temporary spelling identity; full lexical self-capability resolution is
+deferred.
 
 _See also: ReturnTargetSyntax, ImplicitNearest return target._
 

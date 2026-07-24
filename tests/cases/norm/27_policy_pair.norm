@@ -39,7 +39,7 @@ NormProgram origin=Source@1:1[0..93]
           with_clause:
             None
           initializer:
-            Closure kind=Explicit origin=Source@2:9[52..91]
+            Closure placement=Ordinary origin=Source@2:9[52..91]
               head:
                 ClosureHead origin=Generated(ClosureNormalize)@2:9[52..77]
                   deduce:

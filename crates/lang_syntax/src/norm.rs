@@ -6,13 +6,15 @@
 //! This prototype records that boundary; explicit bridge syntax/lowering is
 //! future work unless it is already present in Raw AST.
 
+use std::collections::BTreeSet;
+
 use crate::{
-    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderDeclAst, BinderNameAst,
-    BindingAnnotationAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole,
-    CanonicalProductElementAst, CanonicalSkeletonAst, ClosureAst, ClosureBodyAst, DeduceListAst,
-    EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst, HeadClauseAst,
-    LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind, OperatorFixity,
-    OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
+    AliasBinderAst, AnnotationTermAst, AtomAst, AtomKind, BinderNameAst, BindingAnnotationAst,
+    BindingPatternAst, BindingSlotAst, BodyBlockAst, CanonicalNameRole, CanonicalProductElementAst,
+    CanonicalSkeletonAst, CaptureItemAst, ClosureAst, ClosureBodyAst, ClosurePlacementAst,
+    DeduceListAst, EntityRefAst, ErrorAst, ExprAst, ExprKind, FnHeadPrefixAst, FormAst,
+    HeadClauseAst, LetAliasAst, LetAst, NavComponentAst, OperatorExprAst, OperatorExprKind,
+    OperatorFixity, OperatorNameAst, ParamClauseAst, PipeExprAst, PolicyAtomAst, PolicyChoiceAst,
     PolicyConjunctionAst, PolicySpecAst, ProductElementAst, ProductExprAst, ProductExtractAst,
     ProductExtractElementAst, ProgramAst, ReturnClauseAst, SegmentAst, SegmentElementAst,
     SelectorAst, Span, ValuePolicyPatternAst, WithClauseAst, WithClauseKind,
@@ -22,6 +24,33 @@ use crate::{
 pub struct NormProgram {
     pub forms: Vec<NormForm>,
     pub origin: NormOrigin,
+}
+
+/// A normalized program whose global Pattern-layer invariants have been
+/// checked.
+///
+/// This certificate does not assert that parser recovery produced no
+/// `NormExpr::Error` nodes. Consumers that need a recovery-free program must
+/// require a separate proof.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PatternValidatedNormProgram {
+    program: NormProgram,
+}
+
+impl PatternValidatedNormProgram {
+    pub fn as_program(&self) -> &NormProgram {
+        &self.program
+    }
+
+    pub fn into_program(self) -> NormProgram {
+        self.program
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PatternInvalidNormProgram {
+    pub program: NormProgram,
+    pub pattern_errors: Vec<PatternValidationError>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -124,11 +153,20 @@ pub enum NormPattern {
         elements: Vec<NormPatternElem>,
         origin: NormOrigin,
     },
+    /// Match the remaining normalized nodes at this structural level.
+    Pack {
+        inner: Box<NormPattern>,
+        origin: NormOrigin,
+    },
     Unit {
         origin: NormOrigin,
     },
     HoleRef {
+        target: HoleBinderId,
         name: String,
+        origin: NormOrigin,
+    },
+    AnonymousHole {
         origin: NormOrigin,
     },
     Name {
@@ -168,6 +206,423 @@ pub enum NormPatternElem {
     Pattern(NormPattern),
     BindingSlot(NormBindingSlot),
     Unit { origin: NormOrigin },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PackPatternLayerError {
+    pub pack_count: usize,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PatternValidationError {
+    MultiplePacks(PackPatternLayerError),
+    NonCanonicalPackOperand {
+        origin: NormOrigin,
+    },
+    DuplicateHole {
+        name: String,
+        first: HoleBinderId,
+        duplicate: HoleBinderId,
+        origin: NormOrigin,
+    },
+}
+
+impl PatternValidationError {
+    pub fn origin(&self) -> &NormOrigin {
+        match self {
+            Self::MultiplePacks(error) => &error.origin,
+            Self::NonCanonicalPackOperand { origin } | Self::DuplicateHole { origin, .. } => origin,
+        }
+    }
+}
+
+/// Validate the semantic, post-normalization rule that one structural level
+/// may contain at most one pack. Nested Product and Sequence containers are
+/// independent levels; Pack and BindingSlot are transparent.
+pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPatternLayerError> {
+    match pattern {
+        NormPattern::Product { elements, .. } => {
+            validate_pack_pattern_element_level(elements)?;
+            for element in elements {
+                match element {
+                    NormPatternElem::Pattern(pattern) => validate_pack_pattern_layers(pattern)?,
+                    NormPatternElem::BindingSlot(slot) => {
+                        validate_pack_pattern_layers(&slot.value_pattern)?;
+                        if let Some(annotation) = &slot.annotation {
+                            validate_pack_pattern_layers(&annotation.pattern)?;
+                        }
+                    }
+                    NormPatternElem::Unit { .. } => {}
+                }
+            }
+            Ok(())
+        }
+        NormPattern::Pack { inner, origin } => {
+            if matches!(inner.as_ref(), NormPattern::Pack { .. }) {
+                return Err(PackPatternLayerError {
+                    pack_count: 2,
+                    origin: origin.clone(),
+                });
+            }
+            validate_pack_pattern_layers(inner)
+        }
+        NormPattern::Sequence { elements, .. } => {
+            let packs = elements
+                .iter()
+                .filter_map(direct_pack_pattern_origin)
+                .collect::<Vec<_>>();
+            if packs.len() > 1 {
+                return Err(PackPatternLayerError {
+                    pack_count: packs.len(),
+                    origin: (*packs[1]).clone(),
+                });
+            }
+            for element in elements {
+                validate_pack_pattern_layers(element)?;
+            }
+            Ok(())
+        }
+        NormPattern::BindingSlot { slot, .. } => {
+            validate_pack_pattern_layers(&slot.value_pattern)?;
+            if let Some(annotation) = &slot.annotation {
+                validate_pack_pattern_layers(&annotation.pattern)?;
+            }
+            Ok(())
+        }
+        NormPattern::Binder { .. }
+        | NormPattern::OperatorBinder { .. }
+        | NormPattern::Unit { .. }
+        | NormPattern::HoleRef { .. }
+        | NormPattern::AnonymousHole { .. }
+        | NormPattern::Name { .. }
+        | NormPattern::Literal { .. }
+        | NormPattern::Nav { .. }
+        | NormPattern::Skeleton { .. }
+        | NormPattern::Error(_)
+        | NormPattern::Unsupported { .. } => Ok(()),
+    }
+}
+
+pub fn validate_pack_pattern_element_level(
+    elements: &[NormPatternElem],
+) -> Result<(), PackPatternLayerError> {
+    let packs = elements
+        .iter()
+        .filter_map(|element| match element {
+            NormPatternElem::Pattern(NormPattern::Pack { origin, .. }) => Some(origin),
+            NormPatternElem::BindingSlot(slot) => match &slot.value_pattern {
+                NormPattern::Pack { origin, .. } => Some(origin),
+                _ => None,
+            },
+            NormPatternElem::Pattern(_) | NormPatternElem::Unit { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    if packs.len() > 1 {
+        return Err(PackPatternLayerError {
+            pack_count: packs.len(),
+            origin: (*packs[1]).clone(),
+        });
+    }
+    Ok(())
+}
+
+/// Run the current global normalized Pattern invariants over every
+/// Pattern-bearing location in a normalized program.
+///
+/// This pass owns pack cardinality, rejection of a bare Product Pack operand,
+/// and uniqueness of DeduceList hole names across the active telescope. It
+/// does not prove resolved ordered/unordered Pack applicability, stable
+/// Pattern-head identity, general matching support, or recovery freedom.
+pub fn validate_normalized_patterns(
+    program: &NormProgram,
+) -> Result<(), Vec<PatternValidationError>> {
+    let mut errors = Vec::new();
+    collect_program_pack_errors(program, &mut errors);
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn collect_program_pack_errors(program: &NormProgram, errors: &mut Vec<PatternValidationError>) {
+    for form in &program.forms {
+        match form {
+            NormForm::Let(decl) | NormForm::Alias(decl) => {
+                collect_decl_pack_errors(decl, errors);
+            }
+            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+                collect_expr_pack_errors(expr, errors);
+            }
+            NormForm::ReturnEvent(event) => {
+                collect_expr_pack_errors(&event.value, errors);
+                if let NormReturnTargetSyntax::Explicit(target) = &event.target {
+                    collect_expr_pack_errors(target, errors);
+                }
+            }
+            NormForm::Error(_) => {}
+        }
+    }
+}
+
+fn collect_decl_pack_errors(decl: &NormDecl, errors: &mut Vec<PatternValidationError>) {
+    match decl {
+        NormDecl::Let { slot, .. } => collect_slot_pack_errors(slot, errors),
+        NormDecl::Alias { target, .. } => {
+            collect_nav_component_pack_errors(&target.components, errors);
+        }
+        NormDecl::Error(_) => {}
+    }
+}
+
+fn collect_slot_pack_errors(slot: &NormBindingSlot, errors: &mut Vec<PatternValidationError>) {
+    for hole in &slot.deduce {
+        if let Some(first) = hole.duplicate_of {
+            errors.push(PatternValidationError::DuplicateHole {
+                name: hole.name.clone(),
+                first,
+                duplicate: hole.id,
+                origin: hole.origin.clone(),
+            });
+        }
+        if let Some(annotation) = &hole.annotation {
+            collect_pattern_pack_errors(&annotation.pattern, errors);
+        }
+    }
+    collect_pattern_pack_errors(&slot.value_pattern, errors);
+    if let Some(annotation) = &slot.annotation {
+        collect_pattern_pack_errors(&annotation.pattern, errors);
+    }
+    if let Some(initializer) = &slot.initializer {
+        collect_expr_pack_errors(initializer, errors);
+    }
+}
+
+fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PatternValidationError>) {
+    match pattern {
+        NormPattern::Product { elements, .. } => {
+            collect_pattern_element_level_error(elements, errors);
+            for element in elements {
+                match element {
+                    NormPatternElem::Pattern(pattern) => {
+                        collect_pattern_pack_errors(pattern, errors);
+                    }
+                    NormPatternElem::BindingSlot(slot) => {
+                        collect_slot_pack_errors(slot, errors);
+                    }
+                    NormPatternElem::Unit { .. } => {}
+                }
+            }
+        }
+        NormPattern::Sequence { elements, .. } => {
+            collect_pattern_level_error(elements, errors);
+            for element in elements {
+                collect_pattern_pack_errors(element, errors);
+            }
+        }
+        NormPattern::Pack { inner, origin } => {
+            if direct_pack_pattern_origin(inner).is_some() {
+                errors.push(PatternValidationError::MultiplePacks(
+                    PackPatternLayerError {
+                        pack_count: 2,
+                        origin: origin.clone(),
+                    },
+                ));
+            }
+            if matches!(inner.as_ref(), NormPattern::Product { .. }) {
+                errors.push(PatternValidationError::NonCanonicalPackOperand {
+                    origin: origin.clone(),
+                });
+            }
+            collect_pattern_pack_errors(inner, errors);
+        }
+        NormPattern::BindingSlot { slot, .. } => collect_slot_pack_errors(slot, errors),
+        NormPattern::Nav { components, .. } => {
+            collect_nav_component_pack_errors(components, errors);
+        }
+        NormPattern::Skeleton { skeleton, .. } => {
+            collect_skeleton_pack_errors(skeleton, errors);
+        }
+        NormPattern::Binder { .. }
+        | NormPattern::OperatorBinder { .. }
+        | NormPattern::Unit { .. }
+        | NormPattern::HoleRef { .. }
+        | NormPattern::AnonymousHole { .. }
+        | NormPattern::Name { .. }
+        | NormPattern::Literal { .. }
+        | NormPattern::Error(_)
+        | NormPattern::Unsupported { .. } => {}
+    }
+}
+
+fn collect_pattern_element_level_error(
+    elements: &[NormPatternElem],
+    errors: &mut Vec<PatternValidationError>,
+) {
+    let packs = elements
+        .iter()
+        .filter_map(direct_pack_element_origin)
+        .collect::<Vec<_>>();
+    if packs.len() > 1 {
+        errors.push(PatternValidationError::MultiplePacks(
+            PackPatternLayerError {
+                pack_count: packs.len(),
+                origin: (*packs[1]).clone(),
+            },
+        ));
+    }
+}
+
+fn collect_pattern_level_error(elements: &[NormPattern], errors: &mut Vec<PatternValidationError>) {
+    let packs = elements
+        .iter()
+        .filter_map(direct_pack_pattern_origin)
+        .collect::<Vec<_>>();
+    if packs.len() > 1 {
+        errors.push(PatternValidationError::MultiplePacks(
+            PackPatternLayerError {
+                pack_count: packs.len(),
+                origin: (*packs[1]).clone(),
+            },
+        ));
+    }
+}
+
+fn direct_pack_element_origin(element: &NormPatternElem) -> Option<&NormOrigin> {
+    match element {
+        NormPatternElem::Pattern(pattern) => direct_pack_pattern_origin(pattern),
+        NormPatternElem::BindingSlot(slot) => direct_pack_pattern_origin(&slot.value_pattern),
+        NormPatternElem::Unit { .. } => None,
+    }
+}
+
+fn direct_pack_pattern_origin(pattern: &NormPattern) -> Option<&NormOrigin> {
+    match pattern {
+        NormPattern::Pack { origin, .. } => Some(origin),
+        NormPattern::BindingSlot { slot, .. } => direct_pack_pattern_origin(&slot.value_pattern),
+        _ => None,
+    }
+}
+
+fn collect_expr_pack_errors(expr: &NormExpr, errors: &mut Vec<PatternValidationError>) {
+    match expr {
+        NormExpr::Call { source, target, .. } => {
+            for element in &source.elements {
+                if let NormProductElem::Expr(expr) = element {
+                    collect_expr_pack_errors(expr, errors);
+                }
+            }
+            collect_expr_pack_errors(target, errors);
+        }
+        NormExpr::Product(product) => {
+            for element in &product.elements {
+                if let NormProductElem::Expr(expr) = element {
+                    collect_expr_pack_errors(expr, errors);
+                }
+            }
+        }
+        NormExpr::Nav { components, .. } => {
+            collect_nav_component_pack_errors(components, errors);
+        }
+        NormExpr::Closure(closure) => collect_closure_pack_errors(closure, errors),
+        NormExpr::Name { .. }
+        | NormExpr::Literal { .. }
+        | NormExpr::OperatorTarget { .. }
+        | NormExpr::Error(_)
+        | NormExpr::Unsupported { .. } => {}
+    }
+}
+
+fn collect_closure_pack_errors(closure: &NormClosure, errors: &mut Vec<PatternValidationError>) {
+    if let Some(head) = &closure.head {
+        for hole in &head.deduce {
+            if let Some(first) = hole.duplicate_of {
+                errors.push(PatternValidationError::DuplicateHole {
+                    name: hole.name.clone(),
+                    first,
+                    duplicate: hole.id,
+                    origin: hole.origin.clone(),
+                });
+            }
+        }
+    }
+    if let Some(head) = &closure.head {
+        for hole in &head.deduce {
+            if let Some(annotation) = &hole.annotation {
+                collect_pattern_pack_errors(&annotation.pattern, errors);
+            }
+        }
+        collect_pattern_element_level_error(&head.params, errors);
+        for param in &head.params {
+            match param {
+                NormPatternElem::Pattern(pattern) => collect_pattern_pack_errors(pattern, errors),
+                NormPatternElem::BindingSlot(slot) => collect_slot_pack_errors(slot, errors),
+                NormPatternElem::Unit { .. } => {}
+            }
+        }
+        if let Some(returns) = &head.returns {
+            collect_slot_pack_errors(returns, errors);
+        }
+        for capture in &head.captures {
+            collect_slot_pack_errors(&capture.slot, errors);
+            collect_expr_pack_errors(&capture.initializer, errors);
+        }
+        for clause in &head.clauses {
+            match clause {
+                NormHeadClause::Require { expr, .. }
+                | NormHeadClause::Pre { expr, .. }
+                | NormHeadClause::Post { expr, .. }
+                | NormHeadClause::LifetimePre { expr, .. }
+                | NormHeadClause::LifetimePost { expr, .. } => {
+                    collect_expr_pack_errors(expr, errors);
+                }
+                NormHeadClause::Error(_) => {}
+            }
+        }
+    }
+    match &closure.body {
+        NormClosureBody::Block(body) | NormClosureBody::NamedBlock { body, .. } => {
+            collect_program_pack_errors(body, errors);
+        }
+        NormClosureBody::Defaulted { .. } | NormClosureBody::Delete(_) => {}
+    }
+}
+
+fn collect_nav_component_pack_errors(
+    components: &[NormNavComponent],
+    errors: &mut Vec<PatternValidationError>,
+) {
+    for component in components {
+        if let NormNavComponent::Group { expr, .. } = component {
+            collect_expr_pack_errors(expr, errors);
+        }
+    }
+}
+
+fn collect_skeleton_pack_errors(skeleton: &NormSkeleton, errors: &mut Vec<PatternValidationError>) {
+    match skeleton {
+        NormSkeleton::Segment { elements, .. } => {
+            for element in elements {
+                collect_skeleton_pack_errors(element, errors);
+            }
+        }
+        NormSkeleton::Product { elements, .. } => {
+            for element in elements {
+                if let NormSkeletonElem::Skeleton(skeleton) = element {
+                    collect_skeleton_pack_errors(skeleton, errors);
+                }
+            }
+        }
+        NormSkeleton::Nav { components, .. } => {
+            collect_nav_component_pack_errors(components, errors);
+        }
+        NormSkeleton::Wildcard { .. }
+        | NormSkeleton::Name { .. }
+        | NormSkeleton::HoleRef { .. }
+        | NormSkeleton::Literal { .. }
+        | NormSkeleton::Error(_) => {}
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -219,6 +674,11 @@ pub enum NormPolicyAtom {
         text: String,
         origin: NormOrigin,
     },
+    HoleRef {
+        target: HoleBinderId,
+        text: String,
+        origin: NormOrigin,
+    },
     Group {
         conjunction: Box<NormPolicyConjunction>,
         origin: NormOrigin,
@@ -231,9 +691,98 @@ pub enum NormPolicyAtom {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormHoleDecl {
+    pub id: HoleBinderId,
     pub name: String,
     pub annotation: Option<NormAnnotation>,
+    /// Present only on an invalid redeclaration. DeduceLists are telescopes and
+    /// monotonically extend the active hole environment; they never shadow.
+    pub duplicate_of: Option<HoleBinderId>,
     pub origin: NormOrigin,
+}
+
+/// Alpha-normalized lexical identity of a DeduceList binder within one
+/// `AlphaOwner`: the complete normalized tree produced by one root
+/// `normalize_program` invocation.
+///
+/// The ordinal is allocated by lexical traversal and is intentionally
+/// independent of source spans and source spelling. Spans remain provenance,
+/// not semantic binder identity. Nested `NormProgram` nodes in closure bodies
+/// share their root tree's owner and ordinal space. Equality is meaningful
+/// only inside that owner; build-world identity must pair this local identity
+/// with an owner/source-unit identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HoleBinderId {
+    repr: HoleBinderIdRepr,
+}
+
+impl HoleBinderId {
+    fn provisional_source() -> Self {
+        Self {
+            repr: HoleBinderIdRepr::ProvisionalSource,
+        }
+    }
+
+    fn provisional_generated(key: GeneratedHoleKey) -> Self {
+        Self {
+            repr: HoleBinderIdRepr::ProvisionalGenerated(key),
+        }
+    }
+
+    fn alpha(ordinal: u32) -> Self {
+        Self {
+            repr: HoleBinderIdRepr::LocalOrdinal(ordinal),
+        }
+    }
+
+    fn generated_key(self) -> Option<GeneratedHoleKey> {
+        match self.repr {
+            HoleBinderIdRepr::ProvisionalGenerated(key) => Some(key),
+            HoleBinderIdRepr::LocalOrdinal(_) | HoleBinderIdRepr::ProvisionalSource => None,
+        }
+    }
+
+    /// Return the `AlphaOwner`-scoped ordinal assigned by alpha normalization.
+    ///
+    /// Nested `NormProgram` nodes in the same root tree share this ordinal
+    /// space. This is not a cross-owner or cross-source-unit identity.
+    pub fn local_ordinal(self) -> u32 {
+        match self.repr {
+            HoleBinderIdRepr::LocalOrdinal(ordinal) => ordinal,
+            HoleBinderIdRepr::ProvisionalSource | HoleBinderIdRepr::ProvisionalGenerated(_) => {
+                panic!("provisional hole identity has no local alpha ordinal")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum HoleBinderIdRepr {
+    LocalOrdinal(u32),
+    ProvisionalSource,
+    ProvisionalGenerated(GeneratedHoleKey),
+}
+
+/// Hygienic, generated-syntax-local key used before alpha normalization.
+///
+/// The key is interpreted inside the generated callable scope. It is never
+/// looked up through source spelling, so a generated display name such as `T`
+/// cannot collide with a user-written hole of the same spelling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GeneratedHoleKey {
+    pub rule: NormRule,
+    pub local_ordinal: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct VisibleHole {
+    id: HoleBinderId,
+    key: VisibleHoleKey,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum VisibleHoleKey {
+    SourceName(String),
+    Generated(GeneratedHoleKey),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -246,7 +795,7 @@ pub struct NormWithClause {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormClosure {
-    pub kind: NormClosureKind,
+    pub placement: NormClosurePlacement,
     pub head: Option<NormClosureHead>,
     pub body: NormClosureBody,
     pub origin: NormOrigin,
@@ -255,30 +804,70 @@ pub struct NormClosure {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NormClosureBody {
     Block(NormProgram),
+    NamedBlock {
+        strategy: String,
+        body: NormProgram,
+        origin: NormOrigin,
+    },
+    Defaulted {
+        origin: NormOrigin,
+    },
     Delete(NormDeleteBody),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NormOverloadStrategy {
+    Ordinary,
+    Named(String),
+}
+
+impl NormClosureBody {
+    pub fn overload_strategy(&self) -> NormOverloadStrategy {
+        match self {
+            Self::NamedBlock { strategy, .. } => NormOverloadStrategy::Named(strategy.clone()),
+            Self::Block(_) | Self::Defaulted { .. } | Self::Delete(_) => {
+                NormOverloadStrategy::Ordinary
+            }
+        }
+    }
+
+    pub fn user_body(&self) -> Option<&NormProgram> {
+        match self {
+            Self::Block(body) | Self::NamedBlock { body, .. } => Some(body),
+            Self::Defaulted { .. } | Self::Delete(_) => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormDeleteBody {
-    pub message: Box<NormExpr>,
+    /// Normalized source spelling of the optional string literal, including
+    /// quotes. Callable-tail parsing rejects non-string message expressions.
+    pub message: Option<String>,
     pub origin: NormOrigin,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum NormClosureKind {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NormClosurePlacement {
     InPlace,
-    Explicit,
-    Generated { rule: NormRule },
+    Ordinary,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormClosureHead {
     pub deduce: Vec<NormHoleDecl>,
-    pub captures: Vec<NormExpr>,
+    pub captures: Vec<NormCapture>,
     pub params: Vec<NormPatternElem>,
     pub call_policy: Option<NormPolicySpec>,
     pub returns: Option<NormBindingSlot>,
     pub clauses: Vec<NormHeadClause>,
+    pub origin: NormOrigin,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormCapture {
+    pub slot: NormBindingSlot,
+    pub initializer: NormExpr,
     pub origin: NormOrigin,
 }
 
@@ -346,6 +935,11 @@ pub enum NormSkeleton {
         role: NormCanonicalNameRole,
         origin: NormOrigin,
     },
+    HoleRef {
+        target: HoleBinderId,
+        name: String,
+        origin: NormOrigin,
+    },
     Nav {
         components: Vec<NormNavComponent>,
         explicit_terminated: bool,
@@ -406,7 +1000,7 @@ pub enum NormOrigin {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NormRule {
     ProductLift,
     ProductMerge,
@@ -414,20 +1008,424 @@ pub enum NormRule {
     SecondLegalityRepair,
     OperatorLowering,
     PrefixNegativeLowering,
+    DotClosureLowering,
     MemberLowering,
     DoubleDotLowering,
     BracketCallLowering,
     BranchNameExpansion,
     AliasPreserve,
     ClosureNormalize,
+    CaptureNameInference,
     PatternNormalize,
     Unsupported,
 }
 
+/// Scope construction and alpha-normalization for DeduceList binders.
+///
+/// Raw parsing preserves lexical spelling and provisional hole roles. This
+/// pass is the sole producer of semantic `HoleBinderId` values: it walks the
+/// normalized tree in lexical order, assigns fresh ordinals, rewrites every
+/// scoped Pattern/policy occurrence to the exact binder, and diagnoses active
+/// name redeclarations through `duplicate_of`.
+#[derive(Default)]
+struct HoleAlphaNormalizer {
+    next_ordinal: u32,
+}
+
+impl HoleAlphaNormalizer {
+    fn fresh_id(&mut self) -> HoleBinderId {
+        let id = HoleBinderId::alpha(self.next_ordinal);
+        self.next_ordinal = self
+            .next_ordinal
+            .checked_add(1)
+            .expect("normalized program contains more than u32::MAX hole binders");
+        id
+    }
+
+    fn normalize_program(&mut self, program: &mut NormProgram, holes: &[VisibleHole]) {
+        for form in &mut program.forms {
+            self.normalize_form(form, holes);
+        }
+    }
+
+    fn normalize_form(&mut self, form: &mut NormForm, holes: &[VisibleHole]) {
+        match form {
+            NormForm::Let(decl) | NormForm::Alias(decl) => self.normalize_decl(decl, holes),
+            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+                self.normalize_expr(expr, holes);
+            }
+            NormForm::ReturnEvent(event) => {
+                self.normalize_expr(&mut event.value, holes);
+                if let NormReturnTargetSyntax::Explicit(target) = &mut event.target {
+                    self.normalize_expr(target, holes);
+                }
+            }
+            NormForm::Error(_) => {}
+        }
+    }
+
+    fn normalize_decl(&mut self, decl: &mut NormDecl, holes: &[VisibleHole]) {
+        match decl {
+            NormDecl::Let { slot, .. } => {
+                self.normalize_slot(slot, holes);
+            }
+            NormDecl::Alias { policy, target, .. } => {
+                if let Some(policy) = policy {
+                    self.normalize_policy_spec(policy, holes);
+                }
+                self.normalize_nav_components(&mut target.components, holes);
+            }
+            NormDecl::Error(_) => {}
+        }
+    }
+
+    /// Normalize a let-shaped slot and return the hole environment visible to
+    /// its following Pattern, annotation, and initializer. The returned
+    /// environment never escapes the slot itself.
+    fn normalize_slot(
+        &mut self,
+        slot: &mut NormBindingSlot,
+        inherited: &[VisibleHole],
+    ) -> Vec<VisibleHole> {
+        // BindingSlot source order is policy, let, DeduceList, Pattern,
+        // annotation, initializer. The leading policy may see inherited holes
+        // but never a hole declared later by this slot.
+        if let Some(policy) = &mut slot.policy {
+            self.normalize_policy_spec(policy, inherited);
+        }
+        let visible = self.normalize_deduce_list(&mut slot.deduce, inherited);
+        self.normalize_pattern(&mut slot.value_pattern, &visible);
+        if let Some(annotation) = &mut slot.annotation {
+            self.normalize_pattern(&mut annotation.pattern, &visible);
+        }
+        if let Some(initializer) = &mut slot.initializer {
+            self.normalize_expr(initializer, &visible);
+        }
+        visible
+    }
+
+    fn normalize_deduce_list(
+        &mut self,
+        deduce: &mut [NormHoleDecl],
+        inherited: &[VisibleHole],
+    ) -> Vec<VisibleHole> {
+        let mut visible = inherited.to_vec();
+        for hole in deduce {
+            // A telescope annotation sees ancestors and earlier binders, but
+            // never the binder being declared or a later binder.
+            if let Some(annotation) = &mut hole.annotation {
+                self.normalize_pattern(&mut annotation.pattern, &visible);
+            }
+
+            let provisional_key = hole.id.generated_key();
+            let id = self.fresh_id();
+            let duplicate_of = provisional_key
+                .is_none()
+                .then(|| find_visible_source_hole(&visible, &hole.name).map(|first| first.id))
+                .flatten();
+            hole.id = id;
+            hole.duplicate_of = duplicate_of;
+            if duplicate_of.is_none() {
+                visible.push(VisibleHole {
+                    id,
+                    key: provisional_key.map_or_else(
+                        || VisibleHoleKey::SourceName(hole.name.clone()),
+                        VisibleHoleKey::Generated,
+                    ),
+                });
+            }
+        }
+        visible
+    }
+
+    fn normalize_expr(&mut self, expr: &mut NormExpr, holes: &[VisibleHole]) {
+        match expr {
+            NormExpr::Call { source, target, .. } => {
+                self.normalize_product(source, holes);
+                self.normalize_expr(target, holes);
+            }
+            NormExpr::Product(product) => self.normalize_product(product, holes),
+            NormExpr::Nav { components, .. } => {
+                self.normalize_nav_components(components, holes);
+            }
+            NormExpr::Closure(closure) => self.normalize_closure(closure, holes),
+            NormExpr::Name { .. }
+            | NormExpr::Literal { .. }
+            | NormExpr::OperatorTarget { .. }
+            | NormExpr::Error(_)
+            | NormExpr::Unsupported { .. } => {}
+        }
+    }
+
+    fn normalize_product(&mut self, product: &mut NormProduct, holes: &[VisibleHole]) {
+        for element in &mut product.elements {
+            if let NormProductElem::Expr(expr) = element {
+                self.normalize_expr(expr, holes);
+            }
+        }
+    }
+
+    fn normalize_closure(&mut self, closure: &mut NormClosure, inherited: &[VisibleHole]) {
+        let visible = if let Some(head) = &mut closure.head {
+            let visible = self.normalize_deduce_list(&mut head.deduce, inherited);
+
+            // Capture initializers are simultaneous with respect to value
+            // binders. Each capture-local DeduceList still scopes that
+            // capture's own initializer.
+            for capture in &mut head.captures {
+                let capture_holes = self.normalize_slot(&mut capture.slot, &visible);
+                self.normalize_expr(&mut capture.initializer, &capture_holes);
+            }
+            for param in &mut head.params {
+                self.normalize_pattern_element(param, &visible);
+            }
+            if let Some(policy) = &mut head.call_policy {
+                self.normalize_policy_spec(policy, &visible);
+            }
+            if let Some(returns) = &mut head.returns {
+                self.normalize_slot(returns, &visible);
+            }
+            for clause in &mut head.clauses {
+                match clause {
+                    NormHeadClause::Require { expr, .. }
+                    | NormHeadClause::Pre { expr, .. }
+                    | NormHeadClause::Post { expr, .. }
+                    | NormHeadClause::LifetimePre { expr, .. }
+                    | NormHeadClause::LifetimePost { expr, .. } => {
+                        self.normalize_expr(expr, &visible);
+                    }
+                    NormHeadClause::Error(_) => {}
+                }
+            }
+            visible
+        } else {
+            inherited.to_vec()
+        };
+
+        match &mut closure.body {
+            NormClosureBody::Block(body) | NormClosureBody::NamedBlock { body, .. } => {
+                self.normalize_program(body, &visible);
+            }
+            NormClosureBody::Defaulted { .. } | NormClosureBody::Delete(_) => {}
+        }
+    }
+
+    fn normalize_pattern_element(&mut self, element: &mut NormPatternElem, holes: &[VisibleHole]) {
+        match element {
+            NormPatternElem::Pattern(pattern) => self.normalize_pattern(pattern, holes),
+            NormPatternElem::BindingSlot(slot) => {
+                self.normalize_slot(slot, holes);
+            }
+            NormPatternElem::Unit { .. } => {}
+        }
+    }
+
+    fn normalize_pattern(&mut self, pattern: &mut NormPattern, holes: &[VisibleHole]) {
+        match pattern {
+            NormPattern::Product { elements, .. } => {
+                for element in elements {
+                    self.normalize_pattern_element(element, holes);
+                }
+            }
+            NormPattern::Pack { inner, .. } => self.normalize_pattern(inner, holes),
+            NormPattern::Name { name, origin } => {
+                if let Some(hole) = find_visible_source_hole(holes, name) {
+                    *pattern = NormPattern::HoleRef {
+                        target: hole.id,
+                        name: name.clone(),
+                        origin: origin.clone(),
+                    };
+                }
+            }
+            NormPattern::HoleRef {
+                target,
+                name,
+                origin,
+            } => {
+                if let Some(hole) = find_visible_hole_ref(holes, *target, name) {
+                    *target = hole.id;
+                } else if (*target).generated_key().is_some() {
+                    panic!("generated hole reference has no hygienic binder in scope");
+                } else {
+                    *pattern = NormPattern::Name {
+                        name: name.clone(),
+                        origin: origin.clone(),
+                    };
+                }
+            }
+            NormPattern::Nav { components, .. } => {
+                self.normalize_nav_components(components, holes);
+            }
+            NormPattern::Sequence { elements, .. } => {
+                for element in elements {
+                    self.normalize_pattern(element, holes);
+                }
+            }
+            NormPattern::Skeleton { skeleton, .. } => {
+                self.normalize_skeleton(skeleton, holes);
+            }
+            NormPattern::BindingSlot { slot, .. } => {
+                self.normalize_slot(slot, holes);
+            }
+            NormPattern::Binder { .. }
+            | NormPattern::OperatorBinder { .. }
+            | NormPattern::Unit { .. }
+            | NormPattern::AnonymousHole { .. }
+            | NormPattern::Literal { .. }
+            | NormPattern::Error(_)
+            | NormPattern::Unsupported { .. } => {}
+        }
+    }
+
+    fn normalize_skeleton(&mut self, skeleton: &mut NormSkeleton, holes: &[VisibleHole]) {
+        match skeleton {
+            NormSkeleton::Segment { elements, .. } => {
+                for element in elements {
+                    self.normalize_skeleton(element, holes);
+                }
+            }
+            NormSkeleton::Product { elements, .. } => {
+                for element in elements {
+                    if let NormSkeletonElem::Skeleton(skeleton) = element {
+                        self.normalize_skeleton(skeleton, holes);
+                    }
+                }
+            }
+            NormSkeleton::Name { name, role, origin } => {
+                if let Some(hole) = find_visible_source_hole(holes, name) {
+                    *skeleton = NormSkeleton::HoleRef {
+                        target: hole.id,
+                        name: name.clone(),
+                        origin: origin.clone(),
+                    };
+                } else if *role == NormCanonicalNameRole::Hole {
+                    // Raw roles are provisional lexical hints only.
+                    *role = NormCanonicalNameRole::Unknown;
+                }
+            }
+            NormSkeleton::HoleRef {
+                target,
+                name,
+                origin,
+            } => {
+                if let Some(hole) = find_visible_hole_ref(holes, *target, name) {
+                    *target = hole.id;
+                } else if (*target).generated_key().is_some() {
+                    panic!("generated skeleton hole reference has no hygienic binder in scope");
+                } else {
+                    *skeleton = NormSkeleton::Name {
+                        name: name.clone(),
+                        role: NormCanonicalNameRole::Unknown,
+                        origin: origin.clone(),
+                    };
+                }
+            }
+            NormSkeleton::Nav { components, .. } => {
+                self.normalize_nav_components(components, holes);
+            }
+            NormSkeleton::Wildcard { .. }
+            | NormSkeleton::Literal { .. }
+            | NormSkeleton::Error(_) => {}
+        }
+    }
+
+    fn normalize_nav_components(
+        &mut self,
+        components: &mut [NormNavComponent],
+        holes: &[VisibleHole],
+    ) {
+        for component in components {
+            if let NormNavComponent::Group { expr, .. } = component {
+                self.normalize_expr(expr, holes);
+            }
+        }
+    }
+
+    fn normalize_policy_spec(&mut self, policy: &mut NormPolicySpec, holes: &[VisibleHole]) {
+        if let NormValuePolicyPattern::Conjunction(conjunction) = &mut policy.value_policy {
+            self.normalize_policy_conjunction(conjunction, holes);
+        }
+        if let Some(conjunction) = &mut policy.pattern_policy {
+            self.normalize_policy_conjunction(conjunction, holes);
+        }
+    }
+
+    fn normalize_policy_conjunction(
+        &mut self,
+        conjunction: &mut NormPolicyConjunction,
+        holes: &[VisibleHole],
+    ) {
+        for choice in &mut conjunction.choices {
+            for atom in &mut choice.atoms {
+                match atom {
+                    NormPolicyAtom::Name { text, origin } => {
+                        if let Some(hole) = find_visible_source_hole(holes, text) {
+                            *atom = NormPolicyAtom::HoleRef {
+                                target: hole.id,
+                                text: text.clone(),
+                                origin: origin.clone(),
+                            };
+                        }
+                    }
+                    NormPolicyAtom::HoleRef {
+                        target,
+                        text,
+                        origin,
+                    } => {
+                        if let Some(hole) = find_visible_hole_ref(holes, *target, text) {
+                            *target = hole.id;
+                        } else if (*target).generated_key().is_some() {
+                            panic!(
+                                "generated policy hole reference has no hygienic binder in scope"
+                            );
+                        } else {
+                            *atom = NormPolicyAtom::Name {
+                                text: text.clone(),
+                                origin: origin.clone(),
+                            };
+                        }
+                    }
+                    NormPolicyAtom::Group { conjunction, .. } => {
+                        self.normalize_policy_conjunction(conjunction, holes);
+                    }
+                    NormPolicyAtom::AbsentValuePattern { .. } | NormPolicyAtom::Error(_) => {}
+                }
+            }
+        }
+    }
+}
+
 pub fn normalize_program(raw: &ProgramAst) -> NormProgram {
-    NormProgram {
+    let mut program = NormProgram {
         forms: raw.forms.iter().map(normalize_form).collect(),
         origin: NormOrigin::Source(raw.span),
+    };
+    HoleAlphaNormalizer::default().normalize_program(&mut program, &[]);
+    program
+}
+
+/// The Pattern-layer-validated handoff for downstream build/semantic
+/// consumers.
+///
+/// `normalize_program` remains available for dump/recovery tooling that must
+/// inspect invalid structure. Passing this function proves only the global
+/// normalized Pattern invariants; it does not prove the absence of recovered
+/// syntax errors.
+pub fn normalize_and_validate_patterns(
+    raw: &ProgramAst,
+) -> Result<PatternValidatedNormProgram, PatternInvalidNormProgram> {
+    validate_normalized_pattern_layers(normalize_program(raw))
+}
+
+pub fn validate_normalized_pattern_layers(
+    program: NormProgram,
+) -> Result<PatternValidatedNormProgram, PatternInvalidNormProgram> {
+    match validate_normalized_patterns(&program) {
+        Ok(()) => Ok(PatternValidatedNormProgram { program }),
+        Err(pattern_errors) => Err(PatternInvalidNormProgram {
+            program,
+            pattern_errors,
+        }),
     }
 }
 
@@ -914,6 +1912,7 @@ fn normalize_atom(atom: &AtomAst) -> NormExpr {
             explicit_terminated: *explicit_terminated,
             origin: NormOrigin::Source(atom.span),
         },
+        AtomKind::DotClosure { selector } => normalize_dot_closure(selector, atom.span),
         AtomKind::MemberSugar { object, selector } => {
             normalize_member_sugar(normalize_atom(object), selector, atom.span)
         }
@@ -997,42 +1996,31 @@ fn normalize_operator_sugar(
 }
 
 fn normalize_member_sugar(object: NormExpr, selector: &SelectorAst, span: Span) -> NormExpr {
-    let selector_name = selector_name(selector);
-    let closure = generated_receiver_closure(
-        NormRule::MemberLowering,
-        span,
-        make_call(
-            NormProduct {
-                elements: vec![NormProductElem::Expr(generated_name(
-                    "val",
-                    span,
-                    NormRule::MemberLowering,
-                ))],
-                origin: NormOrigin::Generated {
-                    rule: NormRule::MemberLowering,
-                    span,
-                },
-            },
-            generated_nav(
-                &[selector_name.as_str(), "T"],
-                span,
-                NormRule::MemberLowering,
-            ),
-            NormOrigin::Generated {
-                rule: NormRule::MemberLowering,
-                span,
-            },
-        ),
-    );
-
     make_call(
         source_product_from_expr(object, span),
-        NormExpr::Closure(closure),
+        normalize_dot_closure(selector, span),
         NormOrigin::Generated {
             rule: NormRule::MemberLowering,
             span,
         },
     )
+}
+
+fn normalize_dot_closure(selector: &SelectorAst, span: Span) -> NormExpr {
+    let rule = NormRule::DotClosureLowering;
+    let selector_name = selector_name(selector);
+    let body = make_call(
+        NormProduct {
+            elements: vec![
+                NormProductElem::Expr(generated_name("val", span, rule)),
+                NormProductElem::Expr(generated_name("args", span, rule)),
+            ],
+            origin: NormOrigin::Generated { rule, span },
+        },
+        generated_nav(&[selector_name.as_str(), "T"], span, rule),
+        NormOrigin::Generated { rule, span },
+    );
+    NormExpr::Closure(generated_field_function_closure(span, body))
 }
 
 fn normalize_double_dot_sugar(
@@ -1186,28 +2174,33 @@ fn operator_target(
 }
 
 fn normalize_closure(closure: &ClosureAst) -> NormClosure {
-    match closure {
-        ClosureAst::InPlace(inner) => NormClosure {
-            kind: NormClosureKind::InPlace,
-            head: None,
-            body: NormClosureBody::Block(normalize_body_block(&inner.body)),
-            origin: NormOrigin::Source(inner.span),
+    let body = match &closure.body {
+        ClosureBodyAst::Block(block) => NormClosureBody::Block(normalize_body_block(block)),
+        ClosureBodyAst::NamedBlock {
+            strategy,
+            block,
+            span,
+        } => NormClosureBody::NamedBlock {
+            strategy: strategy.text.clone(),
+            body: normalize_body_block(block),
+            origin: NormOrigin::Source(*span),
         },
-        ClosureAst::Explicit(inner) => {
-            let body = match &inner.body {
-                ClosureBodyAst::Block(block) => NormClosureBody::Block(normalize_body_block(block)),
-                ClosureBodyAst::Delete(del) => NormClosureBody::Delete(NormDeleteBody {
-                    message: Box::new(normalize_expr(&del.message)),
-                    origin: NormOrigin::Source(del.span),
-                }),
-            };
-            NormClosure {
-                kind: NormClosureKind::Explicit,
-                head: Some(normalize_closure_head(&inner.head)),
-                body,
-                origin: NormOrigin::Source(inner.span),
-            }
-        }
+        ClosureBodyAst::Defaulted { span, .. } => NormClosureBody::Defaulted {
+            origin: NormOrigin::Source(*span),
+        },
+        ClosureBodyAst::Delete(del) => NormClosureBody::Delete(NormDeleteBody {
+            message: del.message.clone(),
+            origin: NormOrigin::Source(del.span),
+        }),
+    };
+    NormClosure {
+        placement: match closure.placement {
+            ClosurePlacementAst::InPlace => NormClosurePlacement::InPlace,
+            ClosurePlacementAst::Ordinary => NormClosurePlacement::Ordinary,
+        },
+        head: closure.head.as_ref().map(normalize_closure_head),
+        body,
+        origin: NormOrigin::Source(closure.span),
     }
 }
 
@@ -1235,15 +2228,11 @@ fn normalize_body_block(body: &BodyBlockAst) -> NormProgram {
 }
 
 fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
-    let deduce = normalize_deduce_list(head.deduce.as_ref(), &[]);
-    let hole_names = deduce
-        .iter()
-        .map(|hole| hole.name.clone())
-        .collect::<Vec<_>>();
+    let (deduce, holes) = normalize_deduce_list(head.deduce.as_ref(), &[]);
     let params = head
         .params
         .as_ref()
-        .map(|params| normalize_param_clause(params, &hole_names))
+        .map(|params| normalize_param_clause(params, &holes))
         .unwrap_or_default();
     let captures = head
         .captures
@@ -1252,7 +2241,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
             captures
                 .items
                 .iter()
-                .map(|item| normalize_expr(&item.expr))
+                .map(|item| normalize_capture_item(item, &holes))
                 .collect()
         })
         .unwrap_or_default();
@@ -1260,7 +2249,7 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
     let returns = head
         .returns
         .as_ref()
-        .map(|returns| normalize_return_clause(returns, &hole_names));
+        .map(|returns| normalize_return_clause(returns, &holes));
     let clauses = head.clauses.iter().map(normalize_head_clause).collect();
 
     NormClosureHead {
@@ -1277,14 +2266,254 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
     }
 }
 
-fn normalize_param_clause(params: &ParamClauseAst, hole_names: &[String]) -> Vec<NormPatternElem> {
+fn normalize_capture_item(item: &CaptureItemAst, holes: &[VisibleHole]) -> NormCapture {
+    match item {
+        CaptureItemAst::Explicit {
+            slot,
+            initializer,
+            span,
+        } => {
+            let mut slot = normalize_binding_slot(slot, holes);
+            slot.has_let = true;
+            slot.initializer = None;
+            NormCapture {
+                slot,
+                initializer: normalize_expr(initializer),
+                origin: NormOrigin::Source(*span),
+            }
+        }
+        CaptureItemAst::Inferred { initializer, span } => {
+            let initializer = normalize_expr(initializer);
+            let names = infer_capture_binding_names(&initializer);
+            let value_pattern = if names.len() == 1 {
+                NormPattern::Binder {
+                    name: names.iter().next().expect("one inferred name").clone(),
+                    origin: NormOrigin::Derived {
+                        rule: NormRule::CaptureNameInference,
+                        span: *span,
+                        summary: "unique free non-call bare name".to_string(),
+                    },
+                }
+            } else {
+                let detail = if names.is_empty() {
+                    "found no candidate".to_string()
+                } else {
+                    format!("found {}", names.into_iter().collect::<Vec<_>>().join(", "))
+                };
+                NormPattern::Error(NormError {
+                    message: format!(
+                        "capture shorthand requires exactly one free non-call bare name; {detail}"
+                    ),
+                    origin: NormOrigin::Derived {
+                        rule: NormRule::CaptureNameInference,
+                        span: *span,
+                        summary: "ambiguous capture shorthand".to_string(),
+                    },
+                })
+            };
+            let origin = NormOrigin::Derived {
+                rule: NormRule::CaptureNameInference,
+                span: *span,
+                summary: "inferred capture elaborates to a let-shaped binding".to_string(),
+            };
+            NormCapture {
+                slot: NormBindingSlot {
+                    policy: None,
+                    has_let: true,
+                    deduce: Vec::new(),
+                    value_pattern,
+                    annotation: None,
+                    with_clause: None,
+                    initializer: None,
+                    origin: origin.clone(),
+                },
+                initializer,
+                origin,
+            }
+        }
+    }
+}
+
+fn infer_capture_binding_names(initializer: &NormExpr) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    collect_free_non_call_names_expr(initializer, &BTreeSet::new(), false, &mut names);
+    names
+}
+
+fn collect_free_non_call_names_expr(
+    expr: &NormExpr,
+    bound: &BTreeSet<String>,
+    direct_call_target: bool,
+    names: &mut BTreeSet<String>,
+) {
+    match expr {
+        NormExpr::Name { text, .. } => {
+            if !direct_call_target && !bound.contains(text) {
+                names.insert(text.clone());
+            }
+        }
+        NormExpr::Call { source, target, .. } => {
+            for element in &source.elements {
+                if let NormProductElem::Expr(expr) = element {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                }
+            }
+            collect_free_non_call_names_expr(target, bound, true, names);
+        }
+        NormExpr::Product(product) => {
+            for element in &product.elements {
+                if let NormProductElem::Expr(expr) = element {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                }
+            }
+        }
+        NormExpr::Nav { components, .. } => {
+            for component in components {
+                if let NormNavComponent::Group { expr, .. } = component {
+                    collect_free_non_call_names_expr(expr, bound, false, names);
+                }
+            }
+        }
+        NormExpr::Closure(closure) => {
+            collect_free_non_call_names_closure(closure, bound, names);
+        }
+        NormExpr::Literal { .. }
+        | NormExpr::OperatorTarget { .. }
+        | NormExpr::Error(_)
+        | NormExpr::Unsupported { .. } => {}
+    }
+}
+
+fn collect_free_non_call_names_closure(
+    closure: &NormClosure,
+    outer_bound: &BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    let mut body_bound = outer_bound.clone();
+    if let Some(head) = &closure.head {
+        // Capture initializers are simultaneous and therefore all see only the
+        // enclosing environment.
+        for capture in &head.captures {
+            collect_free_non_call_names_expr(&capture.initializer, outer_bound, false, names);
+        }
+        for capture in &head.captures {
+            collect_pattern_binder_names(&capture.slot.value_pattern, &mut body_bound);
+        }
+        for param in &head.params {
+            collect_pattern_element_binder_names(param, &mut body_bound);
+        }
+        if let Some(returns) = &head.returns {
+            collect_pattern_binder_names(&returns.value_pattern, &mut body_bound);
+        }
+        for clause in &head.clauses {
+            let expr = match clause {
+                NormHeadClause::Require { expr, .. }
+                | NormHeadClause::Pre { expr, .. }
+                | NormHeadClause::Post { expr, .. }
+                | NormHeadClause::LifetimePre { expr, .. }
+                | NormHeadClause::LifetimePost { expr, .. } => Some(expr),
+                NormHeadClause::Error(_) => None,
+            };
+            if let Some(expr) = expr {
+                collect_free_non_call_names_expr(expr, &body_bound, false, names);
+            }
+        }
+    }
+
+    if let Some(body) = closure.body.user_body() {
+        collect_free_non_call_names_program(body, &mut body_bound, names);
+    }
+}
+
+fn collect_free_non_call_names_program(
+    program: &NormProgram,
+    bound: &mut BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    for form in &program.forms {
+        match form {
+            NormForm::Let(NormDecl::Let { slot, .. }) => {
+                if let Some(initializer) = &slot.initializer {
+                    collect_free_non_call_names_expr(initializer, bound, false, names);
+                }
+                collect_pattern_binder_names(&slot.value_pattern, bound);
+            }
+            NormForm::Alias(NormDecl::Alias { binder, target, .. }) => {
+                for component in &target.components {
+                    if let NormNavComponent::Group { expr, .. } = component {
+                        collect_free_non_call_names_expr(expr, bound, false, names);
+                    }
+                }
+                if let NormAliasBinder::Name { name, .. } = binder {
+                    bound.insert(name.clone());
+                }
+            }
+            NormForm::Expr(expr) | NormForm::TailValue(expr) => {
+                collect_free_non_call_names_expr(expr, bound, false, names);
+            }
+            NormForm::ReturnEvent(event) => {
+                collect_free_non_call_names_expr(&event.value, bound, false, names);
+                if let NormReturnTargetSyntax::Explicit(target) = &event.target {
+                    collect_free_non_call_names_expr(target, bound, false, names);
+                }
+            }
+            NormForm::Let(NormDecl::Alias { .. } | NormDecl::Error(_))
+            | NormForm::Alias(NormDecl::Let { .. } | NormDecl::Error(_))
+            | NormForm::Error(_) => {}
+        }
+    }
+}
+
+fn collect_pattern_element_binder_names(element: &NormPatternElem, bound: &mut BTreeSet<String>) {
+    match element {
+        NormPatternElem::Pattern(pattern) => collect_pattern_binder_names(pattern, bound),
+        NormPatternElem::BindingSlot(slot) => {
+            collect_pattern_binder_names(&slot.value_pattern, bound)
+        }
+        NormPatternElem::Unit { .. } => {}
+    }
+}
+
+fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<String>) {
+    match pattern {
+        NormPattern::Binder { name, .. } => {
+            bound.insert(name.clone());
+        }
+        NormPattern::Product { elements, .. } => {
+            for element in elements {
+                collect_pattern_element_binder_names(element, bound);
+            }
+        }
+        NormPattern::Pack { inner, .. } => collect_pattern_binder_names(inner, bound),
+        NormPattern::BindingSlot { slot, .. } => {
+            collect_pattern_binder_names(&slot.value_pattern, bound)
+        }
+        NormPattern::Sequence { elements, .. } => {
+            for element in elements {
+                collect_pattern_binder_names(element, bound);
+            }
+        }
+        NormPattern::OperatorBinder { .. }
+        | NormPattern::Unit { .. }
+        | NormPattern::HoleRef { .. }
+        | NormPattern::AnonymousHole { .. }
+        | NormPattern::Name { .. }
+        | NormPattern::Literal { .. }
+        | NormPattern::Nav { .. }
+        | NormPattern::Skeleton { .. }
+        | NormPattern::Error(_)
+        | NormPattern::Unsupported { .. } => {}
+    }
+}
+
+fn normalize_param_clause(params: &ParamClauseAst, holes: &[VisibleHole]) -> Vec<NormPatternElem> {
     params
         .extract
         .elements
         .iter()
         .map(|element| match element {
             ProductExtractElementAst::Slot(slot) => {
-                NormPatternElem::BindingSlot(normalize_binding_slot(slot, hole_names))
+                NormPatternElem::BindingSlot(normalize_binding_slot(slot, holes))
             }
             ProductExtractElementAst::Unit { span } => NormPatternElem::Unit {
                 origin: NormOrigin::Source(*span),
@@ -1293,8 +2522,8 @@ fn normalize_param_clause(params: &ParamClauseAst, hole_names: &[String]) -> Vec
         .collect()
 }
 
-fn normalize_return_clause(returns: &ReturnClauseAst, hole_names: &[String]) -> NormBindingSlot {
-    normalize_binding_slot(&returns.slot, hole_names)
+fn normalize_return_clause(returns: &ReturnClauseAst, holes: &[VisibleHole]) -> NormBindingSlot {
+    normalize_binding_slot(&returns.slot, holes)
 }
 
 fn normalize_head_clause(clause: &HeadClauseAst) -> NormHeadClause {
@@ -1323,20 +2552,21 @@ fn normalize_head_clause(clause: &HeadClauseAst) -> NormHeadClause {
     }
 }
 
-fn normalize_binding_slot(slot: &BindingSlotAst, inherited_holes: &[String]) -> NormBindingSlot {
-    let deduce = normalize_deduce_list(slot.deduce.as_ref(), inherited_holes);
-    let mut hole_names = inherited_holes.to_vec();
-    hole_names.extend(deduce.iter().map(|hole| hole.name.clone()));
+fn normalize_binding_slot(
+    slot: &BindingSlotAst,
+    inherited_holes: &[VisibleHole],
+) -> NormBindingSlot {
+    let (deduce, holes) = normalize_deduce_list(slot.deduce.as_ref(), inherited_holes);
 
     NormBindingSlot {
         policy: slot.policy.as_ref().map(normalize_policy_spec),
         has_let: slot.has_let,
         deduce,
-        value_pattern: normalize_binding_pattern(&slot.pattern, &hole_names),
+        value_pattern: normalize_binding_pattern(&slot.pattern, &holes),
         annotation: slot
             .annotation
             .as_ref()
-            .map(|annotation| normalize_binding_annotation(annotation, &hole_names)),
+            .map(|annotation| normalize_binding_annotation(annotation, &holes)),
         with_clause: slot.with_clause.as_ref().map(normalize_with_clause),
         initializer: slot
             .initializer
@@ -1351,34 +2581,75 @@ fn normalize_binding_slot(slot: &BindingSlotAst, inherited_holes: &[String]) -> 
 
 fn normalize_deduce_list(
     deduce: Option<&DeduceListAst>,
-    inherited_holes: &[String],
-) -> Vec<NormHoleDecl> {
-    deduce
-        .map(|deduce| {
-            deduce
-                .binders
-                .iter()
-                .map(|binder| normalize_hole_decl(binder, inherited_holes))
-                .collect()
-        })
-        .unwrap_or_default()
-}
+    inherited_holes: &[VisibleHole],
+) -> (Vec<NormHoleDecl>, Vec<VisibleHole>) {
+    let mut visible = inherited_holes.to_vec();
+    let mut normalized = Vec::new();
 
-fn normalize_hole_decl(binder: &BinderDeclAst, inherited_holes: &[String]) -> NormHoleDecl {
-    NormHoleDecl {
-        name: binder.name.text.clone(),
-        annotation: binder
-            .annotation
-            .as_ref()
-            .map(|annotation| normalize_annotation_term(annotation, inherited_holes)),
-        origin: NormOrigin::Generated {
-            rule: NormRule::PatternNormalize,
-            span: binder.span,
-        },
+    if let Some(deduce) = deduce {
+        for binder in &deduce.binders {
+            let id = HoleBinderId::provisional_source();
+            let duplicate_of =
+                find_visible_source_hole(&visible, &binder.name.text).map(|hole| hole.id);
+            let annotation = binder
+                .annotation
+                .as_ref()
+                .map(|annotation| normalize_annotation_term(annotation, &visible));
+            normalized.push(NormHoleDecl {
+                id,
+                name: binder.name.text.clone(),
+                annotation,
+                duplicate_of,
+                origin: NormOrigin::Generated {
+                    rule: NormRule::PatternNormalize,
+                    span: binder.span,
+                },
+            });
+            if duplicate_of.is_none() {
+                visible.push(VisibleHole {
+                    id,
+                    key: VisibleHoleKey::SourceName(binder.name.text.clone()),
+                });
+            }
+        }
     }
+
+    (normalized, visible)
 }
 
-fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> NormPattern {
+fn find_visible_source_hole<'a>(holes: &'a [VisibleHole], name: &str) -> Option<&'a VisibleHole> {
+    holes.iter().rev().find(|hole| {
+        matches!(
+            &hole.key,
+            VisibleHoleKey::SourceName(visible_name) if visible_name == name
+        )
+    })
+}
+
+fn find_visible_generated_hole(
+    holes: &[VisibleHole],
+    key: GeneratedHoleKey,
+) -> Option<&VisibleHole> {
+    holes.iter().rev().find(|hole| {
+        matches!(
+            &hole.key,
+            VisibleHoleKey::Generated(visible_key) if *visible_key == key
+        )
+    })
+}
+
+fn find_visible_hole_ref<'a>(
+    holes: &'a [VisibleHole],
+    provisional_target: HoleBinderId,
+    display_name: &str,
+) -> Option<&'a VisibleHole> {
+    provisional_target.generated_key().map_or_else(
+        || find_visible_source_hole(holes, display_name),
+        |key| find_visible_generated_hole(holes, key),
+    )
+}
+
+fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[VisibleHole]) -> NormPattern {
     // Extraction-side entry point. Binder/name/skeleton material stays in the
     // NormPattern family and is not treated as value-side call target material.
     match pattern {
@@ -1393,18 +2664,121 @@ fn normalize_binding_pattern(pattern: &BindingPatternAst, holes: &[String]) -> N
             }
         }
         BindingPatternAst::Product(product) => normalize_product_extract_pattern(product, holes),
-        BindingPatternAst::Skeleton(skeleton) => NormPattern::Skeleton {
-            skeleton: normalize_canonical_skeleton(skeleton),
-            origin: NormOrigin::Generated {
-                rule: NormRule::PatternNormalize,
-                span: skeleton_span(skeleton),
-            },
+        BindingPatternAst::Pack { inner, span } => NormPattern::Pack {
+            inner: Box::new(normalize_pack_operand_pattern(inner, holes)),
+            origin: NormOrigin::Source(*span),
         },
+        BindingPatternAst::Skeleton(skeleton) => normalize_canonical_pattern(skeleton, holes),
         BindingPatternAst::Error(error) => NormPattern::Error(normalize_error(error)),
     }
 }
 
-fn normalize_product_extract_pattern(product: &ProductExtractAst, holes: &[String]) -> NormPattern {
+fn normalize_pack_operand_pattern(
+    pattern: &BindingPatternAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
+    match pattern {
+        BindingPatternAst::Skeleton(skeleton) => normalize_canonical_pack_operand(skeleton, holes),
+        other => normalize_binding_pattern(other, holes),
+    }
+}
+
+fn normalize_canonical_pattern(
+    skeleton: &CanonicalSkeletonAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
+    match skeleton {
+        CanonicalSkeletonAst::Segment { elements, span } => NormPattern::Sequence {
+            elements: elements
+                .iter()
+                .map(|element| normalize_canonical_pattern(element, holes))
+                .collect(),
+            origin: NormOrigin::Generated {
+                rule: NormRule::PatternNormalize,
+                span: *span,
+            },
+        },
+        CanonicalSkeletonAst::Pack { inner, span } => NormPattern::Pack {
+            inner: Box::new(normalize_canonical_pack_operand(inner, holes)),
+            origin: NormOrigin::Source(*span),
+        },
+        CanonicalSkeletonAst::ProductExtract { elements, span } => NormPattern::Product {
+            elements: elements
+                .iter()
+                .map(|element| match element {
+                    CanonicalProductElementAst::Skeleton(skeleton) => {
+                        NormPatternElem::Pattern(normalize_canonical_pattern(skeleton, holes))
+                    }
+                    CanonicalProductElementAst::Unit { span } => NormPatternElem::Unit {
+                        origin: NormOrigin::Source(*span),
+                    },
+                })
+                .collect(),
+            origin: NormOrigin::Generated {
+                rule: NormRule::PatternNormalize,
+                span: *span,
+            },
+        },
+        CanonicalSkeletonAst::Name { name, .. }
+            if find_visible_source_hole(holes, &name.text).is_some() =>
+        {
+            let target = find_visible_source_hole(holes, &name.text)
+                .expect("guard proved visible hole")
+                .id;
+            NormPattern::HoleRef {
+                target,
+                name: name.text.clone(),
+                origin: NormOrigin::Source(name.span),
+            }
+        }
+        CanonicalSkeletonAst::Error(error) => NormPattern::Error(normalize_error(error)),
+        atom => NormPattern::Skeleton {
+            skeleton: normalize_canonical_skeleton(atom),
+            origin: NormOrigin::Generated {
+                rule: NormRule::PatternNormalize,
+                span: skeleton_span(atom),
+            },
+        },
+    }
+}
+
+fn normalize_canonical_pack_operand(
+    skeleton: &CanonicalSkeletonAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
+    match skeleton {
+        CanonicalSkeletonAst::Name { name, .. }
+            if find_visible_source_hole(holes, &name.text).is_none() =>
+        {
+            NormPattern::Binder {
+                name: name.text.clone(),
+                origin: NormOrigin::Source(name.span),
+            }
+        }
+        CanonicalSkeletonAst::ProductExtract { .. } => {
+            let normalized = normalize_canonical_pattern(skeleton, holes);
+            match normalized {
+                NormPattern::Product {
+                    mut elements,
+                    origin,
+                } if elements.len() == 1 => match elements.pop().expect("one element") {
+                    NormPatternElem::Pattern(pattern) => pattern,
+                    element => NormPattern::Product {
+                        elements: vec![element],
+                        origin,
+                    },
+                },
+                other => other,
+            }
+        }
+        _ => normalize_canonical_pattern(skeleton, holes),
+    }
+}
+
+fn normalize_product_extract_pattern(
+    product: &ProductExtractAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
     let elements = product
         .elements
         .iter()
@@ -1428,7 +2802,7 @@ fn normalize_product_extract_pattern(product: &ProductExtractAst, holes: &[Strin
 
 fn normalize_binding_annotation(
     annotation: &BindingAnnotationAst,
-    holes: &[String],
+    holes: &[VisibleHole],
 ) -> NormAnnotation {
     // Annotation syntax is classifier/pattern material. It deliberately lowers
     // to NormAnnotation { pattern: NormPattern } rather than NormExpr.
@@ -1458,12 +2832,11 @@ fn normalize_binding_annotation(
     }
 }
 
-fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[String]) -> NormAnnotation {
+fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[VisibleHole]) -> NormAnnotation {
     match term {
         AnnotationTermAst::Expr(expr) => normalize_annotation_expr(expr, holes),
         AnnotationTermAst::Hole { span } => NormAnnotation {
-            pattern: NormPattern::HoleRef {
-                name: "_".to_string(),
+            pattern: NormPattern::AnonymousHole {
                 origin: NormOrigin::Source(*span),
             },
             origin: NormOrigin::Generated {
@@ -1474,7 +2847,7 @@ fn normalize_annotation_term(term: &AnnotationTermAst, holes: &[String]) -> Norm
     }
 }
 
-fn normalize_annotation_expr(expr: &ExprAst, holes: &[String]) -> NormAnnotation {
+fn normalize_annotation_expr(expr: &ExprAst, holes: &[VisibleHole]) -> NormAnnotation {
     // Bridge from raw expression-shaped parser surface into pattern context.
     // This is not value-to-pattern conversion for runtime values.
     NormAnnotation {
@@ -1486,7 +2859,7 @@ fn normalize_annotation_expr(expr: &ExprAst, holes: &[String]) -> NormAnnotation
     }
 }
 
-fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[String]) -> NormPattern {
+fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[VisibleHole]) -> NormPattern {
     // Pattern-side lowering for raw expression-shaped syntax in annotation or
     // extraction contexts. Names become PatternName/HoleRef, not NormExpr::Name.
     match &expr.kind {
@@ -1516,7 +2889,7 @@ fn normalize_expr_as_pattern(expr: &ExprAst, holes: &[String]) -> NormPattern {
     }
 }
 
-fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[String]) -> NormPattern {
+fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[VisibleHole]) -> NormPattern {
     // Pipe-shaped raw syntax in pattern context is preserved as pattern
     // sequence material. It does not participate in value-side call lowering.
     let mut elements = Vec::new();
@@ -1553,7 +2926,10 @@ fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[String]) -> NormPatter
     }
 }
 
-fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) -> NormPattern {
+fn normalize_operator_expr_as_pattern(
+    expr: &OperatorExprAst,
+    holes: &[VisibleHole],
+) -> NormPattern {
     // Operator-expression raw syntax in pattern context stays in NormPattern.
     // Unsupported sugar is surfaced explicitly instead of silently becoming a
     // value-side expression.
@@ -1586,13 +2962,17 @@ fn normalize_operator_expr_as_pattern(expr: &OperatorExprAst, holes: &[String]) 
     }
 }
 
-fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[String]) -> NormPattern {
+fn normalize_atom_as_pattern(atom: &AtomAst, holes: &[VisibleHole]) -> NormPattern {
     // Atom raw syntax in pattern context remains bounded extraction material:
     // PatternName/PatternNav/HoleRef labels are intentionally distinct from
     // value-side Name/Nav dumps.
     match &atom.kind {
-        AtomKind::Name(name) if holes.iter().any(|hole| hole == &name.text) => {
+        AtomKind::Name(name) if find_visible_source_hole(holes, &name.text).is_some() => {
+            let target = find_visible_source_hole(holes, &name.text)
+                .expect("guard proved visible hole")
+                .id;
             NormPattern::HoleRef {
+                target,
                 name: name.text.clone(),
                 origin: NormOrigin::Source(name.span),
             }
@@ -1656,6 +3036,13 @@ fn normalize_canonical_skeleton(skeleton: &CanonicalSkeletonAst) -> NormSkeleton
             elements: elements.iter().map(normalize_canonical_skeleton).collect(),
             origin: NormOrigin::Source(*span),
         },
+        CanonicalSkeletonAst::Pack { span, .. } => NormSkeleton::Error(NormError {
+            message: "canonical Pack must normalize through NormPattern".to_string(),
+            origin: NormOrigin::Generated {
+                rule: NormRule::Unsupported,
+                span: *span,
+            },
+        }),
         CanonicalSkeletonAst::ProductExtract { elements, span } => NormSkeleton::Product {
             elements: elements
                 .iter()
@@ -1775,10 +3162,15 @@ fn generated_prefix_negative_closure(span: Span) -> NormClosure {
 }
 
 fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -> NormClosure {
+    let type_hole_id = HoleBinderId::provisional_generated(GeneratedHoleKey {
+        rule,
+        local_ordinal: 0,
+    });
     NormClosure {
-        kind: NormClosureKind::Generated { rule },
+        placement: NormClosurePlacement::InPlace,
         head: Some(NormClosureHead {
             deduce: vec![NormHoleDecl {
+                id: type_hole_id,
                 name: "T".to_string(),
                 annotation: Some(NormAnnotation {
                     pattern: NormPattern::Name {
@@ -1787,6 +3179,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                     },
                     origin: NormOrigin::Generated { rule, span },
                 }),
+                duplicate_of: None,
                 origin: NormOrigin::Generated { rule, span },
             }],
             captures: Vec::new(),
@@ -1800,6 +3193,7 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
                 },
                 annotation: Some(NormAnnotation {
                     pattern: NormPattern::HoleRef {
+                        target: type_hole_id,
                         name: "T".to_string(),
                         origin: NormOrigin::Generated { rule, span },
                     },
@@ -1820,6 +3214,33 @@ fn generated_receiver_closure(rule: NormRule, span: Span, body_expr: NormExpr) -
         }),
         origin: NormOrigin::Generated { rule, span },
     }
+}
+
+fn generated_field_function_closure(span: Span, body_expr: NormExpr) -> NormClosure {
+    let rule = NormRule::DotClosureLowering;
+    let mut closure = generated_receiver_closure(rule, span, body_expr);
+    let head = closure
+        .head
+        .as_mut()
+        .expect("generated receiver closure always has a head");
+    head.params
+        .push(NormPatternElem::BindingSlot(NormBindingSlot {
+            policy: None,
+            has_let: false,
+            deduce: Vec::new(),
+            value_pattern: NormPattern::Pack {
+                inner: Box::new(NormPattern::Binder {
+                    name: "args".to_string(),
+                    origin: NormOrigin::Generated { rule, span },
+                }),
+                origin: NormOrigin::Generated { rule, span },
+            },
+            annotation: None,
+            with_clause: None,
+            initializer: None,
+            origin: NormOrigin::Generated { rule, span },
+        }));
+    closure
 }
 
 fn generated_name(name: &str, span: Span, rule: NormRule) -> NormExpr {
@@ -1881,6 +3302,7 @@ fn origin_span(origin: &NormOrigin) -> Span {
 fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
     match skeleton {
         CanonicalSkeletonAst::Segment { span, .. }
+        | CanonicalSkeletonAst::Pack { span, .. }
         | CanonicalSkeletonAst::ProductExtract { span, .. }
         | CanonicalSkeletonAst::Wildcard { span }
         | CanonicalSkeletonAst::Name { span, .. }
@@ -2133,6 +3555,13 @@ fn dump_norm_policy_conjunction(
                 NormPolicyAtom::Name { text, .. } => {
                     line(output, indent + 2, &format!("PolicyAtom Name \"{text}\""));
                 }
+                NormPolicyAtom::HoleRef { text, .. } => {
+                    line(
+                        output,
+                        indent + 2,
+                        &format!("PolicyAtom HoleRef \"{text}\""),
+                    );
+                }
                 NormPolicyAtom::Group { conjunction, .. } => {
                     line(output, indent + 2, "PolicyAtom Group");
                     dump_norm_policy_conjunction(output, conjunction, indent + 3);
@@ -2243,10 +3672,14 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 dump_pattern_elem(output, element, indent + 2);
             }
         }
+        NormPattern::Pack { inner, origin } => {
+            line(output, indent, &format!("Pack {}", origin_inline(origin)));
+            dump_pattern(output, inner, indent + 1);
+        }
         NormPattern::Unit { origin } => {
             line(output, indent, &format!("Unit {}", origin_inline(origin)))
         }
-        NormPattern::HoleRef { name, origin } => line(
+        NormPattern::HoleRef { name, origin, .. } => line(
             output,
             indent,
             &format!(
@@ -2254,6 +3687,11 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
                 escape_text(name),
                 origin_inline(origin)
             ),
+        ),
+        NormPattern::AnonymousHole { origin } => line(
+            output,
+            indent,
+            &format!("AnnotationHole {}", origin_inline(origin)),
         ),
         NormPattern::Name { name, origin } => line(
             output,
@@ -2401,6 +3839,15 @@ fn dump_skeleton(output: &mut String, skeleton: &NormSkeleton, indent: usize) {
                 origin_inline(origin)
             ),
         ),
+        NormSkeleton::HoleRef { name, origin, .. } => line(
+            output,
+            indent,
+            &format!(
+                "SkeletonHoleRef \"{}\" {}",
+                escape_text(name),
+                origin_inline(origin)
+            ),
+        ),
         NormSkeleton::Nav {
             components,
             explicit_terminated: _et,
@@ -2466,8 +3913,8 @@ fn dump_closure(output: &mut String, closure: &NormClosure, indent: usize) {
         output,
         indent,
         &format!(
-            "Closure kind={} {}",
-            closure_kind_label(&closure.kind),
+            "Closure placement={} {}",
+            closure_placement_label(closure.placement),
             origin_inline(&closure.origin)
         ),
     );
@@ -2479,14 +3926,22 @@ fn dump_closure(output: &mut String, closure: &NormClosure, indent: usize) {
     line(output, indent + 1, "body:");
     match &closure.body {
         NormClosureBody::Block(program) => dump_norm_program_body(output, program, indent + 2),
+        NormClosureBody::NamedBlock { strategy, body, .. } => {
+            line(
+                output,
+                indent + 2,
+                &format!("UserBody strategy=Named({strategy})"),
+            );
+            dump_norm_program_body(output, body, indent + 3);
+        }
+        NormClosureBody::Defaulted { .. } => line(output, indent + 2, "Defaulted"),
         NormClosureBody::Delete(del) => {
             line(output, indent + 2, "Delete");
-            let mut msg_buf = String::new();
-            dump_norm_expr(&mut msg_buf, &del.message, 0);
-            // dump_norm_expr appends a trailing \n; trim it to avoid
-            // double-newline when passed through line().
-            let msg_text = msg_buf.trim_end_matches('\n');
-            line(output, indent + 3, msg_text);
+            if let Some(message) = &del.message {
+                line(output, indent + 3, &format!("String {message}"));
+            } else {
+                line(output, indent + 3, "None");
+            }
         }
     }
 }
@@ -2508,7 +3963,15 @@ fn dump_closure_head(output: &mut String, head: &NormClosureHead, indent: usize)
     if !head.captures.is_empty() {
         line(output, indent + 1, "captures:");
         for capture in &head.captures {
-            dump_norm_expr(output, capture, indent + 2);
+            line(
+                output,
+                indent + 2,
+                &format!("Capture {}", origin_inline(&capture.origin)),
+            );
+            line(output, indent + 3, "slot:");
+            dump_binding_slot(output, &capture.slot, indent + 4);
+            line(output, indent + 3, "initializer:");
+            dump_norm_expr(output, &capture.initializer, indent + 4);
         }
     }
     line(output, indent + 1, "params:");
@@ -2709,12 +4172,14 @@ fn rule_label(rule: NormRule) -> &'static str {
         NormRule::SecondLegalityRepair => "SecondLegalityRepair",
         NormRule::OperatorLowering => "OperatorLowering",
         NormRule::PrefixNegativeLowering => "PrefixNegativeLowering",
+        NormRule::DotClosureLowering => "DotClosureLowering",
         NormRule::MemberLowering => "MemberLowering",
         NormRule::DoubleDotLowering => "DoubleDotLowering",
         NormRule::BracketCallLowering => "BracketCallLowering",
         NormRule::BranchNameExpansion => "BranchNameExpansion",
         NormRule::AliasPreserve => "AliasPreserve",
         NormRule::ClosureNormalize => "ClosureNormalize",
+        NormRule::CaptureNameInference => "CaptureNameInference",
         NormRule::PatternNormalize => "PatternNormalize",
         NormRule::Unsupported => "Unsupported",
     }
@@ -2745,11 +4210,10 @@ fn literal_kind_label(kind: NormLiteralKind) -> &'static str {
     }
 }
 
-fn closure_kind_label(kind: &NormClosureKind) -> String {
-    match kind {
-        NormClosureKind::InPlace => "InPlace".to_string(),
-        NormClosureKind::Explicit => "Explicit".to_string(),
-        NormClosureKind::Generated { rule } => format!("Generated({})", rule_label(*rule)),
+fn closure_placement_label(placement: NormClosurePlacement) -> &'static str {
+    match placement {
+        NormClosurePlacement::InPlace => "InPlace",
+        NormClosurePlacement::Ordinary => "Ordinary",
     }
 }
 

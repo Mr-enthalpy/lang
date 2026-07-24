@@ -9,7 +9,7 @@ Program
         Segment has_incoming=true
           OperatorExpr
             Atom
-              Closure Explicit
+              Closure Ordinary
                 FnHeadPrefix
                   captures:
                     CaptureClause

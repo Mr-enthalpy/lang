@@ -75,6 +75,39 @@ User-defined call entries are commonly installed under borrowed associated names
 
 Direct function objects are not merely sugar for user-defined `ref::T` callables. They have their call method directly under their anonymous function-object type.
 
+### 5.1 First-class field-function closures
+
+`.name` is itself a function-object expression. It normalizes without a
+receiver to:
+
+```lang
+(val: T, ...args) {
+    (val, args) |> name::T
+}
+```
+
+The first argument supplies `T`; `...args` is a Pattern remainder binding, not
+a pack type. Consequently `.name` can be stored and passed independently.
+After `.name` becomes that ordinary function-object expression, its origin
+grants no call-binding privilege. In particular, for `let d = .name`:
+
+```text
+BindingShape(P1 |> .name P2)
+  == BindingShape(P1 |> d P2)
+```
+
+The surrounding ordinary expression/pipe/product rules alone determine
+whether `P2` is a source-product continuation, later target, or legality
+repair. The normalizer must not inspect `DotClosureLowering` provenance to
+override those rules.
+
+Raw AST may preserve `E.name` as member sugar, but normalization routes it
+mechanically through the same `DotClosure(name)` core as `E |> .name`, then
+returns the resulting ordinary expression to the existing suffix/space
+environment. `E..name(product)` remains separate direct member-call sugar; it
+is not removed by the more general `.name` form. No lookup or dispatch occurs
+during this normalization.
+
 ## 6. Implicit `self`
 
 Every function has an implicit first parameter position: `self`. This is a positional position, not a user-visible name. Applies to all functions, including meta functions.
@@ -107,6 +140,17 @@ Stage(P1v) = Stage(P2v) union Stage(P2p)
 Thus the selected object has the static/runtime view required to supply self;
 an optional written P1 prefix merely projects that derived view.
 
+Each written formal parameter takes the callable P2 as its base policy pair.
+No formal prefix means exact inheritance. `const let` or `mut let` changes only
+the inherited value-mutability Pattern; every stage, presence, and Pattern-side
+dimension stays equal to P2. That qualifier remains an overload-order Pattern,
+so it must not be implemented by running ordinary binding P1 projection over
+the actual and deleting the oppositely qualified candidate early.
+
+Candidate preparation also carries that qualifier outward as the parameter's
+const/mut product-order position. It therefore affects selection between
+callable objects as well as the effective parameter pair seen after entry.
+
 ### 6.1 Internal Self frame and local pattern construction
 
 An ordinary function object owns an internal symbol/pattern space for local
@@ -134,9 +178,148 @@ ordinary externally navigable `MetaInstanceScope`.
 
 ## 7. ZST function objects
 
-A function object with no captures is normally zero-sized. ZST values are not move-killed, so a zero-sized function object can naturally be called multiple times. Reusability follows from the general ZST movement rule.
+A function object with no stored environment is normally zero-sized. ZST values
+are not move-killed, so a zero-sized function object can naturally be called
+multiple times. Reusability follows from the general ZST movement rule.
 
-If a function object captures state, it may be non-ZST and follows ordinary value-passing and ownership rules.
+A capture requirement does not by itself imply a stored field or non-ZST
+layout. If representation selection chooses stored state, the resulting object
+may be non-ZST and follows ordinary value-passing and ownership rules.
+
+### 7.1 Function-object mutability default
+
+The binding created by `let fn = () => { ... }` has no written mutability
+restriction. Its empty typed mutability domain denotes `const || mut`. This is
+the neutral, fully available function-object view; it is not copied from P2.
+An explicit declaration P1 may restrict that domain to one view. The
+namespace-declaration spelling `export let fn = ...` does not change this
+complete internal view. Export elaboration separately derives the externally
+visible const projection. A written `const || mut` internal view is therefore
+valid when its const projection is non-empty; a `mut`-only value export is not.
+
+### 7.2 Ordinary closure capture requirements
+
+Ordinary closures combine source-explicit capture bindings with resolved-stage
+automatic const capture:
+
+```text
+source [let x = E] / [x = E] -> Explicit capture
+source [E] shorthand          -> ExplicitInferredBinder capture
+unreplaced resolved free ref  -> ImplicitConst capture
+```
+
+`[x]` is the explicit shorthand `[let x = x]`. Because its capture policy is
+unwritten, its mutability domain is the neutral `const || mut`; it is not
+automatic const capture. A write to an outer source requires an explicit
+capture projected to a `mut` view. Automatic capture never grants mutability.
+
+External explicit navigation resolves through the namespace export view.
+Internal explicit navigation resolves through the complete namespace view and
+does not prove export membership. Exported value views are const-projected, so
+an externally navigated callable or value normally satisfies the
+`ImplicitConst` capture requirement. Ordinary external calls are therefore
+normally backed by automatic const dependencies, not by a source capture list.
+
+Automatic capture and call resolution occupy adjoining problem domains: both
+reason about an external symbol identity and its readable const view. This
+does not require either mechanism to consume the other's output, share a pass,
+or run in a prescribed order. Automatic capture does not skip admissibility or
+select a candidate.
+
+Explicit and automatic capture may resolve to the same source symbol but remain
+distinct dependency declarations. Explicit capture can rename, project policy,
+use a complex initializer, request `mut`, and carry its own diagnostic
+provenance. No frontend or capture-discovery step erases it as redundant.
+Equivalent storage/link requirements may be coalesced only by a later layout
+pass while preserving binder identity, policy, and provenance.
+
+Resolved capture analysis produces abstract dependencies:
+
+```text
+ResolvedCaptureRequirement {
+  local_binder,
+  source,
+  requested_policy,
+  origin
+}
+```
+
+This object is not a `self` field list and does not determine receiver mode,
+copy/reference representation, field ordering, ZST status, or ABI layout.
+Static symbol links, constant embedding, zero-layout dependencies, stack
+environments, and stored checked references are possible later lowerings.
+
+For example:
+
+```lang
+mut let internal_state = ...;
+
+export let exported_fn =
+    [internal_state]() => {
+        use internal_state;
+    };
+```
+
+The explicit dependency may lower to an internal static link. It neither
+exports `internal_state` nor requires an address field in every
+`exported_fn` object.
+
+Before materialization, each requirement must lower to a lifetime-checkable
+form naming its source place, requested access view, origin/region relation,
+and storage-or-link category. This is only a handoff obligation; copy/move/
+borrow defaults, region construction, escape rules, and ABI remain unfrozen.
+
+### 7.3 In-place closures are embedded callable candidates
+
+An in-place closure is distinguished by
+`NormClosure.placement = NormClosurePlacement::InPlace`. Generated provenance
+is carried independently by `NormClosure.origin`; it is never a placement
+variant. Its
+semantic object remains embedded in the control-flow layer at which it is
+used; it is not converted into a freely escaping captured closure. It may
+nevertheless contribute a normal callable candidate to an overload set.
+
+Head presence is independent of that placement. Bare `{ ... }`,
+`() -> r name { ... }`, and `() -> r [[strategy]] { ... }` are all in-place;
+the latter two merely preserve a head and optional strategy metadata. `=>`
+selects ordinary placement. The parser and normalizer must not infer
+placement from `head.is_some()`.
+
+An in-place closure has no capture clause and no capture environment. Reads of
+outer symbols do not require `[]`. Instead, unresolved outer reads are carried
+as lazy embedding lookups:
+
+```text
+definition/materialization:
+  unresolved read name -> DeferredEmbeddingLookup(name)
+
+candidate use at control-flow layer L:
+  DeferredEmbeddingLookup(name) -> ResolveSymbol(name, L)
+  missing at L -> diagnostic at that use
+```
+
+Failure to find the symbol at the syntactic closure site is therefore not yet
+an error. The lookup becomes final only at the layer where that in-place
+candidate is embedded and selected. This is lexical embedding, not textual
+macro substitution: local declarations still shadow normally, symbol identity
+is used after resolution, and each use is checked in its own embedding
+environment.
+
+An in-place closure may not write any symbol/place outside its closure-local
+scope:
+
+```text
+WriteSet(C) intersect OuterSymbols(C) = empty
+```
+
+It may still mutate its own locals, call effectful functions, and use ordinary
+capabilities. The prohibition is specifically direct outer-place mutation.
+Because an in-place closure has neither a capture list nor an automatic capture
+set, there is no syntax or materialization step that can grant an exception.
+The resolved embedding check owns this rule. The Normalized AST only preserves
+`InPlace` and, for ordinary closures, elaborates the v0.5-A let-shaped capture
+syntax. Its free non-call-name inference is shape-directed; it performs no
+lookup, capture-environment layout, or capture admissibility analysis.
 
 ## 8. Call lookup pipeline
 
@@ -155,8 +338,11 @@ Product |> Expr
 9. Form fully admissible set A using all hard checks, including receiver and
    parameter pair compatibility, P2 result compatibility with any target
    expectation, stage legality, and require legality
-10. Apply const/mut product-maximal filtering and the remaining fixed-order
-    preference filters, then the must-select check
+10. Export every elaborated formal const/mut Pattern to its candidate position,
+    apply const/mut product-maximal filtering and the remaining fixed-order
+    preference filters, including in-place over non-in-place after the
+    first-order-over-instantiated filter, then named strategy rules and the
+    must-select check
 11. Enter the unique selected invocation or defer according to demand
 ```
 
@@ -177,6 +363,12 @@ target expression → target value → target type →
   type-associated namespace → `()` call entry
 ```
 
+If the target expression is a `NormClosure`, the target position is an
+explicit materialization consumer. Likewise, a declaration initializer is a
+materialization consumer when it binds that carrier. Normalization itself
+creates only a closure carrier; an arbitrary surrounding expression does not
+eagerly turn the carrier into a value or allocate its environment.
+
 The current implementation uses a documented shortcut (v0.8): the resolved target `SymbolObject` is treated as the callable entry directly, via `ResolvedCallTarget { temporary_direct_callable_shortcut: true }`. This shortcut will be replaced when function-object types and associated call-entry insertion are implemented.
 
 ## 10. Invariants
@@ -195,6 +387,19 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - `()` is a special type/namespace call entry and can only be a navigation leaf.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
+- Empty function-object mutability means the unrestricted `const || mut`
+  domain; an explicit declaration P1 may crop it. Export does not crop the
+  complete namespace-internal domain. A value-bearing external candidate view
+  projects that domain to const; `const || mut` is valid, while mut-only has no
+  external candidate view.
+- Written formal parameters inherit P2 exactly outside the optional const/mut
+  Pattern axis.
+- Ordinary closures distinguish explicit, explicit-inferred-binder, and
+  implicit-const capture requirements; those requirements do not define
+  `self` fields or physical layout.
+- In-place closures may be overload candidates, have no capture clause or
+  automatic capture set, defer unresolved outer reads to their embedding
+  layer, and are forbidden from writing outer symbols/places.
 - Ordinary and built-in privileged meta functions follow the same
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal
@@ -202,3 +407,9 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
+- `.name` is a first-class closure expression whose normalization produces a
+  generated in-place `NormClosure` carrier. Binding or explicit call context
+  may materialize that carrier; normalization does not. `E.name` uses the same
+  carrier, while `..name` remains direct member-call sugar.
+- Callable-tail named strategy metadata operates only on fully admissible
+  candidates and cannot reopen ordinary overload enumeration.

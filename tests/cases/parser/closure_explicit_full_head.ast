@@ -5,7 +5,7 @@ Program
         Segment has_incoming=false
           OperatorExpr
             Atom
-              Closure Explicit
+              Closure Ordinary
                 FnHeadPrefix
                   deduce:
                     DeduceList
@@ -16,12 +16,14 @@ Program
                   captures:
                     CaptureClause
                       items:
-                        Expr
-                          Pipe
-                            Segment has_incoming=false
-                              OperatorExpr
-                                Atom
-                                  Name cap
+                        CaptureItem Inferred
+                          initializer:
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name cap
                   params:
                     ParamClause
                       extract:

@@ -221,6 +221,50 @@ the prefix is a formal policy pattern, not a binding slice query. Opposite
 const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
+Every written formal parameter first inherits the callable result pair `P2`
+without reinterpretation:
+
+```text
+FormalBase(parameter) = P2(callable)
+```
+
+Omitting the prefix preserves that pair exactly. Writing `const` or `mut`
+restricts only the value-mutability axis of the inherited pair:
+
+```text
+let x        -> FormalPattern(P2, mutability = unspecified)
+const let x  -> FormalPattern(const + P2)
+mut let x    -> FormalPattern(mut + P2)
+```
+
+Stages, value presence, and the Pattern component remain byte-for-byte the
+inherited P2 dimensions; the qualifier may neither shrink nor widen them.
+`public`, `private`, `export`, stage atoms, value absence, and an explicit pair
+are therefore invalid formal prefixes. If P2 already explicitly restricts its
+mutability domain, a contradictory formal qualifier is invalid rather than an
+expansion.
+
+The const/mut singleton above is a formal Pattern and preference input. It is
+not an ordinary P1 query applied to the actual argument. Consequently an
+oppositely qualified actual is not removed before the product order: for a
+const actual the order remains `const > unspecified > mut`, and it reverses
+for a mut actual.
+
+The elaborated formal pair is not body-local policy metadata. Candidate
+formation exports its written/inherited mutability Pattern into the callable's
+external parameter-policy position:
+
+```text
+FormalPolicyPattern(parameter)
+  -> Candidate.parameter_policy[position]
+  -> MaxPolicyProduct
+```
+
+Thus the P2-derived restriction affects both the view available inside the
+callable body and comparison of this callable against other fully admissible
+overloads. “Inherit P2” must not be implemented by updating only the body
+environment while leaving the candidate externally `unspecified`.
+
 ### 3.3 Namespace declaration attributes
 
 `public`, `private`, and `export` are accepted only by namespace-declaration
@@ -228,7 +272,25 @@ elaboration. They are rejected in ordinary P1, formal parameters, return
 slots, P2, Pattern interiors, expression policies, and local declarations that
 are not namespace declaration positions.
 
-`export` has the narrower placement rule described in section 9.
+`export` has the narrower placement rule described in section 9. Export
+elaboration derives a separate external view; it does not crop the namespace's
+complete internal declaration view. If the exported symbol has a value facet,
+that external view must have a non-empty `const` projection. A pure
+`absent:Pp` type/Pattern symbol has no value-mutability obligation.
+
+Absence removes the complete value subspace rather than merely selecting a
+presence tag:
+
+```text
+Pv = absent
+  => value stages = ∅
+  && value mutability = ∅
+```
+
+Consequently `const + S : compile`, `mut + S : compile`, and their `export`
+forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
+compatibility substrate rather than the final sum type, so P1 elaboration, P2
+normalization, and resolved export projection each validate this invariant.
 
 ## 4. P2 normalization
 
@@ -305,6 +367,21 @@ value presence
 ```
 
 Those properties come only from the function object's declaration.
+
+For a declaration such as:
+
+```lang
+let fn = () => { ... };
+```
+
+the declaration supplies an empty value-mutability restriction. In the typed
+policy domain, empty here means the complete `const || mut` domain, not “no
+value” and not an unknown third qualifier. A written declaration P1 may crop
+that domain to `const` or `mut`. P2 mutability never propagates into the
+function object during stage lifting. Export is not an exception to this
+internal default. The function object's namespace-internal declaration view
+remains the written/unwritten full domain; only its separately derived external
+value view is const-projected.
 
 ## 6. Three execution phases
 
@@ -402,7 +479,47 @@ No phase is inferred ad hoc from the original AST after this projection.
 
 ## 9. Namespace visibility and export
 
-### 9.1 Export roots
+### 9.1 Three independent symbol views
+
+Namespace resolution, external exposure, and compilation-world membership are
+different questions:
+
+```text
+Σ_full(N)    complete namespace-internal symbol/overload set
+Σ_export(N)  externally exposed projection of that set
+Wfinal       Wpre ∪ Wseal, the symbols materialized or retained this build
+```
+
+They are consumed by distinct operations:
+
+```text
+InternalResolve(N, path) searches Σ_full(N)
+ExternalResolve(N, path) searches Σ_export(N)
+WorldMembership(s) asks whether s belongs to Wpre or Wseal
+```
+
+For one name:
+
+```text
+ExportOverloadSet(name)
+  = ExternalProjection(FullOverloadSet(name))
+```
+
+This projection retains the original candidate identities; it does not create
+a second symbol universe. Consequently:
+
+```text
+s in Wpre  does not imply s is exported
+s in Wseal does not imply s is exported
+s is exported does not imply s was itself an export root
+```
+
+Explicit navigation is authority-sensitive. Internal explicit navigation may
+reach the complete namespace-internal view. External explicit navigation is
+restricted to the export projection. Explicit-path success alone therefore
+does not prove export membership.
+
+### 9.2 Export roots and value projection
 
 `export` is allowed only on a direct top-level declaration of one namespace
 construction level:
@@ -410,6 +527,25 @@ construction level:
 ```lang
 export let name = expr;
 ```
+
+Let `InternalView(s) = Pv:Pp`. Export derives, rather than replaces, a second
+view:
+
+```text
+if Pv = absent:
+  require value stages = ∅
+  require value mutability = ∅
+  ExternalView(s) = absent:Pp
+
+if Pv is present/optional:
+  require Project_const(Pv) is non-empty
+  ExternalView(s) = Project_const(Pv):Pp
+```
+
+Thus an omitted mutability axis and `const || mut` are valid complete internal
+domains because both have a const projection. A `mut`-only value export is
+invalid. `export requires const` is only shorthand for this value-facet
+projection rule; it is not a claim about pure type/Pattern exports.
 
 It is forbidden in function/meta-function bodies, parameters, return slots,
 P2, Pattern interiors, expression policies, ordinary local P1, and any nested
@@ -419,13 +555,84 @@ be an export root; its body declarations may not.
 For export root `s`:
 
 ```text
-ExportClosure(s) = PathAncestors(s) ∪ Subtree(s)
+ExportRetentionClosure(s) = PathAncestors(s) ∪ Subtree(s)
 ```
 
 All ancestors needed to reach the root and its entire subtree enter the export
 graph. A child cannot close export again; an unrelated sibling is unaffected.
 
-### 9.2 Public/private
+The declaration spelling and the resolved candidate view are different
+layers:
+
+```text
+declaration_projection: P1Projection
+
+RHS/result entries
+  -> ApplyDeclarationProjection
+  -> ResolvedCandidatePolicy { pair: PolicyPair, provenance }
+```
+
+Only the resolved pair can be projected into the external interface.
+`P1Projection::Infer` is a valid declaration request, and
+`P1Projection::ValueDominant` does not yet carry the associated `Pp`; neither
+is an external candidate policy.
+
+The typed substrate therefore represents export as an identity-preserving
+candidate transformation:
+
+```text
+ExportCandidateView {
+  identity,
+  internal_candidate,
+  external_policy: PolicyPair
+}
+
+ExportAdmission {
+  in_export_retention_closure,
+  publicly_reachable
+}
+
+if admission.in_export_retention_closure && admission.publicly_reachable:
+  internal_policy := ResolveCandidatePolicy(candidate)
+  external_policy := Project_const(internal_policy.Pv):internal_policy.Pp
+```
+
+Export-retention-closure membership and public path reachability are separate
+symbol/name-level facts; both are required before a symbol contributes to
+`Σ_export`. In particular, a private child in an exported subtree and every
+descendant reached through that private path remain absent externally even
+when those symbols belong to `ExportRetentionClosure`.
+
+The retention name is deliberate: membership means that an export root keeps
+the symbol in the graph considered for interface construction. It does not by
+itself mean that the symbol is externally exported. `Σ_export` is the external
+candidate set.
+
+Admission does not arbitrarily select individual overloads. Within an admitted
+symbol's complete overload set, every candidate whose resolved pair has a
+const value projection enters `Σ_export`; a mut-only candidate remains in
+`Σ_full` but has no external candidate view. A pure `absent:Pp` candidate
+enters unchanged.
+
+A direct source declaration that explicitly writes `export + mut` is still
+invalid at declaration elaboration. This direct-root error is distinct from
+filtering a mut-only member of an otherwise exported full overload set.
+
+Ancestors and descendants admitted by the final external-exposure check need
+not be export roots and may have used `P1Projection::Infer`; their resolved
+candidate pairs are projected in exactly the same way.
+`NamespaceDeclarationPolicy.external_projection` is only an early
+direct-root validation/preview; `None` on a non-root declaration does not mean
+that the eventual namespace export view lacks that declaration.
+
+The current typed set carrier omits a name when its external candidate subset
+is empty. That is sufficient to define `Σ_export`, but not to diagnose why no
+external candidate exists. Before end-to-end external resolver integration, a
+symbol-level diagnostic carrier must preserve admission facts and distinguish
+an unresolved name, a name outside the export-retention closure, a private
+path, and an admitted symbol with no const-projectable candidate.
+
+### 9.3 Public/private
 
 `public` and `private` are ordinary hierarchical visibility attributes. A
 public parent may contain a private child, and a private parent may contain a
@@ -437,8 +644,8 @@ ExternallyVisible(path)
   = Exported(path) && PubliclyReachable(path)
 ```
 
-Export closure may retain private dependencies without making them
-name-addressable externally.
+The export-retention closure may retain private dependencies without
+installing them in `Σ_export`.
 
 ## 10. Wpre and seal world
 
@@ -458,7 +665,8 @@ Wpre = least_fixed_point(R)
 Materialized results include only results actually generated in this build,
 not the infinite set a generic meta function might produce for future inputs.
 Wpre can contain non-exported private dependencies solely so the exported
-interface remains interpretable.
+interface remains interpretable. Such membership does not install those
+dependencies in `Σ_export`.
 
 SealStatic generates `Wseal` and finishes with:
 
@@ -477,9 +685,11 @@ ResolveExplicitPath != EnumerateSymbolWorld
 ```
 
 A committed symbol in Wseal can be explicitly resolved by later seal/compile
-code under ordinary construction transaction, name-resolution, dependency, and
-policy rules. Its absence from the current Wpre scan does not make it
-unaddressable.
+code under ordinary construction transaction, name-resolution, dependency,
+authority, and policy rules. Internal authority may resolve it through
+`Σ_full`; external authority still requires a corresponding `Σ_export` view.
+Its absence from the current Wpre scan does not make it unaddressable, and its
+presence in Wseal does not make it exported.
 
 ## 11. Phase execution
 
@@ -582,7 +792,8 @@ candidate, and future lifetime rules may not change that result.
 The typed implementation model contains dedicated policy AST nodes,
 `PolicyPair`, typed dimensions, three distinct P1 elaborators, true slice
 restriction, three `Phase` values, phase exposure, mechanical flow projection,
-Wpre closure, export closure, and phase-aware partial-order selection.
+Wpre closure, export-retention closure, and phase-aware partial-order
+selection.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
 transport. They cannot represent `||` structure, Pattern association of a
