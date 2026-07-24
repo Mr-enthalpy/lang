@@ -604,6 +604,13 @@ candidate pairs are projected in exactly the same way.
 direct-root validation/preview; `None` on a non-root declaration does not mean
 that the eventual namespace export view lacks that declaration.
 
+The current typed set carrier omits a name when its external candidate subset
+is empty. That is sufficient to define `Σ_export`, but not to diagnose why no
+external candidate exists. Before end-to-end external resolver integration, a
+symbol-level diagnostic carrier must preserve admission facts and distinguish
+an unresolved name, a name outside the export closure, a private path, and an
+admitted symbol with no const-projectable candidate.
+
 ### 9.3 Public/private
 
 `public` and `private` are ordinary hierarchical visibility attributes. A

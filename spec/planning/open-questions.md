@@ -271,6 +271,40 @@ Not implemented after this correction:
 - Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
 
+Build-world integration gates (not blockers for the current frontend/build
+substrate PR):
+
+- `HoleBinderId` is currently a local ordinal with ordinary Rust
+  `Eq`/`Ord`/`Hash`. Before any consumer combines multiple root normalization
+  trees, identity must become owner-qualified:
+
+  ```text
+  AlphaHoleId = AlphaOwnerId × LocalHoleBinderId
+  ```
+
+  Alternatively, rename and encapsulate the current carrier as
+  `LocalHoleBinderId` so it cannot circulate without its `AlphaOwner`.
+  Stable cross-source-unit owner identity remains intentionally unfrozen.
+
+- `NamespaceOverloadSets.exported` currently omits a symbol when its projected
+  candidate list is empty. This is sufficient for `Σ_export` set semantics,
+  but a future external resolver diagnostic carrier must preserve symbol-level
+  facts even for an empty candidate subset, for example:
+
+  ```text
+  ExternalSymbolView {
+    admission,
+    candidates
+  }
+  ```
+
+  That layer must distinguish at least `Unresolved`, `NotInExportClosure`,
+  `PrivatePath`, and `NoConstExportableCandidate`.
+
+- The restricted v0.8 overload selector still reports
+  `UnsupportedExternalVisibility`. The implemented scope is the export-view
+  carrier and projection substrate, not end-to-end external overload routing.
+
 Still open for later design:
 
 - the final source token for the absent-value policy pattern (`S`, `null`, or

@@ -886,13 +886,24 @@ fn export_closure_and_public_path_reachability_are_independent() {
             },
         ),
     ]);
-    let exported = compute_export_closure(&nodes, [1]);
-    assert_eq!(exported, BTreeSet::from([0, 1, 3, 4]));
-    assert!(!exported.contains(&2), "siblings do not inherit export");
+    let export_closure = compute_export_closure(&nodes, [1]);
+    assert_eq!(export_closure, BTreeSet::from([0, 1, 3, 4]));
+    assert!(
+        !export_closure.contains(&2),
+        "siblings do not enter the export-retention closure"
+    );
     assert!(publicly_reachable(&nodes, [0, 1]));
     assert!(!publicly_reachable(&nodes, [0, 1, 3]));
-    assert!(exported.contains(&4), "private descendants remain exported");
-    assert!(!externally_visible(&4, &exported, &nodes, [0, 1, 3, 4]));
+    assert!(
+        export_closure.contains(&4),
+        "private descendants remain export-closure members"
+    );
+    assert!(!externally_visible(
+        &4,
+        &export_closure,
+        &nodes,
+        [0, 1, 3, 4]
+    ));
 }
 
 #[test]
