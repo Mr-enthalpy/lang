@@ -1086,7 +1086,7 @@ fn struct_field_name_from_atom(
     };
     let NormExpr::Call {
         source,
-        target,
+        target: _,
         origin,
     } = expr
     else {
@@ -1130,19 +1130,7 @@ fn struct_field_name_from_atom(
         NormProductElem::Expr(_) => {}
     }
 
-    let field_name = if matches!(
-        target.as_ref(),
-        NormExpr::OperatorTarget { spelling, .. }
-            if spelling == "[[public]]" || spelling == "[[private]]"
-    ) {
-        struct_field_name_from_completed_annotation_source(
-            source,
-            atom.provenance(),
-            callee_symbol_id,
-        )?
-    } else {
-        struct_field_name_from_target(target, atom.provenance(), callee_symbol_id)?
-    };
+    let field_name = struct_field_name_from_expr(expr, atom.provenance(), callee_symbol_id)?;
 
     Ok((
         field_name,
@@ -1150,18 +1138,59 @@ fn struct_field_name_from_atom(
     ))
 }
 
-fn struct_field_name_from_completed_annotation_source(
-    source: &lang_syntax::NormProduct,
+fn struct_field_name_from_expr(
+    expr: &NormExpr,
     provenance: &Provenance,
     callee_symbol_id: SymbolId,
 ) -> Result<String, Diagnostic> {
+    let NormExpr::Call { source, target, .. } = expr else {
+        return Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field form like `uint8 a`",
+            Some(provenance.clone()),
+        )
+        .with_symbol_context(callee_symbol_id));
+    };
+    match target.as_ref() {
+        NormExpr::Name { text, .. } => Ok(text.clone()),
+        NormExpr::Call {
+            source: annotation_source,
+            target: annotation_target,
+            ..
+        } if is_member_view_target(annotation_target) => {
+            let annotated =
+                one_struct_member_expr(annotation_source, provenance, callee_symbol_id)?;
+            match annotated {
+                NormExpr::Name { text, .. } => Ok(text.clone()),
+                other => struct_field_name_from_expr(other, provenance, callee_symbol_id),
+            }
+        }
+        target if is_member_view_target(target) => {
+            let annotated = one_struct_member_expr(source, provenance, callee_symbol_id)?;
+            match annotated {
+                NormExpr::Name { text, .. } => Ok(text.clone()),
+                other => struct_field_name_from_expr(other, provenance, callee_symbol_id),
+            }
+        }
+        _ => Err(Diagnostic::hard_error(
+            "invalid struct syntax: expected a field binder name",
+            Some(provenance.clone()),
+        )
+        .with_symbol_context(callee_symbol_id)),
+    }
+}
+
+fn one_struct_member_expr<'a>(
+    source: &'a lang_syntax::NormProduct,
+    provenance: &Provenance,
+    callee_symbol_id: SymbolId,
+) -> Result<&'a NormExpr, Diagnostic> {
     let mut elements = source.elements.iter().filter_map(|element| match element {
         NormProductElem::Expr(expr) => Some(expr),
         NormProductElem::Unit { .. } => None,
     });
-    let Some(NormExpr::Call { target, .. }) = elements.next() else {
+    let Some(expr) = elements.next() else {
         return Err(Diagnostic::hard_error(
-            "invalid struct syntax: member visibility must annotate one complete field",
+            "invalid struct syntax: member visibility must annotate one field",
             Some(provenance.clone()),
         )
         .with_symbol_context(callee_symbol_id));
@@ -1173,57 +1202,13 @@ fn struct_field_name_from_completed_annotation_source(
         )
         .with_symbol_context(callee_symbol_id));
     }
-    let NormExpr::Name { text, .. } = target.as_ref() else {
-        return Err(Diagnostic::hard_error(
-            "invalid struct syntax: member visibility must follow one field binder name",
-            Some(provenance.clone()),
-        )
-        .with_symbol_context(callee_symbol_id));
-    };
-    Ok(text.clone())
+    Ok(expr)
 }
 
-fn struct_field_name_from_target(
-    target: &NormExpr,
-    provenance: &Provenance,
-    callee_symbol_id: SymbolId,
-) -> Result<String, Diagnostic> {
-    match target {
-        NormExpr::Name { text, .. } => Ok(text.clone()),
-        NormExpr::Call {
-            source,
-            target: annotation,
-            ..
-        } if matches!(
-            annotation.as_ref(),
-            NormExpr::OperatorTarget { spelling, .. }
-                if spelling == "[[public]]" || spelling == "[[private]]"
-        ) =>
-        {
-            let mut elements = source.elements.iter().filter_map(|element| match element {
-                NormProductElem::Expr(expr) => Some(expr),
-                NormProductElem::Unit { .. } => None,
-            });
-            let Some(NormExpr::Name { text, .. }) = elements.next() else {
-                return Err(Diagnostic::hard_error(
-                    "invalid struct syntax: member visibility must annotate one field binder name",
-                    Some(provenance.clone()),
-                )
-                .with_symbol_context(callee_symbol_id));
-            };
-            if elements.next().is_some() {
-                return Err(Diagnostic::hard_error(
-                    "invalid struct syntax: member visibility annotated more than one field target",
-                    Some(provenance.clone()),
-                )
-                .with_symbol_context(callee_symbol_id));
-            }
-            Ok(text.clone())
-        }
-        _ => Err(Diagnostic::hard_error(
-            "invalid struct syntax: expected a field binder name",
-            Some(provenance.clone()),
-        )
-        .with_symbol_context(callee_symbol_id)),
-    }
+fn is_member_view_target(target: &NormExpr) -> bool {
+    matches!(
+        target,
+        NormExpr::OperatorTarget { spelling, .. }
+            if spelling == "[[public]]" || spelling == "[[private]]"
+    )
 }
