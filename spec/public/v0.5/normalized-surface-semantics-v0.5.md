@@ -896,9 +896,14 @@ while preserving binder identity, policy, and provenance.
 
 The v0.6 build handoff derives long-lived identity from a parent-linked
 `SemanticOwner`, not a file, span, or printable path. Every callable, including
-an in-place closure, owns an anonymous `Self` type. Source navigation remains
-inner-to-outer; a complete generated meta-call scope used as an outer
-component is grouped, as in `child::(int Vec::std)`.
+an in-place closure, has a `CallableOwner` and callable-local `Self` space.
+Standalone function-object materialization derives an anonymous callable type
+from that owner. An associated `()` implementation may instead bind the type
+facet of its local `Self` and invocation slot 0 to a named receiver type.
+`CallableOwner` and receiver type are independent semantic facts.
+
+Source navigation remains inner-to-outer; a complete generated meta-call scope
+used as an outer component is grouped, as in `child::(int Vec::std)`.
 
 Each independent let Pattern and callable head establishes a `PatternRoot`.
 Nested Pattern structure remains in that root. Same-root hole duplicates fail;

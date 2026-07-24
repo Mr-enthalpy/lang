@@ -422,10 +422,16 @@ let identity = (self, t: type): compile -> r: type => {
 ```
 
 When a `compile` body uses a local `struct`, ordinary function-object scope
-rules apply. Its ambient owner is the current callable owner and its anonymous
-`Self` type. Nested paths print in source order, current/innermost `Self` first
-and outermost `Self` last, but identity is the parent-linked owner graph. No
-`__inner_space` or `__inner_namespace` node participates in canonical
+rules apply. Its ambient lexical/Pattern owner is the current
+`CallableOwner` and that owner's callable-local `Self` space. This statement
+does not determine the invocation receiver type. Standalone function-object
+materialization defaults to an anonymous callable type derived from the owner;
+an associated `()` implementation may instead bind invocation slot 0 and the
+type facet of its local `Self` to a named receiver such as `ref::T`.
+
+Nested paths print in source order, current/innermost callable-local `Self`
+first and outermost `Self` last, but identity is the parent-linked owner graph.
+No `__inner_space` or `__inner_namespace` node participates in canonical
 ownership. This owner is not a meta-instance owner such as
 `MetaInstanceOwner(meta_function, canonical_arguments)`.
 

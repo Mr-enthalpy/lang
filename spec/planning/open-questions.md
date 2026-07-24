@@ -277,11 +277,11 @@ Implemented substrate after this correction:
   installation supplies the persistent admission facts. Retention membership
   is not itself export status; `Σ_export` is the external candidate set.
 - `lang_build` now also provides a parent-linked `SemanticOwnerGraph`,
-  callable anonymous-`Self` identity, canonical meta-instance interning,
-  owner-qualified Pattern/hole carriers, and an owner-aware namespace forest
-  with explicit `PackageBoundary`, identity-preserving `Mount`, package-derived
-  Full/External view routing, `DefaultExtractionView`, and typed lookup
-  failures.
+  owner-derived standalone anonymous callable types, independent receiver
+  bindings, canonical meta-instance interning, owner-qualified Pattern/hole
+  carriers, and an owner-aware namespace forest with explicit
+  `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
+  view routing, `DefaultExtractionView`, and typed lookup failures.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 

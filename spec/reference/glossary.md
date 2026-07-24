@@ -880,10 +880,13 @@ otherwise tied in-place candidate is preferred after the
 first-order-over-instantiated filter.
 
 > **Explicit self position for return:** A headless in-place closure still has
-> an anonymous callable type and invocation-frame self slot, but it has no
-> written binder for that slot. It therefore cannot name its own return target
-> through a first-formal binder. Early-return examples that target a specific
-> closure should use an in-place closure with an explicit
+> a callable owner, a callable-local `Self` space, and an invocation-frame
+> caller/self slot, but it has no written binder for that slot. If it is later
+> materialized as a standalone function object, its receiver type defaults to
+> the owner-derived anonymous callable type; that default is not part of
+> return-target identity. The headless form therefore cannot name its own
+> return target through a first-formal binder. Early-return examples that
+> target a specific closure should use an in-place closure with an explicit
 > product/extraction head carrying the self position, e.g.:
 >
 > ```lang
