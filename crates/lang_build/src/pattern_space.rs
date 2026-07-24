@@ -192,10 +192,7 @@ impl TypePatternExprShape {
         }
     }
 
-    pub fn with_structural_visibility(
-        mut self,
-        visibility: StructuralMemberVisibility,
-    ) -> Self {
+    pub fn with_structural_visibility(mut self, visibility: StructuralMemberVisibility) -> Self {
         match &mut self {
             Self::Leaf {
                 visibility: member_visibility,

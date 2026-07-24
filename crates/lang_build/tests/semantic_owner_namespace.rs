@@ -148,15 +148,10 @@ fn frontend_pattern_root_identity_is_qualified_at_the_build_owner_boundary() {
         )),
         "a local hole cannot enter build-world identity before its exact owner is mapped"
     );
-    qualification
-        .bind(frontend_owner, semantic_owner)
-        .unwrap();
+    qualification.bind(frontend_owner, semantic_owner).unwrap();
     let resolved = qualification.qualify_hole(frontend).unwrap();
     assert_eq!(resolved.root.owner, semantic_owner);
-    assert_eq!(
-        resolved.root.local_root,
-        frontend.pattern_root().local_root
-    );
+    assert_eq!(resolved.root.local_root, frontend.pattern_root().local_root);
     assert_eq!(resolved.local_binder, frontend.local_ordinal());
 
     let conflicting_owner = owners.namespace(semantic_owner, "wrong");
@@ -249,18 +244,10 @@ fn non_export_symbols_are_visible_to_same_package_descendants_but_not_siblings()
     );
 
     let found = namespaces
-        .resolve_lexical_symbol(
-            &owners,
-            descendant,
-            root,
-            "helper",
-        )
+        .resolve_lexical_symbol(&owners, descendant, root, "helper")
         .expect("descendant owner sees ancestor non-export symbol");
     assert_eq!(found.view, NamespaceNameView::FullNameView);
-    assert_eq!(
-        found.candidate_identities[0].local,
-        LocalSymbolIdentity(10)
-    );
+    assert_eq!(found.candidate_identities[0].local, LocalSymbolIdentity(10));
     assert_eq!(
         found.candidate_identities.len(),
         2,
@@ -438,20 +425,8 @@ fn conflicting_package_names_remain_distinct_behind_separate_mount_paths() {
             ExtractionMemberVisibility::Default,
         ),
     );
-    graph.add_mount(
-        app,
-        vendor,
-        "A",
-        root_a,
-        NamespaceVisibility::Public,
-    );
-    graph.add_mount(
-        app,
-        vendor,
-        "B",
-        root_b,
-        NamespaceVisibility::Public,
-    );
+    graph.add_mount(app, vendor, "A", root_a, NamespaceVisibility::Public);
+    graph.add_mount(app, vendor, "B", root_b, NamespaceVisibility::Public);
 
     let mounted_a = graph
         .resolve_inner_to_outer(
@@ -558,13 +533,7 @@ fn external_resolution_preserves_private_and_export_failure_reasons() {
             ExtractionMemberVisibility::Public,
         ),
     );
-    graph.add_mount(
-        app,
-        app_root,
-        "dep",
-        dep_root,
-        NamespaceVisibility::Public,
-    );
+    graph.add_mount(app, app_root, "dep", dep_root, NamespaceVisibility::Public);
 
     let resolve = |name: &str| {
         graph.resolve_outer_to_inner(
@@ -574,7 +543,10 @@ fn external_resolution_preserves_private_and_export_failure_reasons() {
             &["dep".to_string(), name.to_string()],
         )
     };
-    assert_eq!(resolve("private_name"), Err(NamespaceLookupFailure::PrivatePath));
+    assert_eq!(
+        resolve("private_name"),
+        Err(NamespaceLookupFailure::PrivatePath)
+    );
     assert_eq!(
         resolve("not_retained"),
         Err(NamespaceLookupFailure::NotInExportRetentionDomain)
@@ -739,13 +711,7 @@ fn missing_package_boundary_is_a_typed_failure() {
         CallableOwnerPlacement::Ordinary,
     );
     let mut graph = OwnerNamespaceGraph::new();
-    let root = graph.add_node(
-        app,
-        None,
-        "unqualified",
-        None,
-        NamespaceVisibility::Public,
-    );
+    let root = graph.add_node(app, None, "unqualified", None, NamespaceVisibility::Public);
     assert_eq!(
         graph.resolve_inner_to_outer(&owners, query, root, &["x".to_string()]),
         Err(NamespaceLookupFailure::PackageBoundaryViolation)

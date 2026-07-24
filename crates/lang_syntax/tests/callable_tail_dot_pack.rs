@@ -1272,18 +1272,15 @@ fn nested_callable_starts_a_new_pattern_root_and_may_shadow_outer_hole() {
     let validated = normalize_and_validate_patterns(&output.program)
         .expect("a nested callable head is a new PatternRoot");
     let outer_slot = binding_slot_at(&validated.as_program().forms[0]);
-    let NormExpr::Closure(outer) = outer_slot.initializer.as_deref().expect("outer initializer")
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer initializer")
     else {
         panic!("expected outer closure");
     };
     let outer_a = outer.head.as_ref().expect("outer head").deduce[0].id;
-    let nested_slot = binding_slot_at(
-        &outer
-            .body
-            .user_body()
-            .expect("outer body")
-            .forms[0],
-    );
+    let nested_slot = binding_slot_at(&outer.body.user_body().expect("outer body").forms[0]);
     let NormExpr::Closure(nested) = nested_slot
         .initializer
         .as_deref()
@@ -1316,18 +1313,15 @@ fn body_local_let_starts_a_new_pattern_root_and_may_shadow_callable_hole() {
     let validated = normalize_and_validate_patterns(&output.program)
         .expect("a body-local let is a new PatternRoot");
     let outer_slot = binding_slot_at(&validated.as_program().forms[0]);
-    let NormExpr::Closure(outer) = outer_slot.initializer.as_deref().expect("outer initializer")
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer initializer")
     else {
         panic!("expected outer closure");
     };
     let outer_a = outer.head.as_ref().expect("outer head").deduce[0].id;
-    let local_slot = binding_slot_at(
-        &outer
-            .body
-            .user_body()
-            .expect("outer body")
-            .forms[0],
-    );
+    let local_slot = binding_slot_at(&outer.body.user_body().expect("outer body").forms[0]);
     let local_a = local_slot.deduce[0].id;
     assert_eq!(
         outer_a.pattern_root().owner,
@@ -1364,18 +1358,15 @@ fn normalized_callable_owners_are_parent_linked_for_ordinary_and_in_place_closur
     );
     let normalized = normalize_program(&output.program);
     let outer_slot = binding_slot_at(&normalized.forms[0]);
-    let NormExpr::Closure(outer) = outer_slot.initializer.as_deref().expect("outer initializer")
+    let NormExpr::Closure(outer) = outer_slot
+        .initializer
+        .as_deref()
+        .expect("outer initializer")
     else {
         panic!("expected outer closure");
     };
     let outer_owner = outer.semantic_owner.expect("every callable has an owner");
-    let nested_slot = binding_slot_at(
-        &outer
-            .body
-            .user_body()
-            .expect("outer body")
-            .forms[0],
-    );
+    let nested_slot = binding_slot_at(&outer.body.user_body().expect("outer body").forms[0]);
     let NormExpr::Closure(nested) = nested_slot
         .initializer
         .as_deref()

@@ -3,9 +3,9 @@ mod support;
 use lang_build::{
     decode_struct_associated_namespace_let, decode_struct_type_pattern_expr,
     derive_sum_pattern_space, DecodedStructPattern, DiagnosticSeverity, NamespaceVisibility,
-    PatternComponentPolicy, PolicyPair, PolicyStage, Provenance, StageSet,
-    StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape,
-    TypePatternExprShape, ValueComponentPolicy, ValuePresence,
+    PatternComponentPolicy, PolicyPair, PolicyStage, Provenance, StageSet, StructLeafTypeExprShape,
+    StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape, ValueComponentPolicy,
+    ValuePresence,
 };
 use lang_syntax::{
     norm::NormNavComponent, NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem,

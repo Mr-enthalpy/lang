@@ -26,8 +26,9 @@ use crate::{
     normalized_call::extract_single_call_site,
     pattern_head::TypeMaterializationState,
     pattern_space::StructuralMemberVisibility,
-    policy_metadata, policy_set_meta_runtime, policy_set_runtime,
+    policy_metadata,
     policy_pair::NamespaceVisibility,
+    policy_set_meta_runtime, policy_set_runtime,
     product_shape::{ArgProductShape, ProductAtom, ProductMaterialRole},
     type_argument::classify_type_arguments_with_report,
 };

@@ -87,13 +87,13 @@ impl SemanticOwnerQualification {
         resolved: SemanticOwnerId,
     ) -> Result<(), OwnerQualificationError> {
         if let Some(existing) = self.mappings.get(&frontend).copied() {
-            return (existing == resolved)
-                .then_some(())
-                .ok_or(OwnerQualificationError::ConflictingMapping {
+            return (existing == resolved).then_some(()).ok_or(
+                OwnerQualificationError::ConflictingMapping {
                     frontend,
                     existing,
                     replacement: resolved,
-                });
+                },
+            );
         }
         self.mappings.insert(frontend, resolved);
         Ok(())
@@ -104,13 +104,9 @@ impl SemanticOwnerQualification {
         frontend: lang_syntax::HoleBinderId,
     ) -> Result<ResolvedHoleBinderId, OwnerQualificationError> {
         let frontend_root = frontend.pattern_root();
-        let owner = self
-            .mappings
-            .get(&frontend_root.owner)
-            .copied()
-            .ok_or(OwnerQualificationError::UnmappedFrontendOwner(
-                frontend_root.owner,
-            ))?;
+        let owner = self.mappings.get(&frontend_root.owner).copied().ok_or(
+            OwnerQualificationError::UnmappedFrontendOwner(frontend_root.owner),
+        )?;
         Ok(ResolvedHoleBinderId {
             root: ResolvedPatternRootId {
                 owner,
@@ -237,9 +233,7 @@ impl SemanticOwnerGraph {
         let owner = self.allocate(
             Some(parent),
             package,
-            SemanticOwnerKind::Namespace {
-                local_name,
-            },
+            SemanticOwnerKind::Namespace { local_name },
         );
         self.namespaces.insert(key, owner);
         owner

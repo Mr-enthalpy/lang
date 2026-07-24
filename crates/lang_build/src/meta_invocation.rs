@@ -785,15 +785,14 @@ fn invoke_struct_type_definition(
         );
     }
 
-    let field_signature_material =
-        match field_signature_material_from_candidate(
-            candidate,
-            input.struct_decoded_pattern.as_ref(),
-            &input.provenance,
-        ) {
-            Ok(fields) => fields,
-            Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
-        };
+    let field_signature_material = match field_signature_material_from_candidate(
+        candidate,
+        input.struct_decoded_pattern.as_ref(),
+        &input.provenance,
+    ) {
+        Ok(fields) => fields,
+        Err(diagnostic) => return MetaInvocationResult::Diagnostic(diagnostic),
+    };
 
     let identity_material = TypeDefinitionIdentityMaterial {
         callee_symbol_id: candidate.callee_symbol_id,
@@ -986,10 +985,7 @@ fn field_signature_material_from_candidate(
 ) -> Result<Vec<FieldSignatureMaterial>, Diagnostic> {
     let mut decoded_visibility = BTreeMap::new();
     if let Some(decoded) = decoded {
-        collect_structural_member_visibility(
-            &decoded.type_pattern_expr,
-            &mut decoded_visibility,
-        );
+        collect_structural_member_visibility(&decoded.type_pattern_expr, &mut decoded_visibility);
     }
     let mut fields = Vec::new();
     let mut seen_names = BTreeSet::new();
@@ -1134,8 +1130,7 @@ fn struct_field_name_from_atom(
         NormProductElem::Expr(_) => {}
     }
 
-    let field_name =
-        struct_field_name_from_target(target, atom.provenance(), callee_symbol_id)?;
+    let field_name = struct_field_name_from_target(target, atom.provenance(), callee_symbol_id)?;
 
     Ok((
         field_name,
@@ -1158,7 +1153,8 @@ fn struct_field_name_from_target(
             annotation.as_ref(),
             NormExpr::OperatorTarget { spelling, .. }
                 if spelling == "[[public]]" || spelling == "[[private]]"
-        ) => {
+        ) =>
+        {
             let mut elements = source.elements.iter().filter_map(|element| match element {
                 NormProductElem::Expr(expr) => Some(expr),
                 NormProductElem::Unit { .. } => None,

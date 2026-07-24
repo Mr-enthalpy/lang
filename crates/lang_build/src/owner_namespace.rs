@@ -8,9 +8,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     policy_pair::NamespaceVisibility,
-    semantic_owner::{
-        PackageId, SemanticOwnerGraph, SemanticOwnerId, SemanticSymbolIdentity,
-    },
+    semantic_owner::{PackageId, SemanticOwnerGraph, SemanticOwnerId, SemanticSymbolIdentity},
 };
 
 /// Graph-local traversal handle, not symbol or namespace semantic identity.
@@ -299,9 +297,7 @@ impl OwnerNamespaceGraph {
                     .and_then(|node| node.children.get(component))
                     .copied()
                     .ok_or(NamespaceLookupFailure::Unresolved)?;
-                let child_node = self
-                    .node(child)
-                    .ok_or(NamespaceLookupFailure::Unresolved)?;
+                let child_node = self.node(child).ok_or(NamespaceLookupFailure::Unresolved)?;
                 path_is_public &= child_node.visibility != NamespaceVisibility::Private;
                 current = if let Some(target) = child_node.mount_target {
                     if self.node(target).is_none() {
@@ -386,8 +382,7 @@ impl OwnerNamespaceGraph {
                         let visible = entries
                             .iter()
                             .filter(|entry| {
-                                entry.extraction_visibility
-                                    != ExtractionMemberVisibility::Private
+                                entry.extraction_visibility != ExtractionMemberVisibility::Private
                             })
                             .map(|entry| entry.identity)
                             .collect::<Vec<_>>();

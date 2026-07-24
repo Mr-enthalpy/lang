@@ -25,9 +25,9 @@ pub mod meta_invocation;
 pub mod meta_key;
 pub mod model;
 pub mod normalized_call;
-pub mod owner_namespace;
 pub mod overload_pattern;
 pub mod overload_set;
+pub mod owner_namespace;
 pub mod pattern_head;
 pub mod pattern_space;
 pub mod phase_flow;
@@ -142,11 +142,6 @@ pub use model::{
     VerificationPrimitive, VisibilityMetadata,
 };
 pub use normalized_call::{extract_single_call_site, NormalizedCallSite};
-pub use owner_namespace::{
-    ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult,
-    NamespaceNameView, NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNode,
-    OwnerNamespaceNodeId,
-};
 pub use overload_pattern::{
     decode_param_pattern, match_pack_param_pattern, match_param_pattern,
     overload_args_from_classified_shape, pack_operand_is_admissible, OverloadArgShape,
@@ -159,6 +154,10 @@ pub use overload_set::{
     OverloadCandidateSet, OverloadSelectionInput, RestrictedMetaInvocationOutcome,
     RestrictedOverloadFailure, RestrictedOverloadFailureKind, SelectedOverloadCandidate,
     VisibilityView,
+};
+pub use owner_namespace::{
+    ExtractionMemberVisibility, NamespaceLookupFailure, NamespaceLookupResult, NamespaceNameView,
+    NamespaceSymbolEntry, OwnerNamespaceGraph, OwnerNamespaceNode, OwnerNamespaceNodeId,
 };
 pub use pattern_head::{
     nav_component_name, LocalPatternPlaceId, PatternExpectation, PatternFieldMaterialization,
@@ -210,16 +209,15 @@ pub use return_target::{
     UnresolvedReturnTargetForm,
 };
 pub use semantic_owner::{
-    AnonymousSelfTypeId, CallableOwnerPlacement, LocalCallableIdentity,
-    LocalGenerationIdentity, LocalSymbolIdentity, OwnerQualificationError, PackageId,
-    ResolvedHoleBinderId, ResolvedPatternRootId, SemanticOwnerGraph, SemanticOwnerGraphId,
-    SemanticOwnerId, SemanticOwnerKind, SemanticOwnerNode, SemanticOwnerQualification,
-    SemanticSymbolIdentity,
+    AnonymousSelfTypeId, CallableOwnerPlacement, LocalCallableIdentity, LocalGenerationIdentity,
+    LocalSymbolIdentity, OwnerQualificationError, PackageId, ResolvedHoleBinderId,
+    ResolvedPatternRootId, SemanticOwnerGraph, SemanticOwnerGraphId, SemanticOwnerId,
+    SemanticOwnerKind, SemanticOwnerNode, SemanticOwnerQualification, SemanticSymbolIdentity,
 };
 pub use source::SourceFragment;
 pub use struct_decoder::{
-    decode_struct_associated_namespace_let, decode_struct_type_pattern_expr,
-    DecodedStructPattern, StructAssociatedNamespaceDeclaration,
+    decode_struct_associated_namespace_let, decode_struct_type_pattern_expr, DecodedStructPattern,
+    StructAssociatedNamespaceDeclaration,
 };
 pub use type_argument::{
     classify_type_arguments, classify_type_arguments_with_report, TypeArgumentClassificationReport,

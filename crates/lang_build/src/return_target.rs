@@ -203,14 +203,13 @@ impl ReturnTargetBinder {
         let return_slot = return_slot_ref(closure);
         let self_identity = self_identity_from_closure(closure);
         let anonymous_self_owner = closure.semantic_owner.map(|owner| owner.id);
-        let frame =
-            self.stack.push_frame(
-                owner,
-                return_slot,
-                self_identity,
-                anonymous_self_owner,
-                closure.origin.clone(),
-            );
+        let frame = self.stack.push_frame(
+            owner,
+            return_slot,
+            self_identity,
+            anonymous_self_owner,
+            closure.origin.clone(),
+        );
         self.report.frames.push(frame);
 
         if let Some(program) = closure.body.user_body() {

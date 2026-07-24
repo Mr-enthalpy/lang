@@ -39,8 +39,7 @@ use lang_syntax::{
 use crate::{
     model::{Diagnostic, DiagnosticSeverity, Provenance},
     pattern_space::{
-        StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape,
-        TypePatternExprShape,
+        StructLeafTypeExprShape, StructuralMemberVisibility, SymbolPathShape, TypePatternExprShape,
     },
     policy_pair::{NamespaceVisibility, PolicyPair, ValuePresence},
 };
@@ -300,16 +299,18 @@ fn decode_call_with_member_view_annotation(
         _ => {
             return Err(Diagnostic::new(
                 DiagnosticSeverity::Error,
-                "struct member annotation accepts only `[[public]]` or `[[private]]`"
-                    .to_string(),
+                "struct member annotation accepts only `[[public]]` or `[[private]]`".to_string(),
                 Some(provenance),
             ))
         }
     };
-    let mut elements = annotation_source.elements.iter().filter_map(|element| match element {
-        NormProductElem::Expr(expr) => Some(expr),
-        NormProductElem::Unit { .. } => None,
-    });
+    let mut elements = annotation_source
+        .elements
+        .iter()
+        .filter_map(|element| match element {
+            NormProductElem::Expr(expr) => Some(expr),
+            NormProductElem::Unit { .. } => None,
+        });
     let Some(NormExpr::Name { text: name, .. }) = elements.next() else {
         return Err(Diagnostic::new(
             DiagnosticSeverity::Error,

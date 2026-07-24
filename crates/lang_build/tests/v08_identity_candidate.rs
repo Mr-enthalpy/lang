@@ -1673,9 +1673,7 @@ fn generated_type_definition_semantic_eq_includes_pattern_heads() {
 
 #[test]
 fn source_member_visibility_reaches_generated_struct_field_material() {
-    let parsed = lang_syntax::parse(
-        "let PrivateFieldType = (uint8 secret [[private]]) |> struct;",
-    );
+    let parsed = lang_syntax::parse("let PrivateFieldType = (uint8 secret [[private]]) |> struct;");
     assert!(
         parsed.diagnostics.is_empty(),
         "{}",

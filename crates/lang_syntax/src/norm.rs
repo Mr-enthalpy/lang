@@ -755,10 +755,7 @@ impl HoleBinderId {
 
     fn alpha(root: PatternRootId, local_binder: u32) -> Self {
         Self {
-            repr: HoleBinderIdRepr::Alpha {
-                root,
-                local_binder,
-            },
+            repr: HoleBinderIdRepr::Alpha { root, local_binder },
         }
     }
 
@@ -1327,11 +1324,7 @@ impl HoleAlphaNormalizer {
             for capture in &mut head.captures {
                 let capture_holes =
                     self.normalize_slot(&mut capture.slot, &visible, root, &mut declared);
-                self.normalize_expr(
-                    &mut capture.initializer,
-                    &capture_holes,
-                    callable_owner.id,
-                );
+                self.normalize_expr(&mut capture.initializer, &capture_holes, callable_owner.id);
             }
             for param in &mut head.params {
                 self.normalize_pattern_element(param, &visible, root, &mut declared);
@@ -1398,9 +1391,7 @@ impl HoleAlphaNormalizer {
                     self.normalize_pattern_element(element, holes, root, declared);
                 }
             }
-            NormPattern::Pack { inner, .. } => {
-                self.normalize_pattern(inner, holes, root, declared)
-            }
+            NormPattern::Pack { inner, .. } => self.normalize_pattern(inner, holes, root, declared),
             NormPattern::Name { name, origin } => {
                 if let Some(hole) = find_visible_source_hole(holes, name) {
                     *pattern = NormPattern::HoleRef {
