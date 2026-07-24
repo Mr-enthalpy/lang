@@ -807,7 +807,7 @@ fn callable_return_annotation_uses_the_binding_slot_suffix() {
     let head = closure.head.as_ref().expect("closure head");
     let return_slot = head.returns.as_ref().expect("return slot");
     assert!(matches!(
-        &return_slot.pattern,
+        &return_slot.value_pattern,
         NormPattern::Binder { name, .. } if name == "r"
     ));
     assert_eq!(
