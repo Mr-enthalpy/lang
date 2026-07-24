@@ -404,6 +404,8 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         pattern: PatternComponentPolicy {
             stages: stages(&[PolicyStage::Compile]),
         },
+        namespace_visibility: None,
+        export_root: false,
     };
     let type_only = || PolicyPair {
         value: ValueComponentPolicy {
@@ -414,6 +416,8 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         pattern: PatternComponentPolicy {
             stages: stages(&[PolicyStage::Compile]),
         },
+        namespace_visibility: None,
+        export_root: false,
     };
     let full = BTreeMap::from([
         (
