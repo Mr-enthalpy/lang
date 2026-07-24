@@ -312,6 +312,17 @@ substrate):
   meta-instance construction keys remains unfrozen; byte offsets must not be
   substituted for those keys.
 
+- `SemanticOwnerQualification` currently verifies exact mapping presence and
+  rejects a conflicting remap. It does not yet prove that the whole frontend
+  owner tree embeds homomorphically into the persistent tree:
+
+  ```text
+  Map(Parent_frontend(x)) = Parent_persistent(Map(x))
+  ```
+
+  Establishing that proof is a P1 gate before multi-root persistent owner
+  harvesting; it is not a reason to reopen the owner/Pattern-root semantics.
+
 - The new owner-aware namespace graph already preserves typed failures
   (`Unresolved`, non-retention, private path, no eligible candidate, missing
   mount target, and missing package boundary). The legacy
@@ -331,7 +342,9 @@ substrate):
 
 - The restricted v0.8 overload selector still reports
   `UnsupportedExternalVisibility`. The implemented scope is the export-view
-  carrier and projection substrate, not end-to-end external overload routing.
+  carrier and persistent namespace resolver substrate, not complete migration
+  of legacy namespace consumers or end-to-end external overload routing. Those
+  two connections remain a P1 integration gate, not a core semantic blocker.
 
 - Custom `?` construction of a richer extraction interface remains open.
   Private structural members are already excluded from the default extraction

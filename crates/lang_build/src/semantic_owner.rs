@@ -102,6 +102,17 @@ pub enum OwnerQualificationError {
 /// until the exact `NormSemanticOwnerId` carried by its PatternRoot has a
 /// mapping. Callers therefore cannot qualify an unrelated local ordinal merely
 /// by supplying an arbitrary persistent owner.
+///
+/// This carrier does not yet prove that the complete frontend owner tree maps
+/// homomorphically into the persistent owner tree:
+///
+/// ```text
+/// Map(Parent(x)) = Parent(Map(x))
+/// ```
+///
+/// Persistent owner harvesting must establish that relation before multiple
+/// mapped roots are admitted to one build world. Exact presence and
+/// non-conflicting remapping are the only invariants enforced here.
 #[derive(Clone, Debug, Default)]
 pub struct SemanticOwnerQualification {
     mappings: BTreeMap<lang_syntax::NormSemanticOwnerId, SemanticOwnerId>,
