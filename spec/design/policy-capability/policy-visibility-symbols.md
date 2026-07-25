@@ -201,8 +201,8 @@ The typed substrate currently provides:
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.
-- atomic builtin family / concrete numeric Tnum separation and context-selected
-  literal typing;
+- atomic builtin type-key / concrete numeric Tnum separation, current
+  first-order TypeValue projections, and context-selected literal typing;
 - a helper that attempts transition preparation only after the canonical P1
   projection is empty, with a projection-only pure-type branch;
 - a transitional Policy candidate adapter whose preference is `input x

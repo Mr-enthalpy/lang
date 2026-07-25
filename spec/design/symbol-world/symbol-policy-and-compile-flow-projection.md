@@ -225,10 +225,16 @@ ElabP1(Some Q, R):
 Therefore:
 
 ```text
-dom(ProjectP1) is a subset of dom(ElabP1)
+Dom_old = {
+  (Q, R)
+  |
+  ProjectP1(Q, R) != empty
+}
 
 ProjectP1(Q, R) succeeds
   => ElabP1(Some Q, R) = ProjectP1(Q, R)
+
+Dom_old is a subset of Dom(ElabP1)
 ```
 
 The extension may add results only where the old projection was empty; it
@@ -339,6 +345,75 @@ Consequently `const + S : compile`, `mut + S : compile`, and their `export`
 forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
 compatibility substrate rather than the final sum type, so P1 elaboration, P2
 normalization, and resolved export projection each validate this invariant.
+
+### 3.4 Generic downstream Policy demand
+
+Cross-Policy transition is not intrinsically a P1-binding operation. The
+general trigger is the first downstream consumer whose required Policy view is
+not available from the evaluated source:
+
+```text
+PolicyDemand
+  = BindingP1Demand
+  | ParameterPolicyDemand
+  | ResultPolicyDemand
+  | MechanicalPolicyDemand
+```
+
+Each demand kind owns its existing-view projection/admissibility rule. The
+generic satisfaction shape is:
+
+```text
+SatisfyPolicyDemand(demand, result):
+  selected = ProjectExistingViewForDemand(demand, result)
+
+  if selected != empty:
+    return selected
+
+  if no eligible Val1 exists:
+    fail
+
+  otherwise:
+    prepare one direct PolicyTransition demand
+```
+
+`BindingP1Demand` uses the conservative `ProjectP1` rule in §3.1. Formal
+parameter and result consumers do not thereby become ordinary P1 syntax or
+reuse its contextual elaborator; they retain their own established policy
+Patterns and applicability rules. The v0.6 Rust helper implements only the
+binding-P1 entry point.
+
+### 3.5 Static frontier and deferred materialization invariants
+
+Static evaluation continues while the expression and its dependencies are
+evaluable in the current static phase. Lexical occurrence inside a runtime
+body is not by itself a runtime-computation boundary. The frontier is:
+
+```text
+static evaluation frontier
+  = first consumer requiring an unavailable Policy view
+```
+
+The following positive invariants constrain future integration even though
+their storage/lowering algorithms are not implemented:
+
+- Crossing a compile value to runtime constructs a new runtime object. It does
+  not extend the lifetime of a compile temporary.
+- Every addressable runtime value has an ordinary runtime owner/place. There is
+  no third category of ownerless addressable temporary.
+- A future static-materialization cache keys an ordinary compile value by its
+  canonical static-value identity. A compile reference is keyed by compile
+  referent identity, not by pointee value equality.
+- Storage requested by `[[global]]` materialization does not mutate the
+  source-visible `NamespaceGraph`; generated storage and source namespace
+  declarations remain distinct semantic facts.
+- `share` and `alias` materialization may compose an ordinary `ref`
+  materialization route and then apply their own type/access rules. They do
+  not require independent compiler coercion systems.
+
+These are deferred positive constraints, not claims that runtime lowering,
+cache identity, `[[global]]` seal scanning, or lifetime checking is currently
+implemented.
 
 ## 4. P2 normalization
 
@@ -847,6 +922,9 @@ Transition candidate preference consumes both input and output Policy through
 one product/Pareto order at the transition-specific named-strategy step. This
 is specific to a known `SourcePolicy -> TargetPolicyQuery` prototype request;
 it does not add output-type preference to ordinary type overload selection.
+Candidate Policy adaptation intersects typed Policy domains directly,
+including present/optional/absent alternatives; it does not fabricate a
+concrete `Some(value)` to reuse result-entry projection.
 The current adapter is reached only after an empty ordinary projection, skips
 absent entries, first selects the available Pattern-policy slice, preserves
 ordinary input-type preference as a strict predecessor, and returns a complete

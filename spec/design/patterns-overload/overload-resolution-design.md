@@ -314,12 +314,14 @@ P1 elaboration first applies `project_p1` across the complete
 `PolicyResultEntry[]`. Any non-empty result is the identity-preserving binding
 projection; alternatives named by the query but absent from that result are not
 manufactured. The bounded transition prototype can be reached only when the
-complete projection is empty and the source has a value.
+complete projection is empty and the source has a value. This is the currently
+implemented `BindingP1Demand` consumer, not the general definition of a Policy
+transition trigger.
 
 The current transition candidate representation is only a comparison
 prototype. It reuses maximal-element selection but does not yet route through a
-global Symbol, heterogeneous Val2, `InvocationFrame`, or ordinary prepared
-callable candidate.
+mechanically selected operation's Symbol family, heterogeneous Val2,
+`InvocationFrame`, or ordinary prepared callable candidate.
 
 ### 3.2 P2 pair at the fully admissible boundary
 
@@ -587,6 +589,21 @@ Policy and are rejected before strategy comparison; they are not specificity
 coordinates. Any value-presence specificity used by the current prototype is
 local to `TransitionPolicyStrategy` and does not define a general Policy
 overload order.
+
+When an outer ordinary candidate requires a transition, bridge qualification
+is part of forming that outer candidate's fully admissible state:
+
+```text
+Available(unique non-delete bridge) -> outer candidate may remain admissible
+RejectedByDelete                   -> outer candidate is not admissible
+Missing                            -> outer candidate is not admissible
+Ambiguous                          -> outer candidate is not admissible
+```
+
+These outcomes remain typed so a final no-candidate diagnostic can report the
+relevant cause. A selected delete bridge is an explicit rejection, never
+“availability.” Once the outer ordinary winner is selected, later validation
+cannot reopen its discarded candidate set.
 
 ---
 

@@ -1,14 +1,15 @@
-//! Builtin atomic-family and concrete literal-type substrate.
+//! Atomic builtin-type and concrete literal-type substrate.
 //!
-//! `AtomicBuiltinFamily` is classification material (`T`), not a
-//! `TypeValueId`. Numeric values receive a concrete `Tnum` selected by context
-//! and resolved through canonical core Type symbols.
+//! `AtomicBuiltinType` is a key for an actual builtin type identity (`T`), not
+//! merely a literal classifier. `AtomicBuiltinTypeRegistry` resolves that key
+//! to the current first-order `TypeValueId` projection of an installed Type
+//! symbol. Numeric literals instead receive a concrete `Tnum` selected by
+//! context.
 //!
 //! This helper is not wired into `evaluate_initializer_best_effort`; it does
 //! not define an unsuffixed numeric default or claim initializer integration.
-//! The current core bootstrap also has no canonical `str` Type symbol; string
-//! materialization therefore requires a caller-supplied canonical TypeValue
-//! and is not yet a core-backed implementation fact.
+//! The current core bootstrap has no installed `str` Type symbol, so its
+//! registry entry and literal materialization are not yet core-backed facts.
 
 use std::collections::BTreeMap;
 
@@ -20,11 +21,11 @@ use crate::{
         PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
         ValuePresence,
     },
-    CompilationWorld, Diagnostic, Provenance,
+    CompilationWorld, Diagnostic, Provenance, SymbolKind, SymbolObject,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum AtomicBuiltinFamily {
+pub enum AtomicBuiltinType {
     Uint,
     Int,
     Float,
@@ -32,9 +33,78 @@ pub enum AtomicBuiltinFamily {
     Str,
 }
 
+impl AtomicBuiltinType {
+    pub const fn symbol_name(self) -> &'static str {
+        match self {
+            Self::Uint => "uint",
+            Self::Int => "int",
+            Self::Float => "float",
+            Self::Buffer => "buffer",
+            Self::Str => "str",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AtomicBuiltinTypeRegistryFailure {
+    NotTypeSymbol {
+        key: AtomicBuiltinType,
+        actual_kind: SymbolKind,
+    },
+    SymbolNameMismatch {
+        key: AtomicBuiltinType,
+        actual_name: String,
+    },
+}
+
+/// Current first-order projections for installed atomic builtin Type symbols.
+///
+/// The key denotes the intended type identity. The stored `TypeValueId` is
+/// transitional projection material, not final canonical type-value tracking.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AtomicBuiltinTypeRegistry {
+    types: BTreeMap<AtomicBuiltinType, TypeValueId>,
+}
+
+impl AtomicBuiltinTypeRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert_resolved_type_symbol(
+        &mut self,
+        key: AtomicBuiltinType,
+        symbol: &SymbolObject,
+    ) -> Result<(), AtomicBuiltinTypeRegistryFailure> {
+        if symbol.kind != SymbolKind::Type {
+            return Err(AtomicBuiltinTypeRegistryFailure::NotTypeSymbol {
+                key,
+                actual_kind: symbol.kind,
+            });
+        }
+        if symbol.name != key.symbol_name() {
+            return Err(AtomicBuiltinTypeRegistryFailure::SymbolNameMismatch {
+                key,
+                actual_name: symbol.name.clone(),
+            });
+        }
+        self.types
+            .insert(key, type_value_projection_from_type_symbol(symbol.id));
+        Ok(())
+    }
+
+    pub fn get(&self, key: AtomicBuiltinType) -> Option<TypeValueId> {
+        self.types.get(&key).copied()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (AtomicBuiltinType, TypeValueId)> + '_ {
+        self.types.iter().map(|(key, value)| (*key, *value))
+    }
+}
+
 /// Syntactic literal family retained from normalized input.
 ///
-/// This is not the atomic builtin family `T`: an integer spelling may later
+/// This is not an atomic builtin type `T`: an integer spelling may later
 /// select either a signed or unsigned concrete numeric type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LiteralFamily {
@@ -64,9 +134,8 @@ impl NumericTypeKey {
 
 /// Concrete numeric `Tnum` identities.
 ///
-/// Keys classify the numeric family/width while values are canonical
-/// `TypeValueId` projections of resolved Type symbols. No family itself owns a
-/// `TypeValueId`.
+/// Keys classify the numeric family/width while values are current first-order
+/// `TypeValueId` projections of resolved canonical Type symbols.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NumericTypeRegistry {
     types: BTreeMap<NumericTypeKey, TypeValueId>,
@@ -111,10 +180,7 @@ impl NumericTypeRegistry {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LiteralTypeSelection {
     Numeric(NumericTypeKey),
-    Atomic {
-        family: AtomicBuiltinFamily,
-        type_value: TypeValueId,
-    },
+    Atomic(AtomicBuiltinType),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -132,16 +198,19 @@ pub struct LiteralValue {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LiteralMaterializationFailure {
     NotLiteral,
-    AtomicNumericFamilyIsNotConcrete {
-        family: AtomicBuiltinFamily,
+    NumericLiteralRequiresConcreteNumericType {
+        selected: AtomicBuiltinType,
     },
     NumericFamilySelectionMismatch {
         literal: LiteralFamily,
         selected: NumericFamily,
     },
-    AtomicFamilySelectionMismatch {
+    AtomicTypeSelectionMismatch {
         literal: LiteralFamily,
-        selected: AtomicBuiltinFamily,
+        selected: AtomicBuiltinType,
+    },
+    AtomicBuiltinTypeUnavailable {
+        key: AtomicBuiltinType,
     },
     ConcreteNumericTypeUnavailable {
         key: NumericTypeKey,
@@ -155,6 +224,7 @@ pub enum LiteralMaterializationFailure {
 /// defaulting/range selection remains a separate language decision.
 pub fn materialize_literal_value(
     expr: &NormExpr,
+    atomic_types: &AtomicBuiltinTypeRegistry,
     numeric_types: &NumericTypeRegistry,
     selection: LiteralTypeSelection,
     id: SemanticValueId,
@@ -191,27 +261,30 @@ pub fn materialize_literal_value(
                 .ok_or(LiteralMaterializationFailure::ConcreteNumericTypeUnavailable { key })?;
             (Some(key), type_value)
         }
-        LiteralTypeSelection::Atomic { family, type_value } => {
+        LiteralTypeSelection::Atomic(selected) => {
             if matches!(
-                family,
-                AtomicBuiltinFamily::Uint | AtomicBuiltinFamily::Int | AtomicBuiltinFamily::Float
+                selected,
+                AtomicBuiltinType::Uint | AtomicBuiltinType::Int | AtomicBuiltinType::Float
             ) {
                 return Err(
-                    LiteralMaterializationFailure::AtomicNumericFamilyIsNotConcrete { family },
-                );
-            }
-            let compatible = matches!(
-                (literal_family, family),
-                (LiteralFamily::String, AtomicBuiltinFamily::Str)
-            );
-            if !compatible {
-                return Err(
-                    LiteralMaterializationFailure::AtomicFamilySelectionMismatch {
-                        literal: literal_family,
-                        selected: family,
+                    LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericType {
+                        selected,
                     },
                 );
             }
+            let compatible = matches!(
+                (literal_family, selected),
+                (LiteralFamily::String, AtomicBuiltinType::Str)
+            );
+            if !compatible {
+                return Err(LiteralMaterializationFailure::AtomicTypeSelectionMismatch {
+                    literal: literal_family,
+                    selected,
+                });
+            }
+            let type_value = atomic_types.get(selected).ok_or(
+                LiteralMaterializationFailure::AtomicBuiltinTypeUnavailable { key: selected },
+            )?;
             (None, type_value)
         }
     };

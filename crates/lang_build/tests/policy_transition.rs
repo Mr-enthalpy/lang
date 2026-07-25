@@ -5,15 +5,17 @@ use std::convert::Infallible;
 use lang_build::{
     assemble_transition_results, compare_policy_transition_candidates,
     elaborate_pure_type_binding_p1, elaborate_value_binding_p1, evaluate_initializer_best_effort,
-    invoke_resolved_policy_bridge, materialize_literal_value, policy_bridge_is_available,
-    resolve_policy_bridge, select_policy_overload, type_value_projection_from_type_symbol,
-    validate_runtime_transition, AtomicBuiltinFamily, CompilationWorld, EvalMode, EvalOutcome,
-    LiteralFamily, LiteralMaterializationFailure, LiteralTypeSelection, MutabilityActualFrame,
-    MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey, NumericTypeRegistry,
-    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration, P1ElaborationFailure,
-    P1Origin, P1Projection, PatternComponentPolicy, Phase, PhaseOverloadCandidate,
-    PolicyBridgeBody, PolicyBridgeResolution, PolicyOverloadCandidate, PolicyOverloadSelection,
-    PolicyPair, PolicyPartialOrdering, PolicyResultEntry, PolicyStage, PolicyTransitionCallable,
+    invoke_resolved_policy_bridge, materialize_literal_value, project_transition_policy_domain,
+    qualify_policy_bridge, resolve_policy_bridge, select_policy_overload,
+    type_value_projection_from_type_symbol, validate_runtime_transition, AtomicBuiltinType,
+    AtomicBuiltinTypeRegistry, AtomicBuiltinTypeRegistryFailure, BridgeQualification,
+    CompilationWorld, EvalMode, EvalOutcome, LiteralFamily, LiteralMaterializationFailure,
+    LiteralTypeSelection, MutabilityActualFrame, MutabilityFormalFrame, MutabilityPattern,
+    NumericFamily, NumericTypeKey, NumericTypeRegistry, OrdinaryCallableTypeInput,
+    OrdinaryCallableTypeOutput, P1Elaboration, P1ElaborationFailure, P1Origin, P1Projection,
+    PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyBridgeBody,
+    PolicyBridgeResolution, PolicyOverloadCandidate, PolicyOverloadSelection, PolicyPair,
+    PolicyPartialOrdering, PolicyResultEntry, PolicyStage, PolicyTransitionCallable,
     PolicyTransitionFailure, PolicyTransitionRequest, PolicyTransitionRequestFailure, Provenance,
     ResidualReason, SemanticValueId, SemanticValueRef, StageSet, TransitionTypeExpectation,
     TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
@@ -65,6 +67,12 @@ fn absent_pair(pattern_stages: &[PolicyStage]) -> PolicyPair {
 
 fn compile_pair() -> PolicyPair {
     pair(&[PolicyStage::Compile], &[PolicyStage::Compile], &[])
+}
+
+fn optional_compile_pair() -> PolicyPair {
+    let mut policy = compile_pair();
+    policy.value.presence = ValuePresence::Optional;
+    policy
 }
 
 fn meta_pair() -> PolicyPair {
@@ -564,6 +572,27 @@ fn absent_source_cannot_construct_or_validate_a_transition() {
 }
 
 #[test]
+fn transition_policy_domain_projection_preserves_presence_intersection() {
+    let present = project_transition_policy_domain(&compile_pair(), &optional_compile_pair())
+        .expect("present intersects optional");
+    assert_eq!(present.value.presence, ValuePresence::Present);
+    assert_eq!(present.value.stages, StageSet::from([PolicyStage::Compile]));
+
+    let absent_query = absent_pair(&[PolicyStage::Compile]);
+    let absent = project_transition_policy_domain(&absent_query, &optional_compile_pair())
+        .expect("absent intersects optional");
+    assert_eq!(absent.value.presence, ValuePresence::Absent);
+    assert!(absent.value.stages.is_empty());
+    assert!(absent.value.mutability.is_empty());
+
+    assert!(
+        project_transition_policy_domain(&compile_pair(), &absent_pair(&[PolicyStage::Compile]))
+            .is_none(),
+        "present and absent domains do not intersect"
+    );
+}
+
+#[test]
 fn legal_runtime_value_transition_preserves_available_pattern_capability() {
     assert_eq!(
         validate_runtime_transition(&compile_pair(), &runtime_pair()),
@@ -622,7 +651,7 @@ fn runtime_transition_reports_value_pattern_overlap() {
 }
 
 #[test]
-fn core_numeric_registry_uses_canonical_concrete_type_symbols() {
+fn core_numeric_registry_uses_first_order_projections_of_installed_type_symbols() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
     let registry = NumericTypeRegistry::from_core_world(&world).expect("core numeric registry");
     for (key, name) in [
@@ -644,10 +673,11 @@ fn literal_family_is_distinct_from_selected_concrete_numeric_type() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
     let registry = NumericTypeRegistry::from_core_world(&world).expect("numeric registry");
     let uint16 = NumericTypeKey::new(NumericFamily::Uint, 16);
-    let expected = registry.get(uint16).expect("canonical core uint16");
+    let expected = registry.get(uint16).expect("installed core uint16");
     let expr = initializer_from_source("let x = 42");
     let literal = materialize_literal_value(
         &expr,
+        &AtomicBuiltinTypeRegistry::new(),
         &registry,
         LiteralTypeSelection::Numeric(uint16),
         SemanticValueId(30),
@@ -681,51 +711,61 @@ fn literal_helper_is_not_yet_wired_into_the_initializer_evaluator() {
 }
 
 #[test]
-fn numeric_literal_cannot_use_a_family_as_its_concrete_type() {
+fn numeric_literal_cannot_use_an_atomic_numeric_type_as_its_tnum() {
     let expr = initializer_from_source("let x = 42");
     assert!(matches!(
         materialize_literal_value(
             &expr,
+            &AtomicBuiltinTypeRegistry::new(),
             &NumericTypeRegistry::new(),
-            LiteralTypeSelection::Atomic {
-                family: AtomicBuiltinFamily::Int,
-                type_value: TypeValueId(700),
-            },
+            LiteralTypeSelection::Atomic(AtomicBuiltinType::Int),
             SemanticValueId(30),
             Provenance::new("42"),
         ),
         Err(
-            LiteralMaterializationFailure::AtomicNumericFamilyIsNotConcrete {
-                family: AtomicBuiltinFamily::Int
+            LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericType {
+                selected: AtomicBuiltinType::Int
             }
         )
     ));
 }
 
 #[test]
-fn string_literal_helper_requires_caller_supplied_str_type_value() {
+fn atomic_registry_rejects_a_different_type_symbol_as_str() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
     assert!(
         world.resolve("str").is_err(),
-        "current core bootstrap does not yet install canonical str"
+        "current core bootstrap does not yet install str"
     );
+    let uint8 = world.resolve("uint8").expect("installed uint8 Type symbol");
+    let mut atomic_types = AtomicBuiltinTypeRegistry::new();
+    assert_eq!(
+        atomic_types.insert_resolved_type_symbol(AtomicBuiltinType::Str, &uint8),
+        Err(AtomicBuiltinTypeRegistryFailure::SymbolNameMismatch {
+            key: AtomicBuiltinType::Str,
+            actual_name: "uint8".to_string()
+        })
+    );
+}
+
+#[test]
+fn string_literal_cannot_invent_a_missing_str_type_projection() {
     let expr = initializer_from_source("let s = \"abc\"");
-    let literal = materialize_literal_value(
-        &expr,
-        &NumericTypeRegistry::new(),
-        LiteralTypeSelection::Atomic {
-            family: AtomicBuiltinFamily::Str,
-            type_value: TypeValueId(5),
-        },
-        SemanticValueId(30),
-        Provenance::new("\"abc\""),
-    )
-    .expect("string literal");
-    assert_eq!(literal.literal_family, LiteralFamily::String);
-    assert_eq!(literal.numeric_type, None);
-    assert_eq!(literal.type_value, TypeValueId(5));
-    assert_ne!(literal.type_value, TypeValueId(900), "dependent str ref");
-    assert_eq!(literal.policy, compile_pair());
+    assert_eq!(
+        materialize_literal_value(
+            &expr,
+            &AtomicBuiltinTypeRegistry::new(),
+            &NumericTypeRegistry::new(),
+            LiteralTypeSelection::Atomic(AtomicBuiltinType::Str),
+            SemanticValueId(30),
+            Provenance::new("\"abc\""),
+        ),
+        Err(
+            LiteralMaterializationFailure::AtomicBuiltinTypeUnavailable {
+                key: AtomicBuiltinType::Str
+            }
+        )
+    );
 }
 
 #[test]
@@ -1066,14 +1106,18 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
     let request = request(compile_pair(), runtime_pair());
     let available = vec![exact_copy("selected-bridge")];
     let missing: Vec<PolicyTransitionCallable<&str>> = Vec::new();
+    let missing_qualification =
+        qualify_policy_bridge(&request, &missing, TransitionTypeExpectation::default());
+    let available_qualification =
+        qualify_policy_bridge(&request, &available, TransitionTypeExpectation::default());
     let outer = vec![
         outer_candidate(
             "needs-missing-bridge",
-            policy_bridge_is_available(&request, &missing, TransitionTypeExpectation::default()),
+            matches!(missing_qualification, BridgeQualification::Available(_)),
         ),
         outer_candidate(
             "has-bridge",
-            policy_bridge_is_available(&request, &available, TransitionTypeExpectation::default()),
+            matches!(available_qualification, BridgeQualification::Available(_)),
         ),
     ];
     assert_eq!(
@@ -1118,4 +1162,59 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
         invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21), "failed-pattern")
             .expect_err("selected prototype failure");
     assert_eq!(failure.selected_callable_id, "winner");
+}
+
+#[test]
+fn selected_delete_bridge_rejects_outer_candidate_instead_of_qualifying_it() {
+    let request = request(compile_pair(), runtime_pair_with(ValueMutability::Mut));
+    let deleted = vec![callable(
+        "deleted-transition",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        runtime_pair_with(ValueMutability::Mut),
+        true,
+        PolicyBridgeBody::IntrinsicStub("deleted".to_string()),
+    )];
+    let available = vec![callable(
+        "available-transition",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        runtime_pair_with(ValueMutability::Mut),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    )];
+
+    let rejected = qualify_policy_bridge(&request, &deleted, TransitionTypeExpectation::default());
+    let qualified =
+        qualify_policy_bridge(&request, &available, TransitionTypeExpectation::default());
+    assert_eq!(
+        rejected,
+        BridgeQualification::RejectedByDelete("deleted-transition")
+    );
+    assert!(matches!(&qualified, BridgeQualification::Available(_)));
+
+    let outer = vec![
+        outer_candidate(
+            "requires-deleted-transition",
+            matches!(&rejected, BridgeQualification::Available(_)),
+        ),
+        outer_candidate(
+            "requires-available-transition",
+            matches!(&qualified, BridgeQualification::Available(_)),
+        ),
+    ];
+    assert_eq!(
+        select_policy_overload(
+            &outer,
+            &MutabilityActualFrame {
+                caller_value: ValueMutability::Const,
+                explicit_arguments: vec![],
+            },
+            None,
+            Phase::OpenStatic,
+        ),
+        PolicyOverloadSelection::Selected("requires-available-transition")
+    );
 }

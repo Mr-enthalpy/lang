@@ -56,8 +56,9 @@ A cross-Policy transition is a compiler-inserted use of this same call trunk,
 not a second callable kind:
 
 ```text
-value-bearing source entry + target P1 query
-  -> resolve distinguished global transition function Symbol
+value-bearing source entry + unsatisfied PolicyDemand
+  -> select the mechanical transition operation
+  -> resolve that operation's ordinary callable family to Symbol
   -> enumerate its heterogeneous Val2
   -> obtain each candidate value's TypeValue
   -> resolve associated ()
@@ -68,7 +69,7 @@ value-bearing source entry + target P1 query
   -> transition Policy named strategy, when requested
   -> unique ordinary invocation
   -> ordinary result entries
-  -> ProjectP1(target query, ordinary result entries)
+  -> project ordinary result entries for the originating demand
 ```
 
 The compiler recognizes when this call may be attempted and supplies the
@@ -78,14 +79,20 @@ type-changing bridge returns a new value/Pattern pair through its ordinary
 result. A same-type value-copy bridge may return the same Pattern identity only
 when that follows from the selected implementation's actual result.
 
-An ordinary successful P1 projection terminates before this inserted call is
-considered. An absent-Val1 entry cannot be passed as the explicit transition
-input. Failure after the unique ordinary winner is selected cannot reopen the
-candidate set.
+Any successful existing-view satisfaction for the originating demand
+terminates before this inserted call is considered. In the currently
+implemented binding case, that is a non-empty ordinary P1 projection. An
+absent-Val1 entry cannot be passed as the explicit transition input. Failure
+after the unique ordinary winner is selected cannot reopen the candidate set.
+
+This model does not require one universal global `transition` Symbol. Value
+copy, `ref`, `share`, `alias`, and future materialization operations may route
+to different ordinary callable families while sharing this invocation
+substrate. The operation-to-Symbol mapping remains open.
 
 The current `PolicyTransitionCallable` Rust carrier does not implement this
 pipeline; it is bounded comparison and result-shape substrate and must be
-removed or reduced to an adapter when the distinguished global family is
+removed or reduced to an adapter when ordinary operation-family routing is
 wired.
 
 ## 3. `()` is not an operator

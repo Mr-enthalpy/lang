@@ -1214,8 +1214,13 @@ Policy Transition,
 
 ## Policy Transition
 
-A prototype request considered only after an ordinary P1 query has no existing
-value-bearing projection:
+A direct value transformation considered when a downstream `PolicyDemand`
+cannot be satisfied by an existing source view. Demand kinds include binding
+P1, parameter, result, and mechanical consumers. Each retains its own
+existing-view rule; transition does not redefine them.
+
+The current prototype implements only the binding-P1 entry point and prepares
+a request after its ordinary query has no projection:
 
 ```text
 PolicyTransitionRequest {
@@ -1227,13 +1232,14 @@ PolicyTransitionRequest {
 }
 ```
 
-The target is still query-shaped. A candidate output satisfies it through a
-non-empty ordinary projection; the complete query domain is not manufactured.
+The current target is still P1-query-shaped. A candidate output satisfies it
+through a non-empty Policy-domain projection; the complete query domain is not
+manufactured.
 The current implementation provides only a caller-supplied candidate-ordering
 prototype. Input and output Policy fitness form one product/Pareto partial
 order; crossed advantages are ambiguous and declaration order is irrelevant.
 Absent Val1 cannot construct the request. Initializer integration and final
-global Symbol/function-object routing remain future work. No transitive
+operation-to-Symbol/function-object routing remain future work. No transitive
 coercion graph or temporary-lifetime extension is implied.
 
 _See also: Policy Binding, Policy Pair,
@@ -1280,6 +1286,36 @@ right annotation expression is preserved. Represented as
 > from a canonical skeleton wildcard `_`.
 
 _See also: AnnotationTerm, CanonicalSkeleton, Type-object._
+
+---
+
+## Atomic builtin type
+
+An actual builtin Type value whose identity does not require applying a
+dependent type constructor to another Type value. The current T key space is:
+
+```text
+uint | int | float | buffer | str
+```
+
+The Rust `AtomicBuiltinType` enum is a lookup key for these intended Type
+symbols, not itself a `TypeValueId` and not merely a literal classifier.
+Current core bootstrap does not yet install every member.
+
+_See also: Concrete numeric type, Type-object, TypeValueId._
+
+---
+
+## Concrete numeric type
+
+A width-bearing numeric Type (`Tnum`) such as `uint16` or `float32`. Numeric
+literal materialization selects a concrete numeric Type rather than using the
+atomic `uint`/`int`/`float` Type as the literal's final type. In the current
+implementation, `NumericTypeKey` maps to a first-order `TypeValueId` projection
+derived from an installed core Type symbol; final canonical type-value equality
+is not implemented.
+
+_See also: Atomic builtin type, Literal, TypeValueId._
 
 ---
 

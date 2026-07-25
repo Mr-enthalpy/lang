@@ -2,10 +2,11 @@
 //!
 //! This module contains a transition-demand model plus a transitional
 //! candidate-algebra prototype. The prototype shares the ordinary
-//! maximal-element rule, but it does not yet resolve a distinguished global
-//! Symbol, enumerate heterogeneous Val2, construct an `InvocationFrame`, or
-//! invoke the repository's ordinary function-object pipeline. It must not
-//! become a second permanent callable representation.
+//! maximal-element rule, but it does not yet map a mechanical transition
+//! operation to an ordinary Symbol family, enumerate heterogeneous Val2,
+//! construct an `InvocationFrame`, or invoke the repository's ordinary
+//! function-object pipeline. It must not become a second permanent callable
+//! representation.
 //!
 //! Ordinary binding semantics stay in `policy_pair::project_p1`: omitted P1
 //! preserves the complete RHS and any non-empty explicit projection completes
@@ -304,11 +305,16 @@ fn policy_pair_from_entry<V, P>(entry: &PolicyResultEntry<V, P>) -> PolicyPair {
     }
 }
 
-/// Apply an ordinary pair-shaped P1 query to one available policy view.
+/// Intersect a pair-shaped transition query with one available Policy domain.
 ///
-/// This deliberately delegates to `project_p1` so transition candidate input
-/// and output adaptation cannot grow a competing policy-slicing rule.
-fn project_policy_query(query: &PolicyPair, available: &PolicyPair) -> Option<PolicyPair> {
+/// Unlike `project_p1`, this operates on policy domains rather than on one
+/// concrete `PolicyResultEntry`. It therefore preserves present/optional/
+/// absent alternatives without fabricating a `Some(value)` solely to borrow
+/// the ordinary result projector.
+pub fn project_transition_policy_domain(
+    query: &PolicyPair,
+    available: &PolicyPair,
+) -> Option<PolicyPair> {
     if query.namespace_visibility.is_some()
         || query.export_root
         || available.namespace_visibility.is_some()
@@ -316,16 +322,67 @@ fn project_policy_query(query: &PolicyPair, available: &PolicyPair) -> Option<Po
     {
         return None;
     }
-    let entry = PolicyResultEntry {
-        value: Some(()),
-        value_policy: available.value.clone(),
-        pattern: (),
-        pattern_policy: available.pattern.clone(),
+
+    let presence = intersect_presence(query.value.presence, available.value.presence)?;
+    let (value_stages, value_mutability) = if presence == ValuePresence::Absent {
+        (StageSet::new(), BTreeSet::new())
+    } else {
+        (
+            project_non_empty_stages(&query.value.stages, &available.value.stages)?,
+            project_mutability_domain(&query.value.mutability, &available.value.mutability)?,
+        )
     };
-    project_p1(&P1Projection::Pair(query.clone()), &[entry])
-        .into_iter()
-        .next()
-        .map(|selected| policy_pair_from_entry(&selected))
+    let pattern_stages =
+        project_non_empty_stages(&query.pattern.stages, &available.pattern.stages)?;
+
+    Some(PolicyPair {
+        value: crate::policy_pair::ValueComponentPolicy {
+            stages: value_stages,
+            mutability: value_mutability,
+            presence,
+        },
+        pattern: PatternComponentPolicy {
+            stages: pattern_stages,
+        },
+        namespace_visibility: None,
+        export_root: false,
+    })
+}
+
+fn intersect_presence(query: ValuePresence, available: ValuePresence) -> Option<ValuePresence> {
+    match (query, available) {
+        (ValuePresence::Optional, selected) | (selected, ValuePresence::Optional) => Some(selected),
+        (ValuePresence::Present, ValuePresence::Present) => Some(ValuePresence::Present),
+        (ValuePresence::Absent, ValuePresence::Absent) => Some(ValuePresence::Absent),
+        (ValuePresence::Present, ValuePresence::Absent)
+        | (ValuePresence::Absent, ValuePresence::Present) => None,
+    }
+}
+
+fn project_non_empty_stages(query: &StageSet, available: &StageSet) -> Option<StageSet> {
+    let selected = if query.is_empty() {
+        available.clone()
+    } else {
+        query.intersection(available)
+    };
+    (!selected.is_empty()).then_some(selected)
+}
+
+fn project_mutability_domain(
+    query: &BTreeSet<ValueMutability>,
+    available: &BTreeSet<ValueMutability>,
+) -> Option<BTreeSet<ValueMutability>> {
+    if query.is_empty() {
+        return Some(available.clone());
+    }
+    if available.is_empty() {
+        return Some(query.clone());
+    }
+    let selected = query
+        .intersection(available)
+        .copied()
+        .collect::<BTreeSet<_>>();
+    (!selected.is_empty()).then_some(selected)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -471,6 +528,17 @@ pub enum PolicyBridgeResolution<I> {
     NoCandidate,
 }
 
+/// Typed qualification consumed by an outer candidate's fully-admissible
+/// check. Only `Available` admits the outer candidate; delete, ambiguity, and
+/// absence retain distinct diagnostic causes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BridgeQualification<I> {
+    Available(ResolvedPolicyBridge<I>),
+    RejectedByDelete(I),
+    Missing,
+    Ambiguous(Vec<I>),
+}
+
 /// Compare only the input/output Policy dimensions of two transition
 /// candidates. `Greater` means `a` dominates `b`.
 ///
@@ -522,8 +590,11 @@ pub fn resolve_policy_bridge<I: Clone>(
         [candidate] => PolicyBridgeResolution::Selected(ResolvedPolicyBridge {
             callable: (*candidate).clone(),
             result_type: candidate.output_type.resolve(request.source_type()),
-            result_policy: project_policy_query(request.target_query(), &candidate.output_policy)
-                .expect("selected candidate output was projected during admissibility"),
+            result_policy: project_transition_policy_domain(
+                request.target_query(),
+                &candidate.output_policy,
+            )
+            .expect("selected candidate output was projected during admissibility"),
         }),
         candidates => PolicyBridgeResolution::Ambiguous(
             candidates
@@ -561,15 +632,17 @@ pub fn apply_transition_policy_named_strategy<'a, I>(
     })
 }
 
-pub fn policy_bridge_is_available<I: Clone>(
+pub fn qualify_policy_bridge<I: Clone>(
     request: &PolicyTransitionRequest,
     candidates: &[PolicyTransitionCallable<I>],
     expectation: TransitionTypeExpectation,
-) -> bool {
-    matches!(
-        resolve_policy_bridge(request, candidates, expectation),
-        PolicyBridgeResolution::Selected(_) | PolicyBridgeResolution::RejectedByDelete(_)
-    )
+) -> BridgeQualification<I> {
+    match resolve_policy_bridge(request, candidates, expectation) {
+        PolicyBridgeResolution::Selected(selected) => BridgeQualification::Available(selected),
+        PolicyBridgeResolution::RejectedByDelete(id) => BridgeQualification::RejectedByDelete(id),
+        PolicyBridgeResolution::Ambiguous(ids) => BridgeQualification::Ambiguous(ids),
+        PolicyBridgeResolution::NoCandidate => BridgeQualification::Missing,
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -691,12 +764,13 @@ fn candidate_is_fully_admissible<I>(
     if !candidate.ordinary_fully_admissible
         || !has_transition_policy_strategy(candidate)
         || !input_type_accepts(candidate.input_type, request.source_type())
-        || project_policy_query(&candidate.input_policy, request.source_policy()).is_none()
+        || project_transition_policy_domain(&candidate.input_policy, request.source_policy())
+            .is_none()
     {
         return false;
     }
     let Some(result_policy) =
-        project_policy_query(request.target_query(), &candidate.output_policy)
+        project_transition_policy_domain(request.target_query(), &candidate.output_policy)
     else {
         return false;
     };
@@ -762,8 +836,8 @@ fn compare_input_policy_fit(
     left: &PolicyPair,
     right: &PolicyPair,
 ) -> PolicyPartialOrdering {
-    if project_policy_query(left, required).is_none()
-        || project_policy_query(right, required).is_none()
+    if project_transition_policy_domain(left, required).is_none()
+        || project_transition_policy_domain(right, required).is_none()
     {
         return PolicyPartialOrdering::Incomparable;
     }
@@ -775,8 +849,8 @@ fn compare_output_policy_fit(
     left: &PolicyPair,
     right: &PolicyPair,
 ) -> PolicyPartialOrdering {
-    if project_policy_query(required, left).is_none()
-        || project_policy_query(required, right).is_none()
+    if project_transition_policy_domain(required, left).is_none()
+        || project_transition_policy_domain(required, right).is_none()
     {
         return PolicyPartialOrdering::Incomparable;
     }

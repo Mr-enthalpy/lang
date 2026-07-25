@@ -287,10 +287,12 @@ Implemented substrate after this correction:
   `project_p1` result completes binding elaboration. Only an empty projection
   over a value-bearing result can prepare a request; pure types use a
   projection-only `Infallible` carrier. Literal helpers separate literal
-  family, atomic family `T`, and concrete numeric `Tnum`, mapping only installed
-  core numeric symbols to canonical `TypeValueId`. The caller-supplied
-  transition candidate prototype preserves input × output Pareto preference
-  and direct-only selection.
+  family, atomic builtin type `T`, and concrete numeric `Tnum`; registries store
+  current first-order TypeValue projections derived from resolved Type symbols,
+  not final canonical type-value identities. The caller-supplied transition
+  candidate prototype preserves input × output Pareto preference and
+  direct-only selection. Its typed bridge qualification distinguishes
+  available, delete-rejected, missing, and ambiguous outcomes.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -305,10 +307,16 @@ Not implemented after this correction:
 - Routing ordinary source initializers/bindings from canonical `project_p1`
   failure into transition preparation without changing the existing query
   semantics.
-- Replacing the caller-supplied transition candidate prototype with global
-  Symbol/Val2/InvocationFrame/ordinary-function-object routing.
+- Generalizing the implemented `BindingP1Demand` entry point to parameter,
+  result, and mechanical `PolicyDemand` consumers.
+- Replacing the caller-supplied transition candidate prototype with
+  operation-selected Symbol/Val2/InvocationFrame/ordinary-function-object
+  routing; whether one or several distinguished operations exist remains open.
 - Full `ref` storage construction, `share`/`alias` composition, `[[global]]`
   seal scanning, and meta/compile/seal transition legality.
+- Runtime owner/place allocation, static-materialization cache identity, and
+  the generated-storage boundary that keeps `[[global]]` out of the
+  source-visible namespace graph.
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call
   execution checker.
@@ -319,6 +327,18 @@ Not implemented after this correction:
   frame.
 - Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
+
+Deferred cross-Policy work must preserve these already-recorded design
+constraints:
+
+```text
+static frontier = first consumer requiring an unavailable Policy view
+compile -> runtime = new runtime object, not lifetime extension
+addressable runtime value => ordinary owner/place
+compile-ref cache identity = referent identity, not pointee equality
+generated [[global]] storage != source-visible NamespaceGraph mutation
+share/alias may compose ref materialization plus their own access rules
+```
 
 Build-world integration gates (not blockers for the current frontend/build
 substrate):

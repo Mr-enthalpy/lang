@@ -331,7 +331,8 @@ Must cover:
   conservative projection-empty value-transition preparation over mixed result
   collections, projection-only absent entries, complete value/Pattern result
   carriers, typed Runtime Val1 legality, and a transition-specific named
-  strategy using input × output Policy without transitive search
+  strategy using input × output Policy without transitive search; typed bridge
+  qualification keeps delete rejection distinct from availability
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -372,7 +373,10 @@ a request from eligible value-bearing entries after Pattern-side slicing.
 Separate helpers cover T/Tnum literal selection, complete value/Pattern
 transition results, typed runtime failures, and a transitional named-strategy
 prototype that applies bidirectional Policy preference only after its ordinary
-input-type predecessor.
+input-type predecessor. T and Tnum registries carry current first-order
+TypeValue projections derived from installed Type symbols, not final canonical
+type-value identity. The implemented consumer is binding P1; generic
+parameter/result/mechanical Policy-demand routing remains future work.
 This does **not** complete v0.7 or v0.8: only the narrow
 `(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
 package manager, type checker, policy checker, type-value equality, access-tree
