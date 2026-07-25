@@ -1177,24 +1177,22 @@ _See also: PolicyBinding,
 
 ## Policy Binding
 
-The P1 elaboration judgment for a binding:
+The future P1 projection judgment for a binding:
 
 ```text
 [P1] let x = expr
 ```
 
-Omitted P1 keeps the fully inferred `DefaultP1(P2)` result. An explicit equal
-pair is also identity. A single `Q` selects values visible under `Q` and
-retains each value's associated Pattern component. An explicit `Qv:Qp` filters
-both components. Therefore single P1 `Q` is not pair `Q:Q`. If the target is
-already carried by the result, projection crops that policy slice while
-preserving symbol, value, and Pattern identity.
+Omitted P1 keeps the fully inferred result. A single `Q` selects values visible
+under `Q` and retains each value's associated Pattern component. An explicit
+`Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
+The selected slice must be non-empty and admitted by the destination binding.
+Projection crops the policy slice while preserving symbol and Pattern identity;
+it does not return an unchanged entry after a mere intersection check.
 
-Elaboration projects all requested identity-preserving slices from the
-multi-entry result and separately derives one demand for each missing Val1
-slice. Thus `compile:compile -> (compile || runtime):compile` retains the
-original compile value and requests only a new runtime value. Pure types use a
-projection-only carrier and can never form transition demands.
+The bounded transition prototype does not change this rule. Any non-empty
+projection completes binding elaboration; alternatives written in the query but
+absent from the RHS are not obligations to manufacture values.
 
 There is no general prohibition on runtime bindings:
 
@@ -1216,22 +1214,26 @@ Policy Transition,
 
 ## Policy Transition
 
-A request to create one missing value slice:
+A prototype request considered only after an ordinary P1 query has no existing
+value-bearing projection:
 
 ```text
 PolicyTransitionRequest {
   source_policy,
-  target_policy,
+  target_query,
   source_type,
   source_value,
   provenance
 }
 ```
 
+The target is still query-shaped. A candidate output satisfies it through a
+non-empty ordinary projection; the complete query domain is not manufactured.
 The current implementation provides only a caller-supplied candidate-ordering
 prototype. Input and output Policy fitness form one product/Pareto partial
 order; crossed advantages are ambiguous and declaration order is irrelevant.
-Final global Symbol/function-object routing remains future work. No transitive
+Absent Val1 cannot construct the request. Initializer integration and final
+global Symbol/function-object routing remain future work. No transitive
 coercion graph or temporary-lifetime extension is implied.
 
 _See also: Policy Binding, Policy Pair,

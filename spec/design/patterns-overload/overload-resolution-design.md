@@ -58,9 +58,9 @@ Implemented for this slice:
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
-- a direct cross-Policy value-transition adapter that reuses ordinary
-  maximal-element selection, compares input and output Policy as one product
-  partial order, and never performs transitive bridge search.
+- a caller-supplied cross-Policy candidate-ordering prototype that reuses the
+  ordinary maximal-element helper, compares input and output Policy as one
+  product partial order, and never performs transitive bridge search.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
 symbol, projects and enumerates its heterogeneous value facet, observes each
@@ -310,10 +310,10 @@ object view available at the current lookup stage. Base path-to-Symbol
 resolution is not conditioned by P1.
 
 P1 elaboration first applies `project_p1` across the complete
-`PolicyResultEntry[]`, retaining every requested identity-preserving slice.
-Each remaining requested Val1 slice becomes a separate
-`PolicyTransitionDemand`; an existing compile slice and a missing runtime
-demand can therefore coexist in the same plan.
+`PolicyResultEntry[]`. Any non-empty result is the identity-preserving binding
+projection; alternatives named by the query but absent from that result are not
+manufactured. The bounded transition prototype can be reached only when the
+complete projection is empty and the source has a value.
 
 The current transition candidate representation is only a comparison
 prototype. It reuses maximal-element selection but does not yet route through a
@@ -554,22 +554,23 @@ Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.
 
-For the distinct `SourcePolicy -> TargetPolicy` transition operation, both
-endpoints are known at the call site. Its Policy-specific comparison therefore
-adds:
+For the bounded `SourcePolicy -> TargetPolicyQuery` transition prototype, the
+source view and requested output query are known at the call site. Its
+Policy-specific comparison therefore adds:
 
 ```text
 InputPolicyPreference(candidate, SourcePolicy)
   x
-OutputPolicyPreference(candidate, TargetPolicy)
+OutputPolicyPreference(candidate, TargetPolicyQuery)
 ```
 
 This is one Pareto order, not an input-first/output-second sequence. Better
 input with worse output is incomparable with worse input and better output.
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
-admissibility check only. Existing-slice P1 projection is checked separately;
-it creates no transition request.
+admissibility check only. Candidate output is admissible when ordinary
+projection by the target query is non-empty. Existing-slice P1 projection is
+checked first; any non-empty binding projection creates no transition request.
 
 ---
 

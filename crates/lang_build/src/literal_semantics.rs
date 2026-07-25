@@ -3,6 +3,9 @@
 //! `AtomicBuiltinFamily` is classification material (`T`), not a
 //! `TypeValueId`. Numeric values receive a concrete `Tnum` selected by context
 //! and resolved through canonical core Type symbols.
+//!
+//! This helper is not wired into `evaluate_initializer_best_effort`; it does
+//! not define an unsuffixed numeric default or claim initializer integration.
 
 use std::collections::BTreeMap;
 
@@ -24,6 +27,17 @@ pub enum AtomicBuiltinFamily {
     Float,
     Buffer,
     Str,
+}
+
+/// Syntactic literal family retained from normalized input.
+///
+/// This is not the atomic builtin family `T`: an integer spelling may later
+/// select either a signed or unsigned concrete numeric type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LiteralFamily {
+    Integer,
+    Float,
+    String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -79,13 +93,7 @@ impl NumericTypeRegistry {
             (NumericTypeKey::new(NumericFamily::Uint, 8), "uint8"),
             (NumericTypeKey::new(NumericFamily::Uint, 16), "uint16"),
             (NumericTypeKey::new(NumericFamily::Uint, 32), "uint32"),
-            (NumericTypeKey::new(NumericFamily::Uint, 64), "uint64"),
-            (NumericTypeKey::new(NumericFamily::Int, 8), "int8"),
-            (NumericTypeKey::new(NumericFamily::Int, 16), "int16"),
-            (NumericTypeKey::new(NumericFamily::Int, 32), "int32"),
-            (NumericTypeKey::new(NumericFamily::Int, 64), "int64"),
             (NumericTypeKey::new(NumericFamily::Float, 32), "float32"),
-            (NumericTypeKey::new(NumericFamily::Float, 64), "float64"),
         ] {
             let symbol = world
                 .snapshot()
@@ -111,7 +119,7 @@ pub struct LiteralValue {
     pub id: SemanticValueId,
     pub kind: NormLiteralKind,
     pub text: String,
-    pub literal_family: AtomicBuiltinFamily,
+    pub literal_family: LiteralFamily,
     pub numeric_type: Option<NumericTypeKey>,
     pub type_value: TypeValueId,
     pub policy: PolicyPair,
@@ -121,11 +129,15 @@ pub struct LiteralValue {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LiteralMaterializationFailure {
     NotLiteral,
-    NumericLiteralRequiresConcreteNumericKey {
+    AtomicNumericFamilyIsNotConcrete {
         family: AtomicBuiltinFamily,
     },
-    FamilySelectionMismatch {
-        literal: AtomicBuiltinFamily,
+    NumericFamilySelectionMismatch {
+        literal: LiteralFamily,
+        selected: NumericFamily,
+    },
+    AtomicFamilySelectionMismatch {
+        literal: LiteralFamily,
         selected: AtomicBuiltinFamily,
     },
     ConcreteNumericTypeUnavailable {
@@ -149,19 +161,27 @@ pub fn materialize_literal_value(
         return Err(LiteralMaterializationFailure::NotLiteral);
     };
     let literal_family = match kind {
-        NormLiteralKind::Int => AtomicBuiltinFamily::Int,
-        NormLiteralKind::Float => AtomicBuiltinFamily::Float,
-        NormLiteralKind::String => AtomicBuiltinFamily::Str,
+        NormLiteralKind::Int => LiteralFamily::Integer,
+        NormLiteralKind::Float => LiteralFamily::Float,
+        NormLiteralKind::String => LiteralFamily::String,
     };
 
     let (numeric_type, type_value) = match selection {
         LiteralTypeSelection::Numeric(key) => {
-            let selected_family = atomic_family_from_numeric(key.family);
-            if selected_family != literal_family {
-                return Err(LiteralMaterializationFailure::FamilySelectionMismatch {
-                    literal: literal_family,
-                    selected: selected_family,
-                });
+            let compatible = match literal_family {
+                LiteralFamily::Integer => {
+                    matches!(key.family, NumericFamily::Uint | NumericFamily::Int)
+                }
+                LiteralFamily::Float => key.family == NumericFamily::Float,
+                LiteralFamily::String => false,
+            };
+            if !compatible {
+                return Err(
+                    LiteralMaterializationFailure::NumericFamilySelectionMismatch {
+                        literal: literal_family,
+                        selected: key.family,
+                    },
+                );
             }
             let type_value = numeric_types
                 .get(key)
@@ -169,19 +189,23 @@ pub fn materialize_literal_value(
             (Some(key), type_value)
         }
         LiteralTypeSelection::Atomic { family, type_value } => {
-            if family != literal_family {
-                return Err(LiteralMaterializationFailure::FamilySelectionMismatch {
-                    literal: literal_family,
-                    selected: family,
-                });
-            }
             if matches!(
                 family,
                 AtomicBuiltinFamily::Uint | AtomicBuiltinFamily::Int | AtomicBuiltinFamily::Float
             ) {
                 return Err(
-                    LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericKey {
-                        family,
+                    LiteralMaterializationFailure::AtomicNumericFamilyIsNotConcrete { family },
+                );
+            }
+            let compatible = matches!(
+                (literal_family, family),
+                (LiteralFamily::String, AtomicBuiltinFamily::Str)
+            );
+            if !compatible {
+                return Err(
+                    LiteralMaterializationFailure::AtomicFamilySelectionMismatch {
+                        literal: literal_family,
+                        selected: family,
                     },
                 );
             }
@@ -199,14 +223,6 @@ pub fn materialize_literal_value(
         policy: compile_literal_policy(),
         provenance,
     })
-}
-
-fn atomic_family_from_numeric(family: NumericFamily) -> AtomicBuiltinFamily {
-    match family {
-        NumericFamily::Uint => AtomicBuiltinFamily::Uint,
-        NumericFamily::Int => AtomicBuiltinFamily::Int,
-        NumericFamily::Float => AtomicBuiltinFamily::Float,
-    }
 }
 
 fn compile_literal_policy() -> PolicyPair {

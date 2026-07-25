@@ -73,13 +73,7 @@ pub fn install_core_bootstrap(
         "share",
         "uint16",
         "uint32",
-        "uint64",
-        "int8",
-        "int16",
-        "int32",
-        "int64",
         "float32",
-        "float64",
     ] {
         insert_core_type(
             &mut delta,

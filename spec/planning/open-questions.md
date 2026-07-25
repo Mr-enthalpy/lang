@@ -282,12 +282,15 @@ Implemented substrate after this correction:
   carriers, and an owner-aware namespace forest with explicit
   `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
   view routing, `DefaultExtractionView`, and typed lookup failures.
-- `lang_build` now decomposes P1 across `PolicyResultEntry[]` into retained
-  existing slices plus zero or more missing Val1 demands. Pure types use a
-  projection-only `Infallible` carrier. Literal typing separates atomic family
-  `T` from concrete numeric `Tnum` and connects existing core numeric symbols
-  to canonical `TypeValueId`. The transition candidate-ordering prototype
-  preserves input × output Pareto preference and direct-only selection.
+- `lang_build` now has an implementation-only transition preparation helper
+  that first preserves canonical ordinary P1 projection: any non-empty
+  `project_p1` result completes binding elaboration. Only an empty projection
+  over a value-bearing result can prepare a request; pure types use a
+  projection-only `Infallible` carrier. Literal helpers separate literal
+  family, atomic family `T`, and concrete numeric `Tnum`, mapping only installed
+  core numeric symbols to canonical `TypeValueId`. The caller-supplied
+  transition candidate prototype preserves input × output Pareto preference
+  and direct-only selection.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -299,8 +302,9 @@ Not implemented after this correction:
 - Connecting the candidate-level export-view projector to the persistent
   namespace graph and authority-sensitive external resolver.
 - Integrating structural compile-flow projection with the complete evaluator.
-- Routing all ordinary source initializers/bindings through the new
-  multi-entry decomposition.
+- Routing ordinary source initializers/bindings from canonical `project_p1`
+  failure into transition preparation without changing the existing query
+  semantics.
 - Replacing the caller-supplied transition candidate prototype with global
   Symbol/Val2/InvocationFrame/ordinary-function-object routing.
 - Full `ref` storage construction, `share`/`alias` composition, `[[global]]`

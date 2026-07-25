@@ -168,23 +168,14 @@ lowered to the same set insertion operation.
 Three policy contexts can occupy a binding-shaped surface slot, but use three
 different elaborators.
 
-### 3.1 Ordinary binding identity, projection, and transition
+### 3.1 Ordinary binding projection
 
 ```lang
 [P1] let x = expr;
 ```
 
-For one concrete RHS result `P2`, first derive:
-
-```text
-DefaultP1(P2) = (P2v || P2p):P2p
-```
-
-Omitted P1 retains that complete inferred result. An explicit P1 equal to it
-has the same semantic result and differs only in provenance.
-
-An explicit target already carried by the result is an identity-preserving
-projection. A single policy is value-dominant:
+Omitted P1 retains the complete inferred RHS result. A single policy is a
+value-dominant projection:
 
 ```lang
 Q let x = expr;
@@ -216,31 +207,12 @@ Pp = compile
 It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
-Projection over a multi-entry/multi-slice RHS and cross-Policy value transition
-are different operations. Elaboration does not classify the whole target as
-one or the other:
-
-```text
-requested P1
-  -> existing_slices = project_p1(requested, PolicyResultEntry[])
-  -> missing_value_demands = requested Val1 slices not already selected
-  -> final entries = existing_slices + produced demand results
-```
-
-A missing-value demand carries source/target pairs, source type/value
-identities, and provenance. The first frozen demand is compile/static value
-materialization into a runtime value while preserving Pattern policy. See
+The bounded cross-Policy prototype does not change this query rule. It may
+prepare transition candidates only after `project_p1` returns no entry for a
+value-bearing result. A non-empty projection is the binding result; unselected
+alternatives in the written query are not missing-value obligations. Pure
+`absent:Pp` results remain projection-only. See
 `../../contracts/v0.6-cross-policy-value-transition.md`.
-
-For `compile:compile -> (compile || runtime):compile`, the compile entry keeps
-its original `SemanticValueId`, while a separate
-`compile:compile -> runtime:compile` demand produces the runtime entry. Runtime
-legality is checked against that missing runtime slice, not the whole requested
-P1.
-
-Pure types use `PolicyResultEntry<Infallible, Pattern>` and a projection-only
-elaborator with no transition field. An unavailable Pattern slice is a typed
-projection failure.
 
 ### 3.2 Formal parameter policy pattern
 
@@ -825,19 +797,18 @@ candidate, and future lifetime rules may not change that result.
 ## 14. Transitional implementation boundary
 
 The typed implementation model contains dedicated policy AST nodes,
-`PolicyPair`, typed dimensions, three distinct contextual P1 elaborators, true
-slice restriction, multi-entry existing-slice/missing-demand decomposition,
-pure-type projection-only elaboration, typed Runtime Val1 transition failures,
-and a transitional Policy candidate-ordering prototype,
-three `Phase` values, phase exposure, mechanical flow projection, Wpre closure,
-export-retention closure, and phase-aware partial-order selection.
+`PolicyPair`, typed dimensions, three distinct P1 elaborators, true slice
+restriction, three `Phase` values, phase exposure, mechanical flow projection,
+Wpre closure, export-retention closure, and phase-aware partial-order
+selection.
 
 Transition candidate preference consumes both input and output Policy through
 one product/Pareto order. This is specific to a known `SourcePolicy ->
-TargetPolicy` demand; it does not add output-type preference to ordinary type
-overload selection. The current adapter shares the maximal-element helper but
-does not yet perform global Symbol lookup, `InvocationFrame` construction, or
-ordinary function-object invocation.
+TargetPolicyQuery` prototype request; it does not add output-type preference to
+ordinary type overload selection. The current adapter is reached only after an
+empty ordinary projection, shares the maximal-element helper, and does not yet
+perform initializer integration, global Symbol lookup, `InvocationFrame`
+construction, or ordinary function-object invocation.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
 transport. They cannot represent `||` structure, Pattern association of a

@@ -101,7 +101,7 @@ pub use invocation_frame::{
     SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
 };
 pub use literal_semantics::{
-    materialize_literal_value, AtomicBuiltinFamily, LiteralMaterializationFailure,
+    materialize_literal_value, AtomicBuiltinFamily, LiteralFamily, LiteralMaterializationFailure,
     LiteralTypeSelection, LiteralValue, NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
@@ -204,15 +204,16 @@ pub use policy_pair::{
     ValuePresence, WpreRoots,
 };
 pub use policy_transition::{
-    assemble_value_binding_slices, compare_policy_transition_candidates, default_p1,
+    assemble_transition_results, compare_policy_transition_candidates,
     elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
     policy_bridge_is_available, resolve_policy_bridge, validate_runtime_transition,
     OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration,
     P1ElaborationFailure, P1Origin, PolicyBridgeBody, PolicyBridgeEffect,
     PolicyBridgeInvocationFailure, PolicyBridgeInvocationResult, PolicyBridgeResolution,
     PolicyPartialOrdering, PolicyTransitionCallable, PolicyTransitionDemand,
-    PolicyTransitionFailure, PolicyTransitionRequest, PureTypeP1Elaboration, ResolvedPolicyBridge,
-    SemanticValueRef, TransitionTypeExpectation, TransitionedValue,
+    PolicyTransitionFailure, PolicyTransitionRequest, PolicyTransitionRequestFailure,
+    PureTypeP1Elaboration, ResolvedPolicyBridge, SemanticValueRef, TransitionTypeExpectation,
+    TransitionedValue,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

@@ -3,19 +3,20 @@ mod support;
 use std::convert::Infallible;
 
 use lang_build::{
-    assemble_value_binding_slices, compare_policy_transition_candidates, default_p1,
-    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
-    materialize_literal_value, policy_bridge_is_available, resolve_policy_bridge,
-    select_policy_overload, type_value_projection_from_type_symbol, validate_runtime_transition,
-    AtomicBuiltinFamily, CompilationWorld, LiteralMaterializationFailure, LiteralTypeSelection,
-    MutabilityActualFrame, MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey,
-    NumericTypeRegistry, OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput,
-    P1ElaborationFailure, P1Origin, PatternComponentPolicy, Phase, PhaseOverloadCandidate,
+    assemble_transition_results, compare_policy_transition_candidates,
+    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, evaluate_initializer_best_effort,
+    invoke_resolved_policy_bridge, materialize_literal_value, policy_bridge_is_available,
+    resolve_policy_bridge, select_policy_overload, type_value_projection_from_type_symbol,
+    validate_runtime_transition, AtomicBuiltinFamily, CompilationWorld, EvalMode, EvalOutcome,
+    LiteralFamily, LiteralMaterializationFailure, LiteralTypeSelection, MutabilityActualFrame,
+    MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey, NumericTypeRegistry,
+    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration, P1ElaborationFailure,
+    P1Origin, P1Projection, PatternComponentPolicy, Phase, PhaseOverloadCandidate,
     PolicyBridgeBody, PolicyBridgeResolution, PolicyOverloadCandidate, PolicyOverloadSelection,
     PolicyPair, PolicyPartialOrdering, PolicyResultEntry, PolicyStage, PolicyTransitionCallable,
-    PolicyTransitionFailure, PolicyTransitionRequest, Provenance, SemanticValueId,
-    SemanticValueRef, StageSet, TransitionTypeExpectation, TypeValueId, ValueComponentPolicy,
-    ValueMutability, ValuePresence,
+    PolicyTransitionFailure, PolicyTransitionRequest, PolicyTransitionRequestFailure, Provenance,
+    ResidualReason, SemanticValueId, SemanticValueRef, StageSet, TransitionTypeExpectation,
+    TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
 };
 use support::{empty_app_manifest, initializer_from_source};
 
@@ -138,13 +139,14 @@ fn pure_entry(pattern_stages: &[PolicyStage]) -> PolicyResultEntry<Infallible, &
 }
 
 fn request(source_policy: PolicyPair, target_policy: PolicyPair) -> PolicyTransitionRequest {
-    PolicyTransitionRequest {
+    PolicyTransitionRequest::new(
         source_policy,
         target_policy,
-        source_type: TypeValueId(10),
-        source_value: SemanticValueId(20),
-        provenance: Provenance::new("transition request"),
-    }
+        TypeValueId(10),
+        SemanticValueId(20),
+        Provenance::new("transition request"),
+    )
+    .expect("value-bearing transition request")
 }
 
 fn callable(
@@ -181,7 +183,7 @@ fn exact_copy(id: &'static str) -> PolicyTransitionCallable<&'static str> {
 }
 
 #[test]
-fn omitted_p1_retains_defaulted_entries_without_demands() {
+fn omitted_ordinary_p1_preserves_complete_rhs_without_stage_lift() {
     let result = vec![value_entry(
         1,
         10,
@@ -190,229 +192,236 @@ fn omitted_p1_retains_defaulted_entries_without_demands() {
     )];
     let elaboration =
         elaborate_value_binding_p1(&result, None, Provenance::new("omitted P1")).unwrap();
-    assert_eq!(elaboration.origin, P1Origin::Inferred);
-    assert_eq!(elaboration.requested, None);
-    assert!(elaboration.missing_value_demands.is_empty());
+    let P1Elaboration::Projected {
+        origin,
+        requested,
+        selected,
+    } = elaboration
+    else {
+        panic!("omitted ordinary P1 must project the complete RHS");
+    };
+    assert_eq!(origin, P1Origin::Inferred);
+    assert_eq!(requested, None);
+    assert_eq!(selected, result);
     assert_eq!(
-        elaboration.existing_slices[0].value_policy.stages,
-        compile_runtime_pair().value.stages
-    );
-    assert_eq!(
-        default_p1(&pair(&[PolicyStage::Runtime], &[PolicyStage::Compile], &[])),
-        compile_runtime_pair()
+        selected[0].value_policy.stages,
+        StageSet::from([PolicyStage::Runtime]),
+        "ordinary binding must not copy the function-object P1 stage lift"
     );
 }
 
 #[test]
-fn explicit_identical_p1_is_an_existing_identity_slice() {
+fn explicit_identical_p1_is_an_existing_projection() {
     let result = vec![value_entry(
         1,
         10,
         &[PolicyStage::Compile],
         &[PolicyStage::Compile],
     )];
+    let projection = P1Projection::Pair(compile_pair());
     let elaboration = elaborate_value_binding_p1(
         &result,
-        Some(&compile_pair()),
+        Some(&projection),
         Provenance::new("explicit identity"),
     )
     .unwrap();
-    assert_eq!(elaboration.origin, P1Origin::Explicit);
-    assert_eq!(elaboration.existing_slices.len(), 1);
-    assert!(elaboration.missing_value_demands.is_empty());
-    assert_eq!(
-        elaboration.existing_slices[0].value.unwrap().id,
-        SemanticValueId(1)
-    );
+    let P1Elaboration::Projected {
+        origin, selected, ..
+    } = elaboration
+    else {
+        panic!("identical P1 must remain projection");
+    };
+    assert_eq!(origin, P1Origin::Explicit);
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].value.unwrap().id, SemanticValueId(1));
 }
 
 #[test]
-fn explicit_existing_runtime_slice_preserves_semantic_value_identity() {
+fn meta_or_runtime_query_over_meta_only_source_selects_meta_without_transition() {
     let result = vec![value_entry(
         1,
         10,
-        &[PolicyStage::Compile, PolicyStage::Runtime],
-        &[PolicyStage::Compile],
+        &[PolicyStage::Meta],
+        &[PolicyStage::Meta],
     )];
+    let query = P1Projection::ValueDominant {
+        value: pair(
+            &[PolicyStage::Meta, PolicyStage::Runtime],
+            &[PolicyStage::Meta],
+            &[],
+        )
+        .value,
+    };
     let elaboration = elaborate_value_binding_p1(
         &result,
-        Some(&runtime_pair()),
-        Provenance::new("existing runtime slice"),
+        Some(&query),
+        Provenance::new("meta || runtime query"),
     )
     .unwrap();
-    assert_eq!(elaboration.existing_slices.len(), 1);
-    assert!(elaboration.missing_value_demands.is_empty());
-    assert_eq!(
-        elaboration.existing_slices[0].value.unwrap().id,
-        SemanticValueId(1)
-    );
-    assert_eq!(
-        elaboration.existing_slices[0].value_policy.stages,
-        runtime_pair().value.stages
-    );
-}
-
-#[test]
-fn existing_compile_slice_and_missing_runtime_demand_are_combined() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
-    let numeric_types = NumericTypeRegistry::from_core_world(&world).expect("numeric registry");
-    let int32 = NumericTypeKey::new(NumericFamily::Int, 32);
-    let int32_type = numeric_types.get(int32).expect("canonical core int32");
-    let expr = initializer_from_source("let x = 42");
-    let literal = materialize_literal_value(
-        &expr,
-        &numeric_types,
-        LiteralTypeSelection::Numeric(int32),
-        SemanticValueId(20),
-        Provenance::new("42"),
-    )
-    .expect("context selected concrete int32");
-    let result = vec![PolicyResultEntry {
-        value: Some(SemanticValueRef {
-            id: literal.id,
-            type_value: literal.type_value,
-        }),
-        value_policy: literal.policy.value.clone(),
-        pattern: "literal-pattern",
-        pattern_policy: literal.policy.pattern.clone(),
-    }];
-
-    let elaboration = elaborate_value_binding_p1(
-        &result,
-        Some(&compile_runtime_pair()),
-        Provenance::new("(compile || runtime) let x = 42"),
-    )
-    .expect("P1 decomposes into existing and missing slices");
-    assert_eq!(elaboration.existing_slices.len(), 1);
-    assert_eq!(
-        elaboration.existing_slices[0].value.unwrap().id,
-        literal.id,
-        "the compile slice keeps the original semantic value"
-    );
-    assert_eq!(elaboration.missing_value_demands.len(), 1);
-    let demand = &elaboration.missing_value_demands[0].request;
-    assert_eq!(demand.source_policy, compile_pair());
-    assert_eq!(demand.target_policy, runtime_pair());
-    validate_runtime_transition(&demand.source_policy, &demand.target_policy)
-        .expect("only the missing runtime slice is validated");
-
-    let candidate = callable(
-        "builtin-copy",
-        OrdinaryCallableTypeInput::Exact(int32_type),
-        OrdinaryCallableTypeOutput::SameAsInput,
-        compile_pair(),
-        runtime_pair(),
-        false,
-        PolicyBridgeBody::BuiltinValueCopy,
-    );
-    let PolicyBridgeResolution::Selected(selected) =
-        resolve_policy_bridge(demand, &[candidate], TransitionTypeExpectation::default())
-    else {
-        panic!("copy candidate must be selected");
+    let P1Elaboration::Projected { selected, .. } = elaboration else {
+        panic!("a non-empty meta projection must not manufacture runtime");
     };
-    let produced = invoke_resolved_policy_bridge(&selected, demand, SemanticValueId(21))
-        .expect("copy prototype")
-        .value;
-    let combined = assemble_value_binding_slices(&elaboration, &[produced]).unwrap();
-    assert_eq!(combined.len(), 2);
-    assert_eq!(combined[0].value.unwrap().id, SemanticValueId(20));
-    assert_eq!(combined[1].value.unwrap().id, SemanticValueId(21));
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].value.unwrap().id, SemanticValueId(1));
     assert_eq!(
-        combined[0]
-            .value_policy
-            .stages
-            .union(&combined[1].value_policy.stages),
-        compile_runtime_pair().value.stages
+        selected[0].value_policy.stages,
+        StageSet::from([PolicyStage::Meta])
     );
 }
 
 #[test]
-fn multiple_missing_value_stages_produce_distinct_direct_demands() {
+fn compile_or_runtime_query_over_compile_source_selects_compile_without_transition() {
     let result = vec![value_entry(
         20,
         10,
         &[PolicyStage::Compile],
         &[PolicyStage::Compile],
     )];
-    let target = pair(
-        &[
-            PolicyStage::Meta,
-            PolicyStage::Compile,
-            PolicyStage::Runtime,
-        ],
-        &[PolicyStage::Compile],
-        &[],
-    );
+    let query = P1Projection::Pair(compile_runtime_pair());
     let elaboration = elaborate_value_binding_p1(
         &result,
-        Some(&target),
-        Provenance::new("multi-demand target"),
+        Some(&query),
+        Provenance::new("compile || runtime query"),
     )
-    .unwrap();
-    assert_eq!(elaboration.existing_slices.len(), 1);
-    assert_eq!(elaboration.missing_value_demands.len(), 2);
+    .expect("the available compile branch satisfies the query");
+    let P1Elaboration::Projected { selected, .. } = elaboration else {
+        panic!("a non-empty compile projection must not request runtime");
+    };
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].value.unwrap().id, SemanticValueId(20));
     assert_eq!(
-        elaboration.missing_value_demands[0]
-            .request
-            .target_policy
-            .value
-            .stages,
-        StageSet::from([PolicyStage::Meta])
-    );
-    assert_eq!(
-        elaboration.missing_value_demands[1]
-            .request
-            .target_policy
-            .value
-            .stages,
-        StageSet::from([PolicyStage::Runtime])
+        selected[0].value_policy.stages,
+        StageSet::from([PolicyStage::Compile])
     );
 }
 
 #[test]
-fn multi_entry_elaboration_preserves_each_identity_and_derives_each_demand() {
+fn empty_runtime_projection_prepares_one_direct_transition_demand() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile],
+        &[PolicyStage::Compile],
+    )];
+    let query = P1Projection::Pair(runtime_pair());
+    let elaboration =
+        elaborate_value_binding_p1(&result, Some(&query), Provenance::new("runtime query"))
+            .unwrap();
+    let P1Elaboration::Transition { requested, demands } = elaboration else {
+        panic!("empty value projection may enter transition preparation");
+    };
+    assert_eq!(requested, query);
+    assert_eq!(demands.len(), 1);
+    let demand = &demands[0].request;
+    assert_eq!(demand.source_policy(), &compile_pair());
+    assert_eq!(demand.target_query(), &runtime_pair());
+    assert_eq!(demand.source_value(), SemanticValueId(20));
+}
+
+#[test]
+fn transition_output_satisfies_the_p1_query_by_non_empty_projection() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile],
+        &[PolicyStage::Compile],
+    )];
+    let broad_query_pair = pair(
+        &[PolicyStage::Meta, PolicyStage::Runtime],
+        &[PolicyStage::Compile],
+        &[],
+    );
+    let query = P1Projection::Pair(broad_query_pair.clone());
+    let P1Elaboration::Transition { demands, .. } = elaborate_value_binding_p1(
+        &result,
+        Some(&query),
+        Provenance::new("meta || runtime query over compile"),
+    )
+    .unwrap() else {
+        panic!("the compile source has no slice selected by this query");
+    };
+
+    let candidate = exact_copy("compile-to-runtime");
+    let PolicyBridgeResolution::Selected(selected) = resolve_policy_bridge(
+        &demands[0].request,
+        &[candidate],
+        TransitionTypeExpectation::default(),
+    ) else {
+        panic!("a runtime output is one valid answer to meta || runtime");
+    };
+    assert_eq!(selected.result_policy, runtime_pair());
+    validate_runtime_transition(demands[0].request.source_policy(), &selected.result_policy)
+        .expect("validate the selected output slice, not the broad P1 query");
+
+    let produced =
+        invoke_resolved_policy_bridge(&selected, &demands[0].request, SemanticValueId(21))
+            .expect("prototype invocation")
+            .value;
+    let assembled = assemble_transition_results(&demands, &[produced]).unwrap();
+    assert_eq!(assembled.len(), 1);
+    assert_eq!(assembled[0].value.unwrap().id, SemanticValueId(21));
+    assert_eq!(
+        assembled[0].value_policy.stages,
+        runtime_pair().value.stages
+    );
+    assert_ne!(
+        assembled[0].value_policy.stages, broad_query_pair.value.stages,
+        "the query alternatives are not manufactured as an exact output domain"
+    );
+}
+
+#[test]
+fn multi_entry_query_stops_after_any_existing_projection() {
     let result = vec![
         value_entry(20, 10, &[PolicyStage::Compile], &[PolicyStage::Compile]),
-        value_entry(30, 11, &[PolicyStage::Compile], &[PolicyStage::Compile]),
+        value_entry(30, 11, &[PolicyStage::Runtime], &[PolicyStage::Compile]),
     ];
+    let query = P1Projection::Pair(runtime_pair());
     let elaboration = elaborate_value_binding_p1(
         &result,
-        Some(&compile_runtime_pair()),
-        Provenance::new("multi-entry target"),
+        Some(&query),
+        Provenance::new("multi-entry runtime query"),
     )
     .unwrap();
-    assert_eq!(
-        elaboration
-            .existing_slices
-            .iter()
-            .map(|entry| entry.value.unwrap().id)
-            .collect::<Vec<_>>(),
-        vec![SemanticValueId(20), SemanticValueId(30)]
-    );
-    assert_eq!(
-        elaboration
-            .missing_value_demands
-            .iter()
-            .map(|demand| demand.request.source_value)
-            .collect::<Vec<_>>(),
-        vec![SemanticValueId(20), SemanticValueId(30)]
-    );
-    assert!(elaboration
-        .missing_value_demands
-        .iter()
-        .all(|demand| demand.request.target_policy == runtime_pair()));
+    let P1Elaboration::Projected { selected, .. } = elaboration else {
+        panic!("an existing runtime entry satisfies the complete P1 query");
+    };
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].value.unwrap().id, SemanticValueId(30));
+}
+
+#[test]
+fn value_dominant_transition_query_preserves_the_source_pattern_component() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile],
+        &[PolicyStage::Compile],
+    )];
+    let query = P1Projection::ValueDominant {
+        value: runtime_pair().value,
+    };
+    let P1Elaboration::Transition { demands, .. } = elaborate_value_binding_p1(
+        &result,
+        Some(&query),
+        Provenance::new("value-dominant runtime query"),
+    )
+    .unwrap() else {
+        panic!("runtime is not an existing value slice");
+    };
+    assert_eq!(demands[0].request.target_query(), &runtime_pair());
 }
 
 #[test]
 fn pure_type_can_project_pattern_slice_without_value_identity_or_transition_api() {
     let result = vec![pure_entry(&[PolicyStage::Meta, PolicyStage::Compile])];
-    let target = absent_pair(&[PolicyStage::Compile]);
+    let target = P1Projection::Pair(absent_pair(&[PolicyStage::Compile]));
     let elaboration =
         elaborate_pure_type_binding_p1(&result, Some(&target)).expect("pure compile slice");
-    assert_eq!(elaboration.existing_slices.len(), 1);
-    assert_eq!(elaboration.existing_slices[0].value, None);
+    assert_eq!(elaboration.selected.len(), 1);
+    assert_eq!(elaboration.selected[0].value, None);
     assert_eq!(
-        elaboration.existing_slices[0].pattern_policy.stages,
+        elaboration.selected[0].pattern_policy.stages,
         StageSet::from([PolicyStage::Compile])
     );
 }
@@ -420,10 +429,10 @@ fn pure_type_can_project_pattern_slice_without_value_identity_or_transition_api(
 #[test]
 fn pure_type_unavailable_pattern_slice_is_projection_failure() {
     let result = vec![pure_entry(&[PolicyStage::Compile])];
-    let target = absent_pair(&[PolicyStage::Seal]);
+    let target = P1Projection::Pair(absent_pair(&[PolicyStage::Seal]));
     assert!(matches!(
         elaborate_pure_type_binding_p1(&result, Some(&target)),
-        Err(P1ElaborationFailure::RequestedPatternSliceUnavailable { .. })
+        Err(P1ElaborationFailure::ProjectionUnavailableWithoutValue { .. })
     ));
 }
 
@@ -435,13 +444,32 @@ fn value_elaborator_rejects_absent_entries_before_transition_construction() {
         pattern: "not-value-bearing",
         pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
     }];
+    let target = P1Projection::Pair(runtime_pair());
     assert_eq!(
         elaborate_value_binding_p1(
             &result,
-            Some(&runtime_pair()),
+            Some(&target),
             Provenance::new("invalid value-bearing input")
         ),
         Err(P1ElaborationFailure::ValueBearingInputContainsAbsentValue)
+    );
+}
+
+#[test]
+fn absent_source_cannot_construct_or_validate_a_transition() {
+    assert_eq!(
+        PolicyTransitionRequest::new(
+            absent_pair(&[PolicyStage::Compile]),
+            runtime_pair(),
+            TypeValueId(10),
+            SemanticValueId(20),
+            Provenance::new("absent source"),
+        ),
+        Err(PolicyTransitionRequestFailure::SourceValueAbsent)
+    );
+    assert_eq!(
+        validate_runtime_transition(&absent_pair(&[PolicyStage::Compile]), &runtime_pair()),
+        Err(PolicyTransitionFailure::SourceValueAbsent)
     );
 }
 
@@ -500,13 +528,7 @@ fn core_numeric_registry_uses_canonical_concrete_type_symbols() {
         (NumericTypeKey::new(NumericFamily::Uint, 8), "uint8"),
         (NumericTypeKey::new(NumericFamily::Uint, 16), "uint16"),
         (NumericTypeKey::new(NumericFamily::Uint, 32), "uint32"),
-        (NumericTypeKey::new(NumericFamily::Uint, 64), "uint64"),
-        (NumericTypeKey::new(NumericFamily::Int, 8), "int8"),
-        (NumericTypeKey::new(NumericFamily::Int, 16), "int16"),
-        (NumericTypeKey::new(NumericFamily::Int, 32), "int32"),
-        (NumericTypeKey::new(NumericFamily::Int, 64), "int64"),
         (NumericTypeKey::new(NumericFamily::Float, 32), "float32"),
-        (NumericTypeKey::new(NumericFamily::Float, 64), "float64"),
     ] {
         let symbol = world.resolve(name).expect("core numeric Type symbol");
         assert_eq!(
@@ -520,21 +542,41 @@ fn core_numeric_registry_uses_canonical_concrete_type_symbols() {
 fn literal_family_is_distinct_from_selected_concrete_numeric_type() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
     let registry = NumericTypeRegistry::from_core_world(&world).expect("numeric registry");
-    let int32 = NumericTypeKey::new(NumericFamily::Int, 32);
-    let expected = registry.get(int32).expect("canonical core int32");
+    let uint16 = NumericTypeKey::new(NumericFamily::Uint, 16);
+    let expected = registry.get(uint16).expect("canonical core uint16");
     let expr = initializer_from_source("let x = 42");
     let literal = materialize_literal_value(
         &expr,
         &registry,
-        LiteralTypeSelection::Numeric(int32),
+        LiteralTypeSelection::Numeric(uint16),
         SemanticValueId(30),
         Provenance::new("42"),
     )
     .expect("concrete Tnum selected");
-    assert_eq!(literal.literal_family, AtomicBuiltinFamily::Int);
-    assert_eq!(literal.numeric_type, Some(int32));
+    assert_eq!(literal.literal_family, LiteralFamily::Integer);
+    assert_eq!(literal.numeric_type, Some(uint16));
     assert_eq!(literal.type_value, expected);
     assert_eq!(literal.policy, compile_pair());
+}
+
+#[test]
+fn literal_helper_is_not_yet_wired_into_the_initializer_evaluator() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
+    let expr = initializer_from_source("let x = 42");
+    assert!(matches!(
+        evaluate_initializer_best_effort(
+            world.snapshot(),
+            world.package_root_node(),
+            &expr,
+            &world.package_context(),
+            EvalMode::MetaPartial,
+            Provenance::new("literal integration boundary"),
+        ),
+        EvalOutcome::Residual {
+            reason: ResidualReason::UnsupportedExpression,
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -552,7 +594,7 @@ fn numeric_literal_cannot_use_a_family_as_its_concrete_type() {
             Provenance::new("42"),
         ),
         Err(
-            LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericKey {
+            LiteralMaterializationFailure::AtomicNumericFamilyIsNotConcrete {
                 family: AtomicBuiltinFamily::Int
             }
         )
@@ -573,7 +615,7 @@ fn string_literal_is_compile_str_value_not_ref() {
         Provenance::new("\"abc\""),
     )
     .expect("string literal");
-    assert_eq!(literal.literal_family, AtomicBuiltinFamily::Str);
+    assert_eq!(literal.literal_family, LiteralFamily::String);
     assert_eq!(literal.numeric_type, None);
     assert_eq!(literal.type_value, TypeValueId(5));
     assert_ne!(literal.type_value, TypeValueId(900), "dependent str ref");
@@ -583,8 +625,14 @@ fn string_literal_is_compile_str_value_not_ref() {
 #[test]
 fn const_ref_bridge_selects_unique_non_delete_candidate() {
     let target = runtime_pair_with(ValueMutability::Const);
-    let mut request = request(compile_pair(), target.clone());
-    request.source_type = TypeValueId(5);
+    let request = PolicyTransitionRequest::new(
+        compile_pair(),
+        target.clone(),
+        TypeValueId(5),
+        SemanticValueId(20),
+        Provenance::new("const ref transition"),
+    )
+    .unwrap();
     let candidates = vec![
         callable(
             "const-ref",
@@ -709,8 +757,8 @@ fn output_policy_participates_in_transition_preference() {
     );
     assert_eq!(
         compare_policy_transition_candidates(
-            &request.source_policy,
-            &request.target_policy,
+            request.source_policy(),
+            request.target_query(),
             &exact,
             &wide,
         ),
@@ -787,8 +835,8 @@ fn input_output_policy_tradeoff_is_incomparable_ambiguity() {
     let candidates = crossed_policy_candidates();
     assert_eq!(
         compare_policy_transition_candidates(
-            &request.source_policy,
-            &request.target_policy,
+            request.source_policy(),
+            request.target_query(),
             &candidates[0],
             &candidates[1],
         ),

@@ -21,10 +21,10 @@ formal parameter policy      -> inherit P2, then optional const/mut-only pattern
 namespace declaration policy -> visibility plus optional export-root
 ```
 
-A single ordinary P1 is value-dominant, not `Q:Q`. Elaboration projects all
-requested existing slices across `PolicyResultEntry[]`, retains their
-identities, and separately derives missing Val1 demands. The whole target is
-never classified as either projection or transition.
+A single ordinary P1 is value-dominant, not `Q:Q`. Its selected value stage set
+is intersected with the requested set; the associated Pattern identity is
+retained. Any non-empty projection completes ordinary binding elaboration.
+Unselected alternatives in the P1 query are not missing-value demands.
 
 ## 2. P2 and function objects
 
@@ -203,8 +203,8 @@ The typed substrate currently provides:
 - phase-aware overload preference combined with const/mut product order.
 - atomic builtin family / concrete numeric Tnum separation and context-selected
   literal typing;
-- multi-entry existing-slice plus missing-demand P1 decomposition, including a
-  projection-only pure-type branch;
+- a helper that attempts transition preparation only after the canonical P1
+  projection is empty, with a projection-only pure-type branch;
 - a transitional Policy candidate adapter whose preference is `input x
   output`, uses the shared maximal-element rule, preserves delete rejection,
   and performs no transitive search;
@@ -226,8 +226,9 @@ contract.
 - Single P2 `runtime` normalizes to `runtime:compile`.
 - Explicit `runtime:seal` remains valid.
 - P1 projection crops an exposed slice.
-- Existing-slice projection and missing-value transition demands are
-  orthogonal collections in one P1 plan.
+- A non-empty ordinary P1 projection never manufactures absent query
+  alternatives. Transition-candidate input may independently project an
+  existing source slice.
 - Runtime value invisibility never deletes the symbol or its Pattern facet.
 - Meta is not exposed in SealStatic.
 - Seal policy grants no enumeration capability.

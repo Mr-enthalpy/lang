@@ -92,10 +92,11 @@ it does not manufacture runtime visibility. Current flat symbol,
 the selected meta compatibility projection for this example. These fields are
 transitional transport, not three final source-level policy positions.
 
-This example contributes an existing projected meta slice. Cross-Policy P1
-elaboration retains every such slice and separately derives missing Val1
-demands. The current transition resolver is only a candidate-ordering
-prototype; global ordinary callable routing remains future integration.
+This example contributes a non-empty projected meta slice and therefore does
+not enter cross-Policy transition preparation. The written runtime alternative
+is a query alternative, not a missing value that must be manufactured. The
+current transition resolver is only a candidate-ordering prototype; initializer
+and global ordinary-callable routing remain future integration.
 
 Conversely, a single P2 `runtime` normalizes canonically to `runtime:compile`.
 Current flat transport records the runtime value stage but does not yet install
