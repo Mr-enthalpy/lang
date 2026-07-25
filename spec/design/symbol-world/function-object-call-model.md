@@ -50,6 +50,44 @@ object's `Pv:Pp` view for the current lookup domain before type-associated call
 lookup. The remaining steps run independently for each surviving value entry;
 entries without an applicable `()` call entry are discarded.
 
+### 2.1 Compiler-inserted Policy transition call
+
+A cross-Policy transition is a compiler-inserted use of this same call trunk,
+not a second callable kind:
+
+```text
+value-bearing source entry + target P1 query
+  -> resolve distinguished global transition function Symbol
+  -> enumerate its heterogeneous Val2
+  -> obtain each candidate value's TypeValue
+  -> resolve associated ()
+  -> build InvocationFrame
+       slot 0 = selected function object
+       explicit input = source value view
+  -> ordinary candidate preparation and filters
+  -> transition Policy named strategy, when requested
+  -> unique ordinary invocation
+  -> ordinary result entries
+  -> ProjectP1(target query, ordinary result entries)
+```
+
+The compiler recognizes when this call may be attempted and supplies the
+source/target Policy context. It does not synthesize the call's output Pattern,
+declare a type change by fiat, or provide a parallel body representation. A
+type-changing bridge returns a new value/Pattern pair through its ordinary
+result. A same-type value-copy bridge may return the same Pattern identity only
+when that follows from the selected implementation's actual result.
+
+An ordinary successful P1 projection terminates before this inserted call is
+considered. An absent-Val1 entry cannot be passed as the explicit transition
+input. Failure after the unique ordinary winner is selected cannot reopen the
+candidate set.
+
+The current `PolicyTransitionCallable` Rust carrier does not implement this
+pipeline; it is bounded comparison and result-shape substrate and must be
+removed or reduced to an adapter when the distinguished global family is
+wired.
+
 ## 3. `()` is not an operator
 
 `()` is not an operator. An operator is a callable value with special binding and parsing behavior. Since values are not namespace/type parents, an operator cannot serve as an intermediate navigation node.

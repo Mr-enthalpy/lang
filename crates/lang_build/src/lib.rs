@@ -204,16 +204,17 @@ pub use policy_pair::{
     ValuePresence, WpreRoots,
 };
 pub use policy_transition::{
-    assemble_transition_results, compare_policy_transition_candidates,
-    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
-    policy_bridge_is_available, resolve_policy_bridge, validate_runtime_transition,
-    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration,
-    P1ElaborationFailure, P1Origin, PolicyBridgeBody, PolicyBridgeEffect,
-    PolicyBridgeInvocationFailure, PolicyBridgeInvocationResult, PolicyBridgeResolution,
-    PolicyPartialOrdering, PolicyTransitionCallable, PolicyTransitionDemand,
-    PolicyTransitionFailure, PolicyTransitionRequest, PolicyTransitionRequestFailure,
+    apply_transition_policy_named_strategy, assemble_transition_results,
+    compare_policy_transition_candidates, elaborate_pure_type_binding_p1,
+    elaborate_value_binding_p1, invoke_resolved_policy_bridge, policy_bridge_is_available,
+    resolve_policy_bridge, validate_runtime_transition, OrdinaryCallableTypeInput,
+    OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration, P1ElaborationFailure, P1Origin,
+    PolicyBridgeBody, PolicyBridgeEffect, PolicyBridgeInvocationFailure,
+    PolicyBridgeInvocationResult, PolicyBridgeResolution, PolicyPartialOrdering,
+    PolicyTransitionCallable, PolicyTransitionDemand, PolicyTransitionFailure,
+    PolicyTransitionRequest, PolicyTransitionRequestFailure, PolicyTransitionResult,
     PureTypeP1Elaboration, ResolvedPolicyBridge, SemanticValueRef, TransitionTypeExpectation,
-    TransitionedValue,
+    TRANSITION_POLICY_STRATEGY_NAME,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

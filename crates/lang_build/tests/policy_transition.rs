@@ -18,6 +18,7 @@ use lang_build::{
     ResidualReason, SemanticValueId, SemanticValueRef, StageSet, TransitionTypeExpectation,
     TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
 };
+use lang_syntax::NormOverloadStrategy;
 use support::{empty_app_manifest, initializer_from_source};
 
 fn stages(items: &[PolicyStage]) -> StageSet {
@@ -165,6 +166,9 @@ fn callable(
         input_policy,
         output_policy,
         ordinary_fully_admissible: true,
+        overload_strategy: NormOverloadStrategy::Named(
+            lang_build::TRANSITION_POLICY_STRATEGY_NAME.to_string(),
+        ),
         is_delete,
         body,
     }
@@ -208,6 +212,26 @@ fn omitted_ordinary_p1_preserves_complete_rhs_without_stage_lift() {
         StageSet::from([PolicyStage::Runtime]),
         "ordinary binding must not copy the function-object P1 stage lift"
     );
+}
+
+#[test]
+fn omitted_p1_preserves_a_mixed_result_collection_exactly() {
+    let result = vec![
+        value_entry(1, 10, &[PolicyStage::Runtime], &[PolicyStage::Compile]),
+        PolicyResultEntry {
+            value: None,
+            value_policy: absent_pair(&[PolicyStage::Compile]).value,
+            pattern: "type-pattern",
+            pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
+        },
+    ];
+    let P1Elaboration::Projected { selected, .. } =
+        elaborate_value_binding_p1(&result, None, Provenance::new("omitted mixed P1"))
+            .expect("omitted P1 is exact identity over the collection")
+    else {
+        panic!("omitted P1 cannot enter transition");
+    };
+    assert_eq!(selected, result);
 }
 
 #[test]
@@ -353,10 +377,14 @@ fn transition_output_satisfies_the_p1_query_by_non_empty_projection() {
     validate_runtime_transition(demands[0].request.source_policy(), &selected.result_policy)
         .expect("validate the selected output slice, not the broad P1 query");
 
-    let produced =
-        invoke_resolved_policy_bridge(&selected, &demands[0].request, SemanticValueId(21))
-            .expect("prototype invocation")
-            .value;
+    let produced = invoke_resolved_policy_bridge(
+        &selected,
+        &demands[0].request,
+        SemanticValueId(21),
+        "runtime-pattern",
+    )
+    .expect("prototype invocation")
+    .result;
     let assembled = assemble_transition_results(&demands, &[produced]).unwrap();
     assert_eq!(assembled.len(), 1);
     assert_eq!(assembled[0].value.unwrap().id, SemanticValueId(21));
@@ -413,6 +441,46 @@ fn value_dominant_transition_query_preserves_the_source_pattern_component() {
 }
 
 #[test]
+fn pair_transition_query_crops_pattern_before_preparing_value_demand() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile],
+        &[PolicyStage::Meta, PolicyStage::Compile],
+    )];
+    let query = P1Projection::Pair(runtime_pair());
+    let P1Elaboration::Transition { demands, .. } = elaborate_value_binding_p1(
+        &result,
+        Some(&query),
+        Provenance::new("runtime value plus compile Pattern slice"),
+    )
+    .expect("the Pattern side has an existing compile slice") else {
+        panic!("runtime is not an existing value slice");
+    };
+    assert_eq!(demands.len(), 1);
+    assert_eq!(demands[0].request.target_query(), &runtime_pair());
+}
+
+#[test]
+fn value_transition_cannot_manufacture_an_unavailable_pattern_slice() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile],
+        &[PolicyStage::Compile],
+    )];
+    let query = P1Projection::Pair(pair(&[PolicyStage::Runtime], &[PolicyStage::Seal], &[]));
+    assert!(matches!(
+        elaborate_value_binding_p1(
+            &result,
+            Some(&query),
+            Provenance::new("unavailable Pattern slice")
+        ),
+        Err(P1ElaborationFailure::PatternProjectionUnavailableForTransition { .. })
+    ));
+}
+
+#[test]
 fn pure_type_can_project_pattern_slice_without_value_identity_or_transition_api() {
     let result = vec![pure_entry(&[PolicyStage::Meta, PolicyStage::Compile])];
     let target = P1Projection::Pair(absent_pair(&[PolicyStage::Compile]));
@@ -437,22 +505,44 @@ fn pure_type_unavailable_pattern_slice_is_projection_failure() {
 }
 
 #[test]
-fn value_elaborator_rejects_absent_entries_before_transition_construction() {
+fn mixed_result_preserves_old_projection_before_absent_entries_are_considered() {
+    let result = vec![
+        value_entry(30, 10, &[PolicyStage::Runtime], &[PolicyStage::Compile]),
+        PolicyResultEntry {
+            value: None,
+            value_policy: absent_pair(&[PolicyStage::Compile]).value,
+            pattern: "type-pattern",
+            pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
+        },
+    ];
+    let target = P1Projection::ValueDominant {
+        value: runtime_pair().value,
+    };
+    let P1Elaboration::Projected { selected, .. } = elaborate_value_binding_p1(
+        &result,
+        Some(&target),
+        Provenance::new("mixed result old projection"),
+    )
+    .expect("an absent sibling must not invalidate an existing value projection") else {
+        panic!("old non-empty projection must remain authoritative");
+    };
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].value.unwrap().id, SemanticValueId(30));
+}
+
+#[test]
+fn all_absent_general_result_fails_only_after_projection_is_empty() {
     let result = vec![PolicyResultEntry {
         value: None,
         value_policy: absent_pair(&[PolicyStage::Compile]).value,
-        pattern: "not-value-bearing",
+        pattern: "type-pattern",
         pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
     }];
     let target = P1Projection::Pair(runtime_pair());
-    assert_eq!(
-        elaborate_value_binding_p1(
-            &result,
-            Some(&target),
-            Provenance::new("invalid value-bearing input")
-        ),
-        Err(P1ElaborationFailure::ValueBearingInputContainsAbsentValue)
-    );
+    assert!(matches!(
+        elaborate_value_binding_p1(&result, Some(&target), Provenance::new("all-absent result")),
+        Err(P1ElaborationFailure::ProjectionUnavailableWithoutValue { .. })
+    ));
 }
 
 #[test]
@@ -474,11 +564,22 @@ fn absent_source_cannot_construct_or_validate_a_transition() {
 }
 
 #[test]
-fn legal_runtime_value_transition_preserves_pattern_policy() {
+fn legal_runtime_value_transition_preserves_available_pattern_capability() {
     assert_eq!(
         validate_runtime_transition(&compile_pair(), &runtime_pair()),
         Ok(())
     );
+}
+
+#[test]
+fn runtime_transition_may_crop_pattern_policy_to_an_existing_slice() {
+    let source = pair(
+        &[PolicyStage::Compile],
+        &[PolicyStage::Meta, PolicyStage::Compile],
+        &[],
+    );
+    let target = runtime_pair();
+    assert_eq!(validate_runtime_transition(&source, &target), Ok(()));
 }
 
 #[test]
@@ -503,11 +604,11 @@ fn runtime_transition_requires_a_present_runtime_value_component() {
 }
 
 #[test]
-fn runtime_transition_reports_pattern_change() {
+fn runtime_transition_rejects_unavailable_pattern_capability() {
     let target = pair(&[PolicyStage::Runtime], &[PolicyStage::Seal], &[]);
     assert!(matches!(
         validate_runtime_transition(&compile_pair(), &target),
-        Err(PolicyTransitionFailure::PatternPolicyChanged { .. })
+        Err(PolicyTransitionFailure::PatternPolicyUnavailable { .. })
     ));
 }
 
@@ -602,7 +703,12 @@ fn numeric_literal_cannot_use_a_family_as_its_concrete_type() {
 }
 
 #[test]
-fn string_literal_is_compile_str_value_not_ref() {
+fn string_literal_helper_requires_caller_supplied_str_type_value() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
+    assert!(
+        world.resolve("str").is_err(),
+        "current core bootstrap does not yet install canonical str"
+    );
     let expr = initializer_from_source("let s = \"abc\"");
     let literal = materialize_literal_value(
         &expr,
@@ -663,6 +769,22 @@ fn const_ref_bridge_selects_unique_non_delete_candidate() {
         panic!("const ref candidate must select");
     };
     assert_eq!(selected.callable.id, "const-ref");
+
+    let produced =
+        invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21), "ref-pattern")
+            .expect("prototype produces a complete ordinary result")
+            .result;
+    let result_value = produced.entry.value.expect("transition result value");
+    assert_eq!(result_value.type_value, TypeValueId(90));
+    assert_eq!(produced.entry.pattern, "ref-pattern");
+
+    let demand = lang_build::PolicyTransitionDemand {
+        request: request.clone(),
+    };
+    let assembled = assemble_transition_results(&[demand], &[produced])
+        .expect("assembly projects the complete bridge result");
+    assert_eq!(assembled[0].value.unwrap().type_value, TypeValueId(90));
+    assert_eq!(assembled[0].pattern, "ref-pattern");
 }
 
 #[test]
@@ -804,6 +926,38 @@ fn output_policy_participates_in_transition_preference() {
         ),
         PolicyOverloadSelection::Ambiguous(_)
     ));
+}
+
+#[test]
+fn transition_named_strategy_cannot_override_ordinary_type_preference() {
+    let request = request(compile_pair(), runtime_pair());
+    let exact_type_broad_policy = callable(
+        "ordinary-type-winner",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        broad_static_pair(),
+        broad_runtime_output(),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    let any_type_exact_policy = callable(
+        "policy-winner-only",
+        OrdinaryCallableTypeInput::Any,
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        runtime_pair(),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+
+    let PolicyBridgeResolution::Selected(selected) = resolve_policy_bridge(
+        &request,
+        &[any_type_exact_policy, exact_type_broad_policy],
+        TransitionTypeExpectation::default(),
+    ) else {
+        panic!("the named strategy must see only ordinary-preference survivors");
+    };
+    assert_eq!(selected.callable.id, "ordinary-type-winner");
 }
 
 fn crossed_policy_candidates() -> Vec<PolicyTransitionCallable<&'static str>> {
@@ -960,7 +1114,8 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
     else {
         panic!("exact winner must be selected once");
     };
-    let failure = invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21))
-        .expect_err("selected prototype failure");
+    let failure =
+        invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21), "failed-pattern")
+            .expect_err("selected prototype failure");
     assert_eq!(failure.selected_callable_id, "winner");
 }

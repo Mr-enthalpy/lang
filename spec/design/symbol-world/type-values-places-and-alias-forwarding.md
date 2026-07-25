@@ -223,6 +223,48 @@ Injection is closer to `+=` on a place than to pure expression evaluation. The
 right-hand use of a name is a value; the injection target is a place being
 extended.
 
+### 4.1 Builtin families, concrete numeric types, and literal typing
+
+Builtin-family classification is not canonical type-value identity:
+
+```text
+LiteralFamily
+  = Integer | Float | String
+
+AtomicBuiltinFamily T
+  = Uint | Int | Float | Buffer | Str
+
+NumericTypeKey Tnum
+  = NumericFamily x width
+```
+
+A literal family records normalized syntax. An atomic family classifies a
+builtin type family. Neither is a `TypeValueId`. A concrete numeric key selects
+a concrete type object such as `uint16` or `float32`; its identity is the
+`TypeValueId` projected from the resolved canonical Type symbol:
+
+```text
+literal spelling
+  -> LiteralFamily
+  -> contextual/default concrete Tnum selection
+  -> resolve canonical Type Symbol
+  -> project TypeValueId
+  -> materialize semantic value
+```
+
+The lexical frontend continues to preserve spelling only; it does not choose
+width, signedness, precision, or overflow behavior. The semantic selection
+step extends that result without changing lexer meaning. An unsuffixed default
+and range/context rules remain separate decisions.
+
+The design target for a string literal is a compile-stage `str` value, not
+`str ref`, implicit storage, or a lifetime extension. That statement requires
+a canonical `str` Type symbol/`TypeValueId` in the semantic world. The current
+core bootstrap installs `uint8`, `uint16`, `uint32`, and `float32`, but not
+`str`; the current helper can materialize a string only when its caller has
+already supplied a canonical `str` TypeValue. It must not treat an arbitrary
+numeric identifier as an implemented core `str` carrier.
+
 ## 5. Alias forwarding
 
 The alias form is different from ordinary type-value binding:

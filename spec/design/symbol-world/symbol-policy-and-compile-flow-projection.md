@@ -207,11 +207,52 @@ Pp = compile
 It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
-The bounded cross-Policy prototype does not change this query rule. It may
-prepare transition candidates only after `project_p1` returns no entry for a
-value-bearing result. A non-empty projection is the binding result; unselected
-alternatives in the written query are not missing-value obligations. Pure
-`absent:Pp` results remain projection-only. See
+Cross-Policy transition is a conservative extension of this query rule. For
+the old projection judgment `ProjectP1` and the extended elaborator
+`ElabP1`:
+
+```text
+ElabP1(None, R) = R
+
+ElabP1(Some Q, R):
+  S = ProjectP1(Q, R)
+  if S != empty:
+    return S
+  otherwise:
+    prepare transition from eligible value-bearing entries
+```
+
+Therefore:
+
+```text
+dom(ProjectP1) is a subset of dom(ElabP1)
+
+ProjectP1(Q, R) succeeds
+  => ElabP1(Some Q, R) = ProjectP1(Q, R)
+```
+
+The extension may add results only where the old projection was empty; it
+cannot change an old successful result or selected identity. This applies to
+the complete `PolicyResultEntry[]`, including collections that mix
+value-bearing and absent-Val1 entries. An absent entry has no transition
+capability, but it cannot make a projection selected from another entry fail.
+If no value-bearing entry exists after an empty projection, elaboration fails.
+
+For pair query `Qv:Qp`, transition eligibility first projects the Pattern side:
+
+```text
+Pp_selected = ProjectStages(Qp, source.Pp)
+```
+
+`Pp_selected` must be non-empty. A Runtime Val1 transition may materialize a
+missing value slice and pair it with that selected Pattern capability; it does
+not manufacture a Pattern stage absent from the source. For a type-changing
+ordinary transition call, the result Pattern identity comes from that call's
+ordinary result, not from the source entry. The invariant preserved here is
+Pattern-policy capability, not unconditional Pattern-identity reuse.
+
+Unselected alternatives in a written query are never missing-value
+obligations. The bounded implementation subset is recorded in
 `../../contracts/v0.6-cross-policy-value-transition.md`.
 
 ### 3.2 Formal parameter policy pattern
@@ -803,11 +844,14 @@ Wpre closure, export-retention closure, and phase-aware partial-order
 selection.
 
 Transition candidate preference consumes both input and output Policy through
-one product/Pareto order. This is specific to a known `SourcePolicy ->
-TargetPolicyQuery` prototype request; it does not add output-type preference to
-ordinary type overload selection. The current adapter is reached only after an
-empty ordinary projection, shares the maximal-element helper, and does not yet
-perform initializer integration, global Symbol lookup, `InvocationFrame`
+one product/Pareto order at the transition-specific named-strategy step. This
+is specific to a known `SourcePolicy -> TargetPolicyQuery` prototype request;
+it does not add output-type preference to ordinary type overload selection.
+The current adapter is reached only after an empty ordinary projection, skips
+absent entries, first selects the available Pattern-policy slice, preserves
+ordinary input-type preference as a strict predecessor, and returns a complete
+value/Pattern result entry. It shares the maximal-element helper but does not
+yet perform initializer integration, global Symbol lookup, `InvocationFrame`
 construction, or ordinary function-object invocation.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy

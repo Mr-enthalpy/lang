@@ -10,7 +10,7 @@
 //! Ordinary binding semantics stay in `policy_pair::project_p1`: omitted P1
 //! preserves the complete RHS and any non-empty explicit projection completes
 //! binding elaboration. This module prepares a transition request only after an
-//! explicit query projects no value-bearing entry.
+//! explicit query projects no entry.
 
 use std::{collections::BTreeSet, convert::Infallible};
 
@@ -23,6 +23,9 @@ use crate::{
         PolicyStage, StageSet, ValueMutability, ValuePresence,
     },
 };
+use lang_syntax::NormOverloadStrategy;
+
+pub const TRANSITION_POLICY_STRATEGY_NAME: &str = "transition-policy";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum P1Origin {
@@ -37,16 +40,16 @@ pub struct SemanticValueRef {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PolicyTransitionDemand<P> {
+pub struct PolicyTransitionDemand {
     pub request: PolicyTransitionRequest,
-    pub pattern: P,
 }
 
-/// P1 elaboration for a value-bearing multi-entry result.
+/// Conservative P1 elaboration over an arbitrary multi-entry result.
 ///
 /// Ordinary P1 remains a projection query. A non-empty projection completes
 /// binding elaboration. Transition preparation is considered only when the
-/// complete query projects no existing entry.
+/// complete query projects no existing entry, and then only value-bearing
+/// entries whose Pattern side can satisfy the query may form demands.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum P1Elaboration<P> {
     Projected {
@@ -56,7 +59,7 @@ pub enum P1Elaboration<P> {
     },
     Transition {
         requested: P1Projection,
-        demands: Vec<PolicyTransitionDemand<P>>,
+        demands: Vec<PolicyTransitionDemand>,
     },
 }
 
@@ -74,8 +77,10 @@ pub struct PureTypeP1Elaboration<P> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum P1ElaborationFailure {
     EmptyResult,
-    ValueBearingInputContainsAbsentValue,
     ProjectionUnavailableWithoutValue {
+        requested: P1Projection,
+    },
+    PatternProjectionUnavailableForTransition {
         requested: P1Projection,
     },
     InvalidTransitionSource {
@@ -143,12 +148,13 @@ impl PolicyTransitionRequest {
     }
 }
 
-/// Elaborate P1 over value-bearing RHS result entries.
+/// Elaborate P1 over arbitrary RHS result entries.
 ///
 /// Omitted P1 preserves the complete RHS entries exactly. An explicit P1 first
 /// runs the canonical `project_p1` query over the complete result. Transition
-/// preparation occurs only when that projection is empty. Candidate input
-/// policy can still project a slice of each demand's source policy.
+/// preparation occurs only when that projection is empty. Absent entries are
+/// not an error: they simply cannot form a value-transition demand. Candidate
+/// input policy can still project a slice of each demand's source policy.
 pub fn elaborate_value_binding_p1<P: Clone>(
     result: &[PolicyResultEntry<SemanticValueRef, P>],
     explicit_p1: Option<&P1Projection>,
@@ -156,9 +162,6 @@ pub fn elaborate_value_binding_p1<P: Clone>(
 ) -> Result<P1Elaboration<P>, P1ElaborationFailure> {
     if result.is_empty() {
         return Err(P1ElaborationFailure::EmptyResult);
-    }
-    if result.iter().any(|entry| entry.value.is_none()) {
-        return Err(P1ElaborationFailure::ValueBearingInputContainsAbsentValue);
     }
 
     let Some(projection) = explicit_p1 else {
@@ -178,13 +181,17 @@ pub fn elaborate_value_binding_p1<P: Clone>(
         });
     }
 
+    let mut saw_value_bearing_entry = false;
     let mut demands = Vec::with_capacity(result.len());
     for (entry_index, entry) in result.iter().enumerate() {
-        let source = entry
-            .value
-            .expect("value-bearing input was checked before elaboration");
+        let Some(source) = entry.value else {
+            continue;
+        };
+        saw_value_bearing_entry = true;
+        let Some(target_query) = transition_target_query(projection, entry) else {
+            continue;
+        };
         let source_policy = policy_pair_from_entry(entry);
-        let target_query = transition_target_query(projection, entry);
         let request = PolicyTransitionRequest::new(
             source_policy,
             target_query,
@@ -196,10 +203,20 @@ pub fn elaborate_value_binding_p1<P: Clone>(
             entry_index,
             failure,
         })?;
-        demands.push(PolicyTransitionDemand {
-            request,
-            pattern: entry.pattern.clone(),
+        demands.push(PolicyTransitionDemand { request });
+    }
+
+    if !saw_value_bearing_entry {
+        return Err(P1ElaborationFailure::ProjectionUnavailableWithoutValue {
+            requested: projection.clone(),
         });
+    }
+    if demands.is_empty() {
+        return Err(
+            P1ElaborationFailure::PatternProjectionUnavailableForTransition {
+                requested: projection.clone(),
+            },
+        );
     }
 
     Ok(P1Elaboration::Transition {
@@ -244,16 +261,37 @@ pub fn elaborate_pure_type_binding_p1<P: Clone>(
 fn transition_target_query<V, P>(
     projection: &P1Projection,
     entry: &PolicyResultEntry<V, P>,
-) -> PolicyPair {
+) -> Option<PolicyPair> {
     match projection {
-        P1Projection::Pair(pair) => pair.clone(),
-        P1Projection::ValueDominant { value } => PolicyPair {
+        P1Projection::Pair(pair) => {
+            let pattern_stages = if pair.pattern.stages.is_empty() {
+                entry.pattern_policy.stages.clone()
+            } else {
+                let selected = pair
+                    .pattern
+                    .stages
+                    .intersection(&entry.pattern_policy.stages);
+                if selected.is_empty() {
+                    return None;
+                }
+                selected
+            };
+            Some(PolicyPair {
+                value: pair.value.clone(),
+                pattern: PatternComponentPolicy {
+                    stages: pattern_stages,
+                },
+                namespace_visibility: None,
+                export_root: false,
+            })
+        }
+        P1Projection::ValueDominant { value } => Some(PolicyPair {
             value: value.clone(),
             pattern: entry.pattern_policy.clone(),
             namespace_visibility: None,
             export_root: false,
-        },
-        P1Projection::Infer => policy_pair_from_entry(entry),
+        }),
+        P1Projection::Infer => Some(policy_pair_from_entry(entry)),
     }
 }
 
@@ -271,6 +309,13 @@ fn policy_pair_from_entry<V, P>(entry: &PolicyResultEntry<V, P>) -> PolicyPair {
 /// This deliberately delegates to `project_p1` so transition candidate input
 /// and output adaptation cannot grow a competing policy-slicing rule.
 fn project_policy_query(query: &PolicyPair, available: &PolicyPair) -> Option<PolicyPair> {
+    if query.namespace_visibility.is_some()
+        || query.export_root
+        || available.namespace_visibility.is_some()
+        || available.export_root
+    {
+        return None;
+    }
     let entry = PolicyResultEntry {
         value: Some(()),
         value_policy: available.value.clone(),
@@ -293,7 +338,7 @@ pub enum PolicyTransitionFailure {
     ValuePatternStageOverlap {
         overlap: StageSet,
     },
-    PatternPolicyChanged {
+    PatternPolicyUnavailable {
         source: PatternComponentPolicy,
         target: PatternComponentPolicy,
     },
@@ -325,8 +370,9 @@ pub fn validate_runtime_transition(
         return Err(PolicyTransitionFailure::ValuePatternStageOverlap { overlap });
     }
 
-    if target.pattern != source.pattern {
-        return Err(PolicyTransitionFailure::PatternPolicyChanged {
+    if target.pattern.stages.is_empty() || !target.pattern.stages.is_subset(&source.pattern.stages)
+    {
+        return Err(PolicyTransitionFailure::PatternPolicyUnavailable {
             source: source.pattern.clone(),
             target: target.pattern.clone(),
         });
@@ -385,6 +431,10 @@ pub struct PolicyTransitionCallable<I> {
     /// Hard conditions owned by ordinary candidate preparation (shape,
     /// require/concept checks, body availability, and similar facts).
     pub ordinary_fully_admissible: bool,
+    /// Existing named-strategy metadata. The transition Policy order is
+    /// applied only for the distinguished transition strategy after ordinary
+    /// applicability and input-type preference have run.
+    pub overload_strategy: NormOverloadStrategy,
     pub is_delete: bool,
     pub body: PolicyBridgeBody,
 }
@@ -440,8 +490,10 @@ pub fn compare_policy_transition_candidates<I>(
 
 /// Select from a caller-supplied transitional candidate family.
 ///
-/// This function proves the input/output Policy product order and direct-only
-/// selection rule. It does not perform global Symbol lookup or ordinary
+/// The prototype preserves ordinary ordering as a strict prefix: hard
+/// applicability and input-type preference run first. The input/output Policy
+/// Pareto order is then applied as the distinguished named-strategy step over
+/// those survivors. It does not perform global Symbol lookup or ordinary
 /// function-object invocation. The resolver never feeds a candidate result
 /// back as another request and therefore cannot perform transitive search.
 pub fn resolve_policy_bridge<I: Clone>(
@@ -457,9 +509,10 @@ pub fn resolve_policy_bridge<I: Clone>(
         return PolicyBridgeResolution::NoCandidate;
     }
 
-    let maximal = maximal_candidates(&admissible, |better, worse| {
-        candidate_dominates(request, better, worse)
+    let ordinary_survivors = maximal_candidates(&admissible, |better, worse| {
+        ordinary_candidate_dominates(better, worse)
     });
+    let maximal = apply_transition_policy_named_strategy(request, &ordinary_survivors);
 
     match maximal.as_slice() {
         [] => PolicyBridgeResolution::NoCandidate,
@@ -481,6 +534,33 @@ pub fn resolve_policy_bridge<I: Clone>(
     }
 }
 
+/// Apply the transition-specific B6-style named strategy to candidates that
+/// have already survived ordinary applicability and preference.
+///
+/// This is a bounded adapter for the prototype. The final implementation must
+/// receive the survivors from the canonical ordinary callable pipeline.
+pub fn apply_transition_policy_named_strategy<'a, I>(
+    request: &PolicyTransitionRequest,
+    ordinary_survivors: &[&'a PolicyTransitionCallable<I>],
+) -> Vec<&'a PolicyTransitionCallable<I>> {
+    let strategy_candidates = ordinary_survivors
+        .iter()
+        .copied()
+        .filter(|candidate| has_transition_policy_strategy(candidate))
+        .collect::<Vec<_>>();
+    maximal_candidates(&strategy_candidates, |better, worse| {
+        matches!(
+            compare_policy_transition_candidates(
+                request.source_policy(),
+                request.target_query(),
+                better,
+                worse,
+            ),
+            PolicyPartialOrdering::Greater
+        )
+    })
+}
+
 pub fn policy_bridge_is_available<I: Clone>(
     request: &PolicyTransitionRequest,
     candidates: &[PolicyTransitionCallable<I>],
@@ -493,11 +573,12 @@ pub fn policy_bridge_is_available<I: Clone>(
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TransitionedValue {
-    pub id: SemanticValueId,
-    pub type_value: TypeValueId,
-    pub policy: PolicyPair,
+pub struct PolicyTransitionResult<P> {
+    /// Complete ordinary-result entry. The Pattern identity belongs to the
+    /// bridge result and is never copied from the source demand.
+    pub entry: PolicyResultEntry<SemanticValueRef, P>,
     pub source_value: SemanticValueId,
+    pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -512,8 +593,8 @@ pub enum P1AssemblyFailure {
 /// reachable, so no existing entries are implicitly combined with transition
 /// results.
 pub fn assemble_transition_results<P: Clone>(
-    demands: &[PolicyTransitionDemand<P>],
-    produced: &[TransitionedValue],
+    demands: &[PolicyTransitionDemand],
+    produced: &[PolicyTransitionResult<P>],
 ) -> Result<Vec<PolicyResultEntry<SemanticValueRef, P>>, P1AssemblyFailure> {
     if demands.len() != produced.len() {
         return Err(P1AssemblyFailure::ProducedValueCountMismatch {
@@ -523,21 +604,18 @@ pub fn assemble_transition_results<P: Clone>(
     }
 
     let mut results = Vec::with_capacity(produced.len());
-    for (demand_index, (demand, value)) in demands.iter().zip(produced).enumerate() {
-        if value.source_value != demand.request.source_value()
-            || project_policy_query(demand.request.target_query(), &value.policy).is_none()
-        {
+    for (demand_index, (demand, produced_result)) in demands.iter().zip(produced).enumerate() {
+        if produced_result.source_value != demand.request.source_value() {
             return Err(P1AssemblyFailure::ProducedValueDoesNotMatchDemand { demand_index });
         }
-        results.push(PolicyResultEntry {
-            value: Some(SemanticValueRef {
-                id: value.id,
-                type_value: value.type_value,
-            }),
-            value_policy: value.policy.value.clone(),
-            pattern: demand.pattern.clone(),
-            pattern_policy: value.policy.pattern.clone(),
-        });
+        let projected = project_p1(
+            &P1Projection::Pair(demand.request.target_query().clone()),
+            std::slice::from_ref(&produced_result.entry),
+        );
+        if projected.is_empty() {
+            return Err(P1AssemblyFailure::ProducedValueDoesNotMatchDemand { demand_index });
+        }
+        results.extend(projected);
     }
     Ok(results)
 }
@@ -550,9 +628,9 @@ pub enum PolicyBridgeEffect {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PolicyBridgeInvocationResult<I> {
+pub struct PolicyBridgeInvocationResult<I, P> {
     pub callable_id: I,
-    pub value: TransitionedValue,
+    pub result: PolicyTransitionResult<P>,
     pub effect: PolicyBridgeEffect,
 }
 
@@ -568,11 +646,12 @@ pub struct PolicyBridgeInvocationFailure<I> {
 /// candidate family. A lowering/body failure therefore cannot reopen overload
 /// selection or choose a former second-place candidate. It is not the final
 /// ordinary invocation route.
-pub fn invoke_resolved_policy_bridge<I: Clone>(
+pub fn invoke_resolved_policy_bridge<I: Clone, P>(
     selected: &ResolvedPolicyBridge<I>,
     request: &PolicyTransitionRequest,
     result_value: SemanticValueId,
-) -> Result<PolicyBridgeInvocationResult<I>, PolicyBridgeInvocationFailure<I>> {
+    result_pattern: P,
+) -> Result<PolicyBridgeInvocationResult<I, P>, PolicyBridgeInvocationFailure<I>> {
     let effect = match &selected.callable.body {
         PolicyBridgeBody::BuiltinValueCopy => PolicyBridgeEffect::BuiltinValueCopy,
         PolicyBridgeBody::UserCallable(symbol) => PolicyBridgeEffect::UserCallable(*symbol),
@@ -587,11 +666,18 @@ pub fn invoke_resolved_policy_bridge<I: Clone>(
 
     Ok(PolicyBridgeInvocationResult {
         callable_id: selected.callable.id.clone(),
-        value: TransitionedValue {
-            id: result_value,
-            type_value: selected.result_type,
-            policy: selected.result_policy.clone(),
+        result: PolicyTransitionResult {
+            entry: PolicyResultEntry {
+                value: Some(SemanticValueRef {
+                    id: result_value,
+                    type_value: selected.result_type,
+                }),
+                value_policy: selected.result_policy.value.clone(),
+                pattern: result_pattern,
+                pattern_policy: selected.result_policy.pattern.clone(),
+            },
             source_value: request.source_value(),
+            provenance: request.provenance().clone(),
         },
         effect,
     })
@@ -603,10 +689,18 @@ fn candidate_is_fully_admissible<I>(
     expectation: TransitionTypeExpectation,
 ) -> bool {
     if !candidate.ordinary_fully_admissible
+        || !has_transition_policy_strategy(candidate)
         || !input_type_accepts(candidate.input_type, request.source_type())
         || project_policy_query(&candidate.input_policy, request.source_policy()).is_none()
-        || project_policy_query(request.target_query(), &candidate.output_policy).is_none()
     {
+        return false;
+    }
+    let Some(result_policy) =
+        project_policy_query(request.target_query(), &candidate.output_policy)
+    else {
+        return false;
+    };
+    if validate_runtime_transition(request.source_policy(), &result_policy).is_err() {
         return false;
     }
     let result_type = candidate.output_type.resolve(request.source_type());
@@ -616,6 +710,13 @@ fn candidate_is_fully_admissible<I>(
         .unwrap_or(true)
 }
 
+fn has_transition_policy_strategy<I>(candidate: &PolicyTransitionCallable<I>) -> bool {
+    matches!(
+        &candidate.overload_strategy,
+        NormOverloadStrategy::Named(name) if name == TRANSITION_POLICY_STRATEGY_NAME
+    )
+}
+
 fn input_type_accepts(pattern: OrdinaryCallableTypeInput, actual: TypeValueId) -> bool {
     match pattern {
         OrdinaryCallableTypeInput::Any => true,
@@ -623,20 +724,12 @@ fn input_type_accepts(pattern: OrdinaryCallableTypeInput, actual: TypeValueId) -
     }
 }
 
-fn candidate_dominates<I>(
-    request: &PolicyTransitionRequest,
+fn ordinary_candidate_dominates<I>(
     better: &PolicyTransitionCallable<I>,
     worse: &PolicyTransitionCallable<I>,
 ) -> bool {
-    let type_order = compare_input_type_fit(better.input_type, worse.input_type);
-    let policy_order = compare_policy_transition_candidates(
-        request.source_policy(),
-        request.target_query(),
-        better,
-        worse,
-    );
     matches!(
-        compose_orders([type_order, policy_order]),
+        compare_input_type_fit(better.input_type, worse.input_type),
         PolicyPartialOrdering::Greater
     )
 }
@@ -698,10 +791,10 @@ fn compare_policy_domain_specificity(
     compose_orders([
         compare_stage_domains(&left.value.stages, &right.value.stages),
         compare_mutability_domains(&left.value.mutability, &right.value.mutability),
+        // Presence ordering is local to the transition named strategy. It is
+        // not asserted as a general ordinary-overload Policy order.
         compare_presence_domains(left.value.presence, right.value.presence),
         compare_stage_domains(&left.pattern.stages, &right.pattern.stages),
-        compare_exact_dimension(left.namespace_visibility, right.namespace_visibility),
-        compare_exact_dimension(left.export_root, right.export_root),
     ])
 }
 
@@ -738,14 +831,6 @@ fn compare_presence_domains(left: ValuePresence, right: ValuePresence) -> Policy
     let left = presence_domain(left);
     let right = presence_domain(right);
     compare_subsets(left.is_subset(&right), right.is_subset(&left))
-}
-
-fn compare_exact_dimension<T: PartialEq>(left: T, right: T) -> PolicyPartialOrdering {
-    if left == right {
-        PolicyPartialOrdering::Equal
-    } else {
-        PolicyPartialOrdering::Incomparable
-    }
 }
 
 fn compare_subsets(left_in_right: bool, right_in_left: bool) -> PolicyPartialOrdering {

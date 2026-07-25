@@ -58,9 +58,10 @@ Implemented for this slice:
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
-- a caller-supplied cross-Policy candidate-ordering prototype that reuses the
-  ordinary maximal-element helper, compares input and output Policy as one
-  product partial order, and never performs transitive bridge search.
+- a caller-supplied cross-Policy candidate-ordering prototype that applies
+  ordinary input-type preference first, then compares input and output Policy
+  as one transition-specific named-strategy product order, and never performs
+  transitive bridge search.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
 symbol, projects and enumerates its heterogeneous value facet, observes each
@@ -554,23 +555,38 @@ Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.
 
-For the bounded `SourcePolicy -> TargetPolicyQuery` transition prototype, the
-source view and requested output query are known at the call site. Its
-Policy-specific comparison therefore adds:
+For a compiler-inserted `SourcePolicy -> TargetPolicyQuery` transition call,
+the source view and requested output query are known at the call site. Its
+Policy-specific comparison is a named strategy applied at B6:
 
 ```text
-InputPolicyPreference(candidate, SourcePolicy)
-  x
-OutputPolicyPreference(candidate, TargetPolicyQuery)
+TransitionPolicyStrategy(B5):
+  maximal candidates under
+    InputPolicyPreference(candidate, SourcePolicy)
+      x
+    OutputPolicyPreference(candidate, TargetPolicyQuery)
 ```
 
 This is one Pareto order, not an input-first/output-second sequence. Better
 input with worse output is incomparable with worse input and better output.
+Because the strategy receives B5, it cannot resurrect a candidate removed by
+`Bp` or `B1` through `B5`, and it cannot override an earlier extraction,
+concept, entry, first-order, or in-place preference. On an ordinary call that
+does not request this named strategy, B6 is identity and the complete old
+overload result is unchanged.
+
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
 admissibility check only. Candidate output is admissible when ordinary
 projection by the target query is non-empty. Existing-slice P1 projection is
 checked first; any non-empty binding projection creates no transition request.
+
+Only canonical `Pv:Pp` call dimensions participate. Namespace declaration
+visibility and export-root metadata are illegal in ordinary formal/result/P1
+Policy and are rejected before strategy comparison; they are not specificity
+coordinates. Any value-presence specificity used by the current prototype is
+local to `TransitionPolicyStrategy` and does not define a general Policy
+overload order.
 
 ---
 
@@ -720,7 +736,10 @@ Only fully admissible candidates enter preference filtering:
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration
   order, and restricted to candidates already in `A`; it cannot restart
-  lookup or make an inadmissible candidate viable.
+  lookup or make an inadmissible candidate viable. It receives `B5` as its
+  input and may only remove members of `B5`; access to `A` is read-only
+  metadata for consistency checks such as must-select. The distinguished
+  transition Policy strategy is the rule defined in §4.5.
 
 Each stage only removes candidates. First-order preference does not override
 extraction specificity; a deeper applicable generic pattern may outrank a
@@ -833,6 +852,18 @@ elaboration and const/mut product ordering, but the restricted resolver does
 not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
+
+The transition prototype now models the intended order more narrowly:
+
+```text
+hard applicability
+  -> ordinary input-type preference
+  -> TransitionPolicyStrategy(input Policy x output Policy)
+```
+
+This proves that the strategy cannot override the ordinary predecessor in the
+prototype, but it is still caller-supplied substrate. It does not yet receive
+real B5 survivors from the Symbol/Val2/associated-`()` pipeline.
 
 ---
 

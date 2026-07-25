@@ -6,6 +6,9 @@
 //!
 //! This helper is not wired into `evaluate_initializer_best_effort`; it does
 //! not define an unsuffixed numeric default or claim initializer integration.
+//! The current core bootstrap also has no canonical `str` Type symbol; string
+//! materialization therefore requires a caller-supplied canonical TypeValue
+//! and is not yet a core-backed implementation fact.
 
 use std::collections::BTreeMap;
 

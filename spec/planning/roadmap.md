@@ -328,9 +328,10 @@ Must cover:
   end-to-end checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 - a bounded cross-Policy implementation prototype: T/Tnum literal helper,
-  projection-empty value-transition preparation, projection-only pure types,
-  typed Runtime Val1 legality, and an input × output Policy
-  candidate-ordering prototype without transitive search
+  conservative projection-empty value-transition preparation over mixed result
+  collections, projection-only absent entries, complete value/Pattern result
+  carriers, typed Runtime Val1 legality, and a transition-specific named
+  strategy using input × output Policy without transitive search
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -365,11 +366,13 @@ with runtime-only bodies. Fields named `ref` / `share` are accepted as
 object-role field functions that coexist with projection namespace subspaces.
 The crate also implements a bounded cross-Policy prototype: ordinary omitted P1
 continues to preserve the complete RHS, explicit P1 first uses the canonical
-non-empty projection rule, absent Val1 is projection-only, and only an empty
-value-bearing projection can prepare a transition request. Separate helpers
-cover T/Tnum literal selection, typed runtime failures, and a transitional
-candidate-ordering prototype using the shared maximal-element rule with
-bidirectional Policy preference.
+non-empty projection rule, absent entries lack transition capability without
+invalidating value-bearing siblings, and only an empty projection can prepare
+a request from eligible value-bearing entries after Pattern-side slicing.
+Separate helpers cover T/Tnum literal selection, complete value/Pattern
+transition results, typed runtime failures, and a transitional named-strategy
+prototype that applies bidirectional Policy preference only after its ordinary
+input-type predecessor.
 This does **not** complete v0.7 or v0.8: only the narrow
 `(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
 package manager, type checker, policy checker, type-value equality, access-tree
