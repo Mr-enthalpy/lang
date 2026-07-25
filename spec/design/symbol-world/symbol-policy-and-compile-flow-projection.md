@@ -168,14 +168,23 @@ lowered to the same set insertion operation.
 Three policy contexts can occupy a binding-shaped surface slot, but use three
 different elaborators.
 
-### 3.1 Ordinary binding projection
+### 3.1 Ordinary binding identity, projection, and transition
 
 ```lang
 [P1] let x = expr;
 ```
 
-Omitted P1 retains the complete inferred RHS result. A single policy is a
-value-dominant projection:
+For one concrete RHS result `P2`, first derive:
+
+```text
+DefaultP1(P2) = (P2v || P2p):P2p
+```
+
+Omitted P1 retains that complete inferred result. An explicit P1 equal to it
+has the same semantic result and differs only in provenance.
+
+An explicit target already carried by the result is an identity-preserving
+projection. A single policy is value-dominant:
 
 ```lang
 Q let x = expr;
@@ -206,6 +215,30 @@ Pp = compile
 
 It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
+
+Projection over a multi-entry/multi-slice RHS and cross-Policy value transition
+are different operations. They coexist and are not variants of one either/or
+decision:
+
+```text
+target is an existing slice of DefaultP1(P2)
+  -> Projection
+
+target is not obtainable as an existing identity-preserving slice
+  -> PolicyTransitionRequest
+```
+
+A transition request carries source/target pairs, source type/value identities,
+and provenance. Its effect comes from a directly selected ordinary callable;
+it is not an implicit coercion graph. The first frozen transition is
+compile/static value materialization into a runtime value while preserving the
+Pattern policy. See
+`../../contracts/v0.6-cross-policy-value-transition.md`.
+
+The selected transition callable may itself consume a projected input slice
+of a multi-slice source. Thus existing-slice selection and production of a new
+target value can both occur in one route, while remaining separate semantic
+steps.
 
 ### 3.2 Formal parameter policy pattern
 
@@ -790,10 +823,17 @@ candidate, and future lifetime rules may not change that result.
 ## 14. Transitional implementation boundary
 
 The typed implementation model contains dedicated policy AST nodes,
-`PolicyPair`, typed dimensions, three distinct P1 elaborators, true slice
-restriction, three `Phase` values, phase exposure, mechanical flow projection,
-Wpre closure, export-retention closure, and phase-aware partial-order
-selection.
+`PolicyPair`, typed dimensions, three distinct contextual P1 elaborators, true
+slice restriction, independent existing-slice/transition binding decisions, typed
+Runtime Val1 transition failures, direct ordinary-callable bridge selection,
+three `Phase` values, phase exposure, mechanical flow projection, Wpre closure,
+export-retention closure, and phase-aware partial-order selection.
+
+Transition candidate preference consumes both input and output Policy through
+one product/Pareto order. This is specific to a known `SourcePolicy ->
+TargetPolicy` request; it does not add output-type preference to ordinary type
+overload selection. The bridge adapter shares ordinary maximal-element
+selection and never performs transitive search.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
 transport. They cannot represent `||` structure, Pattern association of a

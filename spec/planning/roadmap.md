@@ -327,6 +327,10 @@ Must cover:
   SealStatic, and Runtime visibility; full pair storage on every entry and
   end-to-end checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
+- the first cross-Policy value-transition semantic slice: atomic builtin
+  literal values, identity-preserving existing-slice projection kept distinct
+  from value transition, typed Runtime Val1 legality, direct ordinary-callable
+  bridges, and input × output Policy preference without transitive search
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -359,10 +363,16 @@ clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. Fields named `ref` / `share` are accepted as
 object-role field functions that coexist with projection namespace subspaces.
+The crate also implements the first cross-Policy value-transition substrate:
+`DefaultP1`, independent existing-slice projection and transition decisions,
+typed runtime failures, compile-literal value typing, a minimal
+compile-value-to-runtime-value copy body, and direct bridge candidates using
+the ordinary maximal-element rule with bidirectional Policy preference.
 This does **not** complete v0.7 or v0.8: only the narrow
 `(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
 package manager, type checker, policy checker, type-value equality, access-tree
-construction, or general meta interpreter is present.
+construction, general runtime overload resolver, end-to-end initializer
+transition routing, or general meta interpreter is present.
 
 #### v0.7 — Early Meta-Function Bootstrap
 

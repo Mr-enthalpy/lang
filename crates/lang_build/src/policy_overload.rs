@@ -101,17 +101,9 @@ pub fn select_by_mutability_product<I: Clone>(
         return PolicyOverloadSelection::NoCandidate;
     }
 
-    let maximal = admissible
-        .iter()
-        .enumerate()
-        .filter(|(candidate_index, candidate)| {
-            !admissible.iter().enumerate().any(|(other_index, other)| {
-                *candidate_index != other_index
-                    && dominates(other, candidate, actual_frame, target_result)
-            })
-        })
-        .map(|(_, candidate)| *candidate)
-        .collect::<Vec<_>>();
+    let maximal = maximal_candidates(&admissible, |better, worse| {
+        dominates(better, worse, actual_frame, target_result)
+    });
 
     match maximal.as_slice() {
         [] => PolicyOverloadSelection::NoCandidate,
@@ -146,17 +138,9 @@ pub fn select_policy_overload<I: Clone>(
         return PolicyOverloadSelection::NoCandidate;
     }
 
-    let maximal = admissible
-        .iter()
-        .enumerate()
-        .filter(|(candidate_index, candidate)| {
-            !admissible.iter().enumerate().any(|(other_index, other)| {
-                *candidate_index != other_index
-                    && phase_dominates(other, candidate, actual_frame, target_result, phase)
-            })
-        })
-        .map(|(_, candidate)| *candidate)
-        .collect::<Vec<_>>();
+    let maximal = maximal_candidates(&admissible, |better, worse| {
+        phase_dominates(better, worse, actual_frame, target_result, phase)
+    });
 
     match maximal.as_slice() {
         [] => PolicyOverloadSelection::NoCandidate,
@@ -325,4 +309,25 @@ fn position_rank(pattern: MutabilityPattern, actual: ValueMutability) -> u8 {
         (MutabilityPattern::Const, ValueMutability::Mut)
         | (MutabilityPattern::Mut, ValueMutability::Const) => 0,
     }
+}
+
+/// Shared maximal-element selection for ordinary typed partial orders.
+///
+/// Candidate adapters own admissibility and comparison dimensions; this
+/// function owns the common "retain every non-dominated maximum" rule. It
+/// intentionally has no declaration-order fallback.
+pub(crate) fn maximal_candidates<'a, T, F>(candidates: &[&'a T], mut dominates: F) -> Vec<&'a T>
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    candidates
+        .iter()
+        .enumerate()
+        .filter(|(candidate_index, candidate)| {
+            !candidates.iter().enumerate().any(|(other_index, other)| {
+                *candidate_index != other_index && dominates(other, candidate)
+            })
+        })
+        .map(|(_, candidate)| *candidate)
+        .collect()
 }

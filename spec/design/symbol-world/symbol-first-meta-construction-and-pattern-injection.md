@@ -201,7 +201,8 @@ The ordinary binding rule is uniform. Its optional policy prefix is P1:
 P1 let r = expr;
 ```
 
-Evaluation first produces policy-indexed value/pattern entries:
+Evaluation first produces policy-indexed value/pattern entries. Existing-slice
+selection is identity-preserving:
 
 ```text
 Gamma |- expr : (tau, Pv:Pp)
@@ -222,6 +223,13 @@ runtime let x = runtime_value;
 
 An omitted P1 retains and infers the complete RHS result; it does not make
 runtime the only way to obtain a runtime binding.
+
+If an explicit P1 cannot be obtained as an identity-preserving slice of the
+selected concrete RHS result, binding elaboration produces a
+`PolicyTransitionRequest`. That request resolves a direct ordinary callable
+family; it does not reinterpret projection as conversion or build a transitive
+coercion graph. See
+`../../contracts/v0.6-cross-policy-value-transition.md`.
 
 The unannotated form:
 

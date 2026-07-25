@@ -86,6 +86,10 @@ impl StageSet {
         self.0.iter().any(|stage| other.contains(*stage))
     }
 
+    pub fn is_subset(&self, other: &Self) -> bool {
+        self.0.is_subset(&other.0)
+    }
+
     pub fn visible_at(&self, phase: Phase) -> bool {
         self.0.iter().any(|stage| stage.visible_at(phase))
     }

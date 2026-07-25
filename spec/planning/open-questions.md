@@ -282,6 +282,13 @@ Implemented substrate after this correction:
   carriers, and an owner-aware namespace forest with explicit
   `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
   view routing, `DefaultExtractionView`, and typed lookup failures.
+- `lang_build` also distinguishes existing-slice P1 projection from value
+  transition without modeling them as either/or variants. It provides
+  `DefaultP1`, independent typed projection/transition fields, Runtime Val1
+  structural failures, atomic integer/float/string literal values, a direct
+  ordinary callable bridge adapter, and input × output Policy preference with
+  declaration-order-invariant ambiguity. The adapter performs no transitive
+  search and a selected invocation cannot reopen candidates.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -293,6 +300,10 @@ Not implemented after this correction:
 - Connecting the candidate-level export-view projector to the persistent
   namespace graph and authority-sensitive external resolver.
 - Integrating structural compile-flow projection with the complete evaluator.
+- Routing all ordinary source initializers/bindings through the new
+  projection-versus-transition classification and persistent callable graph.
+- Full `ref` storage construction, `share`/`alias` composition, `[[global]]`
+  seal scanning, and meta/compile/seal transition legality.
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call
   execution checker.

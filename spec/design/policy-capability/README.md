@@ -11,8 +11,12 @@ effect/error/panic policy) is not implemented.**
 Policy implementation mapping and orthogonal future dimensions:
 
 - mapping current flat symbol/body/result metadata to canonical `Pv:Pp`;
-- contextual P1 binding/view projection, P2 result normalization, and
-  function-object stage-view derivation;
+- contextual P1 identity plus orthogonal existing-slice projection and
+  value-transition decisions, P2 result normalization, and function-object
+  stage-view derivation;
+- direct ordinary-callable Runtime Val1 transitions with input × output Policy
+  preference (current contract:
+  `../../contracts/v0.6-cross-policy-value-transition.md`);
 - meta/compile/seal visibility and the pre-seal snapshot boundary;
 - explicit retirement of an independent return-policy `P3`;
 - component-preserving results rather than a scalar result-symbol policy;

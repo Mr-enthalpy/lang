@@ -1177,18 +1177,25 @@ _See also: PolicyBinding,
 
 ## Policy Binding
 
-The future P1 projection judgment for a binding:
+The P1 elaboration judgment for a binding:
 
 ```text
 [P1] let x = expr
 ```
 
-Omitted P1 keeps the fully inferred result. A single `Q` selects values visible
-under `Q` and retains each value's associated Pattern component. An explicit
-`Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
-The selected slice must be non-empty and admitted by the destination binding.
-Projection crops the policy slice while preserving symbol and Pattern identity;
-it does not return an unchanged entry after a mere intersection check.
+Omitted P1 keeps the fully inferred `DefaultP1(P2)` result. An explicit equal
+pair is also identity. A single `Q` selects values visible under `Q` and
+retains each value's associated Pattern component. An explicit `Qv:Qp` filters
+both components. Therefore single P1 `Q` is not pair `Q:Q`. If the target is
+already carried by the result, projection crops that policy slice while
+preserving symbol, value, and Pattern identity.
+
+If the requested target cannot be obtained as an identity-preserving existing
+slice, elaboration produces a `PolicyTransitionRequest`. Its effect comes from
+a directly selected ordinary callable. Projection and transition are
+orthogonal decisions under different conditions, not either/or variants. A
+transition callable may select an existing input slice before producing the
+new target value; neither mechanism replaces the other.
 
 There is no general prohibition on runtime bindings:
 
@@ -1203,7 +1210,33 @@ particular current `runtime` means `runtime:compile`; explicit `runtime:seal`
 remains valid.
 
 _See also: BindingSlot, PolicyPair,
+Policy Transition,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
+## Policy Transition
+
+A request to create a value under a target `PolicyPair` that is not already an
+identity-preserving slice of the source result:
+
+```text
+PolicyTransitionRequest {
+  source_policy,
+  target_policy,
+  source_type,
+  source_value,
+  provenance
+}
+```
+
+The request is resolved through a direct ordinary callable family. Input and
+output Policy fitness form one product/Pareto partial order; crossed advantages
+are ambiguous and declaration order is irrelevant. No transitive coercion
+graph or temporary-lifetime extension is implied.
+
+_See also: Policy Binding, Policy Pair,
+`spec/contracts/v0.6-cross-policy-value-transition.md`._
 
 ---
 

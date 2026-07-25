@@ -58,6 +58,9 @@ Implemented for this slice:
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
+- a direct cross-Policy value-transition adapter that reuses ordinary
+  maximal-element selection, compares input and output Policy as one product
+  partial order, and never performs transitive bridge search.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
 symbol, projects and enumerates its heterogeneous value facet, observes each
@@ -306,6 +309,14 @@ After path resolution and heterogeneous Val2 enumeration, C2 observes the
 object view available at the current lookup stage. Base path-to-Symbol
 resolution is not conditioned by P1.
 
+This section describes the existing-slice case. If the requested target is not
+an identity-preserving slice of the selected concrete result,
+`PolicyTransitionRequest` routes it to a direct ordinary callable family.
+Projection and transition have different triggers and coexist; they are not
+either/or variants. In particular, a transition candidate may select an
+existing input slice before invoking its body. That does not turn slice
+selection into coercion.
+
 ### 3.2 P2 pair at the fully admissible boundary
 
 P2 describes the call/expression result pair:
@@ -539,6 +550,23 @@ input-before-output preference, or independent conversion rank.
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.
+
+For the distinct `SourcePolicy -> TargetPolicy` transition operation, both
+endpoints are known at the call site. Its Policy-specific comparison therefore
+adds:
+
+```text
+InputPolicyPreference(candidate, SourcePolicy)
+  x
+OutputPolicyPreference(candidate, TargetPolicy)
+```
+
+This is one Pareto order, not an input-first/output-second sequence. Better
+input with worse output is incomparable with worse input and better output.
+Output Policy participation here does not make ordinary return type an overload
+preference dimension. An optional output-type expectation remains a hard
+admissibility check only. Existing-slice P1 projection is checked separately;
+it creates no transition request.
 
 ---
 
