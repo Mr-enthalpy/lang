@@ -282,13 +282,12 @@ Implemented substrate after this correction:
   carriers, and an owner-aware namespace forest with explicit
   `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
   view routing, `DefaultExtractionView`, and typed lookup failures.
-- `lang_build` also distinguishes existing-slice P1 projection from value
-  transition without modeling them as either/or variants. It provides
-  `DefaultP1`, independent typed projection/transition fields, Runtime Val1
-  structural failures, atomic integer/float/string literal values, a direct
-  ordinary callable bridge adapter, and input × output Policy preference with
-  declaration-order-invariant ambiguity. The adapter performs no transitive
-  search and a selected invocation cannot reopen candidates.
+- `lang_build` now decomposes P1 across `PolicyResultEntry[]` into retained
+  existing slices plus zero or more missing Val1 demands. Pure types use a
+  projection-only `Infallible` carrier. Literal typing separates atomic family
+  `T` from concrete numeric `Tnum` and connects existing core numeric symbols
+  to canonical `TypeValueId`. The transition candidate-ordering prototype
+  preserves input × output Pareto preference and direct-only selection.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -301,7 +300,9 @@ Not implemented after this correction:
   namespace graph and authority-sensitive external resolver.
 - Integrating structural compile-flow projection with the complete evaluator.
 - Routing all ordinary source initializers/bindings through the new
-  projection-versus-transition classification and persistent callable graph.
+  multi-entry decomposition.
+- Replacing the caller-supplied transition candidate prototype with global
+  Symbol/Val2/InvocationFrame/ordinary-function-object routing.
 - Full `ref` storage construction, `share`/`alias` composition, `[[global]]`
   seal scanning, and meta/compile/seal transition legality.
 - Materialized derived companion objects and must-select enforcement.

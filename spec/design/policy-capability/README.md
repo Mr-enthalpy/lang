@@ -14,8 +14,8 @@ Policy implementation mapping and orthogonal future dimensions:
 - contextual P1 identity plus orthogonal existing-slice projection and
   value-transition decisions, P2 result normalization, and function-object
   stage-view derivation;
-- direct ordinary-callable Runtime Val1 transitions with input × output Policy
-  preference (current contract:
+- multi-entry Runtime Val1 demand decomposition plus a transitional input ×
+  output Policy candidate-ordering prototype (current contract:
   `../../contracts/v0.6-cross-policy-value-transition.md`);
 - meta/compile/seal visibility and the pre-seal snapshot boundary;
 - explicit retirement of an independent return-policy `P3`;

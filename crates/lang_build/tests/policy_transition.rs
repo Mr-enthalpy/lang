@@ -1,42 +1,60 @@
 mod support;
 
+use std::convert::Infallible;
+
 use lang_build::{
-    compare_policy_transition_candidates, default_p1, elaborate_value_binding_p1,
-    invoke_resolved_policy_bridge, materialize_literal_value, policy_bridge_is_available,
-    resolve_policy_bridge, select_policy_overload, validate_runtime_transition, AtomicBuiltinType,
-    AtomicBuiltinTypeIds, ExistingPolicySlice, MutabilityActualFrame, MutabilityFormalFrame,
-    MutabilityPattern, OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration,
-    P1Origin, PatternComponentPolicy, Phase, PhaseOverloadCandidate, PolicyBridgeBody,
-    PolicyBridgeEffect, PolicyBridgeResolution, PolicyOverloadCandidate, PolicyOverloadSelection,
-    PolicyPair, PolicyPartialOrdering, PolicyStage, PolicyTransitionCallable,
-    PolicyTransitionFailure, PolicyTransitionRequest, Provenance, SemanticValueId, StageSet,
-    TransitionTypeExpectation, TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
+    assemble_value_binding_slices, compare_policy_transition_candidates, default_p1,
+    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
+    materialize_literal_value, policy_bridge_is_available, resolve_policy_bridge,
+    select_policy_overload, type_value_projection_from_type_symbol, validate_runtime_transition,
+    AtomicBuiltinFamily, CompilationWorld, LiteralMaterializationFailure, LiteralTypeSelection,
+    MutabilityActualFrame, MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey,
+    NumericTypeRegistry, OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput,
+    P1ElaborationFailure, P1Origin, PatternComponentPolicy, Phase, PhaseOverloadCandidate,
+    PolicyBridgeBody, PolicyBridgeResolution, PolicyOverloadCandidate, PolicyOverloadSelection,
+    PolicyPair, PolicyPartialOrdering, PolicyResultEntry, PolicyStage, PolicyTransitionCallable,
+    PolicyTransitionFailure, PolicyTransitionRequest, Provenance, SemanticValueId,
+    SemanticValueRef, StageSet, TransitionTypeExpectation, TypeValueId, ValueComponentPolicy,
+    ValueMutability, ValuePresence,
 };
-use support::initializer_from_source;
+use support::{empty_app_manifest, initializer_from_source};
+
+fn stages(items: &[PolicyStage]) -> StageSet {
+    let mut stages = StageSet::new();
+    for stage in items {
+        stages.insert(*stage);
+    }
+    stages
+}
 
 fn pair(
     value_stages: &[PolicyStage],
     pattern_stages: &[PolicyStage],
     mutability: &[ValueMutability],
 ) -> PolicyPair {
-    let mut value_stage_set = StageSet::new();
-    for stage in value_stages {
-        value_stage_set.insert(*stage);
-    }
     PolicyPair {
         value: ValueComponentPolicy {
-            stages: value_stage_set,
+            stages: stages(value_stages),
             mutability: mutability.iter().copied().collect(),
             presence: ValuePresence::Present,
         },
         pattern: PatternComponentPolicy {
-            stages: {
-                let mut stages = StageSet::new();
-                for stage in pattern_stages {
-                    stages.insert(*stage);
-                }
-                stages
-            },
+            stages: stages(pattern_stages),
+        },
+        namespace_visibility: None,
+        export_root: false,
+    }
+}
+
+fn absent_pair(pattern_stages: &[PolicyStage]) -> PolicyPair {
+    PolicyPair {
+        value: ValueComponentPolicy {
+            stages: StageSet::new(),
+            mutability: Default::default(),
+            presence: ValuePresence::Absent,
+        },
+        pattern: PatternComponentPolicy {
+            stages: stages(pattern_stages),
         },
         namespace_visibility: None,
         export_root: false,
@@ -53,6 +71,14 @@ fn meta_pair() -> PolicyPair {
 
 fn runtime_pair() -> PolicyPair {
     pair(&[PolicyStage::Runtime], &[PolicyStage::Compile], &[])
+}
+
+fn compile_runtime_pair() -> PolicyPair {
+    pair(
+        &[PolicyStage::Compile, PolicyStage::Runtime],
+        &[PolicyStage::Compile],
+        &[],
+    )
 }
 
 fn runtime_pair_with(mutability: ValueMutability) -> PolicyPair {
@@ -80,11 +106,35 @@ fn multi_slice_static_value_pair() -> PolicyPair {
 }
 
 fn broad_runtime_output() -> PolicyPair {
-    pair(
-        &[PolicyStage::Compile, PolicyStage::Runtime],
-        &[PolicyStage::Compile],
-        &[],
-    )
+    compile_runtime_pair()
+}
+
+fn value_entry(
+    id: u64,
+    type_value: u64,
+    value_stages: &[PolicyStage],
+    pattern_stages: &[PolicyStage],
+) -> PolicyResultEntry<SemanticValueRef, &'static str> {
+    let policy = pair(value_stages, pattern_stages, &[]);
+    PolicyResultEntry {
+        value: Some(SemanticValueRef {
+            id: SemanticValueId(id),
+            type_value: TypeValueId(type_value),
+        }),
+        value_policy: policy.value,
+        pattern: "pattern",
+        pattern_policy: policy.pattern,
+    }
+}
+
+fn pure_entry(pattern_stages: &[PolicyStage]) -> PolicyResultEntry<Infallible, &'static str> {
+    let policy = absent_pair(pattern_stages);
+    PolicyResultEntry {
+        value: None,
+        value_policy: policy.value,
+        pattern: "type-pattern",
+        pattern_policy: policy.pattern,
+    }
 }
 
 fn request(source_policy: PolicyPair, target_policy: PolicyPair) -> PolicyTransitionRequest {
@@ -131,100 +181,268 @@ fn exact_copy(id: &'static str) -> PolicyTransitionCallable<&'static str> {
 }
 
 #[test]
-fn omitted_p1_uses_default_without_transition() {
-    let p2 = pair(&[PolicyStage::Runtime], &[PolicyStage::Compile], &[]);
-    let expected = pair(
-        &[PolicyStage::Compile, PolicyStage::Runtime],
+fn omitted_p1_retains_defaulted_entries_without_demands() {
+    let result = vec![value_entry(
+        1,
+        10,
+        &[PolicyStage::Runtime],
         &[PolicyStage::Compile],
-        &[],
-    );
-    assert_eq!(default_p1(&p2), expected);
+    )];
+    let elaboration =
+        elaborate_value_binding_p1(&result, None, Provenance::new("omitted P1")).unwrap();
+    assert_eq!(elaboration.origin, P1Origin::Inferred);
+    assert_eq!(elaboration.requested, None);
+    assert!(elaboration.missing_value_demands.is_empty());
     assert_eq!(
-        elaborate_value_binding_p1(
-            &p2,
-            None,
-            TypeValueId(1),
-            SemanticValueId(1),
-            Provenance::new("omitted P1"),
-        ),
-        P1Elaboration {
-            effective: expected,
-            origin: P1Origin::Inferred,
-            existing_slice: None,
-            transition: None,
-        }
+        elaboration.existing_slices[0].value_policy.stages,
+        compile_runtime_pair().value.stages
+    );
+    assert_eq!(
+        default_p1(&pair(&[PolicyStage::Runtime], &[PolicyStage::Compile], &[])),
+        compile_runtime_pair()
     );
 }
 
 #[test]
-fn explicit_identical_p1_preserves_explicit_provenance_without_transition() {
-    let p2 = compile_pair();
-    let default = default_p1(&p2);
-    assert_eq!(
-        elaborate_value_binding_p1(
-            &p2,
-            Some(&default),
-            TypeValueId(1),
-            SemanticValueId(1),
-            Provenance::new("explicit identity"),
-        ),
-        P1Elaboration {
-            effective: default,
-            origin: P1Origin::Explicit,
-            existing_slice: None,
-            transition: None,
-        }
-    );
-}
-
-#[test]
-fn explicit_existing_slice_is_projection_not_transition() {
-    let p2 = pair(
-        &[PolicyStage::Compile, PolicyStage::Runtime],
+fn explicit_identical_p1_is_an_existing_identity_slice() {
+    let result = vec![value_entry(
+        1,
+        10,
         &[PolicyStage::Compile],
-        &[],
-    );
-    let source = default_p1(&p2);
-    let target = runtime_pair();
-    assert_eq!(
-        elaborate_value_binding_p1(
-            &p2,
-            Some(&target),
-            TypeValueId(1),
-            SemanticValueId(1),
-            Provenance::new("existing runtime slice"),
-        ),
-        P1Elaboration {
-            effective: target,
-            origin: P1Origin::Explicit,
-            existing_slice: Some(ExistingPolicySlice {
-                source,
-                selected: runtime_pair(),
-            }),
-            transition: None,
-        }
-    );
-}
-
-#[test]
-fn explicit_unavailable_p1_forms_transition_request() {
-    let p2 = compile_pair();
-    let target = runtime_pair();
+        &[PolicyStage::Compile],
+    )];
     let elaboration = elaborate_value_binding_p1(
-        &p2,
-        Some(&target),
-        TypeValueId(7),
-        SemanticValueId(9),
-        Provenance::new("compile to runtime"),
+        &result,
+        Some(&compile_pair()),
+        Provenance::new("explicit identity"),
+    )
+    .unwrap();
+    assert_eq!(elaboration.origin, P1Origin::Explicit);
+    assert_eq!(elaboration.existing_slices.len(), 1);
+    assert!(elaboration.missing_value_demands.is_empty());
+    assert_eq!(
+        elaboration.existing_slices[0].value.unwrap().id,
+        SemanticValueId(1)
     );
-    assert!(elaboration.existing_slice.is_none());
-    let request = elaboration
-        .transition
-        .expect("unavailable runtime target must form a transition");
-    assert_eq!(request.source_policy, compile_pair());
-    assert_eq!(request.target_policy, target);
-    assert_eq!(request.source_type, TypeValueId(7));
-    assert_eq!(request.source_value, SemanticValueId(9));
+}
+
+#[test]
+fn explicit_existing_runtime_slice_preserves_semantic_value_identity() {
+    let result = vec![value_entry(
+        1,
+        10,
+        &[PolicyStage::Compile, PolicyStage::Runtime],
+        &[PolicyStage::Compile],
+    )];
+    let elaboration = elaborate_value_binding_p1(
+        &result,
+        Some(&runtime_pair()),
+        Provenance::new("existing runtime slice"),
+    )
+    .unwrap();
+    assert_eq!(elaboration.existing_slices.len(), 1);
+    assert!(elaboration.missing_value_demands.is_empty());
+    assert_eq!(
+        elaboration.existing_slices[0].value.unwrap().id,
+        SemanticValueId(1)
+    );
+    assert_eq!(
+        elaboration.existing_slices[0].value_policy.stages,
+        runtime_pair().value.stages
+    );
+}
+
+#[test]
+fn existing_compile_slice_and_missing_runtime_demand_are_combined() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
+    let numeric_types = NumericTypeRegistry::from_core_world(&world).expect("numeric registry");
+    let int32 = NumericTypeKey::new(NumericFamily::Int, 32);
+    let int32_type = numeric_types.get(int32).expect("canonical core int32");
+    let expr = initializer_from_source("let x = 42");
+    let literal = materialize_literal_value(
+        &expr,
+        &numeric_types,
+        LiteralTypeSelection::Numeric(int32),
+        SemanticValueId(20),
+        Provenance::new("42"),
+    )
+    .expect("context selected concrete int32");
+    let result = vec![PolicyResultEntry {
+        value: Some(SemanticValueRef {
+            id: literal.id,
+            type_value: literal.type_value,
+        }),
+        value_policy: literal.policy.value.clone(),
+        pattern: "literal-pattern",
+        pattern_policy: literal.policy.pattern.clone(),
+    }];
+
+    let elaboration = elaborate_value_binding_p1(
+        &result,
+        Some(&compile_runtime_pair()),
+        Provenance::new("(compile || runtime) let x = 42"),
+    )
+    .expect("P1 decomposes into existing and missing slices");
+    assert_eq!(elaboration.existing_slices.len(), 1);
+    assert_eq!(
+        elaboration.existing_slices[0].value.unwrap().id,
+        literal.id,
+        "the compile slice keeps the original semantic value"
+    );
+    assert_eq!(elaboration.missing_value_demands.len(), 1);
+    let demand = &elaboration.missing_value_demands[0].request;
+    assert_eq!(demand.source_policy, compile_pair());
+    assert_eq!(demand.target_policy, runtime_pair());
+    validate_runtime_transition(&demand.source_policy, &demand.target_policy)
+        .expect("only the missing runtime slice is validated");
+
+    let candidate = callable(
+        "builtin-copy",
+        OrdinaryCallableTypeInput::Exact(int32_type),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        runtime_pair(),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    let PolicyBridgeResolution::Selected(selected) =
+        resolve_policy_bridge(demand, &[candidate], TransitionTypeExpectation::default())
+    else {
+        panic!("copy candidate must be selected");
+    };
+    let produced = invoke_resolved_policy_bridge(&selected, demand, SemanticValueId(21))
+        .expect("copy prototype")
+        .value;
+    let combined = assemble_value_binding_slices(&elaboration, &[produced]).unwrap();
+    assert_eq!(combined.len(), 2);
+    assert_eq!(combined[0].value.unwrap().id, SemanticValueId(20));
+    assert_eq!(combined[1].value.unwrap().id, SemanticValueId(21));
+    assert_eq!(
+        combined[0]
+            .value_policy
+            .stages
+            .union(&combined[1].value_policy.stages),
+        compile_runtime_pair().value.stages
+    );
+}
+
+#[test]
+fn multiple_missing_value_stages_produce_distinct_direct_demands() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile],
+        &[PolicyStage::Compile],
+    )];
+    let target = pair(
+        &[
+            PolicyStage::Meta,
+            PolicyStage::Compile,
+            PolicyStage::Runtime,
+        ],
+        &[PolicyStage::Compile],
+        &[],
+    );
+    let elaboration = elaborate_value_binding_p1(
+        &result,
+        Some(&target),
+        Provenance::new("multi-demand target"),
+    )
+    .unwrap();
+    assert_eq!(elaboration.existing_slices.len(), 1);
+    assert_eq!(elaboration.missing_value_demands.len(), 2);
+    assert_eq!(
+        elaboration.missing_value_demands[0]
+            .request
+            .target_policy
+            .value
+            .stages,
+        StageSet::from([PolicyStage::Meta])
+    );
+    assert_eq!(
+        elaboration.missing_value_demands[1]
+            .request
+            .target_policy
+            .value
+            .stages,
+        StageSet::from([PolicyStage::Runtime])
+    );
+}
+
+#[test]
+fn multi_entry_elaboration_preserves_each_identity_and_derives_each_demand() {
+    let result = vec![
+        value_entry(20, 10, &[PolicyStage::Compile], &[PolicyStage::Compile]),
+        value_entry(30, 11, &[PolicyStage::Compile], &[PolicyStage::Compile]),
+    ];
+    let elaboration = elaborate_value_binding_p1(
+        &result,
+        Some(&compile_runtime_pair()),
+        Provenance::new("multi-entry target"),
+    )
+    .unwrap();
+    assert_eq!(
+        elaboration
+            .existing_slices
+            .iter()
+            .map(|entry| entry.value.unwrap().id)
+            .collect::<Vec<_>>(),
+        vec![SemanticValueId(20), SemanticValueId(30)]
+    );
+    assert_eq!(
+        elaboration
+            .missing_value_demands
+            .iter()
+            .map(|demand| demand.request.source_value)
+            .collect::<Vec<_>>(),
+        vec![SemanticValueId(20), SemanticValueId(30)]
+    );
+    assert!(elaboration
+        .missing_value_demands
+        .iter()
+        .all(|demand| demand.request.target_policy == runtime_pair()));
+}
+
+#[test]
+fn pure_type_can_project_pattern_slice_without_value_identity_or_transition_api() {
+    let result = vec![pure_entry(&[PolicyStage::Meta, PolicyStage::Compile])];
+    let target = absent_pair(&[PolicyStage::Compile]);
+    let elaboration =
+        elaborate_pure_type_binding_p1(&result, Some(&target)).expect("pure compile slice");
+    assert_eq!(elaboration.existing_slices.len(), 1);
+    assert_eq!(elaboration.existing_slices[0].value, None);
+    assert_eq!(
+        elaboration.existing_slices[0].pattern_policy.stages,
+        StageSet::from([PolicyStage::Compile])
+    );
+}
+
+#[test]
+fn pure_type_unavailable_pattern_slice_is_projection_failure() {
+    let result = vec![pure_entry(&[PolicyStage::Compile])];
+    let target = absent_pair(&[PolicyStage::Seal]);
+    assert!(matches!(
+        elaborate_pure_type_binding_p1(&result, Some(&target)),
+        Err(P1ElaborationFailure::RequestedPatternSliceUnavailable { .. })
+    ));
+}
+
+#[test]
+fn value_elaborator_rejects_absent_entries_before_transition_construction() {
+    let result = vec![PolicyResultEntry {
+        value: None,
+        value_policy: absent_pair(&[PolicyStage::Compile]).value,
+        pattern: "not-value-bearing",
+        pattern_policy: absent_pair(&[PolicyStage::Compile]).pattern,
+    }];
+    assert_eq!(
+        elaborate_value_binding_p1(
+            &result,
+            Some(&runtime_pair()),
+            Provenance::new("invalid value-bearing input")
+        ),
+        Err(P1ElaborationFailure::ValueBearingInputContainsAbsentValue)
+    );
 }
 
 #[test]
@@ -275,87 +493,98 @@ fn runtime_transition_reports_value_pattern_overlap() {
 }
 
 #[test]
-fn compile_literal_reaches_runtime_only_through_selected_copy_callable() {
-    let types = AtomicBuiltinTypeIds {
-        uint: TypeValueId(1),
-        int: TypeValueId(10),
-        float: TypeValueId(3),
-        buffer: TypeValueId(4),
-        str_: TypeValueId(5),
-    };
-    let expr = initializer_from_source("let x = 42");
-    let literal =
-        materialize_literal_value(&expr, &types, SemanticValueId(20), Provenance::new("42"))
-            .expect("integer literal");
-    assert_eq!(literal.builtin_type, AtomicBuiltinType::Int);
-    assert_eq!(literal.policy, compile_pair());
-
-    let elaboration = elaborate_value_binding_p1(
-        &literal.policy,
-        Some(&runtime_pair()),
-        literal.type_value,
-        literal.id,
-        Provenance::new("runtime let x = 42"),
-    );
-    assert!(elaboration.existing_slice.is_none());
-    let request = elaboration
-        .transition
-        .expect("compile literal must request runtime transition");
-    validate_runtime_transition(&request.source_policy, &request.target_policy)
-        .expect("legal runtime transition");
-
-    let candidates = vec![exact_copy("builtin-copy")];
-    let PolicyBridgeResolution::Selected(selected) =
-        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default())
-    else {
-        panic!("copy callable must be selected");
-    };
-    let result = invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21))
-        .expect("copy invocation");
-    assert_eq!(result.effect, PolicyBridgeEffect::BuiltinValueCopy);
-    assert_eq!(result.value.type_value, literal.type_value);
-    assert_eq!(result.value.source_value, literal.id);
-    assert_eq!(result.value.policy, runtime_pair());
-    assert_eq!(
-        result.value.policy.pattern, literal.policy.pattern,
-        "Pattern policy is unchanged"
-    );
+fn core_numeric_registry_uses_canonical_concrete_type_symbols() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
+    let registry = NumericTypeRegistry::from_core_world(&world).expect("core numeric registry");
+    for (key, name) in [
+        (NumericTypeKey::new(NumericFamily::Uint, 8), "uint8"),
+        (NumericTypeKey::new(NumericFamily::Uint, 16), "uint16"),
+        (NumericTypeKey::new(NumericFamily::Uint, 32), "uint32"),
+        (NumericTypeKey::new(NumericFamily::Uint, 64), "uint64"),
+        (NumericTypeKey::new(NumericFamily::Int, 8), "int8"),
+        (NumericTypeKey::new(NumericFamily::Int, 16), "int16"),
+        (NumericTypeKey::new(NumericFamily::Int, 32), "int32"),
+        (NumericTypeKey::new(NumericFamily::Int, 64), "int64"),
+        (NumericTypeKey::new(NumericFamily::Float, 32), "float32"),
+        (NumericTypeKey::new(NumericFamily::Float, 64), "float64"),
+    ] {
+        let symbol = world.resolve(name).expect("core numeric Type symbol");
+        assert_eq!(
+            registry.get(key),
+            Some(type_value_projection_from_type_symbol(symbol.id))
+        );
+    }
 }
 
 #[test]
-fn atomic_builtins_exist_and_string_literal_is_compile_str_value_not_ref() {
-    let types = AtomicBuiltinTypeIds {
-        uint: TypeValueId(1),
-        int: TypeValueId(2),
-        float: TypeValueId(3),
-        buffer: TypeValueId(4),
-        str_: TypeValueId(5),
-    };
-    assert_eq!(types.get(AtomicBuiltinType::Uint), TypeValueId(1));
-    assert_eq!(types.get(AtomicBuiltinType::Buffer), TypeValueId(4));
-    // A dependent `str ref` identity is produced from `str` by a later type
-    // constructor. It is intentionally not one of the atomic registry ids.
-    let dependent_str_ref = TypeValueId(900);
+fn literal_family_is_distinct_from_selected_concrete_numeric_type() {
+    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
+    let registry = NumericTypeRegistry::from_core_world(&world).expect("numeric registry");
+    let int32 = NumericTypeKey::new(NumericFamily::Int, 32);
+    let expected = registry.get(int32).expect("canonical core int32");
+    let expr = initializer_from_source("let x = 42");
+    let literal = materialize_literal_value(
+        &expr,
+        &registry,
+        LiteralTypeSelection::Numeric(int32),
+        SemanticValueId(30),
+        Provenance::new("42"),
+    )
+    .expect("concrete Tnum selected");
+    assert_eq!(literal.literal_family, AtomicBuiltinFamily::Int);
+    assert_eq!(literal.numeric_type, Some(int32));
+    assert_eq!(literal.type_value, expected);
+    assert_eq!(literal.policy, compile_pair());
+}
 
+#[test]
+fn numeric_literal_cannot_use_a_family_as_its_concrete_type() {
+    let expr = initializer_from_source("let x = 42");
+    assert!(matches!(
+        materialize_literal_value(
+            &expr,
+            &NumericTypeRegistry::new(),
+            LiteralTypeSelection::Atomic {
+                family: AtomicBuiltinFamily::Int,
+                type_value: TypeValueId(700),
+            },
+            SemanticValueId(30),
+            Provenance::new("42"),
+        ),
+        Err(
+            LiteralMaterializationFailure::NumericLiteralRequiresConcreteNumericKey {
+                family: AtomicBuiltinFamily::Int
+            }
+        )
+    ));
+}
+
+#[test]
+fn string_literal_is_compile_str_value_not_ref() {
     let expr = initializer_from_source("let s = \"abc\"");
     let literal = materialize_literal_value(
         &expr,
-        &types,
+        &NumericTypeRegistry::new(),
+        LiteralTypeSelection::Atomic {
+            family: AtomicBuiltinFamily::Str,
+            type_value: TypeValueId(5),
+        },
         SemanticValueId(30),
         Provenance::new("\"abc\""),
     )
     .expect("string literal");
-    assert_eq!(literal.builtin_type, AtomicBuiltinType::Str);
-    assert_eq!(literal.type_value, types.str_);
-    assert_ne!(literal.type_value, dependent_str_ref);
+    assert_eq!(literal.literal_family, AtomicBuiltinFamily::Str);
+    assert_eq!(literal.numeric_type, None);
+    assert_eq!(literal.type_value, TypeValueId(5));
+    assert_ne!(literal.type_value, TypeValueId(900), "dependent str ref");
     assert_eq!(literal.policy, compile_pair());
 }
 
 #[test]
-fn const_ref_bridge_selects_unique_non_delete_callable() {
+fn const_ref_bridge_selects_unique_non_delete_candidate() {
     let target = runtime_pair_with(ValueMutability::Const);
     let mut request = request(compile_pair(), target.clone());
-    request.source_type = TypeValueId(5); // compile `str` value
+    request.source_type = TypeValueId(5);
     let candidates = vec![
         callable(
             "const-ref",
@@ -383,7 +612,7 @@ fn const_ref_bridge_selects_unique_non_delete_callable() {
             required_output_type: Some(TypeValueId(90)),
         },
     ) else {
-        panic!("const ref bridge must select");
+        panic!("const ref candidate must select");
     };
     assert_eq!(selected.callable.id, "const-ref");
 }
@@ -437,16 +666,14 @@ fn bridge_resolution_does_not_search_transitive_paths() {
         ),
     ];
     assert_eq!(
-        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default(),),
+        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default()),
         PolicyBridgeResolution::NoCandidate
     );
 }
 
 #[test]
-fn bridge_input_can_project_an_existing_slice_while_transition_is_required() {
+fn candidate_input_can_project_existing_slice_for_a_transition_demand() {
     let request = request(multi_slice_static_value_pair(), runtime_pair());
-    validate_runtime_transition(&request.source_policy, &request.target_policy)
-        .expect("Pattern policy remains compile");
     let candidates = vec![
         callable(
             "broad-input",
@@ -459,11 +686,10 @@ fn bridge_input_can_project_an_existing_slice_while_transition_is_required() {
         ),
         exact_copy("compile-slice-to-runtime"),
     ];
-
     let PolicyBridgeResolution::Selected(selected) =
         resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default())
     else {
-        panic!("the callable may select the compile slice of a multi-slice source");
+        panic!("compile input slice must be preferred");
     };
     assert_eq!(selected.callable.id, "compile-slice-to-runtime");
 }
@@ -495,7 +721,7 @@ fn output_policy_participates_in_transition_preference() {
         &[wide, exact],
         TransitionTypeExpectation::default(),
     ) else {
-        panic!("exact output policy must win");
+        panic!("exact output Policy must win");
     };
     assert_eq!(selected.callable.id, "exact-output");
 
@@ -569,7 +795,7 @@ fn input_output_policy_tradeoff_is_incomparable_ambiguity() {
         PolicyPartialOrdering::Incomparable
     );
     assert!(matches!(
-        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default(),),
+        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default()),
         PolicyBridgeResolution::Ambiguous(_)
     ));
 }
@@ -609,7 +835,7 @@ fn output_type_does_not_drive_ordinary_type_preference() {
         ),
     ];
     assert!(matches!(
-        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default(),),
+        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default()),
         PolicyBridgeResolution::Ambiguous(_)
     ));
 }
@@ -686,9 +912,7 @@ fn bridge_existence_is_checked_before_outer_winner_and_failure_cannot_backtrack(
     else {
         panic!("exact winner must be selected once");
     };
-    assert_eq!(selected.callable.id, "winner");
     let failure = invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21))
-        .expect_err("selected lowering failure");
+        .expect_err("selected prototype failure");
     assert_eq!(failure.selected_callable_id, "winner");
-    assert_eq!(failure.message, "lowering failed");
 }

@@ -1,18 +1,21 @@
 //! Cross-policy value-transition substrate.
 //!
-//! This module is a typed adapter over ordinary callable candidate selection.
-//! It does not build a coercion graph, search transitive conversions, extend
-//! temporary lifetimes, or perform namespace/global materialization.
+//! This module contains a transition-demand model plus a transitional
+//! candidate-algebra prototype. The prototype shares the ordinary
+//! maximal-element rule, but it does not yet resolve a distinguished global
+//! Symbol, enumerate heterogeneous Val2, construct an `InvocationFrame`, or
+//! invoke the repository's ordinary function-object pipeline. It must not
+//! become a second permanent callable representation.
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, convert::Infallible};
 
 use crate::{
     identity::{SemanticValueId, TypeValueId},
     model::{Provenance, SymbolId},
     policy_overload::maximal_candidates,
     policy_pair::{
-        PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
-        ValueMutability, ValuePresence,
+        project_p1, P1Projection, PatternComponentPolicy, PolicyPair, PolicyResultEntry,
+        PolicyStage, StageSet, ValueComponentPolicy, ValueMutability, ValuePresence,
     },
 };
 
@@ -22,27 +25,53 @@ pub enum P1Origin {
     Explicit,
 }
 
-/// Identity-preserving selection of a policy slice already carried by the RHS
-/// result. No bridge callable is involved.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExistingPolicySlice {
-    pub source: PolicyPair,
-    pub selected: PolicyPair,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SemanticValueRef {
+    pub id: SemanticValueId,
+    pub type_value: TypeValueId,
 }
 
-/// The two decisions made while elaborating a binding P1.
-///
-/// Existing-slice projection and value transition are intentionally separate
-/// fields rather than variants of one enum. They answer different questions:
-/// projection selects identity-preserving views already carried by the RHS;
-/// transition requests a callable-produced value when the target is not
-/// already available. An identity binding has neither field populated.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct P1Elaboration {
-    pub effective: PolicyPair,
+pub struct PolicyTransitionDemand<P> {
+    pub request: PolicyTransitionRequest,
+    pub pattern: P,
+}
+
+/// P1 elaboration for a value-bearing multi-entry result.
+///
+/// Existing slices and missing value demands are both collections because one
+/// explicit P1 can retain identity-preserving slices and request newly
+/// materialized slices at the same time.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct P1Elaboration<P> {
     pub origin: P1Origin,
-    pub existing_slice: Option<ExistingPolicySlice>,
-    pub transition: Option<PolicyTransitionRequest>,
+    pub requested: Option<PolicyPair>,
+    pub existing_slices: Vec<PolicyResultEntry<SemanticValueRef, P>>,
+    pub missing_value_demands: Vec<PolicyTransitionDemand<P>>,
+}
+
+/// Projection-only P1 elaboration for a pure type/Pattern result.
+///
+/// `Infallible` makes `Some(value)` unconstructible and this carrier exposes no
+/// transition field. A pure type therefore cannot enter transition machinery.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PureTypeP1Elaboration<P> {
+    pub origin: P1Origin,
+    pub requested: Option<PolicyPair>,
+    pub existing_slices: Vec<PolicyResultEntry<Infallible, P>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum P1ElaborationFailure {
+    EmptyResult,
+    ValueBearingInputContainsAbsentValue,
+    RequestedPatternSliceUnavailable {
+        requested: StageSet,
+        available: StageSet,
+    },
+    RequestedValueSliceUnavailable {
+        requested: ValueComponentPolicy,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -77,69 +106,161 @@ pub fn default_p1(p2: &PolicyPair) -> PolicyPair {
     }
 }
 
-/// Elaborate omitted/explicit P1 after RHS evaluation has produced P2.
+/// Elaborate P1 over value-bearing RHS result entries.
 ///
-/// Explicit provenance is retained for diagnostics, but an explicit pair
-/// equal to `default_p1(P2)` remains an identity binding. Existing-slice
-/// selection and transition detection are represented independently: a strict
-/// available slice records a projection, while an unavailable target records
-/// a transition request.
-pub fn elaborate_value_binding_p1(
-    p2: &PolicyPair,
+/// Existing views are selected through the same `project_p1` operation used by
+/// the older multi-entry path. Missing Val1 stages become independent direct
+/// demands; the full explicit target is never sent to a runtime-only
+/// transition validator.
+pub fn elaborate_value_binding_p1<P: Clone>(
+    result: &[PolicyResultEntry<SemanticValueRef, P>],
     explicit_p1: Option<&PolicyPair>,
-    source_type: TypeValueId,
-    source_value: SemanticValueId,
     provenance: Provenance,
-) -> P1Elaboration {
-    let source_policy = default_p1(p2);
+) -> Result<P1Elaboration<P>, P1ElaborationFailure> {
+    if result.is_empty() {
+        return Err(P1ElaborationFailure::EmptyResult);
+    }
+    if result.iter().any(|entry| entry.value.is_none()) {
+        return Err(P1ElaborationFailure::ValueBearingInputContainsAbsentValue);
+    }
+
+    let available = result.iter().map(default_result_entry).collect::<Vec<_>>();
     let Some(target_policy) = explicit_p1 else {
-        return P1Elaboration {
-            effective: source_policy,
+        return Ok(P1Elaboration {
             origin: P1Origin::Inferred,
-            existing_slice: None,
-            transition: None,
-        };
+            requested: None,
+            existing_slices: available,
+            missing_value_demands: Vec::new(),
+        });
     };
-    if *target_policy == source_policy {
-        return P1Elaboration {
-            effective: source_policy,
-            origin: P1Origin::Explicit,
-            existing_slice: None,
-            transition: None,
-        };
+
+    validate_requested_pattern_slice(&available, target_policy)?;
+    let projection = P1Projection::Pair(target_policy.clone());
+    let existing_slices = project_p1(&projection, &available);
+    let mut missing_value_demands = Vec::new();
+
+    for entry in &available {
+        let source = entry
+            .value
+            .expect("value-bearing input was checked before elaboration");
+        let selected_pattern_stages = target_policy
+            .pattern
+            .stages
+            .intersection(&entry.pattern_policy.stages);
+        if selected_pattern_stages.is_empty() {
+            continue;
+        }
+
+        for stage in target_policy.value.stages.iter() {
+            let mut requested_slice = target_policy.clone();
+            requested_slice.value.stages = StageSet::from([stage]);
+            requested_slice.pattern.stages = selected_pattern_stages.clone();
+            let already_available = !project_p1(
+                &P1Projection::Pair(requested_slice.clone()),
+                std::slice::from_ref(entry),
+            )
+            .is_empty();
+            if already_available {
+                continue;
+            }
+            missing_value_demands.push(PolicyTransitionDemand {
+                request: PolicyTransitionRequest {
+                    source_policy: policy_pair_from_entry(entry),
+                    target_policy: requested_slice,
+                    source_type: source.type_value,
+                    source_value: source.id,
+                    provenance: provenance.clone(),
+                },
+                pattern: entry.pattern.clone(),
+            });
+        }
     }
-    if is_identity_preserving_policy_slice(&source_policy, target_policy) {
-        return P1Elaboration {
-            effective: target_policy.clone(),
-            origin: P1Origin::Explicit,
-            existing_slice: Some(ExistingPolicySlice {
-                source: source_policy,
-                selected: target_policy.clone(),
-            }),
-            transition: None,
-        };
+
+    if existing_slices.is_empty() && missing_value_demands.is_empty() {
+        return Err(P1ElaborationFailure::RequestedValueSliceUnavailable {
+            requested: target_policy.value.clone(),
+        });
     }
-    P1Elaboration {
-        effective: target_policy.clone(),
+
+    Ok(P1Elaboration {
         origin: P1Origin::Explicit,
-        existing_slice: None,
-        transition: Some(PolicyTransitionRequest {
-            source_policy,
-            target_policy: target_policy.clone(),
-            source_type,
-            source_value,
-            provenance,
-        }),
+        requested: Some(target_policy.clone()),
+        existing_slices,
+        missing_value_demands,
+    })
+}
+
+/// Elaborate P1 over a pure type/Pattern result.
+///
+/// This API requires `PolicyResultEntry<Infallible, P>` and returns a carrier
+/// with no transition demand field. An unavailable Pattern slice is a
+/// projection failure.
+pub fn elaborate_pure_type_binding_p1<P: Clone>(
+    result: &[PolicyResultEntry<Infallible, P>],
+    explicit_p1: Option<&PolicyPair>,
+) -> Result<PureTypeP1Elaboration<P>, P1ElaborationFailure> {
+    if result.is_empty() {
+        return Err(P1ElaborationFailure::EmptyResult);
+    }
+    let available = result.iter().map(default_result_entry).collect::<Vec<_>>();
+    let Some(target_policy) = explicit_p1 else {
+        return Ok(PureTypeP1Elaboration {
+            origin: P1Origin::Inferred,
+            requested: None,
+            existing_slices: available,
+        });
+    };
+
+    validate_requested_pattern_slice(&available, target_policy)?;
+    let existing_slices = project_p1(&P1Projection::Pair(target_policy.clone()), &available);
+    if existing_slices.is_empty() {
+        return Err(P1ElaborationFailure::RequestedValueSliceUnavailable {
+            requested: target_policy.value.clone(),
+        });
+    }
+    Ok(PureTypeP1Elaboration {
+        origin: P1Origin::Explicit,
+        requested: Some(target_policy.clone()),
+        existing_slices,
+    })
+}
+
+fn default_result_entry<V: Clone, P: Clone>(
+    entry: &PolicyResultEntry<V, P>,
+) -> PolicyResultEntry<V, P> {
+    let pair = default_p1(&policy_pair_from_entry(entry));
+    PolicyResultEntry {
+        value: entry.value.clone(),
+        value_policy: pair.value,
+        pattern: entry.pattern.clone(),
+        pattern_policy: pair.pattern,
     }
 }
 
-/// Whether `target` can be selected directly from `source` without creating a
-/// new semantic value.
-///
-/// This is the pair-level counterpart of projecting entries with
-/// `policy_pair::project_p1`; neither operation is a Policy bridge.
-pub fn is_identity_preserving_policy_slice(source: &PolicyPair, target: &PolicyPair) -> bool {
-    policy_covers(source, target)
+fn policy_pair_from_entry<V, P>(entry: &PolicyResultEntry<V, P>) -> PolicyPair {
+    PolicyPair {
+        value: entry.value_policy.clone(),
+        pattern: entry.pattern_policy.clone(),
+        namespace_visibility: None,
+        export_root: false,
+    }
+}
+
+fn validate_requested_pattern_slice<V, P>(
+    result: &[PolicyResultEntry<V, P>],
+    target: &PolicyPair,
+) -> Result<(), P1ElaborationFailure> {
+    let available = result.iter().fold(StageSet::new(), |stages, entry| {
+        stages.union(&entry.pattern_policy.stages)
+    });
+    if target.pattern.stages.is_subset(&available) {
+        Ok(())
+    } else {
+        Err(P1ElaborationFailure::RequestedPatternSliceUnavailable {
+            requested: target.pattern.stages.clone(),
+            available,
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -213,12 +334,12 @@ impl OrdinaryCallableTypeOutput {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyBridgeBody {
-    /// The minimal atomic static-value to runtime-value implementation.
+    /// Prototype fixture for atomic static-value to runtime-value copying.
     BuiltinValueCopy,
-    /// A normal user function object selected by symbol identity.
+    /// Placeholder for the Symbol identity that a future ordinary invocation
+    /// adapter must route through the global function-object resolver.
     UserCallable(SymbolId),
-    /// A bounded intrinsic/fixture body that still enters through ordinary
-    /// callable selection. This does not grant type-checker magic.
+    /// Bounded fixture body for candidate-algebra tests.
     IntrinsicStub(String),
     /// Test/lowering carrier for a failure after a winner has already been
     /// selected. The failure has no access to the discarded candidate set.
@@ -226,6 +347,11 @@ pub enum PolicyBridgeBody {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// Transitional candidate representation for Policy preference experiments.
+///
+/// This is not a global function object and is not the final bridge
+/// architecture. Future integration must derive these comparison dimensions
+/// from ordinary prepared callable candidates.
 pub struct PolicyTransitionCallable<I> {
     pub id: I,
     pub input_type: OrdinaryCallableTypeInput,
@@ -288,11 +414,12 @@ pub fn compare_policy_transition_candidates<I>(
     ])
 }
 
-/// Directly resolve one PolicyBridge callable family.
+/// Select from a caller-supplied transitional candidate family.
 ///
-/// Only the supplied candidates are considered. The resolver never feeds a
-/// candidate result back as another request and therefore cannot perform
-/// transitive bridge search.
+/// This function proves the input/output Policy product order and direct-only
+/// selection rule. It does not perform global Symbol lookup or ordinary
+/// function-object invocation. The resolver never feeds a candidate result
+/// back as another request and therefore cannot perform transitive search.
 pub fn resolve_policy_bridge<I: Clone>(
     request: &PolicyTransitionRequest,
     candidates: &[PolicyTransitionCallable<I>],
@@ -349,6 +476,51 @@ pub struct TransitionedValue {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum P1AssemblyFailure {
+    ProducedValueCountMismatch { expected: usize, actual: usize },
+    ProducedValueDoesNotMatchDemand { demand_index: usize },
+}
+
+/// Combine identity-preserving existing views with newly produced transition
+/// values. Produced values are positional results of
+/// `missing_value_demands`; they never replace the retained entries.
+pub fn assemble_value_binding_slices<P: Clone>(
+    elaboration: &P1Elaboration<P>,
+    produced: &[TransitionedValue],
+) -> Result<Vec<PolicyResultEntry<SemanticValueRef, P>>, P1AssemblyFailure> {
+    if elaboration.missing_value_demands.len() != produced.len() {
+        return Err(P1AssemblyFailure::ProducedValueCountMismatch {
+            expected: elaboration.missing_value_demands.len(),
+            actual: produced.len(),
+        });
+    }
+
+    let mut combined = elaboration.existing_slices.clone();
+    for (demand_index, (demand, value)) in elaboration
+        .missing_value_demands
+        .iter()
+        .zip(produced)
+        .enumerate()
+    {
+        if value.source_value != demand.request.source_value
+            || value.policy != demand.request.target_policy
+        {
+            return Err(P1AssemblyFailure::ProducedValueDoesNotMatchDemand { demand_index });
+        }
+        combined.push(PolicyResultEntry {
+            value: Some(SemanticValueRef {
+                id: value.id,
+                type_value: value.type_value,
+            }),
+            value_policy: value.policy.value.clone(),
+            pattern: demand.pattern.clone(),
+            pattern_policy: value.policy.pattern.clone(),
+        });
+    }
+    Ok(combined)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyBridgeEffect {
     BuiltinValueCopy,
     UserCallable(SymbolId),
@@ -368,11 +540,12 @@ pub struct PolicyBridgeInvocationFailure<I> {
     pub message: String,
 }
 
-/// Invoke an already selected bridge.
+/// Evaluate one selected prototype body.
 ///
 /// This API deliberately receives one `ResolvedPolicyBridge`, not the
 /// candidate family. A lowering/body failure therefore cannot reopen overload
-/// selection or choose a former second-place candidate.
+/// selection or choose a former second-place candidate. It is not the final
+/// ordinary invocation route.
 pub fn invoke_resolved_policy_bridge<I: Clone>(
     selected: &ResolvedPolicyBridge<I>,
     request: &PolicyTransitionRequest,

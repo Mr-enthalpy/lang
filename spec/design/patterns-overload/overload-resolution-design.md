@@ -309,13 +309,16 @@ After path resolution and heterogeneous Val2 enumeration, C2 observes the
 object view available at the current lookup stage. Base path-to-Symbol
 resolution is not conditioned by P1.
 
-This section describes the existing-slice case. If the requested target is not
-an identity-preserving slice of the selected concrete result,
-`PolicyTransitionRequest` routes it to a direct ordinary callable family.
-Projection and transition have different triggers and coexist; they are not
-either/or variants. In particular, a transition candidate may select an
-existing input slice before invoking its body. That does not turn slice
-selection into coercion.
+P1 elaboration first applies `project_p1` across the complete
+`PolicyResultEntry[]`, retaining every requested identity-preserving slice.
+Each remaining requested Val1 slice becomes a separate
+`PolicyTransitionDemand`; an existing compile slice and a missing runtime
+demand can therefore coexist in the same plan.
+
+The current transition candidate representation is only a comparison
+prototype. It reuses maximal-element selection but does not yet route through a
+global Symbol, heterogeneous Val2, `InvocationFrame`, or ordinary prepared
+callable candidate.
 
 ### 3.2 P2 pair at the fully admissible boundary
 

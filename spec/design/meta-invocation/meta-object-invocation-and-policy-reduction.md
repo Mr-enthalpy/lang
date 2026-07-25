@@ -92,11 +92,10 @@ it does not manufacture runtime visibility. Current flat symbol,
 the selected meta compatibility projection for this example. These fields are
 transitional transport, not three final source-level policy positions.
 
-This example is projection because the selected meta slice already exists.
-The separate cross-Policy transition path applies only when a requested target
-cannot be obtained as an identity-preserving result slice. It invokes a direct
-ordinary callable and does not change how this existing-slice meta projection
-works.
+This example contributes an existing projected meta slice. Cross-Policy P1
+elaboration retains every such slice and separately derives missing Val1
+demands. The current transition resolver is only a candidate-ordering
+prototype; global ordinary callable routing remains future integration.
 
 Conversely, a single P2 `runtime` normalizes canonically to `runtime:compile`.
 Current flat transport records the runtime value stage but does not yet install

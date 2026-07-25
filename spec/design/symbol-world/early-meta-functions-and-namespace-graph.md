@@ -189,8 +189,10 @@ model boundary:
 - Source collection builds physical namespace skeletons from directories.
   Implementation file names remain source-fragment names only and do not
   contribute namespace segments.
-- Core bootstrap installs `struct`, `assert`, `type`, `namespace`, `uint8`,
-  `ref`, and `share` as `SymbolObject`s in the namespace graph. `struct` is the
+- Core bootstrap installs `struct`, `assert`, `type`, `namespace`, `ref`,
+  `share`, and the current concrete numeric Type symbols
+  `uint8/16/32/64`, `int8/16/32/64`, and `float32/64` as `SymbolObject`s in the
+  namespace graph. `struct` is the
   current compiler-defined `BuiltinPrivilegedAstMetaFunction` slice; `assert`
   is a compiler-known verification callable. Parser and normalizer do not
   special-case either name, and users do not gain authority to define new
@@ -468,8 +470,8 @@ Allowed bootstrap magic:
 
 - compiler may ship or seed a built-in `core` package artifact;
 - build system may mount `core` by default;
-- `struct`, `assert`, `type`, `namespace`, `uint8`, `ref`, `share` may initially
-  have built-in payloads;
+- `struct`, `assert`, `type`, `namespace`, `ref`, `share`, and concrete numeric
+  Type symbols may initially have built-in payloads;
 - those symbols must still be installed into the namespace graph and resolved
   through the resolver.
 

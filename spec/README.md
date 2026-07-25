@@ -60,7 +60,7 @@ The current frontend no longer claims to be the unchanged v0.2 parser. Read:
 | `contracts/frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Classifies hard structural corrections separately from new syntax and preserves the v0.1/v0.2/v0.3 historical snapshots. |
 | `contracts/raw-ast-contract-v0.5.md` | Normative current Raw AST contract | Defines the amended lexer/parser/Raw-AST surface, independent closure placement/provenance, and `PatternValidatedNormProgram` handoff. |
 | `contracts/v0.6-semantic-owner-namespace-graph.md` | Normative current semantic/build amendment | Defines callable/meta semantic owners, Pattern-root alpha identity, namespace views, structural member visibility, package boundaries, and mount redirects; supersedes the v0.5 active-ancestor no-shadow claim. |
-| `contracts/v0.6-cross-policy-value-transition.md` | Normative current semantic/build amendment | Defines atomic builtin literal values, orthogonal existing-slice projection and transition decisions, Runtime Val1 transition legality, direct ordinary-callable bridges, and input × output Policy preference. |
+| `contracts/v0.6-cross-policy-value-transition.md` | Normative current semantic/build amendment | Defines T/Tnum separation, multi-entry existing-slice plus missing-demand P1 decomposition, pure-type projection-only elaboration, Runtime Val1 legality, and the transitional input × output Policy candidate-ordering prototype. |
 
 ## Frozen v0.2 frontend input history
 

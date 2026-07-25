@@ -101,8 +101,8 @@ pub use invocation_frame::{
     SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
 };
 pub use literal_semantics::{
-    materialize_literal_value, AtomicBuiltinType, AtomicBuiltinTypeIds,
-    LiteralMaterializationFailure, LiteralValue,
+    materialize_literal_value, AtomicBuiltinFamily, LiteralMaterializationFailure,
+    LiteralTypeSelection, LiteralValue, NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
@@ -204,14 +204,15 @@ pub use policy_pair::{
     ValuePresence, WpreRoots,
 };
 pub use policy_transition::{
-    compare_policy_transition_candidates, default_p1, elaborate_value_binding_p1,
-    invoke_resolved_policy_bridge, is_identity_preserving_policy_slice, policy_bridge_is_available,
-    resolve_policy_bridge, validate_runtime_transition, ExistingPolicySlice,
-    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration, P1Origin,
-    PolicyBridgeBody, PolicyBridgeEffect, PolicyBridgeInvocationFailure,
-    PolicyBridgeInvocationResult, PolicyBridgeResolution, PolicyPartialOrdering,
-    PolicyTransitionCallable, PolicyTransitionFailure, PolicyTransitionRequest,
-    ResolvedPolicyBridge, TransitionTypeExpectation, TransitionedValue,
+    assemble_value_binding_slices, compare_policy_transition_candidates, default_p1,
+    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
+    policy_bridge_is_available, resolve_policy_bridge, validate_runtime_transition,
+    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration,
+    P1ElaborationFailure, P1Origin, PolicyBridgeBody, PolicyBridgeEffect,
+    PolicyBridgeInvocationFailure, PolicyBridgeInvocationResult, PolicyBridgeResolution,
+    PolicyPartialOrdering, PolicyTransitionCallable, PolicyTransitionDemand,
+    PolicyTransitionFailure, PolicyTransitionRequest, PureTypeP1Elaboration, ResolvedPolicyBridge,
+    SemanticValueRef, TransitionTypeExpectation, TransitionedValue,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

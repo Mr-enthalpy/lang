@@ -21,12 +21,10 @@ formal parameter policy      -> inherit P2, then optional const/mut-only pattern
 namespace declaration policy -> visibility plus optional export-root
 ```
 
-A single ordinary P1 is value-dominant, not `Q:Q`. If its target is already
-carried by the result, its selected value stage set is intersected with the
-requested set and the associated Pattern identity is retained. If the target
-cannot be obtained as an identity-preserving slice, binding elaboration emits a
-typed `PolicyTransitionRequest`; this does not replace or deprecate multi-slice
-projection.
+A single ordinary P1 is value-dominant, not `Q:Q`. Elaboration projects all
+requested existing slices across `PolicyResultEntry[]`, retains their
+identities, and separately derives missing Val1 demands. The whole target is
+never classified as either projection or transition.
 
 ## 2. P2 and function objects
 
@@ -203,13 +201,13 @@ The typed substrate currently provides:
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.
-- atomic builtin/literal value typing for the current integer/float/string
-  literal kinds;
-- identity plus independent existing-slice projection/transition P1 fields,
-  together with typed Runtime Val1 legality failures;
-- a direct ordinary-callable Policy bridge adapter whose Policy preference is
-  `input x output`, uses the shared maximal-element rule, preserves delete
-  rejection, and performs no transitive search;
+- atomic builtin family / concrete numeric Tnum separation and context-selected
+  literal typing;
+- multi-entry existing-slice plus missing-demand P1 decomposition, including a
+  projection-only pure-type branch;
+- a transitional Policy candidate adapter whose preference is `input x
+  output`, uses the shared maximal-element rule, preserves delete rejection,
+  and performs no transitive search;
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
   substrate with explicit package boundaries, identity-preserving mount
   redirects, Full/External view routing, and typed lookup failures.
@@ -228,9 +226,8 @@ contract.
 - Single P2 `runtime` normalizes to `runtime:compile`.
 - Explicit `runtime:seal` remains valid.
 - P1 projection crops an exposed slice.
-- Existing-slice projection and callable Policy transition are orthogonal. An
-  unavailable target requires transition, and the selected transition callable
-  may still project an available input slice before invocation.
+- Existing-slice projection and missing-value transition demands are
+  orthogonal collections in one P1 plan.
 - Runtime value invisibility never deletes the symbol or its Pattern facet.
 - Meta is not exposed in SealStatic.
 - Seal policy grants no enumeration capability.

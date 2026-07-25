@@ -217,28 +217,30 @@ It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
 Projection over a multi-entry/multi-slice RHS and cross-Policy value transition
-are different operations. They coexist and are not variants of one either/or
-decision:
+are different operations. Elaboration does not classify the whole target as
+one or the other:
 
 ```text
-target is an existing slice of DefaultP1(P2)
-  -> Projection
-
-target is not obtainable as an existing identity-preserving slice
-  -> PolicyTransitionRequest
+requested P1
+  -> existing_slices = project_p1(requested, PolicyResultEntry[])
+  -> missing_value_demands = requested Val1 slices not already selected
+  -> final entries = existing_slices + produced demand results
 ```
 
-A transition request carries source/target pairs, source type/value identities,
-and provenance. Its effect comes from a directly selected ordinary callable;
-it is not an implicit coercion graph. The first frozen transition is
-compile/static value materialization into a runtime value while preserving the
-Pattern policy. See
+A missing-value demand carries source/target pairs, source type/value
+identities, and provenance. The first frozen demand is compile/static value
+materialization into a runtime value while preserving Pattern policy. See
 `../../contracts/v0.6-cross-policy-value-transition.md`.
 
-The selected transition callable may itself consume a projected input slice
-of a multi-slice source. Thus existing-slice selection and production of a new
-target value can both occur in one route, while remaining separate semantic
-steps.
+For `compile:compile -> (compile || runtime):compile`, the compile entry keeps
+its original `SemanticValueId`, while a separate
+`compile:compile -> runtime:compile` demand produces the runtime entry. Runtime
+legality is checked against that missing runtime slice, not the whole requested
+P1.
+
+Pure types use `PolicyResultEntry<Infallible, Pattern>` and a projection-only
+elaborator with no transition field. An unavailable Pattern slice is a typed
+projection failure.
 
 ### 3.2 Formal parameter policy pattern
 
@@ -824,16 +826,18 @@ candidate, and future lifetime rules may not change that result.
 
 The typed implementation model contains dedicated policy AST nodes,
 `PolicyPair`, typed dimensions, three distinct contextual P1 elaborators, true
-slice restriction, independent existing-slice/transition binding decisions, typed
-Runtime Val1 transition failures, direct ordinary-callable bridge selection,
+slice restriction, multi-entry existing-slice/missing-demand decomposition,
+pure-type projection-only elaboration, typed Runtime Val1 transition failures,
+and a transitional Policy candidate-ordering prototype,
 three `Phase` values, phase exposure, mechanical flow projection, Wpre closure,
 export-retention closure, and phase-aware partial-order selection.
 
 Transition candidate preference consumes both input and output Policy through
 one product/Pareto order. This is specific to a known `SourcePolicy ->
-TargetPolicy` request; it does not add output-type preference to ordinary type
-overload selection. The bridge adapter shares ordinary maximal-element
-selection and never performs transitive search.
+TargetPolicy` demand; it does not add output-type preference to ordinary type
+overload selection. The current adapter shares the maximal-element helper but
+does not yet perform global Symbol lookup, `InvocationFrame` construction, or
+ordinary function-object invocation.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy
 transport. They cannot represent `||` structure, Pattern association of a

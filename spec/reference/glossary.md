@@ -1190,12 +1190,11 @@ both components. Therefore single P1 `Q` is not pair `Q:Q`. If the target is
 already carried by the result, projection crops that policy slice while
 preserving symbol, value, and Pattern identity.
 
-If the requested target cannot be obtained as an identity-preserving existing
-slice, elaboration produces a `PolicyTransitionRequest`. Its effect comes from
-a directly selected ordinary callable. Projection and transition are
-orthogonal decisions under different conditions, not either/or variants. A
-transition callable may select an existing input slice before producing the
-new target value; neither mechanism replaces the other.
+Elaboration projects all requested identity-preserving slices from the
+multi-entry result and separately derives one demand for each missing Val1
+slice. Thus `compile:compile -> (compile || runtime):compile` retains the
+original compile value and requests only a new runtime value. Pure types use a
+projection-only carrier and can never form transition demands.
 
 There is no general prohibition on runtime bindings:
 
@@ -1217,8 +1216,7 @@ Policy Transition,
 
 ## Policy Transition
 
-A request to create a value under a target `PolicyPair` that is not already an
-identity-preserving slice of the source result:
+A request to create one missing value slice:
 
 ```text
 PolicyTransitionRequest {
@@ -1230,10 +1228,11 @@ PolicyTransitionRequest {
 }
 ```
 
-The request is resolved through a direct ordinary callable family. Input and
-output Policy fitness form one product/Pareto partial order; crossed advantages
-are ambiguous and declaration order is irrelevant. No transitive coercion
-graph or temporary-lifetime extension is implied.
+The current implementation provides only a caller-supplied candidate-ordering
+prototype. Input and output Policy fitness form one product/Pareto partial
+order; crossed advantages are ambiguous and declaration order is irrelevant.
+Final global Symbol/function-object routing remains future work. No transitive
+coercion graph or temporary-lifetime extension is implied.
 
 _See also: Policy Binding, Policy Pair,
 `spec/contracts/v0.6-cross-policy-value-transition.md`._
