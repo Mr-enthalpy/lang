@@ -205,7 +205,7 @@ pub use policy_pair::{
     ValuePresence, WpreRoots,
 };
 pub use policy_transition::{
-    apply_transition_policy_named_strategy, assemble_transition_results,
+    apply_transition_endpoint_policy_bp_extension, assemble_transition_results,
     compare_policy_transition_candidates, elaborate_pure_type_binding_p1,
     elaborate_value_binding_p1, invoke_resolved_policy_bridge, project_transition_policy_domain,
     qualify_policy_bridge, resolve_policy_bridge, validate_runtime_transition, BridgeQualification,
@@ -214,8 +214,8 @@ pub use policy_transition::{
     PolicyBridgeInvocationFailure, PolicyBridgeInvocationResult, PolicyBridgeResolution,
     PolicyPartialOrdering, PolicyTransitionCallable, PolicyTransitionDemand,
     PolicyTransitionFailure, PolicyTransitionRequest, PolicyTransitionRequestFailure,
-    PolicyTransitionResult, PureTypeP1Elaboration, ResolvedPolicyBridge, SemanticValueRef,
-    TransitionTypeExpectation, TRANSITION_POLICY_STRATEGY_NAME,
+    PrototypeTransitionResultCarrier, PureTypeP1Elaboration, ResolvedPolicyBridge,
+    SemanticValueRef, TransitionTypeExpectation,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

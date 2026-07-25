@@ -50,50 +50,62 @@ object's `Pv:Pp` view for the current lookup domain before type-associated call
 lookup. The remaining steps run independently for each surviving value entry;
 entries without an applicable `()` call entry are discarded.
 
-### 2.1 Compiler-inserted Policy transition call
+### 2.1 Compiler-inserted atomic runtime migration call
 
-A cross-Policy transition is a compiler-inserted use of this same call trunk,
-not a second callable kind:
+The language-authorized static-value-to-runtime-value migration is a
+compiler-inserted use of this same call trunk, not a second callable kind:
 
 ```text
-value-bearing source entry + unsatisfied PolicyDemand
-  -> select the mechanical transition operation
-  -> resolve that operation's ordinary callable family to Symbol
+consumer demand
+  -> project an existing Policy view
+  -> if successful, use it and stop
+  -> otherwise require the authorized runtime-only migration shape
+  -> select an existing static source Policy view
+  -> resolve the ordinary atomic-migration callable family to Symbol
   -> enumerate its heterogeneous Val2
   -> obtain each candidate value's TypeValue
   -> resolve associated ()
   -> build InvocationFrame
        slot 0 = selected function object
        explicit input = source value view
-  -> ordinary candidate preparation and filters
-  -> transition Policy named strategy, when requested
+  -> ordinary structural/Type/Pattern applicability
+  -> Bp extended by input/output endpoint Policy fit
+  -> ordinary B1..B6 filters
   -> unique ordinary invocation
   -> ordinary result entries
-  -> project ordinary result entries for the originating demand
+  -> project the demanded runtime output view
 ```
 
-The compiler recognizes when this call may be attempted and supplies the
-source/target Policy context. It does not synthesize the call's output Pattern,
-declare a type change by fiat, or provide a parallel body representation. A
-type-changing bridge returns a new value/Pattern pair through its ordinary
-result. A same-type value-copy bridge may return the same Pattern identity only
-when that follows from the selected implementation's actual result.
+This implicit operation preserves Type while constructing a new runtime value
+object; it does not preserve value/place identity:
 
-Any successful existing-view satisfaction for the originating demand
-terminates before this inserted call is considered. In the currently
-implemented binding case, that is a non-empty ordinary P1 projection. An
-absent-Val1 entry cannot be passed as the explicit transition input. Failure
-after the unique ordinary winner is selected cannot reopen the candidate set.
+```text
+S:S -> runtime:S
+```
 
-This model does not require one universal global `transition` Symbol. Value
-copy, `ref`, `share`, `alias`, and future materialization operations may route
-to different ordinary callable families while sharing this invocation
-substrate. The operation-to-Symbol mapping remains open.
+It cannot turn `T` into `T ref`, repair a failed Pattern/Type match, or search
+an arbitrary operation graph. `ref`, `share`, and `alias` remain independently
+selected ordinary mechanical operations. When one of those operations is
+explicitly required, its ordinary result may change Type and Pattern; that is
+not Policy-demand repair.
+
+Any successful existing-view satisfaction terminates before migration
+candidate enumeration. In the currently implemented binding case, a non-empty
+ordinary P1 projection makes this call unreachable. An absent-Val1 entry
+cannot be passed as migration input. Failure after the unique ordinary winner
+is selected cannot reopen the candidate set.
+
+The model does not freeze a special global `transition` Symbol or a new
+callable ontology. It freezes demand satisfaction followed, only for the
+authorized missing-runtime case, by an ordinary function-object call. The
+operation-to-Symbol mapping remains an implementation/design handoff.
 
 The current `PolicyTransitionCallable` Rust carrier does not implement this
-pipeline; it is bounded comparison and result-shape substrate and must be
-removed or reduced to an adapter when ordinary operation-family routing is
-wired.
+pipeline; it is bounded candidate/result fixture material and must be removed
+or reduced to an adapter when ordinary routing is wired. In particular, its
+caller-supplied result Pattern proves only that the carrier can transport
+fixture data. It does not establish canonical TypeValue/PatternValue/owner/
+constructor coherence for an ordinary invocation result.
 
 ## 3. `()` is not an operator
 

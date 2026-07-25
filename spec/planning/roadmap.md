@@ -328,10 +328,11 @@ Must cover:
   end-to-end checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 - a bounded cross-Policy implementation prototype: T/Tnum literal helper,
-  conservative projection-empty value-transition preparation over mixed result
-  collections, projection-only absent entries, complete value/Pattern result
-  carriers, typed Runtime Val1 legality, and a transition-specific named
-  strategy using input × output Policy without transitive search; typed bridge
+  existing-view-first projection over mixed result collections,
+  projection-only absent entries, runtime-only atomic migration preparation
+  `S:S -> runtime:S`, a prototype ordinary-result-shaped carrier, typed Runtime
+  Val1 legality, and transition endpoint input × output Policy as a Bp
+  extension before Pattern specificity without transitive search; typed
   qualification keeps delete rejection distinct from availability
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
@@ -368,21 +369,28 @@ object-role field functions that coexist with projection namespace subspaces.
 The crate also implements a bounded cross-Policy prototype: ordinary omitted P1
 continues to preserve the complete RHS, explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without
-invalidating value-bearing siblings, and only an empty projection can prepare
-a request from eligible value-bearing entries after Pattern-side slicing.
-Separate helpers cover T/Tnum literal selection, complete value/Pattern
-transition results, typed runtime failures, and a transitional named-strategy
-prototype that applies bidirectional Policy preference only after its ordinary
-input-type predecessor. T and Tnum registries carry current first-order
+invalidating value-bearing siblings, and only an empty runtime-only projection
+can prepare `S:S -> runtime:S` from eligible value-bearing entries after
+Pattern-Policy stage/domain slicing. Separate helpers cover T/Tnum literal
+selection, prototype ordinary-result-shaped fixtures, typed runtime failures,
+and a Bp-extension stand-in that applies bidirectional endpoint Policy
+preference before its Pattern-specificity stand-in. Policy migration cannot
+repair Type/Pattern structural failure; explicit `ref`/`share`/`alias`
+mechanical operations remain separate ordinary calls. T and Tnum registries
+carry current first-order
 TypeValue projections derived from installed Type symbols, not final canonical
-type-value identity. The implemented consumer is binding P1; generic
-parameter/result/mechanical Policy-demand routing remains future work.
+type-value identity. The implemented consumer is binding P1; future consumers
+must use existing views first, and only a missing runtime-only requirement may
+reach the atomic migration rule.
 This does **not** complete v0.7 or v0.8: only the narrow
 `(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
 package manager, type checker, policy checker, type-value equality, access-tree
-construction, global function-object transition routing, general runtime
+construction, ordinary function-object migration routing, general runtime
 overload resolution, end-to-end initializer transition routing, or general
-meta interpretation is present.
+meta interpretation is present. Complete mixed-stage binding/evaluation,
+residual IR, effect sequencing, residual-frame representation, and continuation
+ABI remain open; only `Resolve once / Evaluate progressively / Residualize
+runtime dependencies` is fixed as their compatibility foundation.
 
 #### v0.7 — Early Meta-Function Bootstrap
 

@@ -3,10 +3,11 @@ mod support;
 use std::convert::Infallible;
 
 use lang_build::{
-    assemble_transition_results, compare_policy_transition_candidates,
-    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, evaluate_initializer_best_effort,
+    apply_transition_endpoint_policy_bp_extension, assemble_transition_results,
+    compare_policy_transition_candidates, elaborate_pure_type_binding_p1,
+    elaborate_value_binding_p1, evaluate_initializer_best_effort, expose_policy_slice,
     invoke_resolved_policy_bridge, materialize_literal_value, project_transition_policy_domain,
-    qualify_policy_bridge, resolve_policy_bridge, select_policy_overload,
+    qualify_policy_bridge, read_pattern, read_value, resolve_policy_bridge, select_policy_overload,
     type_value_projection_from_type_symbol, validate_runtime_transition, AtomicBuiltinType,
     AtomicBuiltinTypeRegistry, AtomicBuiltinTypeRegistryFailure, BridgeQualification,
     CompilationWorld, EvalMode, EvalOutcome, LiteralFamily, LiteralMaterializationFailure,
@@ -20,7 +21,6 @@ use lang_build::{
     ResidualReason, SemanticValueId, SemanticValueRef, StageSet, TransitionTypeExpectation,
     TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
 };
-use lang_syntax::NormOverloadStrategy;
 use support::{empty_app_manifest, initializer_from_source};
 
 fn stages(items: &[PolicyStage]) -> StageSet {
@@ -83,6 +83,10 @@ fn runtime_pair() -> PolicyPair {
     pair(&[PolicyStage::Runtime], &[PolicyStage::Compile], &[])
 }
 
+fn runtime_meta_pair() -> PolicyPair {
+    pair(&[PolicyStage::Runtime], &[PolicyStage::Meta], &[])
+}
+
 fn compile_runtime_pair() -> PolicyPair {
     pair(
         &[PolicyStage::Compile, PolicyStage::Runtime],
@@ -107,16 +111,16 @@ fn broad_static_pair() -> PolicyPair {
     )
 }
 
-fn multi_slice_static_value_pair() -> PolicyPair {
-    pair(
-        &[PolicyStage::Meta, PolicyStage::Compile],
-        &[PolicyStage::Compile],
-        &[],
-    )
-}
-
 fn broad_runtime_output() -> PolicyPair {
     compile_runtime_pair()
+}
+
+fn runtime_with_broad_static_pattern() -> PolicyPair {
+    pair(
+        &[PolicyStage::Runtime],
+        &[PolicyStage::Meta, PolicyStage::Compile],
+        &[],
+    )
 }
 
 fn value_entry(
@@ -174,9 +178,7 @@ fn callable(
         input_policy,
         output_policy,
         ordinary_fully_admissible: true,
-        overload_strategy: NormOverloadStrategy::Named(
-            lang_build::TRANSITION_POLICY_STRATEGY_NAME.to_string(),
-        ),
+        prototype_pattern_specificity: 0,
         is_delete,
         body,
     }
@@ -328,6 +330,40 @@ fn compile_or_runtime_query_over_compile_source_selects_compile_without_transiti
 }
 
 #[test]
+fn existing_runtime_slice_dominates_migration_and_preserves_identity() {
+    let result = vec![value_entry(
+        20,
+        10,
+        &[PolicyStage::Compile, PolicyStage::Runtime],
+        &[PolicyStage::Compile],
+    )];
+    let query = P1Projection::ValueDominant {
+        value: runtime_pair().value,
+    };
+    let P1Elaboration::Projected { selected, .. } = elaborate_value_binding_p1(
+        &result,
+        Some(&query),
+        Provenance::new("existing runtime slice"),
+    )
+    .expect("the existing runtime branch satisfies the demand") else {
+        panic!("migration preparation is unreachable after a non-empty projection");
+    };
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].value.unwrap().id, SemanticValueId(20));
+    assert_eq!(
+        selected[0].value_policy.stages,
+        StageSet::from([PolicyStage::Runtime])
+    );
+
+    let open_static_view = expose_policy_slice(&selected[0], Phase::OpenStatic);
+    assert!(
+        read_value(&open_static_view).is_none(),
+        "an extant runtime Policy slice is not a statically readable runtime value"
+    );
+    assert_eq!(read_pattern(&open_static_view), Some(&"pattern"));
+}
+
+#[test]
 fn empty_runtime_projection_prepares_one_direct_transition_demand() {
     let result = vec![value_entry(
         20,
@@ -339,7 +375,7 @@ fn empty_runtime_projection_prepares_one_direct_transition_demand() {
     let elaboration =
         elaborate_value_binding_p1(&result, Some(&query), Provenance::new("runtime query"))
             .unwrap();
-    let P1Elaboration::Transition { requested, demands } = elaboration else {
+    let P1Elaboration::AtomicRuntimeMigration { requested, demands } = elaboration else {
         panic!("empty value projection may enter transition preparation");
     };
     assert_eq!(requested, query);
@@ -351,7 +387,7 @@ fn empty_runtime_projection_prepares_one_direct_transition_demand() {
 }
 
 #[test]
-fn transition_output_satisfies_the_p1_query_by_non_empty_projection() {
+fn empty_non_runtime_or_mixed_stage_projection_does_not_authorize_migration() {
     let result = vec![value_entry(
         20,
         10,
@@ -364,45 +400,17 @@ fn transition_output_satisfies_the_p1_query_by_non_empty_projection() {
         &[],
     );
     let query = P1Projection::Pair(broad_query_pair.clone());
-    let P1Elaboration::Transition { demands, .. } = elaborate_value_binding_p1(
-        &result,
-        Some(&query),
-        Provenance::new("meta || runtime query over compile"),
-    )
-    .unwrap() else {
-        panic!("the compile source has no slice selected by this query");
-    };
-
-    let candidate = exact_copy("compile-to-runtime");
-    let PolicyBridgeResolution::Selected(selected) = resolve_policy_bridge(
-        &demands[0].request,
-        &[candidate],
-        TransitionTypeExpectation::default(),
-    ) else {
-        panic!("a runtime output is one valid answer to meta || runtime");
-    };
-    assert_eq!(selected.result_policy, runtime_pair());
-    validate_runtime_transition(demands[0].request.source_policy(), &selected.result_policy)
-        .expect("validate the selected output slice, not the broad P1 query");
-
-    let produced = invoke_resolved_policy_bridge(
-        &selected,
-        &demands[0].request,
-        SemanticValueId(21),
-        "runtime-pattern",
-    )
-    .expect("prototype invocation")
-    .result;
-    let assembled = assemble_transition_results(&demands, &[produced]).unwrap();
-    assert_eq!(assembled.len(), 1);
-    assert_eq!(assembled[0].value.unwrap().id, SemanticValueId(21));
     assert_eq!(
-        assembled[0].value_policy.stages,
-        runtime_pair().value.stages
-    );
-    assert_ne!(
-        assembled[0].value_policy.stages, broad_query_pair.value.stages,
-        "the query alternatives are not manufactured as an exact output domain"
+        elaborate_value_binding_p1(
+            &result,
+            Some(&query),
+            Provenance::new("meta || runtime query over compile"),
+        ),
+        Err(
+            P1ElaborationFailure::ProjectionUnavailableOutsideAtomicRuntimeMigration {
+                requested: query
+            }
+        )
     );
 }
 
@@ -437,7 +445,7 @@ fn value_dominant_transition_query_preserves_the_source_pattern_component() {
     let query = P1Projection::ValueDominant {
         value: runtime_pair().value,
     };
-    let P1Elaboration::Transition { demands, .. } = elaborate_value_binding_p1(
+    let P1Elaboration::AtomicRuntimeMigration { demands, .. } = elaborate_value_binding_p1(
         &result,
         Some(&query),
         Provenance::new("value-dominant runtime query"),
@@ -453,11 +461,11 @@ fn pair_transition_query_crops_pattern_before_preparing_value_demand() {
     let result = vec![value_entry(
         20,
         10,
-        &[PolicyStage::Compile],
+        &[PolicyStage::Meta, PolicyStage::Compile],
         &[PolicyStage::Meta, PolicyStage::Compile],
     )];
     let query = P1Projection::Pair(runtime_pair());
-    let P1Elaboration::Transition { demands, .. } = elaborate_value_binding_p1(
+    let P1Elaboration::AtomicRuntimeMigration { demands, .. } = elaborate_value_binding_p1(
         &result,
         Some(&query),
         Provenance::new("runtime value plus compile Pattern slice"),
@@ -466,6 +474,7 @@ fn pair_transition_query_crops_pattern_before_preparing_value_demand() {
         panic!("runtime is not an existing value slice");
     };
     assert_eq!(demands.len(), 1);
+    assert_eq!(demands[0].request.source_policy(), &compile_pair());
     assert_eq!(demands[0].request.target_query(), &runtime_pair());
 }
 
@@ -484,7 +493,7 @@ fn value_transition_cannot_manufacture_an_unavailable_pattern_slice() {
             Some(&query),
             Provenance::new("unavailable Pattern slice")
         ),
-        Err(P1ElaborationFailure::PatternProjectionUnavailableForTransition { .. })
+        Err(P1ElaborationFailure::PatternPolicyStageSliceUnavailableForMigration { .. })
     ));
 }
 
@@ -601,14 +610,30 @@ fn legal_runtime_value_transition_preserves_available_pattern_capability() {
 }
 
 #[test]
-fn runtime_transition_may_crop_pattern_policy_to_an_existing_slice() {
-    let source = pair(
-        &[PolicyStage::Compile],
-        &[PolicyStage::Meta, PolicyStage::Compile],
-        &[],
+fn selected_atomic_runtime_migration_keeps_pattern_policy_unchanged() {
+    let source = broad_static_pair();
+    assert_eq!(
+        validate_runtime_transition(&source, &runtime_with_broad_static_pattern()),
+        Ok(())
     );
-    let target = runtime_pair();
-    assert_eq!(validate_runtime_transition(&source, &target), Ok(()));
+    assert!(matches!(
+        validate_runtime_transition(&source, &runtime_pair()),
+        Err(PolicyTransitionFailure::PatternPolicyChanged { .. })
+    ));
+}
+
+#[test]
+fn atomic_runtime_migration_rejects_an_existing_runtime_source_view() {
+    assert_eq!(
+        PolicyTransitionRequest::new(
+            compile_runtime_pair(),
+            runtime_pair(),
+            TypeValueId(10),
+            SemanticValueId(20),
+            Provenance::new("runtime already available"),
+        ),
+        Err(PolicyTransitionRequestFailure::SourceAlreadyHasRuntimeView)
+    );
 }
 
 #[test]
@@ -637,7 +662,7 @@ fn runtime_transition_rejects_unavailable_pattern_capability() {
     let target = pair(&[PolicyStage::Runtime], &[PolicyStage::Seal], &[]);
     assert!(matches!(
         validate_runtime_transition(&compile_pair(), &target),
-        Err(PolicyTransitionFailure::PatternPolicyUnavailable { .. })
+        Err(PolicyTransitionFailure::PatternPolicyChanged { .. })
     ));
 }
 
@@ -769,92 +794,110 @@ fn string_literal_cannot_invent_a_missing_str_type_projection() {
 }
 
 #[test]
-fn const_ref_bridge_selects_unique_non_delete_candidate() {
-    let target = runtime_pair_with(ValueMutability::Const);
-    let request = PolicyTransitionRequest::new(
-        compile_pair(),
-        target.clone(),
-        TypeValueId(5),
-        SemanticValueId(20),
-        Provenance::new("const ref transition"),
-    )
-    .unwrap();
-    let candidates = vec![
-        callable(
-            "const-ref",
-            OrdinaryCallableTypeInput::Exact(TypeValueId(5)),
-            OrdinaryCallableTypeOutput::Exact(TypeValueId(90)),
-            compile_pair(),
-            target,
-            false,
-            PolicyBridgeBody::IntrinsicStub("materialize const ref storage".to_string()),
-        ),
-        callable(
-            "wide",
-            OrdinaryCallableTypeInput::Any,
-            OrdinaryCallableTypeOutput::Exact(TypeValueId(90)),
-            broad_static_pair(),
-            broad_runtime_output(),
-            false,
-            PolicyBridgeBody::IntrinsicStub("wide ref".to_string()),
-        ),
-    ];
-    let PolicyBridgeResolution::Selected(selected) = resolve_policy_bridge(
-        &request,
-        &candidates,
-        TransitionTypeExpectation {
-            required_output_type: Some(TypeValueId(90)),
-        },
-    ) else {
-        panic!("const ref candidate must select");
-    };
-    assert_eq!(selected.callable.id, "const-ref");
-
-    let produced =
-        invoke_resolved_policy_bridge(&selected, &request, SemanticValueId(21), "ref-pattern")
-            .expect("prototype produces a complete ordinary result")
-            .result;
-    let result_value = produced.entry.value.expect("transition result value");
-    assert_eq!(result_value.type_value, TypeValueId(90));
-    assert_eq!(produced.entry.pattern, "ref-pattern");
-
-    let demand = lang_build::PolicyTransitionDemand {
-        request: request.clone(),
-    };
-    let assembled = assemble_transition_results(&[demand], &[produced])
-        .expect("assembly projects the complete bridge result");
-    assert_eq!(assembled[0].value.unwrap().type_value, TypeValueId(90));
-    assert_eq!(assembled[0].pattern, "ref-pattern");
-}
-
-#[test]
-fn mut_ref_bridge_keeps_delete_as_selected_rejection() {
-    let target = runtime_pair_with(ValueMutability::Mut);
-    let request = request(compile_pair(), target.clone());
-    let candidates = vec![callable(
-        "mut-ref-delete",
+fn policy_migration_cannot_repair_type_pattern_structural_failure() {
+    let request = request(compile_pair(), runtime_pair());
+    let type_changing_candidate = callable(
+        "implicit-ref-is-forbidden",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::Exact(TypeValueId(90)),
         compile_pair(),
-        target,
-        true,
-        PolicyBridgeBody::IntrinsicStub("deleted mut ref".to_string()),
-    )];
+        runtime_pair(),
+        false,
+        PolicyBridgeBody::IntrinsicStub("would construct ref::T".to_string()),
+    );
     assert_eq!(
         resolve_policy_bridge(
             &request,
-            &candidates,
+            &[type_changing_candidate],
             TransitionTypeExpectation {
                 required_output_type: Some(TypeValueId(90)),
             },
         ),
-        PolicyBridgeResolution::RejectedByDelete("mut-ref-delete")
+        PolicyBridgeResolution::NoCandidate,
+        "an atomic Policy migration cannot turn T into ref::T to repair applicability"
+    );
+}
+
+#[test]
+fn explicit_ref_mechanical_operation_remains_a_separate_structure_change_fixture() {
+    let source = SemanticValueRef {
+        id: SemanticValueId(20),
+        type_value: TypeValueId(10),
+    };
+    let explicit_ref_result = PolicyResultEntry {
+        value: Some(SemanticValueRef {
+            id: SemanticValueId(21),
+            type_value: TypeValueId(90),
+        }),
+        value_policy: runtime_pair_with(ValueMutability::Const).value,
+        pattern: "ordinary-ref-result-pattern",
+        pattern_policy: runtime_pair_with(ValueMutability::Const).pattern,
+    };
+    assert_ne!(
+        explicit_ref_result.value.unwrap().type_value,
+        source.type_value,
+        "an explicitly selected ordinary ref operation may return ref::T"
+    );
+    assert_eq!(explicit_ref_result.pattern, "ordinary-ref-result-pattern");
+}
+
+#[test]
+fn prototype_migration_result_carrier_preserves_the_supplied_complete_entry() {
+    let request = request(compile_pair(), runtime_pair());
+    let PolicyBridgeResolution::Selected(selected) = resolve_policy_bridge(
+        &request,
+        &[exact_copy("same-type-runtime-copy")],
+        TransitionTypeExpectation::default(),
+    ) else {
+        panic!("same-type atomic runtime migration should select");
+    };
+    let produced = invoke_resolved_policy_bridge(
+        &selected,
+        &request,
+        SemanticValueId(21),
+        "fixture-result-pattern",
+    )
+    .expect("prototype body")
+    .result;
+    assert_eq!(
+        produced.entry.value.unwrap().type_value,
+        request.source_type()
+    );
+    assert_eq!(produced.entry.pattern, "fixture-result-pattern");
+
+    let demand = lang_build::PolicyTransitionDemand {
+        request: request.clone(),
+    };
+    let assembled =
+        assemble_transition_results(&[demand], &[produced]).expect("project output view");
+    assert_eq!(
+        assembled[0].value_policy.stages,
+        runtime_pair().value.stages
+    );
+}
+
+#[test]
+fn atomic_mut_runtime_migration_keeps_delete_as_selected_rejection() {
+    let target = runtime_pair_with(ValueMutability::Mut);
+    let request = request(compile_pair(), target.clone());
+    let candidates = vec![callable(
+        "mut-runtime-delete",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        target,
+        true,
+        PolicyBridgeBody::IntrinsicStub("deleted mut runtime migration".to_string()),
+    )];
+    assert_eq!(
+        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default(),),
+        PolicyBridgeResolution::RejectedByDelete("mut-runtime-delete")
     );
 }
 
 #[test]
 fn bridge_resolution_does_not_search_transitive_paths() {
-    let request = request(meta_pair(), runtime_pair());
+    let request = request(meta_pair(), runtime_meta_pair());
     let candidates = vec![
         callable(
             "meta-to-compile",
@@ -870,7 +913,7 @@ fn bridge_resolution_does_not_search_transitive_paths() {
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
             OrdinaryCallableTypeOutput::SameAsInput,
             compile_pair(),
-            runtime_pair(),
+            runtime_meta_pair(),
             false,
             PolicyBridgeBody::UserCallable(lang_build::SymbolId(2)),
         ),
@@ -883,14 +926,14 @@ fn bridge_resolution_does_not_search_transitive_paths() {
 
 #[test]
 fn candidate_input_can_project_existing_slice_for_a_transition_demand() {
-    let request = request(multi_slice_static_value_pair(), runtime_pair());
+    let request = request(broad_static_pair(), runtime_with_broad_static_pattern());
     let candidates = vec![
         callable(
             "broad-input",
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
             OrdinaryCallableTypeOutput::SameAsInput,
-            multi_slice_static_value_pair(),
-            runtime_pair(),
+            broad_static_pair(),
+            runtime_with_broad_static_pattern(),
             false,
             PolicyBridgeBody::BuiltinValueCopy,
         ),
@@ -969,10 +1012,20 @@ fn output_policy_participates_in_transition_preference() {
 }
 
 #[test]
-fn transition_named_strategy_cannot_override_ordinary_type_preference() {
+fn transition_endpoint_policy_bp_precedes_pattern_specificity_b3() {
     let request = request(compile_pair(), runtime_pair());
-    let exact_type_broad_policy = callable(
-        "ordinary-type-winner",
+    let mut better_policy_generic_pattern = callable(
+        "better-policy-generic-pattern",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        runtime_pair(),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    better_policy_generic_pattern.prototype_pattern_specificity = 0;
+    let mut worse_policy_specific_pattern = callable(
+        "worse-policy-specific-pattern",
         OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
         OrdinaryCallableTypeOutput::SameAsInput,
         broad_static_pair(),
@@ -980,24 +1033,19 @@ fn transition_named_strategy_cannot_override_ordinary_type_preference() {
         false,
         PolicyBridgeBody::BuiltinValueCopy,
     );
-    let any_type_exact_policy = callable(
-        "policy-winner-only",
-        OrdinaryCallableTypeInput::Any,
-        OrdinaryCallableTypeOutput::SameAsInput,
-        compile_pair(),
-        runtime_pair(),
-        false,
-        PolicyBridgeBody::BuiltinValueCopy,
-    );
+    worse_policy_specific_pattern.prototype_pattern_specificity = 100;
 
-    let PolicyBridgeResolution::Selected(selected) = resolve_policy_bridge(
-        &request,
-        &[any_type_exact_policy, exact_type_broad_policy],
-        TransitionTypeExpectation::default(),
-    ) else {
-        panic!("the named strategy must see only ordinary-preference survivors");
+    let candidates = vec![worse_policy_specific_pattern, better_policy_generic_pattern];
+    let refs = candidates.iter().collect::<Vec<_>>();
+    let bp = apply_transition_endpoint_policy_bp_extension(&request, &refs);
+    assert_eq!(bp.len(), 1);
+    assert_eq!(bp[0].id, "better-policy-generic-pattern");
+    let PolicyBridgeResolution::Selected(selected) =
+        resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default())
+    else {
+        panic!("Bp must remove the worse endpoint before B3 Pattern specificity");
     };
-    assert_eq!(selected.callable.id, "ordinary-type-winner");
+    assert_eq!(selected.callable.id, "better-policy-generic-pattern");
 }
 
 fn crossed_policy_candidates() -> Vec<PolicyTransitionCallable<&'static str>> {
@@ -1060,7 +1108,7 @@ fn output_type_does_not_drive_ordinary_type_preference() {
         callable(
             "returns-a",
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
-            OrdinaryCallableTypeOutput::Exact(TypeValueId(101)),
+            OrdinaryCallableTypeOutput::SameAsInput,
             compile_pair(),
             runtime_pair(),
             false,
@@ -1069,7 +1117,7 @@ fn output_type_does_not_drive_ordinary_type_preference() {
         callable(
             "returns-b",
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
-            OrdinaryCallableTypeOutput::Exact(TypeValueId(102)),
+            OrdinaryCallableTypeOutput::Exact(TypeValueId(10)),
             compile_pair(),
             runtime_pair(),
             false,

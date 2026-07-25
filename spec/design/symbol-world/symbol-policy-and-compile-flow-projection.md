@@ -207,9 +207,9 @@ Pp = compile
 It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
-Cross-Policy transition is a conservative extension of this query rule. For
-the old projection judgment `ProjectP1` and the extended elaborator
-`ElabP1`:
+Atomic runtime Policy migration is a conservative extension of this query
+rule. For the old projection judgment `ProjectP1` and the extended binding
+elaborator `ElabP1`:
 
 ```text
 ElabP1(None, R) = R
@@ -218,8 +218,8 @@ ElabP1(Some Q, R):
   S = ProjectP1(Q, R)
   if S != empty:
     return S
-  otherwise:
-    prepare transition from eligible value-bearing entries
+  otherwise, only if Q explicitly requires a missing runtime value view:
+    prepare one direct atomic runtime migration layer
 ```
 
 Therefore:
@@ -238,24 +238,23 @@ Dom_old is a subset of Dom(ElabP1)
 ```
 
 The extension may add results only where the old projection was empty; it
-cannot change an old successful result or selected identity. This applies to
-the complete `PolicyResultEntry[]`, including collections that mix
-value-bearing and absent-Val1 entries. An absent entry has no transition
-capability, but it cannot make a projection selected from another entry fail.
-If no value-bearing entry exists after an empty projection, elaboration fails.
+cannot change an old successful result or selected identity. In the old
+successful domain, migration candidate enumeration and invocation are
+semantically unreachable. This applies to the complete
+`PolicyResultEntry[]`, including collections that mix value-bearing and
+absent-Val1 entries.
 
-For pair query `Qv:Qp`, transition eligibility first projects the Pattern side:
+For pair query `Qv:Qp`, atomic migration preparation first slices only the
+Pattern-policy stage capability:
 
 ```text
-Pp_selected = ProjectStages(Qp, source.Pp)
+Pp_selected = SlicePatternPolicyStages(Qp, source.Pp)
 ```
 
-`Pp_selected` must be non-empty. A Runtime Val1 transition may materialize a
-missing value slice and pair it with that selected Pattern capability; it does
-not manufacture a Pattern stage absent from the source. For a type-changing
-ordinary transition call, the result Pattern identity comes from that call's
-ordinary result, not from the source entry. The invariant preserved here is
-Pattern-policy capability, not unconditional Pattern-identity reuse.
+This is Policy slicing over `Pp`; it is not Pattern extraction, PatternValue
+projection, postfix `?`, extractor lookup, PatternHead navigation, or a change
+of PatternRoot/PatternScope. It preserves PatternValue identity and structural
+Pattern shape.
 
 Unselected alternatives in a written query are never missing-value
 obligations. The bounded implementation subset is recorded in
@@ -346,11 +345,9 @@ forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
 compatibility substrate rather than the final sum type, so P1 elaboration, P2
 normalization, and resolved export projection each validate this invariant.
 
-### 3.4 Generic downstream Policy demand
+### 3.4 Existing-view-first demand satisfaction
 
-Cross-Policy transition is not intrinsically a P1-binding operation. The
-general trigger is the first downstream consumer whose required Policy view is
-not available from the evaluated source:
+`PolicyDemand` may be retained as consumer-origin metadata:
 
 ```text
 PolicyDemand
@@ -360,8 +357,10 @@ PolicyDemand
   | MechanicalPolicyDemand
 ```
 
-Each demand kind owns its existing-view projection/admissibility rule. The
-generic satisfaction shape is:
+This enumeration does **not** give all demand kinds a shared arbitrary
+conversion search. Each demand kind owns its established
+projection/admissibility rule. The general invariant is only
+existing-view-first:
 
 ```text
 SatisfyPolicyDemand(demand, result):
@@ -370,20 +369,177 @@ SatisfyPolicyDemand(demand, result):
   if selected != empty:
     return selected
 
-  if no eligible Val1 exists:
-    fail
-
-  otherwise:
-    prepare one direct PolicyTransition demand
+  migration path is considered only for the
+  language-authorized missing-runtime case
 ```
 
-`BindingP1Demand` uses the conservative `ProjectP1` rule in §3.1. Formal
-parameter and result consumers do not thereby become ordinary P1 syntax or
-reuse its contextual elaborator; they retain their own established policy
-Patterns and applicability rules. The v0.6 Rust helper implements only the
-binding-P1 entry point.
+For every demand kind:
 
-### 3.5 Static frontier and deferred materialization invariants
+```text
+ProjectExistingViewForDemand(demand, R) != empty
+  => no migration candidate enumeration
+  => no migration invocation
+  => no value reconstruction
+  => Symbol / TypeValue / PatternValue / Place identity is unchanged
+```
+
+`BindingP1Demand` uses the exact conservative `ProjectP1` theorem in §3.1.
+Formal parameter and result consumers retain their existing policy-Pattern and
+applicability rules. A demand that accepts `compile || runtime` is satisfied by
+an available compile slice; the mere spelling of `runtime` as another accepted
+alternative creates no materialization obligation.
+
+`MechanicalPolicyDemand` records the origin of a language-selected mechanical
+operation. It does not imply that arbitrary Policy failure may search `ref`,
+`share`, `alias`, or another structure-changing operation. Those operations
+occur only when separately required by their own language rule and then use
+ordinary function-object invocation.
+
+### 3.5 Slicing and atomic runtime migration
+
+Slicing and migration are sequential, not freely competing alternatives:
+
+```text
+source result
+  -> Project_in: select an existing source Policy view
+  -> Migration: one authorized directed runtime materialization
+  -> ordinary result object
+  -> Project_out: select the demanded output Policy view
+```
+
+Conceptually:
+
+```text
+Project_out o Migration o Project_in
+```
+
+`Project_in` and `Project_out` belong to existing Policy slicing algebra.
+Migration is a directed operation, not a partial order. No transitive closure
+or migration-chain search is formed. An operation implementation may call
+other ordinary operations explicitly, but the demand satisfier prepares at
+most one direct migration layer.
+
+The existing P2 legality rule in §4 is the precondition:
+
+```text
+Static(Pv) = Pv - runtime
+
+runtime not in Pp
+Static(Pv) is empty or Static(Pv) = Pp
+```
+
+Therefore a legal value stage domain has at most one additional runtime branch
+beyond its Pattern-policy stage domain, or is the runtime-only special case.
+
+The language-authorized atomic migration is only:
+
+```text
+input selected static view:
+  Pv = S
+  Pp = S
+
+output selected view:
+  Pv = runtime
+  Pp = S
+```
+
+Only Val1 is materialized at runtime. Pattern-policy capability does not
+migrate to runtime and may not be manufactured. `Pp` equality here is about
+Policy capability; it is not an implementation license to copy or reroot a
+source Pattern object. The eventual result Pattern comes from ordinary
+invocation result semantics.
+
+For a runtime demand:
+
+```text
+runtime in source.Pv
+  => consume the existing runtime slice
+
+runtime not in source.Pv
+and Static(source.Pv) is non-empty
+and the demanded Pp slice is available
+  => atomic runtime migration may be prepared
+```
+
+A failed Policy demand cannot repair failed Type/Pattern structural
+applicability:
+
+```text
+not StructurallyApplicable(candidate, actual)
+  => Policy migration alone cannot make candidate admissible
+```
+
+In particular, `T` is never changed implicitly to `T ref` merely because a
+consumer requires runtime. Explicit/mechanical `ref` remains an independent
+ordinary operation.
+
+### 3.6 Existing runtime capability versus runtime value readability
+
+For:
+
+```text
+Pv = compile || runtime
+Pp = compile
+```
+
+a runtime query is an existing slice:
+
+```text
+ProjectPolicy(runtime, R) != empty
+```
+
+It is not a new compile-to-runtime invocation. The two explanations are:
+
+```text
+extensional availability:
+  runtime is already a member of Pv
+
+operational provenance:
+  the language's atomic migration capability may explain
+  how that branch can eventually be provided
+```
+
+Migration explains availability; slicing consumes availability. This preserves
+the phase-layer separation:
+
+```text
+ResolveSymbol
+ExposePolicySlice
+ReadValue
+ReadPattern
+```
+
+During a static phase, `ExposePolicySlice(runtime)` may establish that the
+runtime branch exists in the semantic object while `ReadValue(runtime)` remains
+unavailable until Runtime or is represented by residual computation. Runtime
+Policy availability is not present-phase value readability.
+
+### 3.7 Mixed-stage evaluation boundary
+
+Complete binding/evaluation for mixed-stage results such as
+`compile || runtime` remains open. This design freezes only the compatibility
+foundation:
+
+```text
+Resolve once
+Evaluate progressively
+Residualize unavailable runtime dependencies
+```
+
+Symbol/path/callable identity is resolved in the static semantic world. A
+runtime continuation of that already-resolved computation does not reopen
+namespace lookup or candidate identity merely because runtime values become
+available. Explicit future dynamic dispatch, if introduced, must be a
+different named mechanism.
+
+Evaluation should compute the maximal phase-admissible portion subject to data
+dependency and effect/sequencing constraints. Runtime-dependent portions are
+residualized and later continue the same resolved computation. This does not
+freeze the residual IR, mixed-stage `InvocationFrame` representation, effect
+sequencing frontier, continuation ABI, or complete OpenStatic/SealStatic/
+Runtime handoff.
+
+### 3.8 Static frontier and deferred materialization invariants
 
 Static evaluation continues while the expression and its dependencies are
 evaluable in the current static phase. Lexical occurrence inside a runtime
@@ -391,7 +547,7 @@ body is not by itself a runtime-computation boundary. The frontier is:
 
 ```text
 static evaluation frontier
-  = first consumer requiring an unavailable Policy view
+  = first dependency/effect boundary not admissible in the current phase
 ```
 
 The following positive invariants constrain future integration even though
@@ -407,9 +563,9 @@ their storage/lowering algorithms are not implemented:
 - Storage requested by `[[global]]` materialization does not mutate the
   source-visible `NamespaceGraph`; generated storage and source namespace
   declarations remain distinct semantic facts.
-- `share` and `alias` materialization may compose an ordinary `ref`
-  materialization route and then apply their own type/access rules. They do
-  not require independent compiler coercion systems.
+- A language-selected `ref`, `share`, or `alias` operation may compose
+  ordinary operations and apply its own type/access rules. Such a structural
+  operation is not Policy-demand repair.
 
 These are deferred positive constraints, not claims that runtime lowering,
 cache identity, `[[global]]` seal scanning, or lifetime checking is currently
@@ -561,6 +717,22 @@ compile Pattern/type is readable
 derived compile companion may join static overload resolution
 original runtime computation remains in RuntimeResidualFlow
 ```
+
+Conversely, exposing or selecting an existing runtime Policy slice in a static
+phase is not permission to read its value:
+
+```text
+runtime in Pv
+  => the runtime capability/view exists
+
+current Phase is OpenStatic or SealStatic
+  => ReadValue(runtime slice) is unavailable
+  => preserve already-resolved runtime computation/residual
+```
+
+The runtime continuation consumes the preserved symbol/callable identities. It
+does not repeat path resolution or overload choice merely because the value
+becomes readable later.
 
 Seal-only symbols follow the same ordinary-symbol rule. Their paths can be
 resolved independently of whether a facet is exposed in the current phase.
@@ -900,6 +1072,22 @@ count, parameter weighting, lexicographic order, input-before-output rule, or
 separate conversion rank. A result policy participates only when the call
 context supplies a target-result constraint.
 
+For the one compiler-inserted atomic runtime-migration call, its selected input
+and required output Policy endpoints add two coordinates to this same Bp
+product:
+
+```text
+Bp' =
+  ordinary Bp coordinates
+  x migration input endpoint fit
+  x migration output endpoint fit
+```
+
+They are not a B6 named strategy. They therefore precede B3 Pattern extraction
+specificity. When no atomic-migration endpoint context is present,
+`Bp' = Bp` exactly, so every old survivor and all later B1..B6 behavior are
+unchanged.
+
 Delete members enter the same fully admissible set and order. A unique maximal
 delete produces a diagnostic naming that member.
 
@@ -918,18 +1106,19 @@ restriction, three `Phase` values, phase exposure, mechanical flow projection,
 Wpre closure, export-retention closure, and phase-aware partial-order
 selection.
 
-Transition candidate preference consumes both input and output Policy through
-one product/Pareto order at the transition-specific named-strategy step. This
-is specific to a known `SourcePolicy -> TargetPolicyQuery` prototype request;
-it does not add output-type preference to ordinary type overload selection.
+The atomic-migration prototype consumes input and output endpoint Policy
+through one product/Pareto order as a bounded Bp extension. It is specific to
+a known static-view-to-runtime-view request; it does not add output-type
+preference to ordinary type overload selection or define a B6 strategy.
 Candidate Policy adaptation intersects typed Policy domains directly,
 including present/optional/absent alternatives; it does not fabricate a
 concrete `Some(value)` to reuse result-entry projection.
-The current adapter is reached only after an empty ordinary projection, skips
-absent entries, first selects the available Pattern-policy slice, preserves
-ordinary input-type preference as a strict predecessor, and returns a complete
-value/Pattern result entry. It shares the maximal-element helper but does not
-yet perform initializer integration, global Symbol lookup, `InvocationFrame`
+The current binding adapter is reached only after an empty runtime-only
+ordinary projection, skips absent entries, slices an available static source
+and Pattern-policy stage capability, and carries fixture result Pattern data.
+That fixture carrier does not establish final ordinary-result Type/Pattern/
+owner coherence. It shares the maximal-element helper but does not yet perform
+initializer integration, Symbol/Val2/associated-`()` lookup, `InvocationFrame`
 construction, or ordinary function-object invocation.
 
 `PolicySet` and `PolicyFlag` remain in older resolver/build paths as a lossy

@@ -93,10 +93,10 @@ the selected meta compatibility projection for this example. These fields are
 transitional transport, not three final source-level policy positions.
 
 This example contributes a non-empty projected meta slice and therefore does
-not enter cross-Policy transition preparation. The written runtime alternative
-is a query alternative, not a missing value that must be manufactured. The
-current transition resolver is only a candidate-ordering prototype; initializer
-and global ordinary-callable routing remain future integration.
+not enter atomic runtime-migration preparation. The written runtime alternative
+is an accepted query alternative, not a missing value obligation. The current
+migration resolver is only a candidate-ordering prototype; initializer and
+ordinary function-object routing remain future integration.
 
 Conversely, a single P2 `runtime` normalizes canonically to `runtime:compile`.
 Current flat transport records the runtime value stage but does not yet install
@@ -724,12 +724,27 @@ A strict meta context that reaches a runtime boundary must diagnose, not
 quietly emit a residual. Silent residualization in a strict context would erase
 the very guarantee that the strict context exists to provide.
 
-The later runtime phase performs runtime lookup and type checking over residual
-expressions. This document does not define runtime lookup. Runtime lookup is
-intentionally a *later* concern than this model: the meta invocation model
-prepares residuals and guarantees they are well-identified deferred calls, but
-it does not decide all runtime correctness. The residual is a handoff, and the
-runtime phase that consumes it is specified separately and afterward.
+The later runtime phase continues already-resolved residual computation and
+performs the runtime checks that could not complete statically. Residualization
+does not reopen an already resolved Symbol path, callable identity, or ordinary
+overload choice merely because runtime values become available:
+
+```text
+Resolve once
+Evaluate progressively
+Residualize runtime dependencies
+Continue the same resolved computation at Runtime
+```
+
+This is a minimal correction to the older loose phrase “runtime lookup over
+residual expressions,” which did not distinguish consuming a resolved
+residual from redoing namespace/candidate resolution. Any future explicit
+dynamic dispatch or unresolved runtime-name mechanism requires its own design;
+it cannot be inferred from mixed-stage residualization.
+
+The exact residual IR, mixed-stage InvocationFrame representation, runtime
+continuation ABI, effect sequencing, and all OpenStatic/SealStatic/Runtime
+handoff details remain deliberately unfrozen.
 
 ## 7. Ordinary meta and privileged AST meta are not macro expansion
 
@@ -940,8 +955,8 @@ This document does not define:
 ## 12. Future implementation milestones
 
 The model is expected to be reached in stages. The ordering matters: runtime
-lookup over residual expressions must come last, after the pattern, type-value,
-and meta-invocation machinery exists.
+continuation over resolved residual expressions must come last, after the
+pattern, type-value, and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
@@ -958,11 +973,12 @@ and meta-invocation machinery exists.
 10. Add partial versus strict reduction over the intrinsic D/Done match flow.
 11. Add mechanical compile-flow projection, derived companions, must-select,
     and shared inferred-require/body evaluation nodes.
-12. Only after this, introduce runtime lookup over residual expressions.
+12. Only after this, introduce runtime continuation over resolved residual
+    expressions.
 ```
 
-Runtime lookup is deliberately listed last. It must not be pulled earlier than
+Runtime continuation is deliberately listed last. It must not be pulled earlier than
 the product/argument-shape, pattern, type-value, canonical-key, and
 meta-invocation milestones: residuals are only well-formed once the invocation
-engine that produces them exists, and runtime lookup is the consumer of those
-residuals, not a parallel mechanism.
+engine that produces them exists. A separately designed dynamic lookup
+mechanism, if any, is not this continuation.

@@ -282,17 +282,20 @@ Implemented substrate after this correction:
   carriers, and an owner-aware namespace forest with explicit
   `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
   view routing, `DefaultExtractionView`, and typed lookup failures.
-- `lang_build` now has an implementation-only transition preparation helper
+- `lang_build` now has an implementation-only atomic Runtime-migration helper
   that first preserves canonical ordinary P1 projection: any non-empty
-  `project_p1` result completes binding elaboration. Only an empty projection
-  over a value-bearing result can prepare a request; pure types use a
-  projection-only `Infallible` carrier. Literal helpers separate literal
-  family, atomic builtin type `T`, and concrete numeric `Tnum`; registries store
-  current first-order TypeValue projections derived from resolved Type symbols,
-  not final canonical type-value identities. The caller-supplied transition
-  candidate prototype preserves input × output Pareto preference and
-  direct-only selection. Its typed bridge qualification distinguishes
-  available, delete-rejected, missing, and ambiguous outcomes.
+  `project_p1` result completes binding elaboration and makes migration
+  unreachable. Only an empty runtime-only projection over an eligible
+  value-bearing static entry can prepare `S:S -> runtime:S`; pure types use a
+  projection-only `Infallible` carrier. Migration cannot repair Type/Pattern
+  structural failure. Literal helpers separate literal family, atomic builtin
+  type `T`, and concrete numeric `Tnum`; registries store current first-order
+  TypeValue projections derived from resolved Type symbols, not final canonical
+  type-value identities. The caller-supplied candidate prototype preserves
+  input × output endpoint Pareto preference as a Bp stand-in before its
+  Pattern-specificity stand-in, with direct-only selection. Its typed
+  qualification distinguishes available, delete-rejected, missing, and
+  ambiguous outcomes.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -307,13 +310,17 @@ Not implemented after this correction:
 - Routing ordinary source initializers/bindings from canonical `project_p1`
   failure into transition preparation without changing the existing query
   semantics.
-- Generalizing the implemented `BindingP1Demand` entry point to parameter,
-  result, and mechanical `PolicyDemand` consumers.
-- Replacing the caller-supplied transition candidate prototype with
-  operation-selected Symbol/Val2/InvocationFrame/ordinary-function-object
-  routing; whether one or several distinguished operations exist remains open.
-- Full `ref` storage construction, `share`/`alias` composition, `[[global]]`
-  seal scanning, and meta/compile/seal transition legality.
+- Applying the existing-view-first rule at every future Policy-demanding
+  consumer. A consumer accepting `compile || runtime` is already satisfied by
+  an available compile slice; only an explicitly missing runtime-only view may
+  reach the language-authorized atomic migration.
+- Replacing the caller-supplied migration candidate/result fixtures with
+  ordinary Symbol/Val2/associated-`()`/InvocationFrame/function-object routing,
+  including canonical result Type/Pattern/owner coherence. No universal
+  transition Symbol or new callable ontology is implied.
+- Full, separately selected mechanical `ref` storage construction,
+  `share`/`alias` composition, `[[global]]` seal scanning, and any future
+  non-Runtime Policy-migration legality.
 - Runtime owner/place allocation, static-materialization cache identity, and
   the generated-storage boundary that keeps `[[global]]` out of the
   source-visible namespace graph.
@@ -328,17 +335,49 @@ Not implemented after this correction:
 - Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
 
-Deferred cross-Policy work must preserve these already-recorded design
-constraints:
+Deferred materialization and mixed-stage work must preserve these
+already-recorded design constraints:
 
 ```text
-static frontier = first consumer requiring an unavailable Policy view
+existing Policy view => slice; migration is unreachable
+atomic migration = S:S -> runtime:S
 compile -> runtime = new runtime object, not lifetime extension
 addressable runtime value => ordinary owner/place
 compile-ref cache identity = referent identity, not pointee equality
 generated [[global]] storage != source-visible NamespaceGraph mutation
-share/alias may compose ref materialization plus their own access rules
+materialization place != Pattern owner
+ref/share/alias are explicit mechanical operations, not Policy-demand repair
+Resolve once; Evaluate progressively; Residualize runtime dependencies
 ```
+
+### Open mixed-stage binding and evaluation questions
+
+The following foundation is fixed without claiming a complete evaluator:
+
+```text
+symbol/namespace/callable identity is resolved in the static world
+phase-admissible computation is evaluated as early as dependencies and effects permit
+runtime-dependent computation is residualized
+Runtime supplies missing values and continues the same already-resolved computation
+```
+
+Runtime continuation does not reopen an already-resolved Symbol, namespace
+path, callable identity, or overload set merely because a value becomes
+available later. Any future explicit dynamic dispatch would be a separate
+language mechanism.
+
+The following remain open and must not be inferred from the current migration
+prototype:
+
+- the complete mixed-stage binding rule for `runtime || compile` P2;
+- the final residual representation of static/runtime arguments in an
+  `InvocationFrame`;
+- the partial-evaluation IR across OpenStatic, SealStatic, and Runtime;
+- the exact sequencing frontier for effectful expressions under the
+  evaluate-as-much-as-possible principle;
+- the ABI and physical representation of runtime residual continuations;
+- the final composition of mixed-stage evaluation with future capability and
+  effect systems.
 
 Build-world integration gates (not blockers for the current frontend/build
 substrate):

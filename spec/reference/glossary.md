@@ -551,9 +551,12 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 The fixed process that selects a unique overload candidate. Path resolution and
 the current policy view enumerate `Val2` objects. Associated-call preparation
 and every hard structural, Pattern, policy-pair, stage, target-result, concept,
-and ordinary-require check first form fully admissible set `A`. Const/mut then
-uses product partial order across all constrained positions; no total score or
-lexicographic fallback resolves incomparable candidates. Remaining
+and ordinary-require check first form fully admissible set `A`. `Bp` then uses
+the Policy product partial order across all constrained positions; no total
+score or lexicographic fallback resolves incomparable candidates. For an
+authorized atomic Runtime-migration call only, input/output endpoint Policy fit
+extends this same product as `Bp'`. With no endpoint coordinates, `Bp'` is
+exactly old `Bp`. Remaining
 side-effect-free preference filters apply in one fixed normative order:
 entry, concept, extraction, first-order-over-instantiated,
 in-place-over-non-in-place, then named strategy rules. Each
@@ -1192,7 +1195,10 @@ it does not return an unchanged entry after a mere intersection check.
 
 The bounded transition prototype does not change this rule. Any non-empty
 projection completes binding elaboration; alternatives written in the query but
-absent from the RHS are not obligations to manufacture values.
+absent from the RHS are not obligations to manufacture values. More generally,
+an existing compatible Policy view dominates migration: successful projection
+preserves the existing Symbol, TypeValue, PatternValue, Place, and value
+identity and makes migration semantically unreachable.
 
 There is no general prohibition on runtime bindings:
 
@@ -1212,15 +1218,58 @@ Policy Transition,
 
 ---
 
+## Policy Demand Satisfaction
+
+The act of satisfying a consumer's requested Policy view. Demand kind records
+consumer origin; it does not grant permission to search arbitrary conversion
+operations.
+
+```text
+existing compatible view
+  -> use Policy slicing
+
+missing explicitly required runtime view
+  + eligible static Val1 view
+  -> consider one authorized atomic Runtime Policy migration
+
+otherwise
+  -> inadmissible or governed by another explicit language mechanism
+```
+
+A consumer accepting `compile || runtime` is satisfied by an available compile
+slice. Merely mentioning runtime in a choice does not force materialization.
+Failure of Type/Pattern structural applicability cannot be repaired by Policy
+migration.
+
+_See also: Policy Binding, Policy Pair, Policy Transition._
+
+---
+
 ## Policy Transition
 
-A direct value transformation considered when a downstream `PolicyDemand`
-cannot be satisfied by an existing source view. Demand kinds include binding
-P1, parameter, result, and mechanical consumers. Each retains its own
-existing-view rule; transition does not redefine them.
+The current canonical transition case is the language-authorized atomic
+Runtime Policy migration considered only when an explicitly demanded runtime
+view is absent. Define:
+
+```text
+S = Static(Pv) = Pv - runtime
+```
+
+For a legal eligible source, `S` is non-empty and `S = Pp`. The atomic endpoint
+shape is:
+
+```text
+S:S -> runtime:S
+```
+
+Only Val1 is materialized as runtime; Pattern-side Policy capability remains
+`S`. This does not mean the implementation copies the source Pattern object.
+An eventual ordinary function-object invocation supplies an ordinary result
+whose Type/Pattern/owner coherence is governed by existing invocation and
+Pattern semantics.
 
 The current prototype implements only the binding-P1 entry point and prepares
-a request after its ordinary query has no projection:
+a request after its ordinary runtime-only query has no projection:
 
 ```text
 PolicyTransitionRequest {
@@ -1232,15 +1281,26 @@ PolicyTransitionRequest {
 }
 ```
 
-The current target is still P1-query-shaped. A candidate output satisfies it
-through a non-empty Policy-domain projection; the complete query domain is not
-manufactured.
 The current implementation provides only a caller-supplied candidate-ordering
-prototype. Input and output Policy fitness form one product/Pareto partial
-order; crossed advantages are ambiguous and declaration order is irrelevant.
-Absent Val1 cannot construct the request. Initializer integration and final
-operation-to-Symbol/function-object routing remain future work. No transitive
-coercion graph or temporary-lifetime extension is implied.
+prototype. Input and output endpoint Policy fitness extend ordinary Bp as one
+product/Pareto partial order before Pattern extraction specificity; crossed
+advantages are ambiguous and declaration order is irrelevant. Absent Val1
+cannot construct the request. Candidate output Type must equal source Type in
+the prototype, so migration cannot search `ref` or another structure-changing
+operation to repair applicability.
+
+Input and output Policy slicing bracket the directed migration:
+
+```text
+Project_out o Migration o Project_in
+```
+
+No transitive migration graph, candidate backtracking, temporary-lifetime
+extension, universal transition Symbol, or new callable ontology is implied.
+Explicit mechanical `ref`, `share`, and `alias` operations remain ordinary
+function-object calls distinct from Policy-demand satisfaction. Initializer
+integration and final ordinary Symbol/Val2/associated-`()`/InvocationFrame
+routing remain future work.
 
 _See also: Policy Binding, Policy Pair,
 `spec/contracts/v0.6-cross-policy-value-transition.md`._

@@ -58,10 +58,10 @@ Implemented for this slice:
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
-- a caller-supplied cross-Policy candidate-ordering prototype that applies
-  ordinary input-type preference first, then compares input and output Policy
-  as one transition-specific named-strategy product order, and never performs
-  transitive bridge search.
+- a caller-supplied atomic runtime-migration ordering prototype that extends
+  Bp with input/output endpoint Policy fit before its later input-type and
+  Pattern-specificity stand-ins, and never performs transitive migration
+  search.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
 symbol, projects and enumerates its heterogeneous value facet, observes each
@@ -314,14 +314,17 @@ P1 elaboration first applies `project_p1` across the complete
 `PolicyResultEntry[]`. Any non-empty result is the identity-preserving binding
 projection; alternatives named by the query but absent from that result are not
 manufactured. The bounded transition prototype can be reached only when the
-complete projection is empty and the source has a value. This is the currently
-implemented `BindingP1Demand` consumer, not the general definition of a Policy
-transition trigger.
+complete projection is empty, the source has a static value view, and the
+query explicitly requires a missing runtime-only value view. A failed
+non-runtime or mixed-alternative demand does not authorize arbitrary bridge
+search.
 
 The current transition candidate representation is only a comparison
 prototype. It reuses maximal-element selection but does not yet route through a
-mechanically selected operation's Symbol family, heterogeneous Val2,
-`InvocationFrame`, or ordinary prepared callable candidate.
+language-authorized atomic migration operation's Symbol family, heterogeneous
+Val2, `InvocationFrame`, or ordinary prepared callable candidate. It cannot
+repair an inapplicable Type/Pattern structure by searching `ref`, `share`,
+`alias`, or another structure-changing operation.
 
 ### 3.2 P2 pair at the fully admissible boundary
 
@@ -557,25 +560,31 @@ Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.
 
-For a compiler-inserted `SourcePolicy -> TargetPolicyQuery` transition call,
-the source view and requested output query are known at the call site. Its
-Policy-specific comparison is a named strategy applied at B6:
+For a compiler-inserted atomic runtime-migration call, the selected static
+source view and requested runtime output view are known at the call site. Their
+Policy coordinates conservatively extend Bp:
 
 ```text
-TransitionPolicyStrategy(B5):
-  maximal candidates under
-    InputPolicyPreference(candidate, SourcePolicy)
-      x
-    OutputPolicyPreference(candidate, TargetPolicyQuery)
+Bp' = MaxPolicyProduct(
+        ordinary Bp coordinates
+        x InputEndpointPolicyFit(candidate, SourcePolicy)
+        x OutputEndpointPolicyFit(candidate, TargetPolicyQuery)
+      )
 ```
 
 This is one Pareto order, not an input-first/output-second sequence. Better
 input with worse output is incomparable with worse input and better output.
-Because the strategy receives B5, it cannot resurrect a candidate removed by
-`Bp` or `B1` through `B5`, and it cannot override an earlier extraction,
-concept, entry, first-order, or in-place preference. On an ordinary call that
-does not request this named strategy, B6 is identity and the complete old
-overload result is unchanged.
+Because this is Bp, it runs before B1, B2, and B3 Pattern extraction
+specificity. A candidate with better endpoint Policy fit is removed/retained
+before a competing extraction-specificity advantage is considered. On an
+ordinary call without migration endpoint coordinates:
+
+```text
+Bp' = old Bp exactly
+```
+
+so the old Bp survivor identities and every later B1..B6 result are unchanged.
+No transition-specific B6 named strategy exists.
 
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
@@ -585,23 +594,24 @@ checked first; any non-empty binding projection creates no transition request.
 
 Only canonical `Pv:Pp` call dimensions participate. Namespace declaration
 visibility and export-root metadata are illegal in ordinary formal/result/P1
-Policy and are rejected before strategy comparison; they are not specificity
+Policy and are rejected before Bp comparison; they are not specificity
 coordinates. Any value-presence specificity used by the current prototype is
-local to `TransitionPolicyStrategy` and does not define a general Policy
+local to its endpoint Bp coordinate and does not define a general Policy
 overload order.
 
-When an outer ordinary candidate requires a transition, bridge qualification
-is part of forming that outer candidate's fully admissible state:
+When an outer ordinary candidate requires the authorized migration, typed
+migration qualification is part of forming that outer candidate's fully
+admissible state:
 
 ```text
-Available(unique non-delete bridge) -> outer candidate may remain admissible
-RejectedByDelete                   -> outer candidate is not admissible
-Missing                            -> outer candidate is not admissible
-Ambiguous                          -> outer candidate is not admissible
+Available(unique non-delete migration) -> outer candidate may remain admissible
+RejectedByDelete                      -> outer candidate is not admissible
+Missing                               -> outer candidate is not admissible
+Ambiguous                             -> outer candidate is not admissible
 ```
 
 These outcomes remain typed so a final no-candidate diagnostic can report the
-relevant cause. A selected delete bridge is an explicit rejection, never
+relevant cause. A selected delete migration is an explicit rejection, never
 “availability.” Once the outer ordinary winner is selected, later validation
 cannot reopen its discarded candidate set.
 
@@ -624,8 +634,14 @@ A   = FullyAdmissible(
         compile_type_requirements
       )
 
-Bp  = MaxPolicyProduct(A, Phase, invocation_frame, target_result_policy)
-B1  = MaxEntryPreference(Bp)
+Bp' = MaxPolicyProduct(
+        A,
+        Phase,
+        invocation_frame,
+        target_result_policy,
+        optional_atomic_migration_endpoints
+      )
+B1  = MaxEntryPreference(Bp')
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
@@ -644,12 +660,12 @@ M = {
 Every `Bi+1 = f(Bi, ...)` preference step satisfies:
 
 ```text
-Bp ⊆ A, B1 ⊆ Bp, and Bi+1 ⊆ Bi       -- monotonic filtering
+Bp' ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi     -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-The filters execute in exactly the normative `Bp`, then `B1` through `B6`,
+The filters execute in exactly the normative `Bp'`, then `B1` through `B6`,
 order.
 Candidate iteration and source declaration order do not affect an individual
 filter, but filters are not assumed to commute.
@@ -727,9 +743,11 @@ already be unique, as bounded by
 
 Only fully admissible candidates enter preference filtering:
 
-- **Bp Policy product order**: retain maximal candidates under §4.5, including
+- **Bp' Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
-  policy only when the context supplies one.
+  policy only when the context supplies one. For an authorized atomic
+  runtime-migration call, add input/output endpoint Policy fit as two product
+  coordinates. Without those coordinates, this is exactly old Bp.
   Each parameter position is taken from its elaborated formal policy Pattern:
   the callable P2 is inherited first, then an optional `const let` / `mut let`
   slice supplies `Const` / `Mut`; omission supplies `Unspecified`. This carrier
@@ -755,8 +773,9 @@ Only fully admissible candidates enter preference filtering:
   order, and restricted to candidates already in `A`; it cannot restart
   lookup or make an inadmissible candidate viable. It receives `B5` as its
   input and may only remove members of `B5`; access to `A` is read-only
-  metadata for consistency checks such as must-select. The distinguished
-  transition Policy strategy is the rule defined in §4.5.
+  metadata for consistency checks such as must-select. Atomic-migration
+  endpoint Policy coordinates are already consumed by `Bp'` in §4.5 and are
+  not a named strategy.
 
 Each stage only removes candidates. First-order preference does not override
 extraction specificity; a deeper applicable generic pattern may outrank a
@@ -827,8 +846,14 @@ C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
-Bp  = MaxPolicyProduct(A, Phase, invocation_frame, target_result_policy)
-B1  = MaxEntryPreference(Bp)
+Bp' = MaxPolicyProduct(
+        A,
+        Phase,
+        invocation_frame,
+        target_result_policy,
+        optional_atomic_migration_endpoints
+      )
+B1  = MaxEntryPreference(Bp')
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
@@ -870,17 +895,18 @@ not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
 
-The transition prototype now models the intended order more narrowly:
+The atomic migration prototype now models the intended order more narrowly:
 
 ```text
 hard applicability
-  -> ordinary input-type preference
-  -> TransitionPolicyStrategy(input Policy x output Policy)
+  -> Bp endpoint Policy product
+  -> prototype ordinary entry/input-type preference
+  -> prototype B3 Pattern specificity
 ```
 
-This proves that the strategy cannot override the ordinary predecessor in the
-prototype, but it is still caller-supplied substrate. It does not yet receive
-real B5 survivors from the Symbol/Val2/associated-`()` pipeline.
+This proves the required Policy-before-Pattern order, but remains
+caller-supplied substrate. It does not yet extend the real ordinary Bp
+survivors from the Symbol/Val2/associated-`()` pipeline.
 
 ---
 

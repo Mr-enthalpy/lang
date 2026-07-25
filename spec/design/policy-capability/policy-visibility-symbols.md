@@ -86,6 +86,13 @@ OpenStatic, exposes no readable runtime value, but exposes its compile Pattern
 and derived compile companion. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
 
+For `(compile || runtime):compile`, selecting the runtime Policy slice is also
+distinct from reading it. The slice already exists extensionally, so demand
+satisfaction does not invoke migration. In OpenStatic/SealStatic its runtime
+value is still unreadable and remains residual. The later Runtime continuation
+uses the already resolved Symbol/callable identity rather than reopening
+ordinary namespace or overload selection.
+
 Explicit-path resolution is authority-sensitive:
 
 ```text
@@ -203,11 +210,13 @@ The typed substrate currently provides:
 - phase-aware overload preference combined with const/mut product order.
 - atomic builtin type-key / concrete numeric Tnum separation, current
   first-order TypeValue projections, and context-selected literal typing;
-- a helper that attempts transition preparation only after the canonical P1
-  projection is empty, with a projection-only pure-type branch;
-- a transitional Policy candidate adapter whose preference is `input x
-  output`, uses the shared maximal-element rule, preserves delete rejection,
-  and performs no transitive search;
+- a helper that attempts atomic runtime migration preparation only after a
+  runtime-only binding query has no existing view, with a projection-only
+  pure-type branch;
+- a transitional migration candidate adapter whose endpoint preference is
+  `input x output` at its Bp stand-in, uses the shared maximal-element rule,
+  preserves delete rejection, cannot change Type, and performs no transitive
+  search;
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
   substrate with explicit package boundaries, identity-preserving mount
   redirects, Full/External view routing, and typed lookup failures.
@@ -227,9 +236,14 @@ contract.
 - Explicit `runtime:seal` remains valid.
 - P1 projection crops an exposed slice.
 - A non-empty ordinary P1 projection never manufactures absent query
-  alternatives. Transition-candidate input may independently project an
-  existing source slice.
+  alternatives and makes migration unreachable.
+- Policy slicing of `Pp` does not extract, navigate, reroot, or otherwise
+  transform a PatternValue.
+- Atomic migration is restricted to `S:S -> runtime:S`; Policy failure cannot
+  repair Type/Pattern structural inapplicability.
 - Runtime value invisibility never deletes the symbol or its Pattern facet.
+- Runtime Policy-slice existence does not imply present-phase value
+  readability.
 - Meta is not exposed in SealStatic.
 - Seal policy grants no enumeration capability.
 - `@` remains lifetime syntax and cannot alter completed ordinary overload
