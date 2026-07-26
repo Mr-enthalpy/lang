@@ -22,6 +22,21 @@ impl TypeValueId {
     }
 }
 
+/// Snapshot-local identity of a semantic value.
+///
+/// This is deliberately distinct from [`TypeValueId`], [`PlaceId`], and
+/// `SymbolId`.  The current transition slice uses it to preserve the identity
+/// of the source value across candidate preparation without pretending that a
+/// value is its type, binding place, or declaring symbol.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SemanticValueId(pub u64);
+
+impl SemanticValueId {
+    pub const fn as_u64(self) -> u64 {
+        self.0
+    }
+}
+
 /// Derive the current first-order type-value projection from a TypeSymbol.
 ///
 /// `TypeValueId` is a first-order type-value projection derived from the

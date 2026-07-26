@@ -13,6 +13,9 @@ Policy implementation mapping and orthogonal future dimensions:
 - mapping current flat symbol/body/result metadata to canonical `Pv:Pp`;
 - contextual P1 binding/view projection, P2 result normalization, and
   function-object stage-view derivation;
+- a projection-empty Runtime Val1 transition-preparation helper plus a
+  transitional input × output Policy candidate-ordering prototype (current contract:
+  `../../contracts/v0.6-cross-policy-value-transition.md`);
 - meta/compile/seal visibility and the pre-seal snapshot boundary;
 - explicit retirement of an independent return-policy `P3`;
 - component-preserving results rather than a scalar result-symbol policy;

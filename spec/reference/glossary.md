@@ -551,9 +551,12 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 The fixed process that selects a unique overload candidate. Path resolution and
 the current policy view enumerate `Val2` objects. Associated-call preparation
 and every hard structural, Pattern, policy-pair, stage, target-result, concept,
-and ordinary-require check first form fully admissible set `A`. Const/mut then
-uses product partial order across all constrained positions; no total score or
-lexicographic fallback resolves incomparable candidates. Remaining
+and ordinary-require check first form fully admissible set `A`. `Bp` then uses
+the Policy product partial order across all constrained positions; no total
+score or lexicographic fallback resolves incomparable candidates. For an
+authorized atomic Runtime-migration call only, input/output endpoint Policy fit
+extends this same product as `Bp'`. With no endpoint coordinates, `Bp'` is
+exactly old `Bp`. Remaining
 side-effect-free preference filters apply in one fixed normative order:
 entry, concept, extraction, first-order-over-instantiated,
 in-place-over-non-in-place, then named strategy rules. Each
@@ -561,6 +564,12 @@ filter is independent of candidate enumeration order; filters are not assumed
 to commute. A named strategy only sees fully admissible candidates and cannot
 restart lookup. Delete members participate normally, and ordinary uniqueness is
 constrained by `must_select_if_qualified` strategies activated from `A`.
+
+Current source cannot construct a fallback candidate role, so current calls
+have `Af = A`. If a future fallback strategy is exposed, its fixed semantics
+will insert `SuppressFallback(A)` before Bp: any admissible non-fallback
+candidate, including `delete`, suppresses fallback permanently. This future
+suppression is not B6 and later failure cannot restore fallback.
 
 Lifetime policy is not a type/compile candidate filter. This revision defines
 no lifetime overload, refinement order, ABI class, or second selection. Any
@@ -1190,6 +1199,13 @@ The selected slice must be non-empty and admitted by the destination binding.
 Projection crops the policy slice while preserving symbol and Pattern identity;
 it does not return an unchanged entry after a mere intersection check.
 
+The bounded transition prototype does not change this rule. Any non-empty
+projection completes binding elaboration; alternatives written in the query but
+absent from the RHS are not obligations to manufacture values. More generally,
+an existing compatible Policy view dominates migration: successful projection
+preserves the existing Symbol, TypeValue, PatternValue, Place, and value
+identity and makes migration semantically unreachable.
+
 There is no general prohibition on runtime bindings:
 
 ```text
@@ -1203,7 +1219,131 @@ particular current `runtime` means `runtime:compile`; explicit `runtime:seal`
 remains valid.
 
 _See also: BindingSlot, PolicyPair,
+Policy Transition,
 `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`._
+
+---
+
+## Policy Demand Satisfaction
+
+The act of satisfying a consumer's requested Policy view. Demand kind records
+consumer origin; it does not grant permission to search arbitrary conversion
+operations. The ordering is called **Existing-First,
+Constructible-Second**:
+
+```text
+existing compatible view
+  -> use Policy slicing
+
+complete existing projection is empty
+  + runtime is an accepted alternative
+  + eligible static Val1 view
+  -> extract RuntimeBranch(query)
+  -> consider one authorized atomic Runtime Policy migration
+
+otherwise
+  -> inadmissible or governed by another explicit language mechanism
+```
+
+A consumer accepting `compile || runtime` is satisfied by an available compile
+slice. Merely mentioning runtime in a choice does not force materialization.
+However, if a complete choice such as `meta || runtime` has no existing
+accepted view, runtime is the currently language-constructible accepted stage
+branch. Failure of Type/Pattern structural applicability cannot be repaired by
+Policy migration.
+
+For an object already carrying `(compile || runtime):compile`, the runtime
+branch is an existing Policy slice rather than a migration request.
+`ExposePolicySlice(runtime)` may therefore succeed during a static phase while
+`ReadValue(runtime)` remains unavailable. Compile-readable dependencies are
+bound/evaluated statically; runtime-dependent computation is residualized and
+continues the same already-resolved invocation without reopening Symbol lookup
+or overload selection. Residual representation, effect sequencing, and
+continuation ABI remain open.
+
+_See also: Policy Binding, Policy Pair, Policy Transition._
+
+---
+
+## Policy Transition
+
+The current canonical transition case is the language-authorized atomic
+Runtime Policy migration considered only after a complete accepted Policy
+choice has no existing view and that choice contains runtime. Define:
+
+```text
+S = Static(Pv) = Pv - runtime
+```
+
+For a legal selected input endpoint, `S` is non-empty and `S = Pp`. The
+compiler-mandated endpoint skeleton is:
+
+```text
+input:  Type=T, value stage=S,       Pp=S
+output: Type=T, value stage=runtime, Pp=S, presence=present
+```
+
+Input/output value mutability may differ because those coordinates belong to
+the selected ordinary callable and its overload Policy. Thus
+`const compile -> mut runtime` may construct a fresh runtime object; the
+compiler authorizes the stage edge but does not invent `mut`. Pattern-side
+Policy capability remains `S`. This does not mean the implementation copies
+the source Pattern object. An eventual ordinary function-object invocation
+supplies an ordinary result whose Type/Pattern/owner coherence is governed by
+existing invocation and Pattern semantics.
+
+Migration endpoint mutability uses ordinary actual-relative Bp preference, not
+hard Policy-domain intersection or subset specificity:
+
+```text
+const actual/demand: const > unspecified > mut
+mut actual/demand:   mut > unspecified > const
+```
+
+Opposite endpoint Patterns remain fully admissible. Stage, presence, Pp
+capability, Type, and structural applicability remain hard constraints.
+Generic ordinary members may realize the four default transports
+`const <- const`, `const <- mut`, `mut <- const`, and `mut <- mut`; more
+specific Pattern members may refine or delete regions of that relation.
+
+The current prototype implements only the binding-P1 entry point. It projects
+the complete original query first, then derives a runtime-only target branch:
+
+```text
+PolicyTransitionRequest {
+  source_policy,
+  target_query,
+  source_type,
+  source_value,
+  provenance
+}
+```
+
+The current implementation provides only a caller-supplied candidate-ordering
+prototype. Input and output endpoint Policy fitness form one product/Pareto
+partial order before the Pattern-specificity stand-in; crossed advantages are
+ambiguous and declaration order is irrelevant. Full Bp' must combine ordinary
+Bp and endpoint coordinates in one product. The prototype's endpoint-only
+maxima helper is private and not sequentially composable with ordinary Bp.
+Absent Val1 cannot construct the request. Candidate output Type must equal
+source Type, so migration cannot search `ref` or another structure-changing
+operation to repair applicability.
+
+Input and output Policy slicing bracket the directed migration:
+
+```text
+Project_out o Migration o Project_in
+```
+
+No transitive migration graph, candidate backtracking, temporary-lifetime
+extension, universal transition Symbol, or new callable ontology is implied.
+Explicit mechanical `ref`, `share`, and `alias` operations remain ordinary
+function-object calls distinct from Policy-demand satisfaction. Initializer
+integration and final ordinary Symbol/Val2/associated-`()`/InvocationFrame
+routing remain future work.
+
+_See also: Policy Binding, Policy Pair,
+`spec/contracts/v0.6-cross-policy-value-transition.md`._
 
 ---
 
@@ -1246,6 +1386,36 @@ right annotation expression is preserved. Represented as
 > from a canonical skeleton wildcard `_`.
 
 _See also: AnnotationTerm, CanonicalSkeleton, Type-object._
+
+---
+
+## Atomic builtin type
+
+An actual builtin Type value whose identity does not require applying a
+dependent type constructor to another Type value. The current T key space is:
+
+```text
+uint | int | float | buffer | str
+```
+
+The Rust `AtomicBuiltinType` enum is a lookup key for these intended Type
+symbols, not itself a `TypeValueId` and not merely a literal classifier.
+Current core bootstrap does not yet install every member.
+
+_See also: Concrete numeric type, Type-object, TypeValueId._
+
+---
+
+## Concrete numeric type
+
+A width-bearing numeric Type (`Tnum`) such as `uint16` or `float32`. Numeric
+literal materialization selects a concrete numeric Type rather than using the
+atomic `uint`/`int`/`float` Type as the literal's final type. In the current
+implementation, `NumericTypeKey` maps to a first-order `TypeValueId` projection
+derived from an installed core Type symbol; final canonical type-value equality
+is not implemented.
+
+_See also: Atomic builtin type, Literal, TypeValueId._
 
 ---
 

@@ -16,6 +16,7 @@ pub mod graph;
 pub mod identity;
 pub mod initializer_eval;
 pub mod invocation_frame;
+pub mod literal_semantics;
 pub mod manifest;
 pub mod meta;
 pub mod meta_body;
@@ -34,6 +35,7 @@ pub mod phase_flow;
 pub mod policy_expr;
 pub mod policy_overload;
 pub mod policy_pair;
+pub mod policy_transition;
 pub mod product_shape;
 pub mod return_target;
 pub mod semantic_owner;
@@ -87,7 +89,7 @@ pub use graph::{
 pub use identity::{
     type_value_projection_from_type_symbol, AliasChain, AliasCycleDetectionState,
     AliasQueryDisposition, AliasQueryMode, AliasQueryRequest, AliasQueryResult,
-    AliasWritableBoundary, PlaceId, TypeValueBindingPlaceholder, TypeValueId,
+    AliasWritableBoundary, PlaceId, SemanticValueId, TypeValueBindingPlaceholder, TypeValueId,
 };
 pub use initializer_eval::{
     binding_assertion_annotation_context, evaluate_initializer_best_effort, residual_diagnostic,
@@ -97,6 +99,11 @@ pub use invocation_frame::{
     CallableFrameShape, ExplicitParameterShape, InvocationCallableRef, InvocationExecutionEnv,
     InvocationFrame, InvocationLookupEnv, ReceiverTypeRef, ReturnTargetShape, SelfPosition,
     SelfPositionSource, SelfSlotKind, SelfSlotShape, SELF_SLOT_INDEX,
+};
+pub use literal_semantics::{
+    materialize_literal_value, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
+    AtomicBuiltinTypeRegistryFailure, LiteralFamily, LiteralMaterializationFailure,
+    LiteralTypeSelection, LiteralValue, NumericFamily, NumericTypeKey, NumericTypeRegistry,
 };
 pub use manifest::{BuildManifest, NamespaceMount, SourceRoot};
 pub use meta::{
@@ -196,6 +203,18 @@ pub use policy_pair::{
     P1Projection, PatternComponentPolicy, Phase, PolicyPair, PolicyResultEntry, PolicyStage,
     ResolvedCandidatePolicy, SealWorldSnapshot, StageSet, ValueComponentPolicy, ValueMutability,
     ValuePresence, WpreRoots,
+};
+pub use policy_transition::{
+    assemble_transition_results, compare_policy_transition_candidates,
+    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, invoke_resolved_policy_bridge,
+    project_transition_policy_domain, qualify_policy_bridge, resolve_policy_bridge,
+    validate_runtime_transition, BridgeQualification, OrdinaryCallableTypeInput,
+    OrdinaryCallableTypeOutput, P1AssemblyFailure, P1Elaboration, P1ElaborationFailure, P1Origin,
+    PolicyBridgeBody, PolicyBridgeEffect, PolicyBridgeInvocationFailure,
+    PolicyBridgeInvocationResult, PolicyBridgeResolution, PolicyPartialOrdering,
+    PolicyTransitionCallable, PolicyTransitionDemand, PolicyTransitionFailure,
+    PolicyTransitionRequest, PolicyTransitionRequestFailure, PrototypeTransitionResultCarrier,
+    PureTypeP1Elaboration, ResolvedPolicyBridge, SemanticValueRef, TransitionTypeExpectation,
 };
 pub use product_shape::{
     ArgProductShape, ExplicitPassMode, FlattenedProductInvariant, FlattenedProductObject,

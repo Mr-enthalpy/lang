@@ -223,6 +223,60 @@ Injection is closer to `+=` on a place than to pure expression evaluation. The
 right-hand use of a name is a value; the injection target is a place being
 extended.
 
+### 4.1 Atomic builtin types, concrete numeric types, and literal typing
+
+The literal spelling family, atomic builtin type, and concrete numeric type are
+distinct:
+
+```text
+LiteralFamily
+  = Integer | Float | String
+
+AtomicBuiltinType T
+  = Uint | Int | Float | Buffer | Str
+
+NumericTypeKey Tnum
+  = NumericFamily x width
+```
+
+A literal family records normalized syntax and is not a type identity. Each
+member of `AtomicBuiltinType` denotes an actual atomic builtin type whose
+identity, once installed, comes from its Type symbol; it is not merely a
+classifier invented by literal materialization. The Rust enum is a lookup key,
+not itself a `TypeValueId`.
+
+A concrete numeric key selects a type object such as `uint16` or `float32`.
+Current Rust code carries the first-order `TypeValueId` projection derived from
+the installed canonical core Type symbol. That projection is transitional
+material and does not claim final canonical type-value equality:
+
+```text
+literal spelling
+  -> LiteralFamily
+  -> contextual/default concrete Tnum selection
+  -> resolve canonical Type Symbol
+  -> project TypeValueId
+  -> materialize semantic value
+```
+
+The lexical frontend continues to preserve spelling only; it does not choose
+width, signedness, precision, or overflow behavior. The semantic selection
+step extends that result without changing lexer meaning. An unsuffixed default
+and range/context rules remain separate decisions.
+
+Requiring a concrete `Tnum` for numeric literals does not imply that
+`uint`/`int`/`float` cease to be Type values. It means only that the numeric
+literal's final type is the selected concrete numeric Type rather than the
+atomic numeric family Type.
+
+The design target for a string literal is a compile-stage `str` value, not
+`str ref`, implicit storage, or a lifetime extension. That statement requires
+a `str` Type symbol and its first-order projection in the semantic world. The
+current core bootstrap installs `uint8`, `uint16`, `uint32`, and `float32`, but
+not `str`; the current helper can materialize a string only when its
+`AtomicBuiltinTypeRegistry` contains a resolved `str` projection. It must not
+accept an arbitrary numeric identifier as an implemented core `str` carrier.
+
 ## 5. Alias forwarding
 
 The alias form is different from ordinary type-value binding:

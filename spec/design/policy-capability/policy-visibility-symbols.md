@@ -23,7 +23,8 @@ namespace declaration policy -> visibility plus optional export-root
 
 A single ordinary P1 is value-dominant, not `Q:Q`. Its selected value stage set
 is intersected with the requested set; the associated Pattern identity is
-retained.
+retained. Any non-empty projection completes ordinary binding elaboration.
+Unselected alternatives in the P1 query are not missing-value demands.
 
 ## 2. P2 and function objects
 
@@ -84,6 +85,13 @@ Resolution and exposure are distinct. A `runtime:compile` symbol resolves in
 OpenStatic, exposes no readable runtime value, but exposes its compile Pattern
 and derived compile companion. Seal-only slices are hidden in OpenStatic but
 their explicit paths are not semantically conflated with unresolved paths.
+
+For `(compile || runtime):compile`, selecting the runtime Policy slice is also
+distinct from reading it. The slice already exists extensionally, so demand
+satisfaction does not invoke migration. In OpenStatic/SealStatic its runtime
+value is still unreadable and remains residual. The later Runtime continuation
+uses the already resolved Symbol/callable identity rather than reopening
+ordinary namespace or overload selection.
 
 Explicit-path resolution is authority-sensitive:
 
@@ -200,6 +208,16 @@ The typed substrate currently provides:
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
 - phase-aware overload preference combined with const/mut product order.
+- atomic builtin type-key / concrete numeric Tnum separation, current
+  first-order TypeValue projections, and context-selected literal typing;
+- a helper that first projects the complete binding query and, only when that
+  is empty, extracts an accepted runtime branch for atomic migration, with a
+  projection-only pure-type branch;
+- a transitional migration candidate adapter whose endpoint preference is
+  `input x output`, uses the shared maximal-element rule, preserves delete
+  rejection, permits callable-declared endpoint mutability, cannot change
+  Type, and performs no transitive search. Its endpoint-only maxima helper is
+  private and is not a sequentially composable implementation of full Bp';
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
   substrate with explicit package boundaries, identity-preserving mount
   redirects, Full/External view routing, and typed lookup failures.
@@ -218,7 +236,20 @@ contract.
 - Single P2 `runtime` normalizes to `runtime:compile`.
 - Explicit `runtime:seal` remains valid.
 - P1 projection crops an exposed slice.
+- A non-empty ordinary P1 projection never manufactures absent query
+  alternatives and makes migration unreachable.
+- After the complete existing projection is empty, an accepted runtime
+  alternative may be extracted as the constructible branch; other alternatives
+  are not manufactured.
+- Policy slicing of `Pp` does not extract, navigate, reroot, or otherwise
+  transform a PatternValue.
+- Atomic migration mandates only the static-to-runtime stage edge, unchanged
+  Type, present output, and unchanged selected `Pp`; callable-declared
+  mutability endpoints may differ and participate in Bp'.
+- Policy failure cannot repair Type/Pattern structural inapplicability.
 - Runtime value invisibility never deletes the symbol or its Pattern facet.
+- Runtime Policy-slice existence does not imply present-phase value
+  readability.
 - Meta is not exposed in SealStatic.
 - Seal policy grants no enumeration capability.
 - `@` remains lifetime syntax and cannot alter completed ordinary overload

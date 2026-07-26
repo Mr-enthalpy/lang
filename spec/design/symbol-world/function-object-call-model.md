@@ -50,6 +50,108 @@ object's `Pv:Pp` view for the current lookup domain before type-associated call
 lookup. The remaining steps run independently for each surviving value entry;
 entries without an applicable `()` call entry are discarded.
 
+### 2.1 Compiler-inserted atomic runtime migration call
+
+The language-authorized static-value-to-runtime-value migration is a
+compiler-inserted use of this same call trunk, not a second callable kind:
+
+```text
+consumer demand
+  -> project the complete accepted Policy choice over existing views
+  -> if successful, use it and stop
+  -> otherwise, if the query accepts runtime, extract its runtime branch
+  -> select an existing static source Policy view
+  -> resolve the ordinary atomic-migration callable family to Symbol
+  -> enumerate its heterogeneous Val2
+  -> obtain each candidate value's TypeValue
+  -> resolve associated ()
+  -> build InvocationFrame
+       slot 0 = selected function object
+       explicit input = source value view
+  -> ordinary structural/Type/Pattern applicability
+  -> if future fallback metadata is present, suppress it when any admissible
+     non-fallback candidate exists
+  -> Bp extended by input/output endpoint Policy fit
+  -> ordinary B1..B6 filters
+  -> unique ordinary invocation
+  -> ordinary result entries
+  -> project the demanded runtime output view
+```
+
+This implicit operation preserves Type while constructing a new runtime value
+object; it does not preserve value/place identity. Its compiler-mandated
+skeleton is:
+
+```text
+input:  Type=T, value stage=S,       Pp=S
+output: Type=T, value stage=runtime, Pp=S, presence=present
+```
+
+Other legal endpoint Policy coordinates belong to the ordinary callable and
+its overload declaration. In particular, input/output mutability need not be
+equal: `const compile -> mut runtime` may construct a fresh mutable runtime
+object when such a candidate is the unique ordinary winner. The compiler
+authorizes the stage edge but does not synthesize the candidate's `mut`
+capability. Opposite const/mut endpoint Patterns remain fully admissible and
+participate in the same actual-relative ordinary Bp order as explicit
+parameters/results; mutability is not tested by Policy-domain intersection.
+Stage, presence, Pp capability, Type, and structural applicability remain hard
+conditions.
+
+As an explanatory model rather than frozen surface syntax, one type Symbol may
+carry the pure Pattern member `:t` plus ordinary value members for the four
+default transports `const <- const`, `const <- mut`, `mut <- const`, and
+`mut <- mut`. More specific Pattern members may refine or delete regions of
+that default ordinary relation.
+
+Those ordinary transport members expose complete callable Policies, not
+special `compile -> runtime` signatures:
+
+```text
+candidate formal P2:
+  (compile || runtime):compile
+
+candidate complete result P2:
+  (compile || runtime):compile
+
+selected static source
+  -> Project_in(complete formal)
+  -> ordinary invocation
+  -> complete ordinary result
+  -> Project_out(runtime demand)
+```
+
+The migration adapter selects views around an ordinary call; it does not
+rewrite the callable's complete P2 into a migration edge.
+
+Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
+match, or search an arbitrary operation graph. `ref`, `share`, and `alias`
+remain independently selected ordinary mechanical operations. When one of
+those operations is explicitly required, its ordinary result may change Type
+and Pattern; that is not Policy-demand repair.
+
+Any successful existing-view satisfaction terminates before migration
+candidate enumeration. In the currently implemented binding case, a non-empty
+ordinary P1 projection makes this call unreachable. An absent-Val1 entry
+cannot be passed as migration input. Failure after the unique ordinary winner
+is selected cannot reopen the candidate set.
+
+The model does not freeze a special global `transition` Symbol or a new
+callable ontology. It freezes complete-choice existing projection followed,
+only when that projection is empty and the choice accepts runtime, by one
+ordinary function-object call toward the extracted runtime branch. The
+operation-to-Symbol mapping remains an implementation/design handoff.
+
+The current `PolicyTransitionCallable` Rust carrier does not implement this
+pipeline; it is bounded candidate/result fixture material and must be removed
+or reduced to an adapter when ordinary routing is wired. In particular, its
+caller-supplied result Pattern proves only that the carrier can transport
+fixture data. It does not establish canonical TypeValue/PatternValue/owner/
+constructor coherence for an ordinary invocation result. The fixture does,
+however, retain the selected callable's complete result Policy separately from
+the demanded `Project_out` view, and constructs its provisional ordinary
+result before applying that output projection.
+
 ## 3. `()` is not an operator
 
 `()` is not an operator. An operator is a callable value with special binding and parsing behavior. Since values are not namespace/type parents, an operator cannot serve as an intermediate navigation node.

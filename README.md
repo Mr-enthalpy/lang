@@ -97,6 +97,7 @@ documents remain present, but they are not part of the normal public reading pat
 | Contract / handoff | `spec/contracts/` | `v0.3-normalization-handoff-checklist.md` | v0.3 normalization handoff: may-assume, must-not-assume, required inputs, open v0.3 questions |
 | Contract / handoff | `spec/contracts/` | `frontend-semantic-amendment-v0.5-a.md` | Classifies the post-freeze structural corrections and new syntax amendments |
 | Contract / handoff | `spec/contracts/` | `raw-ast-contract-v0.5.md` | Current Raw AST shape and validated normalization handoff |
+| Contract / handoff | `spec/contracts/` | `v0.6-cross-policy-value-transition.md` | Implementation boundary for the T/Tnum helper and Existing-First/Constructible-Second runtime-migration endpoint prototype; canonical policy, invocation, type-value, and overload owners define the language direction |
 | Contract / handoff | `spec/contracts/` | `v0.8-symbolic-construction-values-and-extraction-interfaces.md` | Transitional construction/extraction contract; old formal meta-return split superseded by the symbol-first design |
 | Contract / handoff | `spec/contracts/` | `v0.8-meta-construction-agent-constraints.md` | Draft v0.8-adjacent guardrails for shared build/symbol/product/policy/meta construction boundaries |
 | Contract / handoff | `spec/contracts/` | `v0.9-pattern-head-identity-and-explicit-navigation.md` | Bare-name/explicit-navigation contract plus current registry-backed PatternHeadId substrate and future owner-resolution handoff |

@@ -282,6 +282,23 @@ Implemented substrate after this correction:
   carriers, and an owner-aware namespace forest with explicit
   `PackageBoundary`, identity-preserving `Mount`, package-derived Full/External
   view routing, `DefaultExtractionView`, and typed lookup failures.
+- `lang_build` now has an implementation-only atomic Runtime-migration helper
+  that first preserves canonical ordinary P1 projection: any non-empty
+  `project_p1` result completes binding elaboration and makes migration
+  unreachable. After a complete query projects nothing, an accepted runtime
+  alternative is extracted as the runtime-only migration target and paired
+  with an eligible static input view; pure types use a projection-only
+  `Infallible` carrier. The compiler mandates the static-to-runtime stage edge,
+  while callable-declared mutability endpoints may differ. Migration cannot
+  repair Type/Pattern structural failure. Literal helpers separate literal
+  family, atomic builtin type `T`, and concrete numeric `Tnum`; registries store
+  current first-order TypeValue projections derived from resolved Type symbols,
+  not final canonical type-value identities. The caller-supplied candidate
+  prototype preserves input × output endpoint Pareto preference before its
+  Pattern-specificity stand-in, with direct-only selection. Its endpoint-only
+  maxima helper is private and is not a sequentially composable full-Bp
+  implementation. Typed qualification distinguishes available,
+  delete-rejected, missing, and ambiguous outcomes.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -293,6 +310,26 @@ Not implemented after this correction:
 - Connecting the candidate-level export-view projector to the persistent
   namespace graph and authority-sensitive external resolver.
 - Integrating structural compile-flow projection with the complete evaluator.
+- Routing ordinary source initializers/bindings from canonical `project_p1`
+  failure into transition preparation without changing the existing query
+  semantics.
+- Applying the existing-view-first rule at every future Policy-demanding
+  consumer. A consumer accepting `compile || runtime` is already satisfied by
+  an available compile slice. If the complete accepted choice has no existing
+  view, its runtime branch is the currently authorized constructible branch.
+- Integrating ordinary Bp coordinates and migration input/output endpoint
+  coordinates into one product comparator before maxima. Endpoint-only maxima
+  cannot be sequenced before or after ordinary Bp maxima.
+- Replacing the caller-supplied migration candidate/result fixtures with
+  ordinary Symbol/Val2/associated-`()`/InvocationFrame/function-object routing,
+  including canonical result Type/Pattern/owner coherence. No universal
+  transition Symbol or new callable ontology is implied.
+- Full, separately selected mechanical `ref` storage construction,
+  `share`/`alias` composition, `[[global]]` seal scanning, and any future
+  non-Runtime Policy-migration legality.
+- Runtime owner/place allocation, static-materialization cache identity, and
+  the generated-storage boundary that keeps `[[global]]` out of the
+  source-visible namespace graph.
 - Materialized derived companion objects and must-select enforcement.
 - Automatic inferred require, a complete overload resolver, and a call
   execution checker.
@@ -303,6 +340,70 @@ Not implemented after this correction:
   frame.
 - Any positive lifetime/Horae design.
 - Alias forwarding under policy projection, type checking, and runtime IR.
+
+Deferred materialization and mixed-stage work must preserve these
+already-recorded design constraints:
+
+```text
+existing Policy view => slice; migration is unreachable
+complete choice empty + runtime accepted => construct runtime branch
+compiler mandates static -> runtime; callable owns legal mutability endpoints
+compile -> runtime = new runtime object, not lifetime extension
+addressable runtime value => ordinary owner/place
+compile-ref cache identity = referent identity, not pointee equality
+generated [[global]] storage != source-visible NamespaceGraph mutation
+materialization place != Pattern owner
+ref/share/alias are explicit mechanical operations, not Policy-demand repair
+Resolve once; Evaluate progressively; Residualize runtime dependencies
+```
+
+### Fixed mixed-stage semantics and open implementation questions
+
+The core binding/evaluation meaning of a mixed-stage Policy domain is fixed
+without claiming a complete evaluator:
+
+```text
+runtime in Pv means an existing runtime Policy slice
+ExposePolicySlice(runtime) does not invoke migration
+slice existence does not imply ReadValue availability in the current phase
+compile-readable dependencies bind/evaluate in the static phase
+runtime-dependent slots/computation residualize
+symbol/namespace/callable identity is resolved in the static world
+phase-admissible computation is evaluated as early as dependencies and effects permit
+Runtime supplies missing values and continues the same already-resolved computation
+```
+
+Runtime continuation does not reopen an already-resolved Symbol, namespace
+path, callable identity, or overload set merely because a value becomes
+available later. Any future explicit dynamic dispatch would be a separate
+language mechanism.
+
+The following remain open and must not be inferred from the current migration
+prototype:
+
+- the final residual representation of static/runtime arguments in an
+  `InvocationFrame`;
+- the partial-evaluation IR across OpenStatic, SealStatic, and Runtime;
+- the exact sequencing frontier for effectful expressions under the
+  evaluate-as-much-as-possible principle;
+- the ABI and physical representation of runtime residual continuations;
+- the final composition of mixed-stage evaluation with future capability and
+  effect systems.
+
+Current source does not expose a fallback candidate strategy, so current calls
+have `Af = A`. The semantic effect is nevertheless fixed if/when that future
+strategy is introduced:
+
+```text
+A = FullyAdmissible(...)
+Af = SuppressFallback(A)
+Af -> Bp'
+```
+
+Any admissible non-fallback candidate, including `delete`, then suppresses
+fallback permanently. Its final surface spelling and ordinary
+candidate-storage representation remain open, but its conditional semantic
+observation point and no-retry behavior are fixed.
 
 Build-world integration gates (not blockers for the current frontend/build
 substrate):

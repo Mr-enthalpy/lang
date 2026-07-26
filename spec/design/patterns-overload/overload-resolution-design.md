@@ -58,6 +58,10 @@ Implemented for this slice:
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
+- a caller-supplied atomic runtime-migration ordering prototype that extends
+  Bp with input/output endpoint Policy fit before its later input-type and
+  Pattern-specificity stand-ins, and never performs transitive migration
+  search.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
 symbol, projects and enumerates its heterogeneous value facet, observes each
@@ -306,6 +310,23 @@ After path resolution and heterogeneous Val2 enumeration, C2 observes the
 object view available at the current lookup stage. Base path-to-Symbol
 resolution is not conditioned by P1.
 
+P1 elaboration first applies `project_p1` across the complete
+`PolicyResultEntry[]`. Any non-empty result is the identity-preserving binding
+projection; alternatives named by the query but absent from that result are not
+manufactured. The bounded transition prototype can be reached only when the
+complete projection is empty, the source has a static value view, and the
+query accepts runtime. The original demand may be a choice such as
+`meta || runtime`; only after its complete projection fails is the runtime
+branch extracted as the runtime-only migration target. A failed query with no
+runtime alternative does not authorize arbitrary operation search.
+
+The current transition candidate representation is only a comparison
+prototype. It reuses maximal-element selection but does not yet route through a
+language-authorized atomic migration operation's Symbol family, heterogeneous
+Val2, `InvocationFrame`, or ordinary prepared callable candidate. It cannot
+repair an inapplicable Type/Pattern structure by searching `ref`, `share`,
+`alias`, or another structure-changing operation.
+
 ### 3.2 P2 pair at the fully admissible boundary
 
 P2 describes the call/expression result pair:
@@ -540,6 +561,149 @@ Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.
 
+For a compiler-inserted atomic runtime-migration call, the selected static
+source view and requested runtime output view are known at the call site. Their
+Policy coordinates conservatively extend Bp:
+
+```text
+Bp' = MaxPolicyProduct(
+        ordinary Bp coordinates
+        x InputEndpointPolicyFit(candidate, SourcePolicy)
+        x OutputEndpointPolicyFit(candidate, TargetPolicyQuery)
+      )
+```
+
+This is one Pareto order, not an input-first/output-second sequence. Better
+input with worse output is incomparable with worse input and better output.
+Because this is Bp, it runs before B1, B2, and B3 Pattern extraction
+specificity. A candidate with better endpoint Policy fit is removed/retained
+before a competing extraction-specificity advantage is considered. On an
+ordinary call without migration endpoint coordinates:
+
+```text
+Bp' = old Bp exactly
+```
+
+so the old Bp survivor identities and every later B1..B6 result are unchanged.
+No transition-specific B6 named strategy exists.
+
+The compiler mandates the static-to-runtime stage edge, not equality of every
+endpoint coordinate. Candidate-declared input/output value mutability belongs
+to this product. Thus a callable may expose:
+
+```text
+const + compile -> mut + runtime
+```
+
+for a fresh runtime object. The compiler does not synthesize `mut`; the
+callable declares it and must win ordinary overload selection. Type remains
+unchanged, so this does not reopen structural applicability repair.
+
+Endpoint mutability reuses the ordinary actual-relative order above. It is not
+a Policy-domain hard intersection:
+
+```text
+HardEndpointApplicability
+  = Type
+  x stage legality
+  x presence legality
+  x Pp capability
+  x structural applicability
+
+InputMutabilityPreference
+  = Compare(candidate input Pattern, selected source actual)
+
+OutputMutabilityPreference
+  = Compare(candidate output Pattern, requested target)
+```
+
+Consequently an opposite const/mut endpoint remains in fully admissible set
+`A`; it is merely worse than `unspecified`, which is worse than the matching
+endpoint. For a const source/target the ordering is therefore
+`const > unspecified > mut`, and it reverses for a mut source/target. This is
+the same ordinary Bp relation, not a migration-specific subset order. If a
+unique ordinary winner later produces a result that `Project_out` cannot
+expose to the consumer, that failure does not reopen overload selection.
+
+One explanatory semantic normal form is a type Symbol with one pure Pattern
+facet and ordinary value members implementing the default mutability transport
+relation:
+
+```text
+Symbol t
+  Pattern:
+    :t
+
+  ordinary transport members (output <- input):
+    const <- const
+    const <- mut
+    mut   <- const
+    mut   <- mut
+```
+
+This is not frozen surface syntax and does not require a conversion table or a
+new callable ontology. It illustrates that generic ordinary members define the
+default relation. More specific structural Pattern members may locally refine
+or `delete` regions of that relation. Each default member's ordinary formal
+and complete result Policy is `(compile || runtime):compile`; the migration
+context compares the compile `Project_in` and runtime `Project_out` views. It
+does not replace the member's complete P2 with a direct
+`compile -> runtime` signature.
+
+Structural safety remains in later ordinary filters. For example a generic
+materialization candidate and a more specific `T ref` delete candidate can
+declare identical Policy endpoints:
+
+```text
+Bp'  -> Policy tie; both survive
+B3   -> T ref Pattern is more specific
+final unique candidate = delete
+```
+
+The specific delete must not advertise a worse endpoint Policy merely to
+encode structural danger; doing so would incorrectly remove it in Bp' before
+B3. Policy ordering does not know that `ref` is dangerous. Pattern
+specialization and delete express that structural case.
+
+Final Bp' must compare all ordinary and migration coordinates together:
+
+```text
+Max(Product(old Bp coordinates, input endpoint, output endpoint))
+```
+
+Endpoint-only maxima cannot be applied sequentially before or after old Bp:
+crossed ordinary/endpoint advantages must remain incomparable.
+
+Output Policy participation here does not make ordinary return type an overload
+preference dimension. An optional output-type expectation remains a hard
+admissibility check only. Stage, presence, and Pp endpoint capability remain
+hard constraints, while output mutability remains an actual-relative Bp
+preference coordinate. Existing-slice P1 projection is checked first; any
+non-empty binding projection creates no transition request.
+
+Only canonical `Pv:Pp` call dimensions participate. Namespace declaration
+visibility and export-root metadata are illegal in ordinary formal/result/P1
+Policy and are rejected before Bp comparison; they are not specificity
+coordinates. Any value-presence specificity used by the current prototype is
+local to its endpoint Bp coordinate and does not define a general Policy
+overload order.
+
+When an outer ordinary candidate requires the authorized migration, typed
+migration qualification is part of forming that outer candidate's fully
+admissible state:
+
+```text
+Available(unique non-delete migration) -> outer candidate may remain admissible
+RejectedByDelete                      -> outer candidate is not admissible
+Missing                               -> outer candidate is not admissible
+Ambiguous                             -> outer candidate is not admissible
+```
+
+These outcomes remain typed so a final no-candidate diagnostic can report the
+relevant cause. A selected delete migration is an explicit rejection, never
+“availability.” Once the outer ordinary winner is selected, later validation
+cannot reopen its discarded candidate set.
+
 ---
 
 ## 5. Overload Resolution Pipeline
@@ -559,8 +723,14 @@ A   = FullyAdmissible(
         compile_type_requirements
       )
 
-Bp  = MaxPolicyProduct(A, Phase, invocation_frame, target_result_policy)
-B1  = MaxEntryPreference(Bp)
+Bp' = MaxPolicyProduct(
+        A,
+        Phase,
+        invocation_frame,
+        target_result_policy,
+        optional_atomic_migration_endpoints
+      )
+B1  = MaxEntryPreference(Bp')
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
@@ -579,13 +749,13 @@ M = {
 Every `Bi+1 = f(Bi, ...)` preference step satisfies:
 
 ```text
-Bp ⊆ A, B1 ⊆ Bp, and Bi+1 ⊆ Bi       -- monotonic filtering
+Bp' ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi     -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-The filters execute in exactly the normative `Bp`, then `B1` through `B6`,
-order.
+The current-language filters execute in exactly the normative `Bp'`, then `B1`
+through `B6` order.
 Candidate iteration and source declaration order do not affect an individual
 filter, but filters are not assumed to commute.
 
@@ -658,13 +828,56 @@ overload, ordering, refinement, or second selection; ordinary overload must
 already be unique, as bounded by
 `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-### 5.7 Bp and B1–B6: Preference filters
+### 5.7 Future fallback strategy semantics
 
-Only fully admissible candidates enter preference filtering:
+The current source language does not expose a fallback strategy and current
+ordinary candidate preparation cannot construct a fallback role. Therefore:
 
-- **Bp Policy product order**: retain maximal candidates under §4.5, including
+```text
+Fallback(A) = empty
+Af = A
+```
+
+and the current normative pipeline remains the old `A -> Bp'` pipeline shown
+in §5.1.
+
+When/if a future candidate carries the fallback strategy, its semantics is
+already constrained:
+
+```text
+Aordinary = {c in A | not fallback(c)}
+Af =
+  Aordinary, when Aordinary is non-empty
+  A,         otherwise
+```
+
+Thus:
+
+```text
+A -> SuppressFallback -> Bp'
+```
+
+This future extension is not B6 named-strategy execution. It observes the
+complete fully admissible set before Policy or Pattern preference. Any
+admissible non-fallback candidate counts, including an admissible `delete`.
+Once such a candidate exists, fallback candidates leave the future extended
+survivor set permanently. A later unique delete rejection, ambiguity,
+body/lowering failure, or lifetime failure cannot reopen fallback candidates.
+
+Its syntax and final ordinary candidate storage are not yet frozen. The
+current Rust fallback marker is only a prototype fixture for this future
+strategy. Because current source always has `Af = A`, every current ordinary
+overload judgment and candidate identity is preserved exactly.
+
+### 5.8 Bp and B1–B6: Preference filters
+
+Only fully admissible candidates enter current-language preference filtering:
+
+- **Bp' Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
-  policy only when the context supplies one.
+  policy only when the context supplies one. For an authorized atomic
+  runtime-migration call, add input/output endpoint Policy fit as two product
+  coordinates. Without those coordinates, this is exactly old Bp.
   Each parameter position is taken from its elaborated formal policy Pattern:
   the callable P2 is inherited first, then an optional `const let` / `mut let`
   slice supplies `Const` / `Mut`; omission supplies `Unspecified`. This carrier
@@ -688,13 +901,19 @@ Only fully admissible candidates enter preference filtering:
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration
   order, and restricted to candidates already in `A`; it cannot restart
-  lookup or make an inadmissible candidate viable.
+  lookup or make an inadmissible candidate viable. It receives `B5` as its
+  input and may only remove members of `B5`; access to `A` is read-only
+  metadata for consistency checks such as must-select. Atomic-migration
+  endpoint Policy coordinates are already consumed by `Bp'` in §4.5 and are
+  not a named strategy. If the future fallback strategy is introduced, its
+  suppression will already have occurred before Bp' and cannot be emulated or
+  reversed here.
 
 Each stage only removes candidates. First-order preference does not override
 extraction specificity; a deeper applicable generic pattern may outrank a
 shallower monomorphic pattern before B4 is reached.
 
-### 5.8 Must-select consistency and uniqueness
+### 5.9 Must-select consistency and uniqueness
 
 Compute must-select membership from `A`, not from `C0`, `C2`, `C3`, or an
 earlier set that has not passed concept/require legality:
@@ -759,8 +978,14 @@ C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
-Bp  = MaxPolicyProduct(A, Phase, invocation_frame, target_result_policy)
-B1  = MaxEntryPreference(Bp)
+Bp' = MaxPolicyProduct(
+        A,
+        Phase,
+        invocation_frame,
+        target_result_policy,
+        optional_atomic_migration_endpoints
+      )
+B1  = MaxEntryPreference(Bp')
 B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
@@ -801,6 +1026,22 @@ elaboration and const/mut product ordering, but the restricted resolver does
 not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
+
+The atomic migration prototype currently models only:
+
+```text
+hard applicability
+  -> endpoint-only Policy product fixture
+  -> prototype ordinary entry/input-type preference
+  -> prototype B3 Pattern specificity
+```
+
+This proves the endpoint coordinate relation and its placement before the B3
+stand-in, but remains caller-supplied substrate. Its private
+`prototype_endpoint_policy_maxima` helper is deliberately not a public,
+sequentially composable Bp extension. It does not yet combine endpoint
+coordinates with the real ordinary Bp coordinates from the
+Symbol/Val2/associated-`()` pipeline.
 
 ---
 

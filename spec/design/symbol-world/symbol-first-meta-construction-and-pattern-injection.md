@@ -223,6 +223,16 @@ runtime let x = runtime_value;
 An omitted P1 retains and infers the complete RHS result; it does not make
 runtime the only way to obtain a runtime binding.
 
+The bounded migration prototype does not reinterpret a P1 query as an exact
+target. Any non-empty `ProjectP1` result completes the binding and makes
+migration unreachable. Only after the complete query projects nothing may an
+accepted runtime branch be extracted and paired with an eligible static input
+view for one language-authorized atomic migration. The compiler mandates the
+static-to-runtime stage edge; candidate-declared endpoint mutability belongs to
+ordinary overload. Empty queries with no runtime alternative fail, and no
+Policy failure searches structure-changing operations. See
+`../../contracts/v0.6-cross-policy-value-transition.md`.
+
 The unannotated form:
 
 ```lang
@@ -1680,6 +1690,19 @@ compile/meta invocation
 
 Neither `struct` nor functional `inject` directly mutates the namespace graph.
 Graph installation always occurs in the outer declaration/binding layer.
+
+Future compile-to-runtime materialization preserves the same separation:
+
+```text
+materialization_place(result)
+pattern_owner(result)
+```
+
+The first may be a newly allocated runtime owner/place or compiler-generated
+`[[global]]` storage. It does not imply that the result Pattern is rerooted to
+that place. Pattern owner/root/scope continue to come from ordinary result
+construction semantics. Likewise, generated storage placement is not
+source-visible `NamespaceGraph` symbol installation.
 
 ## 13. Current Implementation Substrate
 

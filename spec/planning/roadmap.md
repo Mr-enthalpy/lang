@@ -327,6 +327,17 @@ Must cover:
   SealStatic, and Runtime visibility; full pair storage on every entry and
   end-to-end checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
+- a bounded cross-Policy implementation prototype: T/Tnum literal helper,
+  existing-view-first projection over mixed result collections,
+  projection-only absent entries, runtime-branch extraction after a complete
+  choice projects empty, a prototype ordinary-result-shaped carrier, typed
+  Runtime Val1 legality, callable-owned mutability endpoints using the existing
+  actual-relative ordinary preference rather than hard domain intersection,
+  a fixture for the future pre-Bp fallback strategy, complete ordinary result
+  Policy separated from the demanded output view, and transition endpoint input × output Policy
+  before Pattern specificity without transitive search; the endpoint-only
+  maxima helper is private and typed qualification keeps delete rejection
+  distinct from availability
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -359,10 +370,45 @@ clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. Fields named `ref` / `share` are accepted as
 object-role field functions that coexist with projection namespace subspaces.
+The crate also implements a bounded cross-Policy prototype: ordinary omitted P1
+continues to preserve the complete RHS, explicit P1 first uses the canonical
+non-empty projection rule, absent entries lack transition capability without
+invalidating value-bearing siblings. Only after the complete query projects
+nothing can an accepted runtime alternative be extracted as the derived
+runtime-only target and paired with an eligible static input view after
+Pattern-Policy stage/domain slicing. Separate helpers cover T/Tnum literal
+selection, prototype ordinary-result-shaped fixtures, typed runtime failures,
+callable-owned mutability endpoints, and an endpoint-product fixture before
+its Pattern-specificity stand-in. Opposite const/mut endpoint Patterns remain
+admissible and reuse ordinary `matching > unspecified > opposite` preference.
+The four default transport fixtures declare complete
+`(compile || runtime):compile` input/output Policies; `Project_in` and
+`Project_out` select the compile and runtime views around the ordinary result.
+Current source has no fallback role (`Af = A`). The prototype fixture verifies
+that if/when such a future strategy exists, suppression runs after full
+admissibility and before Bp', and an admissible non-fallback delete suppresses
+fallback without retry.
+The endpoint-only maxima helper is private;
+full integration must compose old Bp and endpoint coordinates in one product.
+Policy migration cannot repair Type/Pattern structural failure; explicit
+`ref`/`share`/`alias` mechanical operations remain separate ordinary calls.
+T and Tnum registries
+carry current first-order
+TypeValue projections derived from installed Type symbols, not final canonical
+type-value identity. The implemented consumer is binding P1; future consumers
+must project the complete accepted choice first, then may construct its
+runtime branch only when the complete existing projection is empty.
 This does **not** complete v0.7 or v0.8: only the narrow
 `(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
 package manager, type checker, policy checker, type-value equality, access-tree
-construction, or general meta interpreter is present.
+construction, ordinary function-object migration routing, general runtime
+overload resolution, end-to-end initializer transition routing, or general
+meta interpretation is present. Mixed-stage Policy-domain existence,
+phase-dependent readability, early binding/evaluation of compile-readable
+dependencies, runtime residualization, and continuation of the same resolved
+invocation are fixed. Residual IR, effect sequencing, residual-frame physical
+representation, continuation ABI, and capability/effect composition remain
+open.
 
 #### v0.7 — Early Meta-Function Bootstrap
 
