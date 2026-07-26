@@ -69,7 +69,8 @@ consumer demand
        slot 0 = selected function object
        explicit input = source value view
   -> ordinary structural/Type/Pattern applicability
-  -> suppress fallback when any admissible non-fallback candidate exists
+  -> if future fallback metadata is present, suppress it when any admissible
+     non-fallback candidate exists
   -> Bp extended by input/output endpoint Policy fit
   -> ordinary B1..B6 filters
   -> unique ordinary invocation

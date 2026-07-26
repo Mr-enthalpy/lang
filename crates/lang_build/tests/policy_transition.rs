@@ -1289,6 +1289,64 @@ fn admissible_delete_suppresses_fallback_before_endpoint_policy_order() {
 }
 
 #[test]
+fn fine_delete_refines_one_cell_of_the_fallback_transport_quartet() {
+    for (source, target, expected_default) in [
+        (
+            ValueMutability::Const,
+            ValueMutability::Const,
+            "const<-const",
+        ),
+        (ValueMutability::Const, ValueMutability::Mut, "mut<-const"),
+        (ValueMutability::Mut, ValueMutability::Const, "const<-mut"),
+        (ValueMutability::Mut, ValueMutability::Mut, "mut<-mut"),
+    ] {
+        let mut candidates = mutability_transport_candidates();
+        for candidate in &mut candidates {
+            candidate.prototype_is_fallback = true;
+        }
+
+        let fine_delete_applies =
+            source == ValueMutability::Const && target == ValueMutability::Mut;
+        let mut fine_delete = callable(
+            "fine-const-to-mut-delete",
+            OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+            OrdinaryCallableTypeOutput::SameAsInput,
+            compile_runtime_pair_with(ValueMutability::Const),
+            compile_runtime_pair_with(ValueMutability::Mut),
+            true,
+            PolicyBridgeBody::IntrinsicStub(
+                "fine structural region rejects const-to-mut materialization".to_string(),
+            ),
+        );
+        // This fixture stands in for an additional structural/require
+        // applicability condition. Endpoint mutability remains preference,
+        // rather than becoming hard compatibility merely to isolate one cell.
+        fine_delete.ordinary_fully_admissible = fine_delete_applies;
+        candidates.push(fine_delete);
+
+        let request = request(compile_pair_with(source), runtime_pair_with(target));
+        let resolution =
+            resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default());
+
+        if fine_delete_applies {
+            assert_eq!(
+                resolution,
+                PolicyBridgeResolution::RejectedByDelete("fine-const-to-mut-delete"),
+                "an admissible fine non-fallback delete suppresses the default member for its cell"
+            );
+        } else {
+            let PolicyBridgeResolution::Selected(selected) = resolution else {
+                panic!("the fallback quartet must continue to fill uncovered cells");
+            };
+            assert_eq!(
+                selected.callable.id, expected_default,
+                "a fine member outside A must not suppress fallback for another source/target cell"
+            );
+        }
+    }
+}
+
+#[test]
 fn bridge_resolution_does_not_search_transitive_paths() {
     let request = request(meta_pair(), runtime_meta_pair());
     let candidates = vec![

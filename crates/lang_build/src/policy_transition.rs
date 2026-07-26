@@ -695,8 +695,9 @@ pub struct PolicyTransitionCallable<I> {
     /// Hard conditions owned by ordinary candidate preparation (shape,
     /// require/concept checks, body availability, and similar facts).
     pub ordinary_fully_admissible: bool,
-    /// Fixture-only marker for the canonical pre-Bp fallback-suppression step.
-    /// Surface syntax and final ordinary candidate storage remain unfrozen.
+    /// Fixture-only marker for the future pre-Bp fallback strategy. Current
+    /// source cannot construct this role; surface syntax and final ordinary
+    /// candidate storage remain unfrozen.
     pub prototype_is_fallback: bool,
     /// Test-only stand-in for ordinary B3 extraction specificity. It is
     /// deliberately applied after the endpoint-Policy product fixture.
@@ -825,9 +826,13 @@ pub fn resolve_policy_bridge<I: Clone>(
     }
 }
 
-/// Canonical fallback suppression happens after full admissibility and before
-/// Bp'. Any admissible non-fallback candidate, including `delete`, permanently
-/// removes every fallback candidate. Later failure never reopens this set.
+/// Prototype the semantics fixed for a possible future fallback strategy.
+///
+/// Current source has no fallback role, so this helper is identity there. If
+/// future metadata is present, suppression happens after full admissibility
+/// and before Bp'. Any admissible non-fallback candidate, including `delete`,
+/// permanently removes every fallback candidate. Later failure never reopens
+/// this set.
 fn suppress_fallback_candidates<'a, I>(
     fully_admissible: &[&'a PolicyTransitionCallable<I>],
 ) -> Vec<&'a PolicyTransitionCallable<I>> {

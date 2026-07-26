@@ -390,7 +390,9 @@ prototype:
 - the final composition of mixed-stage evaluation with future capability and
   effect systems.
 
-Fallback suppression is also no longer an open pipeline question:
+Current source does not expose a fallback candidate strategy, so current calls
+have `Af = A`. The semantic effect is nevertheless fixed if/when that future
+strategy is introduced:
 
 ```text
 A = FullyAdmissible(...)
@@ -398,10 +400,10 @@ Af = SuppressFallback(A)
 Af -> Bp'
 ```
 
-Any admissible non-fallback candidate, including `delete`, suppresses fallback
-permanently. Its final surface spelling and ordinary candidate-storage
-representation may still be designed, but its semantic observation point and
-no-retry behavior are fixed.
+Any admissible non-fallback candidate, including `delete`, then suppresses
+fallback permanently. Its final surface spelling and ordinary
+candidate-storage representation remain open, but its conditional semantic
+observation point and no-retry behavior are fixed.
 
 Build-world integration gates (not blockers for the current frontend/build
 substrate):

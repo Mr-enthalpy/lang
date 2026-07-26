@@ -722,10 +722,9 @@ A   = FullyAdmissible(
         expected_result,
         compile_type_requirements
       )
-Af  = SuppressFallback(A)
 
 Bp' = MaxPolicyProduct(
-        Af,
+        A,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -736,10 +735,10 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, Af)
+B6  = ApplyNamedStrategyRules(B5, A)
 
 M = {
-  c in Af
+  c in A
   |
   overload_strategy(c) = must_select_if_qualified
 }
@@ -747,17 +746,16 @@ M = {
 
 ### 5.2 Pipeline invariants
 
-Fallback suppression and every `Bi+1 = f(Bi, ...)` preference step satisfy:
+Every `Bi+1 = f(Bi, ...)` preference step satisfies:
 
 ```text
-Af ⊆ A, Bp' ⊆ Af, B1 ⊆ Bp', and Bi+1 ⊆ Bi
-                                           -- monotonic filtering
+Bp' ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi     -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-The filters execute in exactly the normative `SuppressFallback`, `Bp'`, then
-`B1` through `B6` order.
+The current-language filters execute in exactly the normative `Bp'`, then `B1`
+through `B6` order.
 Candidate iteration and source declaration order do not affect an individual
 filter, but filters are not assumed to commute.
 
@@ -830,11 +828,21 @@ overload, ordering, refinement, or second selection; ordinary overload must
 already be unique, as bounded by
 `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-### 5.7 Af: fallback suppression
+### 5.7 Future fallback strategy semantics
 
-Fallback is a semantic candidate role whose suppression point is fixed even
-though its final surface spelling and candidate-storage representation remain
-open:
+The current source language does not expose a fallback strategy and current
+ordinary candidate preparation cannot construct a fallback role. Therefore:
+
+```text
+Fallback(A) = empty
+Af = A
+```
+
+and the current normative pipeline remains the old `A -> Bp'` pipeline shown
+in §5.1.
+
+When/if a future candidate carries the fallback strategy, its semantics is
+already constrained:
 
 ```text
 Aordinary = {c in A | not fallback(c)}
@@ -849,20 +857,21 @@ Thus:
 A -> SuppressFallback -> Bp'
 ```
 
-Fallback suppression is not B6 named-strategy execution. It observes the
+This future extension is not B6 named-strategy execution. It observes the
 complete fully admissible set before Policy or Pattern preference. Any
 admissible non-fallback candidate counts, including an admissible `delete`.
-Once such a candidate exists, fallback candidates leave the survivor set
-permanently. A later unique delete rejection, ambiguity, body/lowering failure,
-or lifetime failure cannot reopen fallback candidates.
+Once such a candidate exists, fallback candidates leave the future extended
+survivor set permanently. A later unique delete rejection, ambiguity,
+body/lowering failure, or lifetime failure cannot reopen fallback candidates.
 
-When no candidate carries the fallback role, `Af = A` exactly; all old
-ordinary overload judgments and candidate identities are therefore preserved.
+Its syntax and final ordinary candidate storage are not yet frozen. The
+current Rust fallback marker is only a prototype fixture for this future
+strategy. Because current source always has `Af = A`, every current ordinary
+overload judgment and candidate identity is preserved exactly.
 
 ### 5.8 Bp and B1–B6: Preference filters
 
-Only fallback-suppressed, fully admissible candidates enter preference
-filtering:
+Only fully admissible candidates enter current-language preference filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
@@ -891,13 +900,14 @@ filtering:
 - **B6 Named strategy rules**: apply strategy metadata carried by
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration
-  order, and restricted to candidates already in `Af`; it cannot restart
+  order, and restricted to candidates already in `A`; it cannot restart
   lookup or make an inadmissible candidate viable. It receives `B5` as its
-  input and may only remove members of `B5`; access to `Af` is read-only
+  input and may only remove members of `B5`; access to `A` is read-only
   metadata for consistency checks such as must-select. Atomic-migration
   endpoint Policy coordinates are already consumed by `Bp'` in §4.5 and are
-  not a named strategy. Fallback suppression has also already occurred and
-  cannot be emulated or reversed here.
+  not a named strategy. If the future fallback strategy is introduced, its
+  suppression will already have occurred before Bp' and cannot be emulated or
+  reversed here.
 
 Each stage only removes candidates. First-order preference does not override
 extraction specificity; a deeper applicable generic pattern may outrank a
@@ -905,13 +915,12 @@ shallower monomorphic pattern before B4 is reached.
 
 ### 5.9 Must-select consistency and uniqueness
 
-Compute must-select membership from `Af`, not from `C0`, `C2`, `C3`, or an
-earlier set that has not passed concept/require legality and fallback
-suppression:
+Compute must-select membership from `A`, not from `C0`, `C2`, `C3`, or an
+earlier set that has not passed concept/require legality:
 
 ```text
 M = {
-  c in Af
+  c in A
   |
   overload_strategy(c) = must_select_if_qualified
 }
@@ -969,9 +978,8 @@ C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
-Af  = SuppressFallback(A)
 Bp' = MaxPolicyProduct(
-        Af,
+        A,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -982,8 +990,8 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, Af)
-M   = MustSelectMembers(Af)
+B6  = ApplyNamedStrategyRules(B5, A)
+M   = MustSelectMembers(A)
 
 OrdinaryUnique(B6, f)
 MustSelectConsistent(M, B6, f)

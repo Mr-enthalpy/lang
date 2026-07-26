@@ -333,8 +333,8 @@ Must cover:
   choice projects empty, a prototype ordinary-result-shaped carrier, typed
   Runtime Val1 legality, callable-owned mutability endpoints using the existing
   actual-relative ordinary preference rather than hard domain intersection,
-  pre-Bp fallback suppression, complete ordinary result Policy separated from
-  the demanded output view, and transition endpoint input × output Policy
+  a fixture for the future pre-Bp fallback strategy, complete ordinary result
+  Policy separated from the demanded output view, and transition endpoint input × output Policy
   before Pattern specificity without transitive search; the endpoint-only
   maxima helper is private and typed qualification keeps delete rejection
   distinct from availability
@@ -384,8 +384,10 @@ admissible and reuse ordinary `matching > unspecified > opposite` preference.
 The four default transport fixtures declare complete
 `(compile || runtime):compile` input/output Policies; `Project_in` and
 `Project_out` select the compile and runtime views around the ordinary result.
-Fallback suppression runs after full admissibility and before Bp', and an
-admissible non-fallback delete suppresses fallback without retry.
+Current source has no fallback role (`Af = A`). The prototype fixture verifies
+that if/when such a future strategy exists, suppression runs after full
+admissibility and before Bp', and an admissible non-fallback delete suppresses
+fallback without retry.
 The endpoint-only maxima helper is private;
 full integration must compose old Bp and endpoint coordinates in one product.
 Policy migration cannot repair Type/Pattern structural failure; explicit

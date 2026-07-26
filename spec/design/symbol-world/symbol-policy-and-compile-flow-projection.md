@@ -1131,8 +1131,7 @@ C0 = EnumerateValueEntries(ResolveSymbol(path))
 C1 = ExposePhaseViews(C0, Phase)
 C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
 A  = FullyAdmissible(C2, argument_frame, expected_result)
-Af = SuppressFallback(A)
-M  = MaxPolicyAndOverloadOrder(Af)
+M  = MaxPolicyAndOverloadOrder(A)
 ```
 
 Success requires exactly one maximal candidate. Failure can mean no exposed
@@ -1172,11 +1171,13 @@ unchanged.
 Delete members enter the same fully admissible set and order. A unique maximal
 delete produces a diagnostic naming that member.
 
-Fallback suppression is fixed between `A` and `Bp'`: if any admissible
-non-fallback member exists, including `delete`, fallback members are removed
-permanently. Otherwise they remain. This is not B6 named-strategy execution,
-and later delete/lowering/lifetime failure cannot reopen fallback. When no
-fallback role is present, `Af = A`, preserving every old ordinary judgment.
+Current source cannot construct a fallback candidate role, so the ordinary
+pipeline above remains exactly `A -> Bp'` and `Af = A`. If a future fallback
+strategy is introduced, its already-fixed semantics inserts
+`SuppressFallback(A)` before Bp': any admissible non-fallback member, including
+`delete`, permanently removes fallback. This future behavior is not B6
+named-strategy execution, and later delete/lowering/lifetime failure cannot
+reopen fallback.
 
 ## 13. Lifetime boundary
 
