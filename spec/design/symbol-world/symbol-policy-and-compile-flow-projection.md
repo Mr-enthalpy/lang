@@ -479,7 +479,18 @@ Pv.output.mutability
 need not be equal. A callable may declare `const + compile -> mut + runtime`
 because it constructs a fresh runtime object; the compiler does not infer or
 invent that `mut` capability. The declared input/output coordinates participate
-in ordinary Bp' comparison.
+in ordinary Bp' comparison. Opposite const/mut endpoint Patterns are not
+removed by a hard Policy-domain intersection. They reuse ordinary
+actual-relative preference:
+
+```text
+const actual/demand: const > unspecified > mut
+mut actual/demand:   mut > unspecified > const
+```
+
+Stage, presence, Pp capability, Type, and structural applicability remain hard
+endpoint conditions. Mutability is a preference coordinate, not a structural
+repair and not a capability intersection.
 
 `Pp` equality is about Policy capability; it is not an implementation license
 to copy or reroot a source Pattern object. The eventual result Pattern comes
@@ -1169,8 +1180,13 @@ endpoint coordinates in one comparator before taking maxima. The prototype
 does not add output-type preference to ordinary type overload selection or
 define a B6 strategy.
 Candidate Policy adaptation intersects typed Policy domains directly,
-including present/optional/absent alternatives; it does not fabricate a
-concrete `Some(value)` to reuse result-entry projection.
+including stage, Pp, and present/optional/absent alternatives; it does not
+fabricate a concrete `Some(value)` to reuse result-entry projection.
+Migration-candidate mutability is deliberately excluded from that hard
+intersection and instead reuses ordinary actual-relative Bp preference. The
+bounded prototype treats a singleton selected/requested mutability as the
+actual comparison point; a non-singleton endpoint remains neutral until the
+final ordinary Bp carrier is integrated.
 The current binding adapter is reached only after the complete ordinary
 projection is empty and the original query accepts runtime. It extracts a
 runtime-only target branch, skips absent entries, selects a pure-static source

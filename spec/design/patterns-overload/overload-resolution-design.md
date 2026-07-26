@@ -599,6 +599,53 @@ for a fresh runtime object. The compiler does not synthesize `mut`; the
 callable declares it and must win ordinary overload selection. Type remains
 unchanged, so this does not reopen structural applicability repair.
 
+Endpoint mutability reuses the ordinary actual-relative order above. It is not
+a Policy-domain hard intersection:
+
+```text
+HardEndpointApplicability
+  = Type
+  x stage legality
+  x presence legality
+  x Pp capability
+  x structural applicability
+
+InputMutabilityPreference
+  = Compare(candidate input Pattern, selected source actual)
+
+OutputMutabilityPreference
+  = Compare(candidate output Pattern, requested target)
+```
+
+Consequently an opposite const/mut endpoint remains in fully admissible set
+`A`; it is merely worse than `unspecified`, which is worse than the matching
+endpoint. For a const source/target the ordering is therefore
+`const > unspecified > mut`, and it reverses for a mut source/target. This is
+the same ordinary Bp relation, not a migration-specific subset order. If a
+unique ordinary winner later produces a result that `Project_out` cannot
+expose to the consumer, that failure does not reopen overload selection.
+
+One explanatory semantic normal form is a type Symbol with one pure Pattern
+facet and ordinary value members implementing the default mutability transport
+relation:
+
+```text
+Symbol t
+  Pattern:
+    :t
+
+  ordinary transport members (output <- input):
+    const <- const
+    const <- mut
+    mut   <- const
+    mut   <- mut
+```
+
+This is not frozen surface syntax and does not require a conversion table or a
+new callable ontology. It illustrates that generic ordinary members define the
+default relation. More specific structural Pattern members may locally refine
+or `delete` regions of that relation.
+
 Structural safety remains in later ordinary filters. For example a generic
 materialization candidate and a more specific `T ref` delete candidate can
 declare identical Policy endpoints:
@@ -625,9 +672,10 @@ crossed ordinary/endpoint advantages must remain incomparable.
 
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
-admissibility check only. Candidate output is admissible when ordinary
-projection by the target query is non-empty. Existing-slice P1 projection is
-checked first; any non-empty binding projection creates no transition request.
+admissibility check only. Stage, presence, and Pp endpoint capability remain
+hard constraints, while output mutability remains an actual-relative Bp
+preference coordinate. Existing-slice P1 projection is checked first; any
+non-empty binding projection creates no transition request.
 
 Only canonical `Pv:Pp` call dimensions participate. Namespace declaration
 visibility and export-root metadata are illegal in ordinary formal/result/P1

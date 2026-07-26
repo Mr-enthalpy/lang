@@ -24,7 +24,7 @@ use std::{collections::BTreeSet, convert::Infallible};
 use crate::{
     identity::{SemanticValueId, TypeValueId},
     model::{Provenance, SymbolId},
-    policy_overload::maximal_candidates,
+    policy_overload::{maximal_candidates, mutability_preference_rank, MutabilityPattern},
     policy_pair::{
         project_p1, P1Projection, PatternComponentPolicy, PolicyPair, PolicyResultEntry,
         PolicyStage, StageSet, ValueMutability, ValuePresence,
@@ -421,7 +421,10 @@ fn projection_accepts_runtime_branch(projection: &P1Projection) -> bool {
 /// Unlike `project_p1`, this operates on policy domains rather than on one
 /// concrete `PolicyResultEntry`. It therefore preserves present/optional/
 /// absent alternatives without fabricating a `Some(value)` solely to borrow
-/// the ordinary result projector.
+/// the ordinary result projector. This general capability-projection helper is
+/// not migration-candidate admissibility: candidate endpoint mutability uses
+/// ordinary actual-relative Bp preference instead of this function's domain
+/// intersection.
 pub fn project_transition_policy_domain(
     query: &PolicyPair,
     available: &PolicyPair,
@@ -450,6 +453,77 @@ pub fn project_transition_policy_domain(
         value: crate::policy_pair::ValueComponentPolicy {
             stages: value_stages,
             mutability: value_mutability,
+            presence,
+        },
+        pattern: PatternComponentPolicy {
+            stages: pattern_stages,
+        },
+        namespace_visibility: None,
+        export_root: false,
+    })
+}
+
+/// Project the hard, capability-shaped coordinates of a migration input
+/// endpoint while preserving the selected actual value mutability.
+///
+/// Candidate input mutability is a formal Pattern consumed by ordinary Bp
+/// preference. An opposite const/mut Pattern therefore does not make the
+/// candidate hard-inadmissible.
+fn project_migration_input_endpoint(
+    candidate: &PolicyPair,
+    actual: &PolicyPair,
+) -> Option<PolicyPair> {
+    project_migration_endpoint_hard_coordinates(candidate, actual, actual.value.mutability.clone())
+}
+
+/// Project the hard, capability-shaped coordinates of a migration output
+/// endpoint while retaining the callable-declared result mutability.
+///
+/// An unspecified output endpoint accepts the requested mutability view. A
+/// declared const or mut endpoint remains that declared result even when it is
+/// the opposite, lower-preference Pattern for the consumer demand.
+fn project_migration_output_endpoint(
+    required: &PolicyPair,
+    candidate: &PolicyPair,
+) -> Option<PolicyPair> {
+    let selected_mutability = if candidate.value.mutability.is_empty() {
+        required.value.mutability.clone()
+    } else {
+        candidate.value.mutability.clone()
+    };
+    project_migration_endpoint_hard_coordinates(required, candidate, selected_mutability)
+}
+
+fn project_migration_endpoint_hard_coordinates(
+    query: &PolicyPair,
+    available: &PolicyPair,
+    selected_mutability: BTreeSet<ValueMutability>,
+) -> Option<PolicyPair> {
+    if query.namespace_visibility.is_some()
+        || query.export_root
+        || available.namespace_visibility.is_some()
+        || available.export_root
+    {
+        return None;
+    }
+
+    let presence = intersect_presence(query.value.presence, available.value.presence)?;
+    let value_stages = if presence == ValuePresence::Absent {
+        StageSet::new()
+    } else {
+        project_non_empty_stages(&query.value.stages, &available.value.stages)?
+    };
+    let pattern_stages =
+        project_non_empty_stages(&query.pattern.stages, &available.pattern.stages)?;
+
+    Some(PolicyPair {
+        value: crate::policy_pair::ValueComponentPolicy {
+            stages: value_stages,
+            mutability: if presence == ValuePresence::Absent {
+                BTreeSet::new()
+            } else {
+                selected_mutability
+            },
             presence,
         },
         pattern: PatternComponentPolicy {
@@ -725,7 +799,7 @@ pub fn resolve_policy_bridge<I: Clone>(
         [candidate] => PolicyBridgeResolution::Selected(ResolvedPolicyBridge {
             callable: (*candidate).clone(),
             result_type: candidate.output_type.resolve(request.source_type()),
-            result_policy: project_transition_policy_domain(
+            result_policy: project_migration_output_endpoint(
                 request.target_query(),
                 &candidate.output_policy,
             )
@@ -904,12 +978,12 @@ fn candidate_is_fully_admissible<I>(
         return false;
     }
     let Some(input_view) =
-        project_transition_policy_domain(&candidate.input_policy, request.source_policy())
+        project_migration_input_endpoint(&candidate.input_policy, request.source_policy())
     else {
         return false;
     };
     let Some(result_policy) =
-        project_transition_policy_domain(request.target_query(), &candidate.output_policy)
+        project_migration_output_endpoint(request.target_query(), &candidate.output_policy)
     else {
         return false;
     };
@@ -971,12 +1045,12 @@ fn compare_input_policy_fit(
     left: &PolicyPair,
     right: &PolicyPair,
 ) -> PolicyPartialOrdering {
-    if project_transition_policy_domain(left, required).is_none()
-        || project_transition_policy_domain(right, required).is_none()
+    if project_migration_input_endpoint(left, required).is_none()
+        || project_migration_input_endpoint(right, required).is_none()
     {
         return PolicyPartialOrdering::Incomparable;
     }
-    compare_policy_domain_specificity(left, right)
+    compare_policy_endpoint_fit(required, left, right)
 }
 
 fn compare_output_policy_fit(
@@ -984,22 +1058,27 @@ fn compare_output_policy_fit(
     left: &PolicyPair,
     right: &PolicyPair,
 ) -> PolicyPartialOrdering {
-    if project_transition_policy_domain(required, left).is_none()
-        || project_transition_policy_domain(required, right).is_none()
+    if project_migration_output_endpoint(required, left).is_none()
+        || project_migration_output_endpoint(required, right).is_none()
     {
         return PolicyPartialOrdering::Incomparable;
     }
 
-    compare_policy_domain_specificity(left, right)
+    compare_policy_endpoint_fit(required, left, right)
 }
 
-fn compare_policy_domain_specificity(
+fn compare_policy_endpoint_fit(
+    required: &PolicyPair,
     left: &PolicyPair,
     right: &PolicyPair,
 ) -> PolicyPartialOrdering {
     compose_orders([
         compare_stage_domains(&left.value.stages, &right.value.stages),
-        compare_mutability_domains(&left.value.mutability, &right.value.mutability),
+        compare_endpoint_mutability(
+            &left.value.mutability,
+            &right.value.mutability,
+            &required.value.mutability,
+        ),
         // Presence ordering is a coordinate of this prototype's endpoint Bp
         // extension. It is not asserted as a general ordinary-call order.
         compare_presence_domains(left.value.presence, right.value.presence),
@@ -1011,21 +1090,35 @@ fn compare_stage_domains(left: &StageSet, right: &StageSet) -> PolicyPartialOrde
     compare_subsets(left.is_subset(right), right.is_subset(left))
 }
 
-fn mutability_domain(mutability: &BTreeSet<ValueMutability>) -> BTreeSet<ValueMutability> {
-    if mutability.is_empty() {
-        BTreeSet::from([ValueMutability::Const, ValueMutability::Mut])
-    } else {
-        mutability.clone()
+fn compare_endpoint_mutability(
+    left: &BTreeSet<ValueMutability>,
+    right: &BTreeSet<ValueMutability>,
+    required: &BTreeSet<ValueMutability>,
+) -> PolicyPartialOrdering {
+    let Some(actual) = singleton_mutability(required) else {
+        return PolicyPartialOrdering::Equal;
+    };
+    let left_rank = mutability_preference_rank(mutability_pattern(left), actual);
+    let right_rank = mutability_preference_rank(mutability_pattern(right), actual);
+    match left_rank.cmp(&right_rank) {
+        std::cmp::Ordering::Greater => PolicyPartialOrdering::Greater,
+        std::cmp::Ordering::Equal => PolicyPartialOrdering::Equal,
+        std::cmp::Ordering::Less => PolicyPartialOrdering::Less,
     }
 }
 
-fn compare_mutability_domains(
-    left: &BTreeSet<ValueMutability>,
-    right: &BTreeSet<ValueMutability>,
-) -> PolicyPartialOrdering {
-    let left = mutability_domain(left);
-    let right = mutability_domain(right);
-    compare_subsets(left.is_subset(&right), right.is_subset(&left))
+fn singleton_mutability(mutability: &BTreeSet<ValueMutability>) -> Option<ValueMutability> {
+    (mutability.len() == 1)
+        .then(|| mutability.iter().next().copied())
+        .flatten()
+}
+
+fn mutability_pattern(mutability: &BTreeSet<ValueMutability>) -> MutabilityPattern {
+    match singleton_mutability(mutability) {
+        Some(ValueMutability::Const) => MutabilityPattern::Const,
+        Some(ValueMutability::Mut) => MutabilityPattern::Mut,
+        None => MutabilityPattern::Unspecified,
+    }
 }
 
 fn presence_domain(presence: ValuePresence) -> BTreeSet<bool> {

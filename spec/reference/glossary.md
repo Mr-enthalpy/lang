@@ -1277,6 +1277,20 @@ the source Pattern object. An eventual ordinary function-object invocation
 supplies an ordinary result whose Type/Pattern/owner coherence is governed by
 existing invocation and Pattern semantics.
 
+Migration endpoint mutability uses ordinary actual-relative Bp preference, not
+hard Policy-domain intersection or subset specificity:
+
+```text
+const actual/demand: const > unspecified > mut
+mut actual/demand:   mut > unspecified > const
+```
+
+Opposite endpoint Patterns remain fully admissible. Stage, presence, Pp
+capability, Type, and structural applicability remain hard constraints.
+Generic ordinary members may realize the four default transports
+`const <- const`, `const <- mut`, `mut <- const`, and `mut <- mut`; more
+specific Pattern members may refine or delete regions of that relation.
+
 The current prototype implements only the binding-P1 entry point. It projects
 the complete original query first, then derives a runtime-only target branch:
 

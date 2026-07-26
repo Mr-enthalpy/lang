@@ -320,6 +320,12 @@ Not implemented after this correction:
 - Integrating ordinary Bp coordinates and migration input/output endpoint
   coordinates into one product comparator before maxima. Endpoint-only maxima
   cannot be sequenced before or after ordinary Bp maxima.
+- Whether a future generic/default transport member needs an explicit
+  fallback-only overload strategy. The possible rule would discard fallback
+  members when an admissible non-fallback member exists, but its syntax,
+  observation point, and pipeline placement are unresolved. PR #97 does not
+  add it; specific Pattern members plus `delete` are sufficient for the
+  bounded safety fixtures.
 - Replacing the caller-supplied migration candidate/result fixtures with
   ordinary Symbol/Val2/associated-`()`/InvocationFrame/function-object routing,
   including canonical result Type/Pattern/owner coherence. No universal

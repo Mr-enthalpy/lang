@@ -292,8 +292,8 @@ fn compare_position(
     right: MutabilityPattern,
     actual: ValueMutability,
 ) -> PositionPreference {
-    let left_rank = position_rank(left, actual);
-    let right_rank = position_rank(right, actual);
+    let left_rank = mutability_preference_rank(left, actual);
+    let right_rank = mutability_preference_rank(right, actual);
     match left_rank.cmp(&right_rank) {
         std::cmp::Ordering::Greater => PositionPreference::Better,
         std::cmp::Ordering::Equal => PositionPreference::Equal,
@@ -301,7 +301,14 @@ fn compare_position(
     }
 }
 
-fn position_rank(pattern: MutabilityPattern, actual: ValueMutability) -> u8 {
+/// Ordinary actual-relative mutability preference used by Bp.
+///
+/// Migration endpoint adapters must reuse this relation rather than treating
+/// opposite const/mut Patterns as hard-incompatible Policy domains.
+pub(crate) fn mutability_preference_rank(
+    pattern: MutabilityPattern,
+    actual: ValueMutability,
+) -> u8 {
     match (pattern, actual) {
         (MutabilityPattern::Const, ValueMutability::Const)
         | (MutabilityPattern::Mut, ValueMutability::Mut) => 2,

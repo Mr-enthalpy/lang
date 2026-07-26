@@ -331,10 +331,11 @@ Must cover:
   existing-view-first projection over mixed result collections,
   projection-only absent entries, runtime-branch extraction after a complete
   choice projects empty, a prototype ordinary-result-shaped carrier, typed
-  Runtime Val1 legality, callable-owned mutability endpoints, and transition
-  endpoint input × output Policy before Pattern specificity without transitive
-  search; the endpoint-only maxima helper is private and typed qualification
-  keeps delete rejection distinct from availability
+  Runtime Val1 legality, callable-owned mutability endpoints using the existing
+  actual-relative ordinary preference rather than hard domain intersection,
+  and transition endpoint input × output Policy before Pattern specificity
+  without transitive search; the endpoint-only maxima helper is private and
+  typed qualification keeps delete rejection distinct from availability
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -376,7 +377,9 @@ runtime-only target and paired with an eligible static input view after
 Pattern-Policy stage/domain slicing. Separate helpers cover T/Tnum literal
 selection, prototype ordinary-result-shaped fixtures, typed runtime failures,
 callable-owned mutability endpoints, and an endpoint-product fixture before
-its Pattern-specificity stand-in. The endpoint-only maxima helper is private;
+its Pattern-specificity stand-in. Opposite const/mut endpoint Patterns remain
+admissible and reuse ordinary `matching > unspecified > opposite` preference.
+The endpoint-only maxima helper is private;
 full integration must compose old Bp and endpoint coordinates in one product.
 Policy migration cannot repair Type/Pattern structural failure; explicit
 `ref`/`share`/`alias` mechanical operations remain separate ordinary calls.

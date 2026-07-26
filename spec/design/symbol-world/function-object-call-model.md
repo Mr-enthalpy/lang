@@ -90,7 +90,17 @@ its overload declaration. In particular, input/output mutability need not be
 equal: `const compile -> mut runtime` may construct a fresh mutable runtime
 object when such a candidate is the unique ordinary winner. The compiler
 authorizes the stage edge but does not synthesize the candidate's `mut`
-capability.
+capability. Opposite const/mut endpoint Patterns remain fully admissible and
+participate in the same actual-relative ordinary Bp order as explicit
+parameters/results; mutability is not tested by Policy-domain intersection.
+Stage, presence, Pp capability, Type, and structural applicability remain hard
+conditions.
+
+As an explanatory model rather than frozen surface syntax, one type Symbol may
+carry the pure Pattern member `:t` plus ordinary value members for the four
+default transports `const <- const`, `const <- mut`, `mut <- const`, and
+`mut <- mut`. More specific Pattern members may refine or delete regions of
+that default ordinary relation.
 
 Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
 match, or search an arbitrary operation graph. `ref`, `share`, and `alias`

@@ -705,6 +705,136 @@ fn const_compile_can_materialize_a_fresh_mut_runtime_value() {
     );
 }
 
+fn mutability_transport_candidates() -> Vec<PolicyTransitionCallable<&'static str>> {
+    [
+        (
+            "const<-const",
+            ValueMutability::Const,
+            ValueMutability::Const,
+        ),
+        ("const<-mut", ValueMutability::Mut, ValueMutability::Const),
+        ("mut<-const", ValueMutability::Const, ValueMutability::Mut),
+        ("mut<-mut", ValueMutability::Mut, ValueMutability::Mut),
+    ]
+    .into_iter()
+    .map(|(id, input, output)| {
+        callable(
+            id,
+            OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+            OrdinaryCallableTypeOutput::SameAsInput,
+            compile_pair_with(input),
+            runtime_pair_with(output),
+            false,
+            PolicyBridgeBody::BuiltinValueCopy,
+        )
+    })
+    .collect()
+}
+
+#[test]
+fn four_member_mutability_transport_uses_ordinary_actual_relative_preference() {
+    let candidates = mutability_transport_candidates();
+    for (source, target, expected) in [
+        (
+            ValueMutability::Const,
+            ValueMutability::Const,
+            "const<-const",
+        ),
+        (ValueMutability::Const, ValueMutability::Mut, "mut<-const"),
+        (ValueMutability::Mut, ValueMutability::Const, "const<-mut"),
+        (ValueMutability::Mut, ValueMutability::Mut, "mut<-mut"),
+    ] {
+        let request = request(compile_pair_with(source), runtime_pair_with(target));
+        let PolicyBridgeResolution::Selected(selected) =
+            resolve_policy_bridge(&request, &candidates, TransitionTypeExpectation::default())
+        else {
+            panic!("the exact input/output mutability member must be selected");
+        };
+        assert_eq!(selected.callable.id, expected);
+    }
+}
+
+#[test]
+fn opposite_mutability_endpoints_are_not_hard_inadmissible() {
+    let request = request(
+        compile_pair_with(ValueMutability::Const),
+        runtime_pair_with(ValueMutability::Const),
+    );
+    let opposite = callable(
+        "opposite-both-endpoints",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair_with(ValueMutability::Mut),
+        runtime_pair_with(ValueMutability::Mut),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    let PolicyBridgeResolution::Selected(selected) =
+        resolve_policy_bridge(&request, &[opposite], TransitionTypeExpectation::default())
+    else {
+        panic!("opposite mutability Patterns belong to Bp preference, not hard applicability");
+    };
+    assert_eq!(selected.callable.id, "opposite-both-endpoints");
+    assert_eq!(
+        selected.result_policy.value.mutability,
+        [ValueMutability::Mut].into_iter().collect()
+    );
+}
+
+#[test]
+fn endpoint_mutability_orders_exact_then_unspecified_then_opposite() {
+    let request = request(
+        compile_pair_with(ValueMutability::Const),
+        runtime_pair_with(ValueMutability::Const),
+    );
+    let exact = callable(
+        "exact",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair_with(ValueMutability::Const),
+        runtime_pair_with(ValueMutability::Const),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    let unspecified = callable(
+        "unspecified",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair(),
+        runtime_pair(),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    let opposite = callable(
+        "opposite",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_pair_with(ValueMutability::Mut),
+        runtime_pair_with(ValueMutability::Mut),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+
+    assert_eq!(
+        compare_policy_transition_candidates(
+            request.source_policy(),
+            request.target_query(),
+            &exact,
+            &unspecified,
+        ),
+        PolicyPartialOrdering::Greater
+    );
+    assert_eq!(
+        compare_policy_transition_candidates(
+            request.source_policy(),
+            request.target_query(),
+            &unspecified,
+            &opposite,
+        ),
+        PolicyPartialOrdering::Greater
+    );
+}
+
 #[test]
 fn incompatible_existing_runtime_view_can_rematerialize_from_static_view() {
     let source_policy = compile_runtime_pair_with(ValueMutability::Const);
