@@ -2,9 +2,12 @@
 //!
 //! This module is deliberately narrower than a generic conversion or
 //! demand-repair system. Ordinary Policy projection always runs first. Only a
-//! missing, explicitly demanded runtime value view may prepare one direct
-//! atomic migration from an existing static value view. The migration changes
-//! only the value stage; it cannot repair failed Type/Pattern applicability.
+//! missing demand which accepts a runtime value branch may prepare one direct
+//! atomic migration from an existing static value view. The compiler mandates
+//! only the static-to-runtime stage edge. Other legal endpoint Policy
+//! coordinates, including value mutability, belong to the ordinary callable
+//! and its overload ordering; migration still cannot repair failed
+//! Type/Pattern applicability.
 //!
 //! The candidate/result carriers below remain prototype fixtures. They share
 //! the ordinary maximal-element rule, but do not yet enumerate a normal
@@ -93,6 +96,12 @@ pub enum P1ElaborationFailure {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// One checked atomic-migration request after demand decomposition.
+///
+/// `source_policy` is the selected pure-static `Project_in` endpoint, not the
+/// complete source result. `target_query` is the runtime-only branch extracted
+/// from the complete consumer query after that complete query projected no
+/// existing view.
 pub struct PolicyTransitionRequest {
     source_policy: PolicyPair,
     target_query: PolicyPair,
@@ -105,7 +114,7 @@ pub struct PolicyTransitionRequest {
 pub enum PolicyTransitionRequestFailure {
     SourceValueAbsent,
     SourceStaticValueStageDomainEmpty,
-    SourceAlreadyHasRuntimeView,
+    SelectedInputContainsRuntime,
     SourceStaticPatternStageMismatch {
         source_static: StageSet,
         source_pattern: StageSet,
@@ -132,7 +141,7 @@ impl PolicyTransitionRequest {
             return Err(PolicyTransitionRequestFailure::SourceValueAbsent);
         }
         if source_policy.value.stages.contains(PolicyStage::Runtime) {
-            return Err(PolicyTransitionRequestFailure::SourceAlreadyHasRuntimeView);
+            return Err(PolicyTransitionRequestFailure::SelectedInputContainsRuntime);
         }
         let source_static = source_policy.value.stages.static_stages();
         if source_static.is_empty() {
@@ -204,9 +213,11 @@ impl PolicyTransitionRequest {
 ///
 /// Omitted P1 preserves the complete RHS entries exactly. An explicit P1 first
 /// runs the canonical `project_p1` query over the complete result. Transition
-/// preparation occurs only when that projection is empty and the query
-/// explicitly requires a present runtime-only value view. Absent entries are
-/// not an error: they simply cannot form an atomic migration demand.
+/// preparation occurs only when that projection is empty and the complete
+/// query accepts a runtime value branch. The derived request target is the
+/// runtime-only branch; other query alternatives are not manufactured. Absent
+/// entries are not an error: they simply cannot form an atomic migration
+/// demand.
 pub fn elaborate_value_binding_p1<P: Clone>(
     result: &[PolicyResultEntry<SemanticValueRef, P>],
     explicit_p1: Option<&P1Projection>,
@@ -241,7 +252,7 @@ pub fn elaborate_value_binding_p1<P: Clone>(
             continue;
         };
         saw_value_bearing_entry = true;
-        if projection_requires_runtime_only(projection) {
+        if projection_accepts_runtime_branch(projection) {
             saw_runtime_migration_shape = true;
         }
         let Some((source_policy, target_query)) =
@@ -322,24 +333,30 @@ pub fn elaborate_pure_type_binding_p1<P: Clone>(
     })
 }
 
-/// Derive `Project_in` and the runtime-only output query for one binding
-/// entry. Returning `None` means that the empty binding projection is outside
-/// the language-authorized atomic runtime-migration shape.
+/// Derive `Project_in` and the runtime-only output branch for one binding
+/// entry. The complete projection has already failed before this helper is
+/// called. Returning `None` means either that the original demand accepts no
+/// runtime value branch or that this entry cannot supply the required
+/// Pattern-policy/static input slice.
 fn atomic_runtime_migration_endpoints<V, P>(
     projection: &P1Projection,
     entry: &PolicyResultEntry<V, P>,
 ) -> Option<(PolicyPair, PolicyPair)> {
-    let target_value = match projection {
+    let accepted_value = match projection {
         P1Projection::Pair(pair) => pair.value.clone(),
         P1Projection::ValueDominant { value } => value.clone(),
         P1Projection::Infer => return None,
     };
-    let runtime_only = target_value.presence == ValuePresence::Present
-        && target_value.stages.len() == 1
-        && target_value.stages.contains(PolicyStage::Runtime);
-    if !runtime_only {
+    if accepted_value.presence == ValuePresence::Absent
+        || !accepted_value.stages.contains(PolicyStage::Runtime)
+    {
         return None;
     }
+    let target_value = crate::policy_pair::ValueComponentPolicy {
+        stages: StageSet::from([PolicyStage::Runtime]),
+        mutability: accepted_value.mutability,
+        presence: ValuePresence::Present,
+    };
 
     let selected_pattern_stages = match projection {
         P1Projection::Pair(pair) => {
@@ -390,15 +407,13 @@ fn atomic_runtime_migration_endpoints<V, P>(
     Some((source_policy, target_query))
 }
 
-fn projection_requires_runtime_only(projection: &P1Projection) -> bool {
+fn projection_accepts_runtime_branch(projection: &P1Projection) -> bool {
     let value = match projection {
         P1Projection::Pair(pair) => &pair.value,
         P1Projection::ValueDominant { value } => value,
         P1Projection::Infer => return false,
     };
-    value.presence == ValuePresence::Present
-        && value.stages.len() == 1
-        && value.stages.contains(PolicyStage::Runtime)
+    value.presence != ValuePresence::Absent && value.stages.contains(PolicyStage::Runtime)
 }
 
 /// Intersect a pair-shaped transition query with one available Policy domain.
@@ -484,7 +499,7 @@ fn project_mutability_domain(
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PolicyTransitionFailure {
     SourceValueAbsent,
-    SourceAlreadyHasRuntimeView,
+    SelectedInputContainsRuntime,
     SourceStaticValueStageDomainEmpty,
     SourceStaticPatternStageMismatch {
         source_static: StageSet,
@@ -505,10 +520,12 @@ pub enum PolicyTransitionFailure {
 
 /// Validate one selected atomic runtime migration endpoint.
 ///
-/// The input is an already selected static Policy view. The output changes
-/// only Val1 staging to runtime; its Pattern-policy stage capability is
-/// unchanged. This is intentionally not a validator for arbitrary conversion
-/// or for meta/compile/seal migration.
+/// The input is an already selected static Policy view. The compiler-mandated
+/// edge changes Val1 staging to runtime and keeps Pattern-policy stage
+/// capability unchanged. Value mutability is deliberately not required to be
+/// equal: input/output mutability belongs to the selected ordinary callable.
+/// This is intentionally not a validator for arbitrary conversion or for
+/// meta/compile/seal migration.
 pub fn validate_runtime_transition(
     source: &PolicyPair,
     target: &PolicyPair,
@@ -517,7 +534,7 @@ pub fn validate_runtime_transition(
         return Err(PolicyTransitionFailure::SourceValueAbsent);
     }
     if source.value.stages.contains(PolicyStage::Runtime) {
-        return Err(PolicyTransitionFailure::SourceAlreadyHasRuntimeView);
+        return Err(PolicyTransitionFailure::SelectedInputContainsRuntime);
     }
     let source_static = source.value.stages.static_stages();
     if source_static.is_empty() {
@@ -605,7 +622,7 @@ pub struct PolicyTransitionCallable<I> {
     /// require/concept checks, body availability, and similar facts).
     pub ordinary_fully_admissible: bool,
     /// Test-only stand-in for ordinary B3 extraction specificity. It is
-    /// deliberately applied after the endpoint Policy Bp extension.
+    /// deliberately applied after the endpoint-Policy product fixture.
     pub prototype_pattern_specificity: u32,
     pub is_delete: bool,
     pub body: PolicyBridgeBody,
@@ -673,11 +690,12 @@ pub fn compare_policy_transition_candidates<I>(
 
 /// Select from a caller-supplied transitional candidate family.
 ///
-/// Endpoint Policy fitness extends canonical Bp and therefore runs before the
-/// prototype's later ordinary preference stand-ins. It does not perform
-/// global Symbol lookup or ordinary function-object invocation. The resolver
-/// never feeds a candidate result back as another request and therefore cannot
-/// perform transitive search.
+/// Endpoint Policy fitness models only the endpoint-coordinate portion of
+/// future Bp' and runs before the prototype's later preference stand-ins. It
+/// is not sequentially composable with an ordinary-Bp maxima pass. This
+/// resolver does not perform global Symbol lookup or ordinary function-object
+/// invocation. It never feeds a candidate result back as another request and
+/// therefore cannot perform transitive search.
 pub fn resolve_policy_bridge<I: Clone>(
     request: &PolicyTransitionRequest,
     candidates: &[PolicyTransitionCallable<I>],
@@ -691,7 +709,7 @@ pub fn resolve_policy_bridge<I: Clone>(
         return PolicyBridgeResolution::NoCandidate;
     }
 
-    let policy_survivors = apply_transition_endpoint_policy_bp_extension(request, &admissible);
+    let policy_survivors = prototype_endpoint_policy_maxima(request, &admissible);
     let entry_survivors = maximal_candidates(&policy_survivors, |better, worse| {
         ordinary_candidate_dominates(better, worse)
     });
@@ -722,13 +740,14 @@ pub fn resolve_policy_bridge<I: Clone>(
     }
 }
 
-/// Extend canonical Bp with atomic-migration input/output endpoint Policy fit.
+/// Compute maxima for only the prototype migration-endpoint Policy coordinates.
 ///
-/// When no migration endpoint coordinates are present on an ordinary call,
-/// this function is not invoked and old Bp is unchanged. For an authorized
-/// migration call it filters only the already fully admissible set and runs
-/// before B1..B6, including Pattern extraction specificity at B3.
-pub fn apply_transition_endpoint_policy_bp_extension<'a, I>(
+/// This is private because endpoint-only maxima cannot be sequentially
+/// composed with ordinary Bp maxima. Final Bp' must compare ordinary Bp,
+/// migration-input, and migration-output coordinates as one product before
+/// taking maxima. The prototype has no ordinary-Bp carrier and proves only the
+/// endpoint coordinate relation plus its placement before the B3 stand-in.
+fn prototype_endpoint_policy_maxima<'a, I>(
     request: &PolicyTransitionRequest,
     fully_admissible: &[&'a PolicyTransitionCallable<I>],
 ) -> Vec<&'a PolicyTransitionCallable<I>> {

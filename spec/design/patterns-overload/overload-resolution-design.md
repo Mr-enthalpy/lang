@@ -315,9 +315,10 @@ P1 elaboration first applies `project_p1` across the complete
 projection; alternatives named by the query but absent from that result are not
 manufactured. The bounded transition prototype can be reached only when the
 complete projection is empty, the source has a static value view, and the
-query explicitly requires a missing runtime-only value view. A failed
-non-runtime or mixed-alternative demand does not authorize arbitrary bridge
-search.
+query accepts runtime. The original demand may be a choice such as
+`meta || runtime`; only after its complete projection fails is the runtime
+branch extracted as the runtime-only migration target. A failed query with no
+runtime alternative does not authorize arbitrary operation search.
 
 The current transition candidate representation is only a comparison
 prototype. It reuses maximal-element selection but does not yet route through a
@@ -585,6 +586,42 @@ Bp' = old Bp exactly
 
 so the old Bp survivor identities and every later B1..B6 result are unchanged.
 No transition-specific B6 named strategy exists.
+
+The compiler mandates the static-to-runtime stage edge, not equality of every
+endpoint coordinate. Candidate-declared input/output value mutability belongs
+to this product. Thus a callable may expose:
+
+```text
+const + compile -> mut + runtime
+```
+
+for a fresh runtime object. The compiler does not synthesize `mut`; the
+callable declares it and must win ordinary overload selection. Type remains
+unchanged, so this does not reopen structural applicability repair.
+
+Structural safety remains in later ordinary filters. For example a generic
+materialization candidate and a more specific `T ref` delete candidate can
+declare identical Policy endpoints:
+
+```text
+Bp'  -> Policy tie; both survive
+B3   -> T ref Pattern is more specific
+final unique candidate = delete
+```
+
+The specific delete must not advertise a worse endpoint Policy merely to
+encode structural danger; doing so would incorrectly remove it in Bp' before
+B3. Policy ordering does not know that `ref` is dangerous. Pattern
+specialization and delete express that structural case.
+
+Final Bp' must compare all ordinary and migration coordinates together:
+
+```text
+Max(Product(old Bp coordinates, input endpoint, output endpoint))
+```
+
+Endpoint-only maxima cannot be applied sequentially before or after old Bp:
+crossed ordinary/endpoint advantages must remain incomparable.
 
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
@@ -895,18 +932,21 @@ not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
 
-The atomic migration prototype now models the intended order more narrowly:
+The atomic migration prototype currently models only:
 
 ```text
 hard applicability
-  -> Bp endpoint Policy product
+  -> endpoint-only Policy product fixture
   -> prototype ordinary entry/input-type preference
   -> prototype B3 Pattern specificity
 ```
 
-This proves the required Policy-before-Pattern order, but remains
-caller-supplied substrate. It does not yet extend the real ordinary Bp
-survivors from the Symbol/Val2/associated-`()` pipeline.
+This proves the endpoint coordinate relation and its placement before the B3
+stand-in, but remains caller-supplied substrate. Its private
+`prototype_endpoint_policy_maxima` helper is deliberately not a public,
+sequentially composable Bp extension. It does not yet combine endpoint
+coordinates with the real ordinary Bp coordinates from the
+Symbol/Val2/associated-`()` pipeline.
 
 ---
 

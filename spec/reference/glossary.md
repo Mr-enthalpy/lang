@@ -1222,14 +1222,17 @@ Policy Transition,
 
 The act of satisfying a consumer's requested Policy view. Demand kind records
 consumer origin; it does not grant permission to search arbitrary conversion
-operations.
+operations. The ordering is called **Existing-First,
+Constructible-Second**:
 
 ```text
 existing compatible view
   -> use Policy slicing
 
-missing explicitly required runtime view
+complete existing projection is empty
+  + runtime is an accepted alternative
   + eligible static Val1 view
+  -> extract RuntimeBranch(query)
   -> consider one authorized atomic Runtime Policy migration
 
 otherwise
@@ -1238,8 +1241,10 @@ otherwise
 
 A consumer accepting `compile || runtime` is satisfied by an available compile
 slice. Merely mentioning runtime in a choice does not force materialization.
-Failure of Type/Pattern structural applicability cannot be repaired by Policy
-migration.
+However, if a complete choice such as `meta || runtime` has no existing
+accepted view, runtime is the currently language-constructible accepted stage
+branch. Failure of Type/Pattern structural applicability cannot be repaired by
+Policy migration.
 
 _See also: Policy Binding, Policy Pair, Policy Transition._
 
@@ -1248,28 +1253,32 @@ _See also: Policy Binding, Policy Pair, Policy Transition._
 ## Policy Transition
 
 The current canonical transition case is the language-authorized atomic
-Runtime Policy migration considered only when an explicitly demanded runtime
-view is absent. Define:
+Runtime Policy migration considered only after a complete accepted Policy
+choice has no existing view and that choice contains runtime. Define:
 
 ```text
 S = Static(Pv) = Pv - runtime
 ```
 
-For a legal eligible source, `S` is non-empty and `S = Pp`. The atomic endpoint
-shape is:
+For a legal selected input endpoint, `S` is non-empty and `S = Pp`. The
+compiler-mandated endpoint skeleton is:
 
 ```text
-S:S -> runtime:S
+input:  Type=T, value stage=S,       Pp=S
+output: Type=T, value stage=runtime, Pp=S, presence=present
 ```
 
-Only Val1 is materialized as runtime; Pattern-side Policy capability remains
-`S`. This does not mean the implementation copies the source Pattern object.
-An eventual ordinary function-object invocation supplies an ordinary result
-whose Type/Pattern/owner coherence is governed by existing invocation and
-Pattern semantics.
+Input/output value mutability may differ because those coordinates belong to
+the selected ordinary callable and its overload Policy. Thus
+`const compile -> mut runtime` may construct a fresh runtime object; the
+compiler authorizes the stage edge but does not invent `mut`. Pattern-side
+Policy capability remains `S`. This does not mean the implementation copies
+the source Pattern object. An eventual ordinary function-object invocation
+supplies an ordinary result whose Type/Pattern/owner coherence is governed by
+existing invocation and Pattern semantics.
 
-The current prototype implements only the binding-P1 entry point and prepares
-a request after its ordinary runtime-only query has no projection:
+The current prototype implements only the binding-P1 entry point. It projects
+the complete original query first, then derives a runtime-only target branch:
 
 ```text
 PolicyTransitionRequest {
@@ -1282,11 +1291,13 @@ PolicyTransitionRequest {
 ```
 
 The current implementation provides only a caller-supplied candidate-ordering
-prototype. Input and output endpoint Policy fitness extend ordinary Bp as one
-product/Pareto partial order before Pattern extraction specificity; crossed
-advantages are ambiguous and declaration order is irrelevant. Absent Val1
-cannot construct the request. Candidate output Type must equal source Type in
-the prototype, so migration cannot search `ref` or another structure-changing
+prototype. Input and output endpoint Policy fitness form one product/Pareto
+partial order before the Pattern-specificity stand-in; crossed advantages are
+ambiguous and declaration order is irrelevant. Full Bp' must combine ordinary
+Bp and endpoint coordinates in one product. The prototype's endpoint-only
+maxima helper is private and not sequentially composable with ordinary Bp.
+Absent Val1 cannot construct the request. Candidate output Type must equal
+source Type, so migration cannot search `ref` or another structure-changing
 operation to repair applicability.
 
 Input and output Policy slicing bracket the directed migration:

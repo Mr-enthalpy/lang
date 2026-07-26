@@ -285,17 +285,20 @@ Implemented substrate after this correction:
 - `lang_build` now has an implementation-only atomic Runtime-migration helper
   that first preserves canonical ordinary P1 projection: any non-empty
   `project_p1` result completes binding elaboration and makes migration
-  unreachable. Only an empty runtime-only projection over an eligible
-  value-bearing static entry can prepare `S:S -> runtime:S`; pure types use a
-  projection-only `Infallible` carrier. Migration cannot repair Type/Pattern
-  structural failure. Literal helpers separate literal family, atomic builtin
-  type `T`, and concrete numeric `Tnum`; registries store current first-order
-  TypeValue projections derived from resolved Type symbols, not final canonical
-  type-value identities. The caller-supplied candidate prototype preserves
-  input × output endpoint Pareto preference as a Bp stand-in before its
-  Pattern-specificity stand-in, with direct-only selection. Its typed
-  qualification distinguishes available, delete-rejected, missing, and
-  ambiguous outcomes.
+  unreachable. After a complete query projects nothing, an accepted runtime
+  alternative is extracted as the runtime-only migration target and paired
+  with an eligible static input view; pure types use a projection-only
+  `Infallible` carrier. The compiler mandates the static-to-runtime stage edge,
+  while callable-declared mutability endpoints may differ. Migration cannot
+  repair Type/Pattern structural failure. Literal helpers separate literal
+  family, atomic builtin type `T`, and concrete numeric `Tnum`; registries store
+  current first-order TypeValue projections derived from resolved Type symbols,
+  not final canonical type-value identities. The caller-supplied candidate
+  prototype preserves input × output endpoint Pareto preference before its
+  Pattern-specificity stand-in, with direct-only selection. Its endpoint-only
+  maxima helper is private and is not a sequentially composable full-Bp
+  implementation. Typed qualification distinguishes available,
+  delete-rejected, missing, and ambiguous outcomes.
 - Flat policy flags remain compatibility transport, while lookup and execution
   environments use the same three canonical phases.
 
@@ -312,8 +315,11 @@ Not implemented after this correction:
   semantics.
 - Applying the existing-view-first rule at every future Policy-demanding
   consumer. A consumer accepting `compile || runtime` is already satisfied by
-  an available compile slice; only an explicitly missing runtime-only view may
-  reach the language-authorized atomic migration.
+  an available compile slice. If the complete accepted choice has no existing
+  view, its runtime branch is the currently authorized constructible branch.
+- Integrating ordinary Bp coordinates and migration input/output endpoint
+  coordinates into one product comparator before maxima. Endpoint-only maxima
+  cannot be sequenced before or after ordinary Bp maxima.
 - Replacing the caller-supplied migration candidate/result fixtures with
   ordinary Symbol/Val2/associated-`()`/InvocationFrame/function-object routing,
   including canonical result Type/Pattern/owner coherence. No universal
@@ -340,7 +346,8 @@ already-recorded design constraints:
 
 ```text
 existing Policy view => slice; migration is unreachable
-atomic migration = S:S -> runtime:S
+complete choice empty + runtime accepted => construct runtime branch
+compiler mandates static -> runtime; callable owns legal mutability endpoints
 compile -> runtime = new runtime object, not lifetime extension
 addressable runtime value => ordinary owner/place
 compile-ref cache identity = referent identity, not pointee equality

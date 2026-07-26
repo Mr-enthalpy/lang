@@ -57,9 +57,9 @@ compiler-inserted use of this same call trunk, not a second callable kind:
 
 ```text
 consumer demand
-  -> project an existing Policy view
+  -> project the complete accepted Policy choice over existing views
   -> if successful, use it and stop
-  -> otherwise require the authorized runtime-only migration shape
+  -> otherwise, if the query accepts runtime, extract its runtime branch
   -> select an existing static source Policy view
   -> resolve the ordinary atomic-migration callable family to Symbol
   -> enumerate its heterogeneous Val2
@@ -77,17 +77,26 @@ consumer demand
 ```
 
 This implicit operation preserves Type while constructing a new runtime value
-object; it does not preserve value/place identity:
+object; it does not preserve value/place identity. Its compiler-mandated
+skeleton is:
 
 ```text
-S:S -> runtime:S
+input:  Type=T, value stage=S,       Pp=S
+output: Type=T, value stage=runtime, Pp=S, presence=present
 ```
 
-It cannot turn `T` into `T ref`, repair a failed Pattern/Type match, or search
-an arbitrary operation graph. `ref`, `share`, and `alias` remain independently
-selected ordinary mechanical operations. When one of those operations is
-explicitly required, its ordinary result may change Type and Pattern; that is
-not Policy-demand repair.
+Other legal endpoint Policy coordinates belong to the ordinary callable and
+its overload declaration. In particular, input/output mutability need not be
+equal: `const compile -> mut runtime` may construct a fresh mutable runtime
+object when such a candidate is the unique ordinary winner. The compiler
+authorizes the stage edge but does not synthesize the candidate's `mut`
+capability.
+
+Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
+match, or search an arbitrary operation graph. `ref`, `share`, and `alias`
+remain independently selected ordinary mechanical operations. When one of
+those operations is explicitly required, its ordinary result may change Type
+and Pattern; that is not Policy-demand repair.
 
 Any successful existing-view satisfaction terminates before migration
 candidate enumeration. In the currently implemented binding case, a non-empty
@@ -96,8 +105,9 @@ cannot be passed as migration input. Failure after the unique ordinary winner
 is selected cannot reopen the candidate set.
 
 The model does not freeze a special global `transition` Symbol or a new
-callable ontology. It freezes demand satisfaction followed, only for the
-authorized missing-runtime case, by an ordinary function-object call. The
+callable ontology. It freezes complete-choice existing projection followed,
+only when that projection is empty and the choice accepts runtime, by one
+ordinary function-object call toward the extracted runtime branch. The
 operation-to-Symbol mapping remains an implementation/design handoff.
 
 The current `PolicyTransitionCallable` Rust carrier does not implement this

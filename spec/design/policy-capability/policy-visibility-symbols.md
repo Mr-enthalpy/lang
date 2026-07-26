@@ -210,13 +210,14 @@ The typed substrate currently provides:
 - phase-aware overload preference combined with const/mut product order.
 - atomic builtin type-key / concrete numeric Tnum separation, current
   first-order TypeValue projections, and context-selected literal typing;
-- a helper that attempts atomic runtime migration preparation only after a
-  runtime-only binding query has no existing view, with a projection-only
-  pure-type branch;
+- a helper that first projects the complete binding query and, only when that
+  is empty, extracts an accepted runtime branch for atomic migration, with a
+  projection-only pure-type branch;
 - a transitional migration candidate adapter whose endpoint preference is
-  `input x output` at its Bp stand-in, uses the shared maximal-element rule,
-  preserves delete rejection, cannot change Type, and performs no transitive
-  search;
+  `input x output`, uses the shared maximal-element rule, preserves delete
+  rejection, permits callable-declared endpoint mutability, cannot change
+  Type, and performs no transitive search. Its endpoint-only maxima helper is
+  private and is not a sequentially composable implementation of full Bp';
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
   substrate with explicit package boundaries, identity-preserving mount
   redirects, Full/External view routing, and typed lookup failures.
@@ -237,10 +238,15 @@ contract.
 - P1 projection crops an exposed slice.
 - A non-empty ordinary P1 projection never manufactures absent query
   alternatives and makes migration unreachable.
+- After the complete existing projection is empty, an accepted runtime
+  alternative may be extracted as the constructible branch; other alternatives
+  are not manufactured.
 - Policy slicing of `Pp` does not extract, navigate, reroot, or otherwise
   transform a PatternValue.
-- Atomic migration is restricted to `S:S -> runtime:S`; Policy failure cannot
-  repair Type/Pattern structural inapplicability.
+- Atomic migration mandates only the static-to-runtime stage edge, unchanged
+  Type, present output, and unchanged selected `Pp`; callable-declared
+  mutability endpoints may differ and participate in Bp'.
+- Policy failure cannot repair Type/Pattern structural inapplicability.
 - Runtime value invisibility never deletes the symbol or its Pattern facet.
 - Runtime Policy-slice existence does not imply present-phase value
   readability.

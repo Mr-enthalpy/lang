@@ -218,8 +218,9 @@ ElabP1(Some Q, R):
   S = ProjectP1(Q, R)
   if S != empty:
     return S
-  otherwise, only if Q explicitly requires a missing runtime value view:
-    prepare one direct atomic runtime migration layer
+  otherwise, only if Q accepts a runtime value branch:
+    Qr = RuntimeBranch(Q)
+    prepare one direct atomic runtime migration toward Qr
 ```
 
 Therefore:
@@ -256,8 +257,11 @@ projection, postfix `?`, extractor lookup, PatternHead navigation, or a change
 of PatternRoot/PatternScope. It preserves PatternValue identity and structural
 Pattern shape.
 
-Unselected alternatives in a written query are never missing-value
-obligations. The bounded implementation subset is recorded in
+Unselected alternatives in a written query are never obligations to
+manufacture every branch. However, after the complete query projects nothing,
+an accepted branch that the language explicitly defines as constructible may
+satisfy the choice. Runtime is currently the only such stage branch. The
+bounded implementation subset is recorded in
 `../../contracts/v0.6-cross-policy-value-transition.md`.
 
 ### 3.2 Formal parameter policy pattern
@@ -345,7 +349,7 @@ forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
 compatibility substrate rather than the final sum type, so P1 elaboration, P2
 normalization, and resolved export projection each validate this invariant.
 
-### 3.4 Existing-view-first demand satisfaction
+### 3.4 Policy Demand Satisfaction: existing first, constructible second
 
 `PolicyDemand` may be retained as consumer-origin metadata:
 
@@ -359,18 +363,22 @@ PolicyDemand
 
 This enumeration does **not** give all demand kinds a shared arbitrary
 conversion search. Each demand kind owns its established
-projection/admissibility rule. The general invariant is only
-existing-view-first:
+projection/admissibility rule. The general invariant orders two classes of
+accepted view:
 
 ```text
 SatisfyPolicyDemand(demand, result):
-  selected = ProjectExistingViewForDemand(demand, result)
+  Q = AcceptedPolicyQuery(demand)
+  existing = ProjectExistingViewForDemand(Q, result)
 
-  if selected != empty:
-    return selected
+  if existing != empty:
+    return existing
 
-  migration path is considered only for the
-  language-authorized missing-runtime case
+  if runtime not in AcceptedValueStages(Q):
+    fail
+
+  Qr = RuntimeBranch(Q)
+  consider one language-authorized atomic runtime migration toward Qr
 ```
 
 For every demand kind:
@@ -382,6 +390,18 @@ ProjectExistingViewForDemand(demand, R) != empty
   => no value reconstruction
   => Symbol / TypeValue / PatternValue / Place identity is unchanged
 ```
+
+This is the **Existing-First, Constructible-Second** principle:
+
+```text
+1. existing accepted views
+2. language-constructible accepted views
+```
+
+The current set of constructible stage branches is exactly `{ runtime }`.
+Construction does not mean every alternative in `Q` becomes an obligation.
+The original query may be `meta || runtime`; if its complete existing
+projection is empty, the derived migration target is only its runtime branch.
 
 `BindingP1Demand` uses the exact conservative `ProjectP1` theorem in §3.1.
 Formal parameter and result consumers retain their existing policy-Pattern and
@@ -431,35 +451,62 @@ Static(Pv) is empty or Static(Pv) = Pp
 Therefore a legal value stage domain has at most one additional runtime branch
 beyond its Pattern-policy stage domain, or is the runtime-only special case.
 
-The language-authorized atomic migration is only:
+The compiler-mandated skeleton of atomic runtime migration is:
 
 ```text
 input selected static view:
-  Pv = S
+  Pv.stage = S
   Pp = S
+  Type = T
 
 output selected view:
-  Pv = runtime
+  Pv.stage = runtime
+  Pv.presence = present
   Pp = S
+  Type = T
 ```
 
-Only Val1 is materialized at runtime. Pattern-policy capability does not
-migrate to runtime and may not be manufactured. `Pp` equality here is about
-Policy capability; it is not an implementation license to copy or reroot a
-source Pattern object. The eventual result Pattern comes from ordinary
-invocation result semantics.
+The compiler mandates only the selected-static-stage to runtime-stage edge.
+Pattern-policy capability does not migrate to runtime and may not be
+manufactured, and Type is unchanged. Other legal endpoint Policy coordinates
+belong to the selected ordinary callable. In particular:
+
+```text
+Pv.input.mutability
+Pv.output.mutability
+```
+
+need not be equal. A callable may declare `const + compile -> mut + runtime`
+because it constructs a fresh runtime object; the compiler does not infer or
+invent that `mut` capability. The declared input/output coordinates participate
+in ordinary Bp' comparison.
+
+`Pp` equality is about Policy capability; it is not an implementation license
+to copy or reroot a source Pattern object. The eventual result Pattern comes
+from ordinary invocation result semantics.
 
 For a runtime demand:
 
 ```text
-runtime in source.Pv
-  => consume the existing runtime slice
+ProjectExistingView(complete query, source) is non-empty
+  => consume that existing accepted slice
 
-runtime not in source.Pv
+complete existing projection is empty
+and runtime is accepted by the query
 and Static(source.Pv) is non-empty
 and the demanded Pp slice is available
+  => extract RuntimeBranch(query)
+  => select a pure-static Project_in endpoint
   => atomic runtime migration may be prepared
 ```
+
+The complete source may already contain a runtime branch that is incompatible
+with another requested coordinate. For example, a const
+`compile || runtime` source does not satisfy `mut + runtime`; its const compile
+view may still be selected as `Project_in` for a callable-declared
+`const compile -> mut runtime` materialization. The invariant checked by the
+migration request is that the **selected input endpoint** is static, not that
+the complete result contains no runtime branch.
 
 A failed Policy demand cannot repair failed Type/Pattern structural
 applicability:
@@ -1106,15 +1153,27 @@ restriction, three `Phase` values, phase exposure, mechanical flow projection,
 Wpre closure, export-retention closure, and phase-aware partial-order
 selection.
 
-The atomic-migration prototype consumes input and output endpoint Policy
-through one product/Pareto order as a bounded Bp extension. It is specific to
-a known static-view-to-runtime-view request; it does not add output-type
-preference to ordinary type overload selection or define a B6 strategy.
+The atomic-migration prototype compares input and output endpoint Policy
+through one product/Pareto order. These are only the endpoint coordinates of
+the future Bp' product. The private endpoint-only maxima helper is not a
+sequentially composable Bp filter:
+
+```text
+Max(Product(old Bp, input endpoint, output endpoint))
+  != MaxEndpoint(MaxOldBp(...))
+  != MaxOldBp(MaxEndpoint(...))
+```
+
+Final integration must compose ordinary Bp coordinates and both migration
+endpoint coordinates in one comparator before taking maxima. The prototype
+does not add output-type preference to ordinary type overload selection or
+define a B6 strategy.
 Candidate Policy adaptation intersects typed Policy domains directly,
 including present/optional/absent alternatives; it does not fabricate a
 concrete `Some(value)` to reuse result-entry projection.
-The current binding adapter is reached only after an empty runtime-only
-ordinary projection, skips absent entries, slices an available static source
+The current binding adapter is reached only after the complete ordinary
+projection is empty and the original query accepts runtime. It extracts a
+runtime-only target branch, skips absent entries, selects a pure-static source
 and Pattern-policy stage capability, and carries fixture result Pattern data.
 That fixture carrier does not establish final ordinary-result Type/Pattern/
 owner coherence. It shares the maximal-element helper but does not yet perform

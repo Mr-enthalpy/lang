@@ -225,10 +225,12 @@ runtime the only way to obtain a runtime binding.
 
 The bounded migration prototype does not reinterpret a P1 query as an exact
 target. Any non-empty `ProjectP1` result completes the binding and makes
-migration unreachable. Only an empty runtime-only projection over an eligible
-static value view may prepare the language-authorized atomic migration
-`S:S -> runtime:S`. Other empty Policy queries fail; they do not search
-structure-changing operations. See
+migration unreachable. Only after the complete query projects nothing may an
+accepted runtime branch be extracted and paired with an eligible static input
+view for one language-authorized atomic migration. The compiler mandates the
+static-to-runtime stage edge; candidate-declared endpoint mutability belongs to
+ordinary overload. Empty queries with no runtime alternative fail, and no
+Policy failure searches structure-changing operations. See
 `../../contracts/v0.6-cross-policy-value-transition.md`.
 
 The unannotated form:
