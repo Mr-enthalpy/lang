@@ -574,28 +574,50 @@ Policy availability is not present-phase value readability.
 
 ### 3.7 Mixed-stage evaluation boundary
 
-Complete binding/evaluation for mixed-stage results such as
-`compile || runtime` remains open. This design freezes only the compatibility
-foundation:
+The core meaning of a mixed-stage result such as
+`(compile || runtime):compile` is fixed:
+
+```text
+runtime in Pv
+  => the runtime Policy slice already exists
+  => ExposePolicySlice(runtime) does not invoke migration
+
+compile-readable slice/dependency
+  => expose, read, bind, and evaluate in the current static phase
+
+runtime-dependent slot/computation
+  => preserve the already-resolved identity
+  => residualize until Runtime supplies the missing value
+```
+
+Therefore the frozen evaluation foundation is:
 
 ```text
 Resolve once
 Evaluate progressively
 Residualize unavailable runtime dependencies
+Continue the same already-resolved invocation at Runtime
 ```
 
-Symbol/path/callable identity is resolved in the static semantic world. A
-runtime continuation of that already-resolved computation does not reopen
-namespace lookup or candidate identity merely because runtime values become
-available. Explicit future dynamic dispatch, if introduced, must be a
-different named mechanism.
+Symbol/path/callable identity and ordinary overload selection occur in the
+static semantic world. A runtime continuation does not reopen namespace
+lookup, Symbol identity, callable identity, or the overload candidate set
+merely because runtime values become readable. Explicit future dynamic
+dispatch, if introduced, must be a different named mechanism.
 
 Evaluation should compute the maximal phase-admissible portion subject to data
 dependency and effect/sequencing constraints. Runtime-dependent portions are
-residualized and later continue the same resolved computation. This does not
-freeze the residual IR, mixed-stage `InvocationFrame` representation, effect
-sequencing frontier, continuation ABI, or complete OpenStatic/SealStatic/
-Runtime handoff.
+residualized and later continue the same resolved computation.
+
+What remains open is the implementation and effect boundary, not the existence
+or basic binding meaning of the mixed-stage Policy domain:
+
+- the exact residual object/IR representation;
+- the physical representation of a mixed-stage `InvocationFrame`;
+- the maximal-static-evaluation algorithm under data dependencies and effects;
+- the exact sequencing frontier for effectful expressions;
+- the continuation ABI and OpenStatic/SealStatic/Runtime handoff;
+- composition with future capability/effect systems.
 
 ### 3.8 Static frontier and deferred materialization invariants
 
@@ -1109,7 +1131,8 @@ C0 = EnumerateValueEntries(ResolveSymbol(path))
 C1 = ExposePhaseViews(C0, Phase)
 C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
 A  = FullyAdmissible(C2, argument_frame, expected_result)
-M  = MaxPolicyAndOverloadOrder(A)
+Af = SuppressFallback(A)
+M  = MaxPolicyAndOverloadOrder(Af)
 ```
 
 Success requires exactly one maximal candidate. Failure can mean no exposed
@@ -1148,6 +1171,12 @@ unchanged.
 
 Delete members enter the same fully admissible set and order. A unique maximal
 delete produces a diagnostic naming that member.
+
+Fallback suppression is fixed between `A` and `Bp'`: if any admissible
+non-fallback member exists, including `delete`, fallback members are removed
+permanently. Otherwise they remain. This is not B6 named-strategy execution,
+and later delete/lowering/lifetime failure cannot reopen fallback. When no
+fallback role is present, `Af = A`, preserving every old ordinary judgment.
 
 ## 13. Lifetime boundary
 

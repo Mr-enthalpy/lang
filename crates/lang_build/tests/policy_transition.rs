@@ -193,6 +193,7 @@ fn callable(
         input_policy,
         output_policy,
         ordinary_fully_admissible: true,
+        prototype_is_fallback: false,
         prototype_pattern_specificity: 0,
         is_delete,
         body,
@@ -700,7 +701,7 @@ fn const_compile_can_materialize_a_fresh_mut_runtime_value() {
     };
     assert_eq!(selected.callable.id, "const-compile-to-mut-runtime");
     assert_eq!(
-        selected.result_policy.value.mutability,
+        selected.validated_output_endpoint.value.mutability,
         [ValueMutability::Mut].into_iter().collect()
     );
 }
@@ -722,8 +723,8 @@ fn mutability_transport_candidates() -> Vec<PolicyTransitionCallable<&'static st
             id,
             OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
             OrdinaryCallableTypeOutput::SameAsInput,
-            compile_pair_with(input),
-            runtime_pair_with(output),
+            compile_runtime_pair_with(input),
+            compile_runtime_pair_with(output),
             false,
             PolicyBridgeBody::BuiltinValueCopy,
         )
@@ -751,6 +752,43 @@ fn four_member_mutability_transport_uses_ordinary_actual_relative_preference() {
             panic!("the exact input/output mutability member must be selected");
         };
         assert_eq!(selected.callable.id, expected);
+        assert_eq!(
+            selected.callable.input_policy,
+            compile_runtime_pair_with(source),
+            "ordinary formal keeps its complete compile||runtime P2 while Project_in selects compile"
+        );
+        assert_eq!(
+            selected.complete_result_policy,
+            compile_runtime_pair_with(target),
+            "ordinary transport declares its complete compile||runtime P2"
+        );
+        assert_eq!(
+            selected.validated_output_endpoint,
+            runtime_pair_with(target),
+            "the demand selects the runtime Project_out view"
+        );
+
+        let produced = invoke_resolved_policy_bridge(
+            &selected,
+            &request,
+            SemanticValueId(21),
+            "ordinary-result-pattern",
+        )
+        .expect("ordinary transport fixture")
+        .result;
+        assert_eq!(
+            produced.entry.value_policy.stages,
+            compile_runtime_pair_with(target).value.stages,
+            "the invocation fixture must preserve the complete ordinary result"
+        );
+        let assembled = assemble_transition_results(
+            &[lang_build::PolicyTransitionDemand {
+                request: request.clone(),
+            }],
+            &[produced],
+        )
+        .expect("Project_out must expose the demanded runtime view");
+        assert_eq!(assembled[0].value_policy, runtime_pair_with(target).value);
     }
 }
 
@@ -776,7 +814,7 @@ fn opposite_mutability_endpoints_are_not_hard_inadmissible() {
     };
     assert_eq!(selected.callable.id, "opposite-both-endpoints");
     assert_eq!(
-        selected.result_policy.value.mutability,
+        selected.validated_output_endpoint.value.mutability,
         [ValueMutability::Mut].into_iter().collect()
     );
 }
@@ -1184,6 +1222,69 @@ fn ref_specific_delete_uses_b3_after_equal_policy_endpoints() {
         ),
         PolicyBridgeResolution::RejectedByDelete("ref-specific-delete"),
         "equal endpoint Policy leaves both candidates for the B3 stand-in"
+    );
+}
+
+#[test]
+fn fallback_survives_only_when_no_admissible_non_fallback_exists() {
+    let request = request(
+        compile_pair_with(ValueMutability::Const),
+        runtime_pair_with(ValueMutability::Mut),
+    );
+    let mut fallback = callable(
+        "default-transport",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_runtime_pair_with(ValueMutability::Const),
+        compile_runtime_pair_with(ValueMutability::Mut),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    fallback.prototype_is_fallback = true;
+
+    let PolicyBridgeResolution::Selected(selected) =
+        resolve_policy_bridge(&request, &[fallback], TransitionTypeExpectation::default())
+    else {
+        panic!("fallback candidates remain when no admissible non-fallback exists");
+    };
+    assert_eq!(selected.callable.id, "default-transport");
+}
+
+#[test]
+fn admissible_delete_suppresses_fallback_before_endpoint_policy_order() {
+    let request = request(
+        compile_pair_with(ValueMutability::Const),
+        runtime_pair_with(ValueMutability::Mut),
+    );
+    let mut better_policy_fallback = callable(
+        "better-policy-fallback",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_runtime_pair_with(ValueMutability::Const),
+        compile_runtime_pair_with(ValueMutability::Mut),
+        false,
+        PolicyBridgeBody::BuiltinValueCopy,
+    );
+    better_policy_fallback.prototype_is_fallback = true;
+
+    let worse_policy_delete = callable(
+        "ordinary-delete",
+        OrdinaryCallableTypeInput::Exact(TypeValueId(10)),
+        OrdinaryCallableTypeOutput::SameAsInput,
+        compile_runtime_pair_with(ValueMutability::Mut),
+        compile_runtime_pair_with(ValueMutability::Const),
+        true,
+        PolicyBridgeBody::IntrinsicStub("delete suppresses fallback".to_string()),
+    );
+
+    assert_eq!(
+        resolve_policy_bridge(
+            &request,
+            &[better_policy_fallback, worse_policy_delete],
+            TransitionTypeExpectation::default(),
+        ),
+        PolicyBridgeResolution::RejectedByDelete("ordinary-delete"),
+        "an admissible non-fallback delete removes fallback before Bp' and later rejection cannot reopen it"
     );
 }
 

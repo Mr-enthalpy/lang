@@ -333,9 +333,11 @@ Must cover:
   choice projects empty, a prototype ordinary-result-shaped carrier, typed
   Runtime Val1 legality, callable-owned mutability endpoints using the existing
   actual-relative ordinary preference rather than hard domain intersection,
-  and transition endpoint input × output Policy before Pattern specificity
-  without transitive search; the endpoint-only maxima helper is private and
-  typed qualification keeps delete rejection distinct from availability
+  pre-Bp fallback suppression, complete ordinary result Policy separated from
+  the demanded output view, and transition endpoint input × output Policy
+  before Pattern specificity without transitive search; the endpoint-only
+  maxima helper is private and typed qualification keeps delete rejection
+  distinct from availability
 - namespace graph is a persistent, diagnosable, transactional world model shared
   by all future phases (not a temporary scan or file index)
 - conflict is a hard error by default; no merge / overlay / duplicate /
@@ -379,6 +381,11 @@ selection, prototype ordinary-result-shaped fixtures, typed runtime failures,
 callable-owned mutability endpoints, and an endpoint-product fixture before
 its Pattern-specificity stand-in. Opposite const/mut endpoint Patterns remain
 admissible and reuse ordinary `matching > unspecified > opposite` preference.
+The four default transport fixtures declare complete
+`(compile || runtime):compile` input/output Policies; `Project_in` and
+`Project_out` select the compile and runtime views around the ordinary result.
+Fallback suppression runs after full admissibility and before Bp', and an
+admissible non-fallback delete suppresses fallback without retry.
 The endpoint-only maxima helper is private;
 full integration must compose old Bp and endpoint coordinates in one product.
 Policy migration cannot repair Type/Pattern structural failure; explicit
@@ -394,10 +401,12 @@ This does **not** complete v0.7 or v0.8: only the narrow
 package manager, type checker, policy checker, type-value equality, access-tree
 construction, ordinary function-object migration routing, general runtime
 overload resolution, end-to-end initializer transition routing, or general
-meta interpretation is present. Complete mixed-stage binding/evaluation,
-residual IR, effect sequencing, residual-frame representation, and continuation
-ABI remain open; only `Resolve once / Evaluate progressively / Residualize
-runtime dependencies` is fixed as their compatibility foundation.
+meta interpretation is present. Mixed-stage Policy-domain existence,
+phase-dependent readability, early binding/evaluation of compile-readable
+dependencies, runtime residualization, and continuation of the same resolved
+invocation are fixed. Residual IR, effect sequencing, residual-frame physical
+representation, continuation ABI, and capability/effect composition remain
+open.
 
 #### v0.7 — Early Meta-Function Bootstrap
 

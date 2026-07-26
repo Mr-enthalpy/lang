@@ -695,6 +695,9 @@ pub struct PolicyTransitionCallable<I> {
     /// Hard conditions owned by ordinary candidate preparation (shape,
     /// require/concept checks, body availability, and similar facts).
     pub ordinary_fully_admissible: bool,
+    /// Fixture-only marker for the canonical pre-Bp fallback-suppression step.
+    /// Surface syntax and final ordinary candidate storage remain unfrozen.
+    pub prototype_is_fallback: bool,
     /// Test-only stand-in for ordinary B3 extraction specificity. It is
     /// deliberately applied after the endpoint-Policy product fixture.
     pub prototype_pattern_specificity: u32,
@@ -723,7 +726,12 @@ pub enum PolicyPartialOrdering {
 pub struct ResolvedPolicyBridge<I> {
     pub callable: PolicyTransitionCallable<I>,
     pub result_type: TypeValueId,
-    pub result_policy: PolicyPair,
+    /// Complete ordinary result Policy declared by the selected callable.
+    pub complete_result_policy: PolicyPair,
+    /// Runtime-stage endpoint used by prototype validation and Bp comparison.
+    /// Final ordinary `Project_out` still occurs after invocation and may fail
+    /// without reopening selection.
+    pub validated_output_endpoint: PolicyPair,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -767,9 +775,10 @@ pub fn compare_policy_transition_candidates<I>(
 /// Endpoint Policy fitness models only the endpoint-coordinate portion of
 /// future Bp' and runs before the prototype's later preference stand-ins. It
 /// is not sequentially composable with an ordinary-Bp maxima pass. This
-/// resolver does not perform global Symbol lookup or ordinary function-object
-/// invocation. It never feeds a candidate result back as another request and
-/// therefore cannot perform transitive search.
+/// resolver first applies the canonical post-admissibility, pre-Bp fallback
+/// suppression rule. It does not perform global Symbol lookup or ordinary
+/// function-object invocation. It never feeds a candidate result back as
+/// another request and therefore cannot perform transitive search.
 pub fn resolve_policy_bridge<I: Clone>(
     request: &PolicyTransitionRequest,
     candidates: &[PolicyTransitionCallable<I>],
@@ -783,7 +792,8 @@ pub fn resolve_policy_bridge<I: Clone>(
         return PolicyBridgeResolution::NoCandidate;
     }
 
-    let policy_survivors = prototype_endpoint_policy_maxima(request, &admissible);
+    let fallback_survivors = suppress_fallback_candidates(&admissible);
+    let policy_survivors = prototype_endpoint_policy_maxima(request, &fallback_survivors);
     let entry_survivors = maximal_candidates(&policy_survivors, |better, worse| {
         ordinary_candidate_dominates(better, worse)
     });
@@ -799,7 +809,8 @@ pub fn resolve_policy_bridge<I: Clone>(
         [candidate] => PolicyBridgeResolution::Selected(ResolvedPolicyBridge {
             callable: (*candidate).clone(),
             result_type: candidate.output_type.resolve(request.source_type()),
-            result_policy: project_migration_output_endpoint(
+            complete_result_policy: candidate.output_policy.clone(),
+            validated_output_endpoint: project_migration_output_endpoint(
                 request.target_query(),
                 &candidate.output_policy,
             )
@@ -811,6 +822,26 @@ pub fn resolve_policy_bridge<I: Clone>(
                 .map(|candidate| candidate.id.clone())
                 .collect(),
         ),
+    }
+}
+
+/// Canonical fallback suppression happens after full admissibility and before
+/// Bp'. Any admissible non-fallback candidate, including `delete`, permanently
+/// removes every fallback candidate. Later failure never reopens this set.
+fn suppress_fallback_candidates<'a, I>(
+    fully_admissible: &[&'a PolicyTransitionCallable<I>],
+) -> Vec<&'a PolicyTransitionCallable<I>> {
+    if fully_admissible
+        .iter()
+        .any(|candidate| !candidate.prototype_is_fallback)
+    {
+        fully_admissible
+            .iter()
+            .copied()
+            .filter(|candidate| !candidate.prototype_is_fallback)
+            .collect()
+    } else {
+        fully_admissible.to_vec()
     }
 }
 
@@ -929,7 +960,9 @@ pub struct PolicyBridgeInvocationFailure<I> {
 /// candidate family. A lowering/body failure therefore cannot reopen overload
 /// selection or choose a former second-place candidate. `result_pattern` is
 /// explicit fixture material; accepting it does not establish final ordinary
-/// result Type/Pattern/owner coherence.
+/// result Type/Pattern/owner coherence. The produced entry carries the
+/// callable's complete ordinary result Policy; `assemble_transition_results`
+/// performs the separate demanded `Project_out`.
 pub fn invoke_resolved_policy_bridge<I: Clone, P>(
     selected: &ResolvedPolicyBridge<I>,
     request: &PolicyTransitionRequest,
@@ -956,9 +989,9 @@ pub fn invoke_resolved_policy_bridge<I: Clone, P>(
                     id: result_value,
                     type_value: selected.result_type,
                 }),
-                value_policy: selected.result_policy.value.clone(),
+                value_policy: selected.complete_result_policy.value.clone(),
                 pattern: result_pattern,
-                pattern_policy: selected.result_policy.pattern.clone(),
+                pattern_policy: selected.complete_result_policy.pattern.clone(),
             },
             source_value: request.source_value(),
             provenance: request.provenance().clone(),

@@ -69,6 +69,7 @@ consumer demand
        slot 0 = selected function object
        explicit input = source value view
   -> ordinary structural/Type/Pattern applicability
+  -> suppress fallback when any admissible non-fallback candidate exists
   -> Bp extended by input/output endpoint Policy fit
   -> ordinary B1..B6 filters
   -> unique ordinary invocation
@@ -102,6 +103,26 @@ default transports `const <- const`, `const <- mut`, `mut <- const`, and
 `mut <- mut`. More specific Pattern members may refine or delete regions of
 that default ordinary relation.
 
+Those ordinary transport members expose complete callable Policies, not
+special `compile -> runtime` signatures:
+
+```text
+candidate formal P2:
+  (compile || runtime):compile
+
+candidate complete result P2:
+  (compile || runtime):compile
+
+selected static source
+  -> Project_in(complete formal)
+  -> ordinary invocation
+  -> complete ordinary result
+  -> Project_out(runtime demand)
+```
+
+The migration adapter selects views around an ordinary call; it does not
+rewrite the callable's complete P2 into a migration edge.
+
 Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
 match, or search an arbitrary operation graph. `ref`, `share`, and `alias`
 remain independently selected ordinary mechanical operations. When one of
@@ -125,7 +146,10 @@ pipeline; it is bounded candidate/result fixture material and must be removed
 or reduced to an adapter when ordinary routing is wired. In particular, its
 caller-supplied result Pattern proves only that the carrier can transport
 fixture data. It does not establish canonical TypeValue/PatternValue/owner/
-constructor coherence for an ordinary invocation result.
+constructor coherence for an ordinary invocation result. The fixture does,
+however, retain the selected callable's complete result Policy separately from
+the demanded `Project_out` view, and constructs its provisional ordinary
+result before applying that output projection.
 
 ## 3. `()` is not an operator
 

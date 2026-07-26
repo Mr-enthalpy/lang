@@ -320,12 +320,6 @@ Not implemented after this correction:
 - Integrating ordinary Bp coordinates and migration input/output endpoint
   coordinates into one product comparator before maxima. Endpoint-only maxima
   cannot be sequenced before or after ordinary Bp maxima.
-- Whether a future generic/default transport member needs an explicit
-  fallback-only overload strategy. The possible rule would discard fallback
-  members when an admissible non-fallback member exists, but its syntax,
-  observation point, and pipeline placement are unresolved. PR #97 does not
-  add it; specific Pattern members plus `delete` are sufficient for the
-  bounded safety fixtures.
 - Replacing the caller-supplied migration candidate/result fixtures with
   ordinary Symbol/Val2/associated-`()`/InvocationFrame/function-object routing,
   including canonical result Type/Pattern/owner coherence. No universal
@@ -363,14 +357,19 @@ ref/share/alias are explicit mechanical operations, not Policy-demand repair
 Resolve once; Evaluate progressively; Residualize runtime dependencies
 ```
 
-### Open mixed-stage binding and evaluation questions
+### Fixed mixed-stage semantics and open implementation questions
 
-The following foundation is fixed without claiming a complete evaluator:
+The core binding/evaluation meaning of a mixed-stage Policy domain is fixed
+without claiming a complete evaluator:
 
 ```text
+runtime in Pv means an existing runtime Policy slice
+ExposePolicySlice(runtime) does not invoke migration
+slice existence does not imply ReadValue availability in the current phase
+compile-readable dependencies bind/evaluate in the static phase
+runtime-dependent slots/computation residualize
 symbol/namespace/callable identity is resolved in the static world
 phase-admissible computation is evaluated as early as dependencies and effects permit
-runtime-dependent computation is residualized
 Runtime supplies missing values and continues the same already-resolved computation
 ```
 
@@ -382,7 +381,6 @@ language mechanism.
 The following remain open and must not be inferred from the current migration
 prototype:
 
-- the complete mixed-stage binding rule for `runtime || compile` P2;
 - the final residual representation of static/runtime arguments in an
   `InvocationFrame`;
 - the partial-evaluation IR across OpenStatic, SealStatic, and Runtime;
@@ -391,6 +389,19 @@ prototype:
 - the ABI and physical representation of runtime residual continuations;
 - the final composition of mixed-stage evaluation with future capability and
   effect systems.
+
+Fallback suppression is also no longer an open pipeline question:
+
+```text
+A = FullyAdmissible(...)
+Af = SuppressFallback(A)
+Af -> Bp'
+```
+
+Any admissible non-fallback candidate, including `delete`, suppresses fallback
+permanently. Its final surface spelling and ordinary candidate-storage
+representation may still be designed, but its semantic observation point and
+no-retry behavior are fixed.
 
 Build-world integration gates (not blockers for the current frontend/build
 substrate):

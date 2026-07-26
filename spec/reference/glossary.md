@@ -551,8 +551,11 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 The fixed process that selects a unique overload candidate. Path resolution and
 the current policy view enumerate `Val2` objects. Associated-call preparation
 and every hard structural, Pattern, policy-pair, stage, target-result, concept,
-and ordinary-require check first form fully admissible set `A`. `Bp` then uses
-the Policy product partial order across all constrained positions; no total
+and ordinary-require check first form fully admissible set `A`. Fallback
+suppression then forms `Af`: if any admissible non-fallback candidate exists,
+only non-fallback candidates remain; otherwise `Af = A`. An admissible
+non-fallback `delete` counts and permanently suppresses fallback. `Bp` then uses
+the Policy product partial order across all constrained positions in `Af`; no total
 score or lexicographic fallback resolves incomparable candidates. For an
 authorized atomic Runtime-migration call only, input/output endpoint Policy fit
 extends this same product as `Bp'`. With no endpoint coordinates, `Bp'` is
@@ -561,9 +564,10 @@ side-effect-free preference filters apply in one fixed normative order:
 entry, concept, extraction, first-order-over-instantiated,
 in-place-over-non-in-place, then named strategy rules. Each
 filter is independent of candidate enumeration order; filters are not assumed
-to commute. A named strategy only sees fully admissible candidates and cannot
-restart lookup. Delete members participate normally, and ordinary uniqueness is
-constrained by `must_select_if_qualified` strategies activated from `A`.
+to commute. A named strategy only sees fallback-suppressed fully admissible
+candidates and cannot restart lookup or restore suppressed fallback. Delete
+members participate normally, and ordinary uniqueness is constrained by
+`must_select_if_qualified` strategies activated from `Af`.
 
 Lifetime policy is not a type/compile candidate filter. This revision defines
 no lifetime overload, refinement order, ABI class, or second selection. Any
@@ -1245,6 +1249,15 @@ However, if a complete choice such as `meta || runtime` has no existing
 accepted view, runtime is the currently language-constructible accepted stage
 branch. Failure of Type/Pattern structural applicability cannot be repaired by
 Policy migration.
+
+For an object already carrying `(compile || runtime):compile`, the runtime
+branch is an existing Policy slice rather than a migration request.
+`ExposePolicySlice(runtime)` may therefore succeed during a static phase while
+`ReadValue(runtime)` remains unavailable. Compile-readable dependencies are
+bound/evaluated statically; runtime-dependent computation is residualized and
+continues the same already-resolved invocation without reopening Symbol lookup
+or overload selection. Residual representation, effect sequencing, and
+continuation ABI remain open.
 
 _See also: Policy Binding, Policy Pair, Policy Transition._
 

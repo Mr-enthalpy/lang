@@ -644,7 +644,11 @@ Symbol t
 This is not frozen surface syntax and does not require a conversion table or a
 new callable ontology. It illustrates that generic ordinary members define the
 default relation. More specific structural Pattern members may locally refine
-or `delete` regions of that relation.
+or `delete` regions of that relation. Each default member's ordinary formal
+and complete result Policy is `(compile || runtime):compile`; the migration
+context compares the compile `Project_in` and runtime `Project_out` views. It
+does not replace the member's complete P2 with a direct
+`compile -> runtime` signature.
 
 Structural safety remains in later ordinary filters. For example a generic
 materialization candidate and a more specific `T ref` delete candidate can
@@ -718,9 +722,10 @@ A   = FullyAdmissible(
         expected_result,
         compile_type_requirements
       )
+Af  = SuppressFallback(A)
 
 Bp' = MaxPolicyProduct(
-        A,
+        Af,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -731,10 +736,10 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, A)
+B6  = ApplyNamedStrategyRules(B5, Af)
 
 M = {
-  c in A
+  c in Af
   |
   overload_strategy(c) = must_select_if_qualified
 }
@@ -742,16 +747,17 @@ M = {
 
 ### 5.2 Pipeline invariants
 
-Every `Bi+1 = f(Bi, ...)` preference step satisfies:
+Fallback suppression and every `Bi+1 = f(Bi, ...)` preference step satisfy:
 
 ```text
-Bp' ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi     -- monotonic filtering
+Af ⊆ A, Bp' ⊆ Af, B1 ⊆ Bp', and Bi+1 ⊆ Bi
+                                           -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
 
-The filters execute in exactly the normative `Bp'`, then `B1` through `B6`,
-order.
+The filters execute in exactly the normative `SuppressFallback`, `Bp'`, then
+`B1` through `B6` order.
 Candidate iteration and source declaration order do not affect an individual
 filter, but filters are not assumed to commute.
 
@@ -824,9 +830,39 @@ overload, ordering, refinement, or second selection; ordinary overload must
 already be unique, as bounded by
 `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-### 5.7 Bp and B1–B6: Preference filters
+### 5.7 Af: fallback suppression
 
-Only fully admissible candidates enter preference filtering:
+Fallback is a semantic candidate role whose suppression point is fixed even
+though its final surface spelling and candidate-storage representation remain
+open:
+
+```text
+Aordinary = {c in A | not fallback(c)}
+Af =
+  Aordinary, when Aordinary is non-empty
+  A,         otherwise
+```
+
+Thus:
+
+```text
+A -> SuppressFallback -> Bp'
+```
+
+Fallback suppression is not B6 named-strategy execution. It observes the
+complete fully admissible set before Policy or Pattern preference. Any
+admissible non-fallback candidate counts, including an admissible `delete`.
+Once such a candidate exists, fallback candidates leave the survivor set
+permanently. A later unique delete rejection, ambiguity, body/lowering failure,
+or lifetime failure cannot reopen fallback candidates.
+
+When no candidate carries the fallback role, `Af = A` exactly; all old
+ordinary overload judgments and candidate identities are therefore preserved.
+
+### 5.8 Bp and B1–B6: Preference filters
+
+Only fallback-suppressed, fully admissible candidates enter preference
+filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
@@ -855,25 +891,27 @@ Only fully admissible candidates enter preference filtering:
 - **B6 Named strategy rules**: apply strategy metadata carried by
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration
-  order, and restricted to candidates already in `A`; it cannot restart
+  order, and restricted to candidates already in `Af`; it cannot restart
   lookup or make an inadmissible candidate viable. It receives `B5` as its
-  input and may only remove members of `B5`; access to `A` is read-only
+  input and may only remove members of `B5`; access to `Af` is read-only
   metadata for consistency checks such as must-select. Atomic-migration
   endpoint Policy coordinates are already consumed by `Bp'` in §4.5 and are
-  not a named strategy.
+  not a named strategy. Fallback suppression has also already occurred and
+  cannot be emulated or reversed here.
 
 Each stage only removes candidates. First-order preference does not override
 extraction specificity; a deeper applicable generic pattern may outrank a
 shallower monomorphic pattern before B4 is reached.
 
-### 5.8 Must-select consistency and uniqueness
+### 5.9 Must-select consistency and uniqueness
 
-Compute must-select membership from `A`, not from `C0`, `C2`, `C3`, or an
-earlier set that has not passed concept/require legality:
+Compute must-select membership from `Af`, not from `C0`, `C2`, `C3`, or an
+earlier set that has not passed concept/require legality and fallback
+suppression:
 
 ```text
 M = {
-  c in A
+  c in Af
   |
   overload_strategy(c) = must_select_if_qualified
 }
@@ -931,8 +969,9 @@ C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
+Af  = SuppressFallback(A)
 Bp' = MaxPolicyProduct(
-        A,
+        Af,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -943,8 +982,8 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, A)
-M   = MustSelectMembers(A)
+B6  = ApplyNamedStrategyRules(B5, Af)
+M   = MustSelectMembers(Af)
 
 OrdinaryUnique(B6, f)
 MustSelectConsistent(M, B6, f)
