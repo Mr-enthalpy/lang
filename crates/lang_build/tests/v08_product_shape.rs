@@ -122,6 +122,9 @@ fn atom_labels(atoms: &[ProductAtom]) -> Vec<String> {
             } => "Call".to_string(),
             ProductAtom::Expression { .. } => "Expr".to_string(),
             ProductAtom::Unit { .. } => "Unit".to_string(),
+            ProductAtom::SemanticValue { value, .. } => {
+                format!("SemanticValue({})", value.0)
+            }
             ProductAtom::Unsupported { summary, .. } => format!("Unsupported({summary})"),
         })
         .collect()

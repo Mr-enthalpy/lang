@@ -1,0 +1,7 @@
+let member_value_p1 =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  const let r = (t inner) |> struct;
+  r;
+};

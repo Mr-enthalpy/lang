@@ -464,18 +464,26 @@ fn decode_unsupported_shape_is_diagnostic() {
 }
 
 #[test]
-fn bare_name_at_top_level_is_diagnostic() {
-    // A bare Name at the top level of a struct argument is only valid as a
-    // nullary constructor alternative inside a Sum context. At the top level
-    // it should produce a diagnostic.
+fn bare_name_at_top_level_is_a_pure_no_value_pattern() {
     let expr = NormExpr::Name {
         text: "None".to_string(),
         origin: fake_origin(),
     };
-    let result = decode_struct_type_pattern_expr(&expr, provenance("test"));
-    assert!(result.is_err());
-    let diag = result.unwrap_err();
-    assert!(diag.message.contains("bare name"));
+    let shape =
+        decode_struct_type_pattern_expr(&expr, provenance("test")).expect("pure Pattern decodes");
+    assert!(matches!(
+        &shape,
+        TypePatternExprShape::Named {
+            pattern_name,
+            child,
+            ..
+        } if pattern_name == "None"
+            && matches!(
+                child.as_ref(),
+                TypePatternExprShape::Product { elements, .. } if elements.is_empty()
+            )
+    ));
+    assert!(shape.is_pure_pattern_without_value());
 }
 
 // ---------------------------------------------------------------------------
@@ -599,8 +607,6 @@ fn resolved_value_pair() -> PolicyPair {
         pattern: PatternComponentPolicy {
             stages: StageSet::from([PolicyStage::Compile]),
         },
-        namespace_visibility: None,
-        export_root: false,
     }
 }
 

@@ -1,0 +1,8 @@
+let dead_symbol_local =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  let x: symbol = uint8;
+  r;
+};

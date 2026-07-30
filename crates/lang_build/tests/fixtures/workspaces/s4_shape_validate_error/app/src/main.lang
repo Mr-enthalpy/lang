@@ -1,0 +1,6 @@
+let bad_cluster =
+  (self, t: type): compile
+    -> r: symbol =>
+{
+  r;
+};

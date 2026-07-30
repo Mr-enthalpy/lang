@@ -49,7 +49,7 @@ pub fn legacy_policy_set_from_pair(pair: &PolicyPair) -> PolicySet {
     } else {
         &pair.value.stages
     };
-    legacy_policy_set(stages, pair.export_root)
+    legacy_policy_set(stages, false)
 }
 
 fn legacy_policy_set(stages: &StageSet, export_root: bool) -> PolicySet {

@@ -2,31 +2,23 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use lang_syntax::{
     validate_pack_pattern_element_level, validate_pack_pattern_layers, NormClosure,
-    NormClosureBody, NormExpr, NormForm, NormOverloadStrategy, NormPattern, NormPatternElem,
-    NormProductElem,
+    NormClosureBody, NormExpr, NormForm, NormNavComponent, NormOverloadStrategy, NormPattern,
+    NormPatternElem, NormPolicySpec, NormProductElem, NormSkeleton,
 };
 
 use crate::{
-    callable_body_allows_execution,
-    graph::{NamespaceGraphSnapshot, ResolverContext},
-    initializer_eval::{evaluate_initializer_best_effort, EvalMode, EvalOutcome},
     meta_body::selected_meta_delete_diagnostic,
-    meta_invocation::{
-        ForwardedValue, MetaInvocationResult, MetaInvocationValue, MetaValueTarget, ReturnViewShape,
-    },
+    meta_invocation::{ForwardedValue, MetaInvocationValue, ReturnViewShape},
     model::{
-        Diagnostic, DiagnosticSeverity, ExecutionEnv, NamespaceNodeId, PolicyFlag, PolicySet,
-        Provenance, ResolverCode, SourceCallableObject, SymbolId, SymbolKind, SymbolObject,
-        SymbolPayload,
+        Diagnostic, DiagnosticSeverity, ExecutionEnv, Provenance, ResolverCode,
+        SourceCallableObject, SymbolObject,
     },
     overload_pattern::{
-        decode_param_pattern, match_pack_param_pattern, match_param_pattern,
-        overload_args_from_classified_shape, OverloadArgShape, RestrictedParamPattern,
-        SpecificityTuple,
+        decode_param_pattern, match_pack_param_pattern, match_param_pattern, OverloadArgShape,
+        RestrictedParamPattern, SpecificityTuple,
     },
-    product_shape::ProductMaterialRole,
-    type_argument::classify_type_arguments_with_report,
-    NormalizedCallSite,
+    semantic_name_index::ResolverContext,
+    type_argument::{BodyLocalInitializerCheck, TypeResolutionEnv},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,32 +33,12 @@ pub enum LookupPhase {
     RuntimeBinding,
 }
 
-impl LookupPhase {
-    fn policy_flag(self) -> PolicyFlag {
-        match self {
-            Self::MetaAction => PolicyFlag::Meta,
-            Self::RuntimeBinding => PolicyFlag::Runtime,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct OverloadSelectionInput<'a> {
-    pub snapshot: &'a NamespaceGraphSnapshot,
-    pub namespace: NamespaceNodeId,
-    pub callable_name: String,
-    pub arg_product_shape: crate::ArgProductShape,
-    pub lookup_phase: LookupPhase,
-    pub demanded_execution: ExecutionEnv,
-    pub visibility: VisibilityView,
-    pub provenance: Provenance,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OverloadCandidateSet {
-    pub c0_symbol_ids: Vec<SymbolId>,
-}
-
+/// Selected-candidate carrier for the shared body evaluators.
+///
+/// The legacy restricted selector is deleted; the canonical
+/// ordinary pipeline is the only producer.  It builds this struct directly
+/// from its own prepared candidate to reuse the body evaluators, so this is
+/// a plain data carrier, not selector output.
 #[derive(Clone, Debug)]
 pub struct SelectedOverloadCandidate {
     pub symbol: SymbolObject,
@@ -75,21 +47,9 @@ pub struct SelectedOverloadCandidate {
     pub pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
     pub specificity: SpecificityTuple,
     /// Static metadata carried into the fully-admissible candidate set. The
-    /// restricted selector does not invent semantics for arbitrary names.
+    /// pipeline does not invent semantics for arbitrary names.
     pub overload_strategy: NormOverloadStrategy,
     pub return_slot_name: String,
-}
-
-#[derive(Clone, Debug)]
-pub enum RestrictedMetaInvocationOutcome {
-    Value {
-        value: MetaInvocationValue,
-        result_policy: PolicySet,
-    },
-    Diagnostic {
-        diagnostic: Diagnostic,
-        failure_kind: RestrictedOverloadFailureKind,
-    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -151,358 +111,53 @@ pub struct RestrictedOverloadFailure {
 }
 
 #[derive(Clone, Debug)]
-struct ApplicableCandidate {
-    symbol: SymbolObject,
-    source_callable: SourceCallableObject,
-    bindings: BTreeMap<String, OverloadArgShape>,
-    pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
-    specificity: SpecificityTuple,
-    overload_strategy: NormOverloadStrategy,
-    return_slot_name: String,
+pub(crate) struct ApplicableCandidate {
+    pub(crate) symbol: SymbolObject,
+    pub(crate) source_callable: SourceCallableObject,
+    pub(crate) bindings: BTreeMap<String, OverloadArgShape>,
+    pub(crate) pack_bindings: BTreeMap<String, Vec<OverloadArgShape>>,
+    pub(crate) specificity: SpecificityTuple,
+    pub(crate) overload_strategy: NormOverloadStrategy,
+    pub(crate) return_slot_name: String,
 }
 
-enum CandidateApplicabilityFailure {
+pub(crate) enum CandidateApplicabilityFailure {
     Inapplicable(Diagnostic),
     UnsupportedParameterPattern(Diagnostic),
     UnsupportedCandidateShape(Diagnostic),
 }
 
-pub fn invoke_restricted_meta_overload(
-    snapshot: &NamespaceGraphSnapshot,
-    namespace: NamespaceNodeId,
-    call_site: &NormalizedCallSite,
-    resolver_context: &ResolverContext,
-    lookup_phase: LookupPhase,
-    demanded_execution: ExecutionEnv,
-    visibility: VisibilityView,
-    provenance: Provenance,
-) -> MetaInvocationResult {
-    match invoke_restricted_meta_overload_with_policy(
-        snapshot,
-        namespace,
-        call_site,
-        resolver_context,
-        lookup_phase,
-        demanded_execution,
-        visibility,
-        provenance,
-    ) {
-        RestrictedMetaInvocationOutcome::Value { value, .. } => MetaInvocationResult::Value(value),
-        RestrictedMetaInvocationOutcome::Diagnostic { diagnostic, .. } => {
-            MetaInvocationResult::Diagnostic(diagnostic)
-        }
-    }
-}
-
-pub fn invoke_restricted_meta_overload_with_policy(
-    snapshot: &NamespaceGraphSnapshot,
-    namespace: NamespaceNodeId,
-    call_site: &NormalizedCallSite,
-    resolver_context: &ResolverContext,
-    lookup_phase: LookupPhase,
-    demanded_execution: ExecutionEnv,
-    visibility: VisibilityView,
-    provenance: Provenance,
-) -> RestrictedMetaInvocationOutcome {
-    let Some(callable_name) = callable_name_from_target(&call_site.target) else {
-        return diagnostic_outcome(
-            RestrictedOverloadFailureKind::InvalidTarget,
-            "restricted overload selection requires a name or operator target",
-            call_site.provenance.clone(),
-        );
-    };
-    let arg_shape = call_site.to_arg_product_shape(ProductMaterialRole::CallableArgumentProduct);
-    let classified =
-        classify_type_arguments_with_report(&arg_shape, &snapshot.capability(), resolver_context);
-    let selected = match select_restricted_meta_overload_structured(OverloadSelectionInput {
-        snapshot,
-        namespace,
-        callable_name,
-        arg_product_shape: classified.classified_shape,
-        lookup_phase,
-        demanded_execution,
-        visibility,
-        provenance,
-    }) {
-        Ok(selected) => selected,
-        Err(failure) => {
-            return RestrictedMetaInvocationOutcome::Diagnostic {
-                diagnostic: failure.diagnostic,
-                failure_kind: failure.kind,
-            };
-        }
-    };
-    let result_policy = selected_return_object_policy(&selected);
-    match evaluate_selected_source_meta_body(snapshot, resolver_context, &selected) {
-        Ok(value) => RestrictedMetaInvocationOutcome::Value {
-            value,
-            result_policy,
-        },
-        Err(failure) => RestrictedMetaInvocationOutcome::Diagnostic {
-            diagnostic: failure.diagnostic,
-            failure_kind: failure.kind,
-        },
-    }
-}
-
-fn diagnostic_outcome(
-    kind: RestrictedOverloadFailureKind,
-    message: impl Into<String>,
-    provenance: Provenance,
-) -> RestrictedMetaInvocationOutcome {
-    let diagnostic =
-        Diagnostic::hard_error(message, Some(provenance)).with_code(kind.diagnostic_code());
-    RestrictedMetaInvocationOutcome::Diagnostic {
-        diagnostic,
-        failure_kind: kind,
-    }
-}
-
-fn selected_return_object_policy(selected: &SelectedOverloadCandidate) -> PolicySet {
-    match &selected.symbol.payload {
-        SymbolPayload::MetaFunction(meta_function) => {
-            meta_function.return_object_policy.policy_set.clone()
-        }
-        _ => selected.symbol.policy_metadata.policy_set.clone(),
-    }
-}
-
-pub fn select_restricted_meta_overload(
-    input: OverloadSelectionInput<'_>,
-) -> Result<SelectedOverloadCandidate, Diagnostic> {
-    select_restricted_meta_overload_structured(input).map_err(|failure| failure.diagnostic)
-}
-
-pub fn select_restricted_meta_overload_structured(
-    input: OverloadSelectionInput<'_>,
-) -> Result<SelectedOverloadCandidate, RestrictedOverloadFailure> {
-    if input.visibility == VisibilityView::External {
-        return Err(overload_failure(
-            RestrictedOverloadFailureKind::UnsupportedExternalVisibility,
-            "External visibility is not implemented in the restricted v0.8 overload selector",
-            input.provenance,
-        ));
-    }
-    let candidate_set = construct_c0(&input);
-    if candidate_set.c0_symbol_ids.is_empty() {
-        return Err(overload_failure(
-            RestrictedOverloadFailureKind::NoSourceDeclaredCallable {
-                callable_name: input.callable_name.clone(),
-            },
-            format!(
-                "no matching overload candidate: no source-declared callable `{}` in selected namespace view",
-                input.callable_name
-            ),
-            input.provenance,
-        ));
-    }
-
-    let args = overload_args_from_classified_shape(&input.arg_product_shape, |symbol_id| {
-        input
-            .snapshot
-            .symbol(symbol_id)
-            .map(|symbol| symbol.name.clone())
-    });
-
-    let mut policy_visible = Vec::new();
-    for symbol_id in &candidate_set.c0_symbol_ids {
-        let Some(symbol) = input.snapshot.symbol(*symbol_id).cloned() else {
-            continue;
-        };
-        if symbol
-            .policy_metadata
-            .policy_set
-            .contains(input.lookup_phase.policy_flag())
-        {
-            policy_visible.push(symbol);
-        }
-    }
-    if policy_visible.is_empty() {
-        return Err(overload_failure(
-            RestrictedOverloadFailureKind::NotVisibleToLookupPhase {
-                callable_name: input.callable_name.clone(),
-                lookup_phase: input.lookup_phase,
-            },
-            format!(
-                "no matching overload candidate: `{}` is not visible to {:?}",
-                input.callable_name, input.lookup_phase
-            ),
-            input.provenance,
-        ));
-    }
-
-    let mut shape_matches = Vec::new();
-    let mut first_unsupported_shape = None;
-    let mut first_unsupported_pattern = None;
-    let mut last_inapplicable = None;
-    for symbol in policy_visible {
-        match applicable_candidate_from_symbol(&symbol, &args, input.demanded_execution) {
-            Ok(candidate) => shape_matches.push(candidate),
-            Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(d)) => {
-                if first_unsupported_shape.is_none() {
-                    first_unsupported_shape = Some(d);
-                }
-            }
-            Err(CandidateApplicabilityFailure::UnsupportedParameterPattern(d)) => {
-                if first_unsupported_pattern.is_none() {
-                    first_unsupported_pattern = Some(d);
-                }
-            }
-            Err(CandidateApplicabilityFailure::Inapplicable(d)) => {
-                last_inapplicable = Some(d);
-            }
-        }
-    }
-    if shape_matches.is_empty() {
-        if let Some(diagnostic) = first_unsupported_shape {
-            return Err(RestrictedOverloadFailure {
-                diagnostic: diagnostic.with_code(
-                    RestrictedOverloadFailureKind::UnsupportedCandidateShape.diagnostic_code(),
-                ),
-                kind: RestrictedOverloadFailureKind::UnsupportedCandidateShape,
-            });
-        }
-        if let Some(diagnostic) = first_unsupported_pattern {
-            return Err(RestrictedOverloadFailure {
-                diagnostic: diagnostic.with_code(
-                    RestrictedOverloadFailureKind::UnsupportedParameterPattern.diagnostic_code(),
-                ),
-                kind: RestrictedOverloadFailureKind::UnsupportedParameterPattern,
-            });
-        }
-        let kind = RestrictedOverloadFailureKind::NoApplicableCandidate {
-            callable_name: input.callable_name.clone(),
-        };
-        if let Some(diagnostic) = last_inapplicable {
-            return Err(RestrictedOverloadFailure {
-                diagnostic: diagnostic.with_code(kind.diagnostic_code()),
-                kind,
-            });
-        }
-        return Err(overload_failure(
-            kind,
-            format!(
-                "no matching overload candidate for `{}`",
-                input.callable_name
-            ),
-            input.provenance.clone(),
-        ));
-    }
-
-    let body_entry_matches = shape_matches
-        .into_iter()
-        .filter(|candidate| {
-            callable_body_allows_execution(
-                match &candidate.symbol.payload {
-                    SymbolPayload::MetaFunction(meta_function) => &meta_function.body_entry_policy,
-                    _ => return false,
-                },
-                input.demanded_execution,
-            )
-        })
-        .collect::<Vec<_>>();
-    if body_entry_matches.is_empty() {
-        return Err(overload_failure(
-            RestrictedOverloadFailureKind::BodyEntryPolicyMismatch {
-                demanded_execution: input.demanded_execution,
-            },
-            "candidate body-entry policy does not admit demanded execution",
-            input.provenance,
-        ));
-    }
-
-    let max_specificity = body_entry_matches
-        .iter()
-        .map(|candidate| candidate.specificity)
-        .max()
-        .expect("non-empty body-entry candidate list");
-    let maximal = body_entry_matches
-        .into_iter()
-        .filter(|candidate| candidate.specificity == max_specificity)
-        .collect::<Vec<_>>();
-    match maximal.as_slice() {
-        [candidate] => Ok(SelectedOverloadCandidate {
-            symbol: candidate.symbol.clone(),
-            source_callable: candidate.source_callable.clone(),
-            bindings: candidate.bindings.clone(),
-            pack_bindings: candidate.pack_bindings.clone(),
-            specificity: candidate.specificity,
-            overload_strategy: candidate.overload_strategy.clone(),
-            return_slot_name: candidate.return_slot_name.clone(),
-        }),
-        [] => unreachable!("maximal candidates are built from a non-empty list"),
-        _ => Err(overload_failure(
-            RestrictedOverloadFailureKind::AmbiguousCandidate {
-                specificity: max_specificity,
-            },
-            format!(
-                "ambiguous overload candidate: duplicate overload declaration is ambiguous only when selected (specificity {:?})",
-                max_specificity
-            ),
-            input.provenance,
-        )),
-    }
-}
-
-fn overload_failure(
-    kind: RestrictedOverloadFailureKind,
-    message: impl Into<String>,
-    provenance: Provenance,
-) -> RestrictedOverloadFailure {
-    let diagnostic =
-        Diagnostic::hard_error(message, Some(provenance)).with_code(kind.diagnostic_code());
-    RestrictedOverloadFailure { diagnostic, kind }
-}
-
-pub fn construct_c0(input: &OverloadSelectionInput<'_>) -> OverloadCandidateSet {
-    let mut c0_symbol_ids = Vec::new();
-    let Some(node) = input.snapshot.node(input.namespace) else {
-        return OverloadCandidateSet { c0_symbol_ids };
-    };
-    let Some(bucket) = node.children.get(&input.callable_name) else {
-        return OverloadCandidateSet { c0_symbol_ids };
-    };
-
-    for symbol_id in bucket.object_symbols() {
-        let Some(symbol) = input.snapshot.symbol(*symbol_id) else {
-            continue;
-        };
-        if symbol.kind != SymbolKind::MetaFunction {
-            continue;
-        }
-        let SymbolPayload::MetaFunction(meta_function) = &symbol.payload else {
-            continue;
-        };
-        let Some(source_callable) = &meta_function.source_callable else {
-            continue;
-        };
-        if callable_shape_compatible(&source_callable.closure, input.arg_product_shape.arity) {
-            c0_symbol_ids.push(*symbol_id);
-        }
-    }
-    c0_symbol_ids.sort();
-    OverloadCandidateSet { c0_symbol_ids }
-}
-
-fn applicable_candidate_from_symbol(
+/// Canonical A-stage entry point.
+///
+/// The candidate is shaped from the `OrdinaryCallEntry`'s own closure
+/// handle; no graph payload is read.
+pub(crate) fn applicable_candidate_from_closure(
     symbol: &SymbolObject,
+    closure: &NormClosure,
+    provenance: &Provenance,
+    args: &[OverloadArgShape],
+    demanded_execution: ExecutionEnv,
+    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<crate::TypeValueId>>,
+) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
+    applicable_candidate_from_source_callable(
+        symbol,
+        SourceCallableObject {
+            closure: closure.clone(),
+            provenance: provenance.clone(),
+        },
+        args,
+        demanded_execution,
+        resolve_named_pattern,
+    )
+}
+
+fn applicable_candidate_from_source_callable(
+    symbol: &SymbolObject,
+    source_callable: SourceCallableObject,
     args: &[OverloadArgShape],
     _demanded_execution: ExecutionEnv,
+    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<crate::TypeValueId>>,
 ) -> Result<ApplicableCandidate, CandidateApplicabilityFailure> {
-    let SymbolPayload::MetaFunction(meta_function) = &symbol.payload else {
-        return Err(CandidateApplicabilityFailure::UnsupportedCandidateShape(
-            Diagnostic::hard_error(
-                "overload candidate is not a meta-function payload",
-                Some(symbol.provenance.clone()),
-            ),
-        ));
-    };
-    let source_callable = meta_function.source_callable.clone().ok_or_else(|| {
-        CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
-            "overload candidate is not source-declared callable material",
-            Some(symbol.provenance.clone()),
-        ))
-    })?;
     let head = source_callable.closure.head.as_ref().ok_or_else(|| {
         CandidateApplicabilityFailure::UnsupportedCandidateShape(Diagnostic::hard_error(
             "overload candidate lacks explicit closure head",
@@ -557,7 +212,7 @@ fn applicable_candidate_from_symbol(
             } else {
                 index
             };
-            match_param_pattern(&pattern, &args[arg_index])
+            match_param_pattern(&pattern, &args[arg_index], resolve_named_pattern)
                 .map_err(CandidateApplicabilityFailure::Inapplicable)?
         };
         specificity = specificity.add(outcome.specificity);
@@ -613,13 +268,6 @@ fn validate_parameter_pack_levels(params: &[NormPatternElem]) -> Result<(), Diag
     Ok(())
 }
 
-fn callable_shape_compatible(closure: &NormClosure, explicit_arity: usize) -> bool {
-    let Some(head) = &closure.head else {
-        return false;
-    };
-    parameter_arity_matches(head.formal_frame().explicit_parameters, explicit_arity)
-}
-
 fn param_is_pack(element: &NormPatternElem) -> bool {
     matches!(
         element,
@@ -665,8 +313,84 @@ fn return_slot_name(closure: &NormClosure) -> Result<String, Diagnostic> {
     }
 }
 
-fn evaluate_selected_source_meta_body(
-    snapshot: &NamespaceGraphSnapshot,
+/// Declaration-boundary return-shape elaboration from the return-slot
+/// annotation.
+///
+/// The return shape is an independent declared fact spelled on the return
+/// slot; it is one coordinate of
+/// `CallableSemantics = P1 × P2 × ReturnShape × Privilege` and implies
+/// nothing about the Policy stage or the privilege (the legality relation
+/// is `validate_return_shape`, applied separately).  The body form family
+/// is never scanned — the ontology is not an inference from implementation
+/// detail; the body evaluators only check that the body is compatible with
+/// the declared shape.
+///
+/// Mapping:
+///
+/// * `-> r: symbol` → `ClusterSymbol` (one position, plural values under
+///   one name);
+/// * `-> r: type`   → `SingleType`;
+/// * `-> _: unit`   → `Unit` — the value-less pure shape REQUIRES the `_`
+///   binder (`_: unit` matches and discards the value, exactly as `_ unit`
+///   in extraction matches and discards the leaf; a named binder for a
+///   value-less shape is a spelling error);
+/// * any other annotation → `SingleVal(Constrained)`;
+/// * no annotation → `SingleVal(Unconstrained)`.
+///
+/// A future product-shaped result is one ordinary value whose Val1 is a
+/// Product — still `SingleVal`, never a parallel return shape: the return
+/// slot is restricted to a single binder.
+pub fn declared_return_shape_from_closure(
+    closure: &NormClosure,
+) -> Result<crate::ReturnShape, Diagnostic> {
+    use crate::{PatternConstraint, ReturnShape};
+    let returns = closure.head.as_ref().and_then(|head| head.returns.as_ref());
+    let annotation = returns.and_then(|returns| returns.annotation.as_ref());
+    let annotation_name = match annotation.map(|annotation| &annotation.pattern) {
+        Some(NormPattern::Name { name, .. }) => Some(name.as_str()),
+        Some(_) => {
+            return Ok(ReturnShape::SingleVal(PatternConstraint::Constrained));
+        }
+        None => None,
+    };
+    match annotation_name {
+        Some("symbol") => Ok(ReturnShape::ClusterSymbol),
+        Some("type") => Ok(ReturnShape::SingleType),
+        Some("unit") => {
+            // `_` in binder position normalizes to a wildcard skeleton
+            // pattern (not a `Binder` named `_`).
+            let is_wildcard_binder = returns.is_some_and(|returns| {
+                matches!(
+                    &returns.value_pattern,
+                    NormPattern::Skeleton {
+                        skeleton: lang_syntax::NormSkeleton::Wildcard { .. },
+                        ..
+                    }
+                )
+            });
+            if is_wildcard_binder {
+                Ok(ReturnShape::Unit)
+            } else {
+                Err(Diagnostic::hard_error(
+                    "a unit return is a value-less pure shape and must be spelled `_: unit` \
+                     (`_` occupies the leftmost slot so `unit` cannot be misread as the \
+                     leftmost to-be-extracted name of an extraction shorthand)",
+                    Some(Provenance::from_norm_origin(
+                        "return slot",
+                        returns
+                            .map(|returns| &returns.origin)
+                            .unwrap_or(&closure.origin),
+                    )),
+                ))
+            }
+        }
+        Some(_) => Ok(ReturnShape::SingleVal(PatternConstraint::Constrained)),
+        None => Ok(ReturnShape::SingleVal(PatternConstraint::Unconstrained)),
+    }
+}
+
+pub(crate) fn evaluate_selected_source_meta_body(
+    type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedOverloadCandidate,
 ) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
@@ -683,7 +407,7 @@ fn evaluate_selected_source_meta_body(
             })
         }
         NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
-            evaluate_block_body(snapshot, resolver_context, selected, program)
+            evaluate_block_body(type_env, resolver_context, selected, program)
         }
         NormClosureBody::Defaulted { .. } => Err(selected_body_failure(
             selected,
@@ -693,74 +417,554 @@ fn evaluate_selected_source_meta_body(
     }
 }
 
-fn evaluate_block_body(
-    snapshot: &NamespaceGraphSnapshot,
+/// One cluster-member construction effect harvested from a selected
+/// source meta body, in source order.
+///
+/// The member creation form families are distinct effects and must not
+/// be collapsed into one "injection" spelling:
+///
+/// * `let r = expr;`   → `AddMember` — fresh member creation (the
+///   return-slot spelling reading is the current compatibility
+///   encoding; see the variant doc).
+/// * `let r === path;` → `AddAliasMember` — alias member creation; the
+///   member forwards the target's Val2 identity instead of creating a
+///   fresh value.
+/// * `r = expr;`       → `PlaceholderOverwrite` — the current-stage
+///   placeholder encoding of a write to an existing target (see the
+///   variant doc; it does not define the final `=` write algebra).
+///
+/// Effects carry their *unevaluated* initializer material plus the
+/// member's own written binding P1: the caller that owns
+/// the open cluster construction evaluates each effect and projects the
+/// member views under that binding P1 (it has semantic-world and
+/// materialization access; this evaluator does not).  Members never
+/// collapse onto the callable's function P2.
+#[derive(Clone, Debug)]
+pub(crate) enum MetaConstructionEffect {
+    /// `let r = expr;` — fresh member creation from an initializer,
+    /// carrying the `let`'s own written P1 (if any).
+    ///
+    /// CURRENT return-slot compatibility encoding, not the final rule:
+    /// while expression-level `=` does not exist, the spelling
+    /// `let <return-slot> = expr` is read as a member contribution and
+    /// ordinary locals may not shadow the explicit return slot.  Under
+    /// the settled orthogonal target (`let` creates, `=` writes to
+    /// existing targets, return events transfer control) this special
+    /// reading is removed and `let r` may shadow the return slot.
+    AddMember {
+        initializer: NormExpr,
+        binding_p1: Option<NormPolicySpec>,
+    },
+    /// `let r === path;` — alias member creation forwarding the target,
+    /// carrying the alias declaration's own written P1 (if any).
+    AddAliasMember {
+        target_name: String,
+        binding_p1: Option<NormPolicySpec>,
+    },
+    /// `r = expr;` — CURRENT PLACEHOLDER, not the final write rule.
+    ///
+    /// Expression-level `=` does not exist yet, so this effect only
+    /// exists to exercise existing-target addressing inside a meta
+    /// body.  This stage freezes just two boundaries: `let` (creation)
+    /// is not `=` (write to an existing target), and a return event is
+    /// not a binding/write.  It deliberately does NOT freeze
+    /// `Write(ClusterSymbol, RHS) = overwrite-the-unique-existing-member`;
+    /// the real ClusterSymbol write algebra (how RHS shape adds or
+    /// replaces type facets / val siblings) is defined by the future
+    /// expression-level `=` work.  The placeholder's own behavior —
+    /// unique-facet target selection, value-not-binding replacement —
+    /// is an internal scaffold choice and carries no language authority.
+    PlaceholderOverwrite { initializer: NormExpr },
+    /// `let member::r = RHS;` — evaluate RHS first, then dispatch by its
+    /// semantic object shape. `null × P × Val2` contributes to the target
+    /// Pattern normal form; `Val1 × P × Val2` installs an ordinary
+    /// associated-Val2 member without merging its P into the target.
+    InjectMember {
+        member_name: String,
+        initializer: NormExpr,
+        binding_p1: Option<NormPolicySpec>,
+    },
+}
+
+/// The construction execution harvested from a selected source meta
+/// body: the ordered member effects.  The terminal delivery form has
+/// already been validated by the evaluator — the body must end with the
+/// bare return-target terminal `r;` (delivery of the constructed
+/// cluster to the direct outer layer; not a member event).  A body
+/// without terminal delivery is a hard error, never an implicit or
+/// empty finalize.
+#[derive(Clone, Debug)]
+pub(crate) struct MetaBodyExecution {
+    pub(crate) effects: Vec<MetaConstructionEffect>,
+}
+
+/// Clustered return construction body evaluation (effects + terminal).
+///
+/// The return unit of a meta callable is a cluster construction
+/// process, not a single value.  This evaluator walks the selected body
+/// and harvests one `MetaConstructionEffect` per member-creation form,
+/// in source order, then validates the terminal delivery shape.  The
+/// member forms are *not* return: the delivery semantics remains the
+/// `expr;` / `expr return` / `expr (T return);` terminal family, and
+/// inside this restricted evaluator only the bare `r;` terminal is
+/// executable.
+pub(crate) fn evaluate_selected_source_meta_body_execution(
+    type_env: &dyn TypeResolutionEnv,
+    resolver_context: &ResolverContext,
+    selected: &SelectedOverloadCandidate,
+) -> Result<MetaBodyExecution, RestrictedOverloadFailure> {
+    match &selected.source_callable.closure.body {
+        NormClosureBody::Delete(delete) => {
+            let diagnostic = selected_meta_delete_diagnostic(
+                delete,
+                selected.source_callable.provenance.clone(),
+            )
+            .with_code(ResolverCode::UnsupportedSelectedMetaBody);
+            Err(RestrictedOverloadFailure {
+                diagnostic,
+                kind: RestrictedOverloadFailureKind::SelectedDeleteBodyDiagnostic,
+            })
+        }
+        NormClosureBody::Block(program) | NormClosureBody::NamedBlock { body: program, .. } => {
+            collect_block_body_execution(type_env, resolver_context, selected, program)
+        }
+        NormClosureBody::Defaulted { .. } => Err(selected_body_failure(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            "selected defaulted callable requires compiler default-implementation materialization",
+        )),
+    }
+}
+
+fn collect_block_body_execution(
+    type_env: &dyn TypeResolutionEnv,
     resolver_context: &ResolverContext,
     selected: &SelectedOverloadCandidate,
     program: &lang_syntax::NormProgram,
-) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+) -> Result<MetaBodyExecution, RestrictedOverloadFailure> {
     let mut local_names = BTreeSet::new();
+    let mut effects = Vec::new();
 
     for form in &program.forms {
         match form {
             NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
-                if let Some(initializer) = slot.initializer.as_deref() {
-                    if expr_refs_selected_or_local_binding(initializer, selected, &local_names) {
-                        return Err(selected_body_failure(
+                // `let r = expr;` where `r` is the return target: fresh
+                // member creation on the return-target cluster.  This
+                // spelling-directed reading is the current return-slot
+                // compatibility encoding (removed when expression-level
+                // `=` becomes semantic) — not a body-local binding, not
+                // a return, and not the final `let` rule.
+                if binding_slot_name(slot).as_deref() == Some(selected.return_slot_name.as_str()) {
+                    let Some(initializer) = slot.initializer.as_deref() else {
+                        return Err(unsupported_body(
                             selected,
-                            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-                            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+                            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                            "member creation `let` form requires an initializer",
+                        ));
+                    };
+                    effects.push(MetaConstructionEffect::AddMember {
+                        initializer: initializer.clone(),
+                        binding_p1: slot.policy.clone(),
+                    });
+                    continue;
+                }
+                // `let member::r = RHS;` — inner-to-outer navigation binder:
+                // the leftmost component is the injected member name, the
+                // outer component must name the return target whose open
+                // construction receives the evaluated object. The binder
+                // normalizes as a skeleton-wrapped Nav (or a bare Nav).
+                let nav_components = match &slot.value_pattern {
+                    NormPattern::Nav { components, .. } => Some(components),
+                    NormPattern::Skeleton {
+                        skeleton: NormSkeleton::Nav { components, .. },
+                        ..
+                    } => Some(components),
+                    _ => None,
+                };
+                if let Some(components) = nav_components {
+                    let names: Option<Vec<&str>> = components
+                        .iter()
+                        .map(|component| match component {
+                            NormNavComponent::Name { name, .. } => Some(name.as_str()),
+                            _ => None,
+                        })
+                        .collect();
+                    let Some([member_name, scope_name]) = names.as_deref() else {
+                        return Err(unsupported_body(
+                            selected,
+                            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                            "navigation binder in a meta body must be the two-component injection form `let member::<return-target> = RHS;`",
+                        ));
+                    };
+                    if *scope_name != selected.return_slot_name {
+                        return Err(unsupported_body(
+                            selected,
+                            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                            "meta injection must target the return target under construction (`let member::<return-target> = RHS;`)",
                         ));
                     }
-                    match evaluate_initializer_best_effort(
-                        snapshot,
-                        selected
-                            .symbol
-                            .parent
-                            .unwrap_or_else(|| snapshot.root_node()),
-                        initializer,
-                        resolver_context,
-                        EvalMode::MetaStrict,
-                        Provenance::from_norm_origin("selected meta body local let", &slot.origin),
-                    ) {
-                        EvalOutcome::Value { .. } => {}
-                        EvalOutcome::Residual {
-                            reason, provenance, ..
-                        } => {
-                            return Err(RestrictedOverloadFailure {
-                                diagnostic: Diagnostic::hard_error(
-                                format!(
-                                    "ResidualNotAllowedInMetaStrict: runtime-only dependency in MetaStrict context ({reason:?})"
-                                ),
-                                Some(provenance),
-                                )
-                                .with_code(ResolverCode::ResidualNotAllowedInMetaStrict),
-                                kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                            });
-                        }
-                        EvalOutcome::Diagnostic(diagnostic) => {
-                            return Err(RestrictedOverloadFailure {
-                                diagnostic,
-                                kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                            });
-                        }
-                    }
+                    let Some(initializer) = slot.initializer.as_deref() else {
+                        return Err(unsupported_body(
+                            selected,
+                            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                            "meta injection requires an RHS initializer (`let member::<return-target> = RHS;`)",
+                        ));
+                    };
+                    effects.push(MetaConstructionEffect::InjectMember {
+                        member_name: (*member_name).to_string(),
+                        initializer: initializer.clone(),
+                        binding_p1: slot.policy.clone(),
+                    });
+                    continue;
                 }
+                evaluate_body_local_let(type_env, resolver_context, selected, &local_names, slot)?;
+                if let Some(name) = binding_slot_name(slot) {
+                    local_names.insert(name);
+                }
+            }
+            NormForm::Let(lang_syntax::NormDecl::Alias {
+                policy,
+                binder,
+                target,
+                ..
+            })
+            | NormForm::Alias(lang_syntax::NormDecl::Alias {
+                policy,
+                binder,
+                target,
+                ..
+            }) => {
+                // `let r === path;` where `r` is the return target: alias
+                // member creation.  Same substrate as a namespace-level
+                // alias declaration — the member forwards the target's
+                // Val2 identity; nothing fresh is created.
+                let binder_is_return_target = matches!(
+                    binder,
+                    lang_syntax::NormAliasBinder::Name { name, .. }
+                        if name == &selected.return_slot_name
+                );
+                if !binder_is_return_target {
+                    return Err(unsupported_body(
+                        selected,
+                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                        "selected meta body contains unsupported non-terminal form before terminal",
+                    ));
+                }
+                let Some(target_name) = entity_ref_single_name(target) else {
+                    return Err(unsupported_body(
+                        selected,
+                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                        "alias member creation target is outside the restricted evaluator (single-name targets only)",
+                    ));
+                };
+                effects.push(MetaConstructionEffect::AddAliasMember {
+                    target_name,
+                    binding_p1: policy.clone(),
+                });
+            }
+            NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
+            NormForm::Expr(expr) => {
+                // `r = expr;` — the placeholder write to the existing
+                // member (see `PlaceholderOverwrite`).  The bare
+                // `r === X;` expression spelling is illegal: alias
+                // member creation is the `let r === path;` declaration
+                // form only.
+                if let Some(initializer) =
+                    overwrite_assignment_rhs(expr, &selected.return_slot_name)
+                {
+                    effects.push(MetaConstructionEffect::PlaceholderOverwrite { initializer });
+                    continue;
+                }
+                if bare_alias_equality_shape(expr, &selected.return_slot_name) {
+                    return Err(bare_alias_spelling_failure(selected));
+                }
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "selected meta body contains an expression form that is not a member effect; expected `let r = expr;`, `let r === path;`, `r = expr;`, or the `r;` terminal",
+                ));
+            }
+            NormForm::Let(lang_syntax::NormDecl::Error(_))
+            | NormForm::Alias(_)
+            | NormForm::Error(_) => {
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "selected meta body contains unsupported non-terminal form before terminal",
+                ));
+            }
+        }
+    }
+
+    let report = crate::control_flow_end::compute_control_flow_end_report(program);
+
+    if !report.diagnostics.is_empty() {
+        return Err(unsupported_body(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            "statement after terminal block form in selected meta body",
+        ));
+    }
+
+    match report.terminal {
+        Some(crate::control_flow_end::ControlFlowTerminal::TailValue(expr)) => {
+            // Terminal delivery: the bare return-target name `r;`
+            // delivers the constructed cluster to the direct outer
+            // layer.  It is a delivery event, never a member event.
+            let is_bare_return_target = matches!(
+                &expr,
+                NormExpr::Name { text, .. } if text == &selected.return_slot_name
+            );
+            if !is_bare_return_target {
+                if bare_alias_equality_shape(&expr, &selected.return_slot_name) {
+                    return Err(bare_alias_spelling_failure(selected));
+                }
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "meta body terminal delivery must be the bare return-target name (`r;`)",
+                ));
+            }
+        }
+        Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(event)) => {
+            return Err(unsupported_body(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                return_event_execution_gap_message(&event),
+            ));
+        }
+        // No terminal delivery: the construction result is never
+        // delivered implicitly.  Hard error, not an empty finalize.
+        None => {
+            return Err(unsupported_body(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                "selected meta body has no terminal delivery; the constructed cluster must be delivered with `r;`",
+            ));
+        }
+    }
+
+    Ok(MetaBodyExecution { effects })
+}
+
+/// Shape test: `r = expr;` — overwrite of the return-target member
+/// (`Call { target: OperatorTarget("="), source: [Name(r), rhs] }`).
+fn overwrite_assignment_rhs(expr: &NormExpr, return_slot_name: &str) -> Option<NormExpr> {
+    let NormExpr::Call { source, target, .. } = expr else {
+        return None;
+    };
+    let NormExpr::OperatorTarget { spelling, .. } = target.as_ref() else {
+        return None;
+    };
+    if spelling != "=" || source.elements.len() != 2 {
+        return None;
+    }
+    let lhs = match &source.elements[0] {
+        NormProductElem::Expr(NormExpr::Name { text, .. }) => text,
+        _ => return None,
+    };
+    if lhs != return_slot_name {
+        return None;
+    }
+    match &source.elements[1] {
+        NormProductElem::Expr(expr) => Some(expr.clone()),
+        _ => None,
+    }
+}
+
+/// Evaluate one local `let` form inside a restricted selected body.
+fn evaluate_body_local_let(
+    type_env: &dyn TypeResolutionEnv,
+    resolver_context: &ResolverContext,
+    selected: &SelectedOverloadCandidate,
+    local_names: &BTreeSet<String>,
+    slot: &lang_syntax::NormBindingSlot,
+) -> Result<(), RestrictedOverloadFailure> {
+    // Execution gap — a body-local `let x:symbol = ...` outside the
+    // return-slot position has no defined meaning yet: symbol-rank
+    // local construction is an undefined future construct, so it is
+    // rejected explicitly instead of being accepted as a
+    // checked-then-discarded dead local.  The future pass that defines
+    // it must be the first to give the form positive semantics.
+    if let Some(annotation) = &slot.annotation {
+        if matches!(
+            &annotation.pattern,
+            NormPattern::Name { name, .. } if name == "symbol"
+        ) {
+            return Err(selected_body_failure(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                "UnsupportedSelectedMetaBody: symbol-rank local binding (`let ...:symbol = ...`) outside the return slot has no defined meaning at this stage and is rejected explicitly rather than silently accepted",
+            ));
+        }
+    }
+    if let Some(initializer) = slot.initializer.as_deref() {
+        if expr_refs_selected_or_local_binding(initializer, selected, local_names) {
+            return Err(selected_body_failure(
+                selected,
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
+                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+            ));
+        }
+        match type_env.check_body_local_initializer(
+            selected.symbol.parent,
+            initializer,
+            resolver_context,
+            Provenance::from_norm_origin("selected meta body local let", &slot.origin),
+        ) {
+            BodyLocalInitializerCheck::Accepted => {}
+            BodyLocalInitializerCheck::Residual { reason, provenance } => {
+                return Err(RestrictedOverloadFailure {
+                    diagnostic: Diagnostic::hard_error(
+                        format!(
+                            "ResidualNotAllowedInMetaStrict: runtime-only dependency in MetaStrict context ({reason})"
+                        ),
+                        Some(provenance),
+                    )
+                    .with_code(ResolverCode::ResidualNotAllowedInMetaStrict),
+                    kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                });
+            }
+            BodyLocalInitializerCheck::Rejected(diagnostic) => {
+                return Err(RestrictedOverloadFailure {
+                    diagnostic,
+                    kind: RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Reject a non-name terminal expression of an ordinary body with the
+/// most specific diagnostic.  The bare `r === X;` expression spelling is
+/// categorically illegal: alias forwarding must converge to the
+/// `let r === X;` declaration form.
+fn evaluate_contribution_expr(
+    selected: &SelectedOverloadCandidate,
+    expr: &NormExpr,
+) -> RestrictedOverloadFailure {
+    if forwarding_expr_is_canonical_sum(expr, &selected.return_slot_name) {
+        return unsupported_body(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
+            "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
+        );
+    }
+    if bare_alias_equality_shape(expr, &selected.return_slot_name) {
+        return bare_alias_spelling_failure(selected);
+    }
+    unsupported_body(
+        selected,
+        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+        "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+    )
+}
+
+/// Evaluate a cluster-member injection's right-hand-side name to its
+/// local result carrier.  Shared by the contribution creation forms
+/// (`let r === X;`, `let r = X;`) and the delivery terminal: the forms
+/// differ, but each resolves one name to a forwarded type value.
+fn evaluate_contribution_rhs_name(
+    type_env: &dyn TypeResolutionEnv,
+    resolver_context: &ResolverContext,
+    selected: &SelectedOverloadCandidate,
+    local_names: &BTreeSet<String>,
+    rhs_name: &str,
+) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+    if local_names.contains(rhs_name) {
+        return Err(selected_body_failure(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
+            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
+        ));
+    }
+    if let Some(bound) = selected.bindings.get(rhs_name) {
+        return forwarded_type_value(selected, bound.value_type);
+    }
+    if selected.pack_bindings.contains_key(rhs_name) {
+        return Err(unsupported_body(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            "selected meta body pack forwarding relies on ordinary product normalization and is outside the restricted type-only evaluator",
+        ));
+    }
+    match type_env.resolve_type_name(rhs_name, resolver_context) {
+        Some(resolution) => forwarded_type_value(selected, Some(resolution.represented_type)),
+        None => Err(unsupported_body(
+            selected,
+            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+            "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
+        )),
+    }
+}
+
+/// Extract the single-name target of an alias contribution
+/// (`let r === X;`).
+fn entity_ref_single_name(target: &lang_syntax::NormEntityRef) -> Option<String> {
+    match target.components.as_slice() {
+        [lang_syntax::NormNavComponent::Name { name, .. }] => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn evaluate_block_body(
+    type_env: &dyn TypeResolutionEnv,
+    resolver_context: &ResolverContext,
+    selected: &SelectedOverloadCandidate,
+    program: &lang_syntax::NormProgram,
+) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
+    // Single-value body evaluation for ordinary (non-meta-construction)
+    // callables: exactly one terminal contribution.  Shares the per-form
+    // helpers with the clustered contributions evaluator so both read the
+    // same body-shape rules.
+    let mut local_names = BTreeSet::new();
+    let mut local_aliases: BTreeMap<String, String> = BTreeMap::new();
+
+    for form in &program.forms {
+        match form {
+            NormForm::Let(lang_syntax::NormDecl::Let { slot, .. }) => {
+                evaluate_body_local_let(type_env, resolver_context, selected, &local_names, slot)?;
                 if let Some(name) = binding_slot_name(slot) {
                     local_names.insert(name);
                 }
             }
             NormForm::TailValue(_) | NormForm::ReturnEvent(_) => break,
-            NormForm::Expr(_) => {
+            NormForm::Expr(expr) => {
+                if bare_alias_equality_shape(expr, &selected.return_slot_name) {
+                    return Err(bare_alias_spelling_failure(selected));
+                }
                 return Err(unsupported_body(
                     selected,
                     RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
                     "selected meta body contains ordinary expression form; expected explicit TailValue terminal",
                 ));
             }
-            NormForm::Let(lang_syntax::NormDecl::Alias { .. })
-            | NormForm::Let(lang_syntax::NormDecl::Error(_))
-            | NormForm::Alias(_)
+            NormForm::Let(lang_syntax::NormDecl::Alias { binder, target, .. })
+            | NormForm::Alias(lang_syntax::NormDecl::Alias { binder, target, .. }) => {
+                // `let r === t;` — a body-local alias declaration: the
+                // binder forwards the target's identity instead of
+                // creating a fresh value.  The terminal name is later
+                // resolved through this forwarding chain.
+                let lang_syntax::NormAliasBinder::Name { name, .. } = binder else {
+                    return Err(unsupported_body(
+                        selected,
+                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                        "body-local alias binder must be a single name in the restricted evaluator",
+                    ));
+                };
+                let Some(target_name) = entity_ref_single_name(target) else {
+                    return Err(unsupported_body(
+                        selected,
+                        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                        "body-local alias target is outside the restricted evaluator (single-name targets only)",
+                    ));
+                };
+                local_aliases.insert(name.clone(), target_name);
+            }
+            NormForm::Let(lang_syntax::NormDecl::Error(_))
+            | NormForm::Alias(lang_syntax::NormDecl::Let { .. })
+            | NormForm::Alias(lang_syntax::NormDecl::Error(_))
             | NormForm::Error(_) => {
                 return Err(unsupported_body(
                     selected,
@@ -783,11 +987,11 @@ fn evaluate_block_body(
 
     let expr = match report.terminal {
         Some(crate::control_flow_end::ControlFlowTerminal::TailValue(expr)) => expr,
-        Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(_)) => {
+        Some(crate::control_flow_end::ControlFlowTerminal::ReturnEvent(event)) => {
             return Err(unsupported_body(
                 selected,
                 RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-                "return event is not supported in restricted selected meta body evaluator",
+                return_event_execution_gap_message(&event),
             ));
         }
         None => {
@@ -799,57 +1003,43 @@ fn evaluate_block_body(
         }
     };
 
-    if forwarding_expr_is_canonical_sum(&expr, &selected.return_slot_name) {
-        return Err(unsupported_body(
-            selected,
-            RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
-            "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
-        ));
-    }
-    let Some(rhs_name) = forwarding_equality_rhs(&expr, &selected.return_slot_name) else {
-        if forwarding_rhs_is_canonical_sum(&expr, &selected.return_slot_name) {
-            return Err(unsupported_body(
+    // `X;` — the direct delivery terminal: the named value is delivered to
+    // the direct outer layer.  This is the ordinary `expr;` terminal form,
+    // not a member event.
+    if let NormExpr::Name { text, .. } = &expr {
+        // Follow the body-local alias chain first: `let r === t;`
+        // forwards `t`'s identity, so the terminal `r;` delivers the
+        // chain target, not a fresh value.
+        let mut terminal_name = text.clone();
+        let mut visited = BTreeSet::new();
+        visited.insert(terminal_name.clone());
+        while let Some(next) = local_aliases.get(&terminal_name) {
+            terminal_name = next.clone();
+            if !visited.insert(terminal_name.clone()) {
+                return Err(unsupported_body(
+                    selected,
+                    RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+                    "body-local alias chain does not terminate (cyclic alias)",
+                ));
+            }
+        }
+        if local_names.contains(&terminal_name) {
+            return Err(selected_body_failure(
                 selected,
-                RestrictedOverloadFailureKind::UnsupportedCanonicalSumPatternValue,
-                "UnsupportedCanonicalSumPatternValue: unsupported canonical sum-pattern value in restricted v0.8 initializer meta evaluation",
+                RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
+                "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
             ));
         }
-        return Err(unsupported_body(
+        return evaluate_contribution_rhs_name(
+            type_env,
+            resolver_context,
             selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
-        ));
-    };
-    if local_names.contains(&rhs_name) {
-        return Err(selected_body_failure(
-            selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBodyLocalBinding,
-            "UnsupportedSelectedMetaBodyLocalBinding: selected meta body local binding environment is not implemented in the restricted v0.8 evaluator",
-        ));
+            &local_names,
+            &terminal_name,
+        );
     }
-    if let Some(bound) = selected.bindings.get(&rhs_name) {
-        return forwarded_type_value(selected, bound.type_symbol_id);
-    }
-    if selected.pack_bindings.contains_key(&rhs_name) {
-        return Err(unsupported_body(
-            selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body pack forwarding relies on ordinary product normalization and is outside the restricted type-only evaluator",
-        ));
-    }
-    let resolved = snapshot.capability().resolve_type_object_with_policy(
-        &rhs_name,
-        resolver_context,
-        crate::PolicyEnv::OpenStatic,
-    );
-    match resolved {
-        Ok(symbol) => forwarded_type_value(selected, Some(symbol.id)),
-        Err(_) => Err(unsupported_body(
-            selected,
-            RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected meta body form is outside the restricted v0.8 meta-overload evaluator",
-        )),
-    }
+
+    Err(evaluate_contribution_expr(selected, &expr))
 }
 
 fn forwarding_equality_rhs(expr: &NormExpr, return_slot_name: &str) -> Option<String> {
@@ -879,7 +1069,9 @@ fn forwarding_equality_rhs(expr: &NormExpr, return_slot_name: &str) -> Option<St
     }
 }
 
-fn forwarding_rhs_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> bool {
+/// Shape test: bare `r === X;` — the illegal expression spelling of the
+/// alias forwarding declaration `let r === X;`.
+fn bare_alias_equality_shape(expr: &NormExpr, return_slot_name: &str) -> bool {
     let NormExpr::Call { source, target, .. } = expr else {
         return false;
     };
@@ -889,17 +1081,22 @@ fn forwarding_rhs_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> b
     if spelling != "===" || source.elements.len() != 2 {
         return false;
     }
-    let lhs = match &source.elements[0] {
-        NormProductElem::Expr(NormExpr::Name { text, .. }) => text,
-        _ => return false,
-    };
-    if lhs != return_slot_name {
-        return false;
-    }
     matches!(
-        &source.elements[1],
-        NormProductElem::Expr(NormExpr::Call { target, .. })
-            if matches!(target.as_ref(), NormExpr::OperatorTarget { spelling, .. } if spelling == "|")
+        &source.elements[0],
+        NormProductElem::Expr(NormExpr::Name { text, .. }) if text == return_slot_name
+    )
+}
+
+/// Convergence hard error for the bare `r === X;` expression spelling:
+/// alias forwarding is the `let r === X;` declaration form only.
+fn bare_alias_spelling_failure(selected: &SelectedOverloadCandidate) -> RestrictedOverloadFailure {
+    unsupported_body(
+        selected,
+        RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
+        format!(
+            "bare `{r} === X;` is illegal; alias forwarding must be spelled as the declaration `let {r} === X;`",
+            r = selected.return_slot_name
+        ),
     )
 }
 
@@ -925,17 +1122,21 @@ fn forwarding_expr_is_canonical_sum(expr: &NormExpr, return_slot_name: &str) -> 
 
 fn forwarded_type_value(
     selected: &SelectedOverloadCandidate,
-    type_symbol_id: Option<SymbolId>,
+    represented_type: Option<crate::TypeValueId>,
 ) -> Result<MetaInvocationValue, RestrictedOverloadFailure> {
-    let Some(type_symbol_id) = type_symbol_id else {
+    let Some(represented_type) = represented_type else {
         return Err(unsupported_body(
             selected,
             RestrictedOverloadFailureKind::UnsupportedSelectedMetaBody,
-            "selected simple forwarding body requires a graph-resolved TypeSymbol value",
+            "selected simple forwarding body requires an evaluated TypeValue",
         ));
     };
     Ok(MetaInvocationValue::ForwardedValue(ForwardedValue {
-        target: MetaValueTarget::TypeSymbol(type_symbol_id),
+        type_value: represented_type,
+        // The restricted evaluator has no `&mut SemanticWorld` channel, so it
+        // cannot intern an observed `Addr(Norm_type)` here.  `Detached` never
+        // equals an observed address, so this can only under-merge.
+        type_observation: crate::CanonicalTypeObservation::Detached(represented_type),
         return_view: ReturnViewShape::Leaf,
         provenance: selected.source_callable.provenance.clone(),
     }))
@@ -947,6 +1148,32 @@ fn unsupported_body(
     message: impl Into<String>,
 ) -> RestrictedOverloadFailure {
     selected_body_failure(selected, kind, message)
+}
+
+/// B9 — explicit execution-gap record for the three control-flow
+/// end events.  The syntax/normalizer contract distinguishes them
+/// (`spec/contracts/v0.9-control-flow-end-events.md`):
+///
+/// ```text
+/// expr;              deliver to the directly enclosing layer
+/// expr return;       return to the outermost function layer
+/// expr (T return);   return to the layer selected by function-object type T
+/// ```
+///
+/// The restricted meta body evaluator executes only the first form (the
+/// `expr;` tail delivery).  Both return-event forms are contract-complete
+/// but not yet executable; each is reported under its own documented
+/// semantics rather than one blanket message, so the gap is an explicit
+/// per-form record instead of a silent collapse.
+fn return_event_execution_gap_message(event: &lang_syntax::NormReturnEvent) -> &'static str {
+    match event.target {
+        lang_syntax::NormReturnTargetSyntax::ImplicitNearest => {
+            "control-flow end `expr return;` (return to the outermost function layer) is not yet executable in the restricted meta body evaluator; only the `expr;` delivery to the directly enclosing layer executes"
+        }
+        lang_syntax::NormReturnTargetSyntax::Explicit(_) => {
+            "control-flow end `expr (T return);` (return to the layer selected by the function-object type) is not yet executable in the restricted meta body evaluator; only the `expr;` delivery to the directly enclosing layer executes"
+        }
+    }
 }
 
 fn selected_body_failure(
@@ -995,10 +1222,60 @@ fn expr_refs_selected_or_local_binding(
     }
 }
 
-fn callable_name_from_target(target: &NormExpr) -> Option<String> {
-    match target {
-        NormExpr::Name { text, .. } => Some(text.clone()),
-        NormExpr::OperatorTarget { spelling, .. } => Some(spelling.clone()),
-        _ => None,
+#[cfg(test)]
+mod tests {
+    use super::overwrite_assignment_rhs;
+    use lang_syntax::{NormExpr, NormOperatorFixity, NormOrigin, NormProduct, NormProductElem};
+
+    fn origin() -> NormOrigin {
+        NormOrigin::Source(lang_syntax::Span::new(0, 0, 1, 1))
+    }
+
+    fn name(text: &str) -> NormExpr {
+        NormExpr::Name {
+            text: text.to_string(),
+            origin: origin(),
+        }
+    }
+
+    fn binary(spelling: &str, lhs: NormExpr, rhs: NormExpr) -> NormExpr {
+        NormExpr::Call {
+            source: NormProduct {
+                elements: vec![NormProductElem::Expr(lhs), NormProductElem::Expr(rhs)],
+                origin: origin(),
+            },
+            target: Box::new(NormExpr::OperatorTarget {
+                spelling: spelling.to_string(),
+                fixity: NormOperatorFixity::Binary,
+                arity: 2,
+                origin: origin(),
+            }),
+            origin: origin(),
+        }
+    }
+
+    /// The harvested placeholder-write shape is
+    /// `Call { target: OperatorTarget("="), source: [Name(r), rhs] }`.
+    /// The frozen v0.2 grammar has no expression-level `=` operator yet,
+    /// so the shape is pinned here programmatically until the source
+    /// spelling `r = expr;` becomes parseable.
+    #[test]
+    fn assignment_shape_to_the_return_slot_yields_its_rhs() {
+        let rhs = overwrite_assignment_rhs(&binary("=", name("r"), name("t")), "r")
+            .expect("`r = t` addresses the return slot");
+        assert!(matches!(rhs, NormExpr::Name { text, .. } if text == "t"));
+    }
+
+    /// Only the return-slot name on the left and only the `=` spelling
+    /// select the overwrite effect; everything else stays an ordinary
+    /// expression form.
+    #[test]
+    fn non_overwrite_shapes_are_not_recognized() {
+        // Wrong left-hand name.
+        assert!(overwrite_assignment_rhs(&binary("=", name("x"), name("t")), "r").is_none());
+        // Wrong operator spelling (`===` is the alias form, not overwrite).
+        assert!(overwrite_assignment_rhs(&binary("===", name("r"), name("t")), "r").is_none());
+        // Not an operator call at all.
+        assert!(overwrite_assignment_rhs(&name("r"), "r").is_none());
     }
 }

@@ -38,6 +38,11 @@ fn arg(index: usize) -> OverloadArgShape {
     OverloadArgShape {
         top_pattern_name: Some(format!("arg{index}")),
         type_symbol_id: None,
+        value_type: None,
+        pattern_value: None,
+        effective_view: None,
+        semantic_value: None,
+        is_value: false,
         provenance: lang_build::Provenance::new(format!("arg {index}")),
     }
 }

@@ -370,7 +370,7 @@ clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. Fields named `ref` / `share` are accepted as
 object-role field functions that coexist with projection namespace subspaces.
-The crate also implements a bounded cross-Policy prototype: ordinary omitted P1
+The crate also implements a bounded cross-Policy demand preparer: ordinary omitted P1
 continues to preserve the complete RHS, explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without
 invalidating value-bearing siblings. Only after the complete query projects
@@ -381,15 +381,17 @@ selection, prototype ordinary-result-shaped fixtures, typed runtime failures,
 callable-owned mutability endpoints, and an endpoint-product fixture before
 its Pattern-specificity stand-in. Opposite const/mut endpoint Patterns remain
 admissible and reuse ordinary `matching > unspecified > opposite` preference.
-The four default transport fixtures declare complete
+The four default transport members in the toolchain-source fixture declare complete
 `(compile || runtime):compile` input/output Policies; `Project_in` and
 `Project_out` select the compile and runtime views around the ordinary result.
 Current source has no fallback role (`Af = A`). The prototype fixture verifies
 that if/when such a future strategy exists, suppression runs after full
 admissibility and before Bp', and an admissible non-fallback delete suppresses
 fallback without retry.
-The endpoint-only maxima helper is private;
-full integration must compose old Bp and endpoint coordinates in one product.
+The retained endpoint-only maxima helper is private. The connected
+`PreparedCallCandidate` path now composes the implemented ordinary
+formal/phase coordinates and optional migration endpoint coordinates in one
+Bp' product before a single maxima pass.
 Policy migration cannot repair Type/Pattern structural failure; explicit
 `ref`/`share`/`alias` mechanical operations remain separate ordinary calls.
 T and Tnum registries
@@ -398,11 +400,29 @@ TypeValue projections derived from installed Type symbols, not final canonical
 type-value identity. The implemented consumer is binding P1; future consumers
 must project the complete accepted choice first, then may construct its
 runtime branch only when the complete existing projection is empty.
+Source callables are now installed as one semantic Symbol with heterogeneous
+function-object values. Each value reaches its TypeValue, PatternValue owner,
+associated `()`, `InvocationFrame`, ordinary candidate pipeline, and complete
+result entries. Pattern-owner-authorized calls enter the same trunk with an
+explicit semantic receiver. A typed `ToolchainGlobalSourceRoot` supplies
+source-visible root construction authority (`Gsrc`); ordinary packages retain
+a non-empty install prefix and cannot inject direct root members. `Gsrc` is not
+a prelude and cross-package calls still require public visibility.
+
+Atomic Runtime migration can consume a checked request through source-backed
+associated `()` members installed under the existing `uint8` Pattern owner.
+The legacy `PolicyTransitionCallable` path remains algebra/test fixture
+material rather than a second resolver. Binding-P1 source lowering now calls
+this connected migration adapter after complete existing-view projection
+fails and the demand accepts runtime. Other consumer kinds do not yet share a
+consumer-neutral demand satisfier.
+
 This does **not** complete v0.7 or v0.8: only the narrow
 `(uint8 a, uint8 b) |> struct` family is implemented, no full manifest parser,
-package manager, type checker, policy checker, type-value equality, access-tree
-construction, ordinary function-object migration routing, general runtime
-overload resolution, end-to-end initializer transition routing, or general
+package manager, type checker, policy checker, final cross-build canonical
+type-value equality, access-tree
+construction, general runtime overload resolution, consumer-neutral
+parameter/result migration routing, runtime lowering, or general
 meta interpretation is present. Mixed-stage Policy-domain existence,
 phase-dependent readability, early binding/evaluation of compile-readable
 dependencies, runtime residualization, and continuation of the same resolved

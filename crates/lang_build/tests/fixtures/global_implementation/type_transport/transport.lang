@@ -1,0 +1,27 @@
+const let type =
+  (self, const let object: type): (compile || runtime):compile
+    -> let result: type =>
+{
+  object;
+};
+
+const let type =
+  (self, mut let object: type): (compile || runtime):compile
+    -> let result: type =>
+{
+  object;
+};
+
+mut let type =
+  (self, const let object: type): (compile || runtime):compile
+    -> let result: type =>
+{
+  object;
+};
+
+mut let type =
+  (self, mut let object: type): (compile || runtime):compile
+    -> let result: type =>
+{
+  object;
+};

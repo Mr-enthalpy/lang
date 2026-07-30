@@ -11,7 +11,7 @@ use lang_build::{
 #[test]
 fn uint8_resolves_under_open_static_compatibility_view() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let capability = world.snapshot().capability();
+    let capability = world.namespace_projection().capability();
     let context = world.package_context();
 
     let symbol = capability
@@ -53,7 +53,7 @@ fn runtime_only_value_compatibility_filter_does_not_define_symbol_existence() {
     // phase exposure must not reinterpret that adapter result as nonexistence.
     let world = build_single_fixture_world("user_runtime_values", "app");
     let context = world.package_context();
-    let capability = world.snapshot().capability();
+    let capability = world.namespace_projection().capability();
 
     let symbol = capability
         .resolve(&["x".to_string()], &context)
@@ -74,7 +74,7 @@ fn runtime_only_value_compatibility_filter_does_not_define_symbol_existence() {
 #[test]
 fn runtime_only_meta_function_is_filtered_by_legacy_open_static_adapter() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let mut delta = world.snapshot().empty_delta();
+    let mut delta = world.namespace_projection().empty_delta();
 
     let local_struct_id = delta.allocate_symbol_id();
     let mut local_struct = SymbolObject::placeholder(
@@ -93,11 +93,15 @@ fn runtime_only_meta_function_is_filtered_by_legacy_open_static_adapter() {
         function_policy: PolicyMetadata::default(),
         body_entry_policy: PolicyMetadata::default(),
         return_object_policy: PolicyMetadata::default(),
+        return_shape: lang_build::ReturnShape::SingleVal(
+            lang_build::PatternConstraint::Unconstrained,
+        ),
+        privilege: lang_build::CallablePrivilege::BuiltinPrivileged,
     });
     delta.insert_symbol(world.package_root_node(), local_struct);
 
     let snapshot = world
-        .snapshot()
+        .namespace_projection()
         .install_delta(delta)
         .expect("install delta");
     let context = world.package_context();
@@ -122,7 +126,7 @@ fn runtime_only_meta_function_is_filtered_by_legacy_open_static_adapter() {
 #[test]
 fn seal_lookup_uses_visibility_domains_without_granting_execution() {
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let mut delta = world.snapshot().empty_delta();
+    let mut delta = world.namespace_projection().empty_delta();
     for (name, policy_set) in [
         ("meta_only", policy_set_meta()),
         ("compile_only", policy_set_compile()),
@@ -141,7 +145,7 @@ fn seal_lookup_uses_visibility_domains_without_granting_execution() {
         delta.insert_symbol(world.package_root_node(), symbol);
     }
     let snapshot = world
-        .snapshot()
+        .namespace_projection()
         .install_delta(delta)
         .expect("install policy fixtures");
     let context = world.package_context();

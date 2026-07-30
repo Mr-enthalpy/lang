@@ -177,8 +177,6 @@ fn absent_value_component_cannot_carry_stage_or_mutability_subdimensions() {
                 pattern: PatternComponentPolicy {
                     stages: stages(&[PolicyStage::Compile]),
                 },
-                namespace_visibility: None,
-                export_root: false,
             },
             provenance: Provenance::new(label),
         };
@@ -474,8 +472,6 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         pattern: PatternComponentPolicy {
             stages: stages(&[PolicyStage::Compile]),
         },
-        namespace_visibility: None,
-        export_root: false,
     };
     let type_only = || PolicyPair {
         value: ValueComponentPolicy {
@@ -486,8 +482,6 @@ fn export_overload_set_is_a_projection_of_the_full_set_not_a_second_world() {
         pattern: PatternComponentPolicy {
             stages: stages(&[PolicyStage::Compile]),
         },
-        namespace_visibility: None,
-        export_root: false,
     };
     fn namespace_path<'a>(
         nodes: &BTreeMap<&'a str, NamespaceExportNode<&'a str>>,
@@ -777,8 +771,6 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         &result,
         &FunctionObjectDeclarationPolicy {
             mutability: mutability(&[ValueMutability::Const]),
-            namespace_visibility: Some(NamespaceVisibility::Private),
-            export_root: true,
         },
     );
     assert_eq!(
@@ -791,11 +783,6 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         mutability(&[ValueMutability::Const])
     );
     assert!(!object.value.mutability.contains(&ValueMutability::Mut));
-    assert_eq!(
-        object.namespace_visibility,
-        Some(NamespaceVisibility::Private)
-    );
-    assert!(object.export_root);
 
     let compile = normalize_p2_policy(
         &policy_spec("runtime:compile"),
@@ -812,8 +799,6 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         object.value.mutability.is_empty(),
         "empty function-object mutability is the unconstrained const || mut domain"
     );
-    assert!(!object.export_root);
-
     let const_projection = elaborate_binding_p1_projection(
         Some(&policy_spec("const")),
         Provenance::new("const function-object P1"),
@@ -832,6 +817,37 @@ fn function_object_p1_lifts_only_p2_stage_dimensions() {
         mutability(&[ValueMutability::Const]),
         "an explicit declaration/P1 restriction crops the unconstrained domain"
     );
+}
+
+#[test]
+fn namespace_attributes_never_change_the_canonical_function_object_pair() {
+    let result = normalize_p2_policy(
+        &policy_spec("meta"),
+        Provenance::new("meta result for declaration-attribute separation"),
+    )
+    .expect("valid result policy");
+    let elaborate = |source: &str| {
+        elaborate_namespace_declaration_policy(
+            Some(&policy_spec(source)),
+            NamespaceDeclarationPosition::DirectTopLevel,
+            Provenance::new(source),
+        )
+        .expect("valid namespace declaration")
+    };
+    let public = elaborate("public + meta");
+    let private = elaborate("private + meta");
+    let export = elaborate("export + public + meta");
+
+    let public_p1 =
+        derive_function_object_p1(&result, &function_object_declaration_policy(&public));
+    let private_p1 =
+        derive_function_object_p1(&result, &function_object_declaration_policy(&private));
+    let export_p1 =
+        derive_function_object_p1(&result, &function_object_declaration_policy(&export));
+    assert_eq!(public_p1, private_p1);
+    assert_eq!(public_p1, export_p1);
+    assert_ne!(public.visibility, private.visibility);
+    assert!(export.export_root);
 }
 
 #[test]

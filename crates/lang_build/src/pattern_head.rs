@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use lang_syntax::{NormNavComponent, NormOrigin};
 
 use crate::{
+    identity::TypeValueId,
     meta_invocation::{ConstructionInstanceId, TypeDefinitionInstanceId},
     model::{Diagnostic, FieldProjection, Provenance, ResolverCode, SymbolId},
 };
@@ -43,7 +44,10 @@ pub enum PatternHeadOrigin {
     Field {
         owner_head: PatternHeadId,
         field_name: String,
-        field_type_symbol_id: SymbolId,
+        /// Evaluated field type. A carrier Symbol is deliberately excluded:
+        /// `let T: type = uint8` must materialize the same field head as
+        /// spelling `uint8` directly.
+        field_type_value: TypeValueId,
         projection: FieldProjection,
     },
     Generated {
@@ -118,7 +122,7 @@ pub enum PatternLookupInput {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternFieldMaterialization {
     pub field_name: String,
-    pub field_type_symbol_id: SymbolId,
+    pub field_type_value: TypeValueId,
     pub projection: FieldProjection,
     pub provenance: Provenance,
 }
@@ -197,7 +201,7 @@ impl PatternHeadRegistry {
         &mut self,
         owner_head: PatternHeadId,
         field_name: impl Into<String>,
-        field_type_symbol_id: SymbolId,
+        field_type_value: TypeValueId,
         projection: FieldProjection,
         provenance: Provenance,
     ) -> Result<PatternHeadId, Diagnostic> {
@@ -205,7 +209,7 @@ impl PatternHeadRegistry {
         let origin = PatternHeadOrigin::Field {
             owner_head,
             field_name: field_name.clone(),
-            field_type_symbol_id,
+            field_type_value,
             projection,
         };
         let child_key = (owner_head, field_name.clone());
@@ -276,7 +280,7 @@ impl PatternHeadRegistry {
             let field_head = self.allocate_field_head(
                 owner_head,
                 field.field_name.clone(),
-                field.field_type_symbol_id,
+                field.field_type_value,
                 field.projection,
                 field.provenance,
             )?;

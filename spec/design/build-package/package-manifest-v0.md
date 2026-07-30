@@ -32,6 +32,7 @@ identity.
 | Package kind | `library`, `application`, `test`, `plugin`, or future unit kinds. |
 | Namespace root | The top-level namespace segment this package provides (e.g., `mylib`, `myapp`). |
 | Source roots | Directories containing implementation source fragments (e.g., `["src"]`). |
+| Toolchain global source roots | API-level, toolchain-owned source bundles carrying explicit authority to install at or below `::`; not ordinary package manifest syntax. |
 | Dependencies | External packages whose namespace roots are mounted into the compilation namespace graph. |
 | Mount table | Mapping from dependency names to their exposed namespace roots, with optional aliases. |
 | Export surface | Which declarations are externally visible across the package boundary. |
@@ -58,6 +59,10 @@ namespace graph projection and in future meta object invocation.
 - **Source roots** — provide the input directories from which the physical
   namespace skeleton is built. Implementation file names remain source-fragment
   names and do not contribute namespace segments.
+- **Toolchain global source roots** — are a current API-level compiler input,
+  deliberately separate from ordinary package roots. Only this typed authority
+  may use an empty install prefix. It does not make the installed Symbols a
+  prelude or give ordinary projects root-construction authority.
 - **Dependencies** — define the static build-graph ordering and the dependency
   fingerprint flow: a dependency's fingerprint participates in the dependent's
   cache key.

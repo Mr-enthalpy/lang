@@ -1,0 +1,19 @@
+let pick =
+  (self, t: type): meta -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  r;
+};
+
+let pick =
+  (self, _ uint8: type): compile -> let result: uint8 =>
+{
+  result;
+};
+
+let make_two =
+  (self, t: type, u: type): meta -> r: symbol =>
+{
+  let r = (t first, u second) |> struct;
+  r;
+};

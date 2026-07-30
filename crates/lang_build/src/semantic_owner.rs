@@ -10,7 +10,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::meta_key::MetaInstanceKey;
+use crate::{identity::MetaCallableIdentity, meta_key::MetaInstanceKey};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PackageId(pub u64);
@@ -175,7 +175,7 @@ pub enum SemanticOwnerKind {
         placement: CallableOwnerPlacement,
     },
     MetaInstance {
-        meta_function: SemanticSymbolIdentity,
+        meta_callable: MetaCallableIdentity,
         canonical_key: MetaInstanceKey,
     },
     Generated {
@@ -194,7 +194,7 @@ pub struct SemanticOwnerNode {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct MetaInstanceInternKey {
     parent: SemanticOwnerId,
-    meta_function: SemanticSymbolIdentity,
+    meta_callable: MetaCallableIdentity,
     canonical_key: MetaInstanceKey,
 }
 
@@ -314,18 +314,19 @@ impl SemanticOwnerGraph {
 
     /// Intern a canonical meta invocation below `parent`.
     ///
-    /// Repeating the same resolved meta function and canonical argument key
-    /// returns the same owner. Different canonical arguments produce a
-    /// distinct owner.
+    /// Repeating the same selected meta callable value and canonical argument
+    /// key returns the same owner. Different canonical arguments — or a
+    /// different selected function value under the same carrier Symbol —
+    /// produce a distinct owner.
     pub fn meta_instance(
         &mut self,
         parent: SemanticOwnerId,
-        meta_function: SemanticSymbolIdentity,
+        meta_callable: MetaCallableIdentity,
         canonical_key: MetaInstanceKey,
     ) -> SemanticOwnerId {
         let key = MetaInstanceInternKey {
             parent,
-            meta_function,
+            meta_callable,
             canonical_key,
         };
         if let Some(existing) = self.meta_instances.get(&key) {
@@ -336,7 +337,7 @@ impl SemanticOwnerGraph {
             Some(parent),
             package,
             SemanticOwnerKind::MetaInstance {
-                meta_function,
+                meta_callable,
                 canonical_key: key.canonical_key.clone(),
             },
         );

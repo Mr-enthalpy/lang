@@ -8,8 +8,12 @@ in §0.1.
 The canonical future result-rank and construction boundary is
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 It supersedes the older formal-meta-return interpretation that used `r = ...`
-for generation and `r === ...` for forwarding. References to that split below
-are explicitly current transitional implementation notes, not final semantics.
+for generation and `r === ...` for forwarding, and also supersedes the interim
+single-form `r = ...` reading: the final model distinguishes
+`let r = expr;` (add fresh member), `let r === path;` (add alias member),
+`r = expr;` (overwrite existing member), and the `r;` terminal (cluster
+delivery, not a member event). References to the older splits below are
+explicitly transitional implementation notes, not final semantics.
 Namespace-origin and `MetaConstructionUnit` ownership are canonical in
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 The canonical symbol-flow policy model, callable `P1` / `P2` boundary,
@@ -63,9 +67,12 @@ restricted applicability. This slice does not execute arbitrary named strategy
 rules and does not grant `default` an implicit priority.
 
 This `r === ...` behavior describes only the restricted v0.8 evaluator that is
-currently implemented. The final formal meta model uses `r = ...` to populate a
-`SymbolConstructionValue`; ordinary `let a === b` remains the separate
-symbol/place alias form.
+currently implemented. The final formal meta model uses the construction-effect
+family on the return cluster: `let r = expr;` adds a fresh member,
+`let r === path;` adds an alias member (Val2 forwarding; forwarding an external
+type value fails the self-root invariant), `r = expr;` overwrites an existing
+member, and `r;` is the delivery terminal. Ordinary `let a === b` outside meta
+bodies remains the same alias mechanism applied to a declaration-layer symbol.
 
 Unsupported selected body forms return hard diagnostics. In particular, a body
 that requires guarded branch evaluation, predicate calls, postfix `?`,
@@ -835,9 +842,11 @@ Current state:
   generated/global/namespace/local categories only as transitional registry and
   integration-test substrate, not as a stable owner-construction API.
 - The current restricted evaluator still recognizes the legacy `r === ...`
-  forwarding body. The final model replaces that formal return split with
-  `r = ...` producing a `SymbolConstructionValue`; ordinary `let ===` aliasing
-  remains separate.
+  forwarding body. The final model replaces that formal return split with the
+  construction-effect family (`let r = expr;` fresh member, `let r === path;`
+  alias member, `r = expr;` overwrite, `r;` delivery terminal) producing a
+  `SymbolConstructionValue`; the alias form is the same cluster-member
+  mechanism as namespace-level `let name === target` aliasing.
 - The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and
   Runtime variants; it projects flat visibility metadata while the restricted
   overload selector also checks the

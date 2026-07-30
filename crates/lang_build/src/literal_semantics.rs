@@ -167,11 +167,7 @@ impl NumericTypeRegistry {
             (NumericTypeKey::new(NumericFamily::Uint, 32), "uint32"),
             (NumericTypeKey::new(NumericFamily::Float, 32), "float32"),
         ] {
-            let symbol = world
-                .snapshot()
-                .capability()
-                .resolve_type_object(name, &world.package_context())?;
-            registry.insert(key, type_value_projection_from_type_symbol(symbol.id));
+            registry.insert(key, world.resolve_type_value(name)?);
         }
         Ok(registry)
     }
@@ -311,7 +307,5 @@ fn compile_literal_policy() -> PolicyPair {
         pattern: PatternComponentPolicy {
             stages: StageSet::from([PolicyStage::Compile]),
         },
-        namespace_visibility: None,
-        export_root: false,
     }
 }

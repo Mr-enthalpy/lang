@@ -65,6 +65,42 @@ structure. Each physical directory creates a namespace facet with
 authority for files physically in that directory. Implementation filenames do
 not contribute namespace segments.
 
+### Build Phase C.1: toolchain global implementation source
+
+The source-visible global implementation space `Gsrc` is a separate typed
+construction input:
+
+```text
+ToolchainGlobalSourceRoot {
+  physical source bundle,
+  install prefix under ::
+}
+```
+
+Its files follow the same lexer, parser, normalization, declaration
+construction, Policy, Symbol/Val2, and ordinary invocation path as package
+source. The typed carrier supplies construction authority only; filesystem
+containment and bundle spelling do not become semantic identity.
+
+Construction authority is asymmetric:
+
+```text
+ordinary package contribution:
+  install prefix != empty
+
+toolchain global contribution:
+  install prefix may be empty
+```
+
+An empty directory, empty ordinary source-root prefix, missing navigation
+component, or mount does not grant root construction authority. The current
+build slice rejects an ordinary source root whose install prefix is empty.
+
+Installation at `::` is not implicit import. `Gsrc` members are ordinary root
+Symbols; source access still uses path resolution and external visibility.
+The current connected invocation slice filters cross-package Gsrc values to
+`public` members. Bare-name lexical/prelude lookup is not introduced.
+
 ### Build Phase D: parser-backed declaration index
 
 Parse source fragments and index top-level declarations by namespace path.

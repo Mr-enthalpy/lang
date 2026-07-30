@@ -146,18 +146,23 @@ pipeline — see `spec/design/symbol-world/type-values-places-and-alias-forwardi
 
 ## v0.6 Implementation Note
 
-The current `lang_build` slice still represents some `let t: type = uint8` cases
-using placeholder `TypeObject` payloads, because `TypeValueId` and writable-place
-checking do not exist yet. This is a v0.6 placeholder, not the final semantics;
-the intended model is documented in
+The `lang_build` semantic spine now implements the identity core:
+`TypeValueId` exists as the stable first-order type root, and the full
+type-object identity is the canonical observation `Addr(Norm_type)` over
+per-carrier `Val2` places. Writable-place checking, alias forwarding, and
+the field-function / access-tree machinery of this note remain future work;
+the identity model and its implemented/future split are documented in
 `spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
 
 ## Non-Goals
 
 This note does not implement or specify:
 
-- canonical `TypeValueId`;
-- full type-value equality;
+- type-value identity (the first-order `TypeValueId` root and the canonical
+  observation `Addr(Norm_type)` are owned by
+  `type-values-places-and-alias-forwarding.md`);
+- migration of the remaining first-order type comparisons to full by-value
+  comparison;
 - full alias forwarding evaluation;
 - writable-place or injection-place lifetime checking;
 - field access evaluation;

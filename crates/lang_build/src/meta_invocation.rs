@@ -55,7 +55,7 @@ use crate::{
     },
     meta_cache::MetaInstanceCache,
     meta_candidate::{CanonicalArgProductShapeMaterial, PreparedCallableCandidate},
-    meta_key::{compute_meta_instance_key, MetaInstanceKey},
+    meta_key::{compute_legacy_meta_instance_digest, CanonicalFingerprint},
     model::{Diagnostic, Provenance, SymbolId},
     pattern_head::{
         PatternFieldMaterialization, PatternHeadId, PatternMaterializationContext,
@@ -71,7 +71,8 @@ use crate::{
 
 /// Input for formal meta invocation.
 ///
-/// The candidate must already have passed `prepare_meta_callable_candidate`.
+/// The candidate must already have passed candidate preparation
+/// (`prepare_meta_callable_candidate_with_declared_planes`).
 /// The primitive is read from `candidate.callee_primitive` — callers do not
 /// pass it separately, preventing primitive-vs-candidate mismatch.
 #[derive(Clone, Debug)]
@@ -92,8 +93,12 @@ impl MetaInvocationInput {
         }
     }
 
-    pub fn compute_key(&self) -> MetaInstanceKey {
-        compute_meta_instance_key(&self.candidate)
+    /// Compatibility cache digest of this prepared candidate.
+    ///
+    /// This is NOT a canonical `MetaInstanceKey`: it is
+    /// an opaque digest used only by the legacy `MetaInstanceCache` channel.
+    pub fn compute_key(&self) -> CanonicalFingerprint {
+        compute_legacy_meta_instance_digest(&self.candidate)
     }
 
     /// Build the current placeholder invocation frame for substrate continuity.
@@ -130,7 +135,7 @@ impl MetaInvocationValue {
             (
                 MetaInvocationValue::ForwardedValue(lhs),
                 MetaInvocationValue::ForwardedValue(rhs),
-            ) => lhs.target == rhs.target && lhs.return_view == rhs.return_view,
+            ) => lhs.type_observation == rhs.type_observation && lhs.return_view == rhs.return_view,
             (
                 MetaInvocationValue::GeneratedConstructionValue(lhs),
                 MetaInvocationValue::GeneratedConstructionValue(rhs),
@@ -155,10 +160,178 @@ impl MetaInvocationValue {
                     && lhs.return_view == rhs.return_view
                     && type_pattern_expr_semantic_eq(&lhs.type_pattern_expr, &rhs.type_pattern_expr)
                     && sum_pattern_space_semantic_eq(&lhs.sum_pattern_space, &rhs.sum_pattern_space)
+                    && lhs.canonical_pattern_override == rhs.canonical_pattern_override
             }
             _ => false,
         }
     }
+}
+
+impl GeneratedTypeDefinitionValue {
+    /// The generated definition's structural Pattern normal form.
+    ///
+    /// Construction callable identity, build identity, export metadata,
+    /// provenance, and the FNV-derived `type_definition_id` are deliberately
+    /// absent.  A naked struct Product remains an ordered layer even when all
+    /// fields are named.  Only a fully named Product used as the body of a
+    /// named Pattern becomes an unordered map keyed by each field's complete
+    /// navigation.  A decoded top Pattern name is Pattern-internal
+    /// identity—not the eventual carrier Symbol name—and is appended as the
+    /// outer component of every field navigation.
+    pub fn canonical_pattern_value(&self) -> crate::CanonicalPatternValue {
+        if let Some(value) = &self.canonical_pattern_override {
+            return value.clone();
+        }
+        if let Some(pattern) = self.type_pattern_expr.as_ref() {
+            let field_types = self
+                .fields
+                .iter()
+                .map(|field| (field.name.as_str(), field.type_observation))
+                .collect::<BTreeMap<_, _>>();
+            return canonicalize_struct_pattern(
+                pattern.transparent_singleton(),
+                &crate::CanonicalFullNavigation::new(std::iter::empty::<String>()),
+                &field_types,
+                crate::PatternLayerContext::NakedProduct,
+            );
+        }
+        crate::CanonicalPatternValue::OrderedLayer(
+            self.fields
+                .iter()
+                .map(|field| crate::CanonicalOrderedPatternEntry {
+                    navigation: Some(crate::CanonicalFullNavigation::from_component(
+                        field.name.clone(),
+                    )),
+                    value: crate::CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Type(
+                        field.type_observation,
+                    )),
+                })
+                .collect(),
+        )
+    }
+
+    /// Mirror a successful incremental pure-P contribution on the returned
+    /// construction artifact.  The SemanticWorld PatternValue remains the
+    /// authority; this copy ensures later binding/materialization observes
+    /// the same completed Pattern rather than the original one-shot body.
+    pub fn set_canonical_pattern_value(&mut self, value: crate::CanonicalPatternValue) {
+        self.canonical_pattern_override = Some(value);
+    }
+}
+
+fn canonicalize_struct_pattern(
+    pattern: &TypePatternExprShape,
+    enclosing: &crate::CanonicalFullNavigation,
+    field_types: &BTreeMap<&str, crate::CanonicalTypeObservation>,
+    layer_context: crate::PatternLayerContext,
+) -> crate::CanonicalPatternValue {
+    match pattern {
+        TypePatternExprShape::Leaf {
+            local_pattern_name, ..
+        } => crate::CanonicalPatternValue::Atom(crate::CanonicalPatternAtom::Type(
+            *field_types
+                .get(local_pattern_name.as_str())
+                .expect("every decoded struct leaf has one classified TypeValue"),
+        )),
+        TypePatternExprShape::Named {
+            child,
+            pattern_name,
+            ..
+        } => {
+            let navigation = complete_pattern_navigation(pattern_name, enclosing);
+            crate::CanonicalPatternValue::NamedPattern {
+                navigation: navigation.clone(),
+                body: Box::new(match child.as_ref() {
+                    TypePatternExprShape::Leaf { .. } | TypePatternExprShape::Named { .. } => {
+                        let child_navigation = complete_pattern_navigation(
+                            direct_pattern_navigation(child)
+                                .expect("leaf and named child carry navigation"),
+                            &navigation,
+                        );
+                        crate::CanonicalPatternValue::UnorderedLayer(BTreeMap::from([(
+                            child_navigation,
+                            canonicalize_struct_pattern(
+                                child,
+                                &navigation,
+                                field_types,
+                                crate::PatternLayerContext::NakedProduct,
+                            ),
+                        )]))
+                    }
+                    TypePatternExprShape::Product { .. } | TypePatternExprShape::Sum { .. } => {
+                        canonicalize_struct_pattern(
+                            child,
+                            &navigation,
+                            field_types,
+                            crate::PatternLayerContext::NamedPatternBody,
+                        )
+                    }
+                }),
+            }
+        }
+        TypePatternExprShape::Product { elements, .. } => {
+            let mut unordered = BTreeMap::new();
+            let mut ordered = Vec::with_capacity(elements.len());
+            let mut fully_named = true;
+            for element in elements {
+                let navigation = direct_pattern_navigation(element)
+                    .map(|name| complete_pattern_navigation(name, enclosing));
+                let value = canonicalize_struct_pattern(
+                    element,
+                    enclosing,
+                    field_types,
+                    crate::PatternLayerContext::NakedProduct,
+                );
+                if let Some(navigation) = &navigation {
+                    assert!(
+                        !unordered.contains_key(navigation),
+                        "decoded struct elements have unique complete navigation names"
+                    );
+                    unordered.insert(navigation.clone(), value.clone());
+                } else {
+                    fully_named = false;
+                }
+                ordered.push(crate::CanonicalOrderedPatternEntry { navigation, value });
+            }
+            if layer_context == crate::PatternLayerContext::NamedPatternBody && fully_named {
+                crate::CanonicalPatternValue::UnorderedLayer(unordered)
+            } else {
+                crate::CanonicalPatternValue::OrderedLayer(ordered)
+            }
+        }
+        TypePatternExprShape::Sum { alternatives, .. } => crate::CanonicalPatternValue::Sum(
+            alternatives
+                .iter()
+                .map(|alternative| {
+                    canonicalize_struct_pattern(
+                        alternative,
+                        enclosing,
+                        field_types,
+                        crate::PatternLayerContext::NakedProduct,
+                    )
+                })
+                .collect(),
+        ),
+    }
+}
+
+fn direct_pattern_navigation(pattern: &TypePatternExprShape) -> Option<&str> {
+    match pattern {
+        TypePatternExprShape::Leaf {
+            local_pattern_name, ..
+        } => Some(local_pattern_name),
+        TypePatternExprShape::Named { pattern_name, .. } => Some(pattern_name),
+        TypePatternExprShape::Product { .. } | TypePatternExprShape::Sum { .. } => None,
+    }
+}
+
+fn complete_pattern_navigation(
+    inner: &str,
+    enclosing: &crate::CanonicalFullNavigation,
+) -> crate::CanonicalFullNavigation {
+    crate::CanonicalFullNavigation::new(
+        std::iter::once(inner.to_string()).chain(enclosing.components().iter().cloned()),
+    )
 }
 
 fn type_pattern_expr_semantic_eq(
@@ -190,17 +363,6 @@ pub enum MetaInvocationResult {
     Diagnostic(Diagnostic),
 }
 
-/// Target of a forwarded invocation value.
-///
-/// `TypeSymbol` carries the forwarded type's `SymbolId` as its primary
-/// identity. `TypeValueId` projection is derived from the symbol identity
-/// (via `type_value_projection_from_type_symbol`), never used as
-/// a binding lookup source.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MetaValueTarget {
-    TypeSymbol(SymbolId),
-}
-
 /// Invocation value produced by formal meta invocation.
 ///
 /// `ForwardedValue` is produced by the restricted evaluator's legacy
@@ -222,7 +384,7 @@ impl MetaInvocationValue {
             MetaInvocationValue::ForwardedValue(value) => {
                 EvalResultNormalForm::ValuePoint(ValuePointShape {
                     value_kind: ValuePointKind::Forwarded {
-                        target: value.target,
+                        type_value: value.type_value,
                     },
                     extraction_interface: ExposedExtractionInterface::Leaf,
                     provenance: value.provenance.clone(),
@@ -254,11 +416,20 @@ impl MetaInvocationValue {
 /// proof path. The final formal meta-return model does not expose this as a
 /// separate source-level forwarding category.
 ///
-/// The `target` carries the forwarded type's `SymbolId`. `TypeValueId`
-/// projection is implicitly derived from the symbol identity.
+/// The target carries the forwarded TypeValue directly. Reaching that value
+/// through a graph Symbol does not make the carrier Symbol part of the
+/// invocation result.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ForwardedValue {
-    pub target: MetaValueTarget,
+    /// The represented value itself. Even when evaluation reached it through a
+    /// source name, the carrier Symbol is not part of this result identity.
+    /// Symbol/place forwarding belongs to the separate `===` mechanism.
+    pub type_value: crate::TypeValueId,
+    /// The type OBSERVATION forwarded through this result — `Addr(Norm_type)`
+    /// when the invocation boundary was world-connected, otherwise the
+    /// `Detached` projection.  Semantic equality consumes this, never the bare
+    /// `type_value` projection.
+    pub type_observation: crate::CanonicalTypeObservation,
     pub return_view: ReturnViewShape,
     pub provenance: Provenance,
 }
@@ -281,6 +452,10 @@ pub struct GeneratedConstructionValue {
 /// namespace, and field projections are binding materialization artifacts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedTypeDefinitionValue {
+    /// Normalized struct body identity.  This is body material only:
+    /// it never carries a canonical root by itself.  Two different meta
+    /// functions with identical bodies share this id while their canonical
+    /// TypeValue roots stay distinct.
     pub type_definition_id: TypeDefinitionInstanceId,
     pub identity_material: TypeDefinitionIdentityMaterial,
     pub fields: Vec<GeneratedFieldDefinition>,
@@ -292,6 +467,17 @@ pub struct GeneratedTypeDefinitionValue {
     /// The sum pattern space derived from the type-pattern expression,
     /// if the expression contains a sum.
     pub sum_pattern_space: Option<SumPatternSpaceShape>,
+    /// Canonical semantic TypeValue root assigned at meta-instance
+    /// registration: `TypeValue = (OuterMetaInstanceRoot,
+    /// NormalizedStructBody)`.  `None` until the invocation owner
+    /// registers the member; stripped by the invocation cache like
+    /// pattern heads (a cached body must never leak another instance's
+    /// root).
+    pub canonical_type: Option<crate::TypeValueId>,
+    /// Updated canonical Pattern material after incremental pure-P
+    /// contributions. `None` means the normal form is derived directly from
+    /// the decoded `struct` body.
+    pub canonical_pattern_override: Option<crate::CanonicalPatternValue>,
     pub provenance: Provenance,
 }
 
@@ -402,7 +588,19 @@ impl Eq for TypeDefinitionIdentityMaterial {}
 #[derive(Clone, Debug)]
 pub struct FieldSignatureMaterial {
     pub field_name: String,
-    pub field_type_symbol_id: SymbolId,
+    /// First-order field type projection.  Transport/registry material only:
+    /// canonical equality and instance identity consume
+    /// `field_type_observation`, never this bare projection and never the
+    /// carrier name used in source.
+    pub field_type_value: crate::TypeValueId,
+    /// The field type's observation identity — `Addr(Norm_type)` including
+    /// the recursive Val2 read at the argument's carrier place when the
+    /// invocation boundary was world-connected, otherwise the `Detached`
+    /// projection (which never equals an observed address).
+    pub field_type_observation: crate::CanonicalTypeObservation,
+    /// Compatibility graph carrier retained for current PatternHead/field
+    /// installation only. It is non-identity material.
+    pub field_type_carrier_symbol: SymbolId,
     pub field_index: usize,
     pub visibility: StructuralMemberVisibility,
     pub provenance: Provenance,
@@ -411,7 +609,7 @@ pub struct FieldSignatureMaterial {
 impl PartialEq for FieldSignatureMaterial {
     fn eq(&self, other: &Self) -> bool {
         self.field_name == other.field_name
-            && self.field_type_symbol_id == other.field_type_symbol_id
+            && self.field_type_observation == other.field_type_observation
             && self.field_index == other.field_index
             && self.visibility == other.visibility
     }
@@ -422,7 +620,11 @@ impl Eq for FieldSignatureMaterial {}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GeneratedFieldDefinition {
     pub name: String,
-    pub type_symbol_id: SymbolId,
+    pub type_value: crate::TypeValueId,
+    /// The field type's observation identity; semantic equality consumes
+    /// this, never the bare `type_value` projection.
+    pub type_observation: crate::CanonicalTypeObservation,
+    pub type_carrier_symbol: SymbolId,
     pub index: usize,
     pub visibility: StructuralMemberVisibility,
     pub pattern_head: Option<PatternHeadId>,
@@ -433,7 +635,7 @@ impl GeneratedFieldDefinition {
     /// Semantic equality: compares field identity material without provenance.
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.name == other.name
-            && self.type_symbol_id == other.type_symbol_id
+            && self.type_observation == other.type_observation
             && self.visibility == other.visibility
             && self.index == other.index
             && self.pattern_head == other.pattern_head
@@ -461,12 +663,12 @@ pub fn compute_construction_instance_id(
     for kind in &material.canonical_args.atom_kinds {
         h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
     }
-    for sym in &material.canonical_args.known_type_symbols {
-        match sym {
+    for type_value in &material.canonical_args.known_type_values {
+        match type_value {
             None => h.write_field(&[0u8]),
-            Some(s) => {
+            Some(type_value) => {
                 h.write_field(&[1u8]);
-                h.write_field(&s.0.to_le_bytes());
+                h.write_field(&type_value.0.to_le_bytes());
             }
         }
     }
@@ -511,20 +713,29 @@ pub fn compute_type_definition_instance_id(
     for kind in &material.canonical_args.atom_kinds {
         h.write_field(&[crate::meta_key::atom_kind_discriminant(kind)]);
     }
-    h.write_field(&(material.canonical_args.known_type_symbols.len() as u64).to_le_bytes());
-    for sym in &material.canonical_args.known_type_symbols {
-        match sym {
+    h.write_field(&(material.canonical_args.known_type_values.len() as u64).to_le_bytes());
+    for type_value in &material.canonical_args.known_type_values {
+        match type_value {
             None => h.write_field(&[0u8]),
-            Some(s) => {
+            Some(type_value) => {
                 h.write_field(&[1u8]);
-                h.write_field(&s.0.to_le_bytes());
+                h.write_field(&type_value.0.to_le_bytes());
             }
         }
     }
     h.write_field(&(material.field_signature_material.len() as u64).to_le_bytes());
     for field in &material.field_signature_material {
         h.write_str_field(&field.field_name);
-        h.write_field(&field.field_type_symbol_id.0.to_le_bytes());
+        match field.field_type_observation {
+            crate::CanonicalTypeObservation::Observed(addr) => {
+                h.write_field(&[1u8]);
+                h.write_field(&addr.0.to_le_bytes());
+            }
+            crate::CanonicalTypeObservation::Detached(type_value) => {
+                h.write_field(&[0u8]);
+                h.write_field(&type_value.0.to_le_bytes());
+            }
+        }
         h.write_field(&(field.field_index as u64).to_le_bytes());
         h.write_field(&[match field.visibility {
             StructuralMemberVisibility::Default => 0,
@@ -677,7 +888,8 @@ pub fn invoke_meta_callable_cached_with_materialization_state(
 
 fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
     let candidate = &input.candidate;
-    let mat = &candidate.canonical_key_seed.argument_product_shape_material;
+    let mat =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
 
     if mat.arity != 1 {
         return MetaInvocationResult::Diagnostic(
@@ -692,21 +904,28 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
         );
     }
 
-    let type_symbol_id = match mat.known_type_symbols.get(0).and_then(|s| *s) {
-        Some(s) => s,
+    let type_value = match mat.known_type_values.first().and_then(|value| *value) {
+        Some(value) => value,
         None => {
             return MetaInvocationResult::Diagnostic(
                 Diagnostic::hard_error(
-                    "IdentityType: argument is not a classified type object with a TypeSymbol",
+                    "IdentityType: argument is not a classified type object with a TypeValue",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),
             );
         }
     };
+    let type_observation = candidate
+        .arg_product_shape
+        .raw_args
+        .first()
+        .and_then(|raw| raw.type_observation())
+        .unwrap_or(crate::CanonicalTypeObservation::Detached(type_value));
 
     MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(ForwardedValue {
-        target: MetaValueTarget::TypeSymbol(type_symbol_id),
+        type_value,
+        type_observation,
         return_view: ReturnViewShape::Leaf,
         provenance: input.provenance.clone(),
     }))
@@ -714,7 +933,8 @@ fn invoke_identity_type(input: &MetaInvocationInput) -> MetaInvocationResult {
 
 fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvocationResult {
     let candidate = &input.candidate;
-    let mat = &candidate.canonical_key_seed.argument_product_shape_material;
+    let mat =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
 
     if mat.arity != 1 {
         return MetaInvocationResult::Diagnostic(
@@ -729,12 +949,12 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvoc
         );
     }
 
-    let _type_symbol_id = match mat.known_type_symbols.get(0).and_then(|s| *s) {
-        Some(s) => s,
+    let _type_value = match mat.known_type_values.first().and_then(|value| *value) {
+        Some(value) => value,
         None => {
             return MetaInvocationResult::Diagnostic(
                 Diagnostic::hard_error(
-                    "UnaryConstructionPrototype: argument is not a classified type object with a TypeSymbol",
+                    "UnaryConstructionPrototype: argument is not a classified type object with a TypeValue",
                     Some(input.provenance.clone()),
                 )
                 .with_symbol_context(candidate.callee_symbol_id),
@@ -746,12 +966,9 @@ fn invoke_unary_construction_prototype(input: &MetaInvocationInput) -> MetaInvoc
         callee_symbol_id: candidate.callee_symbol_id,
         canonical_args: mat.clone(),
         return_slot_semantics: ReturnSlotSemantics::Generate,
-        build_identity_fragment: candidate
-            .canonical_key_seed
-            .package_identity_fragment
-            .clone(),
+        build_identity_fragment: candidate.build_identity.package_identity_fragment.clone(),
         policy_export_fingerprint_fragment: candidate
-            .canonical_key_seed
+            .build_identity
             .policy_export_fingerprint_fragment
             .clone(),
         provenance: input.provenance.clone(),
@@ -773,12 +990,17 @@ fn invoke_struct_type_definition(
     materialization_state: &mut TypeMaterializationState,
 ) -> MetaInvocationResult {
     let candidate = &input.candidate;
-    let mat = &candidate.canonical_key_seed.argument_product_shape_material;
+    let mat =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
 
-    if mat.arity == 0 {
+    let pure_pattern_without_value = input
+        .struct_decoded_pattern
+        .as_ref()
+        .is_some_and(|decoded| decoded.type_pattern_expr.is_pure_pattern_without_value());
+    if mat.arity == 0 && !pure_pattern_without_value {
         return MetaInvocationResult::Diagnostic(
             Diagnostic::hard_error(
-                "struct: expected at least one classified field argument",
+                "struct: expected at least one `Expr name` field or a pure no-value Pattern such as `(() t)` or `if | else`",
                 Some(input.provenance.clone()),
             )
             .with_symbol_context(candidate.callee_symbol_id),
@@ -799,12 +1021,9 @@ fn invoke_struct_type_definition(
         canonical_args: mat.clone(),
         field_signature_material: field_signature_material.clone(),
         return_slot_semantics: ReturnSlotSemantics::Generate,
-        build_identity_fragment: candidate
-            .canonical_key_seed
-            .package_identity_fragment
-            .clone(),
+        build_identity_fragment: candidate.build_identity.package_identity_fragment.clone(),
         policy_export_fingerprint_fragment: candidate
-            .canonical_key_seed
+            .build_identity
             .policy_export_fingerprint_fragment
             .clone(),
         provenance: input.provenance.clone(),
@@ -814,7 +1033,9 @@ fn invoke_struct_type_definition(
         .iter()
         .map(|field| GeneratedFieldDefinition {
             name: field.field_name.clone(),
-            type_symbol_id: field.field_type_symbol_id,
+            type_value: field.field_type_value,
+            type_observation: field.field_type_observation,
+            type_carrier_symbol: field.field_type_carrier_symbol,
             index: field.field_index,
             visibility: field.visibility,
             pattern_head: None,
@@ -835,6 +1056,8 @@ fn invoke_struct_type_definition(
             .struct_decoded_pattern
             .as_ref()
             .and_then(|p| derive_sum_pattern_space(&p.type_pattern_expr)),
+        canonical_type: None,
+        canonical_pattern_override: None,
         provenance: input.provenance.clone(),
     };
     match attach_type_definition_pattern_heads(
@@ -871,6 +1094,7 @@ fn cacheable_invocation_value(value: MetaInvocationValue) -> MetaInvocationValue
     match value {
         MetaInvocationValue::GeneratedTypeDefinitionValue(mut value) => {
             value.pattern_heads = None;
+            value.canonical_type = None;
             for field in &mut value.fields {
                 field.pattern_head = None;
             }
@@ -937,7 +1161,7 @@ pub fn attach_type_definition_pattern_heads_with_context(
         .iter()
         .map(|field| PatternFieldMaterialization {
             field_name: field.field_name.clone(),
-            field_type_symbol_id: field.field_type_symbol_id,
+            field_type_value: field.field_type_value,
             projection: crate::model::FieldProjection::Value,
             provenance: field.provenance.clone(),
         });
@@ -983,9 +1207,19 @@ fn field_signature_material_from_candidate(
     decoded: Option<&crate::struct_decoder::DecodedStructPattern>,
     provenance: &Provenance,
 ) -> Result<Vec<FieldSignatureMaterial>, Diagnostic> {
-    let mut decoded_visibility = BTreeMap::new();
-    if let Some(decoded) = decoded {
-        collect_structural_member_visibility(&decoded.type_pattern_expr, &mut decoded_visibility);
+    let decoded_fields = decoded.map(|decoded| {
+        let mut fields = Vec::new();
+        collect_decoded_struct_fields(&decoded.type_pattern_expr, &mut fields);
+        fields
+    });
+    if let Some(decoded_fields) = &decoded_fields {
+        if decoded_fields.len() != candidate.arg_product_shape.raw_args.len() {
+            return Err(Diagnostic::hard_error(
+                "struct decoded field count does not match classified argument count",
+                Some(provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id));
+        }
     }
     let mut fields = Vec::new();
     let mut seen_names = BTreeSet::new();
@@ -1008,20 +1242,33 @@ fn field_signature_material_from_candidate(
             )
             .with_symbol_context(candidate.callee_symbol_id));
         };
-        let atom = candidate
-            .arg_product_shape
-            .flattened
-            .atoms
-            .get(raw_arg.index)
-            .ok_or_else(|| {
-                Diagnostic::hard_error(
-                    "struct argument product shape is missing field atom material",
-                    Some(provenance.clone()),
-                )
-                .with_symbol_context(candidate.callee_symbol_id)
-            })?;
-        let (field_name, field_provenance) =
-            struct_field_name_from_atom(atom, candidate.callee_symbol_id)?;
+        let Some(type_value) = raw_arg.known_first_order_type_value else {
+            return Err(Diagnostic::hard_error(
+                "struct field type did not carry an evaluated TypeValue",
+                Some(raw_arg.provenance.clone()),
+            )
+            .with_symbol_context(candidate.callee_symbol_id));
+        };
+        let (field_name, visibility, field_provenance) = if let Some(decoded_fields) =
+            &decoded_fields
+        {
+            decoded_fields[raw_arg.index].clone()
+        } else {
+            let atom = candidate
+                .arg_product_shape
+                .flattened
+                .atoms
+                .get(raw_arg.index)
+                .ok_or_else(|| {
+                    Diagnostic::hard_error(
+                        "struct argument product shape is missing field atom material",
+                        Some(provenance.clone()),
+                    )
+                    .with_symbol_context(candidate.callee_symbol_id)
+                })?;
+            let (name, provenance) = struct_field_name_from_atom(atom, candidate.callee_symbol_id)?;
+            (name, StructuralMemberVisibility::Default, provenance)
+        };
         if !seen_names.insert(field_name.clone()) {
             return Err(Diagnostic::hard_error(
                 format!("duplicate struct field `{field_name}`"),
@@ -1029,13 +1276,13 @@ fn field_signature_material_from_candidate(
             )
             .with_symbol_context(candidate.callee_symbol_id));
         }
-        let visibility = decoded_visibility
-            .get(&field_name)
-            .copied()
-            .unwrap_or(StructuralMemberVisibility::Default);
         fields.push(FieldSignatureMaterial {
             field_name,
-            field_type_symbol_id: type_symbol_id,
+            field_type_value: type_value,
+            field_type_observation: raw_arg
+                .type_observation()
+                .unwrap_or(crate::CanonicalTypeObservation::Detached(type_value)),
+            field_type_carrier_symbol: type_symbol_id,
             field_index: raw_arg.index,
             visibility,
             provenance: field_provenance,
@@ -1045,30 +1292,31 @@ fn field_signature_material_from_candidate(
     Ok(fields)
 }
 
-fn collect_structural_member_visibility(
+fn collect_decoded_struct_fields(
     pattern: &TypePatternExprShape,
-    output: &mut BTreeMap<String, StructuralMemberVisibility>,
+    output: &mut Vec<(String, StructuralMemberVisibility, Provenance)>,
 ) {
     match pattern {
         TypePatternExprShape::Leaf {
             local_pattern_name,
             visibility,
+            provenance,
             ..
         } => {
-            output.insert(local_pattern_name.clone(), *visibility);
+            output.push((local_pattern_name.clone(), *visibility, provenance.clone()));
         }
         TypePatternExprShape::Product { elements, .. } => {
             for element in elements {
-                collect_structural_member_visibility(element, output);
+                collect_decoded_struct_fields(element, output);
             }
         }
         TypePatternExprShape::Sum { alternatives, .. } => {
             for alternative in alternatives {
-                collect_structural_member_visibility(alternative, output);
+                collect_decoded_struct_fields(alternative, output);
             }
         }
         TypePatternExprShape::Named { child, .. } => {
-            collect_structural_member_visibility(child, output);
+            collect_decoded_struct_fields(child, output);
         }
     }
 }

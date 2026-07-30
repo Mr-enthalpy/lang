@@ -1,6 +1,7 @@
 use crate::{
+    identity::TypeValueId,
     meta_invocation::{ConstructionInstanceId, MetaInvocationValue},
-    model::{FieldProjection, Provenance, SymbolId},
+    model::{FieldProjection, Provenance},
     pattern_head::PatternHeadId,
 };
 
@@ -46,7 +47,7 @@ pub enum ConstructedValue {
         owner_head: PatternHeadId,
         field_head: PatternHeadId,
         field_name: String,
-        field_type_symbol_id: SymbolId,
+        field_type_value: TypeValueId,
         projection: FieldProjection,
         payload: Box<ConstructedValue>,
         provenance: Provenance,
@@ -71,7 +72,7 @@ pub enum ConstructorHead {
         owner_head: PatternHeadId,
         field_head: PatternHeadId,
         field_name: String,
-        field_type_symbol_id: SymbolId,
+        field_type_value: TypeValueId,
         projection: FieldProjection,
     },
 
@@ -99,14 +100,14 @@ impl ConstructedValue {
                 owner_head,
                 field_head,
                 field_name,
-                field_type_symbol_id,
+                field_type_value,
                 projection,
                 ..
             } => Some(ConstructorHead::Field {
                 owner_head: *owner_head,
                 field_head: *field_head,
                 field_name: field_name.clone(),
-                field_type_symbol_id: *field_type_symbol_id,
+                field_type_value: *field_type_value,
                 projection: *projection,
             }),
             ConstructedValue::Leaf { .. } => None,
@@ -148,7 +149,7 @@ impl ConstructedValue {
                     owner_head: o1,
                     field_head: fh1,
                     field_name: f1,
-                    field_type_symbol_id: t1,
+                    field_type_value: t1,
                     projection: pr1,
                     payload: p1,
                     ..
@@ -157,7 +158,7 @@ impl ConstructedValue {
                     owner_head: o2,
                     field_head: fh2,
                     field_name: f2,
-                    field_type_symbol_id: t2,
+                    field_type_value: t2,
                     projection: pr2,
                     payload: p2,
                     ..
@@ -195,7 +196,7 @@ impl ConstructedValue {
                     owner_head: o1,
                     field_head: fh1,
                     field_name: f1,
-                    field_type_symbol_id: t1,
+                    field_type_value: t1,
                     projection: pr1,
                     payload: p1,
                     provenance: prov1,
@@ -204,7 +205,7 @@ impl ConstructedValue {
                     owner_head: o2,
                     field_head: fh2,
                     field_name: f2,
-                    field_type_symbol_id: t2,
+                    field_type_value: t2,
                     projection: pr2,
                     payload: p2,
                     provenance: prov2,
@@ -267,7 +268,7 @@ pub fn construct_field_value(
     owner_head: PatternHeadId,
     field_head: PatternHeadId,
     field_name: String,
-    field_type_symbol_id: SymbolId,
+    field_type_value: TypeValueId,
     projection: FieldProjection,
     payload: ConstructedValue,
     provenance: Provenance,
@@ -276,7 +277,7 @@ pub fn construct_field_value(
         owner_head,
         field_head,
         field_name,
-        field_type_symbol_id,
+        field_type_value,
         projection,
         payload: Box::new(payload),
         provenance,
@@ -323,14 +324,14 @@ pub fn placeholder_field_constructor_head(
     owner_head: PatternHeadId,
     field_head: PatternHeadId,
     field_name: &str,
-    field_type_symbol_id: SymbolId,
+    field_type_value: TypeValueId,
     projection: FieldProjection,
 ) -> ConstructorHead {
     ConstructorHead::Field {
         owner_head,
         field_head,
         field_name: field_name.to_string(),
-        field_type_symbol_id,
+        field_type_value,
         projection,
     }
 }

@@ -19,9 +19,10 @@ Pattern normalization and the candidate model that feeds invocation:
 - in-place closure candidate metadata and its fixed preference position; lazy
   embedding lookup/capture boundaries are owned by the function-object model
 
-Resolved pattern owners, `struct` / functional `inject`, and the rule that fully
-named direct-child layers normalize to `Set<PatternValue>` while any bare child
-makes the whole layer positional are owned by
+Resolved pattern owners, `struct` / functional `inject`, and the rule that a
+fully named body of a Pattern normalizes to
+`Map<CanonicalFullNavigation, CanonicalPatternValue>` while every naked
+Product (and any Pattern body with a bare child) remains positional are owned by
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 Canonical policy pairs, seal visibility, const/mut product order, compile-flow
 projection, derived compile companions, must-select semantics, match staging,

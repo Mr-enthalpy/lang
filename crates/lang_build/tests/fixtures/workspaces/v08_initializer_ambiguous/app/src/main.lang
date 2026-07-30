@@ -1,16 +1,17 @@
 let int: type = uint16;
-let unit: type = uint8;
 
-meta || runtime let + =
-  (self, t: type, _ unit: type): meta -> let r: type =>
+let f =
+  (self, t: type): meta -> r: symbol =>
 {
-  r === t;
+  let r = (t inner) |> struct;
+  r;
 };
 
-meta || runtime let + =
-  (self, t: type, _ unit: type): meta -> let r: type =>
+let f =
+  (self, t: type): meta -> r: symbol =>
 {
-  r === t;
+  let r = (t inner) |> struct;
+  r;
 };
 
-let X: type = int + unit;
+let X: type = int f;

@@ -1,7 +1,7 @@
 //! Owner-aware namespace views, package boundaries, and mount redirects.
 //!
 //! This is the canonical typed substrate for the persistent namespace forest.
-//! The older `NamespaceGraphSnapshot` remains a compatibility transport while
+//! The temporary `SemanticNameIndex` remains a projection adapter while
 //! v0.6 consumers migrate to this model.
 
 use std::collections::BTreeMap;
@@ -254,7 +254,7 @@ impl OwnerNamespaceGraph {
     ///
     /// Source components are stored inner-to-outer, unlike the containment
     /// graph traversal order. This entry point performs the one mechanical
-    /// reversal before using the graph resolver.
+    /// reversal before using the source-order namespace resolver.
     pub fn resolve_inner_to_outer(
         &self,
         owners: &SemanticOwnerGraph,

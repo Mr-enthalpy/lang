@@ -1,0 +1,59 @@
+let make_type =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  r;
+};
+
+let forward_type =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = t;
+  r;
+};
+
+let no_terminal =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+};
+
+let keep =
+  (self, _ uint8: type): compile
+    -> let result: uint8 =>
+{
+  result;
+};
+
+let empty_cluster =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  r;
+};
+
+let refactor_kept =
+  (self, t: type): meta
+    -> let r: type =>
+{
+  let r = t;
+  r;
+};
+
+let bare_alias =
+  (self, t: type): meta
+    -> let r: type =>
+{
+  r === t;
+};
+
+let bare_alias_meta =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  r === t;
+  r;
+};

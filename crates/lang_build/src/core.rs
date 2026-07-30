@@ -1,20 +1,72 @@
+use std::collections::BTreeSet;
+
 use crate::{
-    graph::{namespace_symbol, BuildError, NamespaceGraphSnapshot},
     model::{
-        CoreMetaFunction, MetaFunctionObject, NamespaceDelta, NamespaceNode, NamespaceNodeId,
-        NamespaceNodeKind, PolicySet, Provenance, SourceCategory, SymbolKind, SymbolObject,
-        SymbolPayload, TypeObject, VerificationPrimitive,
+        CoreMetaFunction, MetaFunctionObject, NamespaceNode, NamespaceNodeId, NamespaceNodeKind,
+        PolicyMetadata, PolicySet, Provenance, SemanticNameDelta, SourceCategory, SymbolId,
+        SymbolKind, SymbolObject, SymbolPayload, TypeObject, VerificationPrimitive,
     },
-    policy_metadata, policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
+    policy_metadata,
+    policy_pair::{
+        PatternComponentPolicy, PolicyPair, PolicyStage, StageSet, ValueComponentPolicy,
+        ValuePresence,
+    },
+    policy_set_export_meta, policy_set_export_meta_runtime, policy_set_meta,
     policy_set_meta_runtime,
+    semantic_name_index::{namespace_symbol, BuildError, SemanticNameIndex},
 };
 
 pub const CORE_NAMESPACE: &str = "core";
 
-pub fn install_core_bootstrap(
-    snapshot: &NamespaceGraphSnapshot,
-) -> Result<(NamespaceGraphSnapshot, NamespaceNodeId), BuildError> {
+/// One declared core callable registration fact.
+///
+/// The bootstrap produces this roster directly so the semantic world is
+/// populated from the declaration itself; the compilation world no longer
+/// scans graph `SymbolPayload::MetaFunction` payloads and re-projects them
+/// through the flat legacy `PolicySet` carrier.
+pub(crate) struct CoreCallableRegistration {
+    pub(crate) namespace: NamespaceNodeId,
+    pub(crate) name: String,
+    pub(crate) backing: SymbolId,
+    pub(crate) primitive: CoreMetaFunction,
+    pub(crate) function_policy: PolicyPair,
+    pub(crate) result_policy: PolicyPair,
+    pub(crate) return_shape: crate::ReturnShape,
+    pub(crate) visibility: Option<crate::NamespaceVisibility>,
+    pub(crate) provenance: Provenance,
+}
+
+/// One declared core type registration fact.
+///
+/// The bootstrap spells the canonical PolicyPair next to the graph payload
+/// so the semantic world is populated from the declaration itself; the
+/// compilation world no longer rescans graph `SymbolPayload::Type` payloads
+/// through the flat legacy `PolicySet` projection
+/// (`sync_semantic_type_values` is deleted).
+pub(crate) struct CoreTypeRegistration {
+    pub(crate) namespace: NamespaceNodeId,
+    pub(crate) name: String,
+    pub(crate) binding: SymbolId,
+    pub(crate) represented_type: crate::TypeValueId,
+    pub(crate) associated_namespace: NamespaceNodeId,
+    pub(crate) policy: PolicyPair,
+    pub(crate) provenance: Provenance,
+}
+
+pub(crate) fn install_core_bootstrap(
+    snapshot: &SemanticNameIndex,
+) -> Result<
+    (
+        SemanticNameIndex,
+        NamespaceNodeId,
+        Vec<CoreCallableRegistration>,
+        Vec<CoreTypeRegistration>,
+    ),
+    BuildError,
+> {
     let mut delta = snapshot.empty_delta();
+    let mut core_callables = Vec::new();
+    let mut core_types = Vec::new();
     let core_provenance = Provenance::new("compiler-seeded core package");
     let core_node = namespace_symbol(
         &mut delta,
@@ -33,6 +85,7 @@ pub fn install_core_bootstrap(
 
     insert_meta_function(
         &mut delta,
+        &mut core_callables,
         core_node,
         "struct",
         CoreMetaFunction::Struct,
@@ -41,6 +94,7 @@ pub fn install_core_bootstrap(
     );
     insert_meta_function(
         &mut delta,
+        &mut core_callables,
         core_node,
         "assert",
         CoreMetaFunction::Assert,
@@ -49,6 +103,7 @@ pub fn install_core_bootstrap(
     );
     insert_meta_function(
         &mut delta,
+        &mut core_callables,
         core_node,
         "IdentityType",
         CoreMetaFunction::IdentityType,
@@ -57,16 +112,18 @@ pub fn install_core_bootstrap(
     );
     insert_meta_function(
         &mut delta,
+        &mut core_callables,
         core_node,
         "UnaryConstructionPrototype",
         CoreMetaFunction::UnaryConstructionPrototype,
         Provenance::new("core meta-function `UnaryConstructionPrototype`"),
         policy_set_export_meta(),
     );
-    insert_verification_namespace(&mut delta, core_node);
+    insert_verification_namespace(&mut delta, &mut core_callables, core_node);
 
     for name in [
         "type",
+        "symbol",
         "namespace",
         "uint8",
         "ref",
@@ -77,6 +134,7 @@ pub fn install_core_bootstrap(
     ] {
         insert_core_type(
             &mut delta,
+            Some(&mut core_types),
             core_node,
             name,
             Provenance::new(format!("core type symbol `{name}`")),
@@ -86,12 +144,58 @@ pub fn install_core_bootstrap(
 
     snapshot
         .install_delta(delta)
-        .map(|snapshot| (snapshot, core_node))
+        .map(|snapshot| (snapshot, core_node, core_callables, core_types))
         .map_err(BuildError::from)
 }
 
+/// Declared canonical PolicyPair coordinate for a core built-in: the value
+/// stage set is spelled directly and the Pattern stage set is its static
+/// projection.  Core built-ins carry no mutability restriction and are
+/// always present.
+pub(crate) fn core_declared_pair(stages: &[PolicyStage], _export_root: bool) -> PolicyPair {
+    let mut value_stages = StageSet::new();
+    let mut pattern_stages = StageSet::new();
+    for &stage in stages {
+        value_stages.insert(stage);
+        if stage.is_static() {
+            pattern_stages.insert(stage);
+        }
+    }
+    PolicyPair {
+        value: ValueComponentPolicy {
+            stages: value_stages,
+            mutability: BTreeSet::new(),
+            presence: ValuePresence::Present,
+        },
+        pattern: PatternComponentPolicy {
+            stages: pattern_stages,
+        },
+    }
+}
+
+/// Declared body-entry / return-object planes of one
+/// core built-in, spelled at the declaration site.  The invocation spine
+/// obtains these planes from the primitive identity instead of reading the
+/// graph `SymbolPayload::MetaFunction` payload.
+pub(crate) fn core_primitive_callable_planes(
+    primitive: CoreMetaFunction,
+) -> (PolicyMetadata, PolicyMetadata) {
+    let return_policy = match primitive {
+        CoreMetaFunction::Struct => policy_set_meta_runtime(),
+        CoreMetaFunction::Assert
+        | CoreMetaFunction::Verify(_)
+        | CoreMetaFunction::IdentityType
+        | CoreMetaFunction::UnaryConstructionPrototype => policy_set_meta(),
+    };
+    (
+        policy_metadata(policy_set_meta()),
+        policy_metadata(return_policy),
+    )
+}
+
 fn insert_meta_function(
-    delta: &mut NamespaceDelta,
+    delta: &mut SemanticNameDelta,
+    core_callables: &mut Vec<CoreCallableRegistration>,
     parent: NamespaceNodeId,
     name: &str,
     primitive: CoreMetaFunction,
@@ -99,12 +203,22 @@ fn insert_meta_function(
     policy_set: PolicySet,
 ) {
     let symbol_id = delta.allocate_symbol_id();
-    let return_policy = match primitive {
-        CoreMetaFunction::Struct => policy_set_meta_runtime(),
+    let (body_entry_policy, return_object_policy) = core_primitive_callable_planes(primitive);
+    // Independent declared shape/privilege coordinates for each built-in:
+    // `struct` returns a Symbol cluster (plural values under one name at
+    // one position); `identity_type` returns a single pure-P type;
+    // `assert` / `verify` / `UnaryConstructionPrototype` return a single
+    // ordinary value.  All core primitives are privileged built-ins (they
+    // may consume raw/meta material); privilege implies nothing about the
+    // shape and neither coordinate is re-derived at call time.
+    let return_shape = match primitive {
+        CoreMetaFunction::Struct => crate::ReturnShape::ClusterSymbol,
+        CoreMetaFunction::IdentityType => crate::ReturnShape::SingleType,
         CoreMetaFunction::Assert
         | CoreMetaFunction::Verify(_)
-        | CoreMetaFunction::IdentityType
-        | CoreMetaFunction::UnaryConstructionPrototype => policy_set_meta(),
+        | CoreMetaFunction::UnaryConstructionPrototype => {
+            crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained)
+        }
     };
     let mut symbol = SymbolObject::placeholder(
         symbol_id,
@@ -115,18 +229,53 @@ fn insert_meta_function(
         provenance,
     );
     symbol.policy_metadata.policy_set = policy_set;
+    // Declaration-boundary export fact: core callables are declared public by
+    // the toolchain package, so external member views retain them and they
+    // enter ordinary overload as normal candidates (no call-time bypass).
+    symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
+    symbol.visibility_metadata.export_root = true;
     symbol.payload = SymbolPayload::MetaFunction(MetaFunctionObject {
         function_symbol_id: symbol_id,
         primitive: Some(primitive),
         source_callable: None,
         function_policy: policy_metadata(symbol.policy_metadata.policy_set.clone()),
-        body_entry_policy: policy_metadata(policy_set_meta()),
-        return_object_policy: policy_metadata(return_policy),
+        body_entry_policy,
+        return_object_policy,
+        return_shape,
+        privilege: crate::CallablePrivilege::BuiltinPrivileged,
+    });
+    // Declared semantic registration fact, spelled once next to the graph
+    // payload: function P1 = export meta; result P2 = meta (plus runtime
+    // for `struct`, whose cluster survives into the runtime world).
+    core_callables.push(CoreCallableRegistration {
+        namespace: parent,
+        name: name.to_string(),
+        backing: symbol_id,
+        primitive,
+        function_policy: core_declared_pair(&[PolicyStage::Meta], true),
+        result_policy: match primitive {
+            CoreMetaFunction::Struct => {
+                core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], false)
+            }
+            CoreMetaFunction::Assert
+            | CoreMetaFunction::Verify(_)
+            | CoreMetaFunction::IdentityType
+            | CoreMetaFunction::UnaryConstructionPrototype => {
+                core_declared_pair(&[PolicyStage::Meta], false)
+            }
+        },
+        return_shape,
+        visibility: Some(crate::NamespaceVisibility::Public),
+        provenance: symbol.provenance.clone(),
     });
     delta.insert_symbol(parent, symbol);
 }
 
-fn insert_verification_namespace(delta: &mut NamespaceDelta, core_node: NamespaceNodeId) {
+fn insert_verification_namespace(
+    delta: &mut SemanticNameDelta,
+    core_callables: &mut Vec<CoreCallableRegistration>,
+    core_node: NamespaceNodeId,
+) {
     let node_id = delta.allocate_node_id();
     let symbol_id = delta.allocate_symbol_id();
     let provenance = Provenance::new("core verification namespace `verify`");
@@ -176,6 +325,7 @@ fn insert_verification_namespace(delta: &mut NamespaceDelta, core_node: Namespac
     ] {
         insert_meta_function(
             delta,
+            core_callables,
             node_id,
             name,
             CoreMetaFunction::Verify(primitive),
@@ -186,7 +336,8 @@ fn insert_verification_namespace(delta: &mut NamespaceDelta, core_node: Namespac
 }
 
 pub(crate) fn insert_core_type(
-    delta: &mut NamespaceDelta,
+    delta: &mut SemanticNameDelta,
+    core_types: Option<&mut Vec<CoreTypeRegistration>>,
     parent: NamespaceNodeId,
     name: &str,
     provenance: Provenance,
@@ -212,12 +363,32 @@ pub(crate) fn insert_core_type(
         provenance.clone(),
     );
     symbol.policy_metadata.policy_set = policy_set;
+    // Declaration-boundary export fact, mirroring `insert_meta_function`:
+    // core type symbols are public members of the toolchain package.
+    symbol.visibility_metadata.namespace_visibility = Some(crate::NamespaceVisibility::Public);
+    symbol.visibility_metadata.export_root = true;
     symbol.node_kind = Some(NamespaceNodeKind::Virtual);
+    let represented_type = crate::type_value_projection_from_type_symbol(symbol_id);
+    // Declared semantic registration fact: core type carriers are declared
+    // `export meta runtime`, spelled as the canonical pair directly.
+    if let Some(core_types) = core_types {
+        core_types.push(CoreTypeRegistration {
+            namespace: parent,
+            name: name.to_string(),
+            binding: symbol_id,
+            represented_type,
+            associated_namespace: associated_node,
+            policy: core_declared_pair(&[PolicyStage::Meta, PolicyStage::Runtime], true),
+            provenance: provenance.clone(),
+        });
+    }
     symbol.payload = SymbolPayload::Type(TypeObject {
-        type_symbol_id: symbol_id,
+        carrier_symbol_id: symbol_id,
+        represented_type,
         owner_pattern_head: None,
         fields: Vec::new(),
         field_names: Vec::new(),
+        field_type_values: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(associated_node),
         extraction_interface: None,

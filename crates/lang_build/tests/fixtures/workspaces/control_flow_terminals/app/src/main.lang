@@ -1,0 +1,37 @@
+let deliver_nearest =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  r;
+};
+
+let return_outermost =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  r return;
+};
+
+let return_selected =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  r |> (self return);
+};
+
+let forward_outermost =
+  (self, t: type): meta
+    -> let r: type =>
+{
+  t return;
+};
+
+let forward_selected =
+  (self, t: type): meta
+    -> let r: type =>
+{
+  t |> (self return);
+};

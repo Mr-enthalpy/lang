@@ -35,11 +35,9 @@ fn duplicate_dependency_mount_root_is_hard_error() {
 
 #[test]
 fn policy_metadata_slots_are_preserved_without_policy_checking() {
-    use lang_build::{
-        NamespaceGraphSnapshot, Provenance, ResolverContext, SourceCategory, SymbolKind,
-    };
+    use lang_build::{Provenance, ResolverContext, SemanticNameIndex, SourceCategory, SymbolKind};
 
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
     let mut delta = snapshot.capability().declare(
         root,

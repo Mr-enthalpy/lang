@@ -21,12 +21,13 @@
 //! formal slot 0 is self-position and the explicit user product remains
 //! separate.
 //!
-//! This module does not implement callable target resolution, overload
-//! selection, declaration-context call-entry injection, associated-space symbol
-//! injection, overload synthesis, body evaluation, return execution, D/Done,
-//! lifetime checking, or implicit `?`.
+//! `ordinary_invocation` now consumes this carrier for the connected restricted
+//! source/associated-call slice. This module itself still does not define
+//! callable target resolution, overload rules, declaration-context injection,
+//! return execution, D/Done, lifetime checking, or implicit `?`.
 
 use crate::{
+    identity::{SemanticValueId, TypeValueId},
     model::{Diagnostic, ExecutionEnv, PolicyEnv, Provenance, SymbolId},
     product_shape::ArgProductShape,
 };
@@ -177,6 +178,8 @@ impl InvocationFrame {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InvocationCallableRef {
     Symbol(SymbolId),
+    /// Ordinary associated `()` value selected from semantic Val2.
+    SemanticValue(SemanticValueId),
     Placeholder,
 }
 
@@ -221,6 +224,19 @@ impl SelfPosition {
         }
     }
 
+    pub fn from_semantic_associated_call_entry(
+        receiver_value: SemanticValueId,
+        receiver_type: TypeValueId,
+        provenance: Provenance,
+    ) -> Self {
+        Self {
+            slot_index: SELF_SLOT_INDEX,
+            source: SelfPositionSource::SemanticAssociatedValue(receiver_value),
+            receiver_type: ReceiverTypeRef::TypeValue(receiver_type),
+            provenance,
+        }
+    }
+
     pub fn primitive_core_object(provenance: Provenance) -> Self {
         Self {
             slot_index: SELF_SLOT_INDEX,
@@ -235,6 +251,7 @@ impl SelfPosition {
 pub enum ReceiverTypeRef {
     UnresolvedFromCaller,
     ResolvedTypeSymbol(SymbolId),
+    TypeValue(TypeValueId),
     PrimitiveCoreType,
 }
 
@@ -242,6 +259,7 @@ pub enum ReceiverTypeRef {
 pub enum SelfPositionSource {
     PlaceholderFromCallableSymbol(SymbolId),
     PlaceholderFromCallEntry,
+    SemanticAssociatedValue(SemanticValueId),
     PrimitiveCoreObject,
 }
 

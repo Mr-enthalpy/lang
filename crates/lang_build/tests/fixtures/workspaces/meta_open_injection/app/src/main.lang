@@ -1,0 +1,15 @@
+let make =
+  (self, x: type): meta -> t: symbol =>
+{
+  let t = ((x inner) t) |> struct;
+  let f::t = (self): compile -> let out: uint8 => { out; };
+  t;
+};
+
+let make_incremental =
+  (self, x: type): meta -> t: symbol =>
+{
+  let t = (() t) |> struct;
+  let inner::t = x;
+  t;
+};

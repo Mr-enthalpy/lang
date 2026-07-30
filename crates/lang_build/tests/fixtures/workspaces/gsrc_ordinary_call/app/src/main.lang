@@ -1,0 +1,2 @@
+let local: type = uint8;
+let Result: type = local global_identity::;

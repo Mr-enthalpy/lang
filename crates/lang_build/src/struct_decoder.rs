@@ -23,6 +23,34 @@
 //!   parent name: `(Group_contents parent_name)` lifts the Group to a Product
 //!   and wraps it in Named, rather than treating the Group as a type expression.
 //!
+//! ## BareValue (Expr _) -- NOT YET IMPLEMENTED
+//!
+//! FUTURE: `Expr _` should form a `BareValue` leaf carrying a value with
+//! an empty local pattern (`P_local = ε`). This is distinct from a named
+//! leaf whose pattern name happens to be `_`.
+//!
+//! Current status:
+//! - `TypePatternExprShape` has no `BareValue` variant.
+//! - Current `Leaf("_")` MUST NOT be treated as BareValue.
+//! - Current Sum duplicate-label error does not apply to future bare value
+//!   branches (bare values merge by canonical value equality, not by label).
+//!
+//! When implemented, `BareValue` placement is restricted:
+//! ```text
+//! BareValue ::= Expr _
+//!
+//! Legal parent structures:
+//!   Named(BareValue, name)
+//!   Named(Sum(BareValue, alternatives...), name)
+//!
+//! Illegal:
+//!   Product(..., BareValue, ...)
+//! ```
+//!
+//! Bare values in a Sum merge by `CanonicalValue(E1) == CanonicalValue(E2)`.
+//! A bare value is an ε-pattern carrying a value, registered into P
+//! canonical structure only by struct/inject privilege.
+//!
 //! ## Type-expression metadata boundary
 //!
 //! This decoder preserves non-path type expressions (e.g. `int Vec` in
@@ -196,21 +224,19 @@ pub fn decode_struct_type_pattern_expr(
 ) -> StructDecodeResult {
     match expr {
         NormExpr::Product(product) => decode_product(product, provenance),
-        NormExpr::Call { source, target, .. } => decode_call(source, target, provenance),
-        NormExpr::Name { text, .. } => {
-            // A bare name at the top level of a struct argument is only valid
-            // as a nullary constructor alternative inside a Sum context.
-            // At the top level it is not a valid type-pattern expression.
-            Err(Diagnostic::new(
-                DiagnosticSeverity::Error,
-                format!(
-                    "bare name `{}` is only valid as a nullary constructor alternative inside a sum pattern; \
-                     wrap it in a Named constructor or place it inside a product",
-                    text
-                ),
-                Some(provenance),
-            ))
-        }
+        NormExpr::Call {
+            source,
+            target,
+            origin,
+        } => decode_call(source, target, origin, provenance),
+        // A name with no left-side Expr is a pure Pattern node with no value
+        // payload.  This is the same nullary shape used by alternatives such
+        // as `if | else`; it is not a field.
+        NormExpr::Name { text, .. } => Ok(TypePatternExprShape::named(
+            TypePatternExprShape::product(vec![], provenance.clone()),
+            text,
+            provenance,
+        )),
         _ => Err(Diagnostic::new(
             DiagnosticSeverity::Error,
             format!(
@@ -267,10 +293,13 @@ fn decode_product(product: &NormProduct, provenance: Provenance) -> StructDecode
 fn decode_call(
     source: &NormProduct,
     target: &NormExpr,
+    call_origin: &lang_syntax::NormOrigin,
     provenance: Provenance,
 ) -> StructDecodeResult {
     match target {
-        NormExpr::Name { text: name, .. } => decode_call_with_name_target(source, name, provenance),
+        NormExpr::Name { text: name, .. } => {
+            decode_call_with_name_target(source, name, Some(call_origin), provenance)
+        }
         NormExpr::Call {
             source: annotation_source,
             target: annotation_target,
@@ -314,7 +343,7 @@ fn decode_call(
         _ => Err(Diagnostic::new(
             DiagnosticSeverity::Error,
             format!(
-                "unsupported target in struct call expression: {:?}",
+                "invalid struct syntax: expected a field binder name; unsupported target in struct call expression: {:?}",
                 expr_variant_name(target)
             ),
             Some(provenance),
@@ -374,7 +403,7 @@ fn decode_completed_member_view_annotation(
         ));
     };
     Ok(
-        decode_call_with_name_target(member_source, name, provenance)?
+        decode_call_with_name_target(member_source, name, None, provenance)?
             .with_structural_visibility(visibility),
     )
 }
@@ -414,7 +443,7 @@ fn decode_call_with_member_view_annotation(
         ));
     }
     Ok(
-        decode_call_with_name_target(member_source, name, provenance)?
+        decode_call_with_name_target(member_source, name, None, provenance)?
             .with_structural_visibility(visibility),
     )
 }
@@ -439,6 +468,7 @@ fn member_visibility_from_target(target: &NormExpr) -> Option<StructuralMemberVi
 fn decode_call_with_name_target(
     source: &NormProduct,
     name: &str,
+    call_origin: Option<&lang_syntax::NormOrigin>,
     provenance: Provenance,
 ) -> StructDecodeResult {
     let elems: Vec<&NormExpr> = source
@@ -505,8 +535,22 @@ fn decode_call_with_name_target(
                     let child = decode_product(group_product, provenance.clone())?;
                     Ok(TypePatternExprShape::named(child, name, provenance))
                 }
-                // Any other expression (including inner Call) → Leaf with the
-                // expression as type_expr, and `name` as the local pattern name.
+                // A singleton source that came from an explicit Group is a
+                // named child construction even when normalization erased the
+                // persistent Group node.  For example `((uint8 inner) t)`
+                // decodes as Named(Leaf(uint8, inner), t), not as a leaf whose
+                // opaque type expression is `(uint8 inner)`.
+                other
+                    if call_origin.is_some_and(|origin| {
+                        norm_origin_span(&source.origin) != norm_origin_span(origin)
+                    }) =>
+                {
+                    let child = decode_struct_type_pattern_expr(other, provenance.clone())?;
+                    Ok(TypePatternExprShape::named(child, name, provenance))
+                }
+                // Any other expression (including an ungrouped inner Call) →
+                // Leaf with the expression as type_expr, and `name` as the
+                // local pattern name.
                 //
                 // This implements the mechanical leaf rule:
                 //   E Name → Leaf(external_type_expr = E, local_pattern_name = Name)
@@ -541,6 +585,14 @@ fn decode_call_with_name_target(
             };
             Ok(TypePatternExprShape::named(child, name, provenance))
         }
+    }
+}
+
+fn norm_origin_span(origin: &lang_syntax::NormOrigin) -> lang_syntax::Span {
+    match origin {
+        lang_syntax::NormOrigin::Source(span)
+        | lang_syntax::NormOrigin::Generated { span, .. }
+        | lang_syntax::NormOrigin::Derived { span, .. } => *span,
     }
 }
 

@@ -123,6 +123,99 @@ pub enum NamespaceVisibility {
     Private,
 }
 
+/// The aggregate shape of a callable's invocation result.
+///
+/// `CallableSemantics = P1 × P2 × ReturnShape × Privilege`.
+/// The return shape is elaborated once from the return-slot annotation
+/// (`declared_return_shape_from_closure`); it is never derived from the
+/// Policy stage, and no stage is ever derived from it.  The only relation
+/// between P2 and the shape is the legality check
+/// [`validate_return_shape`], which is a validation, not a derivation in
+/// either direction.
+///
+/// `ClusterSymbol` — plural values under ONE name at ONE position (a
+/// Symbol cluster: at most one pure-P member plus arbitrary val
+/// members).  Spelled `-> r: symbol` (a single binder carries the
+/// cluster).
+///
+/// There is deliberately NO parallel "multiple bare positions" return
+/// ontology: a future product-shaped result is one ordinary value whose
+/// Val1 is a Product (`⟨Val1_Product, P_Product, Val2⟩`) — still a single
+/// `SingleVal` result, never a fifth return shape.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReturnShape {
+    /// Value-less pure shape.  Required spelling: `_: unit` — the `_`
+    /// occupies the leftmost slot so `unit` cannot be misread as the
+    /// leftmost to-be-extracted name of an extraction shorthand
+    /// (compare `_ unit`, which matches and discards the leaf node).
+    Unit,
+    /// A single pure-P type result (`-> r: type`).
+    SingleType,
+    /// A single ordinary value result.  Carries the presence fact of the
+    /// return-slot value-pattern constraint; the full annotation pattern
+    /// stays on the closure head return slot.
+    SingleVal(PatternConstraint),
+    /// Plural values under one name at one position — a Symbol cluster
+    /// construction (`-> r: symbol`).
+    ClusterSymbol,
+}
+
+/// Presence fact of the return-slot value-pattern constraint carried by
+/// [`ReturnShape::SingleVal`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PatternConstraint {
+    Unconstrained,
+    Constrained,
+}
+
+/// Independent capability axis of `CallableSemantics`.
+///
+/// Privilege states what special operations a callable may perform (for
+/// example consuming raw/meta AST material).  It implies nothing about
+/// the return shape and nothing about the Policy stage: `struct` is a
+/// privileged built-in whose shape is `ClusterSymbol`, while `assert` /
+/// `verify` / `identity_type` are privileged built-ins with ordinary
+/// single-position shapes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CallablePrivilege {
+    /// Ordinary source-declared callable; the source surface can never
+    /// spell a privilege.
+    OrdinarySource,
+    /// Compiler-provided built-in with privileged capabilities.
+    BuiltinPrivileged,
+}
+
+/// `Validate(P2, ReturnShape)` — the legality relation between the result
+/// Policy coordinate and the declared return shape.  A validation, never
+/// a derivation: neither coordinate is ever computed from the other.
+///
+/// The core criterion for meta-legal returns is a SINGLE position:
+///
+/// * `ClusterSymbol` (one position, plural values) requires `P2 = meta`.
+/// * `SingleType` / `SingleVal` / `Unit` are legal under both; root
+///   constraints (self-rooting of meta type results) are enforced by the
+///   invocation/installation layer, not here.
+pub fn validate_return_shape(
+    shape: ReturnShape,
+    p2: &PolicyPair,
+    provenance: &crate::Provenance,
+) -> Result<(), crate::Diagnostic> {
+    let stages = p2.value.stages.union(&p2.pattern.stages);
+    let includes_meta = stages.contains(PolicyStage::Meta);
+    let cluster_construction_authorized = stages.len() == 1 && includes_meta;
+    match shape {
+        ReturnShape::ClusterSymbol if !cluster_construction_authorized => {
+            Err(crate::Diagnostic::hard_error(
+                "a ClusterSymbol return (`-> r: symbol`) requires a pure meta result P2: \
+                 a Symbol cluster cannot be constructed by a mixed meta/compile or \
+                 meta/runtime result domain",
+                Some(provenance.clone()),
+            ))
+        }
+        _ => Ok(()),
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValuePresence {
     Present,
@@ -150,8 +243,96 @@ pub struct PatternComponentPolicy {
 pub struct PolicyPair {
     pub value: ValueComponentPolicy,
     pub pattern: PatternComponentPolicy,
+}
+
+/// Policy disjunction: the least Policy admitting everything either
+/// operand admits.
+///
+/// This is the algebraic base of the derived cluster Policy law
+/// `P_cluster = P_member_1 || … || P_member_n`
+/// (`derived_cluster_policy` in `semantic_world`).  The result is a
+/// derived fact only — it never becomes a storage or exposure
+/// authority; exposure keeps filtering per member
+/// (`Expose(cluster, phase) = { member_i | Expose(P_i, phase) }`).
+///
+/// EXCLUSIVITY: the member → whole-function-object P1 disjunction holds
+/// between the members of one ClusterSymbol and nowhere else;
+/// `derived_cluster_policy` is this function's only legitimate caller.
+/// A Val2 name is itself a recursive ClusterSymbol (`Val2(T_t)[f] = C_f`), so
+/// the same law applies one layer down: `P(C_f)` is the disjunction of `C_f`'s
+/// OWN members.  What never happens is absorption across layers — a host
+/// type/cluster does not disjoin its associated Symbols' Policies into its own,
+/// layered exposure composes conjunctively (`∧`) at lookup, and a written `||`
+/// inside one Policy spelling is elaborated within that single spelling only.
+///
+/// Component rules:
+/// * stages — set union on both the value and pattern components;
+/// * mutability — an empty domain is the unconstrained `const || mut`
+///   domain, so if either side is unconstrained the disjunction is
+///   unconstrained; otherwise the union of the explicit restrictions;
+/// * presence — `Present || Present = Present`,
+///   `Absent || Absent = Absent`, any mix is `Optional`.
+pub fn policy_or(a: &PolicyPair, b: &PolicyPair) -> PolicyPair {
+    let mutability = if a.value.mutability.is_empty() || b.value.mutability.is_empty() {
+        BTreeSet::new()
+    } else {
+        a.value
+            .mutability
+            .union(&b.value.mutability)
+            .copied()
+            .collect()
+    };
+    let presence = match (a.value.presence, b.value.presence) {
+        (ValuePresence::Present, ValuePresence::Present) => ValuePresence::Present,
+        (ValuePresence::Absent, ValuePresence::Absent) => ValuePresence::Absent,
+        _ => ValuePresence::Optional,
+    };
+    PolicyPair {
+        value: ValueComponentPolicy {
+            stages: a.value.stages.union(&b.value.stages),
+            mutability,
+            presence,
+        },
+        pattern: PatternComponentPolicy {
+            stages: a.pattern.stages.union(&b.pattern.stages),
+        },
+    }
+}
+
+/// Namespace declaration attributes adjacent to, but never part of, a
+/// callable's canonical `Pv:Pp` pair.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DeclarationVisibility {
     pub namespace_visibility: Option<NamespaceVisibility>,
     pub export_root: bool,
+}
+
+/// Body-entry admissibility judged directly on the
+/// callable's complete result P2 (`PolicyPair`).
+///
+/// This replaces the declaration-projection
+/// `SymbolPayload::MetaFunction.body_entry_policy`
+/// read on the invocation spine.  The body-entry domain is the value stage
+/// set when present, otherwise the pattern stage set — the graph body-entry
+/// PolicySet was installed as exactly this projection
+/// (`legacy_policy_set_from_pair(&result_p2)`), so the judgement is
+/// equivalent, only sourced from the semantic call entry's own P2.
+pub fn body_entry_allows_execution(p2: &PolicyPair, env: crate::model::ExecutionEnv) -> bool {
+    use crate::model::ExecutionEnv;
+    let stages = if p2.value.stages.is_empty() {
+        &p2.pattern.stages
+    } else {
+        &p2.value.stages
+    };
+    match env {
+        ExecutionEnv::OpenStatic => {
+            stages.contains(PolicyStage::Meta) || stages.contains(PolicyStage::Compile)
+        }
+        ExecutionEnv::SealStatic => {
+            stages.contains(PolicyStage::Seal) || stages.contains(PolicyStage::Compile)
+        }
+        ExecutionEnv::Runtime => stages.contains(PolicyStage::Runtime),
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -201,16 +382,12 @@ pub struct FunctionObjectDeclarationPolicy {
     /// domain. This is the complete namespace-internal declaration view;
     /// export const-projection is represented separately and never crops it.
     pub mutability: BTreeSet<ValueMutability>,
-    pub namespace_visibility: Option<NamespaceVisibility>,
-    pub export_root: bool,
 }
 
 impl Default for FunctionObjectDeclarationPolicy {
     fn default() -> Self {
         Self {
             mutability: BTreeSet::new(),
-            namespace_visibility: None,
-            export_root: false,
         }
     }
 }
@@ -644,8 +821,6 @@ pub fn normalize_p2_policy(
                     pattern: PatternComponentPolicy {
                         stages: pattern_stages,
                     },
-                    namespace_visibility: None,
-                    export_root: false,
                 },
                 provenance,
             )
@@ -680,8 +855,6 @@ pub fn normalize_p2_policy(
                     pattern: PatternComponentPolicy {
                         stages: pattern_atoms.stages,
                     },
-                    namespace_visibility: None,
-                    export_root: false,
                 },
                 provenance,
             )
@@ -776,6 +949,158 @@ pub fn elaborate_formal_policy_pattern(
         effective_pair,
         mutability: Some(selected),
     })
+}
+
+/// Where an explicit P1 spelling appears.  The outer binding prefix
+/// (`compile let f = ...`) doubles as declaration policy, so namespace
+/// visibility/export atoms are ignored there (they are validated against
+/// the derived symbol policy separately); the written-self slot policy is
+/// pure P1 material and rejects them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExplicitP1Position {
+    OuterBinding,
+    WrittenSelf,
+}
+
+/// The per-dimension explicit P1 selection extracted from one spelling
+/// site (outer binding prefix or written-self slot policy).
+///
+/// The explicit P1 is the complete `Pv:Pp` coordinate,
+/// not just the const/mut axis: value stage, value mutability, value
+/// presence, and Pattern stage are each independently selectable.  A
+/// dimension that was not written stays `None` and falls back to
+/// `Derive(P2)` in `canonical_function_object_p1`; a dimension written at
+/// BOTH spelling sites must agree there or the canonicalizer hard-errors.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ExplicitP1Selection {
+    pub value_stages: Option<StageSet>,
+    pub mutability: Option<BTreeSet<ValueMutability>>,
+    pub presence: Option<ValuePresence>,
+    pub pattern_stages: Option<StageSet>,
+}
+
+impl ExplicitP1Selection {
+    pub fn is_empty(&self) -> bool {
+        self.value_stages.is_none()
+            && self.mutability.is_none()
+            && self.presence.is_none()
+            && self.pattern_stages.is_none()
+    }
+
+    /// A fully explicit selection carrying every dimension of `pair`.
+    /// Used by core-callable registration, whose declared function policy
+    /// is explicit by construction (there is no source spelling to parse).
+    pub fn from_complete_pair(pair: &PolicyPair) -> Self {
+        Self {
+            value_stages: Some(pair.value.stages.clone()),
+            mutability: Some(pair.value.mutability.clone()),
+            presence: Some(pair.value.presence),
+            pattern_stages: Some(pair.pattern.stages.clone()),
+        }
+    }
+}
+
+/// Elaborate an explicit P1 spelling into its per-dimension selection.
+///
+/// Returns `Ok(None)` when nothing P1-relevant was written (no policy, or
+/// an outer prefix carrying only namespace visibility/export atoms).
+/// Stage atoms ARE an explicit P1 stage selection — a stage-only outer
+/// policy must never be treated as "no explicit P1".
+pub fn elaborate_explicit_p1(
+    policy: Option<&NormPolicySpec>,
+    inherited_p2: &PolicyPair,
+    position: ExplicitP1Position,
+    provenance: Provenance,
+) -> Result<Option<ExplicitP1Selection>, Diagnostic> {
+    let Some(policy) = policy else {
+        return Ok(None);
+    };
+    let mut selection = ExplicitP1Selection::default();
+
+    // Pattern component of an explicit `Pv:Pp` pair projection.
+    if let Some(pattern) = &policy.pattern_policy {
+        let pattern_atoms = parse_component(pattern, false, provenance.clone())?;
+        reject_namespace_attributes(
+            &pattern_atoms,
+            "explicit P1 Pattern component",
+            provenance.clone(),
+        )?;
+        if !pattern_atoms.mutability.is_empty() {
+            return Err(policy_error(
+                "const/mut policy is valid only in the explicit P1 value component",
+                provenance,
+            ));
+        }
+        if pattern_atoms.stages.is_empty() {
+            return Err(policy_error(
+                "an explicit P1 Pattern component requires at least one stage",
+                provenance,
+            ));
+        }
+        selection.pattern_stages = Some(pattern_atoms.stages);
+    }
+
+    let value_atoms = match &policy.value_policy {
+        NormValuePolicyPattern::Conjunction(value) => {
+            parse_component(value, true, provenance.clone())?
+        }
+        NormValuePolicyPattern::Absent { .. } => {
+            if policy.pattern_policy.is_none() {
+                return Err(policy_error(
+                    "an absent explicit P1 value pattern requires an explicit Pattern component",
+                    provenance,
+                ));
+            }
+            selection.presence = Some(ValuePresence::Absent);
+            return Ok(Some(selection));
+        }
+    };
+    match position {
+        // Visibility/export atoms in the outer prefix are namespace
+        // declaration attributes, separate from the function-object P1.
+        ExplicitP1Position::OuterBinding => {}
+        ExplicitP1Position::WrittenSelf => {
+            reject_namespace_attributes(
+                &value_atoms,
+                "written-self explicit P1",
+                provenance.clone(),
+            )?;
+        }
+    }
+    if !value_atoms.stages.is_empty() {
+        selection.value_stages = Some(value_atoms.stages.clone());
+    }
+    if value_atoms.absent_value {
+        selection.presence = Some(value_atoms.presence());
+    }
+    if !value_atoms.mutability.is_empty() {
+        if value_atoms.mutability.len() != 1 {
+            return Err(policy_error(
+                "an explicit P1 policy must select exactly one of const or mut",
+                provenance,
+            ));
+        }
+        let selected = value_atoms
+            .mutability
+            .iter()
+            .next()
+            .copied()
+            .expect("one explicit P1 mutability after validation");
+        if !inherited_p2.value.mutability.is_empty()
+            && !inherited_p2.value.mutability.contains(&selected)
+        {
+            return Err(policy_error(
+                "explicit P1 const/mut slice is outside the mutability domain inherited from P2",
+                provenance,
+            ));
+        }
+        selection.mutability = Some(BTreeSet::from([selected]));
+    }
+    if selection.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(selection))
+    }
 }
 
 pub fn elaborate_namespace_declaration_policy(
@@ -889,7 +1214,7 @@ fn elaborate_p1_components(
             let mut namespace = value_atoms.namespace.clone();
             namespace.extend(pattern_atoms.namespace.iter().copied());
             let export_root = value_atoms.export_root || pattern_atoms.export_root;
-            let visibility = one_namespace(&namespace, provenance.clone())?;
+            one_namespace(&namespace, provenance.clone())?;
             let value_presence = value_atoms.presence();
             let value = ValueComponentPolicy {
                 stages: value_atoms.stages,
@@ -903,8 +1228,6 @@ fn elaborate_p1_components(
                     pattern: PatternComponentPolicy {
                         stages: pattern_atoms.stages,
                     },
-                    namespace_visibility: visibility,
-                    export_root,
                 }),
                 namespace,
                 export_root,
@@ -925,11 +1248,7 @@ pub fn function_object_declaration_policy(
         P1Projection::ValueDominant { value } => value.mutability.clone(),
         P1Projection::Pair(pair) => pair.value.mutability.clone(),
     };
-    FunctionObjectDeclarationPolicy {
-        mutability,
-        namespace_visibility: declaration.visibility,
-        export_root: declaration.export_root,
-    }
+    FunctionObjectDeclarationPolicy { mutability }
 }
 
 pub fn derive_function_object_p1(
@@ -945,8 +1264,6 @@ pub fn derive_function_object_p1(
         pattern: PatternComponentPolicy {
             stages: result_p2.pattern.stages.clone(),
         },
-        namespace_visibility: declaration.namespace_visibility,
-        export_root: declaration.export_root,
     }
 }
 
@@ -997,7 +1314,15 @@ fn restrict_value_policy<V, P>(
         ValuePresence::Optional | ValuePresence::Present | ValuePresence::Absent => {}
     }
     if entry.value.is_none() {
-        return Some(entry.value_policy.clone());
+        // A pure-P entry still answers a stage slice: the visible policy is
+        // the requested restriction of the entry policy (P1 is the visible
+        // policy authority), never the entry policy verbatim.
+        let stages = restrict_stages(&query.stages, &entry.value_policy.stages)?;
+        return Some(ValueComponentPolicy {
+            stages,
+            mutability: entry.value_policy.mutability.clone(),
+            presence: entry.value_policy.presence,
+        });
     }
     let stages = restrict_stages(&query.stages, &entry.value_policy.stages)?;
     let mutability = if query.mutability.is_empty() {
@@ -1024,7 +1349,7 @@ fn restrict_value_policy<V, P>(
     })
 }
 
-fn restrict_stages(query: &StageSet, available: &StageSet) -> Option<StageSet> {
+pub(crate) fn restrict_stages(query: &StageSet, available: &StageSet) -> Option<StageSet> {
     if query.is_empty() {
         return Some(available.clone());
     }
