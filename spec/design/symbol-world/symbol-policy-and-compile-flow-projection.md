@@ -699,6 +699,20 @@ If that subtraction is empty, Pp is `compile`:
 `runtime:seal` remains a valid explicit pair; it means that the value is a
 runtime value whose Pattern/type is first exposed during SealStatic.
 
+P2 answers result-type and input-compatibility questions only. Three
+authorities around an invocation result must stay separate:
+
+```text
+InvocationResultExposure   := canonical P1 of the producing declaration
+ClusterMemberViewPolicy    := each member's own policy entry
+ResultType / InputCompat   := P2
+```
+
+Whether an invocation result is outwardly visible at a phase is decided by
+the canonical P1 authority, not by re-reading the callable's P2 pair as an
+outward visibility source. There is no `P3` return policy, and P2 must not be
+promoted into an ordinary-result outward authority.
+
 ## 5. Function-object P1 derivation
 
 For `P2 = P2v:P2p`, lift only stages:

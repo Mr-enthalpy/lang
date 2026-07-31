@@ -1,18 +1,18 @@
 use lang_syntax::{NormExpr, NormForm, NormNavComponent, NormOrigin, NormProductElem, NormProgram};
 
 use crate::{
-    graph::{BuildError, NamespaceGraphSnapshot, ResolveExpectation, ResolverContext},
     model::{
         CoreMetaFunction, Diagnostic, FieldProjection, NamespaceNodeId, NamespaceNodeKind,
         PolicyEnv, PolicyFlag, Provenance, ResolverCode, SymbolKind, SymbolObject, SymbolPayload,
         VerificationPrimitive,
     },
+    semantic_name_index::{BuildError, ResolveExpectation, ResolverContext, SemanticNameIndex},
 };
 
 const VERIFY_ERROR_PREFIX: &str = "source verification error:";
 
 pub fn evaluate_source_verifications(
-    snapshot: &NamespaceGraphSnapshot,
+    snapshot: &SemanticNameIndex,
     namespace: NamespaceNodeId,
     program: &NormProgram,
     context: &ResolverContext,
@@ -50,7 +50,7 @@ struct VerificationInvocation {
 
 impl VerificationInvocation {
     fn from_expr(
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
         expr: &NormExpr,
     ) -> Option<Result<Self, Diagnostic>> {
@@ -160,7 +160,7 @@ impl VerificationInvocation {
 
     fn evaluate(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         match self.primitive {
@@ -204,7 +204,7 @@ impl VerificationInvocation {
 
     fn expect_exists(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
         should_exist: bool,
     ) -> Result<(), Diagnostic> {
@@ -226,7 +226,7 @@ impl VerificationInvocation {
 
     fn expect_not_resolves(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(1)?;
@@ -246,7 +246,7 @@ impl VerificationInvocation {
 
     fn expect_kind(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
@@ -273,7 +273,7 @@ impl VerificationInvocation {
 
     fn expect_namespace_kind(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
@@ -312,7 +312,7 @@ impl VerificationInvocation {
 
     fn expect_field_names(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_min_arity(1)?;
@@ -339,7 +339,7 @@ impl VerificationInvocation {
 
     fn expect_has_field(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
@@ -362,7 +362,7 @@ impl VerificationInvocation {
 
     fn expect_field_projection(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
@@ -383,7 +383,7 @@ impl VerificationInvocation {
 
     fn expect_field_owner(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
@@ -397,7 +397,28 @@ impl VerificationInvocation {
                     owner_path.source_order_display()
                 ))
             })?;
-        if field.owner_type_symbol_id == owner.id {
+        let field_owner_type = snapshot
+            .symbol(field.owner_type_symbol_id)
+            .and_then(|symbol| match &symbol.payload {
+                SymbolPayload::Type(type_object) => Some(type_object.represented_type),
+                _ => None,
+            })
+            .ok_or_else(|| {
+                self.error(format!(
+                    "expected `{}` field owner to carry a type value",
+                    field_path.source_order_display()
+                ))
+            })?;
+        let expected_owner_type = match &owner.payload {
+            SymbolPayload::Type(type_object) => type_object.represented_type,
+            _ => {
+                return Err(self.error(format!(
+                    "expected `{}` to carry a type value",
+                    owner_path.source_order_display()
+                )))
+            }
+        };
+        if field_owner_type == expected_owner_type {
             Ok(())
         } else {
             Err(self.error(format!(
@@ -410,7 +431,7 @@ impl VerificationInvocation {
 
     fn expect_field_type(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
     ) -> Result<(), Diagnostic> {
         self.expect_arity(2)?;
@@ -424,7 +445,16 @@ impl VerificationInvocation {
                     type_path.source_order_display()
                 ))
             })?;
-        if field.field_type_symbol_id == field_type.id {
+        let represented_type = match &field_type.payload {
+            SymbolPayload::Type(type_object) => type_object.represented_type,
+            _ => {
+                return Err(self.error(format!(
+                    "expected `{}` to carry a type value",
+                    type_path.source_order_display()
+                )))
+            }
+        };
+        if field.field_type_value == represented_type {
             Ok(())
         } else {
             Err(self.error(format!(
@@ -437,7 +467,7 @@ impl VerificationInvocation {
 
     fn expect_policy(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
         check: PolicyCheck,
     ) -> Result<(), Diagnostic> {
@@ -468,7 +498,7 @@ impl VerificationInvocation {
 
     fn expect_callable_policy(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
         plane: CallablePolicyPlane,
         should_contain: bool,
@@ -522,7 +552,7 @@ impl VerificationInvocation {
 
     fn resolve_type_payload(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
         path: &SourcePath,
     ) -> Result<crate::model::TypeObject, Diagnostic> {
@@ -544,7 +574,7 @@ impl VerificationInvocation {
 
     fn resolve_field_payload(
         &self,
-        snapshot: &NamespaceGraphSnapshot,
+        snapshot: &SemanticNameIndex,
         context: &ResolverContext,
         path: &SourcePath,
     ) -> Result<crate::model::FieldObject, Diagnostic> {
@@ -763,7 +793,7 @@ fn components_to_path(components: &[NormNavComponent]) -> Option<SourcePath> {
 }
 
 fn resolve_any_role(
-    snapshot: &NamespaceGraphSnapshot,
+    snapshot: &SemanticNameIndex,
     context: &ResolverContext,
     path: &SourcePath,
 ) -> Result<SymbolObject, Diagnostic> {
@@ -782,7 +812,7 @@ fn resolve_any_role(
 }
 
 fn resolve_expected_kind(
-    snapshot: &NamespaceGraphSnapshot,
+    snapshot: &SemanticNameIndex,
     context: &ResolverContext,
     path: &SourcePath,
     kind: SymbolKind,
@@ -809,7 +839,7 @@ fn resolve_expected_kind(
 }
 
 fn resolve_callable_symbol(
-    snapshot: &NamespaceGraphSnapshot,
+    snapshot: &SemanticNameIndex,
     context: &ResolverContext,
     path: &SourcePath,
 ) -> Result<SymbolObject, Diagnostic> {
@@ -907,14 +937,14 @@ fn field_projection_label(projection: FieldProjection) -> &'static str {
 mod tests {
     use super::*;
     use crate::{
-        graph::{NamespaceGraphSnapshot, ResolverContext},
         model::{MetaFunctionObject, NamespaceNode, SourceCategory},
         policy_metadata, policy_set_meta, policy_set_runtime,
+        semantic_name_index::{ResolverContext, SemanticNameIndex},
     };
 
     #[test]
     fn runtime_only_verification_operation_is_not_meta_visible() {
-        let snapshot = NamespaceGraphSnapshot::new();
+        let snapshot = SemanticNameIndex::new();
         let root = snapshot.root_node();
         let mut delta = snapshot.empty_delta();
         let verify_node = delta.allocate_node_id();
@@ -957,6 +987,8 @@ mod tests {
             function_policy: policy_metadata(policy_set_runtime()),
             body_entry_policy: policy_metadata(policy_set_runtime()),
             return_object_policy: policy_metadata(policy_set_runtime()),
+            return_shape: crate::ReturnShape::SingleVal(crate::PatternConstraint::Unconstrained),
+            privilege: crate::CallablePrivilege::BuiltinPrivileged,
         });
         delta.insert_symbol(verify_node, operation);
 

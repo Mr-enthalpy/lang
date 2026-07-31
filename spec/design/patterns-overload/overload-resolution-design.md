@@ -58,10 +58,12 @@ Implemented for this slice:
 - unique selection or hard ambiguity diagnostics;
 - selected delete-body diagnostics and the current legacy `r === x`
   forwarding-body substrate.
-- a caller-supplied atomic runtime-migration ordering prototype that extends
-  Bp with input/output endpoint Policy fit before its later input-type and
-  Pattern-specificity stand-ins, and never performs transitive migration
-  search.
+- a connected `PreparedCallCandidate` path shared by source-Symbol calls and
+  Pattern-owner-associated calls;
+- one Bp' product comparison over the implemented ordinary formal/phase
+  coordinates plus optional atomic-migration input/output endpoint fit;
+- the retained caller-supplied transition fixture as algebra-only evidence,
+  never as a second resolver or source-language callable family.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
 symbol, projects and enumerates its heterogeneous value facet, observes each
@@ -132,9 +134,11 @@ This block records implementation behavior only; it must not be used to infer
 a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
-meta-return semantics. Final meta construction uses `r = ...` to produce
-`SymbolConstructionValue`; ordinary declaration `let ===` aliasing remains
-separate. See
+meta-return semantics. Final meta construction uses the construction-effect
+family on the return cluster — `let r = expr;` adds a fresh member,
+`let r === path;` adds an alias member (Val2 forwarding), `r = expr;`
+overwrites an existing member, and `r;` delivers the cluster — producing a
+`SymbolConstructionValue`. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
@@ -320,12 +324,18 @@ query accepts runtime. The original demand may be a choice such as
 branch extracted as the runtime-only migration target. A failed query with no
 runtime alternative does not authorize arbitrary operation search.
 
-The current transition candidate representation is only a comparison
-prototype. It reuses maximal-element selection but does not yet route through a
-language-authorized atomic migration operation's Symbol family, heterogeneous
-Val2, `InvocationFrame`, or ordinary prepared callable candidate. It cannot
-repair an inapplicable Type/Pattern structure by searching `ref`, `share`,
-`alias`, or another structure-changing operation.
+The connected build slice routes an authorized atomic runtime migration from
+an existing source `PatternValue` to that owner's associated `()` Val2, then
+through the same `PreparedCallCandidate`, `InvocationFrame`, and ordinary
+selection path as source callables. The historical
+`PolicyTransitionCallable` carrier remains an isolated endpoint-order fixture
+and does not participate in this routing.
+
+The connected restricted path still lacks full Pattern applicability,
+requires/concepts, and the non-identity B1/B2/B4/B5/B6 implementations. These
+are missing dimensions of the one ordinary resolver, not permission to search
+`ref`, `share`, `alias`, or another structure-changing operation after a
+Policy failure.
 
 ### 3.2 P2 pair at the fully admissible boundary
 
@@ -1001,9 +1011,9 @@ MustSelectConsistent(M, B6, f)
 
 ---
 
-## 7. Relationship to v0.7-prep Implementation
+## 7. Relationship to the connected `lang_build` implementation
 
-The current resolver retains a transitional flat symbol-policy filtering layer
+The older resolver retains a transitional flat symbol-policy filtering layer
 that approximates part of C2:
 
 - `PolicyFlag::{Export, Meta, Compile, Seal, Runtime}` — flat compatibility
@@ -1012,12 +1022,13 @@ that approximates part of C2:
 - `PolicyEnv::OpenStatic` — the current compatibility OpenStatic query view
 - `ResolverCode` — miss vs ambiguity discriminator
 
-These are used in early-meta expansion (`try_expand_early_meta_initializer`)
+These remain in the legacy early-meta expansion
+(`try_expand_early_meta_initializer`)
 which performs a per-policy-pass lookup of meta-function targets. This is
 current substrate for, but not a complete implementation of,
 `VisiblePolicyViews`.
 
-The later restricted v0.8 path implements bounded structural applicability,
+The restricted v0.8 path implements bounded structural applicability,
 meta body-entry checking, extraction specificity for selected source
 callables, one remainder pack at each normalized parameter level, and
 propagation of source-named strategy metadata after applicability. It does not
@@ -1027,21 +1038,32 @@ not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
 
-The atomic migration prototype currently models only:
+The connected ordinary path now implements:
 
 ```text
-hard applicability
-  -> endpoint-only Policy product fixture
-  -> prototype ordinary entry/input-type preference
-  -> prototype B3 Pattern specificity
+source Symbol or held PatternValue
+  -> heterogeneous semantic Val2
+  -> value TypeValue
+  -> Pattern owner / associated ()
+  -> InvocationFrame
+  -> C0/C1/C2/C3/A
+  -> one Bp' product over ordinary mutability/phase coordinates
+       x optional migration input endpoint
+       x optional migration output endpoint
+  -> bounded B3 Pattern specificity
+  -> unique ordinary invocation and complete result entries
 ```
 
-This proves the endpoint coordinate relation and its placement before the B3
-stand-in, but remains caller-supplied substrate. Its private
-`prototype_endpoint_policy_maxima` helper is deliberately not a public,
-sequentially composable Bp extension. It does not yet combine endpoint
-coordinates with the real ordinary Bp coordinates from the
-Symbol/Val2/associated-`()` pipeline.
+There is no maxima pass between ordinary and endpoint coordinates. Without a
+migration context, the optional endpoint coordinates are absent and the
+comparison is exactly the connected old-Bp mutability/phase order. B1, B2, B4,
+B5, B6, full Pattern applicability, concepts/requires, and lifetime remain
+incomplete/identity boundaries in this bounded slice.
+
+The separate `PolicyTransitionCallable` fixture still proves isolated endpoint
+algebra, typed failures, delete, and no-chain laws. Its private
+`prototype_endpoint_policy_maxima` remains deliberately non-composable and is
+not source-integration evidence or a second resolver.
 
 ---
 

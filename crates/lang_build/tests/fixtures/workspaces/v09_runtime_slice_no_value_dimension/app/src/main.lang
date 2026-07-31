@@ -1,0 +1,6 @@
+let f =
+  (self, t: type): runtime -> let r: type =>
+{
+  let r = (t inner) |> struct;
+  r;
+};

@@ -1,10 +1,10 @@
 use lang_build::{
     CallableOwnerPlacement, CallableReceiverBindingSource, CallableReceiverTypeId,
-    CanonicalFingerprint, ExtractionMemberVisibility, LocalCallableIdentity,
-    LocalGenerationIdentity, LocalSymbolIdentity, MetaInstanceKey, NamespaceLookupFailure,
+    CanonicalValueAddr, ExtractionMemberVisibility, LocalCallableIdentity, LocalGenerationIdentity,
+    LocalSymbolIdentity, MetaCallableIdentity, MetaInstanceKey, NamespaceLookupFailure,
     NamespaceNameView, NamespaceSymbolEntry, NamespaceVisibility, OwnerNamespaceGraph,
     OwnerNamespaceNodeId, OwnerQualificationError, PackageId, Provenance, SemanticOwnerGraph,
-    SemanticOwnerQualification, SemanticSymbolIdentity, SymbolId,
+    SemanticOwnerQualification, SemanticSymbolIdentity, SemanticValueId,
 };
 use lang_syntax::{NormDecl, NormForm};
 
@@ -29,13 +29,11 @@ fn entry(
     }
 }
 
-fn canonical_meta_key(callee: SymbolId, argument: &str) -> MetaInstanceKey {
+fn canonical_meta_key(callable: MetaCallableIdentity, argument_addr: u64) -> MetaInstanceKey {
     MetaInstanceKey {
-        fingerprint: CanonicalFingerprint {
-            value: format!("v08:test:{argument}"),
-        },
-        callee_symbol_id: callee,
-        provenance: Provenance::new(format!("canonical {argument}")),
+        callable,
+        arguments: CanonicalValueAddr(argument_addr),
+        provenance: Provenance::new(format!("canonical args@{argument_addr}")),
     }
 }
 
@@ -212,12 +210,14 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
     let mut owners = SemanticOwnerGraph::new();
     let package = owners.package_root(PackageId(1), "app");
     let namespace = owners.namespace(package, "meta");
-    let f = SemanticSymbolIdentity {
-        owner: namespace,
-        local: LocalSymbolIdentity(7),
+    // Meta instance interning keys off the selected function object VALUE
+    // identity, never the carrier Symbol hosting the overload cluster.
+    let f = MetaCallableIdentity {
+        selected_function_value: SemanticValueId(7),
+        selected_call_entry: SemanticValueId(70),
     };
-    let uint8 = canonical_meta_key(SymbolId(7), "type:uint8");
-    let uint16 = canonical_meta_key(SymbolId(7), "type:uint16");
+    let uint8 = canonical_meta_key(f, 8);
+    let uint16 = canonical_meta_key(f, 16);
 
     let f_uint8 = owners.meta_instance(namespace, f, uint8.clone());
     assert_eq!(
@@ -231,15 +231,11 @@ fn canonical_meta_invocations_share_the_callable_owner_graph_and_are_interned() 
         "different canonical arguments create distinct owners"
     );
 
-    let returned_meta = SemanticSymbolIdentity {
-        owner: f_uint8,
-        local: LocalSymbolIdentity(0),
+    let returned_meta = MetaCallableIdentity {
+        selected_function_value: SemanticValueId(100),
+        selected_call_entry: SemanticValueId(101),
     };
-    let nested = owners.meta_instance(
-        f_uint8,
-        returned_meta,
-        canonical_meta_key(SymbolId(0), "type:uint8"),
-    );
+    let nested = owners.meta_instance(f_uint8, returned_meta, canonical_meta_key(returned_meta, 8));
     assert_eq!(owners.parent(nested), Some(f_uint8));
 }
 

@@ -1,0 +1,6 @@
+meta let bad =
+  (compile let self, _ uint8: type): (meta || compile):(meta || compile)
+    -> let result: uint8 =>
+{
+  result;
+};

@@ -1,24 +1,27 @@
 //! Canonical meta instance key and fingerprint.
 //!
-//! Produces deterministic fingerprints from `PreparedCallableCandidate` material.
-//! Key computation uses an explicit field-by-field encoding, **not** `Debug`
-//! formatting, source text, or normalized dumps.
+//! `MetaInstanceKey = MetaCallableIdentity × CanonicalArgumentProductAddr`
+//! the key STORES its structural coordinates and defines
+//! equality/ordering directly on them.  The FNV fingerprint is a derived
+//! digest for display/transport only — it never defines semantic equality.
 //!
-//! ## v0.8 placeholder
-//!
-//! Fingerprints are prefixed `v08:` to mark them as **not** cross-version-stable.
-//! The final stable canonical key will use a different encoding scheme and key
-//! derivation when cross-build TypeSymbol identity is implemented.
+//! The `PreparedCallableCandidate` digest channel survives only as an opaque
+//! compatibility-cache digest; it no longer produces a `MetaInstanceKey`.
 
 use crate::{
+    canonical_value::CanonicalValueAddr,
     fingerprint::Fnv1a64,
+    identity::MetaCallableIdentity,
     meta_candidate::{
-        CanonicalArgAtomKind, CanonicalMetaInstanceKeySeed, PreparedCallableCandidate,
+        CanonicalArgAtomKind, CanonicalArgProductShapeMaterial, PreparedCallableCandidate,
     },
-    model::{Provenance, SymbolId},
+    model::Provenance,
 };
 
 /// Deterministic canonical fingerprint prefixed with version marker.
+///
+/// A fingerprint is DERIVED material: display, transport, and legacy cache
+/// digests only.  It never defines equality of any semantic identity.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CanonicalFingerprint {
     pub value: String,
@@ -32,28 +35,53 @@ impl CanonicalFingerprint {
     }
 }
 
-/// Canonical meta instance key derived from a `PreparedCallableCandidate`.
-///
-/// The key captures everything that identifies a unique meta invocation:
-/// callee identity, argument structure, TypeSymbol material, and build/policy context.
-/// It does **not** capture binding names, provenance descriptions, or
-/// declaration-level metadata.
+/// Canonical meta instance key: the structural identity coordinates of one
+/// meta invocation.
 ///
 /// ## Equality and ordering
 ///
-/// Only `fingerprint` and `callee_symbol_id` participate in equality /
-/// ordering. `provenance` is excluded — it is diagnostic context, not
-/// canonical identity.
+/// Equality and ordering are defined DIRECTLY on the structural coordinates
+/// `(callable, arguments)` — never on a digest.
+/// `provenance` is excluded: it is diagnostic context, not canonical
+/// identity.  Graph declaration SymbolIds never enter the key: the
+/// callable coordinate is the selected function object
+/// VALUE identity plus its selected `()` call entry.
 #[derive(Clone, Debug)]
 pub struct MetaInstanceKey {
-    pub fingerprint: CanonicalFingerprint,
-    pub callee_symbol_id: SymbolId,
+    /// Selected meta callable: function object value + selected call entry.
+    pub callable: MetaCallableIdentity,
+    /// Canonical address of the whole argument Product,
+    /// `Addr(Product(a1..an))`.
+    pub arguments: CanonicalValueAddr,
     pub provenance: Provenance,
+}
+
+impl MetaInstanceKey {
+    /// Structural identity coordinates participating in Eq/Ord.
+    fn coords(&self) -> (MetaCallableIdentity, CanonicalValueAddr) {
+        (self.callable, self.arguments)
+    }
+
+    /// Derived display/transport fingerprint of the structural coordinates.
+    ///
+    /// This digest NEVER defines equality; it is recomputed from the stored
+    /// structural coordinates on demand.
+    pub fn fingerprint(&self) -> CanonicalFingerprint {
+        let mut h = Fnv1a64::new();
+        // Version marker for the normalized canonical meta key encoding.
+        h.write_str_field("v09-source-meta-norm");
+        // Selected function object value identity + selected call entry.
+        h.write_field(&self.callable.selected_function_value.as_u64().to_le_bytes());
+        h.write_field(&self.callable.selected_call_entry.as_u64().to_le_bytes());
+        // The whole argument tuple as one interned Product address.
+        h.write_field(&self.arguments.as_u64().to_le_bytes());
+        CanonicalFingerprint::new(h.finish_hex())
+    }
 }
 
 impl PartialEq for MetaInstanceKey {
     fn eq(&self, other: &Self) -> bool {
-        self.fingerprint == other.fingerprint && self.callee_symbol_id == other.callee_symbol_id
+        self.coords() == other.coords()
     }
 }
 
@@ -67,76 +95,104 @@ impl PartialOrd for MetaInstanceKey {
 
 impl Ord for MetaInstanceKey {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.fingerprint
-            .cmp(&other.fingerprint)
-            .then(self.callee_symbol_id.cmp(&other.callee_symbol_id))
+        self.coords().cmp(&other.coords())
     }
 }
 
-/// Compute a `MetaInstanceKey` from a prepared candidate.
-pub fn compute_meta_instance_key(candidate: &PreparedCallableCandidate) -> MetaInstanceKey {
-    let hash = encode_canonical_meta_instance_key_seed(&candidate.canonical_key_seed);
-    MetaInstanceKey {
-        fingerprint: CanonicalFingerprint::new(hash),
-        callee_symbol_id: candidate.callee_symbol_id,
-        provenance: candidate.provenance.clone(),
-    }
-}
-
-/// Encode the canonical key seed into a deterministic hex digest.
+/// Compatibility cache digest of a prepared meta candidate.
 ///
-/// The encoding is field-by-field with length-prefixing so that concatenation
-/// of neighbouring fields cannot produce false matches (e.g. `"ab" + "c"` must
-/// not collide with `"a" + "bc"`).
-fn encode_canonical_meta_instance_key_seed(seed: &CanonicalMetaInstanceKeySeed) -> String {
+/// This is the surviving remnant of the pre-canonical key channel: an opaque
+/// digest used ONLY by `MetaInstanceCache`. It is not a
+/// `MetaInstanceKey` and defines no semantic identity.
+///
+/// The digest material is derived on demand from the candidate's argument
+/// product shape and build-identity fragments — there is no stored second
+/// "canonical key" definition.  The encoding is field-by-field with
+/// length-prefixing so that concatenation of neighbouring fields cannot
+/// produce false matches (e.g. `"ab" + "c"` must not collide with
+/// `"a" + "bc"`).
+pub fn compute_legacy_meta_instance_digest(
+    candidate: &PreparedCallableCandidate,
+) -> CanonicalFingerprint {
+    let material =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
     let mut h = Fnv1a64::new();
 
     // Version marker
     h.write_str_field("v08");
 
     // Callee identity
-    h.write_field(&seed.callee_function_symbol_id.0.to_le_bytes());
+    h.write_field(&candidate.callee_symbol_id.0.to_le_bytes());
 
     // Argument arity
-    h.write_field(&(seed.argument_arity as u64).to_le_bytes());
-
-    debug_assert_eq!(
-        seed.argument_arity, seed.argument_product_shape_material.arity,
-        "seed arity must match material arity"
-    );
+    h.write_field(&(material.arity as u64).to_le_bytes());
 
     // Unit positions
-    h.write_field(&(seed.unit_positions.len() as u64).to_le_bytes());
-    for pos in &seed.unit_positions {
+    h.write_field(&(material.unit_positions.len() as u64).to_le_bytes());
+    for pos in &material.unit_positions {
         h.write_field(&(*pos as u64).to_le_bytes());
     }
 
     // Atom kinds
-    h.write_field(&(seed.argument_product_shape_material.atom_kinds.len() as u64).to_le_bytes());
-    for kind in &seed.argument_product_shape_material.atom_kinds {
+    h.write_field(&(material.atom_kinds.len() as u64).to_le_bytes());
+    for kind in &material.atom_kinds {
         let discriminant = atom_kind_discriminant(kind);
         h.write_field(&[discriminant]);
     }
 
-    // Known type symbols (primary identity)
-    h.write_field(&(seed.argument_type_symbols.len() as u64).to_le_bytes());
-    for sym in &seed.argument_type_symbols {
-        match sym {
+    // Known type values. Name/carrier navigation has already been evaluated
+    // and must not affect canonical invocation identity.
+    h.write_field(&(material.known_type_values.len() as u64).to_le_bytes());
+    for type_value in &material.known_type_values {
+        match type_value {
             None => h.write_field(&[0u8]),
-            Some(s) => {
+            Some(type_value) => {
                 h.write_field(&[1u8]);
-                h.write_field(&s.0.to_le_bytes());
+                h.write_field(&type_value.0.to_le_bytes());
             }
         }
     }
 
     // Build/policy identity fragments
-    write_opt_str(&mut h, &seed.package_identity_fragment);
-    write_opt_str(&mut h, &seed.mount_identity_fragment);
-    write_opt_str(&mut h, &seed.build_config_fingerprint_fragment);
-    write_opt_str(&mut h, &seed.policy_export_fingerprint_fragment);
+    write_opt_str(&mut h, &candidate.build_identity.package_identity_fragment);
+    write_opt_str(&mut h, &candidate.build_identity.mount_identity_fragment);
+    write_opt_str(
+        &mut h,
+        &candidate.build_identity.build_config_fingerprint_fragment,
+    );
+    write_opt_str(
+        &mut h,
+        &candidate.build_identity.policy_export_fingerprint_fragment,
+    );
 
-    h.finish_hex()
+    CanonicalFingerprint::new(h.finish_hex())
+}
+
+/// Compute the canonical `MetaInstanceKey` of one meta invocation from the
+/// selected meta callable identity and the canonical address of the whole
+/// argument Product.
+///
+/// `MetaInstanceKey = MetaCallableIdentity × Addr(Product(a1..an))` — this
+/// single key mechanism serves source-declared AND core meta callables.
+/// The invocation parentheses are themselves a
+/// Product value, so the arguments participate as one Product normal form
+/// whose members are the per-position canonical addresses: top-level
+/// argument equivalence is order-sensitive because Product identity is
+/// positional, not because of any sequence encoding here.  Formal binder
+/// names, source paths, body material, backing declaration SymbolIds, and
+/// carrier Symbols never enter this key.  α-renaming a formal binder
+/// cannot change the key; two distinct meta function values under one
+/// carrier Symbol always produce distinct keys.
+pub fn compute_canonical_meta_instance_key(
+    callable: MetaCallableIdentity,
+    arguments_product_addr: CanonicalValueAddr,
+    provenance: Provenance,
+) -> MetaInstanceKey {
+    MetaInstanceKey {
+        callable,
+        arguments: arguments_product_addr,
+        provenance,
+    }
 }
 
 pub(crate) fn atom_kind_discriminant(kind: &CanonicalArgAtomKind) -> u8 {

@@ -5,7 +5,8 @@
 //! is represented directly; it is not wrapped in a non-product call value.
 
 use crate::{
-    meta_invocation::{ConstructionInstanceId, MetaValueTarget, TypeDefinitionInstanceId},
+    identity::TypeValueId,
+    meta_invocation::{ConstructionInstanceId, TypeDefinitionInstanceId},
     model::{Diagnostic, FieldProjection, Provenance, SymbolId},
     pattern_head::PatternHeadId,
 };
@@ -27,10 +28,12 @@ pub struct ValuePointShape {
 pub enum ValuePointKind {
     Leaf,
     Constructed {
+        owner_type_value: Option<TypeValueId>,
+        /// Compatibility graph carrier only.
         owner_type_symbol_id: Option<SymbolId>,
     },
     Forwarded {
-        target: MetaValueTarget,
+        type_value: TypeValueId,
     },
     GeneratedConstruction {
         construction_instance_id: ConstructionInstanceId,
@@ -51,6 +54,8 @@ pub struct ProductNormalFormShape {
 pub enum ProductNormalFormKind {
     Bare,
     Named {
+        owner_type_value: Option<TypeValueId>,
+        /// Compatibility graph carrier only.
         owner_type_symbol_id: Option<SymbolId>,
     },
 }
@@ -59,6 +64,16 @@ pub enum ProductNormalFormKind {
 pub struct ProductNormalFormElem {
     pub label: Option<String>,
     pub value_shape: Box<EvalResultNormalForm>,
+    /// Evaluated first-order type projection of this element.
+    /// Transport/navigation material only: semantic equality consumes
+    /// `type_observation`.
+    pub type_value: Option<TypeValueId>,
+    /// The element type's observation identity — `Addr(Norm_type)` when the
+    /// producing boundary was world-connected, otherwise the `Detached`
+    /// projection.  Semantic equality consumes this, never the bare
+    /// `type_value`.
+    pub type_observation: Option<crate::CanonicalTypeObservation>,
+    /// Compatibility graph carrier for navigation/provenance only.
     pub type_symbol_id: Option<SymbolId>,
     pub provenance: Provenance,
 }
@@ -72,6 +87,8 @@ pub enum ExposedExtractionInterface {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamedProductExtractionShape {
+    pub owner_type_value: TypeValueId,
+    /// Compatibility graph carrier used to navigate installed projections.
     pub owner_type_symbol_id: SymbolId,
     pub owner_pattern_head: Option<PatternHeadId>,
     pub fields: Vec<NamedExtractionField>,
@@ -81,6 +98,16 @@ pub struct NamedProductExtractionShape {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamedExtractionField {
     pub label: String,
+    /// Evaluated first-order field type projection. Transport/registry
+    /// material only: extraction-shape semantic equality consumes
+    /// `field_type_observation`, not this projection and not the source
+    /// carrier Symbol.
+    pub field_type_value: TypeValueId,
+    /// The field type's observation identity — `Addr(Norm_type)` including
+    /// the recursive Val2 read at the classifying boundary, otherwise the
+    /// `Detached` projection.  Semantic equality consumes this.
+    pub field_type_observation: crate::CanonicalTypeObservation,
+    /// Compatibility graph carrier for current namespace projection.
     pub field_type_symbol_id: SymbolId,
     pub field_pattern_head: Option<PatternHeadId>,
     pub field_index: usize,
@@ -91,6 +118,7 @@ pub struct NamedExtractionField {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeExtractionInterface {
+    pub owner_type_value: TypeValueId,
     pub owner_type_symbol_id: SymbolId,
     pub owner_pattern_head: Option<PatternHeadId>,
     pub exposed_view: NamedProductExtractionShape,
@@ -136,11 +164,14 @@ pub fn named_product_to_product_normal_form(
                     extraction_interface: ExposedExtractionInterface::Leaf,
                     provenance: field.provenance.clone(),
                 })),
+                type_value: Some(field.field_type_value),
+                type_observation: Some(field.field_type_observation),
                 type_symbol_id: Some(field.field_type_symbol_id),
                 provenance: field.provenance.clone(),
             })
             .collect(),
         product_kind: ProductNormalFormKind::Named {
+            owner_type_value: Some(named.owner_type_value),
             owner_type_symbol_id: Some(named.owner_type_symbol_id),
         },
         provenance: named.provenance.clone(),
@@ -245,10 +276,47 @@ impl EvalResultNormalForm {
 
 impl ValuePointShape {
     pub fn semantic_eq(&self, other: &Self) -> bool {
-        self.value_kind == other.value_kind
+        value_point_kind_semantic_eq(&self.value_kind, &other.value_kind)
             && self
                 .extraction_interface
                 .semantic_eq(&other.extraction_interface)
+    }
+}
+
+fn value_point_kind_semantic_eq(left: &ValuePointKind, right: &ValuePointKind) -> bool {
+    match (left, right) {
+        (ValuePointKind::Leaf, ValuePointKind::Leaf) => true,
+        (
+            ValuePointKind::Constructed {
+                owner_type_value: left,
+                ..
+            },
+            ValuePointKind::Constructed {
+                owner_type_value: right,
+                ..
+            },
+        ) => left == right,
+        (
+            ValuePointKind::Forwarded { type_value: left },
+            ValuePointKind::Forwarded { type_value: right },
+        ) => left == right,
+        (
+            ValuePointKind::GeneratedConstruction {
+                construction_instance_id: left,
+            },
+            ValuePointKind::GeneratedConstruction {
+                construction_instance_id: right,
+            },
+        ) => left == right,
+        (
+            ValuePointKind::GeneratedTypeDefinition {
+                type_definition_id: left,
+            },
+            ValuePointKind::GeneratedTypeDefinition {
+                type_definition_id: right,
+            },
+        ) => left == right,
+        _ => false,
     }
 }
 
@@ -270,7 +338,7 @@ impl ExposedExtractionInterface {
 
 impl ProductNormalFormShape {
     pub fn semantic_eq(&self, other: &Self) -> bool {
-        self.product_kind == other.product_kind
+        product_kind_semantic_eq(&self.product_kind, &other.product_kind)
             && self.elements.len() == other.elements.len()
             && self
                 .elements
@@ -280,17 +348,34 @@ impl ProductNormalFormShape {
     }
 }
 
+fn product_kind_semantic_eq(left: &ProductNormalFormKind, right: &ProductNormalFormKind) -> bool {
+    match (left, right) {
+        (ProductNormalFormKind::Bare, ProductNormalFormKind::Bare) => true,
+        (
+            ProductNormalFormKind::Named {
+                owner_type_value: left,
+                ..
+            },
+            ProductNormalFormKind::Named {
+                owner_type_value: right,
+                ..
+            },
+        ) => left == right,
+        _ => false,
+    }
+}
+
 impl ProductNormalFormElem {
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.label == other.label
             && self.value_shape.semantic_eq(&other.value_shape)
-            && self.type_symbol_id == other.type_symbol_id
+            && self.type_observation == other.type_observation
     }
 }
 
 impl NamedProductExtractionShape {
     pub fn semantic_eq(&self, other: &Self) -> bool {
-        self.owner_type_symbol_id == other.owner_type_symbol_id
+        self.owner_type_value == other.owner_type_value
             && self.owner_pattern_head == other.owner_pattern_head
             && self.fields.len() == other.fields.len()
             && self
@@ -304,7 +389,7 @@ impl NamedProductExtractionShape {
 impl NamedExtractionField {
     pub fn semantic_eq(&self, other: &Self) -> bool {
         self.label == other.label
-            && self.field_type_symbol_id == other.field_type_symbol_id
+            && self.field_type_observation == other.field_type_observation
             && self.field_pattern_head == other.field_pattern_head
             && self.field_index == other.field_index
             && self.projection == other.projection

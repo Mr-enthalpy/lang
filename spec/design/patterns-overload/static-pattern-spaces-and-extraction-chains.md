@@ -27,7 +27,8 @@ This design is not an arbitrary set-theoretic pattern algebra. It does not make 
 This file is the fuller, later pattern-space / extraction-chain design. The earlier pattern normalization / candidate-shape layer used to prepare meta-invocation candidates is a different, earlier layer, documented in `spec/design/patterns-overload/pattern-normalization-and-first-order-overload.md`.
 
 Resolved pattern ownership, symbol-first facets, `struct`, functional `inject`,
-and the fully named `Set<PatternValue>` versus ordered-layer rule are
+and the fully named Pattern-body navigation map versus ordered naked-Product
+rule are
 canonicalized in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 This document consumes those resolved scopes and pattern values; it does not
@@ -254,10 +255,24 @@ arbitrary local names that merely look like pattern heads
 
 There is no fallback from pattern-head lookup to ordinary function-call lookup. If a pattern head cannot be found in the current bounded extraction interface, this is a no-matching-extractor or no-candidate error in a later checking phase.
 
-The final model performs bounded completion in a `ResolvedPatternScope`:
+The final model gives each Pattern layer an own-navigation state:
 
 ```text
-bare child + current parent PatternScopeId
+OwnNavigation(layer) =
+    Explicit(path)
+  | ImplicitGlobal
+  | Absent
+```
+
+Only non-root layers may be `Absent`; an omitted root navigation is
+`ImplicitGlobal`. Bounded completion therefore has a total anchor and traverses
+only the complete, already established Pattern-parent chain:
+
+```text
+bare child + Pattern parents from nearest to farthest
+  -> append inherited parent navigation
+  -> continue through OwnNavigation = Absent
+  -> stop at nearest Explicit(path) or ImplicitGlobal anchor
   -> completed child Symbol path
   -> resolve Symbol
   -> read PatternValue from Symbol
@@ -273,18 +288,28 @@ Inherited and explicit navigation therefore differ in symbol-path formation,
 not in direct versus indirect value access. Program text names a symbol first;
 the evaluator sees the pattern value through that symbol. A pattern's
 diagnostic navigation may share the symbol's spelling without sharing identity.
+The parent walk does not classify Patterns as internal or external. If it
+reaches a top Pattern whose navigation was omitted, that omission is an exact
+global `::` anchor, not ordinary bare-symbol `near -> outer -> core` lookup.
+It never reverse-infers an outer Pattern from a resident name. A non-empty
+chain ending in `Absent` is invalid/truncated, not implicitly global.
 
-When the current normalized layer has no bare values, it is
-`S: Set<PatternValue>`, so extraction continues with value lookup:
+When the current normalized layer is a fully named body of a Pattern, it is
+`M: Map<CanonicalFullNavigation, CanonicalPatternValue>`, so extraction
+continues with value lookup:
 
 ```text
-extract(path, S)
-  = lookup(value(resolve_symbol(path)), S)
+extract(path, M)
+  = lookup(
+      complete_navigation(value(resolve_symbol(path))),
+      normalized_resident(value(resolve_symbol(path))),
+      M
+    )
 ```
 
-It is not `lookup(resolve_symbol(path), S)`: symbols are not elements of the
-normalized pattern set. Construction origin may remain provenance, but does not
-participate in set equality or extraction semantics.
+It is not `lookup(resolve_symbol(path), M)`: symbols are not keys or residents
+of the normalized Pattern map. Construction origin may remain provenance, but
+does not participate in map equality or extraction semantics.
 
 The current v0.9 implementation provides only the minimal registry-backed
 identity/lookup substrate for this rule:
@@ -467,30 +492,56 @@ can remove known branches from a known sum pattern. This is still structural rem
 ### 3.4 Direct-child layer ordering
 
 Pattern-layer order is decided for the complete current sibling layer, not per
-child in isolation:
+child in isolation. Order-insensitivity requires both a wrapping Pattern and
+fully named direct children:
 
 ```text
-all direct children have top-pattern navigation names:
-  normalize to Set<PatternValue>
-  elements are evaluated and fully navigation-qualified
-  set equality uses PatternValue identity
-  symbols and source-origin categories are not elements
+current sibling layer is a Pattern body
+and all direct children have top-pattern navigation names:
+  normalize to Map<CanonicalFullNavigation, CanonicalPatternValue>
+  residents are evaluated and every key is fully navigation-qualified
+  map equality uses complete navigation plus PatternValue identity
+  symbols and source-origin categories are neither keys nor residents
 
-at least one direct child is a bare value:
+naked Product, regardless of whether its children are named:
+  the whole layer is position-preserving and order-sensitive
+
+Pattern body with at least one bare direct child:
   the whole layer is position-preserving and order-sensitive
   positions participate in identity
 ```
 
+Therefore:
+
+```text
+(a, b)c == (b, a)c
+(a, b)  != (b, a)
+```
+
+The normalizer must preserve:
+
+```text
+ProductNode(children)
+PatternLayerNode(name, ProductNode(children))
+```
+
+as distinct node kinds until ordering is decided. Complete child navigation is
+a necessary condition for unordered Pattern-layer normalization, not a
+sufficient condition and not a replacement for the `PatternLayerNode`
+boundary.
+
 Thus different-name functional `inject` operations commute in a fully named
-layer. A layer such as `{bool::, t1::t, t2::t}` contains `PatternValue`s, even
-when an element's navigation spelling matches the symbol path that carries it.
+Pattern body. A layer such as `{bool::, t1::t, t2::t}` contains canonical
+navigation/`PatternValue` entries, even when an entry's navigation spelling
+matches the symbol path that carries it.
 Inherited/explicit navigation, ordinary binding, and `inject` are
 pre-normalization production routes; provenance may retain them for diagnostics
 but they do not affect value identity or extraction.
 
-If any sibling is bare, a set or name map cannot replace the ordered layer. A
-canonical serializer may sort a fully named set only as representation; the
-sorting is not source-order semantics.
+For a naked Product, or if any sibling of a Pattern body is bare, a name map
+cannot replace the ordered layer. A canonical serializer may sort a fully
+named Pattern-body map only as representation; the sorting is not source-order
+semantics.
 
 The canonical owner, injection, uniqueness, and replay rules are in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
@@ -1089,7 +1140,7 @@ For example:
 
 ```lang
 let id = (self, t: type): compile -> r: type => {
-    r = t;
+    let r = t;
     r;
 };
 ```
@@ -1099,7 +1150,7 @@ This compile body computes a `PatternValue`. A meta body instead constructs a
 
 ```lang
 let box = (self, t: type): meta -> r: symbol => {
-    r = (t inner) |> struct;
+    let r = (t inner) |> struct;
     r;
 };
 ```
@@ -1193,6 +1244,71 @@ P? = P
 TopPattern(P)? = P
 ```
 
+The last equation is only a display shorthand. A successful peel must not
+delete the Pattern-layer boundary. It erases the top Pattern identity while
+retaining an anonymous Pattern layer with the same body and ordering:
+
+```text
+OptionalPeel(
+  PatternLayer(name = c, body = B, order = O)
+) =
+  PatternLayer(name = _, body = B, order = O)
+```
+
+Thus an unordered layer remains unordered:
+
+```text
+PatternLayer(c, B, Unordered)
+  ?-> PatternLayer(_, B, Unordered)
+```
+
+It must not become `Product(B)`. This gives the following extraction
+elaboration:
+
+```text
+(a, b) <= (a, b)c?
+
+is understood as:
+
+(a, b) _ <= (a, b)c
+```
+
+Here the left side is `PatternLayer(_, Product(a, b), Unordered)`, not a naked
+`Product(a, b)`. The anonymous `_` layer consumes/erases only the old top name
+and preserves the structural boundary that already made resident order
+irrelevant.
+
+This rule does not weaken Product ordering:
+
+```text
+(a, b)  != (b, a)
+(a, b)? = (a, b)              // Product fixed point; no ordering authority gained
+```
+
+Nor does every successful peel imply order-insensitivity. A peeled Pattern
+body that was positional remains positional. The anonymous layer retains
+exactly the ordering of the peeled layer, not a general “ignore Product order”
+flag.
+
+If no top Pattern is peelable, the operation is a fixed point:
+
+```text
+OptionalPeel(x) = x
+```
+
+This is not match failure and does not produce `none`. It only means that no top
+Pattern identity was erased.
+
+Peeling must commute with normalization:
+
+```text
+PeelView(Norm(x)) = Norm(PeelView(x))
+```
+
+The retained anonymous `PatternLayer` boundary is what makes this equation
+possible. This behavior is a recorded future semantic requirement; the current
+executable extraction substrate does not yet implement it.
+
 Repeated postfixes compose one layer at a time:
 
 ```text
@@ -1203,7 +1319,8 @@ Leaves and objects already in Pattern normal form are fixed points. The default
 operation does not search for a matching pattern, recursively decompose an
 object, or skip an arbitrary number of layers.
 
-`?` is orthogonal to pattern extraction:
+`?` is not required to enter pattern extraction and is not itself a
+destructuring operation:
 
 ```text
 ? is not required to start match/extraction
@@ -1233,9 +1350,11 @@ bool_cond
   |> match
 ```
 
-Explicit `bool_cond?` merely requests its one-layer top Pattern view; it is not
-a special control-flow entrance. Here `if` and `else` are conventional pattern
-labels, not lexer keywords or a separate conditional mechanism.
+Explicit `bool_cond?` merely requests its one-layer top Pattern view. If a top
+Pattern is peeled, the view retains an anonymous Pattern-layer boundary with
+the same ordering; it is not a special control-flow entrance. Here `if` and
+`else` are conventional pattern labels, not lexer keywords or a separate
+conditional mechanism.
 
 Future types may be allowed to declare a custom exposed `?` view, but that is a
 future extension. The current default remains one-layer peeling; custom views
@@ -1573,7 +1692,7 @@ The core of the design is:
 8. match is an identity closing consumer, not built-in matching syntax.
 9. Expression results must never be silently discarded — no void exception. Unconsumed values must be consumed or become the current block return.
 10. `_` is an explicit consumption pattern.
-11. `?` peels one top Pattern layer and is orthogonal to extraction; bool Pattern already carries if | else alternatives.
+11. `?` erases one peelable top Pattern name while retaining an anonymous Pattern-layer boundary and its ordering; Product fixed points gain no unordered authority. Bool Pattern already carries if | else alternatives.
 12. Closed control-pattern spaces cannot be added to unrelated patterns.
 13. This non-additivity is guaranteed by package-owned operator implementations, non-reopenable namespaces, and absence of unrestricted lookup.
 14. Construction and extraction may be isomorphic; call and extraction are not.

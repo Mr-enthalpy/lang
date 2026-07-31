@@ -30,8 +30,11 @@ The canonical future symbol-facet, `compile` / `meta`, pattern-owner,
 `struct`, and functional `inject` boundaries are specified in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 That document supersedes the older formal return-slot split between `r = ...`
-and `r === ...` and the transitional idea that a binding destination determines
-the final `struct` owner identity.
+and `r === ...`, the interim single-form `r = ...` reading (the final model
+distinguishes fresh-member, alias-member, and existing-target-write effects
+plus
+the `r;` delivery terminal), and the transitional idea that a binding
+destination determines the final `struct` owner identity.
 
 Namespace-facet origin, source/meta construction-unit ownership, physical
 directory contribution authority, and current cross-file closure are canonical
@@ -743,8 +746,10 @@ let B: type = (int Vec::std)
 ```
 
 means `A == B` by type-value equality while `A` and `B` remain distinct symbols
-unless one is declared via `===`. Canonical `TypeValueId` and full type-value
-equality are future work.
+unless one is declared via `===`. The canonical type-value equality relation
+is defined as the recursive observation `Addr(Norm_type)` (bare `TypeValueId`
+is only the stable first-order root); carrying that settled relation into all
+remaining semantic comparison sites is future work.
 
 See `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md` for the
 field-function and access-tree implications. The intended final distinction
@@ -769,10 +774,10 @@ members.
 
 Pattern-material leaves belong to the `PatternValue` in a type facet and affect
 normalization, matching, and extraction. Ordinary namespace value members alter
-only the namespace/value graph. They do not enter `Set<PatternValue>`, do not
-change ordered pattern material, and do not participate in extraction. A value
-projection is terminal for the current lookup; it does not prevent the same
-symbol from also owning namespace children.
+only the namespace/value graph. They do not enter a fully named Pattern-body
+navigation map, do not change ordered Product/pattern material, and do not
+participate in extraction. A value projection is terminal for the current
+lookup; it does not prevent the same symbol from also owning namespace children.
 
 The complete origin and ownership rules for these facets are in
 `symbol-construction-units-and-namespace-origin.md`.
@@ -911,8 +916,10 @@ semantics; HIR/codegen integration beyond placeholder nodes.
 Must cover the transition from the restricted type-shaped evaluator toward:
 ordinary normalized structured input; `compile` producing `PatternValue`;
 `meta` producing `SymbolConstructionValue : symbol`; rank-directed canonical
-argument identity; `r = ...` assigning return-layer pattern/facet material;
-ordinary `let ===` alias forwarding remaining separate; binding-layer
+argument identity; the return-cluster construction-effect family
+(`let r = expr;` fresh member, `let r === path;` alias member, `r = expr;`
+existing-target write — currently a placeholder overwrite scaffold, `r;`
+delivery terminal); binding-layer
 installation under a legal writable place; and first-class `(T Vec)` /
 `(T Option)` / `(A, B Pair)` construction through the shared invocation frame.
 
@@ -939,9 +946,14 @@ inside formal `struct` or `inject` invocation.
 - Compile/meta bodies consume ordinary parsed and normalized structured material
   under capability policy — not a separate compile-time DSL or text macro.
 - `compile` computes `PatternValue`; `meta` creates or transforms
-  `SymbolConstructionValue : symbol`. Formal meta return material uses
-  `r = ...`; ordinary `let a === b` remains the separate alias/place-forwarding
-  operation.
+  `SymbolConstructionValue : symbol`. Formal meta return material uses the
+  construction-effect family (spellings shown in the current `let`-only
+  compatibility encoding pending expression-level `=`): `let r = expr;` adds
+  a fresh cluster member,
+  `let r === path;` adds an alias member (the same cluster-member mechanism as
+  namespace-level `let a === b` aliasing), `r = expr;` writes to an existing
+  target (today a placeholder overwrite scaffold; the final cluster write
+  algebra is not fixed), and `r;` delivers the cluster.
 - `compile` creates no meta-instance scope. An ordinary canonical meta
   invocation does, and any return `TypeFacet` is rooted in that scope rather
   than in an external `PatternValue` or a later binding destination. Privileged

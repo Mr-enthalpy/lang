@@ -35,6 +35,15 @@ treats `.lang` files as source fragments under their directory namespace,
 parses and normalizes those fragments with `lang_syntax`, and harvests only
 direct top-level declarations needed by the vertical slice.
 
+The API-level manifest also carries `ToolchainGlobalSourceRoot`. This typed
+input may install toolchain-owned source at `::` or below an existing
+namespace/type-associated path. The files still pass through ordinary frontend
+and semantic construction. Ordinary package source roots require a non-empty
+install prefix, so global visibility cannot be confused with global
+construction authority. Root installation is source-visible namespace
+material, not a prelude; cross-package lookup continues to require public
+visibility.
+
 The implementation remains narrower than this design. It does not implement a
 manifest file parser, dependency solving, remote package retrieval, lockfile
 validation, overlays, access-control checking, source-level import syntax, or a

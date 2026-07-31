@@ -37,14 +37,31 @@ impl SemanticValueId {
     }
 }
 
-/// Derive the current first-order type-value projection from a TypeSymbol.
+/// Identity of the *selected callable* behind one meta invocation.
 ///
-/// `TypeValueId` is a first-order type-value projection derived from the
-/// resolved Type symbol's `SymbolId`. This is projection material, not
-/// canonical invocation identity and not a binding source.
+/// Meta instance roots are keyed by the selected callable **value** plus the
+/// selected `()` call entry, never by the carrier Symbol that hosts the
+/// overload cluster: two distinct meta function values under one Symbol must
+/// produce distinct instance roots, and — because the object model allows
+/// one function object Pattern to expose several `()` entries — two distinct
+/// call entries under one function value are two distinct meta callables.
+/// Formal binder names, source paths, body material, and provenance never
+/// participate in this identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct MetaCallableIdentity {
+    pub selected_function_value: SemanticValueId,
+    pub selected_call_entry: SemanticValueId,
+}
+
+/// Bootstrap the current first-order type-value projection for a defining
+/// Type Symbol.
 ///
-/// All `TypeValueId` projection construction from `SymbolId` must go
-/// through this helper.
+/// Once created, this projection is carried directly as a value identity.
+/// Ordinary bindings must not rederive it from their fresh carrier Symbols or
+/// map it back to an original defining Symbol.
+///
+/// This helper is therefore for core/legacy defining-symbol adapters, not
+/// general type-value binding.
 pub fn type_value_projection_from_type_symbol(symbol_id: SymbolId) -> TypeValueId {
     TypeValueId(symbol_id.0)
 }

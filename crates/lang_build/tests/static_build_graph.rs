@@ -293,7 +293,7 @@ fn explicit_mount_change_invalidates_cache_and_rebuilds_world() {
         "B"
     );
     {
-        let capability = second_app.world.snapshot().capability();
+        let capability = second_app.world.namespace_projection().capability();
         let root_context = second_app.world.root_context();
         assert!(
             capability.resolve_str("B::dep", &root_context).is_ok(),

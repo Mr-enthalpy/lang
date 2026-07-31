@@ -1,0 +1,6 @@
+let bad =
+  (self, _ uint8: type): compile
+    -> let result: uint8 =>
+{
+  result;
+};

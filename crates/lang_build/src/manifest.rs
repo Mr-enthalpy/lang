@@ -8,6 +8,12 @@ use std::path::PathBuf;
 pub struct BuildManifest {
     pub package_name: String,
     pub source_roots: Vec<SourceRoot>,
+    /// Toolchain-owned source inputs installed directly in the source-visible
+    /// global implementation space `::`.
+    ///
+    /// These roots are a typed build authority, not ordinary package roots and
+    /// not a prelude/import mechanism.
+    pub global_implementation_roots: Vec<ToolchainGlobalSourceRoot>,
     pub namespace_root: Vec<String>,
     pub dependency_mounts: Vec<NamespaceMount>,
     pub default_core_mount: bool,
@@ -18,6 +24,7 @@ impl BuildManifest {
         Self {
             package_name: package_name.into(),
             source_roots: Vec::new(),
+            global_implementation_roots: Vec::new(),
             namespace_root,
             dependency_mounts: Vec::new(),
             default_core_mount: true,
@@ -35,6 +42,36 @@ impl BuildManifest {
             namespace_root,
         });
         manifest
+    }
+}
+
+/// Physical source bundle carrying toolchain global-construction authority.
+///
+/// Its files still pass through lexer, parser, normalization, and semantic
+/// construction.  The type is what authorizes the empty/root install prefix;
+/// no empty string/path convention grants that authority to ordinary source.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolchainGlobalSourceRoot {
+    pub path: PathBuf,
+    /// Source-order namespace path under `::`. Empty means direct global
+    /// members and is legal only because this carrier owns toolchain
+    /// authority.
+    pub install_prefix: Vec<String>,
+}
+
+impl ToolchainGlobalSourceRoot {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self {
+            path: path.into(),
+            install_prefix: Vec::new(),
+        }
+    }
+
+    pub fn under(path: impl Into<PathBuf>, install_prefix: Vec<String>) -> Self {
+        Self {
+            path: path.into(),
+            install_prefix,
+        }
     }
 }
 

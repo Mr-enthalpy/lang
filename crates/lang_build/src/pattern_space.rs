@@ -152,6 +152,75 @@ pub enum TypePatternExprShape {
 }
 
 impl TypePatternExprShape {
+    /// Ignore transparent singleton Product wrappers introduced by the
+    /// invocation argument parentheses.  This does not erase a Product with
+    /// zero or multiple children.
+    pub fn transparent_singleton(&self) -> &Self {
+        let mut current = self;
+        loop {
+            match current {
+                Self::Product { elements, .. } if elements.len() == 1 => {
+                    current = &elements[0];
+                }
+                _ => return current,
+            }
+        }
+    }
+
+    pub fn top_pattern_name(&self) -> Option<&str> {
+        match self.transparent_singleton() {
+            Self::Named { pattern_name, .. } => Some(pattern_name),
+            _ => None,
+        }
+    }
+
+    pub fn is_named_empty_pattern(&self) -> bool {
+        matches!(
+            self.transparent_singleton(),
+            Self::Named { child, .. }
+                if matches!(
+                    child.transparent_singleton(),
+                    Self::Product { elements, .. } if elements.is_empty()
+                )
+        )
+    }
+
+    /// Whether this decoded shape contains Pattern identity but no value
+    /// leaves.
+    ///
+    /// A bare name is decoded as `Named(Product[], name)`.  Sums such as
+    /// `if | else` are therefore pure no-value Pattern structures rather than
+    /// zero-arity field products.  An anonymous empty Product alone has no
+    /// Pattern identity and does not satisfy this predicate.
+    pub fn is_pure_pattern_without_value(&self) -> bool {
+        fn facts(pattern: &TypePatternExprShape) -> (bool, bool) {
+            match pattern {
+                TypePatternExprShape::Leaf { .. } => (true, false),
+                TypePatternExprShape::Product { elements, .. } => {
+                    elements.iter().fold((false, false), |acc, element| {
+                        let next = facts(element);
+                        (acc.0 || next.0, acc.1 || next.1)
+                    })
+                }
+                TypePatternExprShape::Sum { alternatives, .. } => {
+                    alternatives
+                        .iter()
+                        .fold((false, false), |acc, alternative| {
+                            let next = facts(alternative);
+                            (acc.0 || next.0, acc.1 || next.1)
+                        })
+                }
+                TypePatternExprShape::Named { child, .. } => {
+                    let child = facts(child);
+                    (child.0, true)
+                }
+            }
+        }
+
+        let (has_value_leaf, has_pattern_name) = facts(self);
+        !has_value_leaf && has_pattern_name
+    }
+
     pub fn leaf(
         external_type_expr: StructLeafTypeExprShape,
         local_pattern_name: impl Into<String>,
@@ -393,6 +462,7 @@ impl SelectedSumPattern {
 /// - `Product(...)` → `None` (not a sum pattern space by itself).
 /// - `Leaf { .. }` → `None` (not a sum pattern space by itself).
 pub fn derive_sum_pattern_space(expr: &TypePatternExprShape) -> Option<SumPatternSpaceShape> {
+    let expr = expr.transparent_singleton();
     match expr {
         TypePatternExprShape::Sum {
             alternatives,
@@ -546,6 +616,8 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
                             provenance: p.clone(),
                         }),
                     ),
+                    type_value: None,
+                    type_observation: None,
                     type_symbol_id: None,
                     provenance: p.clone(),
                 });
@@ -562,6 +634,8 @@ fn product_payload_from_elements(elements: &[TypePatternExprShape]) -> ProductNo
                             provenance: Provenance::new("nested pattern element"),
                         }),
                     ),
+                    type_value: None,
+                    type_observation: None,
                     type_symbol_id: None,
                     provenance: Provenance::new("nested pattern element"),
                 });

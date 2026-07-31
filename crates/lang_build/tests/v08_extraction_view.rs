@@ -3,11 +3,10 @@ mod support;
 use support::*;
 
 use lang_build::{
-    expand_meta_initializer_via_invocation, match_binding_pattern_shape, question_view,
-    BindingPatternShape, BindingShapeMatchResult, CandidateBuildIdentityPlaceholder,
-    EvalResultNormalForm, ExecutionEnv, ExposedExtractionInterface, ExtractionViewResult,
-    FieldProjection, PolicyEnv, ProductNormalFormElem, ProductNormalFormKind,
-    ProductNormalFormShape, Provenance, SymbolPayload, ValuePointKind, ValuePointShape,
+    match_binding_pattern_shape, question_view, BindingPatternShape, BindingShapeMatchResult,
+    EvalResultNormalForm, ExposedExtractionInterface, ExtractionViewResult, FieldProjection,
+    ProductNormalFormElem, ProductNormalFormKind, ProductNormalFormShape, Provenance,
+    ResolveExpectation, SymbolPayload, ValuePointKind, ValuePointShape,
 };
 
 fn leaf(description: &str) -> EvalResultNormalForm {
@@ -24,6 +23,8 @@ fn bare_product(arity: usize, description: &str) -> ProductNormalFormShape {
             .map(|index| ProductNormalFormElem {
                 label: None,
                 value_shape: Box::new(leaf(format!("{description} element {index}").as_str())),
+                type_value: None,
+                type_observation: None,
                 type_symbol_id: None,
                 provenance: Provenance::new(format!("{description} element {index}")),
             })
@@ -36,6 +37,7 @@ fn bare_product(arity: usize, description: &str) -> ProductNormalFormShape {
 fn value_exposing_product(product: ProductNormalFormShape) -> EvalResultNormalForm {
     EvalResultNormalForm::ValuePoint(ValuePointShape {
         value_kind: ValuePointKind::Constructed {
+            owner_type_value: None,
             owner_type_symbol_id: None,
         },
         extraction_interface: ExposedExtractionInterface::Product(product),
@@ -129,31 +131,15 @@ fn product_pattern_does_not_match_leaf_after_extraction() {
 
 #[test]
 fn struct_type_materialization_records_named_field_extraction_interface() {
-    let world =
-        lang_build::CompilationWorld::from_manifest(&empty_app_manifest()).expect("empty world");
-    let initializer = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
-    );
-    let result = expand_meta_initializer_via_invocation(
-        &initializer,
-        world.snapshot(),
-        world.package_root_node(),
-        "T",
-        &world.package_context(),
-        PolicyEnv::OpenStatic,
-        ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
-        Provenance::new("struct extraction interface test"),
-        None,
-    )
-    .expect("struct initializer should expand");
+    let world = build_single_fixture_world("v08_struct_uint8", "app");
+    let result = world
+        .resolve_with_expectation("T", ResolveExpectation::TypeObject)
+        .expect("source build installs the generated type");
     let uint8 = world
-        .snapshot()
-        .capability()
-        .resolve_type_object_with_policy("uint8", &world.package_context(), PolicyEnv::OpenStatic)
+        .resolve_with_expectation("uint8", ResolveExpectation::TypeObject)
         .expect("uint8 type resolves");
 
-    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+    let SymbolPayload::Type(type_object) = &result.payload else {
         panic!("struct expansion replacement must be a type object");
     };
     let extraction = type_object
@@ -161,14 +147,26 @@ fn struct_type_materialization_records_named_field_extraction_interface() {
         .as_ref()
         .expect("generated struct type records instance extraction interface");
 
-    assert_eq!(extraction.owner_type_symbol_id, type_object.type_symbol_id);
+    assert_eq!(
+        extraction.owner_type_symbol_id,
+        type_object.carrier_symbol_id
+    );
+    assert_eq!(extraction.owner_type_value, type_object.represented_type);
     assert_eq!(
         extraction.exposed_view.owner_type_symbol_id,
-        type_object.type_symbol_id
+        type_object.carrier_symbol_id
+    );
+    assert_eq!(
+        extraction.exposed_view.owner_type_value,
+        type_object.represented_type
     );
     assert_eq!(extraction.exposed_view.fields.len(), 1);
     let field = &extraction.exposed_view.fields[0];
     assert_eq!(field.label, "a");
+    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+        panic!("uint8 carries a type value");
+    };
+    assert_eq!(field.field_type_value, uint8_type.represented_type);
     assert_eq!(field.field_type_symbol_id, uint8.id);
     assert_eq!(field.field_index, 0);
     assert_eq!(field.projection, FieldProjection::Value);
@@ -184,5 +182,31 @@ fn equality_shape_logic_has_no_extraction_repair_entry() {
     assert_eq!(
         question_view(&non_leaf),
         ExtractionViewResult::NormalForm(product_normal_form)
+    );
+}
+
+#[test]
+fn extraction_semantic_identity_ignores_type_carrier_symbol() {
+    let left = EvalResultNormalForm::ValuePoint(ValuePointShape {
+        value_kind: ValuePointKind::Constructed {
+            owner_type_value: Some(lang_build::TypeValueId(7)),
+            owner_type_symbol_id: Some(lang_build::SymbolId(70)),
+        },
+        extraction_interface: ExposedExtractionInterface::Leaf,
+        provenance: Provenance::new("left carrier"),
+    });
+    let right = EvalResultNormalForm::ValuePoint(ValuePointShape {
+        value_kind: ValuePointKind::Constructed {
+            owner_type_value: Some(lang_build::TypeValueId(7)),
+            owner_type_symbol_id: Some(lang_build::SymbolId(71)),
+        },
+        extraction_interface: ExposedExtractionInterface::Leaf,
+        provenance: Provenance::new("right carrier"),
+    });
+
+    assert_ne!(left, right, "exact fixture material retains graph carriers");
+    assert!(
+        left.semantic_eq(&right),
+        "semantic extraction identity consumes the TypeValue, not the carrier Symbol"
     );
 }

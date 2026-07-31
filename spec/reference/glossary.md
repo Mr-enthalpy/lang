@@ -1102,6 +1102,20 @@ deduce list, may carry an optional binding annotation, may carry `with { ... }`,
 and is followed by `=` and an initializer expression.
 Let bindings are the only declaration path in v0.1.
 
+At the semantic layer, ordinary `let LHS = RHS` has one uniform value-binding
+rule for ordinary values, type values, and Pattern values:
+
+```text
+evaluate RHS -> v
+allocate fresh LHS Symbol/Place
+bind that exact v to the LHS Symbol
+```
+
+If RHS is a path, the path first resolves a Symbol and reads `v`; the RHS
+carrier Symbol is not part of `v` after that read. `let T: type = uint8`
+therefore binds the existing type value under a fresh carrier, whereas
+`let T === uint8` is the separate Symbol/place-forwarding form.
+
 _See also: Declaration, BindingSlot, BindingAnnotation._
 
 ---
@@ -1121,6 +1135,35 @@ canonical skeleton. `None` means unwritten and later inferred. The parser
 preserves syntax and does not perform semantic pair validation.
 
 _See also: Let binding, BindingAnnotation, CanonicalSkeleton._
+
+---
+
+## Source-Visible Global Implementation Space
+
+The toolchain-owned source construction input installed at namespace root
+`::`, abbreviated `Gsrc`. Its files pass through ordinary lexing, parsing,
+normalization, declaration harvesting, semantic Symbol/Val2 construction, and
+ordinary invocation. The typed build authority may use an empty install
+prefix; ordinary project source roots may not.
+
+`Gsrc` is source-visible namespace material, not a prelude. A project lookup
+still follows ordinary path and public/private rules, and no member is injected
+into lexical scope merely because it is installed at `::`. Physical bundle
+paths organize build input but do not determine Symbol or Pattern identity.
+
+_See also: Namespace Symbol Views, Toolchain Global Construction Authority._
+
+---
+
+## Toolchain Global Construction Authority
+
+The typed build fact authorizing a toolchain-owned source bundle to contribute
+direct members to `::`. Global visibility and global construction authority
+are different: ordinary source may resolve a public global path but cannot
+obtain root-construction authority from an empty directory, empty mount
+prefix, or missing navigation component.
+
+_See also: Source-Visible Global Implementation Space._
 
 ---
 
@@ -1306,7 +1349,7 @@ Generic ordinary members may realize the four default transports
 `const <- const`, `const <- mut`, `mut <- const`, and `mut <- mut`; more
 specific Pattern members may refine or delete regions of that relation.
 
-The current prototype implements only the binding-P1 entry point. It projects
+The demand-preparation helper implements only the binding-P1 entry point. It projects
 the complete original query first, then derives a runtime-only target branch:
 
 ```text
@@ -1319,15 +1362,21 @@ PolicyTransitionRequest {
 }
 ```
 
-The current implementation provides only a caller-supplied candidate-ordering
-prototype. Input and output endpoint Policy fitness form one product/Pareto
-partial order before the Pattern-specificity stand-in; crossed advantages are
-ambiguous and declaration order is irrelevant. Full Bp' must combine ordinary
-Bp and endpoint coordinates in one product. The prototype's endpoint-only
-maxima helper is private and not sequentially composable with ordinary Bp.
-Absent Val1 cannot construct the request. Candidate output Type must equal
-source Type, so migration cannot search `ref` or another structure-changing
-operation to repair applicability.
+The connected build slice consumes such a request through the source
+`PatternValue`'s resolved owner and associated `()` Val2, then uses the same
+`PreparedCallCandidate`, `InvocationFrame`, and ordinary result path as source
+calls. Its Bp' dominance relation composes the implemented ordinary
+formal/phase coordinates with optional input/output migration endpoints before
+one maximal-element selection. Without those optional coordinates it reduces
+to the connected ordinary order; a source regression preserves the older
+restricted selector's winner identity.
+
+The older caller-supplied candidate-ordering carrier remains algebra-only
+fixture material. Its endpoint-only maxima helper is private and not
+sequentially composable with ordinary Bp. Crossed advantages are ambiguous and
+declaration order is irrelevant. Absent Val1 cannot construct the request.
+Candidate output Type must equal source Type, so migration cannot search `ref`
+or another structure-changing operation to repair applicability.
 
 Input and output Policy slicing bracket the directed migration:
 
@@ -1338,9 +1387,12 @@ Project_out o Migration o Project_in
 No transitive migration graph, candidate backtracking, temporary-lifetime
 extension, universal transition Symbol, or new callable ontology is implied.
 Explicit mechanical `ref`, `share`, and `alias` operations remain ordinary
-function-object calls distinct from Policy-demand satisfaction. Initializer
-integration and final ordinary Symbol/Val2/associated-`()`/InvocationFrame
-routing remain future work.
+function-object calls distinct from Policy-demand satisfaction.
+Binding P1 is the currently connected demand consumer. Consumer-neutral
+parameter/result demand preparation, complete Pattern/result construction,
+backend/runtime materialization, and residual execution remain future work;
+ordinary Symbol/Val2/associated-`()`/InvocationFrame routing itself is now
+connected.
 
 _See also: Policy Binding, Policy Pair,
 `spec/contracts/v0.6-cross-policy-value-transition.md`._
@@ -1659,9 +1711,13 @@ NormReturnTargetSyntax ::=
   | Explicit(NormExpr)
 ```
 
-`ImplicitNearest` represents a return targeted at the nearest
-enclosing self. The current restricted build pass binds it to an active
-`ReturnTargetFrame`; full lexical self-capability resolution remains future.
+`ImplicitNearest` is a historical marker name preserved by the frozen
+normalized surface; it carries no resolved target. Its confirmed semantic
+interpretation is a return to the outermost enclosing function layer (while a
+plain tail `expr;` delivers to the directly enclosing layer, and
+`Explicit(T)` selects the layer named by the function-object type `T`). The
+current restricted build pass binds it to an active `ReturnTargetFrame`; full
+lexical self-capability resolution remains future.
 `Explicit(NormExpr)` preserves the explicit target syntax
 without resolution.
 
@@ -1669,11 +1725,12 @@ _See also: ReturnEvent._
 
 ## ImplicitNearest return target
 
-A return target indicating the return should target the nearest
-enclosing callable-frame self. In the parser and normalizer,
-`ImplicitNearest` is an unresolved marker. The source form is
-`E return;`. A restricted post-normalization binder resolves the active frame;
-result Pattern delivery remains deferred.
+A return target marker whose name is historical: in the parser and normalizer,
+`ImplicitNearest` is an unresolved marker, and the confirmed semantics of the
+source form `E return;` is a return to the outermost enclosing function layer,
+not the nearest one. Implementations must not extend behavior based on the
+older nearest-enclosing reading. A restricted post-normalization binder
+resolves the active frame; result Pattern delivery remains deferred.
 
 _See also: ReturnTargetSyntax, Explicit return target._
 

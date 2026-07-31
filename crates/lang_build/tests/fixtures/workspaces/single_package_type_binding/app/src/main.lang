@@ -1,6 +1,23 @@
 let T: type = uint8;
+let U: type = T;
+let Direct: type = (uint8 field) struct;
+let Rebound: type = Direct;
+
+compile let pattern_identity =
+  (self, _ uint8: type): compile -> let result: type =>
+{
+  uint8;
+};
+
+let PatternResult: type = T pattern_identity;
 
 verify kind T type;
+verify kind U type;
+verify kind Direct type;
+verify kind Rebound type;
+verify kind PatternResult type;
+verify field_type field::Direct T;
+verify field_owner field::Direct Rebound;
 verify kind T::app type;
 verify not_exists main;
 verify not_exists T::main::app;

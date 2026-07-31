@@ -6,7 +6,9 @@ use std::{
 
 use lang_syntax::{NormClosure, NormOrigin, NormProduct, Span};
 
-use crate::{extraction_view::TypeExtractionInterface, pattern_head::PatternHeadId};
+use crate::{
+    extraction_view::TypeExtractionInterface, identity::TypeValueId, pattern_head::PatternHeadId,
+};
 
 /// Stable identity for a namespace node inside one graph snapshot.
 ///
@@ -349,6 +351,14 @@ pub enum ResolverCode {
     UnsupportedSelectedMetaBody,
     UnsupportedSelectedMetaBodyLocalBinding,
     PatternHeadConflict,
+    /// A runtime-only result P2 (`: runtime ->`, normalized `runtime:compile`)
+    /// declares a value slice whose stage is disjoint from its Pattern stage,
+    /// but the pure-P return slot (`let r: type`) carries no value dimension.
+    /// The declared runtime value slice could never be filled, so the
+    /// declaration itself is illegal. Static pairs (`meta:meta`,
+    /// `compile:compile`, `seal:seal`) keep Pv == Pp and remain legal for
+    /// pure-P return slots.
+    RuntimeSliceWithoutValueDimension,
     UnsupportedPatternExpectation,
     UnsupportedExternalVisibility,
     UnsupportedOverloadTarget,
@@ -568,10 +578,24 @@ pub enum SymbolPayload {
 /// Placeholder type payload created by the v0.6 struct meta slice.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeObject {
-    pub type_symbol_id: SymbolId,
+    /// Symbol/place carrier for this particular source-visible binding.
+    ///
+    /// Ordinary `=` binding allocates a fresh carrier even when it binds an
+    /// already-existing type value.  This field must therefore never be used
+    /// as type-value identity.
+    pub carrier_symbol_id: SymbolId,
+    /// The type value carried by this Symbol.
+    ///
+    /// This is deliberately independent from `carrier_symbol_id`: for
+    /// `let T: type = uint8`, the former is the fresh carrier `T` while this
+    /// projection is exactly the value read from `uint8`.
+    pub represented_type: TypeValueId,
     pub owner_pattern_head: Option<PatternHeadId>,
     pub fields: Vec<TypeField>,
     pub field_names: Vec<String>,
+    pub field_type_values: Vec<TypeValueId>,
+    /// Compatibility carrier list for the current graph projection layer.
+    /// Semantic field-type equality consumes `field_type_values`.
     pub field_type_symbol_ids: Vec<SymbolId>,
     pub type_associated_namespace: Option<NamespaceNodeId>,
     pub extraction_interface: Option<TypeExtractionInterface>,
@@ -585,6 +609,9 @@ pub struct TypeObject {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeField {
     pub name: String,
+    pub type_value: TypeValueId,
+    /// Current graph carrier used to reach field-type namespace material.
+    /// This is not field-type identity.
     pub type_symbol_id: SymbolId,
     pub pattern_head: Option<PatternHeadId>,
     pub visibility: crate::pattern_space::StructuralMemberVisibility,
@@ -609,6 +636,7 @@ pub struct FieldObject {
     pub owner_type_symbol_id: SymbolId,
     pub owner_pattern_head: Option<PatternHeadId>,
     pub field_name: String,
+    pub field_type_value: TypeValueId,
     pub field_type_symbol_id: SymbolId,
     pub field_pattern_head: Option<PatternHeadId>,
     pub projection: FieldProjection,
@@ -633,6 +661,16 @@ pub struct MetaFunctionObject {
     pub function_policy: PolicyMetadata,
     pub body_entry_policy: PolicyMetadata,
     pub return_object_policy: PolicyMetadata,
+    /// Independent declared return-shape coordinate of
+    /// `CallableSemantics = P1 × P2 × ReturnShape × Privilege`: built-ins
+    /// state it per declaration; source declarations elaborate it once from
+    /// the return-slot annotation via `declared_return_shape_from_closure`.
+    /// It is never derived from a Policy stage and no stage is derived from
+    /// it; the only P2 relation is `validate_return_shape`.
+    pub return_shape: crate::policy_pair::ReturnShape,
+    /// Independent declared privilege coordinate: only compiler built-ins
+    /// carry `BuiltinPrivileged`; the source surface can never spell it.
+    pub privilege: crate::policy_pair::CallablePrivilege,
 }
 
 /// Source-declared callable/meta-function payload harvested from normalized
@@ -681,7 +719,7 @@ pub enum VerificationPrimitive {
 /// A delta is installed atomically: either all links/nodes/symbols are applied
 /// or none are.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NamespaceDelta {
+pub struct SemanticNameDelta {
     pub base_snapshot_id: u64,
     pub nodes: BTreeMap<NamespaceNodeId, NamespaceNode>,
     pub symbols: BTreeMap<SymbolId, SymbolObject>,
@@ -691,7 +729,7 @@ pub struct NamespaceDelta {
     next_symbol_id: u64,
 }
 
-impl NamespaceDelta {
+impl SemanticNameDelta {
     pub fn new(base_snapshot_id: u64, next_node_id: u64, next_symbol_id: u64) -> Self {
         Self {
             base_snapshot_id,

@@ -304,7 +304,7 @@ participates in:
 ```text
 PatternValue identity
 pattern normalization
-ordered sequence or Set<PatternValue> formation
+ordered Product/layer or fully named Pattern-body navigation-map formation
 pattern matching and extraction
 type semantics
 ```

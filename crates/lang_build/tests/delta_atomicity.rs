@@ -1,15 +1,14 @@
 mod support;
 use support::*;
 
-use lang_build::meta::try_expand_early_meta_initializer;
 use lang_build::{
-    ChildLink, ChildNameRole, CompilationWorld, NamespaceGraphSnapshot, NamespaceNodeId,
-    Provenance, ResolverContext, SourceCategory, SymbolKind, SymbolObject,
+    ChildLink, ChildNameRole, NamespaceNodeId, Provenance, ResolverContext, SemanticNameIndex,
+    SourceCategory, SymbolKind, SymbolObject,
 };
 
 #[test]
 fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
     let mut delta = snapshot.empty_delta();
     let a = delta.allocate_symbol_id();
@@ -78,7 +77,7 @@ fn delta_transaction_installs_all_or_nothing_and_retains_diagnostics() {
 
 #[test]
 fn conflicting_delta_with_valid_symbol_installs_nothing() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
     let mut initial = snapshot.empty_delta();
     let existing_b = initial.allocate_symbol_id();
@@ -117,7 +116,7 @@ fn conflicting_delta_with_valid_symbol_installs_nothing() {
 
 #[test]
 fn delta_with_missing_parent_or_duplicate_link_installs_nothing() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
 
     let mut missing_parent = snapshot.empty_delta();
@@ -170,51 +169,8 @@ fn delta_with_missing_parent_or_duplicate_link_installs_nothing() {
 }
 
 #[test]
-fn generated_type_delta_conflict_installs_no_generated_fields() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let mut initial = world.snapshot().empty_delta();
-    let existing_t = initial.allocate_symbol_id();
-    initial.insert_symbol(
-        world.package_root_node(),
-        placeholder_symbol(
-            existing_t,
-            world.package_root_node(),
-            "T",
-            "preexisting T conflict",
-        ),
-    );
-    let snapshot = world
-        .snapshot()
-        .install_delta(initial)
-        .expect("install existing T");
-
-    let initializer = initializer_from_source("let T: type = (uint8 a) |> struct");
-    let expansion = try_expand_early_meta_initializer(
-        &snapshot,
-        world.package_root_node(),
-        "T",
-        &initializer,
-        &world.package_context(),
-        Provenance::new("generated T conflict"),
-    )
-    .expect("meta expansion result")
-    .expect("struct expansion");
-    let error = snapshot
-        .install_delta(expansion.namespace_delta)
-        .expect_err("generated type collides with existing T");
-    assert!(error
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.message.contains("T")));
-    assert!(snapshot
-        .capability()
-        .resolve_str("a::T", &world.package_context())
-        .is_err());
-}
-
-#[test]
 fn diagnostic_delta_duplicate_child_prefix() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
 
     let mut delta = snapshot.empty_delta();

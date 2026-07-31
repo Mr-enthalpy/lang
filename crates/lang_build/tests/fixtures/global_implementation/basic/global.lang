@@ -1,0 +1,6 @@
+public + (meta || runtime) let global_identity =
+  (self, t: type): meta -> let r: type =>
+{
+  let r === t;
+  r;
+};

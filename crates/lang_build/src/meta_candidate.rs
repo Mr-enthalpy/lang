@@ -10,9 +10,8 @@
 //! - Candidate preparation does **not** parse source.
 //! - The resolver does **not** flatten products.
 //!
-//! `CandidatePreparationInput` is the preferred pipeline carrier. It is not
-//! formal invocation. `CanonicalArgProductShapeMaterial` records structural
-//! input material. It is not final hash.
+//! `CanonicalArgProductShapeMaterial` records structural input material
+//! derived from the argument product shape. It is not final hash.
 //!
 //! The current implementation boundary lives in `lang_build::product_shape`,
 //! `lang_build::identity`, and `lang_build::meta_candidate`. These are substrate
@@ -20,9 +19,10 @@
 
 use crate::{
     callable_body_allows_execution,
+    identity::TypeValueId,
     model::{
-        CoreMetaFunction, Diagnostic, ExecutionEnv, FieldObject, MetaFunctionObject, PolicyEnv,
-        PolicyMetadata, Provenance, SymbolId, SymbolKind, SymbolObject, SymbolPayload,
+        CoreMetaFunction, Diagnostic, ExecutionEnv, PolicyEnv, PolicyMetadata, Provenance,
+        SymbolId, SymbolObject,
     },
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
 };
@@ -92,52 +92,6 @@ pub struct CandidateBuildIdentityPlaceholder {
     pub policy_export_fingerprint_fragment: Option<String>,
 }
 
-/// Aggregated input for candidate preparation.
-///
-/// The callee must already be graph-resolved; the arg product shape must already
-/// be extracted from a normalized call site. This struct exists to make the
-/// pipeline pass explicit data between stages without letting each stage invent
-/// its own partial extraction.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CandidatePreparationInput {
-    pub callee: SymbolObject,
-    pub arg_product_shape: ArgProductShape,
-    pub parameter_shape: ParameterShape,
-    pub context: CandidatePreparationContext,
-}
-
-impl CandidatePreparationInput {
-    pub fn new(
-        callee: SymbolObject,
-        arg_product_shape: ArgProductShape,
-        parameter_shape: ParameterShape,
-        context: CandidatePreparationContext,
-    ) -> Self {
-        Self {
-            callee,
-            arg_product_shape,
-            parameter_shape,
-            context,
-        }
-    }
-
-    pub fn into_parts(
-        self,
-    ) -> (
-        SymbolObject,
-        ArgProductShape,
-        ParameterShape,
-        CandidatePreparationContext,
-    ) {
-        (
-            self.callee,
-            self.arg_product_shape,
-            self.parameter_shape,
-            self.context,
-        )
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CandidatePolicyPlanes {
     pub lookup_env: PolicyEnv,
@@ -162,7 +116,7 @@ pub struct PreparedCallableCandidate {
     pub arg_product_shape: ArgProductShape,
     pub parameter_shape: ParameterShape,
     pub policy_planes: CandidatePolicyPlanes,
-    pub canonical_key_seed: CanonicalMetaInstanceKeySeed,
+    pub build_identity: CandidateBuildIdentityPlaceholder,
     pub provenance: Provenance,
 }
 
@@ -170,35 +124,6 @@ pub struct PreparedCallableCandidate {
 pub enum CallableCandidateKind {
     MetaFunction,
     FieldFunction,
-}
-
-/// Placeholder input contract for the final canonical meta instance key.
-///
-/// The final key must be derived from the resolved callee `SymbolId`,
-/// canonical argument product shape, Expression barrier structure, Unit
-/// positions, arity, known type-symbol material where available,
-/// package identity, mount identity, build/config fingerprint,
-/// policy/export-relevant metadata, and provenance/cache key fragments
-/// as needed.
-///
-/// It must not be reduced to source text, a normalized dump, callee name plus
-/// arity, or callee name plus a projection-material list only.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CanonicalMetaInstanceKeySeed {
-    pub callee_function_symbol_id: SymbolId,
-    /// Remains `None` — reserved for a future serialized-key format.
-    /// The authoritative canonical key is computed by
-    /// `compute_meta_instance_key(&PreparedCallableCandidate)`.
-    pub argument_product_shape_fingerprint_fragment: Option<String>,
-    pub argument_product_shape_material: CanonicalArgProductShapeMaterial,
-    pub unit_positions: Vec<usize>,
-    pub argument_arity: usize,
-    pub argument_type_symbols: Vec<Option<SymbolId>>,
-    pub package_identity_fragment: Option<String>,
-    pub mount_identity_fragment: Option<String>,
-    pub build_config_fingerprint_fragment: Option<String>,
-    pub policy_export_fingerprint_fragment: Option<String>,
-    pub provenance: Provenance,
 }
 
 /// Fingerprint input material for the canonical meta instance key.
@@ -211,7 +136,7 @@ pub struct CanonicalArgProductShapeMaterial {
     pub arity: usize,
     pub unit_positions: Vec<usize>,
     pub atom_kinds: Vec<CanonicalArgAtomKind>,
-    pub known_type_symbols: Vec<Option<SymbolId>>,
+    pub known_type_values: Vec<Option<TypeValueId>>,
 }
 
 impl CanonicalArgProductShapeMaterial {
@@ -253,10 +178,10 @@ impl CanonicalArgProductShapeMaterial {
                     RawArgValueClass::Unsupported { .. } => CanonicalArgAtomKind::Unsupported,
                 })
                 .collect(),
-            known_type_symbols: shape
+            known_type_values: shape
                 .raw_args
                 .iter()
-                .map(|raw_arg| raw_arg.known_type_symbol_id)
+                .map(|raw_arg| raw_arg.known_first_order_type_value)
                 .collect(),
         }
     }
@@ -316,67 +241,30 @@ pub enum CandidatePrepDeferredReason {
     BodyEntryPolicyMismatch,
 }
 
-pub fn prepare_meta_callable_candidate(
+/// Candidate preparation with declared policy planes.
+///
+/// This is the only candidate-preparation entry. The canonical spine supplies
+/// the callable kind, primitive identity, and body-entry/return-object planes
+/// from its own declared facts (the core bootstrap roster or the semantic call
+/// entry); no `SymbolPayload` is read here. The callee `SymbolObject` remains
+/// identity/visibility material.
+#[allow(clippy::too_many_arguments)]
+pub fn prepare_meta_callable_candidate_with_declared_planes(
     callee: &SymbolObject,
+    callable_kind: CallableCandidateKind,
+    callee_primitive: Option<CoreMetaFunction>,
+    body_entry_policy: PolicyMetadata,
+    return_object_policy: PolicyMetadata,
     arg_product_shape: ArgProductShape,
     parameter_shape: ParameterShape,
     context: CandidatePreparationContext,
 ) -> CandidatePrepResult {
-    let Some((callable_kind, body_entry_policy, return_object_policy)) =
-        callable_policy_from_symbol(callee)
-    else {
-        return CandidatePrepResult::Diagnostic(
-            Diagnostic::hard_error(
-                "candidate preparation requires a graph-resolved callable SymbolObject",
-                Some(callee.provenance.clone()),
-            )
-            .with_symbol_context(callee.id),
-        );
-    };
-
     let policy_planes = CandidatePolicyPlanes {
         lookup_env: context.lookup_env,
         symbol_visibility_policy: callee.policy_metadata.clone(),
         demanded_execution: context.demanded_execution,
         body_entry_policy,
         return_object_policy,
-    };
-    let unit_positions = arg_product_shape
-        .raw_args
-        .iter()
-        .filter_map(|raw_arg| match raw_arg.value_class {
-            RawArgValueClass::NonValue(NonValueArgKind::ProductUnit) => Some(raw_arg.index),
-            _ => None,
-        })
-        .collect();
-    let canonical_key_seed = CanonicalMetaInstanceKeySeed {
-        callee_function_symbol_id: callee.id,
-        argument_product_shape_fingerprint_fragment: None,
-        argument_product_shape_material: CanonicalArgProductShapeMaterial::from_arg_product_shape(
-            &arg_product_shape,
-        ),
-        unit_positions,
-        argument_arity: arg_product_shape.arity,
-        argument_type_symbols: arg_product_shape
-            .raw_args
-            .iter()
-            .map(|raw_arg| raw_arg.known_type_symbol_id)
-            .collect(),
-        package_identity_fragment: context.build_identity.package_identity_fragment.clone(),
-        mount_identity_fragment: context.build_identity.mount_identity_fragment.clone(),
-        build_config_fingerprint_fragment: context
-            .build_identity
-            .build_config_fingerprint_fragment
-            .clone(),
-        policy_export_fingerprint_fragment: context
-            .build_identity
-            .policy_export_fingerprint_fragment
-            .clone(),
-        provenance: context.provenance.clone(),
-    };
-    let callee_primitive = match &callee.payload {
-        SymbolPayload::MetaFunction(mf) => mf.primitive,
-        _ => None,
     };
     let candidate = PreparedCallableCandidate {
         callee_symbol_id: callee.id,
@@ -386,7 +274,7 @@ pub fn prepare_meta_callable_candidate(
         arg_product_shape,
         parameter_shape,
         policy_planes,
-        canonical_key_seed,
+        build_identity: context.build_identity,
         provenance: context.provenance,
     };
 
@@ -450,41 +338,4 @@ pub fn prepare_meta_callable_candidate(
     }
 
     CandidatePrepResult::ApplicablePlaceholder(Box::new(candidate))
-}
-
-/// Wrapper that accepts a `CandidatePreparationInput` and delegates to the
-/// existing `prepare_meta_callable_candidate` logic.
-///
-/// This is the preferred pipeline entry point. Future stages should construct
-/// a `CandidatePreparationInput` rather than assembling scattered parameters.
-/// It does **not** execute meta functions or install `NamespaceDelta`.
-pub fn prepare_meta_callable_candidate_from_input(
-    input: CandidatePreparationInput,
-) -> CandidatePrepResult {
-    let (callee, arg_product_shape, parameter_shape, context) = input.into_parts();
-    prepare_meta_callable_candidate(&callee, arg_product_shape, parameter_shape, context)
-}
-
-fn callable_policy_from_symbol(
-    callee: &SymbolObject,
-) -> Option<(CallableCandidateKind, PolicyMetadata, PolicyMetadata)> {
-    match &callee.payload {
-        SymbolPayload::MetaFunction(MetaFunctionObject {
-            body_entry_policy,
-            return_object_policy,
-            ..
-        }) if callee.kind == SymbolKind::MetaFunction => Some((
-            CallableCandidateKind::MetaFunction,
-            body_entry_policy.clone(),
-            return_object_policy.clone(),
-        )),
-        SymbolPayload::FieldFunction(FieldObject {
-            callable_policy, ..
-        }) if callee.kind == SymbolKind::FieldFunction => Some((
-            CallableCandidateKind::FieldFunction,
-            callable_policy.body_entry_policy.clone(),
-            callable_policy.return_object_policy.clone(),
-        )),
-        _ => None,
-    }
 }

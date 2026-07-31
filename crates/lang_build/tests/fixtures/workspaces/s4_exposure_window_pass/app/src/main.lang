@@ -1,0 +1,12 @@
+let int: type = uint16;
+
+compile let narrow =
+  (self, t: type): (meta || compile):(meta || compile)
+    -> let r: type =>
+{
+  t;
+};
+
+compile let X: type = int narrow;
+
+verify kind X type;

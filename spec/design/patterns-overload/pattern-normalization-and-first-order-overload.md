@@ -79,9 +79,11 @@ the restricted evaluator reports the structured
 `UnsupportedCanonicalSumPatternValue` diagnostic instead of treating `|` as
 policy union, expression-level operator lookup, or `+` reduction.
 
-This is an implementation-substrate note. Final formal meta return uses
-`r = ...` to build `SymbolConstructionValue`; `r === ...` is not a future
-formal-return category.
+This is an implementation-substrate note. Final formal meta return material is
+the construction-effect family (`let r = expr;` fresh member,
+`let r === path;` alias member, `r = expr;` overwrite, `r;` delivery
+terminal) building a `SymbolConstructionValue`; bare `r === ...` is not a
+future formal-return category.
 
 Restricted overload failure is structured in v0.8. Ambiguous candidates,
 missing source-declared callables, lookup-phase visibility misses,

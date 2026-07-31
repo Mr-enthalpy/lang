@@ -3,16 +3,18 @@ mod support;
 use lang_build::{
     construct_field_value, construct_owner_value, constructed_question_view, leaf_value,
     nav_component_name, placeholder_field_constructor_head, question_view_peels,
-    ConstructionInstanceId, ConstructorHead, FieldProjection, ForwardedValue, LocalPatternPlaceId,
-    MetaInvocationValue, MetaValueTarget, PatternExpectation, PatternFieldMaterialization,
-    PatternHeadId, PatternHeadOrigin, PatternHeadRegistry, PatternLookupInput,
-    PatternMaterializationContext, Provenance, ReturnViewShape,
+    CanonicalTypeObservation, ConstructionInstanceId, ConstructorHead, FieldProjection,
+    ForwardedValue, LocalPatternPlaceId, MetaInvocationValue, PatternExpectation,
+    PatternFieldMaterialization, PatternHeadId, PatternHeadOrigin, PatternHeadRegistry,
+    PatternLookupInput, PatternMaterializationContext, Provenance, ReturnViewShape,
 };
 use lang_syntax::{NormOrigin, NormRule, Span};
 
 fn leaf_meta_value(name: &str, symbol_id: lang_build::SymbolId) -> MetaInvocationValue {
+    let type_value = lang_build::type_value_projection_from_type_symbol(symbol_id);
     MetaInvocationValue::ForwardedValue(ForwardedValue {
-        target: MetaValueTarget::TypeSymbol(symbol_id),
+        type_value,
+        type_observation: CanonicalTypeObservation::Detached(type_value),
         return_view: ReturnViewShape::Leaf,
         provenance: Provenance::new(name),
     })
@@ -20,6 +22,10 @@ fn leaf_meta_value(name: &str, symbol_id: lang_build::SymbolId) -> MetaInvocatio
 
 fn uint8_symbol() -> lang_build::SymbolId {
     lang_build::SymbolId(1)
+}
+
+fn uint8_type_value() -> lang_build::TypeValueId {
+    lang_build::type_value_projection_from_type_symbol(uint8_symbol())
 }
 
 fn bounded_head() -> PatternHeadId {
@@ -126,7 +132,7 @@ fn struct_materialization_boundary_allocates_owner_and_field_heads() {
             "TB",
             [PatternFieldMaterialization {
                 field_name: "inner".to_string(),
-                field_type_symbol_id: uint8_symbol(),
+                field_type_value: uint8_type_value(),
                 projection: FieldProjection::Value,
                 provenance: provenance("inner field"),
             }],
@@ -144,7 +150,7 @@ fn struct_materialization_boundary_allocates_owner_and_field_heads() {
         PatternHeadOrigin::Field {
             owner_head: materialized.owner_head,
             field_name: "inner".to_string(),
-            field_type_symbol_id: uint8_symbol(),
+            field_type_value: uint8_type_value(),
             projection: FieldProjection::Value,
         }
     );
@@ -171,7 +177,7 @@ fn field_head_is_owner_scoped() {
         .allocate_field_head(
             owner_a,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner A"),
         )
@@ -180,7 +186,7 @@ fn field_head_is_owner_scoped() {
         .allocate_field_head(
             owner_b,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner B"),
         )
@@ -205,7 +211,7 @@ fn bare_pattern_name_resolves_under_current_extraction_scope() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -236,7 +242,7 @@ fn explicit_terminated_nav_does_not_use_extraction_scope() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -272,7 +278,7 @@ fn explicit_nav_path_does_not_receive_extraction_completion() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -311,7 +317,7 @@ fn explicit_registered_path_resolves_without_bounded_scope() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -379,7 +385,7 @@ fn duplicate_field_name_under_same_owner_is_conflict() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -389,7 +395,7 @@ fn duplicate_field_name_under_same_owner_is_conflict() {
         .allocate_field_head(
             owner,
             "inner",
-            lang_build::SymbolId(2),
+            lang_build::TypeValueId(2),
             FieldProjection::Value,
             provenance("conflicting inner::TB"),
         )
@@ -414,7 +420,7 @@ fn auto_name_with_non_extraction_expectation_is_rejected() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -475,7 +481,7 @@ fn constructor_reconstruction_roundtrip_uses_pattern_head_identity() {
         .allocate_field_head(
             owner,
             "inner",
-            uint8_symbol(),
+            uint8_type_value(),
             FieldProjection::Value,
             provenance("inner::TB"),
         )
@@ -486,7 +492,7 @@ fn constructor_reconstruction_roundtrip_uses_pattern_head_identity() {
         owner,
         field,
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         payload.clone(),
         provenance("1 inner::TB"),
@@ -501,7 +507,7 @@ fn constructor_reconstruction_roundtrip_uses_pattern_head_identity() {
         owner,
         field,
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         constructed_question_view(&field_value),
         provenance("reconstructed field"),
@@ -527,7 +533,7 @@ fn owner_value_one_step_question_view_exposes_payload() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         inner_payload.clone(),
         provenance("(1 inner::TB)"),
@@ -556,7 +562,7 @@ fn field_pattern_one_step_question_view_exposes_payload() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         inner_payload.clone(),
         provenance("(1 inner::TB)"),
@@ -581,7 +587,7 @@ fn field_pattern_reconstruction_roundtrip() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         payload.clone(),
         provenance("1 inner::TB"),
@@ -596,7 +602,7 @@ fn field_pattern_reconstruction_roundtrip() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         peeled.clone(),
         provenance("reconstructed"),
@@ -614,7 +620,7 @@ fn owner_reconstruction_roundtrip() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         payload,
         provenance("1 inner::TB"),
@@ -644,7 +650,7 @@ fn equality_does_not_insert_question() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         inner_payload.clone(),
         provenance("1 inner::TB"),
@@ -673,7 +679,7 @@ fn has_question_view_distinguishes_peelable_from_leaf() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         leaf.clone(),
         provenance("x inner::TB"),
@@ -693,7 +699,7 @@ fn constructor_head_is_extractable() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         leaf,
         provenance("x inner::TB"),
@@ -710,7 +716,7 @@ fn struct_type_records_field_constructor_placeholder() {
         bounded_head(),
         inner_head(),
         "inner",
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
     );
     match &head {
@@ -718,13 +724,13 @@ fn struct_type_records_field_constructor_placeholder() {
             owner_head,
             field_head,
             field_name,
-            field_type_symbol_id,
+            field_type_value,
             projection,
         } => {
             assert_eq!(*owner_head, bounded_head());
             assert_eq!(*field_head, inner_head());
             assert_eq!(*field_name, "inner");
-            assert_eq!(*field_type_symbol_id, uint8_symbol());
+            assert_eq!(*field_type_value, uint8_type_value());
             assert_eq!(*projection, FieldProjection::Value);
         }
         _ => panic!("expected Field constructor"),
@@ -740,7 +746,7 @@ fn into_leaf_value_for_lowering_unwraps_payload() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         leaf,
         provenance("1 inner::TB"),
@@ -756,7 +762,10 @@ fn into_leaf_value_for_lowering_unwraps_payload() {
 fn leaf_semantic_eq_ignores_inner_meta_value_provenance() {
     let leaf1 = leaf_value(
         MetaInvocationValue::ForwardedValue(ForwardedValue {
-            target: MetaValueTarget::TypeSymbol(uint8_symbol()),
+            type_value: lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
+            type_observation: CanonicalTypeObservation::Detached(
+                lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
+            ),
             return_view: ReturnViewShape::Leaf,
             provenance: Provenance::new("leaf1 provenance"),
         }),
@@ -764,7 +773,10 @@ fn leaf_semantic_eq_ignores_inner_meta_value_provenance() {
     );
     let leaf2 = leaf_value(
         MetaInvocationValue::ForwardedValue(ForwardedValue {
-            target: MetaValueTarget::TypeSymbol(uint8_symbol()),
+            type_value: lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
+            type_observation: CanonicalTypeObservation::Detached(
+                lang_build::type_value_projection_from_type_symbol(uint8_symbol()),
+            ),
             return_view: ReturnViewShape::Leaf,
             provenance: Provenance::new("leaf2 provenance — different from leaf1"),
         }),
@@ -784,7 +796,7 @@ fn reconstructed_field_pattern_semantic_eq_original() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         payload,
         provenance("original field-pat"),
@@ -796,7 +808,7 @@ fn reconstructed_field_pattern_semantic_eq_original() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         peeled,
         provenance("reconstructed field-pat"),
@@ -815,7 +827,7 @@ fn reconstructed_owner_semantic_eq_original() {
         bounded_head(),
         inner_head(),
         "inner".to_string(),
-        uint8_symbol(),
+        uint8_type_value(),
         FieldProjection::Value,
         payload,
         provenance("fp"),

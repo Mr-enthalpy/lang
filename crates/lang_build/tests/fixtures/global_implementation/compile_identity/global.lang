@@ -1,0 +1,12 @@
+public + compile let compile_identity =
+  (self, t: type): compile -> let r: type =>
+{
+  let r === t;
+  r;
+};
+
+public + compile let forward_type_value =
+  (self, object: type): compile -> let result: type =>
+{
+  object;
+};

@@ -33,9 +33,9 @@ use std::path::{Path, PathBuf};
 
 use crate::discovery::SourceDiscoveryConfig;
 use crate::fingerprint::Fnv1a64;
-use crate::graph::BuildError;
-use crate::manifest::{BuildManifest, NamespaceMount, SourceRoot};
+use crate::manifest::{BuildManifest, NamespaceMount, SourceRoot, ToolchainGlobalSourceRoot};
 use crate::model::{Diagnostic, Provenance, SymbolKind};
+use crate::semantic_name_index::BuildError;
 use crate::world::CompilationWorld;
 
 /// Cache format version salt. Bumping this invalidates all cache keys without
@@ -57,6 +57,7 @@ pub struct PackageBuildSpec {
     pub name: String,
     pub namespace_root: Vec<String>,
     pub source_roots: Vec<SourceRoot>,
+    pub global_implementation_roots: Vec<ToolchainGlobalSourceRoot>,
     pub dependencies: Vec<StaticDependencySpec>,
     pub dependency_mounts: Vec<NamespaceMount>,
     pub default_core_mount: bool,
@@ -68,6 +69,7 @@ impl PackageBuildSpec {
             name: name.into(),
             namespace_root,
             source_roots: Vec::new(),
+            global_implementation_roots: Vec::new(),
             dependencies: Vec::new(),
             dependency_mounts: Vec::new(),
             default_core_mount: true,
@@ -109,6 +111,7 @@ pub struct PackageBuildMetadata {
     pub namespace_root: Vec<String>,
     pub source_roots: Vec<SourceRootMetadata>,
     pub source_units: Vec<SourceUnitBuildMetadata>,
+    pub global_implementation_units: Vec<SourceUnitBuildMetadata>,
     pub dependencies: Vec<DependencyBuildMetadata>,
     pub explicit_mounts: Vec<ExplicitMountBuildMetadata>,
     pub cache_key: String,
@@ -287,6 +290,32 @@ impl BuildSession {
             })
             .collect();
 
+        let global_roots = spec
+            .global_implementation_roots
+            .iter()
+            .map(|root| SourceRoot {
+                path: root.path.clone(),
+                namespace_root: root.install_prefix.clone(),
+            })
+            .collect::<Vec<_>>();
+        let global_report = SourceDiscoveryConfig::from_source_roots(&global_roots).discover();
+        if global_report.has_hard_errors() {
+            return Err(BuildError {
+                diagnostics: global_report.diagnostics,
+            });
+        }
+        let global_implementation_units = global_report
+            .units
+            .iter()
+            .map(|unit| SourceUnitBuildMetadata {
+                canonical_path: unit.canonical_path.clone(),
+                root_relative_path: unit.root_relative_path.clone(),
+                namespace_dir: unit.namespace_dir.clone(),
+                fragment_name: unit.fragment_name.clone(),
+                content_hash: unit.content_hash.clone(),
+            })
+            .collect::<Vec<_>>();
+
         // Dependencies sorted deterministically so fingerprints/metadata are
         // independent of dependency-list ordering.
         let mut dependencies: Vec<DependencyBuildMetadata> = spec
@@ -307,7 +336,12 @@ impl BuildSession {
                 .then_with(|| left.mount_path.cmp(&right.mount_path))
         });
 
-        let fingerprint = compute_package_fingerprint(spec, &source_units, &dependencies);
+        let fingerprint = compute_package_fingerprint(
+            spec,
+            &source_units,
+            &global_implementation_units,
+            &dependencies,
+        );
         let cache_key = compute_cache_key(&fingerprint);
 
         // Cache hit: clone the cached artifact and update only the returned
@@ -336,6 +370,7 @@ impl BuildSession {
                 })
                 .collect(),
             source_units,
+            global_implementation_units,
             dependencies,
             explicit_mounts: spec
                 .dependency_mounts
@@ -380,6 +415,7 @@ impl BuildSession {
 fn build_manifest(spec: &PackageBuildSpec) -> BuildManifest {
     let mut manifest = BuildManifest::new(spec.name.clone(), spec.namespace_root.clone());
     manifest.source_roots = spec.source_roots.clone();
+    manifest.global_implementation_roots = spec.global_implementation_roots.clone();
     manifest.default_core_mount = spec.default_core_mount;
     manifest.dependency_mounts = spec.dependency_mounts.clone();
     for dependency in &spec.dependencies {
@@ -396,6 +432,7 @@ fn build_manifest(spec: &PackageBuildSpec) -> BuildManifest {
 fn compute_package_fingerprint(
     spec: &PackageBuildSpec,
     source_units: &[SourceUnitBuildMetadata],
+    global_implementation_units: &[SourceUnitBuildMetadata],
     dependencies: &[DependencyBuildMetadata],
 ) -> String {
     let mut hasher = Fnv1a64::new();
@@ -412,6 +449,18 @@ fn compute_package_fingerprint(
     for root in &spec.source_roots {
         hasher.write_str_field(&root.path.to_string_lossy());
         hasher.write_str_field(&root.namespace_root.join("::"));
+    }
+
+    hasher.write_str_field("global_implementation_units");
+    hasher.write_field(&(global_implementation_units.len() as u64).to_le_bytes());
+    for unit in global_implementation_units {
+        hasher.write_str_field(&relative_path_key(&unit.root_relative_path));
+        hasher.write_str_field(&unit.namespace_dir.join("::"));
+        hasher.write_str_field(&unit.fragment_name);
+        hasher.write_str_field(&unit.content_hash);
+    }
+    for root in &spec.global_implementation_roots {
+        hasher.write_str_field(&root.install_prefix.join("::"));
     }
 
     hasher.write_str_field("source_units");

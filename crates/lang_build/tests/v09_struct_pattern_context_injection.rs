@@ -2,10 +2,10 @@ use lang_build::{
     attach_type_definition_pattern_heads, attach_type_definition_pattern_heads_with_context,
     bind_meta_invocation_value_result_with_materialization_state,
     compute_type_definition_instance_id, CanonicalArgProductShapeMaterial, FieldSignatureMaterial,
-    GeneratedFieldDefinition, GeneratedTypeDefinitionValue, LocalPatternPlaceId,
-    NamespaceGraphSnapshot, NamespaceNode, NamespaceNodeId, NamespaceNodeKind, PatternHeadId,
-    PatternHeadOrigin, PatternMaterializationContext, Provenance, ReturnSlotSemantics,
-    ReturnViewShape, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
+    GeneratedFieldDefinition, GeneratedTypeDefinitionValue, LocalPatternPlaceId, NamespaceNode,
+    NamespaceNodeId, NamespaceNodeKind, PatternHeadId, PatternHeadOrigin,
+    PatternMaterializationContext, Provenance, ReturnSlotSemantics, ReturnViewShape,
+    SemanticNameIndex, SourceCategory, SymbolId, SymbolObject, SymbolPayload,
     TypeDefinitionIdentityMaterial, TypeDefinitionInstanceId, TypeMaterializationState,
 };
 
@@ -25,11 +25,15 @@ fn generated_struct_value(
                 arity: 0,
                 unit_positions: Vec::new(),
                 atom_kinds: Vec::new(),
-                known_type_symbols: Vec::new(),
+                known_type_values: Vec::new(),
             },
             field_signature_material: vec![FieldSignatureMaterial {
                 field_name: "x".to_string(),
-                field_type_symbol_id: SymbolId(50),
+                field_type_value: lang_build::TypeValueId(50),
+                field_type_observation: lang_build::CanonicalTypeObservation::Detached(
+                    lang_build::TypeValueId(50),
+                ),
+                field_type_carrier_symbol: SymbolId(50),
                 field_index: 0,
                 visibility: lang_build::StructuralMemberVisibility::Public,
                 provenance: field_provenance.clone(),
@@ -41,7 +45,11 @@ fn generated_struct_value(
         },
         fields: vec![GeneratedFieldDefinition {
             name: "x".to_string(),
-            type_symbol_id: SymbolId(50),
+            type_value: lang_build::TypeValueId(50),
+            type_observation: lang_build::CanonicalTypeObservation::Detached(
+                lang_build::TypeValueId(50),
+            ),
+            type_carrier_symbol: SymbolId(50),
             index: 0,
             visibility: lang_build::StructuralMemberVisibility::Public,
             pattern_head: None,
@@ -51,6 +59,8 @@ fn generated_struct_value(
         return_view: ReturnViewShape::Leaf,
         type_pattern_expr: None,
         sum_pattern_space: None,
+        canonical_type: None,
+        canonical_pattern_override: None,
         provenance: provenance("generated struct"),
     }
 }
@@ -78,9 +88,9 @@ fn stripped(mut value: GeneratedTypeDefinitionValue) -> GeneratedTypeDefinitionV
 }
 
 fn install_test_namespace(
-    snapshot: NamespaceGraphSnapshot,
+    snapshot: SemanticNameIndex,
     name: &str,
-) -> (NamespaceGraphSnapshot, SymbolId, NamespaceNodeId) {
+) -> (SemanticNameIndex, SymbolId, NamespaceNodeId) {
     let root = snapshot.root_node();
     let mut delta = snapshot.empty_delta();
     let namespace_node_id = delta.allocate_node_id();
@@ -363,7 +373,7 @@ fn local_context_uses_place_identity_not_rendered_path_identity() {
 
 #[test]
 fn binding_generated_type_at_root_uses_generated_fallback() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let mut state = TypeMaterializationState::default();
     let value = generated_struct_value_for_binding();
     let type_definition_id = value.type_definition_id;
@@ -381,7 +391,10 @@ fn binding_generated_type_at_root_uses_generated_fallback() {
     let owner_head = type_object
         .owner_pattern_head
         .expect("binding attaches owner pattern head");
-    assert_eq!(type_object.type_symbol_id, expansion.replacement_object.id);
+    assert_eq!(
+        type_object.carrier_symbol_id,
+        expansion.replacement_object.id
+    );
     assert_eq!(
         state.pattern_heads.get(owner_head).unwrap().origin,
         PatternHeadOrigin::GeneratedTypeDefinition { type_definition_id }
@@ -402,7 +415,7 @@ fn binding_generated_type_at_root_uses_generated_fallback() {
 
 #[test]
 fn private_structural_member_remains_in_full_type_but_not_default_extraction() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let mut state = TypeMaterializationState::default();
     let mut value = generated_struct_value(TypeDefinitionInstanceId(0));
     let default_identity = compute_type_definition_instance_id(&value.identity_material);
@@ -446,7 +459,7 @@ fn private_structural_member_remains_in_full_type_but_not_default_extraction() {
 
 #[test]
 fn binding_destination_does_not_select_or_reroot_owner_head() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let (snapshot, _, namespace_a_node_id) = install_test_namespace(snapshot, "ns_a");
     let (snapshot, _, namespace_b_node_id) = install_test_namespace(snapshot, "ns_b");
     let mut state = TypeMaterializationState::default();
@@ -513,7 +526,7 @@ fn binding_destination_does_not_select_or_reroot_owner_head() {
 
 #[test]
 fn binding_preserves_pre_attached_provisional_owner_material() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let mut state = TypeMaterializationState::default();
     let provisional_symbol_id = SymbolId(900);
     let value = attach_type_definition_pattern_heads_with_context(
@@ -543,7 +556,7 @@ fn binding_preserves_pre_attached_provisional_owner_material() {
         .owner_pattern_head
         .expect("binding preserves owner pattern head");
     assert_eq!(bound_owner, provisional_owner);
-    assert_ne!(type_object.type_symbol_id, provisional_symbol_id);
+    assert_ne!(type_object.carrier_symbol_id, provisional_symbol_id);
     assert_eq!(
         state.pattern_heads.get(bound_owner).unwrap().origin,
         PatternHeadOrigin::GlobalBinding {

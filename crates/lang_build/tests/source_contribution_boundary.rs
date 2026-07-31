@@ -4,11 +4,11 @@ use support::*;
 use lang_build::{PolicyFlag, ResolveExpectation, SourceCategory, SymbolPayload};
 
 #[test]
-fn type_value_binding_forwards_type_value_and_keeps_fresh_binding_place() {
+fn type_value_binding_reuses_value_and_keeps_fresh_binding_place() {
     let world = build_single_fixture_world("single_package_type_binding", "app");
     let symbol = world
         .resolve_with_expectation("T", ResolveExpectation::TypeObject)
-        .expect("resolve forwarded type binding");
+        .expect("resolve ordinary type-value binding");
     let core_uint8 = world
         .resolve_with_expectation("uint8::core", ResolveExpectation::TypeObject)
         .expect("resolve core uint8 type");
@@ -24,10 +24,14 @@ fn type_value_binding_forwards_type_value_and_keeps_fresh_binding_place() {
     let symbol_id = symbol.id;
 
     let SymbolPayload::Type(type_object) = symbol.payload else {
-        panic!("expected forwarded Type payload");
+        panic!("expected bound Type payload");
     };
 
-    assert_eq!(type_object.type_symbol_id, core_uint8.id);
+    let SymbolPayload::Type(core_type) = core_uint8.payload else {
+        panic!("core uint8 is a Type object");
+    };
+    assert_eq!(type_object.carrier_symbol_id, symbol_id);
+    assert_eq!(type_object.represented_type, core_type.represented_type);
     assert_ne!(symbol_id, core_uint8.id);
     assert!(type_object.type_associated_namespace.is_some());
 }

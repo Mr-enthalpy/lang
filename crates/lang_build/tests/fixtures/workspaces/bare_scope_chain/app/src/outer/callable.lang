@@ -1,0 +1,7 @@
+let f =
+  (self, t: type): meta
+    -> r: symbol =>
+{
+  let r = (t inner) |> struct;
+  r;
+};

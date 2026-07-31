@@ -10,6 +10,7 @@ const PASS_SINGLE_PACKAGE_FIXTURES: &[(&str, &str)] = &[
     ("verify_runtime_shadow", "app"),
     ("early_struct_meta", "app"),
     ("struct_single_field", "app"),
+    ("struct_invalid_field_syntax", "app"),
     ("field_named_ref", "app"),
     ("field_named_share", "app"),
     ("policy_aware_early_meta", "app"),
@@ -75,11 +76,6 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
         "unknown struct field type",
     ),
     (
-        "struct_invalid_field_syntax",
-        "app",
-        "invalid struct syntax",
-    ),
-    (
         "runtime_value_as_struct_field_type",
         "app",
         "unknown struct field type",
@@ -120,6 +116,11 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
     ("duplicate_declaration", "app", "conflict"),
     ("non_meta_target", "app", "UnsupportedDeferredTypeAssertion"),
     (
+        "ambient_struct_collision",
+        "app",
+        "ambient struct collision",
+    ),
+    (
         "v08_identity_type_notype",
         "app",
         "could not be resolved as a type object",
@@ -128,16 +129,28 @@ const FAIL_SINGLE_PACKAGE_FIXTURES: &[(&str, &str, &str)] = &[
 
 #[test]
 fn pass_fixtures_run_source_verification_loop() {
+    // Collect every failing fixture instead of stopping at the first one so
+    // a single run reports the complete pass-fixture status.
+    let mut failures = Vec::new();
     for (workspace, package) in PASS_SINGLE_PACKAGE_FIXTURES {
-        build_single_fixture_world(workspace, package);
+        let mut session = BuildSession::new();
+        if let Err(error) = session.build_workspace(&single_package_fixture(workspace, package)) {
+            failures.push(format!("fixture `{workspace}` failed: {error:#?}"));
+        }
     }
 
     for (name, workspace) in PASS_WORKSPACE_FIXTURES {
         let mut session = BuildSession::new();
-        session
-            .build_workspace(&workspace())
-            .unwrap_or_else(|error| panic!("fixture `{name}` failed: {error:#?}"));
+        if let Err(error) = session.build_workspace(&workspace()) {
+            failures.push(format!("fixture `{name}` failed: {error:#?}"));
+        }
     }
+    assert!(
+        failures.is_empty(),
+        "{} pass fixture(s) failed:\n\n{}",
+        failures.len(),
+        failures.join("\n\n")
+    );
 }
 
 #[test]

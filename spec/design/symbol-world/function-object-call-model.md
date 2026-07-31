@@ -61,8 +61,8 @@ consumer demand
   -> if successful, use it and stop
   -> otherwise, if the query accepts runtime, extract its runtime branch
   -> select an existing static source Policy view
-  -> resolve the ordinary atomic-migration callable family to Symbol
-  -> enumerate its heterogeneous Val2
+  -> from the held source PatternValue, enter its resolved Pattern owner
+  -> enumerate the language-authorized associated Val2 family
   -> obtain each candidate value's TypeValue
   -> resolve associated ()
   -> build InvocationFrame
@@ -140,17 +140,61 @@ The model does not freeze a special global `transition` Symbol or a new
 callable ontology. It freezes complete-choice existing projection followed,
 only when that projection is empty and the choice accepts runtime, by one
 ordinary function-object call toward the extracted runtime branch. The
-operation-to-Symbol mapping remains an implementation/design handoff.
+connected atomic slice begins from the source value's existing PatternValue
+owner and its associated `()` Val2; independently authorized mechanical
+operations may select other ordinary associated families without changing
+this demand rule.
 
-The current `PolicyTransitionCallable` Rust carrier does not implement this
-pipeline; it is bounded candidate/result fixture material and must be removed
-or reduced to an adapter when ordinary routing is wired. In particular, its
-caller-supplied result Pattern proves only that the carrier can transport
-fixture data. It does not establish canonical TypeValue/PatternValue/owner/
-constructor coherence for an ordinary invocation result. The fixture does,
-however, retain the selected callable's complete result Policy separately from
-the demanded `Project_out` view, and constructs its provisional ordinary
-result before applying that output projection.
+The connected `lang_build` slice now implements this routing for source
+function objects and toolchain-source associated `()` entries:
+
+```text
+Semantic Symbol / Pattern owner
+  -> heterogeneous semantic values
+  -> TypeValue
+  -> PatternValue / ResolvedPatternScope
+  -> associated ()
+  -> PreparedCallCandidate
+  -> InvocationFrame
+  -> ordinary result entries
+```
+
+The source-Symbol and already-held-Pattern entrances merge at the same
+candidate pipeline. The latter carries an explicit semantic receiver and does
+not fabricate a source path or require migration metadata.
+
+Name-based source calls and compiler-authorized operations therefore have
+different candidate entrances but one ordinary call trunk. Neither entrance
+requires `TypeValue -> original carrier Symbol`: source navigation resolves a
+Symbol and reads its values, while an already-held PatternValue directly
+provides its owner/associated Val2.
+
+Associated source navigation obeys the same forward-only rule. If:
+
+```lang
+let T: type = uint8;
+```
+
+then a target selected through `T` resolves `Symbol(T)`, reads the carried
+TypeValue/PatternValue, enters that PatternValue's resolved scope, and obtains
+the named associated Symbol there. It does not inspect T's provenance, search
+for `Symbol(uint8)`, or copy the associated member into T's fresh companion
+place. The named associated Symbol then supplies its heterogeneous values to
+the same C0/C1/C2/C3 trunk.
+
+The older `PolicyTransitionCallable` Rust carrier remains bounded algebra/test
+fixture material. Its caller-supplied result Pattern proves only fixture
+transport and does not establish canonical TypeValue/PatternValue/owner/
+constructor coherence. The connected path instead obtains the result
+PatternValue from the already registered result TypeValue; full
+constructor/extractor result construction and materialization-place lowering
+remain incomplete.
+
+For source-backed transport members, the callable/member value Policy,
+first-formal Policy Pattern, and complete result P2 remain distinct. The member
+Policy supplies the migration output endpoint coordinate, the formal inherits
+the complete P2 and supplies input fit, and ordinary invocation preserves the
+complete P2 until the later demanded `Project_out`.
 
 ## 3. `()` is not an operator
 

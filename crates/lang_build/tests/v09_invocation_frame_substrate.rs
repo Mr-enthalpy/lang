@@ -1,10 +1,10 @@
 use lang_build::{
-    ArgProductShape, CallableCandidateKind, CallableFrameShape, CandidatePolicyPlanes,
-    CanonicalArgProductShapeMaterial, CanonicalMetaInstanceKeySeed, CoreMetaFunction, ExecutionEnv,
-    FlattenedProductInvariant, FlattenedProductObject, InvocationCallableRef,
-    InvocationExecutionEnv, InvocationFrame, InvocationLookupEnv, MetaInvocationInput,
-    ParameterShape, PolicyEnv, PreparedCallableCandidate, ProductAtom, Provenance, ReceiverTypeRef,
-    ReturnTargetShape, SelfPosition, SelfPositionSource, SelfSlotKind, SymbolId,
+    ArgProductShape, CallableCandidateKind, CallableFrameShape, CandidateBuildIdentityPlaceholder,
+    CandidatePolicyPlanes, CoreMetaFunction, ExecutionEnv, FlattenedProductInvariant,
+    FlattenedProductObject, InvocationCallableRef, InvocationExecutionEnv, InvocationFrame,
+    InvocationLookupEnv, MetaInvocationInput, ParameterShape, PolicyEnv, PreparedCallableCandidate,
+    ProductAtom, Provenance, ReceiverTypeRef, ReturnTargetShape, SelfPosition, SelfPositionSource,
+    SelfSlotKind, SymbolId,
 };
 
 fn empty_arg_product_shape() -> ArgProductShape {
@@ -30,8 +30,6 @@ fn unit_arg_product_shape() -> ArgProductShape {
 }
 
 fn candidate_with_arg_product(arg_product_shape: ArgProductShape) -> PreparedCallableCandidate {
-    let canonical_args =
-        CanonicalArgProductShapeMaterial::from_arg_product_shape(&arg_product_shape);
     PreparedCallableCandidate {
         callee_symbol_id: SymbolId(42),
         callee_name: "callable".to_string(),
@@ -46,19 +44,7 @@ fn candidate_with_arg_product(arg_product_shape: ArgProductShape) -> PreparedCal
             body_entry_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
             return_object_policy: lang_build::policy_metadata(lang_build::policy_set_meta()),
         },
-        canonical_key_seed: CanonicalMetaInstanceKeySeed {
-            callee_function_symbol_id: SymbolId(42),
-            argument_product_shape_fingerprint_fragment: None,
-            unit_positions: canonical_args.unit_positions.clone(),
-            argument_arity: canonical_args.arity,
-            argument_type_symbols: canonical_args.known_type_symbols.clone(),
-            package_identity_fragment: None,
-            mount_identity_fragment: None,
-            build_config_fingerprint_fragment: None,
-            policy_export_fingerprint_fragment: None,
-            provenance: Provenance::new("test canonical key seed"),
-            argument_product_shape_material: canonical_args,
-        },
+        build_identity: CandidateBuildIdentityPlaceholder::default(),
         provenance: Provenance::new("prepared callable candidate"),
     }
 }

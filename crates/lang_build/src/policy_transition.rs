@@ -9,10 +9,12 @@
 //! and its overload ordering; migration still cannot repair failed
 //! Type/Pattern applicability.
 //!
-//! The candidate/result carriers below remain prototype fixtures. They share
-//! the ordinary maximal-element rule, but do not yet enumerate a normal
-//! Symbol's heterogeneous Val2, construct an `InvocationFrame`, invoke an
-//! associated `()`, or establish final result Type/Pattern coherence.
+//! The candidate/result carriers below remain prototype algebra fixtures. The
+//! connected path lives in `semantic_world` + `ordinary_invocation`: it
+//! enumerates ordinary semantic values, follows TypeValue to Pattern owner and
+//! associated `()`, constructs an `InvocationFrame`, and returns ordinary
+//! result entries. These fixtures intentionally do not delegate to or compete
+//! with that resolver, and establish no final result Pattern coherence.
 //!
 //! Ordinary binding semantics stay in `policy_pair::project_p1`: omitted P1
 //! preserves the complete RHS and any non-empty explicit projection completes
@@ -275,6 +277,20 @@ pub fn elaborate_value_binding_p1<P: Clone>(
     }
 
     if !saw_value_bearing_entry {
+        // Every entry is pure-P (no Val1).  Pure types never enter transition
+        // machinery; a stage P1 on such a binding (`compile let T = <type
+        // result>;`) demands a visible stage slice, not a value identity, so
+        // the value-presence requirement is relaxed to Optional before the
+        // slice is retried.
+        let relaxed = relax_projection_presence(projection);
+        let selected = project_p1(&relaxed, result);
+        if !selected.is_empty() {
+            return Ok(P1Elaboration::Projected {
+                origin: P1Origin::Explicit,
+                requested: Some(projection.clone()),
+                selected,
+            });
+        }
         return Err(P1ElaborationFailure::ProjectionUnavailableWithoutValue {
             requested: projection.clone(),
         });
@@ -331,6 +347,20 @@ pub fn elaborate_pure_type_binding_p1<P: Clone>(
         requested: Some(projection.clone()),
         selected,
     })
+}
+
+/// Relax a P1 request's value-presence to `Optional` for pure-P results.
+///
+/// Stage and mutability constraints are preserved; only the presence gate is
+/// dropped, because a pure-P result has no Val1 by construction.
+fn relax_projection_presence(projection: &P1Projection) -> P1Projection {
+    let mut relaxed = projection.clone();
+    match &mut relaxed {
+        P1Projection::Infer => {}
+        P1Projection::ValueDominant { value } => value.presence = ValuePresence::Optional,
+        P1Projection::Pair(pair) => pair.value.presence = ValuePresence::Optional,
+    }
+    relaxed
 }
 
 /// Derive `Project_in` and the runtime-only output branch for one binding
@@ -395,14 +425,10 @@ fn atomic_runtime_migration_endpoints<V, P>(
             presence: ValuePresence::Present,
         },
         pattern: selected_pattern.clone(),
-        namespace_visibility: None,
-        export_root: false,
     };
     let target_query = PolicyPair {
         value: target_value,
         pattern: selected_pattern,
-        namespace_visibility: None,
-        export_root: false,
     };
     Some((source_policy, target_query))
 }
@@ -429,14 +455,6 @@ pub fn project_transition_policy_domain(
     query: &PolicyPair,
     available: &PolicyPair,
 ) -> Option<PolicyPair> {
-    if query.namespace_visibility.is_some()
-        || query.export_root
-        || available.namespace_visibility.is_some()
-        || available.export_root
-    {
-        return None;
-    }
-
     let presence = intersect_presence(query.value.presence, available.value.presence)?;
     let (value_stages, value_mutability) = if presence == ValuePresence::Absent {
         (StageSet::new(), BTreeSet::new())
@@ -458,8 +476,6 @@ pub fn project_transition_policy_domain(
         pattern: PatternComponentPolicy {
             stages: pattern_stages,
         },
-        namespace_visibility: None,
-        export_root: false,
     })
 }
 
@@ -469,7 +485,7 @@ pub fn project_transition_policy_domain(
 /// Candidate input mutability is a formal Pattern consumed by ordinary Bp
 /// preference. An opposite const/mut Pattern therefore does not make the
 /// candidate hard-inadmissible.
-fn project_migration_input_endpoint(
+pub(crate) fn project_migration_input_endpoint(
     candidate: &PolicyPair,
     actual: &PolicyPair,
 ) -> Option<PolicyPair> {
@@ -482,7 +498,7 @@ fn project_migration_input_endpoint(
 /// An unspecified output endpoint accepts the requested mutability view. A
 /// declared const or mut endpoint remains that declared result even when it is
 /// the opposite, lower-preference Pattern for the consumer demand.
-fn project_migration_output_endpoint(
+pub(crate) fn project_migration_output_endpoint(
     required: &PolicyPair,
     candidate: &PolicyPair,
 ) -> Option<PolicyPair> {
@@ -499,14 +515,6 @@ fn project_migration_endpoint_hard_coordinates(
     available: &PolicyPair,
     selected_mutability: BTreeSet<ValueMutability>,
 ) -> Option<PolicyPair> {
-    if query.namespace_visibility.is_some()
-        || query.export_root
-        || available.namespace_visibility.is_some()
-        || available.export_root
-    {
-        return None;
-    }
-
     let presence = intersect_presence(query.value.presence, available.value.presence)?;
     let value_stages = if presence == ValuePresence::Absent {
         StageSet::new()
@@ -529,8 +537,6 @@ fn project_migration_endpoint_hard_coordinates(
         pattern: PatternComponentPolicy {
             stages: pattern_stages,
         },
-        namespace_visibility: None,
-        export_root: false,
     })
 }
 
@@ -1103,6 +1109,25 @@ fn compare_output_policy_fit(
     }
 
     compare_policy_endpoint_fit(required, left, right)
+}
+
+/// Endpoint-coordinate comparison used by the connected ordinary Bp' carrier.
+///
+/// This returns only the migration input/output portion of the product.  The
+/// caller must compose it with ordinary Bp coordinates before taking maxima;
+/// it must never run as a sequential filter.
+pub(crate) fn compare_migration_endpoint_coordinates(
+    required_source: &PolicyPair,
+    required_target: &PolicyPair,
+    left_input: &PolicyPair,
+    left_output: &PolicyPair,
+    right_input: &PolicyPair,
+    right_output: &PolicyPair,
+) -> PolicyPartialOrdering {
+    compose_orders([
+        compare_input_policy_fit(required_source, left_input, right_input),
+        compare_output_policy_fit(required_target, left_output, right_output),
+    ])
 }
 
 fn compare_policy_endpoint_fit(

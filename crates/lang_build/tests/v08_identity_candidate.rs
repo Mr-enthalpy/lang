@@ -5,21 +5,18 @@ use support::*;
 use lang_build::{
     bind_meta_invocation_value_result, classify_type_arguments,
     classify_type_arguments_with_report, compute_type_definition_instance_id,
-    expand_meta_initializer_via_invocation,
-    expand_meta_initializer_via_invocation_with_materialization_state, extract_single_call_site,
-    invoke_meta_callable, invoke_meta_callable_cached,
+    extract_single_call_site, invoke_meta_callable, invoke_meta_callable_cached,
     invoke_meta_callable_cached_with_materialization_state,
-    invoke_meta_callable_with_materialization_state, prepare_meta_callable_candidate,
-    prepare_meta_callable_candidate_from_input, resolve_call_target,
+    invoke_meta_callable_with_materialization_state, resolve_call_target,
     type_value_projection_from_type_symbol, AliasChain, AliasQueryDisposition, AliasQueryMode,
     CandidateBuildIdentityPlaceholder, CandidatePrepDeferredReason, CandidatePrepResult,
-    CandidatePreparationContext, CandidatePreparationInput, CanonicalArgAtomKind, ExecutionEnv,
-    FieldProjection, GeneratedTypeDefinitionValue, MetaInstanceCache, MetaInvocationInput,
-    MetaInvocationResult, MetaInvocationValue, MetaValueTarget, NamespaceGraphSnapshot,
-    NamespaceNode, NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId,
-    PolicyEnv, PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
-    SourceCategory, SymbolId, SymbolPayload, TypeMaterializationState, TypeValueBindingPlaceholder,
-    TypeValueId,
+    CandidatePreparationContext, CanonicalArgAtomKind, CanonicalArgProductShapeMaterial,
+    ExecutionEnv, FieldProjection, GeneratedTypeDefinitionValue, MetaInstanceCache,
+    MetaInvocationInput, MetaInvocationResult, MetaInvocationValue, NamespaceNode,
+    NamespaceNodeKind, NonValueArgKind, ParameterShape, PatternHeadId, PlaceId, PolicyEnv,
+    PolicyFlag, ProductMaterialRole, Provenance, RawArgValueClass, ReturnViewShape,
+    SemanticNameIndex, SourceCategory, SymbolId, SymbolPayload, TypeMaterializationState,
+    TypeValueBindingPlaceholder, TypeValueId,
 };
 
 #[test]
@@ -71,7 +68,7 @@ fn alias_chain_placeholder_object_boundary_distinguishes_query_modes() {
 fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_build_fixture() {
     let world = v08_candidate_world();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "struct",
@@ -82,7 +79,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
 
     let site = v08_candidate_call_site();
     let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let result = prepare_meta_callable_candidate(
+    let result = prepare_candidate_from_fixture_symbol(
         &callee,
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("struct source product placeholder")),
@@ -104,27 +101,11 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
     };
     assert_eq!(candidate.callee_symbol_id, callee.id);
     assert_eq!(candidate.arg_product_shape.arity, 1);
-    assert_eq!(
-        candidate
-            .canonical_key_seed
-            .argument_product_shape_material
-            .arity,
-        1
-    );
-    assert_eq!(
-        candidate
-            .canonical_key_seed
-            .argument_product_shape_material
-            .unit_positions,
-        Vec::<usize>::new()
-    );
-    assert_eq!(
-        candidate
-            .canonical_key_seed
-            .argument_product_shape_material
-            .known_type_symbols,
-        vec![None]
-    );
+    let material =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
+    assert_eq!(material.arity, 1);
+    assert_eq!(material.unit_positions, Vec::<usize>::new());
+    assert_eq!(material.known_type_values, vec![None]);
     assert_eq!(candidate.arg_product_shape.raw_args[0].is_value(), None);
     assert!(matches!(
         candidate.arg_product_shape.raw_args[0].value_class,
@@ -158,48 +139,26 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
         .policy_set
         .contains(PolicyFlag::Runtime));
     assert_eq!(
-        candidate.canonical_key_seed.callee_function_symbol_id,
-        callee.id
-    );
-    assert_eq!(candidate.canonical_key_seed.argument_arity, 1);
-    assert_eq!(
         candidate
-            .canonical_key_seed
-            .argument_product_shape_fingerprint_fragment,
-        None
-    );
-    assert_eq!(
-        candidate.canonical_key_seed.unit_positions,
-        Vec::<usize>::new()
-    );
-    assert_eq!(
-        candidate.canonical_key_seed.argument_type_symbols,
-        vec![None]
-    );
-    assert_eq!(
-        candidate
-            .canonical_key_seed
+            .build_identity
             .package_identity_fragment
             .as_deref(),
         Some("package:app")
     );
     assert_eq!(
-        candidate
-            .canonical_key_seed
-            .mount_identity_fragment
-            .as_deref(),
+        candidate.build_identity.mount_identity_fragment.as_deref(),
         Some("mount:core")
     );
     assert_eq!(
         candidate
-            .canonical_key_seed
+            .build_identity
             .build_config_fingerprint_fragment
             .as_deref(),
         Some("build:fixture")
     );
     assert_eq!(
         candidate
-            .canonical_key_seed
+            .build_identity
             .policy_export_fingerprint_fragment
             .as_deref(),
         Some("policy:export-meta")
@@ -210,7 +169,7 @@ fn candidate_prep_uses_graph_resolved_symbolobject_and_arg_product_shape_from_bu
 fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
     let world = v08_candidate_world();
     let field_symbol = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_field_function("field::ref::T", &world.package_context())
         .expect("generated ref field function resolves through namespace graph");
@@ -234,7 +193,7 @@ fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
 
     let site = v08_candidate_call_site();
     let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let result = prepare_meta_callable_candidate(
+    let result = prepare_candidate_from_fixture_symbol(
         &field_symbol,
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("field parameter placeholder")),
@@ -281,14 +240,14 @@ fn generated_field_function_from_build_fixture_keeps_policy_planes_separate() {
 }
 
 #[test]
-fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixture() {
+fn canonical_argument_product_material_reserves_slots_from_source_fixture() {
     let shape = fixture_arg_product_shape(
         "product_unit_preservation.lang",
         ProductMaterialRole::MetaConstructionArgumentProduct,
     );
     let world = v08_candidate_world();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "struct",
@@ -297,53 +256,38 @@ fn canonical_key_seed_reserves_canonical_argument_product_slots_from_source_fixt
         )
         .expect("core struct resolves through namespace graph as SymbolObject");
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prepare_meta_callable_candidate(
-        &callee,
-        shape,
-        ParameterShape::exact_arity(3, Provenance::new("unit-sensitive parameter placeholder")),
-        CandidatePreparationContext {
-            lookup_env: PolicyEnv::OpenStatic,
-            demanded_execution: ExecutionEnv::OpenStatic,
-            build_identity: CandidateBuildIdentityPlaceholder::default(),
-            provenance: Provenance::new("unit-sensitive canonical key seed"),
-        },
-    ) else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
+        prepare_candidate_from_fixture_symbol(
+            &callee,
+            shape,
+            ParameterShape::exact_arity(3, Provenance::new("unit-sensitive parameter placeholder")),
+            CandidatePreparationContext {
+                lookup_env: PolicyEnv::OpenStatic,
+                demanded_execution: ExecutionEnv::OpenStatic,
+                build_identity: CandidateBuildIdentityPlaceholder::default(),
+                provenance: Provenance::new("unit-sensitive canonical key seed"),
+            },
+        )
+    else {
         panic!("candidate should reach applicable placeholder");
     };
 
+    let material =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
     assert_eq!(
-        candidate
-            .canonical_key_seed
-            .argument_product_shape_fingerprint_fragment,
-        None,
-        "fingerprint computation is intentionally deferred, but the slot must exist"
-    );
-    assert_eq!(
-        candidate.canonical_key_seed.unit_positions,
-        vec![1],
-        "canonical argument product material must not collapse to arity + TypeSymbols only"
-    );
-    assert_eq!(
-        candidate
-            .canonical_key_seed
-            .argument_product_shape_material
-            .unit_positions,
+        material.unit_positions,
         vec![1],
         "canonical arg product shape material preserves Unit position"
     );
     assert_eq!(
-        candidate
-            .canonical_key_seed
-            .argument_product_shape_material
-            .arity,
-        3,
+        material.arity, 3,
         "canonical arg product shape material preserves arity"
     );
 }
 
 #[test]
 fn namespace_delta_atomicity_object_boundary_rejects_partial_generated_subtree() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
     let mut base = snapshot.empty_delta();
     let existing_t = base.allocate_symbol_id();
@@ -393,10 +337,10 @@ fn namespace_delta_atomicity_object_boundary_rejects_partial_generated_subtree()
 }
 
 #[test]
-fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
+fn candidate_preparation_is_the_pipeline_entry_from_build_fixture() {
     let world = v08_candidate_world();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "struct",
@@ -408,21 +352,19 @@ fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
     let site = v08_candidate_call_site();
     let arg_shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
 
-    let input = CandidatePreparationInput::new(
-        callee,
+    let result = prepare_candidate_from_fixture_symbol(
+        &callee,
         arg_shape,
         ParameterShape::exact_arity(1, Provenance::new("pipeline entry test")),
         CandidatePreparationContext {
             lookup_env: PolicyEnv::OpenStatic,
             demanded_execution: ExecutionEnv::OpenStatic,
             build_identity: CandidateBuildIdentityPlaceholder::default(),
-            provenance: Provenance::new("CandidatePreparationInput pipeline entry"),
+            provenance: Provenance::new("candidate preparation pipeline entry"),
         },
     );
-
-    let result = prepare_meta_callable_candidate_from_input(input);
     let CandidatePrepResult::ApplicablePlaceholder(candidate) = result else {
-        panic!("CandidatePreparationInput pipeline should yield ApplicablePlaceholder");
+        panic!("candidate preparation pipeline should yield ApplicablePlaceholder");
     };
     assert_eq!(candidate.callee_name, "struct");
     assert_eq!(candidate.arg_product_shape.arity, 1);
@@ -432,7 +374,7 @@ fn candidate_preparation_input_is_the_pipeline_entry_from_build_fixture() {
 fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     let world = v08_identity_type_world();
     let t = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_type_object("T", &world.package_context())
         .expect("T should be resolved as type object in world from fixture");
@@ -444,20 +386,24 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert_eq!(t.name, "T");
 
     let uint8 = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_type_object("uint8", &world.package_context())
         .expect("uint8 resolves as type object");
     let SymbolPayload::Type(type_obj) = &t.payload else {
         panic!("t payload is not Type");
     };
+    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+        panic!("uint8 payload is not Type");
+    };
     assert_eq!(
-        type_obj.type_symbol_id, uint8.id,
-        "IdentityType(uint8) must forward uint8's TypeSymbol"
+        type_obj.represented_type, uint8_type.represented_type,
+        "IdentityType(uint8) must return uint8's TypeValue"
     );
+    assert_eq!(type_obj.carrier_symbol_id, t.id);
 
     let identity = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "IdentityType",
@@ -477,7 +423,7 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     let context = world.package_context();
     let resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
@@ -491,7 +437,8 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
 
     // --- Substrate path: ProductObject → ArgProductShape → classify_type_arguments ---
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
     assert_eq!(classified.arity, 1);
     assert!(
         matches!(
@@ -522,9 +469,9 @@ fn identity_type_target_and_type_argument_resolve_from_build_fixture() {
     assert_eq!(material.arity, 1);
     assert_eq!(material.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
     assert_eq!(
-        material.known_type_symbols[0],
-        Some(uint8.id),
-        "canonical material must record uint8's SymbolId as TypeSymbol"
+        material.known_type_values[0],
+        Some(type_value_projection_from_type_symbol(uint8.id)),
+        "canonical material must record the type value read through uint8"
     );
 }
 
@@ -538,7 +485,8 @@ fn identity_type_classifier_resolves_uint8_through_namespace_graph() {
     let context = world.package_context();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
 
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     assert_eq!(classified.arity, 1);
     let raw = &classified.raw_args[0];
@@ -563,7 +511,7 @@ fn identity_type_classifier_resolves_uint8_through_namespace_graph() {
 fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
     let world = v08_identity_type_world();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "IdentityType",
@@ -578,10 +526,11 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
     let site = extract_single_call_site(&expr).expect("fixture must be a call");
     let context = world.package_context();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        callee,
+    let result = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
         CandidatePreparationContext {
@@ -592,7 +541,6 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
         },
     );
 
-    let result = prepare_meta_callable_candidate_from_input(input);
     let CandidatePrepResult::ApplicablePlaceholder(candidate) = result else {
         panic!("IdentityType should reach applicable placeholder with type argument");
     };
@@ -604,10 +552,11 @@ fn identity_type_candidate_preparation_accepts_type_argument_object_boundary() {
         RawArgValueClass::NonValue(NonValueArgKind::TypeObject)
     ));
     assert!(raw.known_first_order_type_value.is_some());
-    let mat = &candidate.canonical_key_seed.argument_product_shape_material;
+    let mat =
+        CanonicalArgProductShapeMaterial::from_arg_product_shape(&candidate.arg_product_shape);
     assert_eq!(mat.arity, 1);
     assert_eq!(mat.atom_kinds[0], CanonicalArgAtomKind::TypeObject);
-    assert!(mat.known_type_symbols[0].is_some());
+    assert!(mat.known_type_values[0].is_some());
 }
 
 #[test]
@@ -620,7 +569,7 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
     let context = world.package_context();
     let resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
@@ -628,10 +577,11 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
     .expect("IdentityType target should resolve");
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        resolved.callee.clone(),
+    let prep = prepare_candidate_from_fixture_symbol(
+        &resolved.callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("IdentityType param")),
         CandidatePreparationContext {
@@ -642,9 +592,7 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("candidate-prep should yield ApplicablePlaceholder");
     };
 
@@ -656,21 +604,19 @@ fn identity_type_formal_meta_invocation_returns_forwarded_value_from_source_fixt
         panic!("invoke_meta_callable should yield ForwardedValue");
     };
     assert_eq!(fv.return_view, ReturnViewShape::Leaf);
-    let MetaValueTarget::TypeSymbol(fv_sym) = fv.target;
-    assert!(
-        fv_sym.0 != 0,
-        "ForwardedValue target SymbolId must be non-zero"
-    );
-    // Verify fv.target matches what the classifier assigned
-    let expected_sym = world
-        .snapshot()
+    let forwarded_type = fv.type_value;
+    // Verify the result is the value obtained through the argument carrier.
+    let expected_symbol = world
+        .namespace_projection()
         .capability()
         .resolve_type_object("uint8", &world.package_context())
-        .expect("uint8 resolves")
-        .id;
+        .expect("uint8 resolves");
+    let SymbolPayload::Type(expected_type) = expected_symbol.payload else {
+        panic!("uint8 is a Type object");
+    };
     assert_eq!(
-        fv_sym, expected_sym,
-        "ForwardedValue target SymbolId must match uint8's SymbolId"
+        forwarded_type, expected_type.represented_type,
+        "ForwardedValue must carry uint8's type value rather than its carrier Symbol"
     );
 }
 
@@ -684,7 +630,7 @@ fn identity_type_binding_uses_invocation_value_boundary() {
     let context = world.package_context();
     let resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
@@ -692,10 +638,11 @@ fn identity_type_binding_uses_invocation_value_boundary() {
     .expect("IdentityType target should resolve");
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        resolved.callee.clone(),
+    let prep = prepare_candidate_from_fixture_symbol(
+        &resolved.callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("binding boundary test")),
         CandidatePreparationContext {
@@ -706,9 +653,7 @@ fn identity_type_binding_uses_invocation_value_boundary() {
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
 
@@ -721,7 +666,7 @@ fn identity_type_binding_uses_invocation_value_boundary() {
 
     let result = bind_meta_invocation_value_result(
         invocation_value,
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "T",
         Provenance::new("binding via ForwardedValue"),
@@ -747,8 +692,11 @@ fn identity_type_unresolved_type_argument_reports_resolution_failure() {
     let context = world.package_context();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
 
-    let report =
-        classify_type_arguments_with_report(&shape, &world.snapshot().capability(), &context);
+    let report = classify_type_arguments_with_report(
+        &shape,
+        &world.namespace_projection().capability(),
+        &context,
+    );
     assert_eq!(report.classified_shape.arity, 1, "single arg shape");
     assert!(
         report.unresolved_names.is_empty(),
@@ -773,7 +721,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     let context = world.package_context();
     let resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
@@ -781,10 +729,11 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
     .expect("IdentityType target should resolve");
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified0 = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified0 =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        resolved.callee.clone(),
+    let prep = prepare_candidate_from_fixture_symbol(
+        &resolved.callee,
         classified0.clone(),
         ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
         CandidatePreparationContext {
@@ -794,9 +743,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
             provenance: Provenance::new("cache reuse test"),
         },
     );
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("candidate-prep should yield ApplicablePlaceholder");
     };
 
@@ -816,14 +763,14 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
         panic!("cached result should be ForwardedValue");
     };
     assert_eq!(
-        fv1.target, fv_cached.target,
+        fv1.type_value, fv_cached.type_value,
         "cached ForwardedValue target must match invocation result"
     );
 
     // Second invocation with same material (new candidate from same input)
     let CandidatePrepResult::ApplicablePlaceholder(candidate2) =
-        prepare_meta_callable_candidate_from_input(CandidatePreparationInput::new(
-            resolved.callee.clone(),
+        prepare_candidate_from_fixture_symbol(
+            &resolved.callee,
             classified0,
             ParameterShape::type_parameter_signature(Provenance::new("cache test param")),
             CandidatePreparationContext {
@@ -832,7 +779,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
                 build_identity: CandidateBuildIdentityPlaceholder::default(),
                 provenance: Provenance::new("cache reuse test 2"),
             },
-        ))
+        )
     else {
         panic!("second candidate-prep should yield ApplicablePlaceholder");
     };
@@ -842,7 +789,7 @@ fn meta_instance_cache_reuses_identity_type_invocation_value() {
         panic!("second invocation should yield ForwardedValue");
     };
     assert_eq!(
-        fv1.target, fv2.target,
+        fv1.type_value, fv2.type_value,
         "cache-hit result must match original"
     );
     assert_eq!(cache.len(), 1, "cache should not grow on hit");
@@ -858,7 +805,7 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
     let context = world.package_context();
     let resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
@@ -866,10 +813,11 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
     .expect("IdentityType target should resolve");
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        resolved.callee.clone(),
+    let prep = prepare_candidate_from_fixture_symbol(
+        &resolved.callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("forwarded binding boundary")),
         CandidatePreparationContext {
@@ -880,9 +828,7 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
 
@@ -893,11 +839,11 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
     else {
         panic!("IdentityType must yield ForwardedValue");
     };
-    let MetaValueTarget::TypeSymbol(sym) = fv.target;
+    let type_value = fv.type_value;
 
     let result = bind_meta_invocation_value_result(
         MetaInvocationValue::ForwardedValue(fv),
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "T",
         Provenance::new("forwarding binding"),
@@ -910,15 +856,15 @@ fn identity_type_forwarded_binding_goes_through_invocation_boundary() {
     );
     assert_eq!(result.replacement_object.kind, lang_build::SymbolKind::Type);
     assert_eq!(result.replacement_object.name, "T");
-    // The declared forwarding symbol carries the ForwardedValue's type
-    // SymbolId as its type_symbol_id, not a clone of the original uint8
-    // TypeObject.
+    // Ordinary binding installs a fresh graph carrier while retaining exactly
+    // the forwarded type value.
     let SymbolPayload::Type(type_obj) = &result.replacement_object.payload else {
         panic!("declared symbol must have Type payload");
     };
+    assert_eq!(type_obj.carrier_symbol_id, result.replacement_object.id);
     assert_eq!(
-        type_obj.type_symbol_id, sym,
-        "declared forwarding type must use the forwarded TypeSymbol"
+        type_obj.represented_type, type_value,
+        "declared type binding must carry the forwarded TypeValue"
     );
 }
 
@@ -927,7 +873,7 @@ fn generated_construction_value_binding_materializes_declared_type_symbol() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -938,14 +884,15 @@ fn generated_construction_value_binding_materializes_declared_type_symbol() {
 
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let gcv = produce_gcv(&callee, classified);
     let cid = gcv.construction_instance_id;
 
     let result = bind_meta_invocation_value_result(
         MetaInvocationValue::GeneratedConstructionValue(gcv),
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "T",
         Provenance::new("valid GCV binding"),
@@ -969,7 +916,7 @@ fn generated_construction_value_binding_rejects_mismatched_construction_instance
             arity: 1,
             unit_positions: vec![],
             atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
-            known_type_symbols: vec![Some(SymbolId(1))],
+            known_type_values: vec![Some(TypeValueId(1))],
         },
         return_slot_semantics: lang_build::ReturnSlotSemantics::Generate,
         build_identity_fragment: None,
@@ -990,7 +937,7 @@ fn generated_construction_value_binding_rejects_mismatched_construction_instance
 
     let err = bind_meta_invocation_value_result(
         gcv,
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "T",
         Provenance::new("should reject mismatched CID"),
@@ -1008,7 +955,7 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -1019,11 +966,12 @@ fn meta_instance_cache_reuses_generated_construction_value() {
 
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     // First invocation through candidate-prep → cache miss.
-    let input = CandidatePreparationInput::new(
-        callee.clone(),
+    let prep = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified.clone(),
         ParameterShape::type_parameter_signature(Provenance::new("GCV cache test")),
         CandidatePreparationContext {
@@ -1033,9 +981,7 @@ fn meta_instance_cache_reuses_generated_construction_value() {
             provenance: Provenance::new("GCV cache test"),
         },
     );
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
     let invocation_input = MetaInvocationInput::new(*candidate, Provenance::new("GCV cache"));
@@ -1059,8 +1005,8 @@ fn meta_instance_cache_reuses_generated_construction_value() {
     ));
 
     // Second invocation with same material → cache hit.
-    let input2 = CandidatePreparationInput::new(
-        callee,
+    let prep2 = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("GCV cache test 2")),
         CandidatePreparationContext {
@@ -1070,9 +1016,7 @@ fn meta_instance_cache_reuses_generated_construction_value() {
             provenance: Provenance::new("GCV cache test 2"),
         },
     );
-    let CandidatePrepResult::ApplicablePlaceholder(candidate2) =
-        prepare_meta_callable_candidate_from_input(input2)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate2) = prep2 else {
         panic!("second candidate-prep should yield ApplicablePlaceholder");
     };
     let invocation_input2 = MetaInvocationInput::new(*candidate2, Provenance::new("GCV cache 2"));
@@ -1097,7 +1041,7 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
     let context = world.package_context();
     let _resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
@@ -1105,10 +1049,11 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
     .expect("target should resolve");
 
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -1117,8 +1062,8 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
         )
         .expect("UnaryConstructionPrototype resolves through namespace graph");
 
-    let input = CandidatePreparationInput::new(
-        callee,
+    let prep = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new(
             "UnaryConstructionPrototype param",
@@ -1131,9 +1076,7 @@ fn unary_construction_prototype_invocation_returns_generated_construction_value(
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("UCPrototype candidate-prep should yield ApplicablePlaceholder");
     };
 
@@ -1161,7 +1104,7 @@ fn generated_construction_value_carries_construction_instance_identity() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -1172,10 +1115,11 @@ fn generated_construction_value_carries_construction_instance_identity() {
 
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        callee,
+    let prep = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("UCPrototype param")),
         CandidatePreparationContext {
@@ -1186,9 +1130,7 @@ fn generated_construction_value_carries_construction_instance_identity() {
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
 
@@ -1197,7 +1139,7 @@ fn generated_construction_value_carries_construction_instance_identity() {
     let gcv = match invoke_meta_callable(invocation_input) {
         MetaInvocationResult::Value(MetaInvocationValue::GeneratedConstructionValue(gcv)) => gcv,
         MetaInvocationResult::Value(MetaInvocationValue::ForwardedValue(_)) => {
-            panic!("UCPrototype must NOT return ForwardedValue(TypeSymbol)")
+            panic!("UCPrototype must NOT return a forwarded TypeValue")
         }
         MetaInvocationResult::Value(MetaInvocationValue::GeneratedTypeDefinitionValue(_)) => {
             panic!("UCPrototype must NOT return GeneratedTypeDefinitionValue")
@@ -1220,7 +1162,7 @@ fn binding_layer_materializes_generated_construction_value() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -1231,10 +1173,11 @@ fn binding_layer_materializes_generated_construction_value() {
 
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        callee,
+    let prep = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("UCPrototype binding test")),
         CandidatePreparationContext {
@@ -1245,9 +1188,7 @@ fn binding_layer_materializes_generated_construction_value() {
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
 
@@ -1262,7 +1203,7 @@ fn binding_layer_materializes_generated_construction_value() {
 
     let result = bind_meta_invocation_value_result(
         MetaInvocationValue::GeneratedConstructionValue(gcv),
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "T",
         Provenance::new("GCV materialization"),
@@ -1292,7 +1233,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -1303,10 +1244,11 @@ fn generated_construction_identity_is_independent_of_binding_name() {
 
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
-    let classified = classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+    let classified =
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
-    let input = CandidatePreparationInput::new(
-        callee,
+    let prep = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("UCPrototype identity test")),
         CandidatePreparationContext {
@@ -1317,9 +1259,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
 
@@ -1336,7 +1276,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
     // advance the snapshot so the second gets a distinct SymbolId.
     let result_a = bind_meta_invocation_value_result(
         MetaInvocationValue::GeneratedConstructionValue(gcv.clone()),
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "A",
         Provenance::new("bind as A"),
@@ -1345,7 +1285,7 @@ fn generated_construction_identity_is_independent_of_binding_name() {
 
     // Install A's delta so B gets a different SymbolId from the graph.
     let snapshot_after_a = world
-        .snapshot()
+        .namespace_projection()
         .install_delta(result_a.namespace_delta)
         .expect("install A's delta");
 
@@ -1374,7 +1314,7 @@ fn generated_construction_identity_changes_with_canonical_args() {
     let world = v08_identity_type_world();
     let context = world.package_context();
     let callee = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_meta_function_with_policy(
             "UnaryConstructionPrototype",
@@ -1386,14 +1326,14 @@ fn generated_construction_identity_changes_with_canonical_args() {
     let site = v08_identity_type_call_site();
     let shape = site.to_arg_product_shape(ProductMaterialRole::MetaConstructionArgumentProduct);
     let classified_uint8 =
-        classify_type_arguments(&shape, &world.snapshot().capability(), &context);
+        classify_type_arguments(&shape, &world.namespace_projection().capability(), &context);
 
     let gcv_uint8 = produce_gcv(&callee, classified_uint8);
     let cid_uint8 = gcv_uint8.construction_instance_id;
 
     // Produce a second GCV with a different real type argument (uint16).
     let uint16 = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_type_object("uint16", &context)
         .expect("uint16 resolves as type object");
@@ -1439,8 +1379,8 @@ fn produce_gcv(
     callee: &lang_build::SymbolObject,
     classified: lang_build::ArgProductShape,
 ) -> lang_build::GeneratedConstructionValue {
-    let input = CandidatePreparationInput::new(
-        callee.clone(),
+    let prep = prepare_candidate_from_fixture_symbol(
+        &callee,
         classified,
         ParameterShape::type_parameter_signature(Provenance::new("GCV production")),
         CandidatePreparationContext {
@@ -1451,9 +1391,7 @@ fn produce_gcv(
         },
     );
 
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("should yield ApplicablePlaceholder");
     };
 
@@ -1468,119 +1406,65 @@ fn produce_gcv(
 
 #[test]
 fn identity_type_initializer_expands_through_meta_invocation_driver() {
-    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
-        .expect("empty world with core");
-    let initializer = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_identity_type", "app").join("main.lang"),
-    );
-
-    let result = expand_meta_initializer_via_invocation(
-        &initializer,
-        world.snapshot(),
-        world.package_root_node(),
-        "T",
-        &world.package_context(),
-        PolicyEnv::OpenStatic,
-        ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
-        Provenance::new("IdentityType driver test"),
-        None,
-    )
-    .expect("driver should expand IdentityType initializer");
-
+    let world = build_single_fixture_world("v08_identity_type", "app");
+    let result = world
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .expect("connected source build installs IdentityType result");
     let uint8 = world
-        .snapshot()
-        .capability()
-        .resolve_type_object("uint8", &world.package_context())
+        .resolve_with_expectation("uint8", lang_build::ResolveExpectation::TypeObject)
         .expect("uint8 resolves");
-    assert!(!result.namespace_delta.symbols.is_empty());
-    assert_eq!(result.replacement_object.name, "T");
-    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+    assert_eq!(result.name, "T");
+    let SymbolPayload::Type(type_object) = &result.payload else {
         panic!("replacement_object must be the declared binding symbol with Type payload");
     };
+    let SymbolPayload::Type(uint8_type) = &uint8.payload else {
+        panic!("uint8 is a Type object");
+    };
+    assert_eq!(type_object.carrier_symbol_id, result.id);
     assert_eq!(
-        type_object.type_symbol_id, uint8.id,
-        "TypeObject.type_symbol_id must be the forwarded TypeSymbol"
+        type_object.represented_type, uint8_type.represented_type,
+        "ordinary binding must preserve the forwarded TypeValue"
     );
 }
 
 #[test]
 fn unary_construction_initializer_expands_through_meta_invocation_driver() {
-    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
-        .expect("empty world with core");
-    let initializer = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_unary_construction", "app").join("main.lang"),
-    );
-
-    let result = expand_meta_initializer_via_invocation(
-        &initializer,
-        world.snapshot(),
-        world.package_root_node(),
-        "T",
-        &world.package_context(),
-        PolicyEnv::OpenStatic,
-        ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
-        Provenance::new("UnaryConstructionPrototype driver test"),
-        None,
-    )
-    .expect("driver should expand UnaryConstructionPrototype initializer");
-
-    assert_eq!(result.replacement_object.kind, lang_build::SymbolKind::Type);
-    assert_eq!(result.replacement_object.name, "T");
+    let world = build_single_fixture_world("v08_unary_construction", "app");
+    let result = world
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .expect("connected source build installs UnaryConstructionPrototype result");
+    assert_eq!(result.kind, lang_build::SymbolKind::Type);
+    assert_eq!(result.name, "T");
     assert!(result
-        .replacement_object
         .cache_key_fragment
         .as_deref()
         .is_some_and(|fragment| fragment.starts_with("construction:")));
-    assert!(!result.namespace_delta.symbols.is_empty());
 }
 
 #[test]
 fn struct_initializer_expands_through_generated_type_definition_value() {
-    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
-        .expect("empty world with core");
-    let initializer = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
-    );
-    let key = struct_invocation_input(&world, &initializer, "uint8", "struct driver cache key")
-        .compute_key();
-    let mut cache = MetaInstanceCache::new();
-
-    let result = expand_meta_initializer_via_invocation(
-        &initializer,
-        world.snapshot(),
-        world.package_root_node(),
-        "S",
-        &world.package_context(),
-        PolicyEnv::OpenStatic,
-        ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
-        Provenance::new("struct driver test"),
-        Some(&mut cache),
-    )
-    .expect("driver should expand struct initializer");
-
-    let cached = cache
-        .lookup(&key)
-        .expect("driver should cache pure struct invocation value");
-    assert!(matches!(
-        cached.result,
-        MetaInvocationValue::GeneratedTypeDefinitionValue(_)
-    ));
-    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
+    let world = build_single_fixture_world("v08_struct_uint8", "app");
+    let result = world
+        .resolve_with_expectation("T", lang_build::ResolveExpectation::TypeObject)
+        .expect("connected source build installs struct result");
+    let SymbolPayload::Type(type_object) = &result.payload else {
         panic!("struct binding must materialize a TypeObject");
     };
     let type_namespace = type_object
         .type_associated_namespace
         .expect("struct type must have associated namespace");
-    assert!(result.namespace_delta.nodes.contains_key(&type_namespace));
+    assert!(
+        world
+            .semantic_world()
+            .namespace_owner(type_namespace)
+            .is_some(),
+        "generated type namespace is installed in SemanticWorld"
+    );
     assert_eq!(type_object.field_names, vec!["a".to_string()]);
-    assert!(result
-        .namespace_delta
-        .symbols
-        .values()
-        .any(|symbol| matches!(symbol.payload, SymbolPayload::FieldFunction(_))));
+    assert!(
+        world.resolve("a::T").is_ok(),
+        "generated field projection is installed"
+    );
 }
 
 #[test]
@@ -1672,108 +1556,6 @@ fn generated_type_definition_semantic_eq_includes_pattern_heads() {
 }
 
 #[test]
-fn source_member_visibility_reaches_generated_struct_field_material() {
-    let parsed = lang_syntax::parse("let PrivateFieldType = (uint8 secret [[private]]) |> struct;");
-    assert!(
-        parsed.diagnostics.is_empty(),
-        "{}",
-        lang_syntax::dump_diagnostics(&parsed.diagnostics)
-    );
-    let normalized = lang_syntax::normalize_program(&parsed.program);
-    let [lang_syntax::NormForm::Let(lang_syntax::NormDecl::Let { slot, .. })] =
-        normalized.forms.as_slice()
-    else {
-        panic!("expected one normalized struct binding");
-    };
-    let initializer = slot.initializer.as_deref().expect("struct initializer");
-    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
-        .expect("empty world with core");
-    let result = expand_meta_initializer_via_invocation(
-        initializer,
-        world.snapshot(),
-        world.package_root_node(),
-        "PrivateFieldType",
-        &world.package_context(),
-        PolicyEnv::OpenStatic,
-        ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
-        Provenance::new("private structural member driver"),
-        None,
-    )
-    .expect("the struct driver preserves structural visibility");
-    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
-        panic!("struct binding must materialize a TypeObject");
-    };
-
-    assert_eq!(type_object.fields.len(), 1);
-    assert_eq!(type_object.fields[0].name, "secret");
-    assert_eq!(
-        type_object.fields[0].visibility,
-        lang_build::StructuralMemberVisibility::Private
-    );
-    assert!(
-        type_object
-            .extraction_interface
-            .as_ref()
-            .expect("struct has a default extraction view")
-            .exposed_view
-            .fields
-            .is_empty(),
-        "the source-level private member is retained structurally but hidden from default extraction"
-    );
-}
-
-#[test]
-fn struct_decoder_uses_pattern_head_registry() {
-    let world = lang_build::CompilationWorld::from_manifest(&empty_app_manifest())
-        .expect("empty world with core");
-    let initializer = parse_and_normalize_fixture_let_initializer(
-        fixture_source_root("v08_struct_uint8", "app").join("main.lang"),
-    );
-    let mut materialization_state = TypeMaterializationState::default();
-
-    let result = expand_meta_initializer_via_invocation_with_materialization_state(
-        &initializer,
-        world.snapshot(),
-        world.package_root_node(),
-        "S",
-        &world.package_context(),
-        PolicyEnv::OpenStatic,
-        ExecutionEnv::OpenStatic,
-        CandidateBuildIdentityPlaceholder::default(),
-        Provenance::new("struct driver pattern heads"),
-        None,
-        &mut materialization_state,
-    )
-    .expect("driver should expand struct initializer");
-
-    let SymbolPayload::Type(type_object) = &result.replacement_object.payload else {
-        panic!("struct binding must materialize a TypeObject");
-    };
-    let owner_head = type_object
-        .owner_pattern_head
-        .expect("TypeObject stores owner PatternHeadId");
-    let field_head = type_object.fields[0]
-        .pattern_head
-        .expect("TypeField stores field PatternHeadId");
-    assert_eq!(
-        materialization_state
-            .pattern_heads
-            .lookup_child(owner_head, "a"),
-        Some(field_head)
-    );
-    let extraction = type_object
-        .extraction_interface
-        .as_ref()
-        .expect("generated type has extraction interface");
-    assert_eq!(extraction.owner_pattern_head, Some(owner_head));
-    assert_eq!(
-        extraction.exposed_view.fields[0].field_pattern_head,
-        Some(field_head)
-    );
-}
-
-#[test]
 fn source_struct_materialization_updates_world_pattern_head_registry() {
     let world = build_single_fixture_world("v08_struct_uint8", "app");
     let resolved = world.resolve("T").expect("T resolves");
@@ -1808,14 +1590,14 @@ fn generated_type_definition_identity_is_independent_of_binding_name() {
 
     let result_a = bind_meta_invocation_value_result(
         MetaInvocationValue::GeneratedTypeDefinitionValue(gtdv.clone()),
-        world.snapshot(),
+        world.namespace_projection(),
         world.package_root_node(),
         "A",
         Provenance::new("bind generated struct A"),
     )
     .expect("bind A");
     let snapshot_a = world
-        .snapshot()
+        .namespace_projection()
         .install_delta(result_a.namespace_delta.clone())
         .expect("install A");
     let result_b = bind_meta_invocation_value_result(
@@ -1871,14 +1653,16 @@ fn type_definition_identity_material_equality_ignores_field_provenance() {
         arity: 1,
         unit_positions: vec![],
         atom_kinds: vec![lang_build::CanonicalArgAtomKind::TypeObject],
-        known_type_symbols: vec![Some(SymbolId(2))],
+        known_type_values: vec![Some(TypeValueId(2))],
     };
     let left = lang_build::TypeDefinitionIdentityMaterial {
         callee_symbol_id: SymbolId(1),
         canonical_args: canonical_args.clone(),
         field_signature_material: vec![lang_build::FieldSignatureMaterial {
             field_name: "a".to_string(),
-            field_type_symbol_id: SymbolId(2),
+            field_type_value: TypeValueId(2),
+            field_type_observation: lang_build::CanonicalTypeObservation::Detached(TypeValueId(2)),
+            field_type_carrier_symbol: SymbolId(2),
             field_index: 0,
             visibility: lang_build::StructuralMemberVisibility::Public,
             provenance: Provenance::new("left field provenance"),
@@ -1893,7 +1677,9 @@ fn type_definition_identity_material_equality_ignores_field_provenance() {
         canonical_args,
         field_signature_material: vec![lang_build::FieldSignatureMaterial {
             field_name: "a".to_string(),
-            field_type_symbol_id: SymbolId(2),
+            field_type_value: TypeValueId(2),
+            field_type_observation: lang_build::CanonicalTypeObservation::Detached(TypeValueId(2)),
+            field_type_carrier_symbol: SymbolId(22),
             field_index: 0,
             visibility: lang_build::StructuralMemberVisibility::Public,
             provenance: Provenance::new("right field provenance"),
@@ -1908,7 +1694,7 @@ fn type_definition_identity_material_equality_ignores_field_provenance() {
     assert_eq!(
         compute_type_definition_instance_id(&left),
         compute_type_definition_instance_id(&right),
-        "field provenance must not affect generated type definition identity"
+        "field provenance and the source carrier Symbol must not affect generated type definition identity"
     );
 }
 
@@ -2053,14 +1839,14 @@ fn struct_invocation_input(
     let context = world.package_context();
     let resolved = resolve_call_target(
         &site.target,
-        &world.snapshot().capability(),
+        &world.namespace_projection().capability(),
         &context,
         PolicyEnv::OpenStatic,
     )
     .expect("resolve_call_target should succeed")
     .expect("struct target should resolve");
     let type_symbol = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_type_object(field_type_name, &context)
         .expect("field type resolves");
@@ -2073,8 +1859,8 @@ fn struct_invocation_input(
                 .as_type_object_with_type_symbol(type_symbol.id);
         }
     }
-    let input = CandidatePreparationInput::new(
-        resolved.callee,
+    let prep = prepare_candidate_from_fixture_symbol(
+        &resolved.callee,
         classified.clone(),
         ParameterShape::type_parameter_sequence(
             classified.arity,
@@ -2087,9 +1873,7 @@ fn struct_invocation_input(
             provenance: Provenance::new(provenance),
         },
     );
-    let CandidatePrepResult::ApplicablePlaceholder(candidate) =
-        prepare_meta_callable_candidate_from_input(input)
-    else {
+    let CandidatePrepResult::ApplicablePlaceholder(candidate) = prep else {
         panic!("struct candidate should be applicable");
     };
     MetaInvocationInput::new(*candidate, Provenance::new(provenance))

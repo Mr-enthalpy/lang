@@ -2,8 +2,8 @@ mod support;
 use support::*;
 
 use lang_build::{
-    ChildLink, ChildNameRole, CompilationWorld, NamespaceGraphSnapshot, NamespaceMount,
-    NamespaceNodeKind, Provenance, ResolverContext, SourceCategory, SymbolKind,
+    ChildLink, ChildNameRole, CompilationWorld, NamespaceMount, NamespaceNodeKind, Provenance,
+    ResolverContext, SemanticNameIndex, SourceCategory, SymbolKind,
 };
 
 #[test]
@@ -13,7 +13,7 @@ fn short_and_explicit_core_paths_share_symbol_identity() {
     // Missing capability: verify.same_symbol_identity.
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
     let context = world.package_context();
-    let capability = world.snapshot().capability();
+    let capability = world.namespace_projection().capability();
 
     let uint8_short = capability.resolve_str("uint8", &context).unwrap();
     let uint8_explicit = capability.resolve_str("uint8::core", &context).unwrap();
@@ -39,7 +39,7 @@ fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
 
     let world = CompilationWorld::from_manifest(&manifest).expect("build world with mount");
     let std_symbol = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_str("std", &world.package_context())
         .expect("mounted root visible");
@@ -47,7 +47,7 @@ fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
     assert_eq!(std_symbol.source_category, SourceCategory::DependencyMount);
 
     let vec_symbol = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_str("Vec::std", &world.package_context())
         .expect("synthetic mounted child visible through explicit path");
@@ -55,7 +55,7 @@ fn dependency_mount_placeholders_are_visible_as_explicit_paths() {
     assert_eq!(vec_symbol.source_category, SourceCategory::DependencyMount);
 
     assert!(world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_str("Vec::mylib", &world.package_context())
         .is_err());
@@ -68,12 +68,12 @@ fn symbols_with_same_name_in_different_namespaces_have_distinct_ids() {
     // Missing capability: verify.distinct_symbol_identity.
     let world = build_single_fixture_world("same_name_distinct_namespaces", "app");
     let left = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_str("T::left::app", &world.root_context())
         .expect("left T");
     let right = world
-        .snapshot()
+        .namespace_projection()
         .capability()
         .resolve_str("T::right::app", &world.root_context())
         .expect("right T");
@@ -88,7 +88,7 @@ fn typed_resolver_helpers_select_expected_kind() {
     // API-specific: source verification covers ordinary core symbol facts; this
     // checks typed resolver helper behavior.
     let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("build world");
-    let capability = world.snapshot().capability();
+    let capability = world.namespace_projection().capability();
     let context = world.package_context();
 
     let type_symbol = capability
@@ -109,7 +109,7 @@ fn typed_resolver_helpers_select_expected_kind() {
 
 #[test]
 fn diagnostic_resolver_ambiguity_prefix() {
-    let snapshot = NamespaceGraphSnapshot::new();
+    let snapshot = SemanticNameIndex::new();
     let root = snapshot.root_node();
 
     let mut delta = snapshot.empty_delta();

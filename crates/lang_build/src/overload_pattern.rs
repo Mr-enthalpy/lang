@@ -3,20 +3,44 @@ use std::collections::BTreeMap;
 use lang_syntax::{NormAnnotation, NormPattern, NormPatternElem, NormSkeleton, NormSkeletonElem};
 
 use crate::{
+    identity::{SemanticValueId, TypeValueId},
     model::{Diagnostic, Provenance, SymbolId},
+    policy_pair::PolicyResultEntry,
     product_shape::{ArgProductShape, NonValueArgKind, RawArgValueClass},
+    semantic_world::PatternValueId,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OverloadArgShape {
     pub top_pattern_name: Option<String>,
     pub type_symbol_id: Option<SymbolId>,
+    pub value_type: Option<TypeValueId>,
+    /// Resolved semantic Pattern identity of the argument type/value.
+    ///
+    /// The source carrier name is not semantic identity. The connected
+    /// ordinary invocation trunk fills this field from TypeValue ->
+    /// PatternValue and uses it for named Pattern applicability.
+    pub pattern_value: Option<PatternValueId>,
+    /// The binding-level member view of the argument's own carrier, when the
+    /// argument was classified from a named type carrier.
+    ///
+    /// A bound formal parameter that is later used as a `let f::t = param`
+    /// right-hand side needs the *binding* view of what was passed in. Neither
+    /// `value_type` nor `pattern_value` can supply it, because both are shared
+    /// by every carrier of the same type, so the view travels with the shape.
+    pub effective_view: Option<PolicyResultEntry<SemanticValueId, PatternValueId>>,
+    pub semantic_value: Option<SemanticValueId>,
+    pub is_value: bool,
     pub provenance: Provenance,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RestrictedParamPattern {
     Binder {
+        name: String,
+        provenance: Provenance,
+    },
+    ValueBinder {
         name: String,
         provenance: Provenance,
     },
@@ -108,6 +132,7 @@ impl SpecificityTuple {
 pub fn overload_args_from_classified_shape(
     shape: &ArgProductShape,
     symbol_name: impl Fn(SymbolId) -> Option<String>,
+    pattern_for_type: impl Fn(TypeValueId) -> Option<PatternValueId>,
 ) -> Vec<OverloadArgShape> {
     shape
         .raw_args
@@ -119,9 +144,23 @@ pub fn overload_args_from_classified_shape(
                 }
                 _ => None,
             };
+            let top_pattern_name = match raw_arg.value_class {
+                RawArgValueClass::NonValue(NonValueArgKind::TypeObject) => raw_arg
+                    .known_type_pattern_name
+                    .clone()
+                    .or_else(|| type_symbol_id.and_then(&symbol_name)),
+                _ => None,
+            };
             OverloadArgShape {
-                top_pattern_name: type_symbol_id.and_then(&symbol_name),
+                top_pattern_name,
                 type_symbol_id,
+                value_type: raw_arg.known_first_order_type_value,
+                pattern_value: raw_arg
+                    .known_first_order_type_value
+                    .and_then(&pattern_for_type),
+                effective_view: raw_arg.known_type_member_view.clone(),
+                semantic_value: raw_arg.known_semantic_value,
+                is_value: matches!(raw_arg.value_class, RawArgValueClass::Value),
                 provenance: raw_arg.provenance.clone(),
             }
         })
@@ -164,18 +203,21 @@ pub fn decode_param_pattern(element: &NormPatternElem) -> RestrictedParamPattern
             },
         };
     }
-    if !is_type_annotation(slot.annotation.as_ref()) {
-        return RestrictedParamPattern::Unsupported {
-            reason: "restricted overload parameter must be annotated as `type`".to_string(),
-            provenance: Provenance::from_norm_origin("parameter pattern", &slot.origin),
-        };
-    }
-
     match &slot.value_pattern {
-        NormPattern::Binder { name, origin } if name != "_" => RestrictedParamPattern::Binder {
-            name: name.clone(),
-            provenance: Provenance::from_norm_origin("binder parameter pattern", origin),
-        },
+        NormPattern::Binder { name, origin }
+            if name != "_" && is_type_annotation(slot.annotation.as_ref()) =>
+        {
+            RestrictedParamPattern::Binder {
+                name: name.clone(),
+                provenance: Provenance::from_norm_origin("binder parameter pattern", origin),
+            }
+        }
+        NormPattern::Binder { name, origin } if name != "_" && slot.annotation.is_some() => {
+            RestrictedParamPattern::ValueBinder {
+                name: name.clone(),
+                provenance: Provenance::from_norm_origin("value binder parameter pattern", origin),
+            }
+        }
         NormPattern::Skeleton { skeleton, origin } => {
             let mut has_discard = false;
             let mut alternatives = Vec::new();
@@ -272,10 +314,14 @@ fn collect_restricted_pattern(
 pub fn match_param_pattern(
     pattern: &RestrictedParamPattern,
     arg: &OverloadArgShape,
+    resolve_named_pattern: Option<&dyn Fn(&str) -> Option<TypeValueId>>,
 ) -> Result<PatternMatchOutcome, Diagnostic> {
     match pattern {
         RestrictedParamPattern::Binder { name, .. } => {
-            if arg.type_symbol_id.is_none() {
+            if arg.type_symbol_id.is_none()
+                && arg.top_pattern_name.is_none()
+                && !(arg.is_value && arg.value_type.is_some())
+            {
                 return Err(Diagnostic::hard_error(
                     "parameter extraction-pattern applicability failed: binder expected a type-pattern argument",
                     Some(arg.provenance.clone()),
@@ -294,10 +340,59 @@ pub fn match_param_pattern(
                 },
             })
         }
+        RestrictedParamPattern::ValueBinder { name, .. } => {
+            if !arg.is_value || arg.value_type.is_none() {
+                return Err(Diagnostic::hard_error(
+                    "parameter structural applicability failed: value binder expected a typed Val1 argument",
+                    Some(arg.provenance.clone()),
+                ));
+            }
+            let mut bindings = BTreeMap::new();
+            bindings.insert(name.clone(), arg.clone());
+            Ok(PatternMatchOutcome {
+                bindings,
+                pack_bindings: BTreeMap::new(),
+                specificity: SpecificityTuple {
+                    max_depth: 1,
+                    sum_depth: 2,
+                    non_discard_explicit_node_count: 2,
+                    ..SpecificityTuple::default()
+                },
+            })
+        }
         RestrictedParamPattern::NamedDiscard {
             alternatives,
             provenance: _,
         } => {
+            if let (Some(actual_type), Some(resolve_named_pattern)) =
+                (arg.value_type, resolve_named_pattern)
+            {
+                if !alternatives
+                    .iter()
+                    .filter_map(|name| resolve_named_pattern(name))
+                    .any(|expected| expected == actual_type)
+                {
+                    return Err(Diagnostic::hard_error(
+                        format!(
+                            "parameter extraction-pattern applicability failed: argument TypeValue {:?} does not match any resolved alternative [{}]",
+                            actual_type,
+                            alternatives.join(", ")
+                        ),
+                        Some(arg.provenance.clone()),
+                    ));
+                }
+                return Ok(PatternMatchOutcome {
+                    bindings: BTreeMap::new(),
+                    pack_bindings: BTreeMap::new(),
+                    specificity: SpecificityTuple {
+                        max_depth: 1,
+                        sum_depth: 2,
+                        non_discard_explicit_node_count: 1,
+                        explicit_discard_count: 1,
+                        ..SpecificityTuple::default()
+                    },
+                });
+            }
             let Some(top_pattern_name) = &arg.top_pattern_name else {
                 return Err(Diagnostic::hard_error(
                     "parameter extraction-pattern applicability failed: named pattern expected a top type-pattern name",
@@ -371,6 +466,7 @@ pub fn match_pack_param_pattern(
             },
         }),
         RestrictedParamPattern::Binder { provenance, .. }
+        | RestrictedParamPattern::ValueBinder { provenance, .. }
         | RestrictedParamPattern::NamedDiscard { provenance, .. }
         | RestrictedParamPattern::Unsupported { provenance, .. } => Err(Diagnostic::hard_error(
             "non-pack parameter cannot consume an argument slice",

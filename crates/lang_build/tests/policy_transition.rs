@@ -4,21 +4,20 @@ use std::convert::Infallible;
 
 use lang_build::{
     assemble_transition_results, compare_policy_transition_candidates,
-    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, evaluate_initializer_best_effort,
-    expose_policy_slice, invoke_resolved_policy_bridge, materialize_literal_value,
-    project_transition_policy_domain, qualify_policy_bridge, read_pattern, read_value,
-    resolve_policy_bridge, select_policy_overload, type_value_projection_from_type_symbol,
-    validate_runtime_transition, AtomicBuiltinType, AtomicBuiltinTypeRegistry,
-    AtomicBuiltinTypeRegistryFailure, BridgeQualification, CompilationWorld, EvalMode, EvalOutcome,
-    LiteralFamily, LiteralMaterializationFailure, LiteralTypeSelection, MutabilityActualFrame,
-    MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey, NumericTypeRegistry,
-    OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration, P1ElaborationFailure,
-    P1Origin, P1Projection, PatternComponentPolicy, Phase, PhaseOverloadCandidate,
-    PolicyBridgeBody, PolicyBridgeResolution, PolicyOverloadCandidate, PolicyOverloadSelection,
-    PolicyPair, PolicyPartialOrdering, PolicyResultEntry, PolicyStage, PolicyTransitionCallable,
-    PolicyTransitionFailure, PolicyTransitionRequest, PolicyTransitionRequestFailure, Provenance,
-    ResidualReason, SemanticValueId, SemanticValueRef, StageSet, TransitionTypeExpectation,
-    TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
+    elaborate_pure_type_binding_p1, elaborate_value_binding_p1, expose_policy_slice,
+    invoke_resolved_policy_bridge, materialize_literal_value, project_transition_policy_domain,
+    qualify_policy_bridge, read_pattern, read_value, resolve_policy_bridge, select_policy_overload,
+    type_value_projection_from_type_symbol, validate_runtime_transition, AtomicBuiltinType,
+    AtomicBuiltinTypeRegistry, AtomicBuiltinTypeRegistryFailure, BridgeQualification,
+    CompilationWorld, LiteralFamily, LiteralMaterializationFailure, LiteralTypeSelection,
+    MutabilityActualFrame, MutabilityFormalFrame, MutabilityPattern, NumericFamily, NumericTypeKey,
+    NumericTypeRegistry, OrdinaryCallableTypeInput, OrdinaryCallableTypeOutput, P1Elaboration,
+    P1ElaborationFailure, P1Origin, P1Projection, PatternComponentPolicy, Phase,
+    PhaseOverloadCandidate, PolicyBridgeBody, PolicyBridgeResolution, PolicyOverloadCandidate,
+    PolicyOverloadSelection, PolicyPair, PolicyPartialOrdering, PolicyResultEntry, PolicyStage,
+    PolicyTransitionCallable, PolicyTransitionFailure, PolicyTransitionRequest,
+    PolicyTransitionRequestFailure, Provenance, SemanticValueId, SemanticValueRef, StageSet,
+    TransitionTypeExpectation, TypeValueId, ValueComponentPolicy, ValueMutability, ValuePresence,
 };
 use support::{empty_app_manifest, initializer_from_source};
 
@@ -44,8 +43,6 @@ fn pair(
         pattern: PatternComponentPolicy {
             stages: stages(pattern_stages),
         },
-        namespace_visibility: None,
-        export_root: false,
     }
 }
 
@@ -59,8 +56,6 @@ fn absent_pair(pattern_stages: &[PolicyStage]) -> PolicyPair {
         pattern: PatternComponentPolicy {
             stages: stages(pattern_stages),
         },
-        namespace_visibility: None,
-        export_root: false,
     }
 }
 
@@ -1000,26 +995,6 @@ fn literal_family_is_distinct_from_selected_concrete_numeric_type() {
     assert_eq!(literal.numeric_type, Some(uint16));
     assert_eq!(literal.type_value, expected);
     assert_eq!(literal.policy, compile_pair());
-}
-
-#[test]
-fn literal_helper_is_not_yet_wired_into_the_initializer_evaluator() {
-    let world = CompilationWorld::from_manifest(&empty_app_manifest()).expect("bootstrap world");
-    let expr = initializer_from_source("let x = 42");
-    assert!(matches!(
-        evaluate_initializer_best_effort(
-            world.snapshot(),
-            world.package_root_node(),
-            &expr,
-            &world.package_context(),
-            EvalMode::MetaPartial,
-            Provenance::new("literal integration boundary"),
-        ),
-        EvalOutcome::Residual {
-            reason: ResidualReason::UnsupportedExpression,
-            ..
-        }
-    ));
 }
 
 #[test]

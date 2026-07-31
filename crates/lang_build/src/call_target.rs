@@ -1,7 +1,7 @@
 //! Call-target resolution boundary.
 //!
-//! Resolves a `NormalizedCallSite.target` through the namespace graph to a
-//! callable `SymbolObject`.
+//! Compatibility adapter that resolves a `NormalizedCallSite.target` through
+//! a read-only declaration projection to a callable `SymbolObject`.
 //!
 //! ## Temporary shortcut (v0.8)
 //!
@@ -25,8 +25,8 @@
 use lang_syntax::{NormExpr, NormNavComponent};
 
 use crate::{
-    graph::{NamespaceGraphCapability, ResolveExpectation, ResolverContext},
     model::{Diagnostic, PolicyEnv, Provenance, ResolverCode, SymbolObject},
+    semantic_name_index::{ResolveExpectation, ResolverContext, SemanticNameResolver},
 };
 
 #[derive(Clone, Debug)]
@@ -42,13 +42,14 @@ pub struct ResolvedCallTarget {
 /// Resolve the target of a `NormalizedCallSite` to a callable `SymbolObject`.
 ///
 /// The target must be a `NormExpr::Name` or `NormExpr::Nav` whose components are
-/// all names. It is resolved through the namespace graph as a policy-visible
-/// meta-function first, then as a policy-visible object. Unknown / unresolved
-/// targets return `None` (not an error).
+/// all names. This compatibility adapter resolves through the name index as a
+/// policy-visible meta-function first, then as a policy-visible object.
+/// Connected ordinary invocation resolves Semantic Symbols directly. Unknown
+/// / unresolved targets return `None` (not an error).
 /// Ambiguous or conflicting resolutions return a diagnostic.
 pub fn resolve_call_target(
     target: &NormExpr,
-    capability: &NamespaceGraphCapability<'_>,
+    capability: &SemanticNameResolver<'_>,
     context: &ResolverContext,
     policy_env: PolicyEnv,
 ) -> Result<Option<ResolvedCallTarget>, Diagnostic> {

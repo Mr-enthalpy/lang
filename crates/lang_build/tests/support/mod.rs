@@ -8,11 +8,54 @@ use std::{
 };
 
 use lang_build::{
-    BuildError, BuildManifest, BuildSession, BuildWorkspace, CompilationWorld, NamespaceNodeId,
-    NormalizedCallSite, PackageBuildSpec, ProductMaterialRole, Provenance, SourceCategory,
-    SourceRoot, StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
+    prepare_meta_callable_candidate_with_declared_planes, ArgProductShape, BuildError,
+    BuildManifest, BuildSession, BuildWorkspace, CallableCandidateKind, CandidatePrepResult,
+    CandidatePreparationContext, CompilationWorld, NamespaceNodeId, NormalizedCallSite,
+    PackageBuildSpec, ParameterShape, ProductMaterialRole, Provenance, SourceCategory, SourceRoot,
+    StaticDependencySpec, SymbolKind, SymbolObject, SymbolPayload, TypeObject,
 };
 use lang_syntax::{NormDecl, NormExpr, NormForm};
+
+/// Test-side candidate preparation from a fixture-declared symbol payload.
+///
+/// The production spine supplies callable kind, primitive, and body-entry /
+/// return-object planes from its own declared facts; tests read those planes
+/// from the payload material they constructed themselves and call the
+/// declared-planes entry directly. This is fixture bookkeeping, not a graph
+/// semantic read in the canonical path.
+pub fn prepare_candidate_from_fixture_symbol(
+    callee: &SymbolObject,
+    arg_product_shape: ArgProductShape,
+    parameter_shape: ParameterShape,
+    context: CandidatePreparationContext,
+) -> CandidatePrepResult {
+    let (callable_kind, callee_primitive, body_entry_policy, return_object_policy) =
+        match &callee.payload {
+            SymbolPayload::MetaFunction(mf) => (
+                CallableCandidateKind::MetaFunction,
+                mf.primitive,
+                mf.body_entry_policy.clone(),
+                mf.return_object_policy.clone(),
+            ),
+            SymbolPayload::FieldFunction(field) => (
+                CallableCandidateKind::FieldFunction,
+                None,
+                field.callable_policy.body_entry_policy.clone(),
+                field.callable_policy.return_object_policy.clone(),
+            ),
+            _ => panic!("fixture callee must carry a callable payload"),
+        };
+    prepare_meta_callable_candidate_with_declared_planes(
+        callee,
+        callable_kind,
+        callee_primitive,
+        body_entry_policy,
+        return_object_policy,
+        arg_product_shape,
+        parameter_shape,
+        context,
+    )
+}
 
 /// Temporary on-disk tree for boundary-only tests.
 ///
@@ -268,10 +311,12 @@ pub fn type_with_namespace(
     symbol.kind = SymbolKind::Type;
     symbol.node_kind = Some(lang_build::NamespaceNodeKind::Virtual);
     symbol.payload = SymbolPayload::Type(TypeObject {
-        type_symbol_id: type_id,
+        carrier_symbol_id: type_id,
+        represented_type: lang_build::type_value_projection_from_type_symbol(type_id),
         owner_pattern_head: None,
         fields: Vec::new(),
         field_names: Vec::new(),
+        field_type_values: Vec::new(),
         field_type_symbol_ids: Vec::new(),
         type_associated_namespace: Some(type_namespace_id),
         extraction_interface: None,

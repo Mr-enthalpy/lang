@@ -1,7 +1,7 @@
 //! Physical source discovery layer for the v0.6 build slice.
 //!
-//! This module is the lowest physical input layer below namespace graph
-//! assembly. It finds `.lang` source files on the filesystem and records their
+//! This module is the lowest physical input layer below SemanticWorld
+//! namespace assembly. It finds `.lang` source files on the filesystem and records their
 //! physical identity, relative namespace directory, raw UTF-8 content, a stable
 //! content fingerprint, and diagnostic provenance.
 //!
@@ -14,7 +14,7 @@
 //! physical discovery   (this module)
 //!   -> namespace assembly       (world.rs: opens physical namespace nodes)
 //!   -> declaration harvesting   (world.rs: installs symbols / deltas)
-//!   -> resolver / policy / meta  (consume the namespace graph)
+//!   -> resolver / policy / meta  (consume SemanticWorld)
 //! ```
 //!
 //! Semantic rule preserved here: physical directory structure contributes

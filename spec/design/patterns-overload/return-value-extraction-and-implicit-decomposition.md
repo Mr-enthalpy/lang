@@ -44,6 +44,53 @@ TopPattern(P)? = P
 x?? = (x?)?
 ```
 
+`TopPattern(P)? = P` is only display shorthand for the resident body. The
+exposed extraction view must retain an anonymous Pattern-layer boundary:
+
+```text
+OptionalPeel(
+  PatternLayer(name = c, body = B, order = O)
+) =
+  PatternLayer(name = _, body = B, order = O)
+```
+
+Therefore, if `TopPattern_c` had a fully named, order-insensitive body before
+the peel:
+
+```text
+(a, b) <= (a, b)c?
+```
+
+is semantically understood as:
+
+```text
+(a, b) _ <= (a, b)c
+```
+
+The left side is therefore
+`PatternLayer(_, Product(a, b), Unordered)`, not a naked Product. `_` erases the
+peeled top Pattern identity while preserving its layer boundary and ordering.
+This does not make a naked Product unordered: `(a, b) != (b, a)`, and the
+fixed point `(a, b)? = (a, b)` gains no matching authority. A positional top
+Pattern body also remains positional after peeling.
+
+If no top Pattern is peelable:
+
+```text
+OptionalPeel(x) = x
+```
+
+This is an ordinary fixed point, not matching failure and not a `none` result.
+The retained anonymous layer must also make peeling commute with
+normalization:
+
+```text
+PeelView(Norm(x)) = Norm(PeelView(x))
+```
+
+These are future semantic requirements and are not claimed as current
+executable behavior.
+
 Bare `?` peels at most one layer. It does not keep peeling until a target pattern
 is found, perform Error propagation, search for an extractor, or stand for
 arbitrary pattern matching. Leaves and Pattern normal forms are fixed points.
@@ -108,6 +155,11 @@ product P?    = P
 TopPattern(P)? = P
 ```
 
+For extraction, the last result is an anonymous `PatternLayer(_, P, O)` whose
+ordering `O` is inherited from the peeled top Pattern. This is a retained
+structural boundary, not merely metadata attached to a naked Product and not a
+change to Product equality.
+
 If that view contains product elements, each element may itself be a new waist
 point, and `?` may be applied again. The result is not a one-shot AST expansion
 but a chain of waist points connected by view transitions.
@@ -137,7 +189,7 @@ product P:
   P? = P
 
 TopPattern(P):
-  TopPattern(P)? = P
+  TopPattern(P)? = PatternLayer(name = _, body = P, order = TopPatternOrder)
 ```
 
 Pattern matching may consume a symbol's Pattern layer directly without `?`;
