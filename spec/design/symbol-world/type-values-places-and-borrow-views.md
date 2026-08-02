@@ -651,8 +651,9 @@ E@ is undefined when E has no carrier place (a freshly computed temporary)
 The last line is a domain restriction, not a style rule: the borrow-producing
 group of `@` exists for pure pattern slots (§5.2.1), and a value-bearing operand
 has no borrow-producing `@` candidate at all, because `ref` already expresses
-that borrow. `@` on a value-bearing operand is the lifetime-policy observation
-instead, which is a different operation with a different result.
+that borrow. On a complete `⟨ Val1, P, Val2 ⟩` object, `@` is the lifetime
+observation — a different operation with a different result, and one this
+document does not narrow.
 
 #### 5.2.1 `@` exists because a pure pattern read hides the carrier slot
 
@@ -692,9 +693,11 @@ s ref   // borrows the Val1 value of s
 s@      // not an ordinary way to obtain a borrow
 ```
 
-`@` on such an operand still carries its established lifetime-policy observation
-meaning; that group is separate from the compile-stage pure-pattern-slot group
-and is not a way to obtain a borrow.
+`@` on such an operand still carries its established meaning: on a complete
+object shape `⟨ Val1, P, Val2 ⟩`, `@` takes that object's lifetime. That group is
+separate from the compile-stage pure-pattern-slot group and is not a way to
+obtain a borrow, and the narrowing above does not weaken it — the two groups have
+disjoint premises and neither is a fallback for the other.
 
 ### 5.3 Borrow views are idempotent and non-stacking
 

@@ -643,8 +643,10 @@ On a pure pattern slot the selected candidate is
 supplies no carrier place, so no `@` candidate applies to it.
 
 `@` is **not** a general `PlaceOf(E)`. It has exactly two positively defined
-overload groups: for `Val1?(x) ≠ null` it yields a `LifetimeFact` at the lifetime
-policy stage — a fact, not a borrow; for `Val1?(x) = null` with
+overload groups with disjoint premises. For `Val1?(x) ≠ null` — a complete
+`⟨Val1, P, Val2⟩` object — `@` takes that object's lifetime, yielding a
+`LifetimeFact` at the lifetime policy stage; that is a fact, not a borrow, and it
+is unaffected by the narrowing of the other group. For `Val1?(x) = null` with
 `EffectiveOpen(x, context)` it yields `P ref`. The second group is why `@`
 exists: an ordinary read of a pure pattern slot selects the pattern value and so
 hides the carrier slot, and `ref` has no basis for guessing otherwise. There is

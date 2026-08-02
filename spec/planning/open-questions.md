@@ -1010,7 +1010,9 @@ documents named in each line.
 - `@` has two positively defined overload groups and is an ordinary overloaded
   operation, not a general `PlaceOf(E)`; the lifetime boundary restricts
   lifetime *rules*, not `@`. Whether `ref` or `@` applies is decided by the
-  presence of a `Val1` payload, not by type-rank.
+  presence of a `Val1` payload, not by type-rank. On a complete
+  `⟨Val1, P, Val2⟩` object `@` takes that object's lifetime; that group is
+  unchanged by the narrowing of the borrow-producing group.
   (`lifetime/lifetime-policy-and-overload-boundary.md`)
 - `type ref` is capability-equivalent to `⟨Place, type, OpenWitness⟩`, so
   `Γ ⊢ r : type ref` implies `Open_Γ(Target(r))` and its holdable interval is the

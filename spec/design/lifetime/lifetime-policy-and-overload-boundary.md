@@ -54,6 +54,13 @@ It is produced at the lifetime policy stage, which runs after ordinary overload
 selection has already completed (§4). Spellings such as `val@`, `val@.region`,
 and `val@.origin` project components of that fact.
 
+This is the established meaning of `@` on a complete object shape
+`⟨ Val1, P, Val2 ⟩`: **taking its lifetime**. Narrowing the borrow-producing
+group to pure pattern slots (§2.2) does not disturb it. The two groups have
+disjoint premises (`Val1?(x) ≠ null` versus `Val1?(x) = null`) and different
+results, so neither competes with the other and neither is a fallback for the
+other.
+
 This group yields a fact, not a borrow. There is deliberately **no** compile-stage
 borrow-producing candidate for a value-bearing operand:
 
@@ -61,6 +68,9 @@ borrow-producing candidate for a value-bearing operand:
 s ref   // borrows Read(s) = Val1(s) — the ordinary way to obtain a borrow
 s@      // lifetime observation of s; not a way to obtain a borrow
 ```
+
+Removing a borrow meaning from `s@` therefore removes nothing from `@`: the
+lifetime observation was always what `@` meant on a value-bearing operand.
 
 ### 2.2 Pure pattern slots: `P ref`
 
