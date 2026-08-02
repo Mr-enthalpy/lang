@@ -596,10 +596,10 @@ reopen or change the already unique ordinary overload result. `@` is evaluated a
 a stage; it does not name one.
 
 This boundary is *not* a claim that `@` lacks semantics or overloads. `@` is the
-place-sensitive observation `E@ = ObservePlace_policy(Origin(E), Value(E))` with
-two positively defined overload groups (`LifetimeFact` for objects carrying an
-internal `Val1` payload; `P ref` for effectively open pattern-value slots). What
-remains undefined is the region/origin algebra, checking order, refinement
+carrier-slot observation `E@ = ObservePlace_policy(CarrierPlace(E), Value(E))`
+with two positively defined overload groups (`LifetimeFact` for objects carrying
+an internal `Val1` payload; `P ref` for effectively open pure pattern slots).
+What remains undefined is the region/origin algebra, checking order, refinement
 phase, and handoff object.
 
 _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
@@ -629,34 +629,54 @@ _See also: Policy Pair, Borrow view, EffectiveOpen._
 
 ## `@`
 
-The place-sensitive observation operation:
+The carrier-slot observation operation:
 
 ```text
-E@ = ObservePlace_policy( Origin(E), Value(E) )
+E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
 ```
 
-`Origin(E)` is the place coordinate through which `E` was read. A freshly
-computed temporary supplies no `Origin`, so no `@` candidate applies to it. `@`
-has two positively defined overload groups: for `Val1?(x) ≠ null` it yields a
-`LifetimeFact` at the lifetime policy stage; for `Val1?(x) = null` with
-`EffectiveOpen(x, context)` it yields `P ref`. When the target is not effectively
-open, the failure is "no applicable overload for `@`", not a post-hoc rejection.
-`@` is not a stage name and not an ordinary policy atom.
+On a pure pattern slot the selected candidate is
+`E@ = RefCarrierSlot( CarrierPlace(E) )`.
 
-_See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary._
+`CarrierPlace(E)` is the carrier slot through which `E` was read; `ref` and
+`share` consume only `Read(E)` and never ask for it. A freshly computed temporary
+supplies no carrier place, so no `@` candidate applies to it.
+
+`@` is **not** a general `PlaceOf(E)`. It has exactly two positively defined
+overload groups: for `Val1?(x) ≠ null` it yields a `LifetimeFact` at the lifetime
+policy stage — a fact, not a borrow; for `Val1?(x) = null` with
+`EffectiveOpen(x, context)` it yields `P ref`. The second group is why `@`
+exists: an ordinary read of a pure pattern slot selects the pattern value and so
+hides the carrier slot, and `ref` has no basis for guessing otherwise. There is
+deliberately no compile-stage borrow-producing `@` candidate for a value-bearing
+operand — `s ref` already does that job. When the target is not effectively open,
+the failure is "no applicable overload for `@`", not a post-hoc rejection. `@` is
+not a stage name and not an ordinary policy atom.
+
+_See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary, `type ref`._
 
 ---
 
 ## Borrow view
 
-An ordinary value that observes another object without owning it. Three
-operations produce one:
+An ordinary value that observes another object without owning it. What `ref` and
+`share` observe is the value the expression read:
 
 ```text
-E ref    = MakeRef( Value(E) )
-E share  = MakeShare( Value(E) )
-E@       = ObservePlace_policy( Origin(E), Value(E) )
+Read(Σ) = Val1(Σ)                 when Val1(Σ) ≠ ⊥
+Read(Σ) = ⟨ ⊥, P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
+
+E ref    = Ref( Read(E) )
+E share  = Share( Read(E) )
+E@       = RefCarrierSlot( CarrierPlace(E) )
 ```
+
+Whether `ref` or `@` is the right operation is decided by the presence of a
+`Val1` payload, never by type-rank: for `s : symbol` the payload exists, so
+`s ref : symbol ref` borrows the symbol value `s` carries — not the binding slot
+that carries `s` — and a type-rank object with a payload behaves the same way.
+For `let t: type = uint8`, `t ref` is `uint8 ref` (a correct borrow of what was
+read) and only `t@` yields `type ref`.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
 `SymbolId` or `PlaceId`, and its member set is not silently that of its target.
@@ -706,7 +726,8 @@ Global lifetime does not imply `EffectiveOpen`. Inside a meta instance body the
 ordinary freezing events do not fire; sealing happens only at the meta return
 stage. `EffectiveOpen` is a premise of the `P ref` group of `@` and of
 `inject` input validity, so violating it produces "no applicable overload",
-not a late rejection.
+not a late rejection. `Open_Γ(x)` is the same fact written in judgment form, with
+`Γ` supplying the context argument.
 
 Canonical owner:
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
@@ -731,11 +752,62 @@ perform an assignment. Failure is total: no partial result, no write, no
 rollback. Observing the result in a place is an ordinary write, spelled as three
 steps (`old = Read(t_ref); new = Inject(old, Δ); Write(t_ref, new)`). `inject`
 extends only the direct child patterns of its input; anything else is "no
-applicable overload". Input validity for a `type ref` requires
-`LifetimeValid(r, c) ∧ EffectiveOpen(Target(r), c)`; a `type share` has no
-applicable `inject` overload.
+applicable overload".
 
-_See also: EffectiveOpen, Meta-function, Borrow view._
+Input validity has two overloads, and the `Open` fact comes from a different
+place in each:
+
+```text
+Injectable_Γ(x : type)        = Open_Γ( ConstructionRoot(x) )
+Injectable_Γ(x : type ref)    = true
+Injectable_Γ(x : type share)  = false
+```
+
+A by-value `type` carries no `Open` capability, so the evaluation context must be
+asked. A `type ref` needs no second query because `x : type ref` already implies
+`Open_Γ(Target(x))`.
+
+_See also: EffectiveOpen, Meta-function, Borrow view, `type ref`._
+
+---
+
+## `type ref`
+
+A borrow view of a carrier slot whose object is a pure pattern value. It is
+formed only by `@`, only inside the target's open window:
+
+```text
+Carrier(t) = q      Open_Γ(q)
+---------------------------------
+Γ ⊢ t@ : type ref
+```
+
+A `type ref` is not merely `⟨Place, type⟩`; it is capability-equivalent to
+
+```text
+⟨ Place, type, OpenWitness ⟩
+```
+
+so that the invariant
+
+```text
+Γ ⊢ r : type ref  =>  Open_Γ( Target(r) )
+```
+
+holds. The `OpenWitness` need not exist as a runtime field, but it must be an
+unforgeable fact of the static judgment. Consequently the holdable interval of a
+`type ref` is the `Open` window itself, not "`Lifetime(Target)` has not ended
+yet": once the window closes the view cannot continue to exist as a usable value,
+and the only way past the boundary is to weaken to `type share` beforehand.
+
+This is what lets a `type ref` satisfy `inject` with no ambient query, and what
+makes returning or storing one an escape-check question rather than a blanket
+prohibition.
+
+`type share` keeps observability but positively renounces structural extension:
+it has no applicable `inject` overload.
+
+_See also: `@`, `inject`, Borrow view, Escape check, EffectiveOpen._
 
 ---
 

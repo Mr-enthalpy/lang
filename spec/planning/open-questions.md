@@ -71,8 +71,15 @@ track:
   Write(t_ref, new)`).
 - No declaration form forwards a Symbol or a place. Shared observation of another
   object is a borrow view (`ref` / `share` / `@`), which is an ordinary value.
-- Extension through a `type ref` view requires
-  `LifetimeValid(r, c) ∧ EffectiveOpen(Target(r), c)`; a `type share` has no
+  `ref` and `share` consume `Read(E)`; only `@` consumes `CarrierPlace(E)`, and
+  `@` is not a general `PlaceOf(E)`.
+- Which of `ref` and `@` applies is decided by the presence of a `Val1` payload,
+  not by type-rank. For `let t: type = uint8`, `t ref` is `uint8 ref` and is not
+  an error; `t@` is what yields `type ref`.
+- Extension through a `type ref` view needs no ambient query, because
+  `Γ ⊢ r : type ref` already implies `Open_Γ(Target(r))`; its holdable interval is
+  the `Open` window. Extension of a by-value `type` requires
+  `Open_Γ(ConstructionRoot(t))` from the call site. A `type share` has no
   applicable extension or `inject` overload. `Eligible(view of p) ≤ Eligible(p)`.
 - External stable values are readable and observable through a borrow view but
   are not extension targets: `GlobalLifetime(x)` does not imply
@@ -940,6 +947,33 @@ to name resolution?
 
 ---
 
+### Static materialization cache
+
+#### How should the compile cache key carry the caller's `Open` fact?
+
+**Status:** Open (engineering, active at v0.10+)
+
+**Closed part of the question:**
+The semantics no longer require the whole caller context in the key. A `compile`
+function that only injects through a `type ref` needs no ambient `Open` fact at
+all: the parameter's canonical identity already carries referent identity, and
+applicability is proved by the parameter type. Only a `compile` function that
+injects a by-value `type` is context-sensitive, and only in the sense that the
+same value may be legal at one call site and illegal at another:
+
+```text
+Eval(F, t; Γ_open)  ≠  Eval(F, t; Γ_closed)
+```
+
+**Question:** For that case, which of the three admissible treatments should the
+implementation adopt — folding the required `Open` capability into the
+applicability judgment, caching the pure computation while not caching call
+legality, or recording `requires Open(t)` in the function summary and verifying
+it at the call site? Admitting the whole lexical context into the key
+indiscriminately is already excluded.
+
+---
+
 ### Closed by the value/Policy/Open/borrow/`inject` semantic closure
 
 These are no longer open questions. They are recorded here only so that they are
@@ -970,16 +1004,31 @@ documents named in each line.
   ordinary freezing events.
   (`symbol-first-meta-construction-and-pattern-injection.md` §12.1)
 - Borrow views: `ref` / `share` / `@` / `rebind`, idempotence of borrowing, and
-  `OwnedClosure` excluding view edges.
+  `OwnedClosure` excluding view edges. `ref` / `share` consume `Read(E)`; `@`
+  consumes `CarrierPlace(E)`.
   (`type-values-places-and-borrow-views.md`)
 - `@` has two positively defined overload groups and is an ordinary overloaded
-  operation; the lifetime boundary restricts lifetime *rules*, not `@`.
+  operation, not a general `PlaceOf(E)`; the lifetime boundary restricts
+  lifetime *rules*, not `@`. Whether `ref` or `@` applies is decided by the
+  presence of a `Val1` payload, not by type-rank.
   (`lifetime/lifetime-policy-and-overload-boundary.md`)
+- `type ref` is capability-equivalent to `⟨Place, type, OpenWitness⟩`, so
+  `Γ ⊢ r : type ref` implies `Open_Γ(Target(r))` and its holdable interval is the
+  `Open` window rather than `Lifetime(Target)`.
+  (`type-values-places-and-borrow-views.md` §5.5)
 - `inject` is a pure function `( type | type ref ) x ChildPatternMaterial ⇀ type`
   with total failure; it is not in-place mutation and needs no write capability.
-  Assignment checks LHS writability, RHS Pattern conformance, and lifetime
-  capability — never RHS construction history.
+  Its two overloads take the `Open` fact from different places: a by-value `type`
+  from the evaluation context, a `type ref` from the view itself. Assignment
+  checks LHS writability, RHS Pattern conformance, and lifetime capability —
+  never RHS construction history.
   (`symbol-first-meta-construction-and-pattern-injection.md` §8)
+- A `compile` evaluation depends on the caller's `Open` window only through
+  Open-sensitive operations on by-value `type` arguments; a body that only
+  injects through a `type ref` has `RequiresAmbientOpen = ∅`. Returning a
+  `type ref` is not prohibited — crossing a closing boundary is an escape-check
+  failure of the view's own formation condition.
+  (`symbol-first-meta-construction-and-pattern-injection.md` §4.2)
 - The semantic alias/forwarding family is retired, not deferred. No declaration
   form forwards a Symbol or a place; operator-name binding is the only surviving
   case. (`entity-alias-design.md` retirement notice)

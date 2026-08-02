@@ -17,13 +17,17 @@ reserved lexical territory without semantics, and not exempt from overload
 resolution:
 
 ```text
-E@ = ObservePlace_policy( Origin(E), Value(E) )
+E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
 ```
 
-`Origin(E)` is the place coordinate through which `E` was read. This place
+`CarrierPlace(E)` is the carrier slot through which `E` was read. This place
 sensitivity is what distinguishes `@` from `ref` and `share`, which consume only
-`Value(E)`. An expression with no place origin — a freshly computed temporary —
-supplies no `Origin`, so no `@` candidate applies to it.
+`Read(E)`. An expression with no carrier place — a freshly computed temporary —
+supplies none, so no `@` candidate applies to it.
+
+`@` is **not** a general `PlaceOf(E)` defined on every expression. Its candidate
+set is the two groups of §2 and nothing else; there is no third, generic
+"address of this expression" meaning to fall back on.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
 policy is not a fifth stage in that dimension. `@` is evaluated at a stage; it
@@ -32,15 +36,17 @@ does not name one.
 ## 2. The two overload groups of `@`
 
 `@` has two positively defined overload groups, selected by whether the observed
-object carries an internal `Val1` payload.
+object carries an internal `Val1` payload. Neither group is a general
+"take a borrow" facility: for a value-bearing operand that job already belongs to
+`ref`.
 
 ### 2.1 Value-bearing objects: lifetime facts
 
 ```text
 Val1?(x) ≠ null
 policy   = lifetime policy stage
-------------------------------------------
-Origin(E) × Value(E)  ->  LifetimeFact
+--------------------------------------------
+CarrierPlace(E) × Value(E)  ->  LifetimeFact
 ```
 
 A `LifetimeFact` is the observation of the origin's region/provenance relation.
@@ -48,20 +54,55 @@ It is produced at the lifetime policy stage, which runs after ordinary overload
 selection has already completed (§4). Spellings such as `val@`, `val@.region`,
 and `val@.origin` project components of that fact.
 
-### 2.2 Pattern-value slots: `P ref`
+This group yields a fact, not a borrow. There is deliberately **no** compile-stage
+borrow-producing candidate for a value-bearing operand:
+
+```lang
+s ref   // borrows Read(s) = Val1(s) — the ordinary way to obtain a borrow
+s@      // lifetime observation of s; not a way to obtain a borrow
+```
+
+### 2.2 Pure pattern slots: `P ref`
 
 ```text
 Val1?(x) = null
 policy   ∈ { compile, lifetime policy }
 EffectiveOpen(x, current_context)
-------------------------------------------
-Origin(E) × Value(E)  ->  P ref
+--------------------------------------------
+CarrierPlace(E) × Value(E)  ->  P ref
 ```
 
-Observing the place of a pattern-value slot yields a reference to that slot's
-pattern component. This group is available at compile stage as well, because a
-compile-stage computation legitimately needs to observe a pattern slot it was
-given.
+Observing the carrier slot of a pure pattern value yields a reference to that
+slot's pattern component. This group is available at compile stage as well,
+because a compile-stage computation legitimately needs to reach a pattern slot it
+was given.
+
+This group is the whole reason `@` exists. Reading a `Val1? = null` name through
+the ordinary value judgment preferentially produces the entity's `P x Val2`
+pattern value, and `ref` then borrows *that*:
+
+```lang
+let t: type = uint8;
+
+t ref   // uint8 ref — a correct borrow of the value that was read
+t@      // type ref  — the carrier slot t itself
+```
+
+`t ref` is not an error to be repaired. A value-directed operation has no basis
+for guessing that the writer meant the slot underneath, and nothing is inserted
+to bridge the gap: `s ref` is never elaborated into `s |> type ref`, because an
+operand position performs no implicit type conversion. `@` bridges it explicitly
+by taking `CarrierPlace(E)` as input.
+
+The selector is the `Val1` dimension of what was read, never type-rank. A
+value-bearing operand needs no place observation to be borrowed: for `s : symbol`
+the payload exists (`Val1(Symbol) = Member * ω`), so `s ref` is the ordinary
+"form a borrow of this value" operation, and a type-rank object that carries a
+payload behaves the same way. An explicit `symbol |> type` remains well-formed
+whenever the operand really carries a `Val1` dimension — it is simply never
+supplied implicitly. The value-side rules and the full classification are owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§5.1.1–§5.2.1.
 
 The `EffectiveOpen` premise is a real premise, not a post-hoc permission check.
 When the target is no longer effectively open at the observation context, this
@@ -107,6 +148,32 @@ materialized callable entity, and installing into global namespace material.
 For pattern-value observations the region is the target's open capability
 region, so the escape check and the `EffectiveOpen` premise of §2.2 are the same
 condition applied at two moments: at production and at every destination.
+
+Because the premise holds at production and the view cannot be held past the
+window, a well-formed view is itself the witness:
+
+```text
+Γ ⊢ r : type ref   =>   Open_Γ( Target(r) )
+
+holdable interval of a type ref  =  the Open window
+```
+
+A consumer that already holds such a view therefore does not re-ask for openness;
+see `inject` input validity in
+[`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md)
+§8.2.3. The obligation this places on this section is the converse direction: the
+escape check must reject exactly the destinations that would carry the view past
+the closing boundary.
+
+This is what makes returning a `type ref` a question with an answer rather than a
+blanket prohibition. A return inside the same open window is well-formed; a
+return that crosses the boundary is rejected here, because the receiving context
+cannot derive `out : type ref` at all — not later, as a failed `inject`. The
+author's option is to weaken before the boundary:
+
+```lang
+r share
+```
 
 `share` is the view that is allowed to leave an open capability region, and it
 pays for that with a strictly smaller capability set: it is not an assignment

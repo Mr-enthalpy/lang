@@ -617,9 +617,32 @@ nominal type is not. `compile` is therefore not a rootless meta-type generator,
 and "compile may return a type" and "compile may not invent a type root" are
 both true.
 
-A `type ref` returned by `compile` is subject to the ordinary validity condition
-of `type-values-places-and-borrow-views.md` §5.5: it is usable only where the
-receiving position is still inside the target's open capability region.
+Returning a `type ref` from `compile` is **not** prohibited:
+
+```lang
+let identity = (self, r: type ref): compile -> out: type ref => {
+    r;
+};
+```
+
+The returned view is subject to the ordinary formation condition of
+[`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md)
+§5.5, evaluated at the receiving position. If the return stays inside the same
+Open window, `out : type ref` holds and the call is well-formed. If it crosses
+the closing boundary, the failure is not "a later `inject` was rejected" but
+
+```text
+Γ_receiver ⊬ out : type ref
+```
+
+— the returned value cannot satisfy the formation/survival condition of its own
+view type. That rejection belongs to the escape check of
+[`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
+§3, or the body must weaken before returning:
+
+```lang
+r share;
+```
 
 #### 4.2.2 The two contexts of a compile evaluation
 
@@ -633,15 +656,57 @@ DefinitionLexicalContext(F)
     lexically declared identity
 
 CallerConstructionContext
-  — which pattern values are still Open, whether the caller is frozen,
-    whether a given type ref is currently valid, whether inject is callable
+  — the ambient Open facts that a by-value argument does not carry itself
 ```
 
 The definition context decides what names and owners the body sees. The caller
-context decides what the body is *permitted to do* to the values it was handed.
-Neither substitutes for the other: a body whose definition context is intact can
-still be unable to `inject` because the caller's construction context has frozen
-the target.
+context supplies only the one thing a by-value pattern argument cannot supply:
+whether its construction root is still `Open` (§8.2.3). Neither substitutes for
+the other: a body whose definition context is intact can still be unable to
+`inject` a by-value `type` because the caller's construction context has frozen
+that target.
+
+The sensitivity is narrow. It arises only from Open-sensitive operations on
+by-value `type` arguments:
+
+```lang
+let extend =
+    (self, t: type): compile -> out: type => {
+        t |> inject(...);
+    };
+```
+
+`t` carries no Open witness, so the body's legality is a property of the call
+site, recordable as a function summary and verified there:
+
+```text
+Requires(extend) = Open( ConstructionRoot(t) )
+Γ_caller ⊨ Open( ConstructionRoot(t) )
+```
+
+A `type ref` parameter proves the same fact by itself:
+
+```lang
+let extend_ref =
+    (self, t: type ref): compile -> out: type => {
+        t |> inject(...);
+    };
+```
+
+```text
+t : type ref  =>  Open_Γ( Target(t) )
+RequiresAmbientOpen(extend_ref) = ∅
+```
+
+Such a body consumes only the capability its argument carries; `inject` never
+asks which in-place closure the `compile` call came from. Hence:
+
+```text
+a compile evaluation depends on the caller's Open window
+  only through Open-sensitive operations on by-value `type` arguments
+```
+
+not as a general property of every `compile` call.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
 meta-style virtual symbol layer for name shadowing, and does not impose a
@@ -1560,23 +1625,61 @@ like every ordinary navigated `let`, it only installs a Val2 associated
 member under `target` and never writes the construction back into a Pattern
 canonical structure (see the §7.3 correction).
 
-#### 8.2.3 Input validity
+#### 8.2.3 Input validity: two overloads, two places the Open fact comes from
 
-The input condition is stated on the value and its context, not on ownership of a
-handle:
+`inject` has two input overloads. They do not differ in how much permission they
+demand; they differ in **where** the openness fact is obtained:
 
 ```text
-ValidInjectInput(v : type, c)      = true
-ValidInjectInput(r : type ref, c)  = LifetimeValid(r, c)
-                                   ∧ EffectiveOpen(Target(r), c)
+Injectable_Γ(x : type)        = Open_Γ( ConstructionRoot(x) )
+Injectable_Γ(x : type ref)    = true
+Injectable_Γ(x : type share)  = false
 ```
+
+**By-value `type` — ask the evaluation context.**
+
+```text
+Γ ⊢ t : type      Open_Γ( ConstructionRoot(t) )
+------------------------------------------------
+Γ ⊢ t |> inject(Δ) : type
+```
+
+A plain `type` value carries no construction capability. The same pure pattern
+value may sit inside an open window in one context and be a frozen but globally
+live value in another, and nothing in the value itself distinguishes the two.
+This overload therefore has to consult the current evaluation context.
+
+**`type ref` — the argument already proved it.**
+
+```text
+Γ ⊢ r : type ref
+---------------------------
+Γ ⊢ r |> inject(Δ) : type
+```
+
+The `true` above is not an exemption. It is discharged by the formation invariant
+of the view (`type-values-places-and-borrow-views.md` §5.5):
+
+```text
+Γ ⊢ r : type ref   =>   Open_Γ( Target(r) )
+```
+
+Re-querying the environment would re-ask a question the premise has already
+answered. Evaluation stays purely functional:
+
+```text
+r |> inject(Δ)  =  Inject( Read(Target(r)), Δ )
+```
+
+It returns an ordinary `type` and does not modify the target slot. The write-back
+remains the separate three-step sequence of §8.2.2.
 
 A `type share` view is not injectable input: `share` carries no write path and no
 extension eligibility, so a call attempting it has **no applicable overload**
 rather than a special "cannot inject through share" error.
 
-`EffectiveOpen` is the ordinary construction-anchor condition, not a separate
-inject-only permission system:
+`Open_Γ` is the ordinary construction-anchor condition written in context form,
+not a separate inject-only permission system:
 
 ```text
 EffectiveOpen(x, c) = StateOpen(x)
@@ -1585,7 +1688,8 @@ EffectiveOpen(x, c) = StateOpen(x)
 
 This is why an already-sealed root cannot be extended: not because `inject`
 checks handle ownership, but because a sealed object is not `StateOpen`, so no
-valid `type ref` to it exists in any context.
+valid `type ref` to it can be formed and the by-value overload finds no ambient
+`Open` fact either.
 
 ### 8.3 Navigation direction
 

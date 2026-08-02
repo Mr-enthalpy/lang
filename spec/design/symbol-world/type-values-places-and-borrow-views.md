@@ -567,16 +567,21 @@ input judgments.
 
 ### 5.1 `ref` and `share` are value operations
 
-`ref` and `share` apply to the **value** of their operand expression:
+`ref` and `share` apply to the **value** of their operand expression. That value
+is whatever the ordinary read of §3.1 produced, and the read itself is decided by
+the `Val1` dimension of the slot:
 
 ```text
-E ref   = MakeRef(Value(E))
-E share = MakeShare(Value(E))
+Read(Σ) = Val1(Σ)                 when Val1(Σ) ≠ ⊥
+Read(Σ) = ⟨ ⊥, P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
+
+E ref   = Ref( Read(E) )
+E share = Share( Read(E) )
 ```
 
-They read `Value(E)` through the ordinary value judgment of §3 and produce a
-new borrow-view value. They do not consult, capture, or export the slot that
-held `E`. Therefore:
+Both are ordinary meta-function calls on that result. Neither asks which symbol
+slot the value came out of, and neither consults, captures, or exports it.
+Therefore:
 
 ```lang
 let t = uint8;
@@ -585,32 +590,111 @@ let r = t ref;
 
 binds `r` to `uint8 ref` — a borrow view of the type object `uint8` — and not to
 a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
-`r`.
+`r`. The slot itself is reached only by `t@` (§5.2).
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
 uses: a `share` view admits reading and passing but is not an assignable place
 and cannot be an `inject` target (§5.5).
 
-### 5.2 `@` is the place-sensitive operation
+#### 5.1.1 A `Val1` payload makes `ref` sufficient on its own
 
-`@` is the only borrow operator that consults where its operand came from:
+When the operand slot has a `Val1` payload, `Read` yields that payload and
+`ref` borrows it. Nothing further is required, and nothing is elaborated in
+front of the operator:
 
-```text
-E@ = ObservePlace_policy( Origin(E), Value(E) )
+```lang
+let s: symbol = ...;
+let r = s ref;              // Read(s) = Val1(s), so r : symbol ref
 ```
 
-`Origin(E)` is the place coordinate the expression was read through, and
-`policy` is the stage at which the observation is performed. `@` is an ordinary
-overloaded operation on `(Origin, Value)`; it is not a syntax-only marker and
-not excluded from overload resolution. Its overloads are specified in
+A symbol value is value-bearing (`Val1(Symbol) = Member * ω`), so `s ref` is the
+ordinary "form a borrow of this value" operation. What `r` borrows is the symbol
+value that `s` holds, not the binding slot that holds `s`.
+
+The rule is about the `Val1` dimension, not about type-rank. An object that
+happens to sit at type rank and still carries a payload takes the same path:
+
+```text
+x = ⟨ v, P_val_has_type_field, Val2 ⟩
+Read(x) = v
+x ref   : val_has_type_field ref
+```
+
+No implicit projection or conversion participates. `s ref` is never elaborated
+into `s |> type ref`, or into any other facet projection, because an operand or
+argument position performs no implicit type conversion. Facet projection stays
+explicit (`|> type`, `|> val`, `|> namespace`), and an explicit `symbol |> type`
+is itself well-formed whenever the operand really carries a `Val1` dimension —
+what is excluded is supplying it on the writer's behalf.
+
+### 5.2 `@` is the carrier-slot operation
+
+`@` is the only borrow operator that consults where its operand came from. In its
+borrow-producing group that is:
+
+```text
+E@ = RefCarrierSlot( CarrierPlace(E) )
+```
+
+`@` is an ordinary overloaded operation, not a syntax-only marker and not
+excluded from overload resolution. Its overload groups are specified in
 `../lifetime/lifetime-policy-and-overload-boundary.md`, which is the canonical
-owner of `@`. This document states only the two facts that belong to the
-place/value model:
+owner of `@`. This document states only the facts that belong to the place/value
+model:
 
 ```text
-Origin(E) is required input to @ and is not required input to ref / share
-E@ is undefined when E has no place origin (a freshly computed temporary)
+CarrierPlace(E) is required input to @ and is not required input to ref / share
+E@ is undefined when E has no carrier place (a freshly computed temporary)
+@ is not a general PlaceOf(E) available on every expression
 ```
+
+The last line is a domain restriction, not a style rule: the borrow-producing
+group of `@` exists for pure pattern slots (§5.2.1), and a value-bearing operand
+has no borrow-producing `@` candidate at all, because `ref` already expresses
+that borrow. `@` on a value-bearing operand is the lifetime-policy observation
+instead, which is a different operation with a different result.
+
+#### 5.2.1 `@` exists because a pure pattern read hides the carrier slot
+
+`@` is not a stylistic alternative to `ref`, and it is not the borrow operator
+of types. It fills exactly one gap: when `Val1(Σ) = ⊥`, the ordinary read has
+already selected the pure pattern facet, so the carrier slot is no longer
+reachable from the value:
+
+```lang
+let t: type = uint8;
+
+t ref   // Ref(Read(t))            = uint8 ref
+t@      // RefCarrierSlot(t)       = type ref, pointing at the slot t
+```
+
+`t ref` is not a mistake to be corrected; it is the correct borrow of the value
+that was read. A value-directed meta-function has no business guessing that the
+writer actually meant the slot underneath. `@` is the explicit divider between
+the two readings.
+
+So the operator choice is decided by the `Val1` dimension of what is read, never
+by type-rank:
+
+| what the expression reads | `E ref` | `@` needed |
+| --- | --- | --- |
+| ordinary value with `Val1` | borrow of that `Val1` value | no |
+| symbol value with `Val1` | `symbol ref` | no |
+| type-rank value with `Val1` | `ref` of that value's type | no |
+| pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
+| pure `type` slot | `ref` of the concrete type | `E@` is what yields `type ref` |
+
+Consequently the compile stage offers no borrow-meaning `@` candidate for an
+operand that has a `Val1` payload:
+
+```lang
+s ref   // borrows the Val1 value of s
+s@      // not an ordinary way to obtain a borrow
+```
+
+`@` on such an operand still carries its established lifetime-policy observation
+meaning; that group is separate from the compile-stage pure-pattern-slot group
+and is not a way to obtain a borrow.
 
 ### 5.3 Borrow views are idempotent and non-stacking
 
@@ -645,7 +729,7 @@ r_ref rebind = expression;  // retargets r_ref itself at a new referent
 
 ```text
 r_ref = v          -> Write( Referent(r_ref), v )
-r_ref rebind = E   -> Write( HolderPlace(r_ref), MakeRef(Value(E)) )
+r_ref rebind = E   -> Write( HolderPlace(r_ref), Ref( Read(E) ) )
 ```
 
 Without `rebind`, an assignment whose left side is a reference always reaches
@@ -655,21 +739,62 @@ assignment target. There is no context in which the same spelling means both.
 ### 5.5 `type`, `type ref`, and `type share`
 
 A `type` value has no place of its own; consuming one can only produce a new
-value. A `type ref` names a place, so its usability is conditional:
+value. It also carries no construction capability: the same pure pattern value
+may be inside an open window in one context and merely frozen-but-globally-live
+in another, and nothing in the value distinguishes the two.
+
+A `type ref` is different in kind. It can only be formed inside the open window
+of its target's carrier:
 
 ```text
-ValidContext(r : type ref, c)
-  = LifetimeValid(r, c) ∧ EffectiveOpen(Target(r), c)
+Carrier(t) = q      Open_Γ(q)
+---------------------------------
+Γ ⊢ t@ : type ref
 ```
 
-`EffectiveOpen` is defined in
-`symbol-first-meta-construction-and-pattern-injection.md` §12. A `type ref` is
-therefore valid only where its target is still within its open capability
-region; a globally reachable lifetime is not sufficient:
+So a well-formed `type ref` is not merely `⟨Place, type⟩`. It is
+capability-equivalent to
 
 ```text
-GlobalLifetime(x) does not imply EffectiveOpen(x)
+⟨ Place, type, OpenWitness ⟩
 ```
+
+and therefore carries the invariant
+
+```text
+Γ ⊢ r : type ref   =>   Open_Γ( Target(r) )
+```
+
+`OpenWitness` is not required to exist as a runtime field. It is required to be
+an unforgeable fact of the static judgment.
+
+The consequence is a holdable interval, not a permission re-check:
+
+```text
+holdable interval of a type ref  =  the Open window
+holdable interval of a type ref  ≠  Lifetime(Target) has not ended yet
+```
+
+Once the window closes, that `type ref` cannot continue to exist as a legal
+usable value in any later context. The way to carry something across the
+boundary is to weaken it *before* the boundary:
+
+```lang
+r share    // type share: still observable, no structural extension eligibility
+```
+
+This is also why a `type ref` satisfies the capability requirement of `inject`
+directly, with no ambient query — see
+`symbol-first-meta-construction-and-pattern-injection.md` §8.2.3.
+
+Reachability alone still forms no view:
+
+```text
+GlobalLifetime(x) does not imply Open_Γ(x)
+```
+
+`EffectiveOpen` — the context-relative form of `Open_Γ` — is defined in
+`symbol-first-meta-construction-and-pattern-injection.md` §12.
 
 `type share` is the deliberately weaker view. It may cross an open-capability
 boundary and be stored or passed where a `type ref` may not, precisely because
@@ -684,6 +809,23 @@ type share is not a valid inject target
 The last two lines are domain facts. A `type share` in an assignment-target or
 `inject`-target position produces "no applicable overload", never a permission
 error discovered after the operation has begun.
+
+#### 5.5.1 Three separate responsibilities
+
+Because the witness travels with the view, the three obligations never collapse
+into one check:
+
+```text
+inject on a type            ->  ask the evaluation context for ambient Open
+inject on a type ref        ->  the view already proves Open; ask nothing
+returning / storing a ref   ->  escape check: does the Open capability escape?
+```
+
+Returning a `type ref` from a `compile` callable is therefore not forbidden. A
+return that stays inside the same open window is well-formed; a return that
+crosses the closing boundary fails at the third obligation — the receiving
+context cannot derive `out : type ref` at all — rather than surfacing later as a
+failed `inject`.
 
 ## 6. Writability and extension eligibility
 

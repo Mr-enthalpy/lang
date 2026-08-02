@@ -699,6 +699,22 @@ their storage/lowering algorithms are not implemented:
 - A future static-materialization cache keys an ordinary compile value by its
   canonical static-value identity. A compile reference is keyed by compile
   referent identity, not by pointee value equality.
+- Cache keying does not swallow the caller's construction context wholesale. A
+  `compile` function that only injects through a `type ref` needs no ambient
+  `Open` fact in its key: the parameter's canonical identity already carries the
+  referent identity, and its applicability is proved by the parameter type. A
+  `compile` function that injects a by-value `type` is the case where the same
+  value can be legal or illegal depending on the call site:
+
+  ```text
+  Eval(F, t; Γ_open)  ≠  Eval(F, t; Γ_closed)
+  ```
+
+  Admissible treatments are: fold the required `Open` capability into the
+  applicability judgment; cache the pure computation but not the call's
+  legality; or record `requires Open(t)` in the function summary and verify it
+  at the call site. Admitting the whole lexical context into the key
+  indiscriminately is not required by this asymmetry.
 - Storage requested by `[[global]]` materialization does not mutate the
   source-visible `NamespaceGraph`; generated storage and source namespace
   declarations remain distinct semantic facts.
