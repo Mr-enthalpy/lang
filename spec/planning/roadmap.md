@@ -146,8 +146,9 @@ v0.4 normalization boundary is recorded in
 `spec/contracts/v0.4-normalization-prototype-notes.md`.
 
 v0.4 did **not** implement name resolution, type checking, operator lookup,
-alias resolution, pattern-head resolution, canonical matching, or closure
-materialization.
+alias-target resolution, pattern-head resolution, canonical matching, or closure
+materialization. (Alias-target resolution has since been retired as a semantic
+direction; `LetAliasAst` remains frozen parser material only.)
 
 ---
 
@@ -221,7 +222,7 @@ Narrative:
 - v0.6 builds package / namespace graph infrastructure.
 - v0.7 introduces early meta-function lookup and expansion.
 - v0.8 evolves the restricted type-shaped evaluator toward `compile`
-  `PatternValue` computation and `meta` `SymbolConstructionValue` construction.
+  `PatternValue` computation and `meta` `SymbolConstruction` construction.
 - Later stages resume canonical forms, pattern spaces, value-directed
   compile/meta control flow, type/kind checking, closure materialization,
   ownership/NLL, the semantic prototype, HIR, and codegen.
@@ -230,7 +231,7 @@ The canonical detailed direction for v0.6–v0.8 is
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`, building on
 `spec/design/build-package/build-system-design.md`, `spec/design/build-package/namespace-assembly-v0.md`,
 and `spec/design/build-package/package-manifest-v0.md`. Future field-projection and
-injection-place constraints are recorded in
+extension-place constraints are recorded in
 `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md`.
 
 Before formal meta object invocation can become stable, package/manifest records
@@ -242,13 +243,13 @@ The active design route (documented under `spec/design/`) is:
 ```text
 package/manifest identity
   -> namespace graph / SymbolCell (current substrate: SymbolObject)
-  -> SymbolId / PlaceId / PatternValue / TypeValueId / AliasChain
+  -> SymbolId / PlaceId / PatternValue / TypeValueId / borrow views
   -> ProductObject / ArgProductShape
   -> pattern normalization + first-order candidate shapes
   -> compile PatternValue computation
-  -> meta SymbolConstructionValue construction
-  -> ResolvedPatternScope / struct / functional inject
-  -> let binding/injection + NamespaceDelta install
+  -> meta SymbolConstruction construction
+  -> ResolvedPatternScope / struct / pure-functional inject
+  -> let binding/extension + NamespaceDelta install
   -> formal invocation demand/policy integration
   -> mechanical lowering family
   -> later runtime lookup
@@ -343,7 +344,7 @@ Must cover:
 - conflict is a hard error by default; no merge / overlay / duplicate /
   overload-set semantics or package overlay in v0.6
 - current cross-file closure forbids type-child, namespace-child, ordinary
-  value-member, and overload-entry injection into an existing symbol; value
+  value-member, and overload-entry extension into an existing symbol; value
   overload union may be reconsidered only after explicit merge authority and
   stable candidate identity are designed
 - engineering invariants: snapshot + transaction delta discipline,
@@ -393,7 +394,7 @@ The retained endpoint-only maxima helper is private. The connected
 formal/phase coordinates and optional migration endpoint coordinates in one
 Bp' product before a single maxima pass.
 Policy migration cannot repair Type/Pattern structural failure; explicit
-`ref`/`share`/`alias` mechanical operations remain separate ordinary calls.
+`ref`/`share`/`rebind` mechanical operations remain separate ordinary calls.
 T and Tnum registries
 carry current first-order
 TypeValue projections derived from installed Type symbols, not final canonical
@@ -406,7 +407,7 @@ associated `()`, `InvocationFrame`, ordinary candidate pipeline, and complete
 result entries. Pattern-owner-authorized calls enter the same trunk with an
 explicit semantic receiver. A typed `ToolchainGlobalSourceRoot` supplies
 source-visible root construction authority (`Gsrc`); ordinary packages retain
-a non-empty install prefix and cannot inject direct root members. `Gsrc` is not
+a non-empty install prefix and cannot install direct root members. `Gsrc` is not
 a prelude and cross-package calls still require public visibility.
 
 Atomic Runtime migration can consume a checked request through source-backed
@@ -500,8 +501,8 @@ Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`. The following are
 preconditions, not optional local conveniences: `ProductObject` /
-`ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / `AliasChain`,
-`SymbolConstructionValue` / `ResolvedPatternScope`, contextual P1 projection,
+`ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / borrow views,
+`SymbolConstruction` / `ResolvedPatternScope`, contextual P1 projection,
 P2 pair normalization and function-object stage derivation while preserving
 current metadata transport,
 canonical meta instance key, and `NamespaceDelta` atomic install. This does not
@@ -557,7 +558,7 @@ targets. Detailed design note:
 
 #### v0.11+ — Value-directed compile/meta control flow
 
-Extend `compile` PatternValue computation and `meta` SymbolConstructionValue
+Extend `compile` PatternValue computation and `meta` SymbolConstruction
 construction with value-directed control flow beyond the v0.8 restricted
 bootstrap.
 

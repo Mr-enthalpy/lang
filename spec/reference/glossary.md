@@ -571,11 +571,13 @@ will insert `SuppressFallback(A)` before Bp: any admissible non-fallback
 candidate, including `delete`, suppresses fallback permanently. This future
 suppression is not B6 and later failure cannot restore fallback.
 
-Lifetime policy is not a type/compile candidate filter. This revision defines
-no lifetime overload, refinement order, ABI class, or second selection. Any
-future lifetime check receives the already unique ordinary overload result,
-under the boundary in
-`spec/design/lifetime/lifetime-policy-and-overload-boundary.md`.
+Lifetime policy is not a type/compile candidate filter. This revision defines no
+lifetime-driven re-selection, refinement order, ABI class, or second selection
+stage. Any future lifetime check receives the already unique ordinary overload
+result, under the boundary in
+`spec/design/lifetime/lifetime-policy-and-overload-boundary.md`. That is a
+restriction on lifetime *rules*; `@` itself is an ordinary overloaded operation
+with its own candidate set.
 
 Full overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure. The formal specification is in
@@ -588,12 +590,152 @@ _See also: OverloadCandidate, OverloadSpecificity, Concept,
 
 ## Lifetime Policy Boundary
 
-A negative boundary only: `@` belongs to lifetime syntax, lifetime policy is
-not ordinary stage policy, and it cannot reopen or change the already unique
-ordinary overload result. No lifetime algorithm, ordering, overload, ABI
-equivalence class, refinement phase, or handoff object is defined.
+The stage boundary between lifetime rules and ordinary overload selection:
+lifetime policy is not an ordinary stage policy atom, and no lifetime rule may
+reopen or change the already unique ordinary overload result. `@` is evaluated at
+a stage; it does not name one.
 
-_See also: `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
+This boundary is *not* a claim that `@` lacks semantics or overloads. `@` is the
+place-sensitive observation `E@ = ObservePlace_policy(Origin(E), Value(E))` with
+two positively defined overload groups (`LifetimeFact` for objects carrying an
+internal `Val1` payload; `P ref` for effectively open pattern-value slots). What
+remains undefined is the region/origin algebra, checking order, refinement
+phase, and handoff object.
+
+_See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
+
+---
+
+## Object normal form (`Norm`)
+
+The structural identity of an object. Every object has three components:
+
+```text
+Object x    = ⟨ Val1?(x), P(x), Val2(x) ⟩
+Val1?(x)   ∈ 1 + Object
+```
+
+`Val1?(x) = null` means only that the object carries no internal `Val1` payload;
+it is not a separate ontology. `Norm(x)` is the recursive normal form over all
+three components; there is no `Val1`-presence fork that drops a component.
+`ObjectPlaceId`, `SymbolId`, allocation order, and construction provenance are
+not part of `Norm(x)`. Where a complex `Val1` cannot yet be normalized
+structurally, an opaque summary is a safe under-merge, never a definition of
+identity.
+
+_See also: Policy Pair, Borrow view, EffectiveOpen._
+
+---
+
+## `@`
+
+The place-sensitive observation operation:
+
+```text
+E@ = ObservePlace_policy( Origin(E), Value(E) )
+```
+
+`Origin(E)` is the place coordinate through which `E` was read. A freshly
+computed temporary supplies no `Origin`, so no `@` candidate applies to it. `@`
+has two positively defined overload groups: for `Val1?(x) ≠ null` it yields a
+`LifetimeFact` at the lifetime policy stage; for `Val1?(x) = null` with
+`EffectiveOpen(x, context)` it yields `P ref`. When the target is not effectively
+open, the failure is "no applicable overload for `@`", not a post-hoc rejection.
+`@` is not a stage name and not an ordinary policy atom.
+
+_See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary._
+
+---
+
+## Borrow view
+
+An ordinary value that observes another object without owning it. Three
+operations produce one:
+
+```text
+E ref    = MakeRef( Value(E) )
+E share  = MakeShare( Value(E) )
+E@       = ObservePlace_policy( Origin(E), Value(E) )
+```
+
+A borrow view is a value, not a second name for a symbol: it does not forward
+`SymbolId` or `PlaceId`, and its member set is not silently that of its target.
+Borrowing is idempotent (`Borrow(Borrow(q)) = Borrow(q)`), so no provenance
+chain, forwarding chain, or cycle detection is required. `r_ref = v` writes the
+referent; `r_ref rebind = E` changes which object the view observes.
+`OwnedClosure(x)` excludes every `ref` / `share` edge.
+
+Borrow views replace the retired alias-forwarding model. Canonical owner:
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
+
+_See also: `@`, Escape check, Alias binding (retired semantics), `type ref`._
+
+---
+
+## Escape check
+
+The check that a borrow view is not stored where it can outlive what it
+observes:
+
+```text
+Escapes(view, destination)
+  = Region(destination) ⊄ ObservationRegion( Origin(view) )
+```
+
+It applies to the destination classes that can outlive an observation region
+(global/normalized structures, returned values, captured closure state, and
+longer-lived member slots). It is a property of the destination and the
+observation region only; it is not an RHS-provenance or construction-history
+check on assignment.
+
+_See also: Borrow view, `@`, Lifetime Policy Boundary._
+
+---
+
+## EffectiveOpen
+
+The premise that a construction target is still extensible at a given context:
+
+```text
+EffectiveOpen(x, c) = StateOpen(x)
+                    ∧ ConstructionAnchorCompatible( owner(x), c )
+```
+
+The state transition is one-way: `Open -> Frozen`, never `Frozen -> Open`.
+Global lifetime does not imply `EffectiveOpen`. Inside a meta instance body the
+ordinary freezing events do not fire; sealing happens only at the meta return
+stage. `EffectiveOpen` is a premise of the `P ref` group of `@` and of
+`inject` input validity, so violating it produces "no applicable overload",
+not a late rejection.
+
+Canonical owner:
+`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+
+_See also: `@`, `inject`, Borrow view._
+
+---
+
+## `inject`
+
+A pure function from a type (or a `type ref` view of one) plus child pattern
+material to a new type:
+
+```text
+inject : ( type | type ref ) x ChildPatternMaterial ⇀ type
+
+Inject(old, Δ) ⇓ new
+```
+
+`Inject` does not modify `old`, does not install a namespace delta, and does not
+perform an assignment. Failure is total: no partial result, no write, no
+rollback. Observing the result in a place is an ordinary write, spelled as three
+steps (`old = Read(t_ref); new = Inject(old, Δ); Write(t_ref, new)`). `inject`
+extends only the direct child patterns of its input; anything else is "no
+applicable overload". Input validity for a `type ref` requires
+`LifetimeValid(r, c) ∧ EffectiveOpen(Target(r), c)`; a `type share` has no
+applicable `inject` overload.
+
+_See also: EffectiveOpen, Meta-function, Borrow view._
 
 ---
 
@@ -716,41 +858,55 @@ _See also: NavPath, OperatorName, EntityRef._
 
 ## Alias binding
 
-A declaration form `let binder === EntityRef` that creates a compile-time
-lookup alias in the current lexical scope. Phase 4.4 implements raw parser
-preservation: the parser produces `LetAliasAst` with `AliasBinderAst` and
-`EntityRefAst`. Alias binding is not runtime value binding, not an expression,
-not equality, not operator syntax, and not package import syntax. No target
-resolution, operator identity validation, or entity lookup is performed.
+The frozen *parser* declaration form `let binder === EntityRef`. Phase 4.4
+implements raw parser preservation: the parser produces `LetAliasAst` with
+`AliasBinderAst` and `EntityRefAst`. Alias binding is not runtime value binding,
+not an expression, not equality, not operator syntax, and not package import
+syntax. No target resolution, operator identity validation, or entity lookup is
+performed.
+
+> **Semantic direction: retired.** The semantic reading of this form — a
+> compile-time lookup alias that forwards symbol identity, place, or writability
+> to a target — is retired, not deferred. There is no declaration form that
+> forwards a Symbol or a place. `let a = b` creates a fresh symbol in a fresh
+> place carrying `b`'s value (`SymbolId(a) ≠ SymbolId(b)`,
+> `PlaceId(a) ≠ PlaceId(b)`, `Value(a) = Value(b)`). Shared observation of another
+> object is expressed only by a borrow view (`ref` / `share` / `@`). Operator-name
+> binding is the one surviving use of a dedicated binding form; its final surface
+> spelling is open. See
+> `spec/design/symbol-world/entity-alias-design.md` (retirement notice) and
+> `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 > **Distinction**: Alias binding is implemented as raw parser preservation
 > only. It is not an ordinary `let name: annotation = expr`. It has no `=`
 > value expression, no declaration annotation, no `guard`, and no `with`.
 > EntityRef parsing is implemented only inside alias-let RHS.
 
-_See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef._
+_See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef,
+Borrow view._
 
 ---
 
 ## Lexical alias
 
-A compile-time lookup name introduced by alias binding into a lexical
-scope. A lexical alias shadows previous bindings of the same name in the
-current scope and nested scopes but does not mutate the original entity or
-change namespace state globally. Lexical aliases are parser-preserved in Raw
-AST, but their scope and target semantics are future work and are not resolved
-by the parser.
+**Retired semantic term.** It named a compile-time lookup name introduced by
+alias binding into a lexical scope, shadowing previous bindings of the same name
+without mutating the original entity. That forwarding-based scope/target model is
+retired: no declaration form forwards lookup. Ordinary shadowing by a fresh `let`
+binding covers the shadowing behavior; observing another object is a borrow view.
+The `LetAliasAst` shape it described remains a frozen parser fact.
 
-_See also: Alias binding, Entity alias._
+_See also: Alias binding, Entity alias, Borrow view._
 
 ---
 
 ## Entity alias
 
-A lexical alias whose target is a compile-time entity reference (`EntityRef`).
-The alias binds a name or operator to a compile-time entity path without
-evaluating or constructing a runtime value. Entity aliases are preserved by the
-v0.1 parser, but target resolution is a future name-resolution construct.
+**Retired semantic term.** It named a lexical alias whose target is a
+compile-time entity reference (`EntityRef`), binding a name or operator to a
+compile-time entity path. Target resolution for this reading is retired, not
+future work. `EntityRefAst` preservation in alias-let RHS remains a frozen parser
+fact.
 
 _See also: Alias binding, Lexical alias, EntityRef._
 
@@ -768,14 +924,18 @@ _See also: Alias binding, Operator alias._
 
 ## Operator alias
 
-An alias binding whose binder is an `OperatorName`. Operator aliases are
-parser-preserved as Raw AST. Later validation may require the operator binder
-and the innermost operator component of the target `EntityRef` to have the same
-overloadable operator identity (`spelling + fixity + arity`, where fixity is
-`Binary` or `Postfix`). Prefix negative is not an overloadable operator
-identity and cannot appear as an alias binder or target. An operator alias
-cannot rename one operator spelling into another. Operator alias validation is
-future static validation or name-resolution work, not current parser behavior.
+An alias binding whose binder is an `OperatorName`. This is the one surviving
+direction of the retired alias family: binding a name to an *operator identity*
+is not symbol/place forwarding, and it must not be generalized back into a
+general aliasing feature. Operator aliases are parser-preserved as Raw AST.
+Later validation may require the operator binder and the innermost operator
+component of the target `EntityRef` to have the same overloadable operator
+identity (`spelling + fixity + arity`, where fixity is `Binary` or `Postfix`).
+Prefix negative is not an overloadable operator identity and cannot appear as an
+operator-alias binder or target. An operator alias cannot rename one operator
+spelling into another. Its final surface spelling is an open question. Operator
+alias validation is future static validation or name-resolution work, not current
+parser behavior.
 
 _See also: Alias binding, AliasBinder, OperatorName, EntityRef._
 
@@ -1063,8 +1223,8 @@ _See also: ClosureAST, ClosureObject._
 
 ## Meta-function
 
-A callable whose entry executes with `P2 = meta` and constructs
-`SymbolConstructionValue` under symbol-world construction capability. An
+A callable whose entry executes with `P2 = meta` and constructs a
+`SymbolConstruction` under symbol-world construction capability. An
 ordinary user meta-function receives rank-constrained semantic values, creates
 an ordinary canonical `MetaInstanceScope`, and has no unrestricted AST access.
 
@@ -1113,8 +1273,9 @@ bind that exact v to the LHS Symbol
 
 If RHS is a path, the path first resolves a Symbol and reads `v`; the RHS
 carrier Symbol is not part of `v` after that read. `let T: type = uint8`
-therefore binds the existing type value under a fresh carrier, whereas
-`let T === uint8` is the separate Symbol/place-forwarding form.
+therefore binds the existing type value under a fresh carrier. No declaration
+form forwards a Symbol or a place; to observe another object's place, bind a
+borrow view (`uint8 ref`, `uint8 share`, `p@`).
 
 _See also: Declaration, BindingSlot, BindingAnnotation._
 
@@ -1386,7 +1547,7 @@ Project_out o Migration o Project_in
 
 No transitive migration graph, candidate backtracking, temporary-lifetime
 extension, universal transition Symbol, or new callable ontology is implied.
-Explicit mechanical `ref`, `share`, and `alias` operations remain ordinary
+Explicit mechanical `ref`, `share`, and `rebind` operations remain ordinary
 function-object calls distinct from Policy-demand satisfaction.
 Binding P1 is the currently connected demand consumer. Consumer-neutral
 parameter/result demand preparation, complete Pattern/result construction,

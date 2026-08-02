@@ -63,16 +63,22 @@ track:
 - Type/rank use evaluates by type value, not by symbol name.
 - `let T: type = uint8` creates a fresh symbol/place whose type value equals
   `uint8`.
-- `let f::T = ...` injects into `T` as a place, not into `uint8` as a value.
-- Injection is place update, analogous to `a = a + 1`, not value rewriting.
-- `let T === uint8` is symbol alias / forwarding, not ordinary type-value
-  binding.
-- `let T === uint8` does not create a fresh writable place.
-- Injection through an alias is allowed only if the final forwarded target is a
-  current-level open writable object.
-- External stable values are readable / aliasable but not writable injection
-  targets.
-- Inner lexical symbols cannot be exposed as longer-lived injection targets.
+- `let f::T = ...` extends `Val2(T)` at the place `T`, not the value `uint8`; it
+  leaves `P(T)` unchanged.
+- `T |> inject(Δ)` is the separate pure-functional operation that produces a new
+  type extending `P(T)` by direct child patterns; observing that result in a
+  place is an ordinary write (`old = Read(t_ref); new = Inject(old, Δ);
+  Write(t_ref, new)`).
+- No declaration form forwards a Symbol or a place. Shared observation of another
+  object is a borrow view (`ref` / `share` / `@`), which is an ordinary value.
+- Extension through a `type ref` view requires
+  `LifetimeValid(r, c) ∧ EffectiveOpen(Target(r), c)`; a `type share` has no
+  applicable extension or `inject` overload. `Eligible(view of p) ≤ Eligible(p)`.
+- External stable values are readable and observable through a borrow view but
+  are not extension targets: `GlobalLifetime(x)` does not imply
+  `EffectiveOpen(x)`.
+- Inner lexical symbols cannot be exposed as longer-lived extension targets;
+  storing a view of one outside its observation region is an escape.
 - Type values can be equal even when their binding symbols differ.
 - `struct` meta generation creates a fresh type value; ordinary `let` binding
   to an existing type value does not.
@@ -87,9 +93,11 @@ track:
   `Place(T) != Place(U) != Place(uint8)`. Reads fall back to the Pattern's
   canonical type object for inherited members; writes stay local to the
   carrier's object.
-- `Val2(T_t)[f] = C_f` is a recursive ClusterSymbol, and `C_f` is the single
-  authority for the source-visible name `f`. A raw value list under the same
-  name is transport material for compiler-installed anonymous entries only.
+- `Val2(T_t)[f] = C_f` is a recursive cluster carrier for the source-visible name
+  `f`, and `C_f` is the single authority for that name. This is the transitional
+  same-name synthesis role only; it is not a distinct value ontology. A raw value
+  list under the same name is transport material for compiler-installed anonymous
+  entries only.
 - Exposure of a navigated target is the per-layer phase conjunction over the
   whole host chain (`Expose(g::f::T, φ) = Expose(T_t, φ) ∧ Expose(C_f, φ) ∧ …`),
   decided from each host carrier's own binding-level view rather than from the
@@ -103,7 +111,7 @@ track:
   to empty-`Val2` leaves such as `()`. `PlaceId` is the observation coordinate
   `place(x) ⟼ Val2_x` and never identity material: equal `P` with equal
   recursive `Val2` is one identity across different places, and one open type
-  observed before and after an injection is two identities (and two meta
+  observed before and after an extension is two identities (and two meta
   instance keys) through one place.
 - Path resolution is `Path -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection`,
   executed by one shared navigator for every use context. A step enters the
@@ -111,7 +119,7 @@ track:
   records the traversed object as a host layer; only the final facet projection
   (callable vals / pure-P member / sibling vals / writable place / Pattern) is
   context-directed. `f::T` therefore denotes the same terminal symbol as a call
-  target, a type, an injection RHS, a meta argument, and an extraction prefix,
+  target, a type, an extension RHS, a meta argument, and an extraction prefix,
   and every consumer sees the same host chain. Cross-root resolution
   deduplicates on the full navigation, so one terminal reached through distinct
   host chains is a navigation ambiguity rather than a search-root-order pick.
@@ -129,18 +137,18 @@ Still open after this correction:
   `(int Vec::std)`.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
-- Exact future implementation of writable-place checking.
+- Exact future implementation of writability and extension-eligibility checking.
 - Source-level `let f::U` against an already installed rebinding carrier: the
-  associated-injection entry point currently requires a still-open
+  associated-extension entry point currently requires a still-open
   construction and resolves the target object from the constructed Pattern.
-- Alias-forwarded injection places: `let T === uint8` must forward the aliased
-  object's place instead of allocating a fresh one, and the forwarded object's
-  writability verdict decides whether injection is legal.
-- Exact future implementation of alias forwarding resolution.
-- Exact Rust/IR representation of `SymbolConstructionValue` facet exposure;
+- Exact future implementation of borrow-view evaluation (`ref` / `share` / `@` /
+  `rebind`) and of the escape check
+  `Escapes(view, destination) = Region(destination) ⊄ ObservationRegion(Origin(view))`.
+- Exact Rust/IR representation of `SymbolConstruction` facet exposure;
   semantically, formal invocation remains uninstalled and outer binding resolves
   the installation place.
-- Interaction between graph freeze, seal phase, and injection-place mutability.
+- Interaction between graph freeze, seal phase, and `EffectiveOpen` freezing
+  events.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
   outside the object/subspace case handled here.
@@ -153,7 +161,7 @@ Still open after this correction:
   under `T`, `ref::T`, and `share::T`; the current rule requires separate
   authorized contributions.
 - End-to-end syntax/integration for an externally navigated call-entry
-  injection such as `let ()::ref::T = ...`; the semantic destination and
+  extension such as `let ()::ref::T = ...`; the semantic destination and
   ordinary type-check behavior are fixed, but the current frontend does not
   claim this complete declaration path.
 
@@ -163,13 +171,14 @@ These decisions are no longer open questions and are intentionally not repeated
 here. Their normative future-design owners are:
 
 - `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
-  for symbol-first facets, `compile` / `meta`, pattern scopes, owned-open
-  `inject`, ordering, extraction handoff, and binding/install boundaries;
+  for symbol-first facets, `compile` / `meta`, pattern scopes, `EffectiveOpen`
+  and freezing, pure-functional `inject`, ordering, extraction handoff, and
+  binding/install boundaries;
 - `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
   for namespace origin, construction ownership, physical authority, and
   cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
-  `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1/P2 elaboration,
+  `Val1? x Pattern x Val2`, canonical `Pv:Pp`, contextual P1/P2 elaboration,
   three-phase visibility, seal/const-mut boundaries, mechanical
   compile-flow projection over ordinary call nodes, complete derived `Val2`
   compile-companion objects, must-select consistency, policy-staged match,
@@ -380,7 +389,7 @@ Not implemented after this correction:
   is connected; the caller-supplied migration fixture remains isolated and no
   universal transition Symbol or new callable ontology is implied.
 - Full, separately selected mechanical `ref` storage construction,
-  `share`/`alias` composition, `[[global]]` seal scanning, and any future
+  `share`/`rebind` composition, `[[global]]` seal scanning, and any future
   non-Runtime Policy-migration legality.
 - Runtime owner/place allocation, static-materialization cache identity, and
   the generated-storage boundary that keeps `[[global]]` out of the
@@ -393,8 +402,10 @@ Not implemented after this correction:
 - Result Pattern delivery/D-reduction; the current return-target substrate only
   retains the complete return binding slot and selects a restricted active
   frame.
-- Any positive lifetime/Horae design.
-- Alias forwarding under policy projection, type checking, and runtime IR.
+- Any positive lifetime/Horae design beyond the `@` overload groups and the
+  escape check.
+- Borrow-view evaluation (`ref` / `share` / `@` / `rebind`) under policy
+  projection, type checking, and runtime IR.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:
@@ -408,7 +419,7 @@ addressable runtime value => ordinary owner/place
 compile-ref cache identity = referent identity, not pointee equality
 generated [[global]] storage != source-visible NamespaceGraph mutation
 materialization place != Pattern owner
-ref/share/alias are explicit mechanical operations, not Policy-demand repair
+ref/share/rebind are explicit mechanical operations, not Policy-demand repair
 Resolve once; Evaluate progressively; Residualize runtime dependencies
 ```
 
@@ -521,25 +532,22 @@ Still open for later design:
   `must_select_if_qualified` are provided, and each rule's monotone comparison
   semantics (the source spelling `=> name {}` / no-`=>` `[[name]] {}` is now
   fixed);
-- the remaining semantic surface of alias member bindings inside meta bodies.
-  The construction-effect *family* split is fixed — fresh member, alias
-  member, existing-target write, and the delivery terminal are four distinct
-  events that never collapse. The spellings that currently reach them are the
-  transitional `let`-only encoding while the grammar lacks expression-level
-  `=`: `let r = expr;` adds a fresh
-  member, `let r === path;` adds an alias member (Val2 forwarding on the
-  shared cluster substrate, the same mechanism as namespace-level
-  `let + === +::adl`), `r = expr;` writes to an existing target (today a
-  placeholder overwrite scaffold — the final cluster write algebra is not
-  fixed), and bare `r;` is the delivery terminal, not a member event.
+- the remaining semantic surface of member bindings inside meta bodies.
+  The construction-effect *family* split is fixed — fresh member,
+  existing-target write, and the delivery terminal are three distinct
+  events that never collapse. There is no fourth alias-member event: the
+  alias/forwarding member direction is retired, and a member that must observe
+  an external object holds a borrow view (`ref` / `share`), which is an ordinary
+  value. The spellings that currently reach these events are the transitional
+  `let`-only encoding while the grammar lacks expression-level `=`:
+  `let r = expr;` adds a fresh member, `r = expr;` writes to an existing target
+  (today a placeholder overwrite scaffold — the final cluster write algebra is
+  not fixed), and bare `r;` is the delivery terminal, not a member event.
   The settled orthogonal target remains `let` creates, `=` writes, return
   events deliver; the return-slot spelling reading and its no-shadow
   restriction are compatibility encoding, not final surface rules.
-  Forwarding an external
-  type value as an alias member is illegal under the self-root invariant.
-  Still open is the full alias-identity algebra (which facets an alias member
-  exposes for later structural writes, and how alias rebinding interacts with
-  overwrite);
+  Still open is the cluster write algebra itself (which facets an existing member
+  exposes for later structural writes, and how a write interacts with overwrite);
 - how source code references a derived compile companion and associates an
   explicit replacement;
 - whether default companion suppression is permitted and which equivalent
@@ -562,8 +570,10 @@ pattern transformation (`if`/`else`/`unit` absorption) as an ordinary
 global function family. That family is still wanted, but every member was
 written against retired semantic invariants:
 
-- forwarding-terminal bodies (`r === t;` returning an external type value),
-  which the self-root invariant now rejects for meta return members;
+- forwarding-terminal bodies (the legacy `r === t;` spelling returning an
+  external type value), which the self-root invariant rejects for meta return
+  members and which has no successor spelling — the forwarding direction itself
+  is retired;
 - no meaningful-Pv-dimension requirement on cross-policy value transitions
   (`N2(runtime) = runtime:compile` now makes a runtime-only result P2 with a
   pure-P return slot a declaration-time hard error);
@@ -601,11 +611,12 @@ here so they are not mistaken for design decisions:
   `MetaInstanceKey = MetaCallableIdentity × Addr(Product(args))`; the digest
   keys only the compatibility cache and does not participate in canonical
   semantic identity (see "Not implemented after this correction" above).
-- Alias member bindings (`let r === path;`) inside meta bodies are
-  unconditionally rejected as `MetaReturnTypeRootMismatch`. The self-root
-  invariant makes external type-value forwarding illegal, but a future
-  self-rooted alias member (aliasing another member of the same open
-  cluster) is not yet distinguished from the illegal external case.
+- Legacy `let r === path;` member bindings inside meta bodies are
+  unconditionally rejected as `MetaReturnTypeRootMismatch`. That rejection is
+  now permanently correct for a different reason: the alias/forwarding member
+  direction is retired, so there is no future self-rooted alias member to
+  distinguish. The diagnostic code is a legacy label; a member that must observe
+  another object holds a borrow view (`ref` / `share`) instead.
 - Member write (`r = expr;`) is a CURRENT PLACEHOLDER (internally
   `PlaceholderOverwrite`): while the frozen v0.2 grammar has no
   expression-level `=`, the scaffold exists only to validate
@@ -624,7 +635,7 @@ here so they are not mistaken for design decisions:
   written binding P1 is elaborated and projected over its initializer's
   complete result (an empty projection is a hard error, never a collapse
   onto the callable's function P2). The executable slice is still
-  self-rooted generated type members only; val members and alias members
+  self-rooted generated type members only; val members
   remain future work, and a positive member-specific P1 over a pure-P
   type member is not yet spellable because the `Absent` value-component
   policy has no frozen source spelling.
@@ -643,22 +654,30 @@ here so they are not mistaken for design decisions:
   meta-body path (the outer meta invocation injects its MetaInstance root).
   User-spelled explicit pattern navigation overriding the ambient owner of a
   direct `struct` generation is not implemented.
-- Ordinary construction windows carry the settled closing coordinates
+- Ordinary construction windows carry provisional closing coordinates
   (`OrdinaryOpenWindow { creation_flow_segment, first_use_seen,
   closed_by_fork_or_end }`) and freeze on the explicit events
-  `note_first_semantic_use` / `note_residual_runtime_fork_or_end`
-  (compile-only branching is an explicit no-op). Deriving these events
-  from real source-level control-flow analysis of the residual runtime
-  flow is not wired; today the evaluation driver must raise them
-  explicitly.
+  `note_first_semantic_use` / `note_residual_runtime_fork_or_end`, which the
+  evaluation driver must raise by hand. The canonical freezing event set for an
+  ordinary (non-meta) construction is defined in
+  `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+  §12.1.2 and covers `UseForVal1`, use as a meta argument, entry into a global
+  normalized structure, any non-meta control-flow branch / join / loop boundary,
+  and leaving the construction interval of the owning in-place closure. The
+  current API neither enumerates all five nor derives them from real
+  control-flow analysis; the existing "compile-only branching is a no-op" call
+  path is an implementation shortcut, not a language rule that compile-stage
+  branching is transparent to freezing.
 - The privileged `inject` built-in meta function does not exist yet.
   `let member::target = RHS;` is only associated-member installation
   (never a Pattern-structure write); the end-to-end equivalence
   `let t = ((x inner) t) |> struct;`  ≡
   `let t = (() t) |> struct;  t = t |> inject(x inner);`
   is a *future acceptance test*, blocked on both expression-level `=` and
-  `inject`. It must not be approximated with `let inner::t = x`, which is
-  a different (non-privileged, Val2-only) operation.
+  `inject`. The second line is the ordinary three-step write-back of a pure
+  function's result, not an in-place mutation. It must not be approximated with
+  `let inner::t = x`, which is a different (non-privileged, Val2-only)
+  operation.
 - The `let`-only meta construction encoding (`let r = expr` → AddMember,
   `r = expr` → PlaceholderOverwrite, `r;` → Delivery) is a transitional
   encoding while the grammar lacks `=`; the settled orthogonal rule
@@ -705,19 +724,19 @@ them explicitly:
    object; `T`/`U` may then diverge through their own places. Giving `U`
    an empty fresh place with fallback to the Pattern's canonical object
    would silently drop `T`'s carrier-local `Val2`. The path is not
-   executable yet (installed-carrier injection is not wired), but the
+   executable yet (installed-carrier extension is not wired), but the
    comparison question ("what is equal") and the binding question ("what
    is captured") must be solved together.
 
-3. **Installed-carrier injection / alias-forwarded places / writability
+3. **Installed-carrier extension / `type ref` targets / writability
    need explicit owners.** Source-level `let f::U` against an already
-   installed rebinding carrier, alias-forwarded injection places, and
-   writable-place checking exist today only as substrate (also listed in
-   the general future-work pool above). The next stage must assign them
-   explicit scope rather than leaving them pooled. Note that per the
+   installed rebinding carrier, extension through a `type ref` view, and
+   writability / extension-eligibility checking exist today only as substrate
+   (also listed in the general future-work pool above). The next stage must
+   assign them explicit scope rather than leaving them pooled. Note that per the
    `Fresh(child)` / `CanExtend(parent_place)` split, `let f::T = expr`
    creating a fresh child does not exempt the host place from extension
-   eligibility.
+   eligibility, and `Eligible(view of p) ≤ Eligible(p)`.
 
 ---
 
@@ -817,15 +836,15 @@ the same substrate as namespace-level cluster symbols. In the current
 `let`-only encoding (compatibility spellings pending expression-level `=`;
 the settled orthogonal target remains `let` creates, `=` writes, return
 events deliver): `let r = expr;` adds a
-fresh member binding; `let r === path;` adds an alias member binding (Val2
-forwarding — forwarding an external type value fails the self-root invariant);
-`r = expr;` writes to an existing target (currently a placeholder overwrite
-scaffold; the final cluster write algebra is open); bare `r;` is the delivery
-terminal
-and not a member event. The former interpretations — `r === ...` as a distinct
-formal forwarding category, and the interim single-form `r = ...` reading —
-are both superseded. Ordinary declaration aliasing `let a === b` is the same
-alias mechanism applied to a declaration-layer symbol.
+fresh member binding; `r = expr;` writes to an existing target (currently a
+placeholder overwrite scaffold; the final cluster write algebra is open); bare
+`r;` is the delivery terminal and not a member event. There are three events, not
+four: the former interpretations — `r === ...` as a distinct formal forwarding
+category, and the interim single-form `r = ...` reading — are both superseded,
+and the alias/forwarding member event is retired rather than deferred. There is
+likewise no declaration-layer aliasing: `let a = b` binds a fresh symbol in a
+fresh place carrying `b`'s value, and a member that must observe an external
+object holds a borrow view (`ref` / `share`).
 
 #### Resolved: TypeValueId is value-side material, not carrier identity
 
@@ -844,7 +863,7 @@ observation `Addr(Norm_type)`, which identity-critical positions consume
 instead of the bare root.
 
 Final invocation plumbing returns `PatternValue` for `compile` and
-`SymbolConstructionValue` for `meta`. Current `MetaInvocationValue` variants
+`SymbolConstruction` for `meta`. Current `MetaInvocationValue` variants
 remain transitional implementation transport.
 
 #### Still open
@@ -894,17 +913,22 @@ flow. That semantic decision does not change the current lexer/parser boundary.
 
 ---
 
-### Name resolution and alias validation
+### Name resolution and operator-name binding validation
 
 #### Operator alias identity mismatch: diagnostic phase
 
 **Status:** Open (active at name resolution)
 
+Operator-name binding is the one surviving member of the retired alias family:
+it binds a name to an *operator identity* and does not forward a Symbol or a
+place. Its final surface spelling is itself open — the frozen `===` parser form
+is not a commitment.
+
 **Current Phase 4.3 design:**
 The operator alias rule requires `spelling + fixity + arity` match between
 binder and target leaf, where fixity is `Binary` or `Postfix` (overloadable
 fixities only). Prefix negative `-x` is a normalization-special-cased surface
-sugar, not an overloadable operator identity; the `-` spelling in alias binder
+sugar, not an overloadable operator identity; the `-` spelling in binder
 or target position refers exclusively to binary minus. The design document
 recommends deferring the full identity check to a static validation or
 name-resolution-adjacent phase. A first-pass spelling-only comparison is
@@ -913,3 +937,49 @@ possible as optional future parser validation.
 **Question:** Should operator alias identity mismatch be a parser diagnostic
 (spelling-only), a static semantic diagnostic (full identity), or deferred
 to name resolution?
+
+---
+
+### Closed by the value/Policy/Open/borrow/`inject` semantic closure
+
+These are no longer open questions. They are recorded here only so that they are
+not reopened from older wording elsewhere; their canonical owners are the
+documents named in each line.
+
+- Object ontology and normal form: `Object x = ⟨Val1?(x), P(x), Val2(x)⟩` with
+  `Val1?(x) ∈ 1 + Object`, and `Norm(x)` recursive over all three components.
+  There is no `Val1`-presence ontology fork, and `ObjectPlaceId` / `SymbolId` /
+  allocation order / provenance are not identity material.
+  (`symbol-policy-and-compile-flow-projection.md`)
+- Policy is an observation edge, not an intrinsic field:
+  `View_Γ(x) = ⟨x, Pv:Pp, capability_Γ(x)⟩`. `Val1?(x) = null` does not imply
+  `Pv = absent`, and there is no central const/mut propagation pass — only member
+  overloads and `delete`. (`symbol-policy-and-compile-flow-projection.md`)
+- A Symbol is an ordinary PatternValue with at most one type member;
+  `Val1(Symbol) = Member * ω`. The cluster carrier is a transitional same-name
+  synthesis role, not a distinct ontology.
+  (`symbol-first-meta-construction-and-pattern-injection.md`)
+- `compile` may return any ordinary PatternValue (including `type`, `symbol`,
+  `type ref`, `type share`) under root conservation
+  `Roots(Output) ⊆ Roots(Arguments) ∪ Roots(GlobalConstants) ∪
+  LexicallyDeclaredStableRoots`. (`symbol-policy-and-compile-flow-projection.md`)
+- Meta body transparency: a `MetaInstance` is globally live and unsealed on
+  entry, its body does not fire freezing events, and sealing happens only at the
+  return stage. (`symbol-first-meta-construction-and-pattern-injection.md`)
+- `EffectiveOpen` and the one-way `Open -> Frozen` transition, with the five
+  ordinary freezing events.
+  (`symbol-first-meta-construction-and-pattern-injection.md` §12.1)
+- Borrow views: `ref` / `share` / `@` / `rebind`, idempotence of borrowing, and
+  `OwnedClosure` excluding view edges.
+  (`type-values-places-and-borrow-views.md`)
+- `@` has two positively defined overload groups and is an ordinary overloaded
+  operation; the lifetime boundary restricts lifetime *rules*, not `@`.
+  (`lifetime/lifetime-policy-and-overload-boundary.md`)
+- `inject` is a pure function `( type | type ref ) x ChildPatternMaterial ⇀ type`
+  with total failure; it is not in-place mutation and needs no write capability.
+  Assignment checks LHS writability, RHS Pattern conformance, and lifetime
+  capability — never RHS construction history.
+  (`symbol-first-meta-construction-and-pattern-injection.md` §8)
+- The semantic alias/forwarding family is retired, not deferred. No declaration
+  form forwards a Symbol or a place; operator-name binding is the only surviving
+  case. (`entity-alias-design.md` retirement notice)
