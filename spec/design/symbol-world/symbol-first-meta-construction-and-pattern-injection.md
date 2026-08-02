@@ -809,13 +809,26 @@ concerns *who owns the construction*, not *which type the closure is*.
 #### 4.3.2 Seal happens only at the return stage
 
 The only construction-closing event of a meta invocation is its final return
-stage, and it runs in a fixed order:
+stage, and it runs in a fixed order. The returned symbol has the ordinary Symbol
+shape — at most one type member, any number of val members:
 
 ```text
-1. require exactly one type member on the returned symbol
-2. promote that member's owned recursive value closure into M
+Σ = ⟨ T?, V ⟩
+
+1. validate that there is at most one type member
+2. if T exists, promote OwnedClosure(T) into M
 3. validate the remaining returned members
 4. seal M
+```
+
+Step 1 is a cardinality bound, **not** a requirement that a type member be
+present. Nothing in the Symbol ontology or in the self-root constraint promotes
+`|T| <= 1` to `|T| = 1`: the self-root rule says that *if* a type facet exists it
+must be rooted at `M`, which is vacuous when there is none. So a namespace-only,
+val-only, or type-less mixed return is well-formed, and step 2 is simply skipped:
+
+```text
+T absent  ->  step 2 is a no-op; steps 3 and 4 proceed unchanged
 ```
 
 Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
@@ -1509,7 +1522,8 @@ registration):
 
 ```lang
 let t = (()t) |> struct;
-t = t |> inject(bool inner);
+let t_ref = t@;
+t_ref = t_ref |> inject(bool inner);
 ```
 
 produce the same normalized PatternValue, provided both operations are under
@@ -1524,7 +1538,8 @@ NamedPattern(
 
 The first form inherits/completes `inner` under `t`; the second supplies the
 same complete navigation through the `inject` privileged operation, installed
-by the ordinary `=` overwrite of `t`. After
+by the ordinary `=` overwrite of the carrier slot reached by `t@` — a pure
+pattern slot is writable only through that `type ref` (§8.2.2). After
 completion, normalization retains only the complete navigation and normalized
 resident value. It erases whether the element was internal or injected, and
 whether its navigation was inherited or explicit.
@@ -1594,7 +1609,7 @@ Because `inject` writes nothing, a failed `inject` has nothing to undo. There is
 no half-extended pattern, no compensating action, and no rollback protocol. A
 failed call simply produces no value.
 
-#### 8.2.2 Observing the result requires a separate write
+#### 8.2.2 Observing the result requires a separate write through a `type ref`
 
 When the caller wants the extension to become the content of an existing place,
 the write is a separate, ordinary step. Through a `type ref` the full sequence is
@@ -1608,17 +1623,48 @@ Write(t_ref, new)
 
 `Read` and `Write` are the ordinary borrow-view operations of
 `type-values-places-and-borrow-views.md`. `inject` occupies only the middle step.
-A convenience spelling such as
+
+The left side of that write must be a `type ref`. This is not a stylistic
+preference; it is the same rule that makes `@` necessary in the first place. For a
+pure pattern slot — one with no `Val1` payload — an ordinary use of the name reads
+out a `P x Val2` value and does **not** reach the carrier slot, so it cannot be
+the target of a write:
 
 ```lang
-t = t |> inject(bool inner);
+let t_ref = t@;                            // the carrier slot, as a type ref
+t_ref = t |> inject(bool inner);           // write back through the ref
 ```
 
-is exactly this sequence, and its write is the ordinary `=` write governed by
-§4.5.1 — the left side must name a writable place, the right value must conform
-to the target's Pattern, and lifetime/capability conditions of the target place
-must hold. Assignment does not inspect how the right value was produced, so it
-asks for no construction witness and no proof that the value came from `inject`.
+or, reading and writing through the same view:
+
+```lang
+t_ref = t_ref |> inject(bool inner);
+```
+
+The **input** side is the permissive one — it accepts either rank:
+
+```text
+right side of the write  :  type | type ref
+left  side of the write  :  type ref
+```
+
+What is excluded is the shorthand `t = t |> inject(...)` on a pure pattern slot.
+The language cannot hold both of these at once:
+
+```text
+an ordinary read of t does not reach the slot, which is why t@ exists
+t = ... nevertheless writes that slot
+```
+
+So the shorthand is not a convenience spelling for the three-step sequence; on a
+pure pattern slot it has no writable left side at all. `t = ...` remains an
+ordinary write wherever `t` genuinely names a writable place on its own.
+
+The write itself is still the ordinary `=` write governed by §4.5.1 — the left
+side must name a writable place, the right value must conform to the target's
+Pattern, and lifetime/capability conditions of the target place must hold.
+Assignment does not inspect how the right value was produced, so it asks for no
+construction witness and no proof that the value came from `inject`.
 
 A navigated `let child::target = result;` is **not** a structural installer:
 like every ordinary navigated `let`, it only installs a Val2 associated

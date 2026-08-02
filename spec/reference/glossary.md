@@ -639,8 +639,9 @@ On a pure pattern slot the selected candidate is
 `E@ = RefCarrierSlot( CarrierPlace(E) )`.
 
 `CarrierPlace(E)` is the carrier slot through which `E` was read; `ref` and
-`share` consume only `Read(E)` and never ask for it. A freshly computed temporary
-supplies no carrier place, so no `@` candidate applies to it.
+`share` consume only `Read(E)` — the complete object read out of the slot — and
+never ask for it. A freshly computed temporary supplies no carrier place, so no
+`@` candidate applies to it.
 
 `@` is **not** a general `PlaceOf(E)`. It has exactly two positively defined
 overload groups with disjoint premises. For `Val1?(x) ≠ null` — a complete
@@ -655,6 +656,14 @@ operand — `s ref` already does that job. When the target is not effectively op
 the failure is "no applicable overload for `@`", not a post-hoc rejection. `@` is
 not a stage name and not an ordinary policy atom.
 
+`@` is itself resolved by the ordinary selector. The three steps are strictly
+ordered and non-circular: ordinary selection inside the operand, then ordinary
+selection of `@` among the candidate groups visible in the operand's policy stage,
+then lifetime validation, which may reject the first two but never reselects them.
+
+`@@` is admitted, not a missing operation: it preserves the target and builds no
+second layer (see Borrow view).
+
 _See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary, `type ref`._
 
 ---
@@ -662,16 +671,21 @@ _See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary, `type ref`._
 ## Borrow view
 
 An ordinary value that observes another object without owning it. What `ref` and
-`share` observe is the value the expression read:
+`share` observe is the value the expression read, and a read always yields a
+complete three-component object:
 
 ```text
-Read(Σ) = Val1(Σ)                 when Val1(Σ) ≠ ⊥
-Read(Σ) = ⟨ ⊥, P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
+Read(Σ) = ⟨ Val1(Σ), P(Σ), Val2(Σ) ⟩    when Val1(Σ) ≠ ⊥
+Read(Σ) = ⟨ ⊥,       P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
 
 E ref    = Ref( Read(E) )
 E share  = Share( Read(E) )
 E@       = RefCarrierSlot( CarrierPlace(E) )
 ```
+
+`Val1` is the object's internal payload, not the read result: `Read` never
+projects an object down to its payload. So for `s : symbol`, `Read(s)` is the
+symbol value — not the member array inside it — and `s ref : symbol ref`.
 
 Whether `ref` or `@` is the right operation is decided by the presence of a
 `Val1` payload, never by type-rank: for `s : symbol` the payload exists, so
@@ -682,9 +696,26 @@ read) and only `t@` yields `type ref`.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
 `SymbolId` or `PlaceId`, and its member set is not silently that of its target.
-Borrowing is idempotent (`Borrow(Borrow(q)) = Borrow(q)`), so no provenance
-chain, forwarding chain, or cycle detection is required. `r_ref = v` writes the
-referent; `r_ref rebind = E` changes which object the view observes.
+
+Applying a borrow operator to an existing view is **well-formed**, and that
+overlapping overload is precisely what makes borrowing non-stacking:
+
+```text
+Borrow_k( Borrow_j(q) )     = Coerce_{j->k}( Borrow_j(q) )
+Target( Coerce_{j->k}(v) )  = Target(v)
+```
+
+So `ref ref` and `share share` are idempotent (`Coerce` at equal capability is the
+identity), `ref share` is an admitted weakening to the same target — which is what
+makes `r share` on a `type ref` legal — and `@@` retargets nothing. Only
+`share ref` has no candidate, because capability may be surrendered and never
+regained. No composition nests, and no provenance or cycle detection is required.
+
+`r_ref = v` writes the referent. `r_ref rebind = E` retargets the view, and it is
+a place operation rather than a value borrow: it takes `Target(E)` when `E` is
+already a view, or `CarrierPlace(E)` when `E` supplies one, and has no candidate
+otherwise. It is deliberately not `Ref(Read(E))`, which for a pure `type` slot
+would yield `uint8 ref` instead of a reference to the slot.
 `OwnedClosure(x)` excludes every `ref` / `share` edge.
 
 Borrow views replace the retired alias-forwarding model. Canonical owner:
@@ -696,21 +727,37 @@ _See also: `@`, Escape check, Alias binding (retired semantics), `type ref`._
 
 ## Escape check
 
-The check that a borrow view is not stored where it can outlive what it
-observes:
+The check that a borrow view is not carried where it outlives its own valid
+region:
 
 ```text
 Escapes(view, destination)
-  = Region(destination) ⊄ ObservationRegion( Origin(view) )
+  = Region(destination) ⊄ ValidRegion(view)
 ```
 
-It applies to the destination classes that can outlive an observation region
-(global/normalized structures, returned values, captured closure state, and
-longer-lived member slots). It is a property of the destination and the
-observation region only; it is not an RHS-provenance or construction-history
-check on assignment.
+`ValidRegion` is indexed by the view's capability and is **not** uniformly the
+target's open region:
 
-_See also: Borrow view, `@`, Lifetime Policy Boundary._
+```text
+ValidRegion( type ref )   =  OpenRegion( Target )
+ValidRegion( type share ) =  LifetimeRegion( Target )
+
+OpenRegion( Target )  ⊆  LifetimeRegion( Target )
+```
+
+A `type ref` may not leave the `Open` window, because the window is its own
+formation condition. A `type share` may leave the window — it surrendered the
+write/`inject` capability that made the window relevant — but still may not
+outlive the target itself. `Open` is the extension capability region, not one
+observation lifetime shared by every view.
+
+It applies to the destination classes that can outlive a valid region
+(global/normalized structures, returned values, captured closure state, and
+longer-lived member slots). It is a property of the destination and the view's
+valid region only; it is not an RHS-provenance or construction-history check on
+assignment.
+
+_See also: Borrow view, `@`, Lifetime Policy Boundary, `type ref`._
 
 ---
 
@@ -751,10 +798,22 @@ Inject(old, Δ) ⇓ new
 
 `Inject` does not modify `old`, does not install a namespace delta, and does not
 perform an assignment. Failure is total: no partial result, no write, no
-rollback. Observing the result in a place is an ordinary write, spelled as three
-steps (`old = Read(t_ref); new = Inject(old, Δ); Write(t_ref, new)`). `inject`
-extends only the direct child patterns of its input; anything else is "no
-applicable overload".
+rollback. `inject` extends only the direct child patterns of its input; anything
+else is "no applicable overload".
+
+Observing the result in a place is an ordinary write, spelled as three steps:
+
+```text
+old = Read(t_ref)
+new = Inject(old, Δ)
+Write(t_ref, new)
+```
+
+The input side accepts `type` or `type ref`; the **left side of the write must be
+a `type ref`**. On a pure pattern slot an ordinary read yields a `P x Val2` value
+and does not reach the carrier slot — that is why `@` exists — so `t = t |> inject(…)`
+has no writable left side and is not a shorthand for the sequence. The written
+form is `let t_ref = t@; t_ref = t_ref |> inject(Δ);`.
 
 Input validity has two overloads, and the `Open` fact comes from a different
 place in each:
@@ -804,10 +863,20 @@ and the only way past the boundary is to weaken to `type share` beforehand.
 
 This is what lets a `type ref` satisfy `inject` with no ambient query, and what
 makes returning or storing one an escape-check question rather than a blanket
-prohibition.
+prohibition. It is also the only rank that may stand on the left side of an
+`inject` write-back.
 
 `type share` keeps observability but positively renounces structural extension:
-it has no applicable `inject` overload.
+it has no applicable `inject` overload. The weakening `r share` is the admitted
+`ref share` composition, not a missing overload. Because it surrendered that
+capability, its valid region is the wider one:
+
+```text
+ValidRegion( type ref )   =  OpenRegion( Target )
+ValidRegion( type share ) =  LifetimeRegion( Target )
+```
+
+So a `type share` may leave the `Open` window but not the target's lifetime.
 
 _See also: `@`, `inject`, Borrow view, Escape check, EffectiveOpen._
 

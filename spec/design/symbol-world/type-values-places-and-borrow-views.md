@@ -123,8 +123,22 @@ Val1?(x) ∈ 1 + Object
 
 `Val1?(x) = null` states exactly one fact: this object carries no internal
 `Val1` payload. It does not mean the object is untyped, unobservable,
-value-less at the observation edge, or a different kind of entity. A type
-object is simply an object whose `Val1?` is `null`.
+value-less at the observation edge, or a different kind of entity.
+
+Two distinct notions must not be collapsed here:
+
+| notion | condition | what it is |
+| --- | --- | --- |
+| pure type object (type seed) | `Val1?(x) = null` | an object with no payload; the operand of `@` in §5.2 |
+| type-rank use of an object | positional | what a type-expected position asks for (§5.6) |
+
+A pure type object is simply an object whose `Val1?` is `null`. It is **not** a
+definition of "type rank": an object that carries a `Val1` payload may still be
+used where a type is expected, and the type-expected position supplies the
+projection (§5.6). Conversely, `Val1?(x) = null` does not by itself make `x` a
+type for every purpose — it makes `x` payload-less, which is what §5.2 depends on.
+Keeping these apart is what prevents `Val1?` from being re-read as an implicit
+kind classifier.
 
 The canonical identity of an object is the recursive normal form over **all
 three** components:
@@ -386,16 +400,64 @@ symbol paths and pattern diagnostic names must be kept especially distinct.
 Symbol-first resolution is a single ordered pipeline:
 
 ```text
-Path -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection
+Path -> SelectedHead -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection
 ```
 
-Which symbol a path denotes is decided by the path alone. It is **not** decided
-by whether the result is subsequently used as a call target, a type, a value,
-an injection target, or an extraction subject. One navigation algorithm serves
-every context:
+The stability claim applies to the **tail**, not to the head. Once the head
+symbol is selected, the remaining navigation is decided by the path alone: it is
+**not** decided by whether the result is subsequently used as a call target, a
+type, a value, an injection target, or an extraction subject. Head selection is a
+separate, earlier step with its own rule.
+
+#### 3.2.1 Head selection: bare versus explicitly anchored
+
+The two forms do not use the same rule, and the difference is confined to this
+step:
 
 ```text
-resolve the first component in lexical scope     -> Symbol
+ResolveBare_q(name)
+  = the nearest enclosing Symbol spelled `name` that carries the required
+    coarse facet q
+
+ResolveExplicit(path)
+  = the uniquely designated anchor, taken as written
+```
+
+A bare head may look outward, and the coarse facet `q` demanded by the use site
+participates in that search. An explicitly anchored path may not look outward at
+all. The search discipline is:
+
+```text
+bare head    : walk outward; stop at the first same-spelled Symbol carrying q
+explicit head: no outward walk; the written anchor is the head or resolution fails
+```
+
+The outward walk is bounded to exactly one decision. Once a Symbol carrying `q`
+is found, that Symbol is the head, permanently:
+
+```text
+overload resolution failing inside the selected head
+  -> the program is ill-formed
+  -> NOT a reason to resume the outward walk
+```
+
+This is what keeps a local type-only Symbol from silently shadowing an outer
+callable Symbol of the same spelling: at a call site the coarse facet demanded is
+callability, so a local Symbol that carries no callable facet is simply not a
+candidate head. It is equally what stops the search from degenerating into
+"retry outward until something type-checks" — the facet is coarse, and it is
+consulted once.
+
+`q` is coarse in the strict sense: it distinguishes facet presence, never
+signatures, argument types, arity, or specificity. Head selection therefore never
+becomes overload resolution in disguise.
+
+#### 3.2.2 Tail navigation is context-independent
+
+After the head is fixed, one navigation algorithm serves every context:
+
+```text
+SelectedHead                                     -> Symbol
 for each following component:
     select the current Symbol's object facet
     push that object as a host layer onto HostChain
@@ -431,6 +493,10 @@ would make path meaning depend on its consumer, which is name-category-first
 resolution in disguise. Namespace children remain reachable: a step consults
 the current symbol's object facet and its associated namespace, so ordinary
 namespace paths keep resolving unchanged.
+
+The coarse facet of §3.2.1 is not an exception to this. It participates only in
+selecting the head, once, and it distinguishes facet presence rather than
+meaning; the tail steps and the final projection remain as above.
 
 The host layers traversed on the way are retained as an ordered `HostChain`,
 because per-layer exposure is a conjunction over every layer
@@ -568,16 +634,23 @@ input judgments.
 ### 5.1 `ref` and `share` are value operations
 
 `ref` and `share` apply to the **value** of their operand expression. That value
-is whatever the ordinary read of §3.1 produced, and the read itself is decided by
-the `Val1` dimension of the slot:
+is whatever the ordinary read of §3.1 produced. `Read` always yields a complete
+three-component object; the `Val1` dimension of the slot decides only whether the
+first component is populated:
 
 ```text
-Read(Σ) = Val1(Σ)                 when Val1(Σ) ≠ ⊥
-Read(Σ) = ⟨ ⊥, P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
+Read(Σ) = ⟨ Val1(Σ), P(Σ), Val2(Σ) ⟩    when Val1(Σ) ≠ ⊥
+Read(Σ) = ⟨ ⊥,       P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
 
 E ref   = Ref( Read(E) )
 E share = Share( Read(E) )
 ```
+
+`Val1` is the object's internal payload, **not** the read result. `Read` never
+projects an object down to its payload, so the result keeps its own `P` and
+`Val2` and is named by its own Pattern. The only difference the two cases make is
+whether the read value carries a payload at all — and that is what §5.2 depends
+on.
 
 Both are ordinary meta-function calls on that result. Neither asks which symbol
 slot the value came out of, and neither consults, captures, or exports it.
@@ -598,34 +671,42 @@ and cannot be an `inject` target (§5.5).
 
 #### 5.1.1 A `Val1` payload makes `ref` sufficient on its own
 
-When the operand slot has a `Val1` payload, `Read` yields that payload and
-`ref` borrows it. Nothing further is required, and nothing is elaborated in
-front of the operator:
+When the operand slot has a `Val1` payload, `Read` yields the complete object
+that carries it, and `ref` borrows that object. Nothing further is required, and
+nothing is elaborated in front of the operator:
 
 ```lang
 let s: symbol = ...;
-let r = s ref;              // Read(s) = Val1(s), so r : symbol ref
+let r = s ref;              // Read(s) : symbol, so r : symbol ref
 ```
 
 A symbol value is value-bearing (`Val1(Symbol) = Member * ω`), so `s ref` is the
-ordinary "form a borrow of this value" operation. What `r` borrows is the symbol
-value that `s` holds, not the binding slot that holds `s`.
+ordinary "form a borrow of this value" operation. Because `Read` does not descend
+into `Val1`, `r` is a `symbol ref` and **not** a reference to the member array
+held inside the symbol. What `r` borrows is the symbol value that `s` holds, not
+the binding slot that holds `s`, and not the payload inside that value.
 
-The rule is about the `Val1` dimension, not about type-rank. An object that
-happens to sit at type rank and still carries a payload takes the same path:
+The rule is about the presence of the `Val1` dimension, not about type-rank. An
+object that happens to sit at type rank and still carries a payload takes the
+same path, and is likewise named by its own host Pattern:
 
 ```text
-x = ⟨ v, P_val_has_type_field, Val2 ⟩
-Read(x) = v
-x ref   : val_has_type_field ref
+x        = ⟨ v, P_val_has_type_field, Val2 ⟩
+Read(x)  = ⟨ v, P_val_has_type_field, Val2 ⟩
+x ref    : val_has_type_field ref
 ```
 
-No implicit projection or conversion participates. `s ref` is never elaborated
-into `s |> type ref`, or into any other facet projection, because an operand or
-argument position performs no implicit type conversion. Facet projection stays
-explicit (`|> type`, `|> val`, `|> namespace`), and an explicit `symbol |> type`
-is itself well-formed whenever the operand really carries a `Val1` dimension —
-what is excluded is supplying it on the writer's behalf.
+Reaching `v` itself is an ordinary member/projection operation on the read
+result, not something `Read` or `ref` performs implicitly.
+
+No implicit projection or conversion participates in an operand position. `s ref`
+is never elaborated into `s |> type ref`, or into any other facet projection,
+because an operand or argument position performs no implicit type conversion.
+Facet projection stays explicit there (`|> type`, `|> val`, `|> namespace`), and
+an explicit `symbol |> type` is itself well-formed whenever the operand really
+carries a `Val1` dimension — what is excluded is supplying it on the writer's
+behalf. A language-designated type-expected position is the separate case where
+the projection *is* supplied; see §5.6.
 
 ### 5.2 `@` is the carrier-slot operation
 
@@ -699,26 +780,59 @@ separate from the compile-stage pure-pattern-slot group and is not a way to
 obtain a borrow, and the narrowing above does not weaken it — the two groups have
 disjoint premises and neither is a fallback for the other.
 
-### 5.3 Borrow views are idempotent and non-stacking
+### 5.3 Borrow views are non-stacking because the overlapping overloads exist
+
+Applying a borrow operator to something that is already a borrow view is
+**well-formed**. There is a candidate for it, and that candidate is what makes
+borrowing behave idempotently instead of building a second layer:
 
 ```text
-Borrow(Borrow(q)) = Borrow(q)
+Borrow_k( Borrow_j(q) )  =  Coerce_{j->k}( Borrow_j(q) )
+
+Target( Coerce_{j->k}(v) )  =  Target(v)
 ```
 
-A borrow view of a borrow view is the same borrow view. Consequently the
-following have no applicable overload and are rejected at selection time rather
-than being evaluated and then diagnosed:
+The result is never a view of a view. The target is preserved and only the
+capability index changes, so the whole family collapses to one layer:
+
+| composition | result | why |
+| --- | --- | --- |
+| `ref ref` | the same `ref` view | `Coerce` at equal capability is the identity |
+| `share share` | the same `share` view | same |
+| `ref share` | a `share` view of the same target | legal weakening |
+| `share ref` | **no candidate** | illegal strengthening |
+| `@@` | the same view | no retarget occurs |
+
+So the two statements that used to sit next to each other are now one statement.
+Idempotence is the *consequence* of providing the equal-capability overload, not a
+rule that contradicts it:
 
 ```text
-ref ref
-share share
-share ref
-ref share
-@@
+Borrow_j( Borrow_j(q) ) = Borrow_j(q)          idempotence, from Coerce_{j->j} = id
+ref  -> share  is a capability weakening       admitted
+share -> ref   is a capability strengthening   no candidate
 ```
 
-This is a statement about the operator's domain, not a syntactic ban: there is
-simply no candidate whose parameter is already a borrow view.
+This is what makes the weakening used throughout this document well-formed:
+
+```lang
+let r = t@;                 // r : type ref
+let s = r share;            // ref share: s : type share, same target
+```
+
+`r share` is exactly the `ref share` composition. It is admitted, it does not
+nest, and it does not retarget.
+
+Only `share ref` is rejected, and it is rejected at selection time as "no
+applicable overload" rather than being evaluated and then diagnosed: a `share`
+view never carries the write/extension capability that `ref` would have to
+produce. Capability can be surrendered, never regained.
+
+No overlapping composition changes what is observed:
+
+```text
+retargeting is available only through rebind (§5.4)
+```
 
 ### 5.4 Writing through a reference versus retargeting a reference
 
@@ -731,9 +845,35 @@ r_ref rebind = expression;  // retargets r_ref itself at a new referent
 ```
 
 ```text
-r_ref = v          -> Write( Referent(r_ref), v )
-r_ref rebind = E   -> Write( HolderPlace(r_ref), Ref( Read(E) ) )
+r_ref = v          ->  Write( Referent(r_ref), v )
+r_ref rebind = E   ->  Target( Value( HolderPlace(r_ref) ) ) := NewTarget(E)
 ```
+
+`rebind` is a **retargeting** operation, not a value borrow. It does not evaluate
+`E ref`, because `Ref(Read(E))` would reintroduce exactly the ambiguity that §5.2
+removed: for a pure `type` slot `t`, `Ref(Read(t))` is `uint8 ref`, not a
+reference to the slot `t`. So the new target is taken from a place-bearing right
+side:
+
+```text
+NewTarget(E) = Target(E)          when E is already a borrow view
+NewTarget(E) = CarrierPlace(E)    when E supplies a carrier place
+NewTarget(E) is undefined         otherwise
+```
+
+An `E` that supplies neither — a freshly computed temporary — gives `rebind` no
+applicable candidate. The obligations a `rebind` must discharge are:
+
+```text
+E supplies an origin/place
+Pattern( NewTarget(E) ) conforms to the Pattern the view is declared over
+Capability( result ) ≤ Capability( E )        no strengthening
+lifetime / escape check on the new target
+```
+
+The last obligation is the escape check of
+[`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
+§3.
 
 Without `rebind`, an assignment whose left side is a reference always reaches
 through to the referent. `rebind` is what selects the borrow-holder place as the
@@ -829,6 +969,48 @@ return that stays inside the same open window is well-formed; a return that
 crosses the closing boundary fails at the third obligation — the receiving
 context cannot derive `out : type ref` at all — rather than surfacing later as a
 failed `inject`.
+
+### 5.6 Type-expected positions do elaborate `|> type`
+
+§5.1.1 excludes implicit projection in *operand* positions. That exclusion is
+about operand positions only, and it must not be read as "the language performs
+no type-context projection anywhere". The two rules are complements, not one
+rule:
+
+```text
+OperandPosition       =/=>  ImplicitTypeProjection
+TypeExpectedPosition   ==>  ImplicitTypeProjection
+```
+
+In a language-designated type-expected position the elaboration is supplied:
+
+```text
+Elab_Type(E)  =  E |> type
+```
+
+The designated positions are:
+
+| position | example |
+| --- | --- |
+| declaration annotation | `let x: E` |
+| a path component that demands the type facet | the type-facet step of §3.2 |
+| type argument position | a parameter declared to receive a type |
+| `t: type` | a parameter or binder at type rank |
+| `t: type ref` | the borrow-view form of the same |
+| type-rank return position | a callable whose return is declared at type rank |
+
+So `E` supplying a `Val1` dimension in one of these positions is projected to its
+type facet without the author writing `|> type`, while the very same `E` under
+`ref` is not:
+
+```lang
+let x: s = ...;             // type-expected: elaborates to s |> type
+let r = s ref;              // operand: no projection; r : symbol ref
+```
+
+The distinction is positional and fixed by the language, never inferred from the
+operand's shape. An operand position never acquires a projection because a
+projection would make the program check.
 
 ## 6. Writability and extension eligibility
 

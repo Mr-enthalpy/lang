@@ -68,19 +68,34 @@ track:
 - `T |> inject(Δ)` is the separate pure-functional operation that produces a new
   type extending `P(T)` by direct child patterns; observing that result in a
   place is an ordinary write (`old = Read(t_ref); new = Inject(old, Δ);
-  Write(t_ref, new)`).
+  Write(t_ref, new)`) whose left side must be a `type ref` — a pure pattern slot
+  is not writable through its own name, so `t = t |> inject(Δ)` is not a
+  shorthand for that sequence.
 - No declaration form forwards a Symbol or a place. Shared observation of another
   object is a borrow view (`ref` / `share` / `@`), which is an ordinary value.
   `ref` and `share` consume `Read(E)`; only `@` consumes `CarrierPlace(E)`, and
   `@` is not a general `PlaceOf(E)`.
+- `Read(Σ)` yields a complete `⟨Val1?, P, Val2⟩` object and never projects down to
+  the `Val1` payload, so `s ref` on `s : symbol` is a `symbol ref` and not a
+  reference to the member array inside the symbol value.
 - Which of `ref` and `@` applies is decided by the presence of a `Val1` payload,
   not by type-rank. For `let t: type = uint8`, `t ref` is `uint8 ref` and is not
   an error; `t@` is what yields `type ref`.
+- Borrow-operator overlap is a real overload family, not a gap:
+  `Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))` with the target preserved.
+  Equal capability is idempotent, `ref share` is an admitted weakening (which is
+  what makes `r share` legal), `@@` retargets nothing, and only `share ref` has no
+  candidate. Retargeting is available only through `rebind`, which consumes a
+  place (`Target(E)` or `CarrierPlace(E)`) rather than `Ref(Read(E))`.
 - Extension through a `type ref` view needs no ambient query, because
   `Γ ⊢ r : type ref` already implies `Open_Γ(Target(r))`; its holdable interval is
   the `Open` window. Extension of a by-value `type` requires
   `Open_Γ(ConstructionRoot(t))` from the call site. A `type share` has no
   applicable extension or `inject` overload. `Eligible(view of p) ≤ Eligible(p)`.
+- `ValidRegion` is indexed by view capability, not uniformly by `Open`:
+  `ValidRegion(type ref) = OpenRegion(Target)` and
+  `ValidRegion(type share) = LifetimeRegion(Target)`. A `type share` may therefore
+  leave the `Open` window while still being unable to outlive the target.
 - External stable values are readable and observable through a borrow view but
   are not extension targets: `GlobalLifetime(x)` does not imply
   `EffectiveOpen(x)`.
@@ -120,16 +135,32 @@ track:
   recursive `Val2` is one identity across different places, and one open type
   observed before and after an extension is two identities (and two meta
   instance keys) through one place.
-- Path resolution is `Path -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection`,
-  executed by one shared navigator for every use context. A step enters the
-  current symbol's own object `Val2` place and its associated namespace and
-  records the traversed object as a host layer; only the final facet projection
+- Path resolution is
+  `Path -> SelectedHead -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection`.
+  Head selection is its own step: a bare head resolves as `ResolveBare_q(name)` —
+  the nearest enclosing same-spelled Symbol carrying the required *coarse* facet
+  `q` — and the outward walk stops at that Symbol permanently, so a later overload
+  failure inside it is an error rather than a reason to resume searching. An
+  explicitly anchored path performs no outward walk. This is what keeps a local
+  type-only Symbol from shadowing an outer callable Symbol, while `q` stays coarse
+  (facet presence only, never signature, arity, or specificity).
+  After the head is fixed, one shared navigator serves every use context. A step
+  enters the current symbol's own object `Val2` place and its associated namespace
+  and records the traversed object as a host layer; only the final facet projection
   (callable vals / pure-P member / sibling vals / writable place / Pattern) is
   context-directed. `f::T` therefore denotes the same terminal symbol as a call
   target, a type, an extension RHS, a meta argument, and an extraction prefix,
   and every consumer sees the same host chain. Cross-root resolution
   deduplicates on the full navigation, so one terminal reached through distinct
   host chains is a navigation ambiguity rather than a search-root-order pick.
+- Implicit type projection is positional, and the two halves are complements:
+  an operand/argument position never elaborates `|> type` (`s ref` stays
+  `symbol ref`), while a language-designated type-expected position does
+  (`Elab_Type(E) = E |> type`) — annotations, type-facet path components, type
+  argument positions, `t: type`, `t: type ref`, and type-rank return positions.
+- A meta return seal validates *at most* one type member, matching the Symbol
+  ontology; the type-facet promotion step is skipped when no type member exists, so
+  namespace-only, val-only, and type-less mixed meta returns are well-formed.
 
 Still open after this correction:
 
@@ -149,8 +180,9 @@ Still open after this correction:
   associated-extension entry point currently requires a still-open
   construction and resolves the target object from the constructed Pattern.
 - Exact future implementation of borrow-view evaluation (`ref` / `share` / `@` /
-  `rebind`) and of the escape check
-  `Escapes(view, destination) = Region(destination) ⊄ ObservationRegion(Origin(view))`.
+  `rebind`), of the capability coercion `Coerce_{j->k}` behind borrow-operator
+  overlap, and of the escape check
+  `Escapes(view, destination) = Region(destination) ⊄ ValidRegion(view)`.
 - Exact Rust/IR representation of `SymbolConstruction` facet exposure;
   semantically, formal invocation remains uninstalled and outer binding resolves
   the installation place.
@@ -679,12 +711,14 @@ here so they are not mistaken for design decisions:
   `let member::target = RHS;` is only associated-member installation
   (never a Pattern-structure write); the end-to-end equivalence
   `let t = ((x inner) t) |> struct;`  ≡
-  `let t = (() t) |> struct;  t = t |> inject(x inner);`
-  is a *future acceptance test*, blocked on both expression-level `=` and
-  `inject`. The second line is the ordinary three-step write-back of a pure
-  function's result, not an in-place mutation. It must not be approximated with
-  `let inner::t = x`, which is a different (non-privileged, Val2-only)
-  operation.
+  `let t = (() t) |> struct;  let t_ref = t@;  t_ref = t_ref |> inject(x inner);`
+  is a *future acceptance test*, blocked on `@`, expression-level `=`, and
+  `inject`. The write-back line is the ordinary three-step write-back of a pure
+  function's result, not an in-place mutation, and its left side must be a
+  `type ref`: a pure pattern slot is not writable through its own name. It must
+  not be abbreviated to `t = t |> inject(x inner)`, and it must not be
+  approximated with `let inner::t = x`, which is a different (non-privileged,
+  Val2-only) operation.
 - The `let`-only meta construction encoding (`let r = expr` → AddMember,
   `r = expr` → PlaceholderOverwrite, `r;` → Delivery) is a transitional
   encoding while the grammar lacks `=`; the settled orthogonal rule
@@ -991,7 +1025,8 @@ documents named in each line.
   overloads and `delete`. (`symbol-policy-and-compile-flow-projection.md`)
 - A Symbol is an ordinary PatternValue with at most one type member;
   `Val1(Symbol) = Member * ω`. The cluster carrier is a transitional same-name
-  synthesis role, not a distinct ontology.
+  synthesis role, not a distinct ontology. The meta return seal validates that
+  same *at most one* bound and skips type promotion when no type member exists.
   (`symbol-first-meta-construction-and-pattern-injection.md`)
 - `compile` may return any ordinary PatternValue (including `type`, `symbol`,
   `type ref`, `type share`) under root conservation
@@ -1003,9 +1038,13 @@ documents named in each line.
 - `EffectiveOpen` and the one-way `Open -> Frozen` transition, with the five
   ordinary freezing events.
   (`symbol-first-meta-construction-and-pattern-injection.md` §12.1)
-- Borrow views: `ref` / `share` / `@` / `rebind`, idempotence of borrowing, and
-  `OwnedClosure` excluding view edges. `ref` / `share` consume `Read(E)`; `@`
-  consumes `CarrierPlace(E)`.
+- Borrow views: `ref` / `share` / `@` / `rebind`, and `OwnedClosure` excluding view
+  edges. `ref` / `share` consume `Read(E)`, which yields a complete
+  `⟨Val1?, P, Val2⟩` object rather than the bare `Val1` payload; `@` consumes
+  `CarrierPlace(E)`. Borrowing is non-stacking *because* the overlapping overloads
+  exist: `Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))` preserves the target,
+  `ref share` is an admitted weakening, and only `share ref` has no candidate.
+  `rebind` retargets from a place and is not `Ref(Read(E))`.
   (`type-values-places-and-borrow-views.md`)
 - `@` has two positively defined overload groups and is an ordinary overloaded
   operation, not a general `PlaceOf(E)`; the lifetime boundary restricts

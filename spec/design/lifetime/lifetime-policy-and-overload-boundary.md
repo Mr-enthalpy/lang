@@ -22,8 +22,9 @@ E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
 
 `CarrierPlace(E)` is the carrier slot through which `E` was read. This place
 sensitivity is what distinguishes `@` from `ref` and `share`, which consume only
-`Read(E)`. An expression with no carrier place — a freshly computed temporary —
-supplies none, so no `@` candidate applies to it.
+`Read(E)` — the complete object read out of the slot, never the slot itself. An
+expression with no carrier place — a freshly computed temporary — supplies none,
+so no `@` candidate applies to it.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. Its candidate
 set is the two groups of §2 and nothing else; there is no third, generic
@@ -65,7 +66,7 @@ This group yields a fact, not a borrow. There is deliberately **no** compile-sta
 borrow-producing candidate for a value-bearing operand:
 
 ```lang
-s ref   // borrows Read(s) = Val1(s) — the ordinary way to obtain a borrow
+s ref   // borrows Read(s), the complete symbol value — the ordinary way to borrow
 s@      // lifetime observation of s; not a way to obtain a borrow
 ```
 
@@ -130,23 +131,29 @@ as `P ref` outside its open capability region.
 
 ### 2.3 Idempotence
 
-`@` participates in the general borrow-view fixed point:
+`@` participates in the general borrow-view overlap rule:
 
 ```text
-Borrow(Borrow(q)) = Borrow(q)
+Borrow_k( Borrow_j(q) )  =  Coerce_{j->k}( Borrow_j(q) )
+Target( Coerce_{j->k}(v) )  =  Target(v)
 ```
 
-so `@@` has no applicable candidate, in the same way as `ref ref` and
-`share ref`.
+So `@@` is not a missing operation. It is admitted, it preserves the target, and
+it builds no second layer — which is what "idempotent" means here. Retargeting is
+available only through `rebind`. Of the overlapping compositions only `share ref`
+has no candidate, because capability may be surrendered and never regained. The
+full table is owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§5.3.
 
 ## 3. Escape checking
 
-A borrow view obtained from a place must not outlive the observation region of
-that place. The positive obligation is:
+A borrow view must not be carried where it outlives its own valid region. The
+positive obligation is:
 
 ```text
 Escapes(view, destination)
-  = Region(destination) ⊄ ObservationRegion(Origin(view))
+  = Region(destination) ⊄ ValidRegion(view)
 
 Escapes(view, destination)  ->  the storing/returning operation is rejected
 ```
@@ -155,12 +162,40 @@ The destinations subject to this check are the ones that can outlive the origin:
 storing into a longer-lived place, returning from a callable, capturing into a
 materialized callable entity, and installing into global namespace material.
 
-For pattern-value observations the region is the target's open capability
-region, so the escape check and the `EffectiveOpen` premise of §2.2 are the same
-condition applied at two moments: at production and at every destination.
+### 3.1 `ValidRegion` is indexed by the view's capability
+
+`ValidRegion` is **not** uniformly the target's open capability region. `Open` is
+the *extension* capability region, not a single observation lifetime shared by
+every view of the target:
+
+```text
+ValidRegion( type ref )   =  OpenRegion( Target )
+ValidRegion( type share ) =  LifetimeRegion( Target )
+
+OpenRegion( Target )  ⊆  LifetimeRegion( Target )
+```
+
+So the two views are checked against different regions, and the difference is
+exactly the capability each one carries:
+
+| view | carries | may leave the `Open` window | may leave the target's lifetime |
+| --- | --- | --- | --- |
+| `type ref` | write + `inject` + `OpenWitness` | no | no |
+| `type share` | read/observe only | yes | no |
+
+A `type ref` cannot leave the window because its own formation condition is the
+window. A `type share` may, precisely because it surrendered the extension
+capability that made the window relevant; it still may not outlive the target
+itself.
+
+For a `type ref`, then, the escape check and the `EffectiveOpen` premise of §2.2
+are the same condition applied at two moments: at production and at every
+destination.
+
+### 3.2 A well-formed `type ref` is its own witness
 
 Because the premise holds at production and the view cannot be held past the
-window, a well-formed view is itself the witness:
+window:
 
 ```text
 Γ ⊢ r : type ref   =>   Open_Γ( Target(r) )
@@ -185,9 +220,11 @@ author's option is to weaken before the boundary:
 r share
 ```
 
-`share` is the view that is allowed to leave an open capability region, and it
-pays for that with a strictly smaller capability set: it is not an assignment
-left side and not an `inject` target.
+That weakening is the admitted `ref share` composition, not a missing overload
+(§2.3). `share` is the view that is allowed to leave an open capability region,
+and it pays for that with a strictly smaller capability set: it is not an
+assignment left side and not an `inject` target. It does **not** buy escape from
+`LifetimeRegion(Target)`.
 
 ## 4. `@` and lifetime rules never reselect an ordinary call
 
@@ -208,6 +245,23 @@ This restriction applies to lifetime *rules*, not to `@` itself. `@` is
 resolved by ordinary overload resolution like any other operation — §2 defines
 its candidate set — so "no lifetime overload stage" and "`@` has overloads" are
 consistent statements about two different things.
+
+The apparent circularity dissolves once the three steps are separated. They are
+strictly ordered, and each one is finished before the next begins:
+
+```text
+1. ordinary selection inside the operand   -> the operand value and its carrier place
+2. ordinary selection of `@` itself        -> one candidate, from the groups visible
+                                              in the operand's policy stage (§2)
+3. lifetime validation                     -> accept or reject steps 1 and 2
+```
+
+Step 2 uses the ordinary selector, not a lifetime-specific one; the policy stage
+only bounds which candidate groups are visible. Step 3 never reselects steps 1 or
+2 — that is the whole content of this section. So "the lifetime stage runs after
+ordinary selection has completed" and "`@` is itself resolved by ordinary
+selection" describe steps 3 and 2 respectively, and neither feeds back into the
+other.
 
 ## 5. Closure capture handoff
 
