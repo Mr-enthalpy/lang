@@ -1,8 +1,46 @@
 # Entity Alias Binding Design
 
+> **Retirement notice — the semantic alias model described in this document is
+> retired.**
+>
+> Two separate things were recorded here, and only the first survives:
+>
+> 1. **Frozen parser fact (retained).** `===` is lexed as
+>    `Symbol::TripleEqual` and the parser preserves `LetAliasAst` /
+>    `AliasBinderAst` / `EntityRefAst`. This is v0.2 frozen contract material
+>    and is not rewritten. It is a syntactic artifact of the frozen surface.
+> 2. **Semantic alias model (retired).** Lexical alias binding, symbol/place
+>    forwarding, `AliasChain`, alias-inherited writability, and "alias member"
+>    contributions are **not** the target semantics and are no longer a future
+>    direction.
+>
+> The target semantics has **no** ordinary symbol-alias or place-forwarding
+> declaration form. Binding a name to an existing value is always an ordinary
+> copy into a fresh symbol and a fresh place:
+>
+> ```text
+> let T = uint8;
+>
+> SymbolId(T) ≠ SymbolId(uint8)
+> PlaceId(T)  ≠ PlaceId(uint8)
+> Value(T)    =  Value(uint8)
+> ```
+>
+> Shared observation of another object is expressed only by the borrow views
+> `ref`, `share`, and `@`, specified in
+> `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
+>
+> Operator-name binding remains a separate, narrow mechanism with its own
+> rules. Its surface spelling is an open question; nothing about it licenses
+> reading ordinary aliases back into the language.
+>
+> Everything below is retained as the historical record of the surface form and
+> of the retired semantic direction. Do not cite it as a specification of
+> intended behavior.
+
 **Status:**
 - **Parser preservation** for `let binder === EntityRef` is implemented in v0.1 as raw AST preservation. The lexer recognizes `===` as a single structural delimiter token (`Symbol::TripleEqual`). The parser produces `LetAliasAst` containing `AliasBinderAst` and `EntityRefAst`.
-- **Alias semantics, lookup, scope validation, operator identity validation, and namespace resolution are future work.** The parser does not resolve targets, validate operator identity, perform entity lookup, or execute alias semantics.
+- **The alias semantics, lookup, scope validation, and forwarding behavior described below are retired, not deferred.** The parser does not resolve targets, validate operator identity, perform entity lookup, or execute alias semantics, and no future pass is planned to do so under this model.
 
 `v0.2` status: alias-let parser preservation is frozen contract material. Changes
 in this window may clarify documentation or preserve narrowly additive syntax,
@@ -11,23 +49,21 @@ identity validation, or alias semantics.
 
 This document records the design for lexical alias binding of
 compile-time entities (Phase 4.3 design complete). Phase 4.4 implemented raw
-parser preservation. The remaining sections describe both the implemented
-syntax and the future semantic behavior.
+parser preservation. The remaining sections describe the implemented
+syntax and the retired semantic direction.
 
 The right-hand side `EntityRef` syntax is defined separately in
-`spec/design/symbol-world/entity-ref-design.md`. This document describes how future alias binding
-will use that syntax.
+`spec/design/symbol-world/entity-ref-design.md`.
 
-This document records the surface/parser alias syntax and the future surface
-lookup/shadowing rules. The *semantic* alias forwarding model — value/place
-forwarding, the `AliasChain`, and its writable-place effect — is documented in
-`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`. The two are
-complementary: this file owns the surface form; that file owns the forwarding
-semantics.
+This document owns the surface/parser alias syntax only. The *semantic* alias
+forwarding model — value/place forwarding, the `AliasChain`, and its
+writable-place effect — has been withdrawn;
+`spec/design/symbol-world/type-values-places-and-borrow-views.md` now specifies
+borrow views in its place and documents no forwarding mechanism.
 
-## Purpose
+## Purpose (retired)
 
-The language will eventually support a declaration form:
+The form recorded by the frozen parser is:
 
 ```text
 AliasForm ::= OptionalPolicy? "let" AliasBinder "===" EntityRef FormBoundary
@@ -38,8 +74,8 @@ AliasForm is recognized only in Form position. It is not valid inside
 BindingSlot, ProductExtract, ParamClause, ReturnClause, Annotation, HeadClause,
 or Expr.
 
-This is similar to `import as` or `using` in traditional languages, but
-stronger. It introduces a lexical-scope alias for a compile-time entity.
+The retired intent was a lexical-scope alias for a compile-time entity, stronger
+than `import as` or `using`. Under that retired reading the form would:
 
 - does not bind a runtime value;
 - does not evaluate an expression;
@@ -100,9 +136,10 @@ For this design, the relevant parts are:
 - Outer components may be text names, numeric names, or grouped scope-producing expressions.
 - Operator names are not valid as outer navigation components.
 
-## Meaning
+## Meaning (retired)
 
-`let binder === EntityRef` creates a lexical alias binding.
+Under the retired model, `let binder === EntityRef` created a lexical alias
+binding.
 
 It binds `binder` to a compile-time entity reference for lookup in the current
 lexical scope.
@@ -158,9 +195,9 @@ The `===` delimiter structurally separates the two forms. The parser selects
 the alias-binding path when it sees `===` in `let` form position instead of `=`
 or `:`.
 
-## Ordinary Name Alias
+## Ordinary Name Alias (retired)
 
-For text-name binders, aliasing may rename the target:
+For text-name binders, the retired model allowed renaming the target:
 
 ```text
 let local_name === exported_name::module::package
@@ -179,7 +216,13 @@ No namespace or package loading occurs in the parser.
 
 ## Operator Alias
 
-For operator binders, aliasing is stricter than for ordinary names.
+Operator-name binding is the one mechanism in this document that is **not**
+retired, and it is deliberately narrow. Its surface spelling is an open
+question, and its rules do not generalize: an operator-name binding is not
+evidence that ordinary aliases exist, and no rule stated here transfers to
+ordinary names.
+
+For operator binders, binding is stricter than for ordinary names.
 
 An operator alias may select a concrete visible operator implementation from
 another namespace, but it may **not** rename one operator into another.
@@ -233,11 +276,11 @@ available in the parser.
 
 Phase 4.3 does not implement this validation.
 
-## Lexical Scope Rule
+## Lexical Scope Rule (retired)
 
-Alias bindings are lexical. They affect lookup only after the declaration point
-and only inside the current lexical scope and its nested scopes, unless
-shadowed by a later inner binding.
+Under the retired model, alias bindings were lexical: they affected lookup only
+after the declaration point and only inside the current lexical scope and its
+nested scopes, unless shadowed by a later inner binding.
 
 `let binder === EntityRef` may shadow:
 

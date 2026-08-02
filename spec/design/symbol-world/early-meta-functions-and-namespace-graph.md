@@ -720,13 +720,14 @@ Namespace injection is not pure type-value evaluation. `let f::T = ...`
 targets `place(T)`, not `place(uint8)`. Type-value equality must not
 canonicalize injection targets.
 
-`=` and `===` are not interchangeable:
+`let` and the frozen `===` surface form are not interchangeable, and only `let`
+has target semantics:
 
-| Form | Symbol effect | Type-value effect | Injection-place effect |
+| Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `f::T` injects into `place(T)` if current-level and open |
-| `let T === uint8` | `T` forwards to symbol `uint8` | `value(T) == value(uint8)` | `f::T` attempts `place(uint8)` and is rejected because `uint8` is external stable |
-| `let T: type = ... |> struct` | Creates new symbol/place `T` | `value(T)` is a fresh generated type value | `f::T` injects into `place(T)` if open |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `f::T` extends `place(T)` if current-level and open |
+| `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
+| `let T: type = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a fresh generated type value | `f::T` extends `place(T)` if open |
 
 Fresh generated type values own/provide their own type-associated namespace, so
 `let T: type = (uint8 a, uint8 b) |> struct` creates the fresh type value whose
@@ -745,17 +746,18 @@ let A: type = (int Vec::std)
 let B: type = (int Vec::std)
 ```
 
-means `A == B` by type-value equality while `A` and `B` remain distinct symbols
-unless one is declared via `===`. The canonical type-value equality relation
+means `A == B` by type-value equality while `A` and `B` remain distinct symbols.
+No declaration form can make them the same symbol or the same place. The
+canonical type-value equality relation
 is defined as the recursive observation `Addr(Norm_type)` (bare `TypeValueId`
 is only the stable first-order root); carrying that settled relation into all
 remaining semantic comparison sites is future work.
 
 See `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md` for the
 field-function and access-tree implications. The intended final distinction
-between type values, symbol places, alias forwarding, and writable injection
+between type values, symbol places, borrow views, and writable extension
 targets is documented in
-`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 ### 3.5 Final facet inclusion and value-member boundary
 
@@ -915,9 +917,10 @@ semantics; HIR/codegen integration beyond placeholder nodes.
 
 Must cover the transition from the restricted type-shaped evaluator toward:
 ordinary normalized structured input; `compile` producing `PatternValue`;
-`meta` producing `SymbolConstructionValue : symbol`; rank-directed canonical
-argument identity; the return-cluster construction-effect family
-(`let r = expr;` fresh member, `let r === path;` alias member, `r = expr;`
+`meta` sealing a `MetaInstance` and returning its symbol value; rank-directed
+canonical
+argument identity; the return construction-effect family
+(`let r = expr;` fresh member, `r = expr;`
 existing-target write — currently a placeholder overwrite scaffold, `r;`
 delivery terminal); binding-layer
 installation under a legal writable place; and first-class `(T Vec)` /
@@ -945,15 +948,16 @@ inside formal `struct` or `inject` invocation.
   another construction unit.
 - Compile/meta bodies consume ordinary parsed and normalized structured material
   under capability policy — not a separate compile-time DSL or text macro.
-- `compile` computes `PatternValue`; `meta` creates or transforms
-  `SymbolConstructionValue : symbol`. Formal meta return material uses the
+- `compile` computes `PatternValue`; `meta` seals a `MetaInstance` and returns
+  its symbol value, which is an ordinary `PatternValue`. Formal meta return
+  material uses the
   construction-effect family (spellings shown in the current `let`-only
   compatibility encoding pending expression-level `=`): `let r = expr;` adds
-  a fresh cluster member,
-  `let r === path;` adds an alias member (the same cluster-member mechanism as
-  namespace-level `let a === b` aliasing), `r = expr;` writes to an existing
-  target (today a placeholder overwrite scaffold; the final cluster write
-  algebra is not fixed), and `r;` delivers the cluster.
+  a fresh member, `r = expr;` writes to an existing
+  target (today a placeholder overwrite scaffold; the final write
+  algebra is not fixed), and `r;` delivers the construction. There is no
+  alias-member event; a member that must observe an external object holds a
+  borrow view.
 - `compile` creates no meta-instance scope. An ordinary canonical meta
   invocation does, and any return `TypeFacet` is rooted in that scope rather
   than in an external `PatternValue` or a later binding destination. Privileged

@@ -12,9 +12,11 @@ final owner-resolution rule.
 
 This document builds on, without replacing:
 
-- `spec/design/symbol-world/type-values-places-and-alias-forwarding.md` for
-  `SymbolId` / `PlaceId` / `TypeValueId`, alias forwarding, and writable-place
-  judgments;
+- `spec/design/symbol-world/type-values-places-and-borrow-views.md` for
+  `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` / `@`,
+  and writability / extension-eligibility judgments;
+- `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
+  positive overloads of `@`, escape checking, and the lifetime-rule boundary;
 - `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` for
   the preserved bare-name versus explicit-`::` distinction and the current
   registry-backed substrate;
@@ -45,11 +47,11 @@ ordinary value binding:
     -> resolve source Symbol -> read value -> bind destination Symbol/Place
 
 compile-time value computation:
-  compile -> SingleType | SingleVal | Unit
+  compile -> any ordinary PatternValue
+    subject to the root-conservation law of §4.2
 
-symbol construction:
-  meta -> SingleType | SingleVal | Unit | ClusterSymbol
-    where ReturnShape = ClusterSymbol -> SymbolConstructionValue : symbol
+meta symbol construction:
+  meta -> MetaInstance(F, Norm(args)) -> sealed global symbol root
 
 graph mutation:
   let binding/injection -> NamespaceDelta installation
@@ -58,20 +60,21 @@ graph mutation:
 Consequences:
 
 1. A name does not initially resolve as a type, value, namespace, function, or
-   alias category. It resolves as a first-class symbol.
+   category. It resolves as a first-class symbol.
 2. Ordinary `=` reads a value through the source symbol and binds it to a
-   distinct destination symbol/place. It does not alias, reroot, or merge
-   identities.
-3. `compile` computes pattern values (`SingleType` / `SingleVal` / `Unit`).
-   It does not install symbols and never returns a `ClusterSymbol`.
-4. Return ontology is decided by the declared `ReturnShape` alone, under the
-   single-direction law `ClusterSymbol ⇒ P2 = meta` (§4.1): only a pure-meta
-   result P2 is authorized to construct a cluster Symbol, and P2 never
-   determines `ReturnShape` — a meta callable may equally return
-   `SingleType`, `SingleVal`, or `Unit`. A returned `TypeFacet` is rooted in
-   the canonical meta-instance scope.
-5. `struct` and `inject` return uninstalled symbol constructions. Neither
-   operation installs a graph delta during formal invocation.
+   distinct destination symbol/place. It does not forward, reroot, or merge
+   identities. There is no declaration form that makes two symbols name one
+   place.
+3. `compile` computes values. It may accept and return **any** ordinary
+   `PatternValue`, including a type value, a symbol value, and a `type ref`.
+   What it may not do is create a new global root: it registers no global
+   Symbol, produces no nominal type lacking a normal global root, and never
+   promotes a local temporary pattern value into a global type (§4.2).
+4. `meta` is the only construction that establishes a global symbol root. Entry
+   into a meta invocation creates a globally live but unsealed `MetaInstance`
+   root; the return stage seals it (§4.3).
+5. `struct` and `inject` are pure functions producing uninstalled values.
+   Neither operation installs a graph delta and neither mutates its input.
 6. A `let` binding or injection path chooses the installation place. It does
    not retroactively choose or reroot the pattern owner carried by the value.
 
@@ -327,7 +330,8 @@ bind(a, v)
 Once `read(s_b)` has produced `v`, `s_b` is no longer part of `v`'s semantic
 identity. It may remain in diagnostic provenance only. Ordinary `=` therefore
 never requires or creates a `value -> original carrier Symbol` inverse map.
-Only the separate `let a === b` form forwards Symbol/place lookup.
+No declaration form forwards Symbol/place lookup (§2.6); shared observation of
+another object is expressed only by a borrow view.
 
 The rule does not change merely because the value is a type value, structured
 pattern value, or symbol-construction result. In particular:
@@ -400,27 +404,43 @@ the P1 binding destination. In particular, an
 implementation must not reject a binding merely because
 `binding_policy == runtime`.
 
-### 2.6 Ordinary aliases remain aliases
+### 2.6 There is no alias declaration form
 
-The ordinary declaration form remains:
+Binding a name to an existing value is always an ordinary copy into a fresh
+symbol and a fresh place:
 
 ```lang
-let T === uint8;
+let T = uint8;
 ```
 
-This is symbol/place forwarding through the alias model. The symbol-first
-correction does not remove it.
+```text
+SymbolId(T) ≠ SymbolId(uint8)
+PlaceId(T)  ≠ PlaceId(uint8)
+Value(T)    =  Value(uint8)
+```
+
+The language defines **no** ordinary symbol-alias or place-forwarding
+declaration. There is no form that makes a second name resolve to another
+symbol's place, inherit its writability, or serve as a second entry point for
+namespace extension. Shared observation of another object is expressed only by
+the borrow views `ref`, `share`, and `@`, specified in
+`type-values-places-and-borrow-views.md`.
 
 The canonical conclusion is:
 
 ```text
-alias does not affect type-value equality;
-alias still affects symbol forwarding, place forwarding,
-namespace injection target, writability, and provenance.
+value equality does not imply symbol equality;
+value equality does not imply place equality;
+no declaration converts value equality into place sharing.
 ```
 
 Therefore several symbols may expose the same `TypeValueId` or pattern value
-while preserving distinct symbol/place/alias relationships.
+while each retaining its own distinct symbol and place.
+
+Operator-name binding is a separate, narrow mechanism with its own rules and
+must not be generalized into an ordinary alias facility. Nothing in this section
+licenses reading an operator-name declaration as evidence that ordinary aliases
+exist.
 
 ## 3. Value Facets and Calls
 
@@ -485,8 +505,12 @@ evaluation demand:
     partial / strict
 
 result rank:
-    PatternValue / SymbolConstructionValue / runtime value
+    PatternValue / runtime value
 ```
+
+There is no third result rank. A symbol value is an ordinary `PatternValue`
+(§4.7), so "returns a symbol" is a statement about which pattern value is
+returned, not about a separate ontological rank.
 
 `MetaPartial` / `MetaStrict` describe evaluation demand. They do not define the
 meaning of `compile` or `meta`, and they do not determine the successful result
@@ -500,52 +524,124 @@ axis that decides return ontology:
 CallableSemantics
     = P1 × P2 × ReturnShape × Privilege
 
-ReturnShape ::= Unit | SingleType | SingleVal | ClusterSymbol
+ReturnShape ::= Unit | SingleType | SingleVal | SymbolValue
 
 Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
-Return ontology is decided by the declared `ReturnShape` alone, subject to
-one single-direction authorization law:
+The declared `ReturnShape` decides the shape of the returned value. The one
+authorization law is about *rooting*, not about shape:
 
 ```text
-ClusterSymbol => P2 = meta
+SealsAMetaInstanceRoot(F) => P2(F) = meta
 
-P2 = meta   !=> ClusterSymbol
+P2(F) = meta  !=>  F returns a SymbolValue
 ```
 
-A `ClusterSymbol` return (`-> r: symbol`) requires a pure meta result P2 —
-only a meta result domain is authorized to construct a cluster Symbol. The
-converse never holds: a meta callable may legally return `SingleType`
-(`-> let r: type`), `SingleVal`, or `Unit`, and `SingleType` / `SingleVal` /
-`Unit` are equally legal under `compile`. An implementation must not derive
-the return ontology from whether a result policy pair contains the `Meta`
-stage, and must not maintain a callable-kind table as a second ontology
-authority parallel to `ReturnShape`. Where prose still distinguishes "meta
-functions" from ordinary functions, the distinction means exactly "is this
-callable authorized to construct a `ClusterSymbol`", never a hardwired
-return shape. Policy stages (`meta` / `compile` / `seal` / `runtime` in
-`P1` / `P2`) decide only visibility and execution timing.
+Only a pure meta result P2 may seal a `MetaInstance` and thereby install a new
+global symbol root. The converse never holds: a meta callable may legally return
+`SingleType`, `SingleVal`, or `Unit`, and every `ReturnShape` — including
+`SymbolValue` — is legal under `compile`, because returning a symbol *value* is
+not the same act as rooting a new global Symbol (§4.2).
+
+An implementation must not derive return ontology from whether a result policy
+pair contains the `Meta` stage, and must not maintain a callable-kind table as a
+second ontology authority parallel to `ReturnShape`. Where prose still
+distinguishes "meta functions" from ordinary functions, the distinction means
+exactly "is this callable authorized to seal a new global root", never a
+hardwired return shape. Policy stages (`meta` / `compile` / `seal` / `runtime`
+in `P1` / `P2`) decide only visibility and execution timing.
+
+`ClusterSymbol` and `ReturnShape::ClusterSymbol` survive in the current
+implementation as a **transitional carrier** for the multi-member return of a
+meta construction. They are not an ontological category of the target semantics
+and must not be treated as one. Three roles that the single name `ClusterSymbol`
+has been used to conflate are distinct:
+
+```text
+Symbol value ontology          — an ordinary PatternValue (§4.7)
+Meta return construction role  — the members a meta body accumulates before seal
+Namespace same-name synthesis  — merging same-named contributions in a namespace
+World installation role        — what a sealed root becomes in the global graph
+```
+
+A rule stated for one role does not transfer to another.
 
 ### 4.2 `compile`
 
 `compile` is value-level staging. It performs compile-time computation without
-creating a symbol-construction scope:
+creating a symbol-construction root:
 
 ```text
 compile:
-  input PatternValue / compile-time value
-  -> output PatternValue / compile-time value
+  input  ordinary PatternValue
+  -> output ordinary PatternValue
 ```
 
 `PatternValue` includes:
 
 - ordinary compile-time values;
 - type values;
+- symbol values;
+- `type ref` and `type share` views;
 - structured pattern values.
 
-A computed type value is still a value. It is not thereby an installed type
-symbol, a namespace node, or a writable place.
+All of these may be passed to and returned from a `compile` callable. A computed
+type value is still a value: it is not thereby an installed type symbol, a
+namespace node, or an extendable place.
+
+#### 4.2.1 Root conservation
+
+The positive restriction on `compile` is that it conserves roots:
+
+```text
+Roots(Output)
+  ⊆ Roots(Arguments)
+  ∪ Roots(GlobalConstants)
+  ∪ LexicallyDeclaredStableRoots
+```
+
+Every root reachable from a `compile` result must already have been rooted
+somewhere the caller can name: in an argument, in a global constant, or in a
+lexically declared stable declaration. Consequently `compile`:
+
+```text
+registers no global Symbol
+produces no nominal type that lacks a normal global root
+never promotes a local temporary pattern value into a global type
+```
+
+This is a conservation law, not a shape restriction. Returning a symbol value or
+a `type ref` whose root already exists is legal; manufacturing a rootless
+nominal type is not. `compile` is therefore not a rootless meta-type generator,
+and "compile may return a type" and "compile may not invent a type root" are
+both true.
+
+A `type ref` returned by `compile` is subject to the ordinary validity condition
+of `type-values-places-and-borrow-views.md` §5.5: it is usable only where the
+receiving position is still inside the target's open capability region.
+
+#### 4.2.2 The two contexts of a compile evaluation
+
+A `compile` evaluation reads two independent contexts:
+
+```text
+EvalCompile(F, args; ConstructionContext_caller)
+
+DefinitionLexicalContext(F)
+  — local Self space, anonymous closure type ownership,
+    lexically declared identity
+
+CallerConstructionContext
+  — which pattern values are still Open, whether the caller is frozen,
+    whether a given type ref is currently valid, whether inject is callable
+```
+
+The definition context decides what names and owners the body sees. The caller
+context decides what the body is *permitted to do* to the values it was handed.
+Neither substitutes for the other: a body whose definition context is intact can
+still be unable to `inject` because the caller's construction context has frozen
+the target.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
 meta-style virtual symbol layer for name shadowing, and does not impose a
@@ -575,22 +671,31 @@ ownership. This owner is not a meta-instance owner such as
 
 ### 4.3 Ordinary `meta`
 
-`meta` is symbol-level staging. When the declared `ReturnShape` is
-`ClusterSymbol`, it creates or transforms a symbol construction:
+`meta` is symbol-level staging. A meta invocation is the only construction that
+establishes a new global symbol root.
 
 ```text
-meta (ReturnShape = ClusterSymbol):
-  accepted parameters
-  -> SymbolConstructionValue : symbol
+M = MetaInstance(F, Norm(args))
 ```
 
-When the declared `ReturnShape` is `ClusterSymbol`, the public successful
-return rank is `symbol`. A meta callable may accept a `symbol` parameter, or
-constrain a parameter to a narrower `type` or ordinary pattern-value rank.
-That does not change its declared construction result rank. A meta callable
-whose `ReturnShape` is `SingleType`, `SingleVal`, or `Unit` returns exactly
-that shape — `meta` staging never coerces the result rank to `symbol`
-(§4.1).
+Entering the invocation immediately creates `M` as a **globally live but unsealed
+root**. `M` exists in the global world from the first statement of the body; what
+the return stage adds is not existence but *seal*.
+
+When the declared `ReturnShape` is `SymbolValue`, the returned value is the
+symbol value of `M`:
+
+```text
+meta (ReturnShape = SymbolValue):
+  accepted parameters
+  -> the symbol value of M
+```
+
+A meta callable may accept a `symbol` parameter, or constrain a parameter to a
+narrower `type` or ordinary pattern-value rank. That does not change its declared
+return shape. A meta callable whose `ReturnShape` is `SingleType`, `SingleVal`,
+or `Unit` returns exactly that shape — `meta` staging never coerces the returned
+value into a symbol (§4.1).
 
 Meta functions are divided into two privilege classes:
 
@@ -599,6 +704,67 @@ MetaFunction
   |- OrdinaryMetaFunction
   `- BuiltinPrivilegedAstMetaFunction
 ```
+
+#### 4.3.1 The body is fully transparent to construction
+
+Everything an ordinary meta body does to its own construction material is
+permitted, and none of it closes the construction. The following are all legal
+inside a meta body and none of them ends the open state of the values being
+built:
+
+```text
+generating local pattern values
+generating the same struct shape repeatedly
+locally modifying material the body itself produced
+using a value for Val1
+passing material through static control flow
+calling compile callables
+entering an in-place closure that the body itself writes
+referring recursively to M
+```
+
+This is the meta-closure transparency rule. The construction anchor of an
+in-place closure written inside `M` is `M` itself:
+
+```text
+ConstructionAnchor( in-place closure inside M ) = M
+```
+
+so material owned by `M` remains open across that closure boundary. Anchor
+transparency is not identity erasure: the closure still has its own anonymous
+callable type identity,
+
+```text
+ClosureType = M::Site
+```
+
+and that identity keeps its own owner and lexical `Self` space. Transparency
+concerns *who owns the construction*, not *which type the closure is*.
+
+#### 4.3.2 Seal happens only at the return stage
+
+The only construction-closing event of a meta invocation is its final return
+stage, and it runs in a fixed order:
+
+```text
+1. require exactly one type member on the returned symbol
+2. promote that member's owned recursive value closure into M
+3. validate the remaining returned members
+4. seal M
+```
+
+Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
+ownership and are never dragged into the promotion:
+
+```text
+OwnedClosure(x) excludes every ref / share edge reachable from x
+```
+
+A member reachable only through a borrow view is therefore not promoted, and its
+presence does not extend `M`'s owned material. After step 4, `M` is sealed and
+nothing may reopen it.
+
+#### 4.3.3 `M` as a navigable layer
 
 Every ordinary canonical meta-function invocation establishes a virtual
 symbol-construction scope:
@@ -733,31 +899,27 @@ type facet merely to satisfy this rule.
 
 ### 4.5 Formal return material
 
-The return slot name `r` denotes the open cluster Symbol under construction.
-It shares one substrate with namespace-level cluster symbols: writing
-`let r === expr` inside a meta body and writing `let + === +::adl` followed by
-`let + = fn_expr` under a namespace are the same mechanism — cluster-member
-events on one open Symbol.
+The return slot name `r` denotes the open symbol under construction. It shares
+one substrate with namespace-level same-name synthesis: accumulating members on
+`r` inside a meta body and accumulating same-named contributions under a
+namespace are the same mechanism — member events on one open Symbol.
 
-Formal meta return material is therefore a family of distinct
-construction-effect forms, not one spelling-insensitive binding. The *family
-split* — create / alias / write / deliver are four distinct events that never
-collapse — is fixed. The *spellings* below live on two different layers and
-must not be read as one rule:
+Formal meta return material is a family of distinct construction-effect forms,
+not one spelling-insensitive binding. The *family split* — create / write /
+deliver are three distinct events that never collapse — is fixed. The
+*spellings* below live on two different layers and must not be read as one rule:
 
 ```text
 Current execution encoding (this stage, while expression-level `=` does
 not exist):
 
     let r = expr;     -> AddMember — return-slot compatibility encoding:
-                         one fresh member event on the return cluster;
+                         one fresh member event on the return symbol;
                          ordinary locals may not shadow the explicit
                          return slot
-    let r === path;   -> AddAliasMember — alias member binding (forward
-                         Val2 material)
     r = expr;         -> PlaceholderOverwrite — placeholder write to an
                          existing target
-    r;                -> terminal: deliver the cluster (not a member
+    r;                -> terminal: deliver the construction (not a member
                          event)
 
 Target orthogonal semantics (future, once `=` is semantic):
@@ -771,18 +933,12 @@ Target orthogonal semantics (future, once `=` is semantic):
 
 - `let r = expr;` contributes a fresh member binding under the current
   encoding. Repeated `let r = ...` forms do not shadow one binder; each adds
-  one more member event on the same open cluster Symbol. This
+  one more member event on the same open Symbol. This
   spelling-directed reading — and the no-shadow restriction that protects
   it — is the return-slot compatibility encoding removed when
-  expression-level `=` becomes semantic (see the open question below); it is
+  expression-level `=` becomes semantic (§4.5.1); it is
   not a permanent rule that `let` on a return-slot name means member
   contribution.
-- `let r === path;` contributes an alias member binding: it forwards the
-  target's Val2 material into a value member of the cluster. Forwarding an
-  external type value this way is illegal, because a cluster type facet must
-  satisfy the self-root invariant in §4.4; the failure is a hard meta
-  diagnostic (`MetaReturnTypeRootMismatch`), never an automatic re-rooting
-  repair.
 - `r = expr;` writes to an existing target; a write is not append, and a
   construction model that only supports appending cannot express
   `let r = first; r = second; r;`. The current implementation of this
@@ -790,9 +946,10 @@ Target orthogonal semantics (future, once `=` is semantic):
   while expression-level `=` does not exist: it replaces the unique
   existing member of the written facet, purely to validate
   existing-target addressing. That unique-member replacement rule is not
-  the final `Write(ClusterSymbol, RHS)` algebra — how a real `=` adds or
-  replaces type facets / val siblings by RHS shape remains open.
-- `r;` is the TailValue terminal. It delivers the constructed cluster to the
+  the final write algebra for a multi-member symbol — how a real `=` adds or
+  replaces type facets / val siblings by RHS shape is registered
+  implementation debt in §13.
+- `r;` is the TailValue terminal. It delivers the constructed symbol to the
   directly enclosing layer. It is not a member contribution, and a meta body
   with member events but no terminal does not implicitly deliver anything.
 
@@ -801,53 +958,68 @@ delivers to the directly enclosing layer, `expr return;` returns to the
 outermost function layer, and `expr (T return);` returns to the layer selected
 by the function-object type `T`.
 
-Add-fresh-member, add-alias-member, and write-to-existing-target are three
-distinct
-construction effects. They must not be collapsed into one injection event, and
-none of them is a return. Whether contributed material references an existing
-`PatternValue`, computes new material, or projects a symbol facet is
-represented inside the construction value; any resulting type facet must pass
-the self-root invariant in §4.4.
+Add-fresh-member and write-to-existing-target are two distinct construction
+effects. They must not be collapsed into one injection event, and neither is a
+return. Whether contributed material references an existing `PatternValue`,
+computes new material, or projects a symbol facet is represented inside the
+construction value; any resulting type facet must pass the self-root invariant in
+§4.4.
 
-> **Open question — `let` / `=` / return-event orthogonality.**
->
-> The current implementation uses `let r = expr` to bind to the return value
-> and requires that ordinary contexts do not shadow the return value. This is
-> a conservative compromise pending the `=` operator. The target long-term
-> design establishes three fully orthogonal rules:
->
-> ```text
-> let   — only creates new Symbol/member (never writes existing targets)
-> =     — only writes to already existing targets (cluster symbol, signal
->          symbol, type — each with its own semantics)
-> return event — produces control return (independent of whether the
->          return value was written)
-> ```
->
-> Under this direction:
-> - `let r` may shadow the return value (because `let` creates, `=` writes);
-> - explicit return uses the return event mechanism — return depends on
->   the event, not on whether a return value binding was written;
-> - even if an explicit return value exists and has not been shadowed,
->   return still requires a return event to produce control flow;
-> - writing to an explicit return value after which control does not
->   return is analogous to dead code — not erroneous, because
->   intermediate computation may have side effects.
->
-> This distinction does NOT cancel `let f::t = expr` (ordinary Val2
-> injection); it does not change the current `r;` terminal semantics;
-> it does not require the `=` operator to be implemented now. The current
-> `let r =` binding-to-return-value with no-shadow is an acceptable
-> transitional compromise, not the final long-term choice.
+There is no fourth "alias member" event. A member is created by `let`, written by
+`=`, and nothing forwards an external symbol's `Val2` material into a member.
+Where shared observation of an external object is wanted, the member holds a
+borrow view (`ref` / `share`), which is an ordinary value and is subject to the
+ordinary member rules — including the rule that a borrow edge is not owned
+material and is therefore not promoted at seal (§4.3.2).
 
-A `SymbolConstructionValue` is not restricted to newly generated structure
+#### 4.5.1 `let` creates, `=` writes, the return event transfers control
+
+The three rules are orthogonal:
+
+```text
+let   — only creates a new Symbol/member (never writes existing targets)
+=     — only writes to an already existing target
+return event — produces control return, independent of whether a return
+        value was written
+```
+
+Consequently:
+
+- `let r` may shadow the return value, because `let` creates and `=` writes;
+- explicit return uses the return event mechanism — return depends on the
+  event, not on whether a return value binding was written;
+- even if an explicit return value exists and has not been shadowed, return
+  still requires a return event to produce control flow;
+- writing to an explicit return value after which control does not return is
+  analogous to dead code — not erroneous, because intermediate computation may
+  have side effects.
+
+Assignment checks exactly three conditions:
+
+```text
+the left side names a writable place
+the right value conforms to the target's Pattern
+lifetime and capability conditions of the target place hold
+```
+
+It does not inspect how the right value was produced. Assignment requires no
+provenance, no construction witness, and no transition proof from any particular
+producer; a value that conforms to the target Pattern is acceptable regardless of
+which operation built it.
+
+This distinction does not cancel `let f::t = expr` (ordinary `Val2` member
+contribution) and does not change the `r;` terminal semantics. The current
+`let r =` binding-to-return-value with no-shadow is a transitional encoding, not
+the target rule.
+
+A symbol construction value is not restricted to newly generated structure
 definitions. It may describe a fresh return symbol with its own `SymbolId` and,
 once bound, a potentially independent `PlaceId`; it may also reuse existing
 values as ordinary value-facet material or as members of a newly self-rooted
 type construction:
 
 ```text
-SymbolConstructionValue {
+SymbolConstruction {
     return_symbol_identity,
     assigned_facets_or_values,
     optional_child_contributions,
@@ -861,18 +1033,48 @@ Value equality remains independent of source name and navigation path and does
 not merge symbol or place identity. However, that general identity separation
 does not waive the type self-root invariant: `r = uint8` as a direct meta return
 type installation is rejected after symbol resolution/value read, rather than
-being reinterpreted as alias forwarding or accepted as an identity meta type.
+being reinterpreted as forwarding or accepted as an identity meta type.
 
-This correction does not affect ordinary declaration alias syntax:
+### 4.7 A symbol is an ordinary PatternValue
 
-```lang
-let a === b;
+A symbol value is not a separate ontological rank. It is an object with the same
+three components as every other object:
+
+```text
+SymbolValue = ⟨ MemberContainer, P_symbol, Val2_symbol ⟩
 ```
 
-Formal return construction and ordinary symbol aliasing are different semantic
-layers.
+Its member content is ordinary object content:
 
-### 4.6 Built-in privileged AST meta functions
+```text
+at most one type member
+any number of val members
+```
+
+Because the member set is the mutable part, it lives in `Val1`:
+
+```text
+Val1(Symbol) = Member * omega
+```
+
+The consequence is that symbol-level operations are `Val1` transformations and
+leave the symbol's own pattern untouched:
+
+```text
+s = new_symbol                   -> replaces Val1(s)
+s += contribution                -> extends Val1(s)
+s -= associated_type_family       -> removes members from Val1(s)
+
+in every case:  P_symbol unchanged
+```
+
+A symbol is therefore an ordinary value that can be computed, passed, and
+returned like any other — including by `compile`, subject only to root
+conservation (§4.2.1). The four roles listed in §4.1 (value ontology, meta return
+construction, namespace same-name synthesis, world installation) are separate
+concerns that happen to involve symbols; none of them is the symbol's ontology.
+
+### 4.8 Built-in privileged AST meta functions
 
 A compiler-defined privileged family uses the general function-object and meta
 invocation framework without becoming user-definable macro capability:
@@ -1280,7 +1482,7 @@ trust boundary. It does not create an ordinary externally navigable
 `MetaInstanceScope M`:
 
 - it accepts normalized pattern syntax or an equivalent internal AST carrier;
-- its public successful return rank is `symbol`;
+- its public successful return rank is `type`;
 - it does not re-enter the parser;
 - it does not concatenate arbitrary tokens;
 - it does not expose unrestricted AST-consuming capability to user functions;
@@ -1289,84 +1491,106 @@ trust boundary. It does not create an ordinary externally navigable
 The source examples in this section are semantic sketches. They do not change
 the frozen parser or introduce traditional `f(args)` call syntax.
 
-### 8.2 Functional result
+### 8.2 `inject` is a pure function on type values
 
-The operation is functional:
+`inject` takes an ordinary pattern value and child pattern material, and returns
+a new pattern value:
 
 ```text
-inject:
-  OpenOwnedConstructionHandle
-  x ChildPatternMaterial
-  -> OpenOwnedConstructionHandle
+inject : ( type | type ref ) x ChildPatternMaterial ⇀ type
 
-preconditions:
-  construction_owner(input) = current construction unit
-  construction_state(input) = open / uninstalled
+Inject(old, Δ) ⇓ new
 ```
 
-`OpenOwnedConstructionHandle` is a capability-bearing view of an uninstalled
-`SymbolConstructionValue : symbol`; it is not an arbitrary resolved `Symbol`.
-Each successful call returns the next functional version of the same owned,
-open construction. It does not mutate an already installed graph object and
-does not install a namespace delta.
+There is no construction-handle rank. The input is an ordinary value of rank
+`type`, or a `type ref` view of a place holding one. Nothing about `inject`
+requires a capability-bearing carrier, an uninstalled construction object, or a
+privileged handle type.
 
-Only an outer binding or overwrite installs the result:
+The function is total in its effects in the following sense:
+
+```text
+Inject does not modify old
+Inject does not install a namespace delta
+Inject does not perform an assignment
+```
+
+`old` is an input value and is left exactly as it was. `new` is a distinct
+resulting value. Discarding `new` produces no symbol-world side effect, because
+there was never a side effect to discard.
+
+#### 8.2.1 Failure is total
+
+```text
+failure => no partial result, no write, no rollback
+```
+
+Because `inject` writes nothing, a failed `inject` has nothing to undo. There is
+no half-extended pattern, no compensating action, and no rollback protocol. A
+failed call simply produces no value.
+
+#### 8.2.2 Observing the result requires a separate write
+
+When the caller wants the extension to become the content of an existing place,
+the write is a separate, ordinary step. Through a `type ref` the full sequence is
+three distinct operations:
+
+```text
+old = Read(t_ref)
+new = Inject(old, Δ)
+Write(t_ref, new)
+```
+
+`Read` and `Write` are the ordinary borrow-view operations of
+`type-values-places-and-borrow-views.md`. `inject` occupies only the middle step.
+A convenience spelling such as
 
 ```lang
-let target = result;
-target = result;
+t = t |> inject(bool inner);
 ```
+
+is exactly this sequence, and its write is the ordinary `=` write governed by
+§4.5.1 — the left side must name a writable place, the right value must conform
+to the target's Pattern, and lifetime/capability conditions of the target place
+must hold. Assignment does not inspect how the right value was produced, so it
+asks for no construction witness and no proof that the value came from `inject`.
 
 A navigated `let child::target = result;` is **not** a structural installer:
 like every ordinary navigated `let`, it only installs a Val2 associated
 member under `target` and never writes the construction back into a Pattern
 canonical structure (see the §7.3 correction).
 
-Discarding the returned construction produces no symbol-world side effect.
+#### 8.2.3 Input validity
 
-> **Clarification — inject is functional; writing and navigation are separate concerns.**
->
-> `inject` itself does not "perform injection" or "write into a target". It
-> is purely functional: given an open construction handle and child pattern
-> material, it returns a new version of the handle carrying the added
-> children. Two orthogonal mechanisms make the result observable:
->
-> 1. **The `=` operator provides overwrite** (type value semantics).
->    In `t = t |> inject(bool inner)`, the RHS produces a new value and `=`
->    overwrites the old value of `t` with it. This is ordinary value-level
->    assignment — the same `=` that writes signal symbols and cluster
->    members. `inject` itself does not write; `=` does.
->
-> 2. **`inject` resolves navigation downward into the existing pattern.**
->    The structural difference between `struct` and `inject` is navigation
->    direction:
->
->    ```text
->    struct:  resolves OUTWARD — always looks up for the ambient top-pattern
->             navigation name (meta entry scope); the constructed children
->             inherit a navigation path anchored at the externally resolved
->             owner.
->
->    inject:  resolves INWARD — takes an already-resolved pattern as input,
->             parses downward into it, and attaches children that inherit
->             the existing pattern's navigation path.  It never looks
->             outward for a top-level scope.
->    ```
->
->    This is why `inject` requires an existing open construction handle as
->    input: it needs a pattern whose navigation path is already resolved,
->    so that the new children can be linked beneath that path.
->
-> In summary: `=` gives overwrite; `inject` gives inward navigation
-> resolution. Neither ability is inherent to the other.
->
-> **Current status**: `inject` is not yet supported (pending `=` operator
-> and lexer/parser support for the relevant binding form). This does not
-> affect `let f::t = expr` Val2 injection, which remains operational.
+The input condition is stated on the value and its context, not on ownership of a
+handle:
 
-### 8.3 Owner rule
+```text
+ValidInjectInput(v : type, c)      = true
+ValidInjectInput(r : type ref, c)  = LifetimeValid(r, c)
+                                   ∧ EffectiveOpen(Target(r), c)
+```
 
-The owner distinction is a navigation-direction distinction:
+A `type share` view is not injectable input: `share` carries no write path and no
+extension eligibility, so a call attempting it has **no applicable overload**
+rather than a special "cannot inject through share" error.
+
+`EffectiveOpen` is the ordinary construction-anchor condition, not a separate
+inject-only permission system:
+
+```text
+EffectiveOpen(x, c) = StateOpen(x)
+                    ∧ ConstructionAnchorCompatible(owner(x), c)
+```
+
+This is why an already-sealed root cannot be extended: not because `inject`
+checks handle ownership, but because a sealed object is not `StateOpen`, so no
+valid `type ref` to it exists in any context.
+
+### 8.3 Navigation direction
+
+The distinction between `struct` and `inject` is navigation direction, not
+ownership authority:
 
 ```text
 struct:  resolves OUTWARD
@@ -1374,10 +1598,14 @@ struct:  resolves OUTWARD
   (always looks up for the top-pattern navigation name)
 
 inject:  resolves INWARD
-  takes the owned construction handle's already-resolved pattern
-  as the navigation anchor; children inherit that pattern's path
+  takes the input pattern value as the navigation anchor;
+  children inherit that pattern's path
   (never looks outward for a top-level scope)
 ```
+
+This is the whole reason `inject` needs an existing pattern value as input: it
+needs a pattern whose navigation path is already resolved, so that the new
+children can be linked beneath that path.
 
 Example:
 
@@ -1387,14 +1615,8 @@ t1::r = t1::r
     |> inject(u second);
 ```
 
-Here `r` and `t1::r` are handles into the construction currently owned by the
-same `MetaConstructionUnit`; the example is not permission to resolve and
-reopen an arbitrary installed symbol. A handle returned by another construction
-unit may be composed only while an explicit composition rule preserves
-ownership and open state. An installed result, or a subtree owned by another
-unit, cannot be passed to `inject` for reopening.
-
-The resulting pattern is:
+Each `inject` reads a value and produces a value; the single `=` at the end
+performs the one write. The resulting pattern is:
 
 ```text
 (
@@ -1403,8 +1625,9 @@ The resulting pattern is:
 )::t1::r
 ```
 
-`inject` changes the child set of the selected owner construction. It does not
-change owner identity.
+`inject` determines the child set of the resulting pattern value. It does not
+change owner identity, and it does not reopen anything: whether `t1::r` may be
+written at all is decided by §8.2.2 and §8.2.3, before `inject` is reached.
 
 As with `struct`, the lowest-level leaf reduction has the form:
 
@@ -1438,23 +1661,36 @@ leaves would obscure this distinction.
 
 ### 8.4 Child-only restriction
 
-`inject` may only:
+`inject` extends the input pattern by **direct children only**:
 
-- continue the current unit's owned, still-open pattern construction;
-- add direct children;
-- preserve the selected owner.
+```text
+Inject(old, Δ) may add children directly beneath P(old)
+Inject(old, Δ) may not reach into a grandchild layer
+```
 
-It may not:
+Extending a deeper layer is expressed by composing the operation at that layer —
+read the child value, inject into it, and write it back — not by giving `inject`
+a deep path.
+
+Within that scope, `inject`:
+
+- adds direct children to the resulting pattern;
+- preserves the owner identity carried by the input pattern.
+
+It does not:
 
 - replace the owner;
 - overwrite an existing type facet;
 - delete an existing child;
 - implicitly reroot an arbitrary external pattern value;
-- directly mutate the installed namespace graph;
-- accept an arbitrary installed `Symbol` as reopening authority;
-- cross a `SourceConstructionUnit` or `MetaConstructionUnit` ownership boundary;
-- bypass place writability or delta installation;
+- mutate the input value or the installed namespace graph;
+- extend a value that is not `EffectiveOpen` in the calling context;
 - grant a general macro or arbitrary AST-rewrite capability.
+
+The last two entries are not extra guards inside `inject`. Failing them means
+there is **no applicable overload** — the call is rejected by ordinary
+input-validity and write checking (§8.2.3), in the same way any other call with
+unsuitable arguments is rejected.
 
 ## 9. Pattern-Layer Ordering
 
@@ -2196,10 +2432,12 @@ toolchain-installed type members live, so inherited type members stay
 visible through every carrier while a per-carrier injection stays local.
 The carrier that declared the Pattern keeps writing the canonical object,
 because construction-time members were installed there before any
-rebinding carrier existed. `let T === uint8` forwards the aliased object's
-place instead of allocating a fresh one, so alias injection follows the
-forwarded object and inherits that object's writability verdict — which is
-exactly why `let =` and `let ===` differ.
+rebinding carrier existed. There is no second, place-forwarding declaration
+form: every carrier allocates its own place (§2.6), so a per-carrier extension
+is always local to that carrier. Where one place must be reached through
+another name, the value held is a borrow view, and the extension follows the
+view's own eligibility — `Eligible(view of p) ≤ Eligible(p)`, as specified in
+`type-values-places-and-borrow-views.md`.
 
 Exposure of `t::f` composes `Expose(T_t, φ) ∧ Expose(C_f, φ)` at lookup
 time, and a deeper path `g::f::T` composes the whole chain
@@ -2234,72 +2472,106 @@ Implementation state of this section: the per-carrier `ObjectPlace`, the
 per-object source-visible Val2 name ledger, the recursive `C_f` with its
 own member views, and the layered exposure conjunction on explicitly
 navigated targets are implemented in `crates/lang_build`. Still open debt:
-the associated-injection entry point is reached only through a still-open
+the associated-extension entry point is reached only through a still-open
 construction, so it resolves the target object from the constructed
 Pattern; source-level `let f::U` against an already installed rebinding
-carrier, alias-forwarded injection places, and writability checking of the
+carrier, extension through a `type ref` view, and writability checking of the
 selected place remain future work.
 
 The two operations may target the same still-open construction, but one source
 value is not simultaneously interpreted under both judgments.
 
-Producing Val1 closes the apparent intersection. The construction-state rule
-is:
+#### 12.1.1 Open is relative to the construction context
+
+Openness is not a global flag on the object. It is a judgment about an object in
+a context:
 
 ```text
-Observe(P or Val2) -> Open
-PatternInject      -> Open
-ordinary Val2 inject of a value of another type -> Open
-UseForVal1(target) -> Frozen
-Finalize           -> Finalized
+EffectiveOpen(x, c) = StateOpen(x)
+                    ∧ ConstructionAnchorCompatible(owner(x), c)
 ```
 
-Suppose an RHS is a complete `Val1 x P x Val2` whose own `P x Val2` is the
-target type being injected into. Producing that RHS Val1 necessarily uses the
-target type for Val1 first:
+`StateOpen(x)` is the object's own construction state. `ConstructionAnchorCompatible`
+asks whether the construction that owns `x` is the construction currently being
+evaluated in `c`. Both factors are required: material may be structurally unsealed
+and still not be extendable from an unrelated context, and a context may own a
+construction whose material has already been frozen.
+
+The state transition is one-way:
+
+```text
+Open -> Frozen
+Frozen -/> Open
+```
+
+Nothing reopens frozen material. `inject` does not reopen it (§8.2.3), a borrow
+view does not reopen it, and re-navigating to the same object from a new context
+does not reopen it.
+
+#### 12.1.2 Freezing events of an ordinary construction
+
+In an **ordinary, non-meta** construction context, the following events freeze the
+material being built:
+
+```text
+UseForVal1(x)                                  -> Frozen
+x used as a meta argument                      -> Frozen
+x entering a global normalized structure       -> Frozen
+any non-meta control-flow branch / join /
+  loop boundary crossed by x                   -> Frozen
+leaving the construction interval of the
+  in-place closure that owns x                 -> Frozen
+```
+
+Observation is not a freezing event: reading `P` or `Val2`, extending a child
+pattern, and contributing an ordinary Val2 member of another type all leave the
+material open.
+
+The control-flow entries are the reason an ordinary construction is narrow: an
+ordinary context has no static guarantee about which branch executed, so material
+that crosses a branch, join, or loop edge can no longer be treated as a single
+known construction and is frozen at that edge.
+
+#### 12.1.3 A meta body freezes none of this
+
+The list in §12.1.2 is scoped to ordinary constructions. Inside a meta body the
+same events do **not** freeze the material, because the construction anchor is the
+meta instance itself (§4.3.1):
+
+```text
+inside M:  UseForVal1(x) does not freeze x
+           static control flow does not freeze x
+           entering an in-place closure written by M does not freeze x
+```
+
+The only construction-closing event of a meta invocation is its return-stage seal
+(§4.3.2). Consequently `UseForVal1 -> Frozen` must not be read as a universal
+invariant of the construction model, and must not be applied to a meta body to
+justify rejecting a meta-local computation.
+
+#### 12.1.4 The apparent self-typed intersection
+
+With §12.1.2 in force, the ordinary case that looked like an intersection resolves
+without a special rule. Suppose an RHS is a complete `Val1 x P x Val2` whose own
+`P x Val2` is the very type being extended, and the extension is attempted from an
+ordinary context:
 
 ```text
 construct RHS value of target type
   -> UseForVal1(target)
-  -> target becomes Frozen
-  -> attempt to inject RHS into target
-  -> reject: construction is not Open
+  -> target is no longer EffectiveOpen
+  -> attempt to extend target
+  -> no applicable overload
 ```
 
-Therefore there is no legal intersection in which one operation both injects a
-Pattern value into the target and injects a complete self-typed val into the
-same still-open target. A complete value of some other type may still be
-injected as ordinary Val2 while the target is Open; its own Pattern and Val2
-remain attached to that value.
+So in an ordinary context there is no legal situation in which one operation both
+extends the target's Pattern and contributes a complete self-typed val to the same
+still-open target. A complete value of some *other* type may still be contributed
+as ordinary Val2 while the target is open; its own Pattern and Val2 remain
+attached to that value.
 
-> **Stage-specific conservative freezing:**
->
-> The current `UseForVal1 -> Frozen` rule is a conservative semantic
-> cornerstone placeholder for the current implementation stage. It provides
-> a stable, closed, and checkable construction boundary to prevent semantic
-> drift while full meta-evaluation capability is not yet implemented.
->
-> It is not intended as a permanent invariant of the final language design.
->
-> Future fully-free meta-evaluation will represent pattern, structural
-> members, and inter-pattern differences as normalizable values. At that
-> point, structural changes in meta context can be produced and composed
-> as value-dependent operations, without needing "has a Val1 been produced"
-> as the uniform freezing boundary:
->
-> ```text
-> Current stage:
->   ProduceVal1(T) -> Seal(T)
->
-> Future free meta-evaluation:
->   structural state described by explicit normal values
->   struct may value-dependently produce new structural values
->   inject may apply functional transformations unconstrained by current open state
-> ```
->
-> This replacement will be implemented in a dedicated meta-evaluation
-> design and implementation PR. The current stage must not pre-emptively
-> relax existing checks.
+In a meta body the same sequence is simply legal, because the first step did not
+freeze anything.
 
 The empty destination `()` is the special call-entry leaf rather than a normal
 value-member name. Inside construction of `T`, `let () = impl` contributes
@@ -2317,7 +2589,7 @@ struct-local contribution under owner name1::T
 later installation at name::name1::T
 ```
 
-Neither spelling creates an alias or reroots the initializer's Pattern.
+Neither spelling forwards a place or reroots the initializer's Pattern.
 
 The language must select the expectation from semantic context or an explicit
 rank/facet annotation. It must not guess `PatternChild` merely because the
@@ -2396,12 +2668,13 @@ Do not infer three type values from:
 ```lang
 let Bool = value;
 let bool = value;
-let t === bool;
+let t = bool;
 ```
 
 If the bindings expose the same pattern/type value, the value identity is the
-same. Their `SymbolId`, `PlaceId`, and alias/provenance relations remain
-separately observable according to their declaration forms.
+same. Their `SymbolId` and `PlaceId` nevertheless remain distinct and separately
+observable; provenance is diagnostic material and is not part of the value's
+normal form.
 
 ### 12.4 Installation is always outer-layer work
 
@@ -2459,9 +2732,9 @@ This substrate does **not** implement:
 - the canonical meta-invocation navigation atom;
 - `SymbolCell` facets;
 - the `compile` / `meta` capability split specified here;
-- `SymbolConstructionValue` as the public meta result model;
+- `SymbolConstruction` as the public meta result model;
 - functional `inject`;
-- `OpenOwnedConstructionHandle` ownership/open-state enforcement;
+- pure-functional `inject` input validity based on `EffectiveOpen`;
 - contribution-expectation-driven pattern-child versus namespace-value facet
   selection;
 - an explicit sum construction/extension API;
@@ -2474,7 +2747,7 @@ This substrate does **not** implement:
 - the structural `TypeFacet`-implies-`NamespaceFacet` model;
 - the distinction between ordinary namespace value members and
   pattern-material leaves as implemented facets;
-- full alias/place/writability checking;
+- full place / writability / borrow-view checking;
 - graph installation from the construction model in this document.
 
 The categorical global/namespace/local contexts remain available only to the
@@ -2515,7 +2788,7 @@ Future implementation should converge in this order:
 ```text
 SymbolCell / facet-aware resolution
   -> PatternValue identity and rank-directed canonical arguments
-  -> SymbolConstructionValue
+  -> SymbolConstruction
   -> ResolvedPatternScope / PatternScopeId / MetaInstanceScopeId
   -> namespace origin and construction-unit ownership
   -> meta return type self-root validation
@@ -2524,35 +2797,37 @@ SymbolCell / facet-aware resolution
   -> functional child-only inject (depends on = operator)
   -> explicit sum construction/extension
   -> fully named canonical navigation map / ordered-layer representation
-  -> writable let binding/injection
+  -> writable let binding and Pattern extension
   -> NamespaceDelta atomic installation
 ```
 
-> **Open question — `=` operator as prerequisite for `inject`.**
->
-> `inject` requires the `=` operator because its usage pattern
-> `t = t |> inject(bool inner)` depends on value overwrite: the RHS
-> produces a new construction value (with children attached via inward
-> navigation), and `=` overwrites the old value of `t` with it. This is
-> ordinary type-value-level assignment (types have value semantics).
-> Without `=`, only `let` is available, which creates fresh symbols rather
-> than overwriting existing ones.
->
-> The two orthogonal abilities that make `inject` useful:
-> - `=` provides overwrite (the old `t` is replaced by the new `t`)
-> - `inject` provides inward navigation resolution (children inherit the
->   existing pattern's navigation path, never looking outward for a
->   top-level scope — unlike `struct` which always resolves outward)
->
-> The distinction between `let =` and bare `=` also affects:
-> - cluster symbol synthesis (`=` writes sibling values into existing symbols)
-> - return-value overwrite (`r = expr` requires `=`, unlike `let r = expr`)
-> - signal symbol (ordinary value) update semantics
->
-> Until `=` is implemented, the current system only supports `let`-based
-> creation. This is an acceptable transitional state, not the final design.
-> Documentation and implementation must not treat `let`-only behavior as the
-> long-term target.
+### 15.1 Registered implementation debt for `inject`
+
+The semantics of `inject` are settled by §8; what is missing is implementation.
+The ordering dependency is a build-order fact, not a semantic condition:
+
+```text
+inject is a pure function            -- settled (§8.2)
+inject needs no write capability     -- settled (§8.2)
+observing its result needs `=`       -- ordinary write, specified in §4.5.1
+`=` is not yet implemented           -- implementation debt
+```
+
+The consequences are:
+
+- `inject` is implementable and testable without `=`, because it writes nothing;
+  a call whose result is only read back is complete behavior, not a partial one;
+- `=` is independently required by several unrelated features — writing an
+  existing member, writing an explicit return slot, and updating an ordinary
+  value — so it is not an `inject`-specific prerequisite;
+- the current `let`-only substrate is a transitional state. Documentation and
+  implementation must not treat `let`-only behavior as the target rule, and must
+  not restate the missing `=` as a semantic restriction on `inject`.
+
+Remaining engineering questions in this area are about representation, not about
+meaning: how a real `=` adds or replaces type facets and val siblings by RHS
+shape (§13), and how `EffectiveOpen` is tracked efficiently across nested
+construction anchors.
 
 Until those objects exist, the current attachment registry is useful substrate,
 but documentation must keep the substrate/final-semantics gap explicit.

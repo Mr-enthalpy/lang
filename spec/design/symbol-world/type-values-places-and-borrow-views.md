@@ -1,24 +1,33 @@
-# Type Values, Places, and Alias Forwarding
+# Type Values, Places, and Borrow Views
 
-**Status: Non-normative design note, partially realized. The identity core (recursive type-object normal form, canonical observation `Addr(Norm_type)`, per-carrier `Val2` places) is current `lang_build` behavior; alias forwarding, writable-place checking, injection-place checking, and type checker behavior remain future design.**
+**Status: canonical target semantics for object identity, place identity, and
+borrow views. The identity core (recursive object normal form, canonical
+observation `Addr(Norm)`, per-carrier `Val2` places) is current `lang_build`
+behavior; the borrow-view operators (`ref`, `share`, `@`, `rebind`), the
+extension-eligibility judgment, and the type checker remain unimplemented
+target semantics. §10 registers the implementation debt.**
 
-This document specifies the future semantic boundary between *type values*,
-*symbol identity*, *writable places*, *alias forwarding*, and *namespace
-injection targets*. It is a design note, not a parser or normalizer rule, and
-not current public language behavior; §10 records which parts are already
-current `lang_build` behavior and which remain future design.
+This document specifies the semantic boundary between *object values*, *symbol
+identity*, *places*, *borrow views*, and *namespace extension targets*. It
+defines what an object is, what a place is, which borrow operators exist, which
+overloads they have, and when each overload is callable. It is a semantic
+authority, not a parser or normalizer rule.
 
 The document is self-contained. It does not require the reader to assemble its
-meaning from `type-associated-function-objects-and-access-trees.md`,
-`early-meta-functions-and-namespace-graph.md`, or `entity-alias-design.md`. Those
-documents are background or adjacent design only; the model here stands on its
-own and is the canonical authority for the type-value / place / symbol / alias
-distinction.
+meaning from `type-associated-function-objects-and-access-trees.md` or
+`early-meta-functions-and-namespace-graph.md`. Those documents are background
+or adjacent design only; the model here stands on its own and is the canonical
+authority for the value / place / symbol / borrow-view distinction.
+
+There is no ordinary symbol-alias or place-forwarding declaration form in this
+language. `let a = b;` copies a value into a fresh symbol with a fresh place.
+Sharing an observation of another object is expressed by the borrow operators
+defined in §5, never by a declaration that makes two symbols name one place.
 
 The broader symbol-first facet, `PatternValue`, `compile` / `meta`, pattern
 scope, `struct`, and functional `inject` model is canonicalized in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-That document composes with this identity/alias model rather than replacing it.
+That document composes with this identity/place model rather than replacing it.
 
 ## 1. Purpose
 
@@ -31,23 +40,23 @@ type value happens to equal a freshly bound symbol's type value.
 The invariants this document protects:
 
 ```text
-type-value equality must not collapse symbol-place identity
-alias forwarding must not silently create writable places
-namespace injection must target writable places, not values
+value equality must not collapse symbol-place identity
+a borrow view must not manufacture a place that its source does not own
+namespace extension must target extendable places, not values
 ```
 
 This document does **not** define:
 
 - a full type checker,
-- a full alias implementation,
 - access-tree construction,
-- a full lifetime checker,
+- the lifetime checking algorithm (see `../lifetime/lifetime-policy-and-overload-boundary.md`),
 - package import / export,
 - runtime lookup.
 
-Two phrasings are explicitly rejected throughout. `let T: type = uint8` is
-**not** fresh nominal type generation. Alias forwarding is **not** textual
-substitution. And type-value equality is **not** writable-place equality.
+Three phrasings are explicitly rejected throughout. `let T: type = uint8` is
+**not** fresh nominal type generation. A borrow view is **not** textual
+substitution and **not** a second name for a symbol. And value equality is
+**not** place equality.
 
 ## 2. Semantic identities
 
@@ -91,28 +100,60 @@ These identities are independent. None implies another:
 SymbolId equality does not imply TypeValueId equality.
 TypeValueId equality does not imply PlaceId equality.
 PatternValue equality does not imply SymbolId or PlaceId equality.
-Alias forwarding may relate symbols, values, and places, but does not erase the distinction.
+A borrow view names one place from one origin; it relates values and places without erasing the distinction.
 ```
 
-A type expression cares about the *value*. A namespace injection target or a
-declaration-extension site cares about the *place*. Alias forwarding relates a
-*symbol* to a forwarding chain. The three concerns must not be folded into one
-another.
+A type expression cares about the *value*. A namespace extension target or a
+declaration-extension site cares about the *place*. A borrow view is itself a
+value that carries a place coordinate. The three concerns must not be folded
+into one another.
 
 In the symbol-first model, a path initially resolves to one symbol cell and the
 use site then projects namespace, type, or heterogeneous value facets. Facet
 projection does not collapse these identities and is not a cast.
 
-### 2.1 Type-object identity is the recursive object normal form
+### 2.1 Object identity is the recursive three-component normal form
 
-A type object is an object like any other: `null × P × Val2`. Its canonical
-identity therefore has to carry both live components, not the Pattern alone:
+Every object in the language has the same shape:
 
 ```text
-Norm_type(x)    = ⟨ Norm_P(P_x), Norm_Val2(Val2_x) ⟩
+Object x  = ⟨ Val1?(x), P(x), Val2(x) ⟩
+Val1?(x) ∈ 1 + Object
+```
+
+`Val1?(x) = null` states exactly one fact: this object carries no internal
+`Val1` payload. It does not mean the object is untyped, unobservable,
+value-less at the observation edge, or a different kind of entity. A type
+object is simply an object whose `Val1?` is `null`.
+
+The canonical identity of an object is the recursive normal form over **all
+three** components:
+
+```text
+Norm(x)         = ⟨ Norm_Val1?(Val1?(x)), Norm_P(P(x)), Norm_Val2(Val2(x)) ⟩
+Norm_Val1?(null)= null
+Norm_Val1?(v)   = Norm(v)
 Norm_Val2(V)    = Map_name( Norm_Cluster(V[name]) )
 Norm_Cluster(C) = ⟨ Norm_pureP(C.pureP)?, Multiset{ Norm_val(v) } ⟩
-Norm_pureP(x)   = ⟨ Norm_P(P_x), Norm_Val2(Val2_x) ⟩
+Norm_pureP(x)   = Norm(x)
+```
+
+There is no case split in which one component is ignored. Earlier revisions
+normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
+`⟨Val1, P⟩` with `Val2` discarded; that bifurcation is retired. A value-bearing
+object whose `Val2` differs is a different object, and a type object whose
+`Val1?` is `null` still normalizes its `P` and `Val2` fully. `Norm_type(x)` is
+retained only as the name of `Norm(x)` restricted to objects with
+`Val1?(x) = null`, and its two-component spelling is shorthand for the
+three-component form with a `null` first slot.
+
+Carrier coordinates never enter the normal form:
+
+```text
+ObjectPlaceId  ∉ Norm(x)
+SymbolId       ∉ Norm(x)
+allocation order ∉ Norm(x)
+provenance     ∉ Norm(x)
 ```
 
 The recursion is **well-founded finite recursion**: every traversed `Val2`
@@ -128,28 +169,27 @@ may continue descending into. `()` is the standard leaf:
 
 ```text
 Val2(()) = ∅
-Norm(()) = ⟨ Norm_P(P_FunctionItem), ∅ ⟩
+Norm(()) = ⟨ null, Norm_P(P_FunctionItem), ∅ ⟩
 ```
 
 Other typical leaves are terminal built-in type objects and associated pure-P
 objects whose concrete object carries no further `Val2` expansion — an
 associated type is not a special recursion rule, it is an ordinary pure P that
-happens to have run out of children. Future `ref` / `share` / `alias` values
-are also leaves, not back references:
+happens to have run out of children. Borrow views (`ref` / `share`) are also
+leaves, not back references:
 
 ```text
 Children_V(t ref)   = ∅
 Children_V(t share) = ∅
-Children_V(t alias) = ∅
 PatternOf(t ref)    = t ref        (extraction still matches the form)
 ```
 
-The `t` in `(t ref)` is pattern material of the built-in meta function that
+The `t` in `(t ref)` is pattern material of the built-in operation that
 produced the value, not a vertical object edge inside the produced value.
-ref/share/alias extraction is **horizontal, not vertical**: pattern
-decomposition never creates a `Val2` child edge, so `extractable` does not
-imply `recursively traversable`, and `t → (t ref) → t` never exists as an
-object cycle.
+Borrow-view extraction is **horizontal, not vertical**: pattern decomposition
+never creates a `Val2` child edge, so `extractable` does not imply
+`recursively traversable`, and `t → (t ref) → t` never exists as an object
+cycle.
 
 `PlaceId` is **not** identity material. A place is only the coordinate from
 which an object's `Val2` is observed:
@@ -202,17 +242,20 @@ object would merge the two meta instances.
 Memoizing FINISHED cycle-free subtrees is permitted (a shared acyclic diamond
 is DAG reuse, not a cycle), but no `PlaceId` or memo node number may appear in
 the resulting normal form, and no `SemanticValueId` may enter the
-recursively-normalizable type-object structure (`Norm_P × Norm_Val2`).
-A Val1 payload that has no content normal form yet is the one permitted
+recursively-normalizable object structure.
+A `Val1` payload that has no content normal form yet is the one permitted
 exception: it keeps an identity-stable opaque leaf (`OpaqueValue`), so two
 references to one value share an address while two content-equal but distinct
 values stay distinct. This is a safe under-merge, never a claim of a stronger
-equivalence than the implementation actually decides. A cyclic `Val2`
-(`let loop::t = t;`) has **no normal form**: re-entering an object still on
-the active recursion stack proves the well-foundedness violation and is a
-hard semantic error. Whether cyclic type objects are ever admitted is a
-separate, explicit future language decision — it does not follow from the
-normalizer's ability to detect the cycle.
+equivalence than the implementation actually decides, and never a licence to
+treat `Val1` as excluded from the normal form: the target rule is that `Val1?`
+normalizes recursively like every other component, and the opaque leaf is a
+placeholder for content normalization that is not yet implemented. A cyclic
+`Val2` (`let loop::t = t;`) has **no normal form**: re-entering an object still
+on the active recursion stack proves the well-foundedness violation and is a
+hard semantic error. Whether cyclic objects are ever admitted is a separate,
+explicit future language decision — it does not follow from the normalizer's
+ability to detect the cycle.
 
 ## 3. Value judgment versus place judgment
 
@@ -369,7 +412,7 @@ chosen terminal symbol:
 | call target | callable sibling vals |
 | type | pure-P member |
 | value | sibling vals |
-| injection target | writable host object / place |
+| extension target | extendable host object / place |
 | extraction | Pattern facet |
 
 Consequently `f::T` denotes `Val2(T)[f]` in all of
@@ -516,85 +559,158 @@ not `str`; the current helper can materialize a string only when its
 `AtomicBuiltinTypeRegistry` contains a resolved `str` projection. It must not
 accept an arbitrary numeric identifier as an implemented core `str` carrier.
 
-## 5. Alias forwarding
+## 5. Borrow views
 
-The alias form is different from ordinary type-value binding:
+There is no declaration form that makes two symbols share one symbol identity
+or one place. Shared observation is expressed by three operators with distinct
+input judgments.
 
-```text
-let T === uint8
-```
+### 5.1 `ref` and `share` are value operations
 
-means symbol forwarding, not a fresh binding:
-
-```text
-alias(T) = uint8
-value(T) = value(final_target(uint8))
-place(T) = place(final_target(uint8))
-```
-
-Crucially, the *writability* of the forwarded place depends on the final target,
-not on the alias. An alias does not create a fresh writable place; it points at
-whatever place the final target owns, with that target's writability.
-
-To reason about forwarding, the model introduces an `AliasChain` concept. It is a
-semantic design object, not an implemented structure:
+`ref` and `share` apply to the **value** of their operand expression:
 
 ```text
-source symbol
-forwarded target
-final symbol
-final value
-final place
-provenance chain
-writable boundary
-cycle detection
+E ref   = MakeRef(Value(E))
+E share = MakeShare(Value(E))
 ```
 
-The `AliasChain` records the path from the source alias symbol through any
-intermediate forwarding to the final symbol, the final value and place, the
-provenance of each hop, where the writable boundary lies, and whether the chain
-contains a cycle. Cycle detection is part of the design because forwarding chains
-must terminate.
+They read `Value(E)` through the ordinary value judgment of §3 and produce a
+new borrow-view value. They do not consult, capture, or export the slot that
+held `E`. Therefore:
 
-Canonical summary:
+```lang
+let t = uint8;
+let r = t ref;
+```
+
+binds `r` to `uint8 ref` — a borrow view of the type object `uint8` — and not to
+a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
+`r`.
+
+`share` differs from `ref` in the capability it grants, not in the judgment it
+uses: a `share` view admits reading and passing but is not an assignable place
+and cannot be an `inject` target (§5.5).
+
+### 5.2 `@` is the place-sensitive operation
+
+`@` is the only borrow operator that consults where its operand came from:
 
 ```text
-alias does not affect type-value equality;
-alias still affects symbol forwarding, place forwarding,
-namespace injection target, writability, and provenance.
+E@ = ObservePlace_policy( Origin(E), Value(E) )
 ```
 
-This ordinary declaration-layer alias meaning is not removed by the formal meta
-return correction. `let a === b` remains valid design syntax. Inside a meta
-body, the same alias mechanism applied to the return slot
-(`let r === path;`) adds an alias member to the return cluster; only the
-obsolete reading of bare `r === ...` as a special formal meta-return category
-is removed.
+`Origin(E)` is the place coordinate the expression was read through, and
+`policy` is the stage at which the observation is performed. `@` is an ordinary
+overloaded operation on `(Origin, Value)`; it is not a syntax-only marker and
+not excluded from overload resolution. Its overloads are specified in
+`../lifetime/lifetime-policy-and-overload-boundary.md`, which is the canonical
+owner of `@`. This document states only the two facts that belong to the
+place/value model:
 
-## 6. Writable-place checking
+```text
+Origin(E) is required input to @ and is not required input to ref / share
+E@ is undefined when E has no place origin (a freshly computed temporary)
+```
 
-A future writable-place checker decides whether a place may be written or
-injected into from the current context. A place is writable only when it
-satisfies the current stage and the current lexical/context boundary.
+### 5.3 Borrow views are idempotent and non-stacking
+
+```text
+Borrow(Borrow(q)) = Borrow(q)
+```
+
+A borrow view of a borrow view is the same borrow view. Consequently the
+following have no applicable overload and are rejected at selection time rather
+than being evaluated and then diagnosed:
+
+```text
+ref ref
+share share
+share ref
+ref share
+@@
+```
+
+This is a statement about the operator's domain, not a syntactic ban: there is
+simply no candidate whose parameter is already a borrow view.
+
+### 5.4 Writing through a reference versus retargeting a reference
+
+A reference value is itself held in a place. The two operations are distinct and
+both are ordinary assignments — they differ in **which** place is the target:
+
+```lang
+r_ref = value;              // writes value into the referent
+r_ref rebind = expression;  // retargets r_ref itself at a new referent
+```
+
+```text
+r_ref = v          -> Write( Referent(r_ref), v )
+r_ref rebind = E   -> Write( HolderPlace(r_ref), MakeRef(Value(E)) )
+```
+
+Without `rebind`, an assignment whose left side is a reference always reaches
+through to the referent. `rebind` is what selects the borrow-holder place as the
+assignment target. There is no context in which the same spelling means both.
+
+### 5.5 `type`, `type ref`, and `type share`
+
+A `type` value has no place of its own; consuming one can only produce a new
+value. A `type ref` names a place, so its usability is conditional:
+
+```text
+ValidContext(r : type ref, c)
+  = LifetimeValid(r, c) ∧ EffectiveOpen(Target(r), c)
+```
+
+`EffectiveOpen` is defined in
+`symbol-first-meta-construction-and-pattern-injection.md` §12. A `type ref` is
+therefore valid only where its target is still within its open capability
+region; a globally reachable lifetime is not sufficient:
+
+```text
+GlobalLifetime(x) does not imply EffectiveOpen(x)
+```
+
+`type share` is the deliberately weaker view. It may cross an open-capability
+boundary and be stored or passed where a `type ref` may not, precisely because
+it is not assignable and not an `inject` target:
+
+```text
+type share crosses an Open boundary
+type share is not a valid assignment left side
+type share is not a valid inject target
+```
+
+The last two lines are domain facts. A `type share` in an assignment-target or
+`inject`-target position produces "no applicable overload", never a permission
+error discovered after the operation has begun.
+
+## 6. Writability and extension eligibility
+
+A future checker decides whether a place may be written or extended from the
+current context. A place is eligible only when it satisfies the current stage,
+the current construction anchor, and the current lexical boundary.
 
 ```text
 Γ ⊢ place p writable_at current_context
+Γ ⊢ place p extendable_at current_context
 ```
 
-At minimum, the following are **not** writable from an ordinary current-level
-injection:
+At minimum, the following are **not** eligible for an ordinary current-level
+extension:
 
 ```text
 core built-in stable object
 external package stable object
 closed generated object
-alias whose final target is not writable
-place from an inner lexical level escaping into a longer-lived injection target
+place reached through a share view
+place whose target is no longer EffectiveOpen at this context
+place from an inner lexical level escaping into a longer-lived extension target
 place whose namespace delta is sealed/frozen
-place whose policy does not admit the current injection action
+place whose policy does not admit the current action
 ```
 
-Type-value equality grants no write permission. Even when:
+Value equality grants no write permission. Even when:
 
 ```text
 value(T) == value(uint8)
@@ -612,30 +728,37 @@ and it certainly does not follow that:
 place(uint8) is writable
 ```
 
-This is the concrete reason `let T === uint8; let f::T = ...` must be rejected:
-the chain forwards to `uint8`, whose place is an external stable object and is
-not writable from the current level. Alias forwarding cannot turn a non-writable
-place into a writable one.
+This is the concrete reason `let f::uint8 = ...` must be rejected while
+`let T = (() t) |> struct; let f::T = ...;` is accepted: extension eligibility
+is a property of the target place, and no binding or borrow view can promote an
+externally stable place into an extendable one. A borrow view never widens the
+eligibility of the place it observes:
 
-## 7. Namespace injection target
+```text
+Eligible(view of p) ≤ Eligible(p)
+```
 
-Namespace injection is a *place* operation, not a type-value operation. The
-injection target is not determined by ordinary expression evaluation of the
-target path.
+## 7. Namespace extension target
+
+Namespace extension is a *place* operation, not a value operation. The target is
+not determined by ordinary expression evaluation of the target path.
 
 The intended flow:
 
 ```text
-parse / normalize injection target path
-resolve path as injection-place target
-follow alias chain only if alias semantics requires it
-check final place writability
+parse / normalize the target path
+resolve the path as an extension-place target
+check the final place's extension eligibility
 install NamespaceDelta under that place
 ```
 
-The resolver here is asking "which writable place does this path name?", not
-"what value does this path evaluate to?". An injection that resolves to a value
-rather than a writable place is ill-formed.
+There is no forwarding-chain step: a path resolves to exactly one place, and a
+borrow view interposed on that path either denotes the same place (`ref`) or
+removes eligibility entirely (`share`).
+
+The resolver here is asking "which eligible place does this path name?", not
+"what value does this path evaluate to?". An extension that resolves to a value
+rather than a place is ill-formed.
 
 Writability alone does not grant construction ownership. Under the current
 future construction contract, another source file cannot reopen a namespace,
@@ -655,45 +778,54 @@ as two type-facet definitions is a conflict, not implicit `A | B`. Child
 construction and sum construction require explicit APIs and remain distinct
 from repeated ordinary binding.
 
-> **Open question — `let` versus `=` for namespace injection targets.**
->
-> The current implementation conflates fresh binding (`let f::T = expr`) and
-> existing-target write under one `let ... = ...` form. This is a
-> conservative compromise: the `=` operator is not yet supported, so all
-> writes use `let`.
->
-> The intended long-term separation:
->
-> ```text
-> let f::T = expr   — creates a new associated member (fresh symbol)
-> f::T = expr       — writes to an already existing target (requires = operator)
-> ```
->
-> Under this separation, namespace injection target resolution (§7 above)
-> applies to both forms, but the *judgment* differs: `let` uses
-> creation-place resolution (fresh child symbol), `=` uses write-place
-> resolution (existing place, writability check). The §6 rules are not
-> suspended for `let`, because two distinct judgments are involved:
->
-> ```text
-> Fresh(child)            — the created member symbol is fresh
-> CanExtend(parent_place) — the host place admits this extension
-> ```
->
-> `let f::T = expr` creates a fresh child (`Fresh(f)` holds trivially), but
-> that creation still extends `T`'s `Val2` object/place, so the host must
-> independently satisfy `CanExtend(place(T))`: construction
-> authority / open-window state, lexical lifetime, and external-stability
-> conditions on the parent place all still apply. Freshness of the child
-> never implies extension eligibility of the parent place.
->
-> This does not cancel `let f::T = expr` as a valid Val2 injection form.
-> It clarifies that `let` creates (fresh symbol/member) whereas `=`
-> overwrites (existing target, type value semantics). The `=` operator is
-> required for future `inject` support (`inject` provides inward navigation
-> resolution; `=` provides the overwrite that makes the result observable)
-> and for cluster-symbol synthesis, but its absence does not invalidate
-> the current `let`-based Val2 injection path.
+### 7.1 `let` creates a member; `=` writes an existing target
+
+The two forms are distinct operations on the same resolved target place:
+
+```text
+let f::T = expr   — creates a new associated member (fresh child symbol)
+f::T = expr       — writes an already existing target
+```
+
+Both use the extension/write-place resolution of §7, but they discharge
+different obligations:
+
+```text
+Fresh(child)            — the created member symbol is fresh
+CanExtend(parent_place) — the host place admits this extension
+```
+
+`let f::T = expr` satisfies `Fresh(f)` trivially, but the creation still extends
+`T`'s `Val2` object/place, so the host must independently satisfy
+`CanExtend(place(T))`: construction authority, `EffectiveOpen` state, lexical
+lifetime, and external-stability conditions on the parent place all still apply.
+Freshness of the child never implies extension eligibility of the parent.
+
+The two forms also differ in what they change about the host:
+
+```text
+let f::T = expr   ->  Val2(T)[f] += expr        (P(T) unchanged)
+T |> inject(Δ)    ->  P(T) + child pattern, Val2 + interpretation
+```
+
+An ordinary member declaration adds a `Val2` entry under an existing pattern
+name; it does not widen `P(T)`. Widening the host pattern with a new child
+pattern is exactly what `inject` does, and it is specified in
+`symbol-first-meta-construction-and-pattern-injection.md` §8. Both are limited to
+extending the current parent pattern with a *direct* child; neither reaches into
+a grandchild pattern.
+
+Assignment checks exactly three things about its right side and nothing else:
+
+```text
+the left side names a writable place
+the right value conforms to the target's Pattern
+lifetime and capability conditions of the target place hold
+```
+
+There is no check of how the right value was constructed. Assignment does not
+require a construction witness, a transition proof, or provenance from any
+particular producer.
 
 ## 8. Type values in overload and pattern matching
 
@@ -733,59 +865,69 @@ in `PatternValue` identity.
 
 Pass mode is **not** part of `TypeValueId`. A construct such as `T move` does not
 change the type value, and type-value comparison is invariant under
-`move` / `copy` / `ref` / `share`. The detailed treatment of `T move == T` as a
-move fixed point belongs to a future mechanical argument-passing / move design
-and is only referenced here, not expanded.
+`move` / `copy`. Borrow views are different: `T`, `T ref`, and `T share` are
+three distinct values with distinct patterns, because a borrow view is a value
+produced by an operation (§5), not a passing annotation. The detailed treatment
+of `T move == T` as a move fixed point belongs to the mechanical
+argument-passing / move design and is only referenced here, not expanded.
 
-## 9. Alias forwarding and policy
+## 9. Borrow views and policy
 
-Alias forwarding redirects lookup; it does not grant capabilities. It must
-operate within the existing policy, visibility, and writable-place restrictions.
+A borrow view observes; it does not grant capabilities. It must operate within
+the existing policy, visibility, and place-eligibility restrictions.
 
 ```text
-Alias may redirect lookup.
-Alias may expose a forwarded value.
-Alias must not manufacture permission.
-Alias must not make non-writable places writable.
-Alias must not bypass policy filtering.
+A borrow view may expose an observation of its source value.
+A borrow view must not manufacture permission.
+A borrow view must not make an ineligible place eligible.
+A borrow view must not bypass policy filtering.
 ```
 
-If an alias target is not visible or not executable under the current
-`PolicyEnv`, the alias does not make it visible or executable. A re-export or
-wrapper semantics that intentionally re-exposes a forwarded target under
+If the observed object is not visible or not usable under the current
+`PolicyEnv`, taking a `ref` or `share` of it does not make it visible or usable.
+Re-export or wrapper semantics that intentionally re-expose a target under a
 different policy is a separate, later design and is **not** defined here.
 
 ## 10. Relation to current implementation
 
-The `lang_build` semantic spine now implements the identity core of this
-document: the recursive type-object normal form `Norm_type`, the canonical
-observation identity `Addr(Norm_type)` consumed by struct residents,
+The `lang_build` semantic spine implements the identity core of this
+document: the recursive object normal form, the canonical
+observation identity consumed by struct residents,
 canonical pattern atoms, and meta instance keys, per-carrier `Val2` places
 for ordinary type bindings (`Pattern(T) = Pattern(U)` coexisting with
 `Place(T) ≠ Place(U)`), and meta return self-root validation. The
 `TypeObject` adapter survives only as a per-TypeValue transport reference
 inside an object place, never as a binding-level policy authority.
 
-Still future work, tracked in `spec/planning/open-questions.md`: explicit
-alias forwarding through an `AliasChain`, writable-place checking,
-alias-forwarded injection places, source-level injection through installed
-rebinding carriers, migration of the remaining first-order `TypeValueId`
-comparison consumers to full by-value comparison, and construction-unit
-ownership.
+Registered implementation debt — semantics closed here, not yet built:
+
+```text
+full three-component Norm(x) including recursive Norm_Val1?
+  (current normalizer keeps an opaque Val1 leaf)
+ref / share / @ / rebind operations and their overloads
+type ref and type share values, and ValidContext for them
+the writability and extension-eligibility judgments of §6
+the = assignment operator and its three-condition check
+migration of remaining first-order TypeValueId comparison consumers
+  to full by-value comparison
+construction-unit ownership enforcement
+```
+
+The retired alias-forwarding model (`AliasChain`, symbol/place forwarding,
+alias-forwarded extension places, installed rebinding carriers) is not
+implementation debt. It is removed from the target semantics and must not be
+revived as future work.
 
 ## 11. Non-goals
 
 ```text
 No parser syntax change.
-No Rust implementation change in this PR.
-No test fixture change.
 No full type checker.
-No full alias resolver implementation.
 No full lifetime/access-tree checker.
 No runtime lookup implementation.
 No package re-export semantics.
-No permission escalation through aliasing.
-No current public behavior change.
+No permission escalation through borrow views.
+No revival of symbol-alias or place-forwarding declaration forms.
 ```
 
 ## 12. Relationship to other documents
@@ -796,22 +938,22 @@ meaning.
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical
   symbol-first facet resolution, `PatternValue`, `compile` / `meta`, pattern
-  scopes, `struct`, functional `inject`, and binding/install boundary. It uses
-  this document's `SymbolId` / `PlaceId` / `TypeValueId` and alias judgments.
+  scopes, `struct`, functional `inject`, `EffectiveOpen`, and the
+  binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
+  `TypeValueId` and place judgments.
+- `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of
+  `@`, its overload groups, and escape checking. This document supplies only the
+  `Origin`/`Value` split that `@` consumes.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   projection namespaces, role-aware lookup, and access-tree work. It references
-  this document for the canonical type-value / place / alias-forwarding
-  distinction rather than restating it.
+  this document for the canonical value / place / borrow-view distinction rather
+  than restating it.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph and
   early-meta slice, including the v0.6 placeholder `TypeObject` representation
   this document supersedes as the long-term semantics.
 - `symbol-construction-units-and-namespace-origin.md` — canonical
   `NamespaceOrigin`, construction-unit ownership, physical contribution
   authority, type/namespace facet inclusion, and cross-file closure rules.
-- `entity-alias-design.md` — the surface/parser alias syntax (`let binder ===
-  EntityRef`) and frozen parser preservation. This document defines the
-  *semantic* alias forwarding model (value/place forwarding, `AliasChain`,
-  writable-place effect) that surface design will later target.
 - `pattern-normalization-and-first-order-overload.md` — the pattern/type
   candidate-preparation layer that uses `TypeValueId` for first-order type
   matching.

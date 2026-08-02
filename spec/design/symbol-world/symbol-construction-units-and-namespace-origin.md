@@ -269,14 +269,13 @@ all symbol construction performed by that invocation
 
 Within that transaction, the meta body may:
 
-- chain functional `inject` operations for different children through an
-  `OpenOwnedConstructionHandle` whose owner is this `MetaConstructionUnit` and
-  whose state remains open/uninstalled;
+- chain pure-functional `inject` operations for different children over pattern
+  values owned by this `MetaConstructionUnit` and still `EffectiveOpen` in it;
 - construct a complete type/pattern subtree;
 - establish multiple heterogeneous value entries;
 - call `compile` helpers to obtain `PatternValue`s;
 - combine other uninstalled construction material;
-- return one atomic `SymbolConstructionValue`, from which the outer
+- return one atomic `SymbolConstruction`, from which the outer
   binding/assembly layer may form one `NamespaceDelta` candidate.
 
 These operations are not cross-file or cross-construction-unit reopening.

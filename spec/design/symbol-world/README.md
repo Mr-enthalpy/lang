@@ -2,8 +2,9 @@
 
 **Status: Non-normative future design with a partial implementation note. A
 narrow namespace-graph / resolver / early-meta slice exists in
-`crates/lang_build`; `TypeValueId`, alias forwarding, writable-place checking,
-`SymbolCell` facets, `PatternValue`, `SymbolConstructionValue`,
+`crates/lang_build`; `TypeValueId`, borrow views, writability and
+extension-eligibility checking,
+`SymbolCell` facets, `PatternValue`, `SymbolConstruction`,
 `ResolvedPatternScope`, `MetaInstanceScopeId`, meta type self-root checking,
 functional `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
@@ -30,9 +31,9 @@ The namespace graph world model and symbol-level identity:
 - meta-return type self-root identity and complete meta-instance navigation atoms
 - namespace-facet origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
-- alias forwarding (`AliasChain`) and writable-place checking
+- the borrow views `ref` / `share` / `@`, writability, and extension eligibility
 - field functions, `ref` / `share` projection namespaces
-- type-associated function objects and namespace injection targets
+- type-associated function objects and namespace extension targets
 - the early-meta / namespace-graph bootstrap (broad bootstrap document)
 
 ## Not in scope
@@ -60,14 +61,16 @@ policy checker (referenced from the other blocks).
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.
-- `type-values-places-and-alias-forwarding.md` — canonical `TypeValueId` /
-  `PlaceId` / `SymbolId` distinction and alias forwarding.
+- `type-values-places-and-borrow-views.md` — canonical `TypeValueId` /
+  `PlaceId` / `SymbolId` distinction, object normal form, and the borrow views
+  `ref` / `share` / `@`.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   projection namespaces, access-tree implications.
 - `entity-ref-design.md` — general `EntityRef` design (alias-RHS subset
   implemented as raw AST preservation).
-- `entity-alias-design.md` — surface `let binder === EntityRef` syntax and its
-  future semantic forwarding meaning.
+- `entity-alias-design.md` — historical record of the frozen surface
+  `let binder === EntityRef` syntax. **Its semantic alias-forwarding model is
+  retired**; borrow views replace it.
 
 ## Reading order
 
@@ -77,11 +80,11 @@ canonical future semantic boundary. Then read
 cross-file rules. Then read `symbol-policy-and-compile-flow-projection.md` for
 policy, staging, companion, and require semantics. Read
 `early-meta-functions-and-namespace-graph.md` next for
-the current bootstrap route, followed by the type-value/place/alias and
+the current bootstrap route, followed by the type-value/place/borrow-view and
 field-function documents.
 
-For v0.8-adjacent work that touches `TypeValueId`, `PlaceId`, `AliasChain`,
-generated meta instances, injection-place checking, or the current `struct`
+For v0.8-adjacent work that touches `TypeValueId`, `PlaceId`, borrow views,
+generated meta instances, extension-place checking, or the current `struct`
 vertical slice, read
 `spec/contracts/v0.8-meta-construction-agent-constraints.md` first. That
 contract makes these objects implementation preconditions for generic

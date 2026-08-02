@@ -7,7 +7,7 @@ canonical type-value equality is implemented.**
 This note records the v0.6 namespace-graph implications for field-access and
 access-tree work. The canonical type-value / place / alias-forwarding /
 writable-place semantics are specified in
-`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`; this note only keeps a
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`; this note only keeps a
 short summary and the field/access-tree specifics that build on that
 distinction.
 
@@ -131,28 +131,30 @@ The consequences that field/access-tree work must preserve:
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
   alias.
-- `let f::t = ...` injects into `place(t)`, never into `place(uint8)`. Type-value
-  equality must not canonicalize injection targets, and a `type`-kind symbol may
+- `let f::t = ...` extends `place(t)`, never `place(uint8)`. Type-value
+  equality must not canonicalize extension targets, and a `type`-kind symbol may
   own a companion namespace place distinct from the type value it stores.
-- `let t === uint8` is symbol forwarding, not binding. It creates no fresh
-  writable place; injection through it follows the forwarded place, and a final
-  target that is a built-in / external stable / frozen / inner-escaping place is
-  not writable and must be rejected.
+- There is no place-forwarding declaration form. Every binding allocates its own
+  place, so no second name reaches `place(uint8)`. Where shared observation is
+  wanted, the value held is a borrow view (`ref` / `share` / `@`), and its
+  eligibility never exceeds the underlying place's own
+  (`Eligible(view of p) ≤ Eligible(p)`); a built-in / external stable / frozen /
+  inner-escaping place is not writable and yields no applicable overload.
 
-This is only a summary. For the canonical `TypeValueId` / `PlaceId` /
-alias-forwarding distinction — including the value/place judgments, the
-`AliasChain` model, writable-place checking, and the namespace injection
-pipeline — see `spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
+This is only a summary. For the canonical `TypeValueId` / `PlaceId` / `SymbolId`
+distinction — including the object normal form, the borrow views, writability,
+extension eligibility, and the namespace extension pipeline — see
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 ## v0.6 Implementation Note
 
 The `lang_build` semantic spine now implements the identity core:
 `TypeValueId` exists as the stable first-order type root, and the full
 type-object identity is the canonical observation `Addr(Norm_type)` over
-per-carrier `Val2` places. Writable-place checking, alias forwarding, and
+per-carrier `Val2` places. Writability checking, borrow-view evaluation, and
 the field-function / access-tree machinery of this note remain future work;
 the identity model and its implemented/future split are documented in
-`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 ## Non-Goals
 
@@ -160,11 +162,11 @@ This note does not implement or specify:
 
 - type-value identity (the first-order `TypeValueId` root and the canonical
   observation `Addr(Norm_type)` are owned by
-  `type-values-places-and-alias-forwarding.md`);
+  `type-values-places-and-borrow-views.md`);
 - migration of the remaining first-order type comparisons to full by-value
   comparison;
-- full alias forwarding evaluation;
-- writable-place or injection-place lifetime checking;
+- full borrow-view evaluation;
+- writability or extension-place lifetime checking;
 - field access evaluation;
 - access-tree scanning;
 - borrow/lifetime checking;

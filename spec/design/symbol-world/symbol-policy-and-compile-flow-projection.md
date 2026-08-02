@@ -20,23 +20,49 @@ source policy syntax
 
 ## 1. Complete symbol flow and policy pair
 
-Language computation remains one symbol flow:
+Language computation remains one object flow. Every object has the same three
+components:
 
 ```text
-Symbol = Val1 × Pattern × Val2
+Object x  = ⟨ Val1?(x), P(x), Val2(x) ⟩
+Val1?(x) ∈ 1 + Object
 ```
 
-The policy of a result is always a pair:
+The object ontology is owned by
+`type-values-places-and-borrow-views.md`. This document owns what an *observer*
+sees of that object.
+
+Policy is not a component of the object. It belongs to the observation edge
+between a context and an object:
+
+```text
+View_Γ(x) = ⟨ x, Pv:Pp, capability_Γ(x) ⟩
+```
+
+The same object observed from two contexts is one object with two views. The
+policy of a result is always a pair:
 
 ```text
 Π = Pv:Pp
 
-Pv  policy of Val1/the value component
-Pp  policy of Pattern/the anonymous-type component
+Pv  policy of the value component observed at this edge
+Pp  policy of the Pattern/anonymous-type component observed at this edge
 ```
 
 There is no scalar replacement for this pair and no third policy slot. A
 result object carries its own `PolicyPair` when it re-enters the flow.
+
+The two axes of the pair are independent of the object's internal shape:
+
+```text
+Val1?(x) = null   does not imply  Pv = absent
+Pv = absent       does not imply  Val1?(x) = null
+```
+
+The first says an object without an internal `Val1` payload may still be
+observed through a value-bearing edge. The second says an observer may be denied
+the value axis of an object that does carry a payload. Reading either direction
+as an implication collapses the object into its observation.
 
 Policy dimensions are typed and orthogonal:
 
@@ -51,6 +77,26 @@ export-root attribute       yes / no
 They are not members of one untyped atom bag. In particular, export-root and
 ordinary visibility are independent.
 
+### 1.1 There is no central mutability propagation pass
+
+Mutability is a coordinate of an observation edge, never a quantity pushed
+through the object graph by a dedicated pass. The language defines no
+`const`/`mut` propagation analysis, no transitive const inference over members,
+and no whole-graph mutability closure.
+
+The only two mechanisms that produce a propagation-like effect are:
+
+```text
+member overload      — a member's own candidates decide what an observer of
+                       that member may do, per member, at lookup time
+delete               — removing a candidate removes the corresponding
+                       capability from every observer of that member
+```
+
+Both are local and per-member. An observer that reaches a nested member composes
+the views it actually traverses; nothing recomputes an aggregate mutability for
+the host.
+
 ## 2. Pattern alternative and policy operators
 
 Single `|` belongs to Pattern alternative:
@@ -58,16 +104,25 @@ Single `|` belongs to Pattern alternative:
 ```lang
 let bool = ((if | else) bool) |> struct;
 
-let true === if::bool;
-let false === else::bool;
+let true = if::bool;
+let false = else::bool;
 ```
 
 Therefore:
 
 ```text
 Pattern(bool) = if::bool | else::bool
-true  is an alias of if::bool
-false is an alias of else::bool
+true  holds the value read through if::bool
+false holds the value read through else::bool
+```
+
+`true` and `false` are ordinary bindings, not aliases. Each is a fresh symbol
+with a fresh place holding a copy of the value read through the source path:
+
+```text
+SymbolId(true) ≠ SymbolId(if::bool)
+PlaceId(true)  ≠ PlaceId(if::bool)
+Value(true)    =  Value(if::bool)
 ```
 
 `true | false` is not a second Pattern space for `bool`.
@@ -335,14 +390,18 @@ complete internal declaration view. If the exported symbol has a value facet,
 that external view must have a non-empty `const` projection. A pure
 `absent:Pp` type/Pattern symbol has no value-mutability obligation.
 
-Absence removes the complete value subspace rather than merely selecting a
-presence tag:
+Absence removes the complete value subspace of *this observation edge* rather
+than merely selecting a presence tag:
 
 ```text
 Pv = absent
   => value stages = ∅
   && value mutability = ∅
 ```
+
+This is a statement about the edge, not about the object behind it. Per §1,
+`Pv = absent` does not assert `Val1?(x) = null`, and an object with
+`Val1?(x) = null` is not thereby forced to `Pv = absent`.
 
 Consequently `const + S : compile`, `mut + S : compile`, and their `export`
 forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
@@ -411,7 +470,7 @@ alternative creates no materialization obligation.
 
 `MechanicalPolicyDemand` records the origin of a language-selected mechanical
 operation. It does not imply that arbitrary Policy failure may search `ref`,
-`share`, `alias`, or another structure-changing operation. Those operations
+`share`, `@`, or another structure-changing operation. Those operations
 occur only when separately required by their own language rule and then use
 ordinary function-object invocation.
 
@@ -643,7 +702,7 @@ their storage/lowering algorithms are not implemented:
 - Storage requested by `[[global]]` materialization does not mutate the
   source-visible `NamespaceGraph`; generated storage and source namespace
   declarations remain distinct semantic facts.
-- A language-selected `ref`, `share`, or `alias` operation may compose
+- A language-selected `ref`, `share`, or `@` operation may compose
   ordinary operations and apply its own type/access rules. Such a structural
   operation is not Policy-demand repair.
 
@@ -1091,12 +1150,18 @@ is fully admissible.
 
 Static views include meta values, compile values, compile Pattern/type
 projections of runtime symbols, and derived compile companions. Meta and compile
-callables may invoke one another in one evaluator, but result ranks remain:
+callables may invoke one another in one evaluator. Their return ontologies differ
+in authority, not in value rank:
 
 ```text
-meta    -> SymbolConstructionValue
-compile -> PatternValue / ordinary static value
+meta    -> may establish a global symbol root and seal a MetaInstance
+compile -> ordinary PatternValue only; establishes no global root
 ```
+
+Both may return any ordinary `PatternValue`, including a type value, a symbol
+value, or a `type ref`. `compile` is restricted by what it may *root*, not by
+which value shapes it may produce; the root condition is owned by
+`symbol-first-meta-construction-and-pattern-injection.md`.
 
 No OpenStatic task may read a runtime value or depend on a runtime effect. If a
 task is blocked only by a seal-only view, preserve its call node, Pattern
@@ -1159,6 +1224,13 @@ const actual: const > unspecified > mut
 mut actual:   mut > unspecified > const
 ```
 
+This order is a *preference* among candidates that are already fully admissible.
+Being higher in the order never grants a capability, and being lower never
+removes one: the order chooses between existing candidates and does not decide
+whether a candidate exists. Nor does it propagate: the selected candidate's
+mutability qualifier describes that one observation edge and is not pushed into
+the argument's other members (§1.1).
+
 Multiple positions form a product partial order: `f` dominates `g` iff `f` is
 not worse at every participating position and is strictly better at at least
 one. Crossed advantages remain incomparable. There is no score, exact-match
@@ -1195,10 +1267,18 @@ reopen fallback.
 
 ## 13. Lifetime boundary
 
-`@` is lifetime syntax, not an ordinary policy operator. This design defines no
-lifetime checking algorithm, overload, ordering, ABI class, refinement pass, or
-handoff object. Ordinary overload selection must already have one unique
-candidate, and future lifetime rules may not change that result.
+`@` is an ordinary place-sensitive operation with its own overload groups, owned
+by `../lifetime/lifetime-policy-and-overload-boundary.md`. It is not a policy
+atom in the stage dimension of §1, and lifetime policy is not a fifth stage.
+
+The only boundary this document asserts is directional: ordinary overload
+selection must already have produced one unique candidate, and lifetime rules
+validate that result without replacing it. Lifetime checking may reject a
+program; it may not reselect a call, reopen type/policy overload resolution, or
+introduce a competing specificity order.
+
+This is a restriction on lifetime *rules*, not a denial that `@` has overloads.
+`@` is resolved by the ordinary selection trunk of §12 like any other operation.
 
 ## 14. Transitional implementation boundary
 
