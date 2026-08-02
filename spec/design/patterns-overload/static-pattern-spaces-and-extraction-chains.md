@@ -155,8 +155,9 @@ associative, and idempotent identity, or report an explicit unsupported
 diagnostic. The current restricted slice reports the diagnostic.
 
 This paragraph describes the implemented v0.8 evaluator only. Final formal meta
-return uses `r = ...` to build `SymbolConstructionValue`; ordinary `let ===`
-aliasing remains separate.
+return uses `r = ...` to build a `SymbolConstruction`. There is no ordinary
+declaration aliasing to keep separate from it: the semantic alias/forwarding
+direction is retired, and `===` survives only as a frozen parser spelling.
 
 ## 2. Core Principles
 
@@ -1168,8 +1169,8 @@ is the current block result of the callable body. It is not a special
 compile/meta-only return form.
 
 Formal meta return has no separate `r === ...` forwarding category. `r = ...`
-populates the return layer of the `SymbolConstructionValue`. Ordinary
-declaration aliasing remains `let a === b` at the symbol/place binding layer.
+populates the return layer of the `SymbolConstruction`. There is no ordinary
+declaration aliasing either: every `let` binds a fresh symbol and a fresh place.
 
 Thus compile/meta return behavior is a normal consequence of:
 

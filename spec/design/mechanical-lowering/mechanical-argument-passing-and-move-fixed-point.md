@@ -404,7 +404,7 @@ meaning.
   `RawArgShape` / `ParameterShape` objects that argument adaptation consumes.
   Pass adaptation is the mechanical-argument-passing step within or after
   candidate adaptation.
-- `type-values-places-and-alias-forwarding.md` — defines `TypeValueId`; pass mode
+- `type-values-places-and-borrow-views.md` — defines `TypeValueId`; pass mode
   is explicitly not part of it, and `T move == T`.
 - `type-associated-function-objects-and-access-trees.md` — field-function and
   access-tree work; automatic `ref` / `share` produces a borrow object whose

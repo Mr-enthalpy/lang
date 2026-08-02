@@ -135,10 +135,9 @@ a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
 meta-return semantics. Final meta construction uses the construction-effect
-family on the return cluster — `let r = expr;` adds a fresh member,
-`let r === path;` adds an alias member (Val2 forwarding), `r = expr;`
-overwrites an existing member, and `r;` delivers the cluster — producing a
-`SymbolConstructionValue`. See
+family on the return symbol — `let r = expr;` adds a fresh member,
+`r = expr;` writes an existing member, and `r;` delivers the construction —
+producing a `SymbolConstruction`. There is no alias-member event. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
@@ -1090,7 +1089,11 @@ closed overload-name declarations
 
 Lifetime checking is separately deferred by
 `../lifetime/lifetime-policy-and-overload-boundary.md`. This revision defines
-no lifetime overload, refinement, ABI class, or second selection stage.
+no refinement, ABI class, or second selection stage, and no lifetime-driven
+re-selection: a lifetime rule never reopens the unique ordinary overload result.
+That is a restriction on lifetime *rules*, not a claim that `@` lacks overloads
+— `@` is an ordinary place-sensitive operation with its own candidate set,
+specified in that document.
 
 ---
 
@@ -1105,7 +1108,7 @@ no lifetime overload, refinement, ABI class, or second selection stage.
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
 | `../policy-capability/policy-visibility-symbols.md` | Implementation mapping for current policy metadata |
 | `../symbol-world/symbol-policy-and-compile-flow-projection.md` | Canonical `P1` / `P2`, companion, and must-select semantics |
-| `../lifetime/lifetime-policy-and-overload-boundary.md` | Negative boundary: lifetime syntax cannot reopen the unique ordinary overload result |
+| `../lifetime/lifetime-policy-and-overload-boundary.md` | Canonical owner of `@` and escape checking; also the negative boundary that a lifetime rule cannot reopen the unique ordinary overload result |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph resolves the callee `Symbol`; the current same-name child bucket is only transitional candidate substrate |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |
 | `glossary.md` | Defines OverloadCandidate, OverloadSpecificity, OverloadResolutionPipeline |

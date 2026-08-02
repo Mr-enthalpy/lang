@@ -10,9 +10,10 @@ The canonical future result-rank and construction boundary is
 It supersedes the older formal-meta-return interpretation that used `r = ...`
 for generation and `r === ...` for forwarding, and also supersedes the interim
 single-form `r = ...` reading: the final model distinguishes
-`let r = expr;` (add fresh member), `let r === path;` (add alias member),
-`r = expr;` (overwrite existing member), and the `r;` terminal (cluster
-delivery, not a member event). References to the older splits below are
+`let r = expr;` (add fresh member), `r = expr;` (write an existing member), and
+the `r;` terminal (delivery, not a member event). There is no fourth
+alias-member event — the semantic alias/forwarding direction is retired.
+References to the older splits below are
 explicitly transitional implementation notes, not final semantics.
 Namespace-origin and `MetaConstructionUnit` ownership are canonical in
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
@@ -67,12 +68,15 @@ restricted applicability. This slice does not execute arbitrary named strategy
 rules and does not grant `default` an implicit priority.
 
 This `r === ...` behavior describes only the restricted v0.8 evaluator that is
-currently implemented. The final formal meta model uses the construction-effect
-family on the return cluster: `let r = expr;` adds a fresh member,
-`let r === path;` adds an alias member (Val2 forwarding; forwarding an external
-type value fails the self-root invariant), `r = expr;` overwrites an existing
-member, and `r;` is the delivery terminal. Ordinary `let a === b` outside meta
-bodies remains the same alias mechanism applied to a declaration-layer symbol.
+currently implemented; it is a transitional spelling carried by the frozen
+parser surface, not a semantic forwarding mechanism. The final formal meta model
+uses the construction-effect family on the return symbol: `let r = expr;` adds a
+fresh member, `r = expr;` writes an existing member, and `r;` is the delivery
+terminal. Where a member must observe an external object, it holds a borrow view
+(`ref` / `share`), which is an ordinary value — and a borrow edge is not owned
+material, so it is not promoted at seal. Forwarding an external type value as a
+meta return type still fails the self-root invariant. No declaration form,
+inside or outside a meta body, forwards a symbol or a place.
 
 Unsupported selected body forms return hard diagnostics. In particular, a body
 that requires guarded branch evaluation, predicate calls, postfix `?`,
@@ -221,7 +225,8 @@ selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
 RHS value is `ForwardedValue(int)`
 `: type` assertion checks that the RHS is a type-level value
 binding materialization installs `X` as a fresh symbol/place whose type facet
-projects the `int` type value; this is not ordinary `let X === int` aliasing
+projects the `int` type value; the binding is an ordinary fresh symbol and place,
+not a forwarding of `int`'s own symbol or place
 ```
 
 The identity path does not require full canonical sum-pattern values. A
@@ -843,10 +848,10 @@ Current state:
   integration-test substrate, not as a stable owner-construction API.
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with the
-  construction-effect family (`let r = expr;` fresh member, `let r === path;`
-  alias member, `r = expr;` overwrite, `r;` delivery terminal) producing a
-  `SymbolConstructionValue`; the alias form is the same cluster-member
-  mechanism as namespace-level `let name === target` aliasing.
+  construction-effect family (`let r = expr;` fresh member, `r = expr;` write,
+  `r;` delivery terminal) producing a `SymbolConstruction`; the legacy `===`
+  spelling has no successor, because the semantic alias/forwarding direction is
+  retired.
 - The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and
   Runtime variants; it projects flat visibility metadata while the restricted
   overload selector also checks the
@@ -913,7 +918,7 @@ layered policy / compile projection / companions / automatic require:
   `../symbol-world/symbol-policy-and-compile-flow-projection.md`
 
 type/place/alias identity:
-  `type-values-places-and-alias-forwarding.md`
+  `type-values-places-and-borrow-views.md`
 
 later extraction/static pattern semantics:
   `static-pattern-spaces-and-extraction-chains.md`
