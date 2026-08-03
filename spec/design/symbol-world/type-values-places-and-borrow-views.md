@@ -654,6 +654,36 @@ projects an object down to its payload, so the result keeps its own `P` and
 whether the read value carries a payload at all — and that is what §5.2 depends
 on.
 
+#### 5.1.0 The referent of `ref` is the object's own place, never the carrier slot
+
+`ref` and `@` observe two different places, and the reason they cannot collapse
+is that they take different coordinates as input. A read yields both a value and
+the coordinate of the object that value is (its `ObjectPlace`), and that
+coordinate is what `ref` borrows:
+
+```text
+Read(E)      = ⟨ value, ObjectPlace(value) ⟩
+E ref        = Ref( value, ObjectPlace(value) )
+E@           = RefCarrierSlot( CarrierPlace(E) )
+
+ObjectPlace(value) ≠ CarrierPlace(E)
+```
+
+`ObjectPlace(value)` is the stable object coordinate of the read object itself —
+for `let t: type = uint8`, `Read(t)` reads the `uint8` type object, so `t ref`
+is a `uint8 ref` whose referent is `uint8`'s own resident/global object place,
+**not** `CarrierPlace(t)`. Keeping the two coordinates distinct is exactly why
+`t ref` (the value's object place) and `t@` (the carrier slot `t`) do not merge;
+letting `ref` fall back to `CarrierPlace(E)` would erase the whole point of `@`
+(§5.2).
+
+A value with no stable object place — a freshly computed temporary that resides
+nowhere and carries no borrowable object identity — supplies no
+`ObjectPlace`, so `ref` has **no applicable candidate** on it. `ref` never
+materializes storage on the writer's behalf and never silently retargets to the
+carrier slot; a temporary must first be bound to a named place (giving it an
+object place) before it can be borrowed.
+
 Both are ordinary meta-function calls on that result. Neither asks which symbol
 slot the value came out of, and neither consults, captures, or exports it.
 Therefore:
@@ -705,10 +735,16 @@ No implicit projection or conversion participates in an operand position. `s ref
 is never elaborated into `s |> type ref`, or into any other facet projection,
 because an operand or argument position performs no implicit type conversion.
 Facet projection stays explicit there (`|> type`, `|> val`, `|> namespace`), and
-an explicit `symbol |> type` is itself well-formed whenever the operand really
-carries a `Val1` dimension — what is excluded is supplying it on the writer's
-behalf. A language-designated type-expected position is the separate case where
-the projection *is* supplied; see §5.6.
+an explicit `E |> type` is well-formed exactly when the selected object/Symbol
+exposes one unambiguous type facet (`|TypeMembers(S)| = 1`, i.e.
+`HasUniqueTypeFacet(S)`). Whether `E` carries a `Val1` payload is irrelevant to
+type-projection applicability: `Val1(Symbol) = Member * omega` is present even
+for a Symbol that has only ordinary val members and no type member, so
+`Val1? != null` never implies that `ProjectType` is defined. `Val1?`
+participates only in the `ref`-versus-`@` dispatch, never as a type-facet
+classifier. What is excluded is supplying the projection on the writer's behalf.
+A language-designated type-expected position is the separate case where the
+projection *is* supplied; see §5.6.
 
 ### 5.2 `@` is the carrier-slot operation
 
@@ -895,8 +931,11 @@ assignment target. There is no context in which the same spelling means both.
 
 ### 5.5 `type`, `type ref`, and `type share`
 
-A `type` value has no place of its own; consuming one can only produce a new
-value. It also carries no construction capability: the same pure pattern value
+A by-value `type` carries no carrier-slot place and no `Open` capability;
+consuming one can only produce a new value. This does not deny it an
+`ObjectPlace`: `Read` of a bound type still yields the type object's own
+object place, which is what `ref` borrows (§5.1.0). What it lacks is a
+carrier slot for `@` and a construction capability: the same pure pattern value
 may be inside an open window in one context and merely frozen-but-globally-live
 in another, and nothing in the value distinguishes the two.
 
@@ -1156,17 +1195,29 @@ pattern is exactly what `inject` does, and it is specified in
 extending the current parent pattern with a *direct* child; neither reaches into
 a grandchild pattern.
 
-Assignment checks exactly three things about its right side and nothing else:
+Assignment carries no `inject`-specific construction-history check, but that is
+not the same as carrying no check. The canonical four-layer assignment model in
+`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1 governs, and the
+text below only spells out its layer 2 for this document.
+
+Layer 2 — universal write applicability checks exactly:
 
 ```text
-the left side names a writable place
-the right value conforms to the target's Pattern
-lifetime and capability conditions of the target place hold
+Writable(lhs)              — the left side names a writable place
+Compatible(P(lhs), rhs)    — the right value conforms to the target's Pattern
+ValidCapability(lhs)       — lifetime and capability conditions of lhs hold
 ```
 
-There is no check of how the right value was constructed. Assignment does not
-require a construction witness, a transition proof, or provenance from any
-particular producer.
+Assignment performs no `inject`-specific construction-history check: there is no
+requirement of a construction witness, a transition proof, or provenance from
+any particular producer. That freedom covers layer 1 (the RHS discharges its own
+`inject` Open check during its own evaluation) and nothing more. Layers 1, 3,
+and 4 of the canonical model — RHS operation legality, result-object invariants
+(`WellFounded` / `Canonicalizable` / `NoForbiddenCycle`), and the enclosing
+region's semantic-boundary constraints (meta self-root, ref / pattern-value
+lifetimes, Open-witness escape, global type-bearing mutability limits, seal /
+global promotion, single-type-member bound) — remain independently applicable to
+the write result.
 
 ## 8. Type values in overload and pattern matching
 

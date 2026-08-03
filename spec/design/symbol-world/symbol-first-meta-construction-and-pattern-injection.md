@@ -680,8 +680,20 @@ the other: a body whose definition context is intact can still be unable to
 `inject` a by-value `type` because the caller's construction context has frozen
 that target.
 
-The sensitivity is narrow. It arises only from Open-sensitive operations on
-by-value `type` arguments:
+The sensitivity is narrow, but its condition is not syntactic. It arises from
+Open-sensitive operations on any by-value `type` value that carries no
+`OpenWitness` — not specifically from a value's being a formal parameter. Such a
+plain type may reach the operation as a formal parameter, a local copy of one,
+the return value of a `compile` call, a local selection or composition, or a
+captured by-value `type`. Whenever its `Open` capability is not carried
+explicitly by a `type ref`, `inject` must decide against the current
+construction context along the value's root provenance:
+
+```text
+Open_Γ( ConstructionRoot(t) )
+```
+
+The formal-parameter case below is only the most common source:
 
 ```lang
 let extend =
@@ -717,10 +729,14 @@ asks which in-place closure the `compile` call came from. Hence:
 
 ```text
 a compile evaluation depends on the caller's Open window
-  only through Open-sensitive operations on by-value `type` arguments
+  exactly for Open-sensitive operations on by-value `type` values that carry
+  no OpenWitness
 ```
 
-not as a general property of every `compile` call.
+not as a general property of every `compile` call, and not decided by whether a
+`type` value happens to be a formal parameter. Caches and `Requires` summaries
+track this along the value's root provenance, not by whether `t: type` appears in
+the signature.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
 meta-style virtual symbol layer for name shadowing, and does not impose a
@@ -1265,6 +1281,21 @@ scope/owner rule and need not create an independently navigable
 define new privileged AST meta functions. Privilege is member-specific: one
 built-in's accepted carrier and bounded transformation do not imply a general
 macro system or arbitrary AST rewriting.
+
+This does not contradict the bidirectional law `P2 = meta <=> Establish(M)` of
+§1. That law governs the *navigable* `MetaInstance` root of an ordinary meta
+callable: `P2 = meta` is exactly the authority to establish one such `M`, and no
+other coordinate may establish one. A privileged built-in does not take that
+authority and does not produce a navigable `M`; its `special_owner_rule` /
+`special_scope_rule` is a separately declared rooting authority, so the
+exclusivity of the law is preserved rather than duplicated. Concretely, that rule
+roots the produced object in the navigation chain strung together by the
+opaque in-place-closure function-object `Self` at the construction site, not in
+an external `PatternValue` and not in a later binding destination. The object it
+yields is **globally live but not necessarily globally visible**: it has a stable
+global object place (so it can be borrowed and injected into), while whether any
+name reaches it is decided by the ordinary binding/visibility rules of the
+enclosing region, independently of its liveness.
 
 `struct` and `inject` are the first specified members. Future candidates may
 include explicit sum construction/extension, bounded AST injection, or a

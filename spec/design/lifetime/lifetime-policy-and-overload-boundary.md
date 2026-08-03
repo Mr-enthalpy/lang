@@ -121,9 +121,12 @@ The selector is the `Val1` dimension of what was read, never type-rank. A
 value-bearing operand needs no place observation to be borrowed: for `s : symbol`
 the payload exists (`Val1(Symbol) = Member * ω`), so `s ref` is the ordinary
 "form a borrow of this value" operation, and a type-rank object that carries a
-payload behaves the same way. An explicit `symbol |> type` remains well-formed
-whenever the operand really carries a `Val1` dimension — it is simply never
-supplied implicitly. The value-side rules and the full classification are owned by
+payload behaves the same way. An explicit `E |> type` is well-formed exactly
+when `E` exposes one unambiguous type facet (`|TypeMembers(E)| = 1`), never
+merely because it carries a `Val1` dimension — the `Val1` payload is present even
+for a Symbol with no type member, and it selects only `ref`-versus-`@`, never
+type-projection applicability. The projection is also never supplied implicitly.
+The value-side rules and the full classification are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.1.1–§5.2.1.
 
@@ -149,17 +152,21 @@ A third group matches on the operand's *view-ness*, and it is tried before the
 ```text
 E : BorrowView_j
 --------------------------------------------
-E@  ⇓  Coerce_{j->@}( E )
+E@  ⇓  E                 -- Coerce_{j->@}(E) = E
 
 Target( E@ )  =  Target( E )
 ```
 
-This group is a positively stated overload, not an exemption from resolution, and
-it is required rather than derivable: a view value does carry a `Val1`, so without
-it `@@` would be dragged into the `LifetimeFact` group of §2.1, or — for a view
-held only as a temporary — would find no `CarrierPlace` and no candidate at all.
-Matching on view-ness first means `@@` never re-enters the `Val1` dispatch and
-never observes the holder slot of the intermediate view value.
+`@` is not a distinct capability in the borrow ordering, so `Coerce_{j->@}` is
+not a coercion to a new target element: on a value that is already a
+`BorrowView_j`, `@` is the identity `E@ = E`, preserving both the view's
+capability `j` and its target. This group is a positively stated overload, not an
+exemption from resolution, and it is required rather than derivable: a view value
+does carry a `Val1`, so without it `@@` would be dragged into the `LifetimeFact`
+group of §2.1, or — for a view held only as a temporary — would find no
+`CarrierPlace` and no candidate at all. Matching on view-ness first means `@@`
+never re-enters the `Val1` dispatch and never observes the holder slot of the
+intermediate view value.
 
 It is the `@` instance of the general borrow-view overlap rule:
 

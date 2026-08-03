@@ -31,10 +31,9 @@ The canonical future symbol-facet, `compile` / `meta`, pattern-owner,
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 That document supersedes the older formal return-slot split between `r = ...`
 and `r === ...`, the interim single-form `r = ...` reading (the final model
-distinguishes fresh-member, alias-member, and existing-target-write effects
-plus
-the `r;` delivery terminal), and the transitional idea that a binding
-destination determines the final `struct` owner identity.
+distinguishes fresh-member creation, existing-target write, and delivery — there
+is no alias-member event), and the transitional idea that a binding destination
+determines the final `struct` owner identity.
 
 Namespace-facet origin, source/meta construction-unit ownership, physical
 directory contribution authority, and current cross-file closure are canonical
