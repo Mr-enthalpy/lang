@@ -282,8 +282,10 @@ The language wants exactly one invocation model. The same mechanism must serve:
 
 There is intentionally no second mechanism reserved for "compile-time code."
 Compile-time behavior uses the ordinary callable framework under either
-`compile` capability (computing a `PatternValue` and rooting nothing) or `meta`
-capability (computing a `PatternValue` and rooting `M`). Policy and
+`compile` capability (computing a root-conserving `PatternValue` with no root
+authority of the compile coordinate itself) or ordinary `meta` capability
+(computing a `PatternValue` and establishing a navigable `M`). A privileged
+builtin instead follows only its member-specific owner rule. Policy and
 partial/strict demand determine whether
 the callable may execute or residualize; they do not merge the two capabilities.
 
@@ -540,8 +542,12 @@ execution capability. A successful compile-time result is not merely a
 `TypeValueId`:
 
 ```text
-compile callable -> PatternValue, rooting nothing
-meta callable    -> PatternValue, plus the authority to root and seal M
+compile callable -> PatternValue, root-conserving and with no root authority
+ordinary meta callable
+                  -> PatternValue, plus authority to establish and seal one
+                     navigable MetaInstanceRoot M
+privileged builtin
+                  -> PatternValue, with only its member-specific owner rule
 runtime callable -> runtime value
 ```
 

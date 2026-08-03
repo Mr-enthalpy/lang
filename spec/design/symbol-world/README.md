@@ -21,7 +21,7 @@ The namespace graph world model and symbol-level identity:
 - symbol-first `SymbolCell` facets and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
-- `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
+- `Val1? x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
   result normalization, derived function-object stage views, seal visibility,
   const/mut product order, compile-flow projection over ordinary call nodes,
   complete derived compile-companion objects, coarse inferred require, and

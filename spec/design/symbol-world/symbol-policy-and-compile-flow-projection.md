@@ -698,7 +698,10 @@ their storage/lowering algorithms are not implemented:
   no third category of ownerless addressable temporary.
 - A future static-materialization cache keys an ordinary compile value by its
   canonical static-value identity. A compile reference is keyed by compile
-  referent identity, not by pointee value equality.
+  referent identity, not by pointee value equality. Concretely, the borrow-view
+  leaf normal form contains
+  `⟨BorrowKind, StableTargetIdentity(Target(view))⟩`; two targets remain distinct
+  even when their current contents normalize equally.
 - Cache keying does not swallow the caller's construction context wholesale. A
   `compile` function that only injects through a `type ref` needs no ambient
   `Open` fact in its key: the parameter's canonical identity already carries the
@@ -1170,8 +1173,11 @@ callables may invoke one another in one evaluator. Their return ontologies diffe
 in authority, not in value rank:
 
 ```text
-meta    -> may establish a global symbol root and seal a MetaInstance
-compile -> ordinary PatternValue only; establishes no global root
+ordinary meta
+        -> establishes and seals one navigable MetaInstanceRoot
+compile -> ordinary PatternValue only; root-conserving, with no root authority
+privileged builtin
+        -> follows its member-specific owner rule; no generic root conclusion
 ```
 
 Both may return any ordinary `PatternValue`, including a type value, a symbol

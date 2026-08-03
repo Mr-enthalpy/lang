@@ -597,10 +597,11 @@ a stage; it does not name one.
 
 This boundary is *not* a claim that `@` lacks semantics or overloads. `@` is the
 carrier-slot observation `E@ = ObservePlace_policy(CarrierPlace(E), Value(E))`
-with two positively defined overload groups (`LifetimeFact` for objects carrying
-an internal `Val1` payload; `P ref` for effectively open pure pattern slots).
-What remains undefined is the region/origin algebra, checking order, refinement
-phase, and handoff object.
+with two positively defined base groups (`LifetimeFact` for objects carrying an
+internal `Val1` payload; `P ref` for effectively open pure pattern slots) plus
+the target-preserving overlap group for an operand that is already a borrow
+view. What remains undefined is the region/origin algebra, checking order,
+refinement phase, and handoff object.
 
 _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
 
@@ -618,8 +619,28 @@ Val1?(x)   ∈ 1 + Object
 `Val1?(x) = null` means only that the object carries no internal `Val1` payload;
 it is not a separate ontology. `Norm(x)` is the recursive normal form over all
 three components; there is no `Val1`-presence fork that drops a component.
-`ObjectPlaceId`, `SymbolId`, allocation order, and construction provenance are
-not part of `Norm(x)`. Where a complex `Val1` cannot yet be normalized
+Well-foundedness covers every owned vertical edge:
+
+```text
+Children_owned(x)
+  = Children_Val1(x) ∪ Children_Val2(x) ∪ Children_product(x)
+```
+
+Re-entering an active object through any positive owned path gives
+`NoNormalForm`, including direct or mutual `Val1` cycles. Horizontal borrow
+targets are not owned recursion edges.
+
+An ordinary object's `ObjectPlaceId`/carrier, `SymbolId`, allocation order, and
+construction provenance are not part of its normal form. A borrow view is
+different: `Target(Borrow_k(q))` is semantic content of that value, so its leaf
+normal form includes `⟨BorrowKind_k, StableTargetIdentity(q)⟩` without recursing
+into the referent. Two views of distinct targets remain distinct even when the
+targets currently contain equal values.
+
+Pattern-specific normalization may quotient a representation carrier. In
+particular, `Val1(Symbol) = Member * omega` is physically ordered but
+`Norm_Val1?^P_symbol = Multiset{Norm(member_i)}`, so insertion order is not
+Symbol identity. Where another complex `Val1` cannot yet be normalized
 structurally, an opaque summary is a safe under-merge, never a definition of
 identity.
 
@@ -643,12 +664,15 @@ On a pure pattern slot the selected candidate is
 never ask for it. A freshly computed temporary supplies no carrier place, so no
 `@` candidate applies to it.
 
-`@` is **not** a general `PlaceOf(E)`. It has exactly two positively defined
-overload groups with disjoint premises. For `Val1?(x) ≠ null` — a complete
+`@` is **not** a general `PlaceOf(E)`. It has two positively defined base
+overload groups with disjoint premises, plus the target-preserving overlap for
+an existing borrow view. For `Val1?(x) ≠ null` — a complete
 `⟨Val1, P, Val2⟩` object — `@` takes that object's lifetime, yielding a
 `LifetimeFact` at the lifetime policy stage; that is a fact, not a borrow, and it
 is unaffected by the narrowing of the other group. For `Val1?(x) = null` with
-`EffectiveOpen(x, context)` it yields `P ref`. The second group is why `@`
+`CarrierPlace(E) = q` and `EffectiveOpen(q, context)` it yields `P ref` with
+`Target(E@) = q`. `Val1?(Value(E))` selects the group; Open is checked on the
+carrier that becomes the referent, not on the read value. The second group is why `@`
 exists: an ordinary read of a pure pattern slot selects the pattern value and so
 hides the carrier slot, and `ref` has no basis for guessing otherwise. There is
 deliberately no compile-stage borrow-producing `@` candidate for a value-bearing
@@ -695,7 +719,17 @@ For `let t: type = uint8`, `t ref` is `uint8 ref` (a correct borrow of what was
 read) and only `t@` yields `type ref`.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
-`SymbolId` or `PlaceId`, and its member set is not silently that of its target.
+`SymbolId`, and its member set is not silently that of its target. It does carry
+the stable semantic identity of its referent as value content:
+
+```text
+Norm(Borrow_k(q)) contains ⟨BorrowKind_k, StableTargetIdentity(q)⟩
+```
+
+That is why assignment, `rebind`, escape/Open-region checks, and compile
+reference caching distinguish views of `q1` and `q2` even when the pointee
+values are equal. The target is horizontal and remains a normalization leaf;
+its current contents are not recursively owned by the view.
 
 Applying a borrow operator to an existing view is **well-formed**, and that
 overlapping overload is precisely what makes borrowing non-stacking:
@@ -763,19 +797,23 @@ _See also: Borrow view, `@`, Lifetime Policy Boundary, `type ref`._
 
 ## EffectiveOpen
 
-The premise that a construction target is still extensible at a given context:
+The premise that a construction target coordinate (a place or construction
+root) is still extensible at a given context:
 
 ```text
-EffectiveOpen(x, c) = StateOpen(x)
-                    ∧ ConstructionAnchorCompatible( owner(x), c )
+EffectiveOpen(q, c) = StateOpen(q)
+                    ∧ ConstructionAnchorCompatible( owner(q), c )
 ```
 
 The state transition is one-way: `Open -> Frozen`, never `Frozen -> Open`.
 Global lifetime does not imply `EffectiveOpen`. Inside a meta instance body the
 ordinary freezing events do not fire; sealing happens only at the meta return
-stage. `EffectiveOpen` is a premise of the `P ref` group of `@` and of
+stage. In ordinary static control, only actual control dependencies and
+identity/version merges freeze; mere `LiveAcross` is not a dependency. A
+residual-runtime fork remains a separate closing event for carried open
+material. `EffectiveOpen` is a premise of the `P ref` group of `@` and of
 `inject` input validity, so violating it produces "no applicable overload",
-not a late rejection. `Open_Γ(x)` is the same fact written in judgment form, with
+not a late rejection. `Open_Γ(q)` is the same fact written in judgment form, with
 `Γ` supplying the context argument.
 
 Canonical owner:
@@ -794,6 +832,7 @@ material to a new type:
 inject : ( type | type ref ) x ChildPatternMaterial ⇀ type
 
 Inject(old, Δ) ⇓ new
+Root(new) = Root(old)
 ```
 
 `Inject` does not modify `old`, does not install a namespace delta, and does not
@@ -1366,17 +1405,29 @@ _See also: ClosureAST, ClosureObject._
 
 ## Meta-function
 
-A callable whose entry executes with `P2 = meta` and constructs a
-`SymbolConstruction` under symbol-world construction capability. An
-ordinary user meta-function receives rank-constrained semantic values, creates
-an ordinary canonical `MetaInstanceScope`, and has no unrestricted AST access.
+A callable whose entry executes under meta construction capability. For an
+ordinary meta function, the law is scoped to one root kind:
+
+```text
+F ∈ OrdinaryMetaFunction
+P2(F) = meta
+  <=> EstablishNavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))
+```
+
+An ordinary user meta-function receives rank-constrained semantic values,
+creates that canonical navigable `MetaInstanceScope`, and has no unrestricted
+AST access. The biconditional excludes alternate ways to create an ordinary
+navigable `M`; it does not claim that `MetaInstanceRoot` is the only stable root
+kind in the language.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
 subclass. A member such as `struct` or `inject` may accept one specifically
 bounded Normalized-AST/pattern carrier and use a member-specific scope/owner
-rule. Users may call these objects but cannot define new privileged members;
-the privilege does not imply text substitution, parser re-entry, or a general
-macro system.
+rule. `struct` establishes or selects its stable lexical root from input
+navigation plus ambient scope; `inject` establishes no root and preserves the
+input root. Any later privileged member must declare its own owner rule. Users
+may call these objects but cannot define new privileged members; the privilege
+does not imply text substitution, parser re-entry, or a general macro system.
 
 > **Distinction**: meta execution capability is not AST privilege. Names such
 > as `match` and `struct` remain ordinary parser-level names; parser code does

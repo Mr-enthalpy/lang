@@ -510,12 +510,15 @@ and later compile/meta construction callables.
 The final boundary is sharper:
 
 ```text
-compile -> PatternValue, rooting nothing
-meta -> PatternValue, plus the authority to root and seal M
-let binding/injection -> NamespaceDelta atomic install
+compile -> PatternValue, with root conservation and no root authority of its own
+ordinary meta -> PatternValue, plus authority to establish and seal one
+                 navigable MetaInstanceRoot M
+privileged builtin -> PatternValue under its member-specific owner rule
+let binding / namespace contribution -> NamespaceDelta atomic install
 ```
 
-The `compile` / `meta` difference is world authority, not result rank; see
+The `compile` / ordinary-`meta` difference is world authority over a navigable
+`MetaInstanceRoot`, not result rank; see
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
 §4.1.
 

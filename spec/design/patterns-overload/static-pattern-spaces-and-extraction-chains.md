@@ -215,7 +215,7 @@ A `Val1` leaf is not a `Pattern`, and a `Pattern` is not a `Val1` leaf. They are
 layers of the same symbol flow, not separate semantic worlds:
 
 ```text
-Symbol = Val1 x Pattern x Val2
+Symbol = Val1? x Pattern x Val2
 ```
 
 Pattern matching may directly read the symbol's `Pattern` layer. It does not

@@ -88,11 +88,13 @@ lifetime observation was always what `@` meant on a value-bearing operand.
 ### 2.2 Pure pattern slots: `P ref`
 
 ```text
-Val1?(x) = null
-policy   ∈ { compile, lifetime policy }
-EffectiveOpen(x, current_context)
+Val1?( Value(E) ) = null
+CarrierPlace(E) = q
+policy ∈ { compile, lifetime policy }
+EffectiveOpen(q, current_context)
 --------------------------------------------
-CarrierPlace(E) × Value(E)  ->  P ref
+E@ : P ref
+Target(E@) = q
 ```
 
 Observing the carrier slot of a pure pattern value yields a reference to that
@@ -130,15 +132,21 @@ The value-side rules and the full classification are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.1.1–§5.2.1.
 
+`Val1?(Value(E))` selects the overload group; it does not select the object on
+which openness is checked. Because the result refers to `q = CarrierPlace(E)`,
+`EffectiveOpen` is checked on `q`, not on the read value `Value(E)`. For
+`let t: type = uint8`, the premise is therefore `Open_Γ(CarrierPlace(t))`, not
+openness of the globally resident `uint8` object.
+
 The `EffectiveOpen` premise is a real premise, not a post-hoc permission check.
-When the target is no longer effectively open at the observation context, this
+When the carrier target is no longer effectively open at the observation context, this
 group has **no applicable candidate**; the failure is "no matching overload for
 `@`", not "`@` succeeded and then the result was rejected".
 
 Consequently:
 
 ```text
-GlobalLifetime(x) does not imply EffectiveOpen(x)
+GlobalLifetime(q) does not imply EffectiveOpen(q, current_context)
 ```
 
 A pattern value that is reachable for the whole program is still not observable

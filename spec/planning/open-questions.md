@@ -97,8 +97,8 @@ track:
   `ValidRegion(type share) = LifetimeRegion(Target)`. A `type share` may therefore
   leave the `Open` window while still being unable to outlive the target.
 - External stable values are readable and observable through a borrow view but
-  are not extension targets: `GlobalLifetime(x)` does not imply
-  `EffectiveOpen(x)`.
+  are not extension targets: `GlobalLifetime(q)` does not imply
+  `EffectiveOpen(q, c)` for a carrier/target coordinate `q`.
 - Inner lexical symbols cannot be exposed as longer-lived extension targets;
   storing a view of one outside its observation region is an escape.
 - Type values can be equal even when their binding symbols differ.
@@ -170,13 +170,15 @@ Still open after this correction:
   observation `Addr(Norm_type)`; what remains open is the root representation
   itself and the normal form of value payloads that currently
   keep an identity-stable opaque form.
-- Exact representation of symbol/place identity.
+- Exact representation of symbol/place identity and
+  `StableTargetIdentity(q)`. The representation is open; the semantic
+  requirement that distinct borrow targets normalize distinctly is closed.
 - Exact future lowering of generic/meta-generated type expressions such as
   `(int Vec::std)`.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of writability and extension-eligibility checking.
-- Source-level `let f::U` against an already installed rebinding carrier: the
+- Source-level `let f::U` against an already installed type carrier/place: the
   associated-extension entry point currently requires a still-open
   construction and resolves the target object from the constructed Pattern.
 - Exact future implementation of borrow-view evaluation (`ref` / `share` / `@` /
@@ -455,7 +457,7 @@ complete choice empty + runtime accepted => construct runtime branch
 compiler mandates static -> runtime; callable owns legal mutability endpoints
 compile -> runtime = new runtime object, not lifetime extension
 addressable runtime value => ordinary owner/place
-compile-ref cache identity = referent identity, not pointee equality
+compile-ref cache identity = StableTargetIdentity(Target(ref)), not pointee equality
 generated [[global]] storage != source-visible NamespaceGraph mutation
 materialization place != Pattern owner
 ref/share/rebind are explicit mechanical operations, not Policy-demand repair
@@ -701,12 +703,14 @@ here so they are not mistaken for design decisions:
   ordinary (non-meta) construction is defined in
   `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
   §12.1.2 and covers `UseForVal1`, use as a meta argument, entry into a global
-  normalized structure, any non-meta control-flow branch / join / loop boundary,
-  and leaving the construction interval of the owning in-place closure. The
-  current API neither enumerates all five nor derives them from real
-  control-flow analysis; the existing "compile-only branching is a no-op" call
-  path is an implementation shortcut, not a language rule that compile-stage
-  branching is transparent to freezing.
+  normalized structure, actual dependencies/identity merges of non-meta static
+  control, values carried across a residual-runtime fork, and leaving the
+  construction interval of the owning in-place closure. Mere `LiveAcross` over
+  an unrelated compile-only branch/join/loop is not a freezing dependency. The
+  current API does not derive `Dependencies(control)` or distinguish every
+  static edge from a residual-runtime fork through real control-flow analysis;
+  its coarse `note_residual_runtime_fork_or_end` event is implementation debt,
+  not a broader language rule.
 - The privileged `inject` built-in meta function does not exist yet.
   `let member::target = RHS;` is only associated-member installation
   (never a Pattern-structure write); the end-to-end equivalence
@@ -771,7 +775,7 @@ them explicitly:
 
 3. **Installed-carrier extension / `type ref` targets / writability
    need explicit owners.** Source-level `let f::U` against an already
-   installed rebinding carrier, extension through a `type ref` view, and
+   installed type carrier/place, extension through a `type ref` view, and
    writability / extension-eligibility checking exist today only as substrate
    (also listed in the general future-work pool above). The next stage must
    assign them explicit scope rather than leaving them pooled. Note that per the
@@ -1016,27 +1020,42 @@ documents named in each line.
 
 - Object ontology and normal form: `Object x = ⟨Val1?(x), P(x), Val2(x)⟩` with
   `Val1?(x) ∈ 1 + Object`, and `Norm(x)` recursive over all three components.
-  There is no `Val1`-presence ontology fork, and `ObjectPlaceId` / `SymbolId` /
-  allocation order / provenance are not identity material.
-  (`symbol-policy-and-compile-flow-projection.md`)
+  There is no `Val1`-presence ontology fork. Well-foundedness covers
+  `Children_Val1 ∪ Children_Val2 ∪ Children_product`, so direct/mutual `Val1`
+  cycles and all other owned cycles have no normal form. An ordinary object's
+  carrier/ObjectPlace, `SymbolId`, allocation order, and provenance are not
+  identity material; a borrow view's `StableTargetIdentity(Target(view))` is
+  value content and is present in its leaf normal form.
+  (`type-values-places-and-borrow-views.md`)
 - Policy is an observation edge, not an intrinsic field:
   `View_Γ(x) = ⟨x, Pv:Pp, capability_Γ(x)⟩`. `Val1?(x) = null` does not imply
   `Pv = absent`, and there is no central const/mut propagation pass — only member
   overloads and `delete`. (`symbol-policy-and-compile-flow-projection.md`)
 - A Symbol is an ordinary PatternValue with at most one type member;
   `Val1(Symbol) = Member * ω`. The cluster carrier is a transitional same-name
-  synthesis role, not a distinct ontology. The meta return seal validates that
-  same *at most one* bound and skips type promotion when no type member exists.
+  synthesis role, not a distinct ontology. Although the carrier is ordered,
+  `Norm_Val1?^P_symbol = Multiset{Norm(member_i)}`, so insertion order is not
+  Symbol identity. The meta return seal validates the same *at most one* bound
+  and skips type promotion when no type member exists.
   (`symbol-first-meta-construction-and-pattern-injection.md`)
 - `compile` may return any ordinary PatternValue (including `type`, `symbol`,
   `type ref`, `type share`) under root conservation
   `Roots(Output) ⊆ Roots(Arguments) ∪ Roots(GlobalConstants) ∪
   LexicallyDeclaredStableRoots`. (`symbol-policy-and-compile-flow-projection.md`)
+- For an ordinary meta callable, `P2(F) = meta` is biconditional with
+  `EstablishNavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))`. The
+  exclusivity covers that root kind only. `struct` establishes/selects its
+  lexical root from input navigation and ambient scope; `inject` establishes no
+  root and preserves `Root(output) = Root(input)`; every other privileged
+  builtin must declare its own owner rule.
+  (`symbol-first-meta-construction-and-pattern-injection.md` §4.1, §4.8)
 - Meta body transparency: a `MetaInstance` is globally live and unsealed on
   entry, its body does not fire freezing events, and sealing happens only at the
   return stage. (`symbol-first-meta-construction-and-pattern-injection.md`)
-- `EffectiveOpen` and the one-way `Open -> Frozen` transition, with the five
-  ordinary freezing events.
+- `EffectiveOpen(q, c)` and the one-way `Open -> Frozen` transition. For
+  non-meta static control, `Freeze*(Dependencies(c))`; mere `LiveAcross(c)` is
+  not a dependency. Values carried across a residual-runtime fork and values
+  leaving their ordinary owner interval still freeze.
   (`symbol-first-meta-construction-and-pattern-injection.md` §12.1)
 - Borrow views: `ref` / `share` / `@` / `rebind`, and `OwnedClosure` excluding view
   edges. `ref` / `share` consume `Read(E)`, which yields a complete
@@ -1044,14 +1063,18 @@ documents named in each line.
   `CarrierPlace(E)`. Borrowing is non-stacking *because* the overlapping overloads
   exist: `Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))` preserves the target,
   `ref share` is an admitted weakening, and only `share ref` has no candidate.
-  `rebind` retargets from a place and is not `Ref(Read(E))`.
+  `rebind` retargets from a place and is not `Ref(Read(E))`. The target is
+  horizontal rather than owned recursion, but
+  `Norm(Borrow_k(q))` includes `StableTargetIdentity(q)`.
   (`type-values-places-and-borrow-views.md`)
-- `@` has two positively defined overload groups and is an ordinary overloaded
-  operation, not a general `PlaceOf(E)`; the lifetime boundary restricts
+- `@` has two positively defined base groups plus the existing-view overlap and
+  is an ordinary overloaded operation, not a general `PlaceOf(E)`; the lifetime boundary restricts
   lifetime *rules*, not `@`. Whether `ref` or `@` applies is decided by the
   presence of a `Val1` payload, not by type-rank. On a complete
   `⟨Val1, P, Val2⟩` object `@` takes that object's lifetime; that group is
-  unchanged by the narrowing of the borrow-producing group.
+  unchanged by the narrowing of the borrow-producing group. In the pure-slot
+  group `Val1?(Value(E)) = null` selects the group, while
+  `Open_Γ(q)` is checked on `q = CarrierPlace(E)`, the referent of the result.
   (`lifetime/lifetime-policy-and-overload-boundary.md`)
 - `type ref` is capability-equivalent to `⟨Place, type, OpenWitness⟩`, so
   `Γ ⊢ r : type ref` implies `Open_Γ(Target(r))` and its holdable interval is the
@@ -1059,6 +1082,7 @@ documents named in each line.
   (`type-values-places-and-borrow-views.md` §5.5)
 - `inject` is a pure function `( type | type ref ) x ChildPatternMaterial ⇀ type`
   with total failure; it is not in-place mutation and needs no write capability.
+  It establishes no root and preserves `Root(output) = Root(input)`.
   Its two overloads take the `Open` fact from different places: a by-value `type`
   from the evaluation context, a `type ref` from the view itself. Assignment
   checks LHS writability, RHS Pattern conformance, and lifetime capability —

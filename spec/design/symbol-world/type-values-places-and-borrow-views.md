@@ -143,16 +143,30 @@ Keeping these apart is what prevents `Val1?` from being re-read as an implicit
 kind classifier.
 
 The canonical identity of an object is the recursive normal form over **all
-three** components:
+three** components. `Val1` normalization is indexed by the host Pattern because
+some built-in carriers have a representation order that their Pattern does not
+admit as semantic identity:
 
 ```text
-Norm(x)         = ⟨ Norm_Val1?(Val1?(x)), Norm_P(P(x)), Norm_Val2(Val2(x)) ⟩
-Norm_Val1?(null)= null
-Norm_Val1?(v)   = Norm(v)
-Norm_Val2(V)    = Map_name( Norm_Cluster(V[name]) )
-Norm_Cluster(C) = ⟨ Norm_pureP(C.pureP)?, Multiset{ Norm_val(v) } ⟩
-Norm_pureP(x)   = Norm(x)
+Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
+                                Norm_P(P(x)),
+                                Norm_Val2(Val2(x)) ⟩
+Norm_Val1?^P(null)         = null
+Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
+Norm_Val1?^P_symbol(ms)    = Multiset{ Norm(member_i) | member_i in ms }
+Norm_Val2(V)               = Map_name( Norm_Cluster(V[name]) )
+Norm_Cluster(C)            = ⟨ Norm_pureP(C.pureP)?,
+                                Multiset{ Norm_val(v) } ⟩
+Norm_pureP(x)              = Norm(x)
 ```
+
+The `P_symbol` clause is a Pattern-specific quotient: `Member * omega` may use
+an ordered dynamic array as its carrier, but insertion position is not Symbol
+identity. Multiplicity is retained by the normal form; whether equal duplicate
+members are rejected at formation or later overload validation is a separate
+well-formedness decision. In particular, inserting `a` then `b` and inserting
+`b` then `a` produce the same Symbol normal form when the normalized member
+multisets are equal.
 
 There is no case split in which one component is ignored. Earlier revisions
 normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
@@ -163,25 +177,43 @@ retained only as the name of `Norm(x)` restricted to objects with
 `Val1?(x) = null`, and its two-component spelling is shorthand for the
 three-component form with a `null` first slot.
 
-Carrier coordinates never enter the normal form:
+An ordinary object's incidental carrier/residency coordinates never enter its
+normal form. A borrow view is the deliberate exception in kind, not in
+principle: its target coordinate is content of the borrow-view value itself and
+is covered below.
 
 ```text
-ObjectPlaceId  ∉ Norm(x)
-SymbolId       ∉ Norm(x)
-allocation order ∉ Norm(x)
-provenance     ∉ Norm(x)
+CarrierPlace(ordinary object)         ∉ Norm(ordinary object)
+ResidencyObjectPlaceId(ordinary object) ∉ Norm(ordinary object)
+SymbolId                              ∉ Norm(ordinary object)
+allocation order                     ∉ Norm(ordinary object)
+provenance                           ∉ Norm(ordinary object)
 ```
 
-The recursion is **well-founded finite recursion**: every traversed `Val2`
-child edge must descend toward a leaf. The leaf boundary is not one special
-case but the general condition
+`ResidencyObjectPlaceId` names the ordinary object's `ObjectPlaceId` only in
+its role as the coordinate from which content was observed.
+
+The recursion is **well-founded finite recursion** over every owned vertical
+edge that a component normalizer traverses, not only over `Val2`:
 
 ```text
-L = { x | Children_V(x) = ∅ }
+Children_owned(x)
+  = Children_Val1(x)
+  ∪ Children_Val2(x)
+  ∪ Children_product(x)
 ```
 
-where `Children_V(x)` is the set of object children that `Val2` normalization
-may continue descending into. `()` is the standard leaf:
+`Children_product` includes owned product/aggregate elements reached while
+normalizing a component. These three sets exhaust owned-object descent in the
+current normal form; any future component rule that introduces another owned
+object edge must add it to `Children_owned` before that rule is canonicalizable.
+The leaf boundary is the general condition
+
+```text
+L = { x | Children_owned(x) = ∅ }
+```
+
+`()` is the standard leaf:
 
 ```text
 Val2(()) = ∅
@@ -189,32 +221,57 @@ Norm(()) = ⟨ null, Norm_P(P_FunctionItem), ∅ ⟩
 ```
 
 Other typical leaves are terminal built-in type objects and associated pure-P
-objects whose concrete object carries no further `Val2` expansion — an
+objects whose concrete object carries no further owned expansion — an
 associated type is not a special recursion rule, it is an ordinary pure P that
 happens to have run out of children. Borrow views (`ref` / `share`) are also
-leaves, not back references:
+owned-recursion leaves, not back references, but the target identity they carry
+is part of their leaf value:
 
 ```text
-Children_V(t ref)   = ∅
-Children_V(t share) = ∅
-PatternOf(t ref)    = t ref        (extraction still matches the form)
+Norm( Borrow_k(q) )
+  = ⟨ ⟨ BorrowKind_k, StableTargetIdentity(q) ⟩,
+      Norm_P(P(Borrow_k(q))),
+      ∅ ⟩
+
+Children_owned(t ref)   = ∅
+Children_owned(t share) = ∅
+PatternOf(t ref)        = t ref        (extraction still matches the form)
 ```
+
+`StableTargetIdentity(q)` is the stable semantic identity of the referent
+coordinate. Its final representation remains an implementation choice, but it
+must distinguish `q1 != q2` even when the two referents currently contain
+equal values. It is not the borrow view's incidental holder/carrier place, and
+normalization does not recurse into the current contents of `q`.
 
 The `t` in `(t ref)` is pattern material of the built-in operation that
 produced the value, not a vertical object edge inside the produced value.
 Borrow-view extraction is **horizontal, not vertical**: pattern decomposition
-never creates a `Val2` child edge, so `extractable` does not imply
+never creates an owned child edge, so `extractable` does not imply
 `recursively traversable`, and `t → (t ref) → t` never exists as an object
 cycle.
 
-`PlaceId` is **not** identity material. A place is only the coordinate from
-which an object's `Val2` is observed:
+This separates two rules that must not be merged:
+
+```text
+CarrierPlace(ordinary object) ∉ Norm(ordinary object)
+Target(Borrow_k(q))           ∈ Norm(Borrow_k(q))
+```
+
+The second coordinate is not provenance about where an ordinary value happened
+to be stored; it is the observable referent identity of the borrow-view value.
+Assignment, `rebind`, escape checking, `OpenRegion`, and compile-reference cache
+identity all depend on that distinction.
+
+For an ordinary by-value object, its `PlaceId` is **not** identity material. A
+place is only the coordinate from which that object's `Val2` is observed:
 
 ```text
 place(x) ⟼ Val2_x
 ```
 
-so identity follows the observed content in both directions:
+so ordinary type-object identity follows the observed content in both
+directions:
 
 ```text
 P_x = P_y ∧ Norm_Val2(Val2_x) = Norm_Val2(Val2_y) ⇒ Norm_type(x) = Norm_type(y)
@@ -226,6 +283,10 @@ when the two observations are of one object through one place at two different
 times. A list of allocated value ids under each name is not a normal form:
 allocation order is not semantic content, so the walk must resolve each name to
 its cluster symbol and normalize that symbol's own members.
+
+This exclusion does not erase `StableTargetIdentity(place)` from a borrow-view
+normal form. In the ordinary object case a place is an observation source; in
+the borrow-view case the target is what the value denotes.
 
 This is what makes an open construction observable at all. Given
 
@@ -266,12 +327,24 @@ values stay distinct. This is a safe under-merge, never a claim of a stronger
 equivalence than the implementation actually decides, and never a licence to
 treat `Val1` as excluded from the normal form: the target rule is that `Val1?`
 normalizes recursively like every other component, and the opaque leaf is a
-placeholder for content normalization that is not yet implemented. A cyclic
-`Val2` (`let loop::t = t;`) has **no normal form**: re-entering an object still
-on the active recursion stack proves the well-foundedness violation and is a
-hard semantic error. Whether cyclic objects are ever admitted is a separate,
-explicit future language decision — it does not follow from the normalizer's
-ability to detect the cycle.
+placeholder for content normalization that is not yet implemented. It does not
+override a defined Pattern-specific quotient such as `P_symbol` above.
+
+Re-entering any object still on the active recursion stack through any positive
+owned path proves a well-foundedness violation:
+
+```text
+x ∈ ActiveStack
+∧ x ∈ Children_owned+(x)
+--------------------------------
+NoNormalForm(x)
+```
+
+Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
+`Val2` such as `let loop::t = t;` all have **no normal form**. A finished shared
+acyclic subtree remains valid DAG reuse. Whether cyclic objects are ever
+admitted is a separate, explicit future language decision — it does not follow
+from the normalizer's ability to detect the cycle.
 
 ## 3. Value judgment versus place judgment
 
@@ -1314,8 +1387,8 @@ migration of remaining first-order TypeValueId comparison consumers
 construction-unit ownership enforcement
 ```
 
-The retired alias-forwarding model (`AliasChain`, symbol/place forwarding,
-alias-forwarded extension places, installed rebinding carriers) is not
+The retired alias-forwarding model (`AliasChain`, symbol/place forwarding, and
+alias-forwarded extension places) is not
 implementation debt. It is removed from the target semantics and must not be
 revived as future work.
 

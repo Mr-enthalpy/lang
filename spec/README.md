@@ -161,7 +161,7 @@ into contracts, moved into planning, or archived into history. Start at
 | `spec/design/patterns-overload/` | Pattern normalization, occurrence roles, argument/parameter shapes, first-order type-value candidate adaptation, applicability, specificity, the full overload-resolution vision, static pattern spaces, and extraction chains. |
 | `spec/design/meta-invocation/` | Policy-governed invocation: heterogeneous value candidates, canonical pair handoff, partial vs strict demand, residualization, and policy-staged pattern matching. |
 | `spec/design/policy-capability/` | Mapping from current flat policy metadata to canonical `Pv:Pp`, contextual P1/P2 elaboration, seal boundaries, and future orthogonal dimensions; no final `P3`. |
-| `spec/design/lifetime/` | Canonical owner of `@`: its two positively defined overload groups (`LifetimeFact` and `P ref`), the escape check, and the boundary placing lifetime rules after completed first-order type/compile overload selection. Region/origin algebra and checking remain future work. |
+| `spec/design/lifetime/` | Canonical owner of `@`: its two positively defined base groups (`LifetimeFact` and carrier-target `P ref`) plus the target-preserving existing-view overlap, the escape check, and the boundary placing lifetime rules after completed first-order type/compile overload selection. Region/origin algebra and checking remain future work. |
 | `spec/design/control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only |
 | `spec/design/mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes with no loop core. |
 

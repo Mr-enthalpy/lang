@@ -31,7 +31,7 @@ This document builds on, without replacing:
   for namespace-facet origin, source/meta construction ownership, physical
   authority, and cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
-  `Val1 x Pattern x Val2`, `Pv:Pp`, binding `P1`, result `P2`, compile-flow
+  `Val1? x Pattern x Val2`, `Pv:Pp`, binding `P1`, result `P2`, compile-flow
   projection, derived compile companions, match staging, and automatic require.
 
 ## 1. Canonical Boundaries
@@ -50,11 +50,12 @@ compile-time value computation:
   compile -> any ordinary PatternValue
     subject to the root-conservation law of §4.2
 
-meta symbol construction:
-  meta -> MetaInstance(F, Norm(args)) -> sealed global symbol root
+ordinary meta symbol construction:
+  meta -> MetaInstance(F, Norm(args))
+       -> sealed navigable MetaInstanceRoot
 
 graph mutation:
-  let binding/injection -> NamespaceDelta installation
+  let binding / namespace contribution -> NamespaceDelta installation
 ```
 
 Consequences:
@@ -70,14 +71,18 @@ Consequences:
    What it may not do is create a new global root: it registers no global
    Symbol, produces no nominal type lacking a normal global root, and never
    promotes a local temporary pattern value into a global type (§4.2).
-4. `meta` is static evaluation **plus** world authority, and that authority is
-   what `P2 = meta` means: every meta invocation establishes a globally live but
-   unsealed `MetaInstance` root on entry and no other coordinate may, so
-   `P2 = meta <=> Establish(M)`. The return stage seals it (§4.1, §4.3). The
-   authority says nothing about the declared return shape.
-5. `struct` and `inject` are pure functions producing uninstalled values.
-   Neither operation installs a graph delta and neither mutates its input.
-6. A `let` binding or injection path chooses the installation place. It does
+4. For an ordinary meta callable, `meta` is static evaluation **plus** the
+   authority to establish one navigable `MetaInstanceRoot`. Every such
+   invocation establishes that globally live but unsealed root on entry, and no
+   other ordinary callable coordinate may establish or seal that *kind* of
+   root. The return stage seals it (§4.1, §4.3). The authority says nothing
+   about the declared return shape or about member-specific stable owner rules
+   of privileged built-ins (§4.8).
+5. In target semantics, `struct` and `inject` are referentially pure functions
+   producing uninstalled values. Neither operation installs a graph delta and
+   neither mutates its input. A current registry allocation used to represent a
+   result is non-semantic substrate bookkeeping, not an observable effect.
+6. A `let` binding or installation path chooses the installation place. It does
    not retroactively choose or reroot the pattern owner carried by the value.
 
 ## 2. Symbol-First Resolution and Facets
@@ -531,24 +536,34 @@ ReturnShape ::= Unit | SingleType | SingleVal | SymbolValue
 Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
-The declared `ReturnShape` decides the shape of the returned value. World
-authority is not a fourth ontology axis; it *is* the `meta` coordinate of `P2`,
-because `meta` means static evaluation **plus** world authority. So root
-authority has exactly one positive source, and it is biconditional:
+The declared `ReturnShape` decides the shape of the returned value. For an
+`OrdinaryMetaFunction`, authority over a navigable `MetaInstanceRoot` is not a
+fourth ontology axis; it is the `meta` coordinate of `P2`. The law is explicitly
+scoped to that root kind and callable class:
 
 ```text
-P2(F) = meta  <=>  Establish( MetaInstance(F, Norm(args)) )
+F ∈ OrdinaryMetaFunction
+P2(F) = meta
+  <=> EstablishNavigableMetaInstanceRoot( MetaInstance(F, Norm(args)) )
 
 P2(F) = meta  !=>  ReturnShape(F) = SymbolValue
 ```
 
 Read left to right, the first law is the *grant*: entering any `P2 = meta`
-invocation establishes `M` as a globally live unsealed root (§4.3), and sealing
-that root at the return stage is the ordinary end of that same invocation. Read
-right to left, it is the *exclusivity*: no other coordinate, and no `compile`
-callable, may establish or seal a root. `SealsAMetaInstanceRoot(F)` is therefore
-not an independent predicate needing its own source — it is a spelling of
-`P2(F) = meta`, and no separate `RootAuthority` coordinate is introduced.
+ordinary-meta invocation establishes `M` as a globally live unsealed navigable
+root (§4.3), and sealing that root at the return stage is the ordinary end of
+that same invocation. Read right to left, it is the *exclusivity*: no other
+ordinary callable coordinate, and no `compile` callable, may establish or seal
+a `NavigableMetaInstanceRoot`. `SealsNavigableMetaInstanceRoot(F)` is therefore
+not an independent predicate needing its own source — within the stated domain
+it is a spelling of `P2(F) = meta`, and no separate ordinary-meta
+`RootAuthority` coordinate is introduced.
+
+This exclusivity does not claim that every stable owner/root in the language is
+a `MetaInstanceRoot`. Lexical declarations and privileged built-ins may
+establish, select, or preserve other root kinds only through their separately
+specified owner rules (§4.8). They cannot use those rules to manufacture an
+ordinary navigable `M`.
 
 What the second law denies is only the *shape* inference. A meta callable may
 legally return `SingleType`, `SingleVal`, or `Unit` while still having rooted
@@ -766,11 +781,14 @@ ownership. This owner is not a meta-instance owner such as
 
 ### 4.3 Ordinary `meta`
 
-`meta` is symbol-level staging. A meta invocation is the only construction that
-establishes a new global symbol root, and by §4.1 every meta invocation does so:
+`meta` is symbol-level staging. An ordinary meta invocation is the only
+construction that establishes a new navigable `MetaInstanceRoot`, and by §4.1
+every ordinary meta invocation does so:
 
 ```text
-P2(F) = meta  =>  M = MetaInstance(F, Norm(args))
+F ∈ OrdinaryMetaFunction ∧ P2(F) = meta
+  => M = MetaInstance(F, Norm(args))
+  ∧ EstablishNavigableMetaInstanceRoot(M)
 ```
 
 Entering the invocation immediately creates `M` as a **globally live but unsealed
@@ -1216,7 +1234,20 @@ finite `n`, and that `n` is a property of the value, not of the type — two
 `T * omega` values of different lengths still have the same type identity. Both
 forms are ordered (position `0 .. len-1` is meaningful) and neither promises a
 machine-contiguous layout; contiguity, if any, is a later representation choice,
-not part of this pattern-value identity. The initial `Member * omega` carrier
+not part of this carrier representation.
+
+The Symbol Pattern applies an unordered identity quotient to that carrier:
+
+```text
+Norm_Val1?^P_symbol(Member * omega value)
+  = Multiset{ Norm(member_i) }
+```
+
+Thus array position and insertion order do not enter Symbol identity. The
+multiset retains multiplicity; duplicate-member rejection may occur during
+formation or overload validation without changing the quotient. In particular,
+`s += a; s += b;` and `s += b; s += a;` normalize equally when their member
+multisets are equal. The initial `Member * omega` carrier
 for symbol members is supplied by a built-in atom; the same public semantics may
 later be described by ordinary normalized source once the surface stabilizes.
 
@@ -1275,27 +1306,40 @@ inject  ->  type
 struct  ->  the ordinary pattern value its own declaration states
 ```
 
-Unlike an `OrdinaryMetaFunction`, an individual built-in may define a special
-scope/owner rule and need not create an independently navigable
+Unlike an `OrdinaryMetaFunction`, an individual built-in defines a
+member-specific scope/owner rule and does not create an independently navigable
 `MetaInstanceScope M`. Users may call compiler-provided members but cannot
 define new privileged AST meta functions. Privilege is member-specific: one
 built-in's accepted carrier and bounded transformation do not imply a general
 macro system or arbitrary AST rewriting.
 
-This does not contradict the bidirectional law `P2 = meta <=> Establish(M)` of
-§1. That law governs the *navigable* `MetaInstance` root of an ordinary meta
-callable: `P2 = meta` is exactly the authority to establish one such `M`, and no
-other coordinate may establish one. A privileged built-in does not take that
-authority and does not produce a navigable `M`; its `special_owner_rule` /
-`special_scope_rule` is a separately declared rooting authority, so the
-exclusivity of the law is preserved rather than duplicated. Concretely, that rule
-roots the produced object in the navigation chain strung together by the
-opaque in-place-closure function-object `Self` at the construction site, not in
-an external `PatternValue` and not in a later binding destination. The object it
-yields is **globally live but not necessarily globally visible**: it has a stable
-global object place (so it can be borrowed and injected into), while whether any
-name reaches it is decided by the ordinary binding/visibility rules of the
-enclosing region, independently of its liveness.
+The ordinary-meta biconditional in §4.1 governs only a navigable
+`MetaInstanceRoot`; it does not claim authority over every stable owner/root in
+the language. Built-in root behavior is therefore split by member rather than
+inferred from the privilege class:
+
+```text
+ordinary meta:
+  establish NavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))
+
+struct:
+  establish or select StructLexicalRoot(input_navigation, ambient_scope)
+  according to §7.2; establish no navigable M
+
+inject:
+  establish no root
+  Root(output) = Root(input)
+
+other privileged built-in:
+  must declare its own special_owner_rule and special_scope_rule
+  before it can produce rooted material
+```
+
+A special owner rule cannot be used as an alternate route to an ordinary
+navigable `M`. Liveness, visibility, borrowability, and installation of a
+built-in result follow the particular member rule and ordinary outer binding;
+the privilege class supplies no generic conclusion that every result is rooted
+under the call-site `Self` chain or is globally live.
 
 `struct` and `inject` are the first specified members. Future candidates may
 include explicit sum construction/extension, bounded AST injection, or a
@@ -1519,7 +1563,7 @@ The invariant is:
 struct pattern owner:
   determined by input pattern material and ambient pattern scope
 
-left-side let binding/injection path:
+left-side let binding/installation path:
   determines only the Place where the construction is installed
 ```
 
@@ -1570,17 +1614,20 @@ The two identities may differ.
 
 ### 7.3 Formal invocation boundary
 
-Formal `struct` invocation is:
+Formal `struct` invocation is, in target semantics:
 
 ```text
 graph-installation-free
 binding-free
+referentially pure
 ```
 
 It does not install a `NamespaceDelta`. The current implementation may allocate
-or attach registry-backed pattern material while forming the invocation value;
-that allocation means the invocation must not be described unconditionally as
-pure. Graph installation remains outside formal invocation.
+or attach registry-backed pattern material while forming the invocation value.
+That is a non-semantic implementation record: it may affect cache/storage
+mechanics but is not observable in `Norm`, does not mutate language-visible
+input, and does not weaken the target claim of referential purity. Graph
+installation remains outside formal invocation.
 
 ### 7.2 Structural leaves and pure Pattern nodes
 
@@ -1620,7 +1667,7 @@ meaning to an anonymous bare `() |> struct`; that is a separate boundary.
 ### 7.3 Internal construction and later injection normalize equally
 
 An element written inside the original `struct` input and an equal element
-added later through the owner's navigated injection path differ only in how
+added later through the owner's navigated structural-extension path differ only in how
 their full navigation is obtained. For example:
 
 ```lang
@@ -1690,6 +1737,13 @@ a new pattern value:
 inject : ( type | type ref ) x ChildPatternMaterial ⇀ type
 
 Inject(old, Δ) ⇓ new
+```
+
+`inject` establishes no root and preserves the root already carried by its
+input:
+
+```text
+Root(new) = Root(old)
 ```
 
 There is no construction-handle rank. The input is an ordinary value of rank
@@ -1837,11 +1891,13 @@ extension eligibility, so a call attempting it has **no applicable overload**
 rather than a special "cannot inject through share" error.
 
 `Open_Γ` is the ordinary construction-anchor condition written in context form,
-not a separate inject-only permission system:
+not a separate inject-only permission system. Its argument is the construction
+target coordinate — a place or construction root — whose state and owner are
+being queried:
 
 ```text
-EffectiveOpen(x, c) = StateOpen(x)
-                    ∧ ConstructionAnchorCompatible(owner(x), c)
+EffectiveOpen(q, c) = StateOpen(q)
+                    ∧ ConstructionAnchorCompatible(owner(q), c)
 ```
 
 This is why an already-sealed root cannot be extended: not because `inject`
@@ -2760,16 +2816,16 @@ value is not simultaneously interpreted under both judgments.
 
 #### 12.1.1 Open is relative to the construction context
 
-Openness is not a global flag on the object. It is a judgment about an object in
-a context:
+Openness is not a global flag inferred from a value. It is a judgment about a
+construction target coordinate — a place or construction root — in a context:
 
 ```text
-EffectiveOpen(x, c) = StateOpen(x)
-                    ∧ ConstructionAnchorCompatible(owner(x), c)
+EffectiveOpen(q, c) = StateOpen(q)
+                    ∧ ConstructionAnchorCompatible(owner(q), c)
 ```
 
-`StateOpen(x)` is the object's own construction state. `ConstructionAnchorCompatible`
-asks whether the construction that owns `x` is the construction currently being
+`StateOpen(q)` is the target's own construction state. `ConstructionAnchorCompatible`
+asks whether the construction that owns `q` is the construction currently being
 evaluated in `c`. Both factors are required: material may be structurally unsealed
 and still not be extendable from an unrelated context, and a context may own a
 construction whose material has already been frozen.
@@ -2791,23 +2847,36 @@ In an **ordinary, non-meta** construction context, the following events freeze t
 material being built:
 
 ```text
-UseForVal1(x)                                  -> Frozen
-x used as a meta argument                      -> Frozen
-x entering a global normalized structure       -> Frozen
-any non-meta control-flow branch / join /
-  loop boundary crossed by x                   -> Frozen
+UseForVal1(x)                                    -> Frozen
+x used as a meta argument                        -> Frozen
+x entering a global normalized structure         -> Frozen
+x in Dependencies(c), for NonMetaStaticControl(c) -> Frozen
+x in LiveAcross(c), for ResidualRuntimeFork(c)    -> Frozen
 leaving the construction interval of the
-  in-place closure that owns x                 -> Frozen
+  in-place closure that owns x                   -> Frozen
 ```
 
 Observation is not a freezing event: reading `P` or `Val2`, extending a child
 pattern, and contributing an ordinary Val2 member of another type all leave the
 material open.
 
-The control-flow entries are the reason an ordinary construction is narrow: an
-ordinary context has no static guarantee about which branch executed, so material
-that crosses a branch, join, or loop edge can no longer be treated as a single
-known construction and is frozen at that edge.
+For static control, dependency and liveness are different facts:
+
+```text
+Dependencies(c) != LiveAcross(c)
+
+NonMetaStaticControl(c)
+  => Freeze*(Dependencies(c))
+```
+
+`Dependencies(c)` contains the open Pattern values actually read by the
+predicate or structural selection, branch/iteration versions whose identity
+must be unified at a join, and loop-carried construction state that feeds a
+later static decision. A value that is merely live across an unrelated static
+branch, join, or loop is not frozen. In contrast, a residual-runtime fork loses
+the single known static construction path, so open values carried across that
+fork are frozen even when they did not determine its predicate. Leaving the
+ordinary owner interval remains an independent closing event.
 
 #### 12.1.3 A meta body freezes none of this
 
@@ -2829,7 +2898,7 @@ justify rejecting a meta-local computation.
 #### 12.1.4 The apparent self-typed intersection
 
 With §12.1.2 in force, the ordinary case that looked like an intersection resolves
-without a special rule. Suppose an RHS is a complete `Val1 x P x Val2` whose own
+without a special rule. Suppose an RHS is a complete `Val1? x P x Val2` whose own
 `P x Val2` is the very type being extended, and the extension is attempted from an
 ordinary context:
 
@@ -3039,7 +3108,9 @@ anchors that root.
 
 Formal `struct` invocation currently may allocate or attach registry material
 under `GeneratedTypeDefinition`. It remains graph-installation-free and
-binding-free, but it is not unconditionally pure.
+binding-free. The target operation is referentially pure; this allocation is a
+non-semantic implementation record rather than mutation of language-visible
+input or installation of a graph delta.
 
 ## 14. Non-Goals of This Note
 
