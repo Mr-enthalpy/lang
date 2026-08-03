@@ -282,9 +282,10 @@ The language wants exactly one invocation model. The same mechanism must serve:
 
 There is intentionally no second mechanism reserved for "compile-time code."
 Compile-time behavior uses the ordinary callable framework under either
-`compile` capability (producing `PatternValue`) or `meta` capability (producing
-`SymbolConstructionValue`). Policy and partial/strict demand determine whether
-the callable may execute or residualize; they do not merge the two result ranks.
+`compile` capability (computing a `PatternValue` and rooting nothing) or `meta`
+capability (computing a `PatternValue` and rooting `M`). Policy and
+partial/strict demand determine whether
+the callable may execute or residualize; they do not merge the two capabilities.
 
 ```text
 There is no privileged `if constexpr` split.
@@ -376,8 +377,8 @@ runtime-capable object's pattern component or derived companion, but may not
 execute the original runtime value body as compile/meta.
 
 `compile` and `meta` remain different capabilities: compile computes static
-values and PatternValue; meta constructs SymbolConstructionValue in a
-MetaConstructionUnit. OpenStatic exposes both meta and compile; SealStatic
+values and roots nothing; meta computes values and establishes a
+MetaConstructionUnit root. OpenStatic exposes both meta and compile; SealStatic
 exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
@@ -510,7 +511,7 @@ Evaluation demand is orthogonal to execution capability and result rank:
 ```text
 execution capability: compile / meta / seal / runtime
 evaluation demand:     partial | strict
-result rank:           PatternValue | SymbolConstructionValue | runtime value
+result rank:           PatternValue | runtime value
 ```
 
 `MetaPartialContext` and `MetaStrictContext` retain their existing purpose: they
@@ -539,15 +540,18 @@ execution capability. A successful compile-time result is not merely a
 `TypeValueId`:
 
 ```text
-compile callable -> PatternValue
-meta callable    -> SymbolConstructionValue : symbol
+compile callable -> PatternValue, rooting nothing
+meta callable    -> PatternValue, plus the authority to root and seal M
 runtime callable -> runtime value
 ```
 
-`PatternValue` includes ordinary compile-time values, type values, and
-structured pattern values. A type value is not thereby an installed type
-symbol. `SymbolConstructionValue` carries symbol/facet/pattern construction
-material but remains uninstalled.
+`PatternValue` includes ordinary compile-time values, type values, symbol values,
+and structured pattern values. A type value is not thereby an installed type
+symbol. The `compile` / `meta` difference is world authority, not result rank:
+there is no third rank, and a meta callable returns whatever ordinary pattern
+value its declared `ReturnShape` states. What the current implementation calls
+`SymbolConstructionValue` is the transitional carrier for a multi-member meta
+return; it remains uninstalled.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
 slot relation, rank-directed identity, type self-root validation, and complete
@@ -562,7 +566,6 @@ The public future boundary is conceptually:
 ```text
 InvocationResult =
   | PatternValue(...)
-  | SymbolConstructionValue(...)
   | RuntimeValue(...)
   | Residual(expr, suspension_reason)
   | Diagnostic(error)
@@ -616,8 +619,8 @@ well-identified call; it does not defer candidate choice.
 
 ### 4.2 Expansion / binding layer
 
-After the invocation layer produces a `PatternValue` or
-`SymbolConstructionValue`, the expansion / binding layer applies it to a build
+After the invocation layer produces a `PatternValue`, the expansion / binding
+layer applies it to a build
 or declaration context. This includes:
 
 ```text
@@ -641,7 +644,7 @@ permanent model.
 `IdentityType` proves graph-resolved invocation plumbing: it demonstrates that
 a prepared candidate can flow through the candidate preparation, key
 computation, cache lookup, and primitive reduction pipeline. It does **not**
-prove final `PatternValue` or `SymbolConstructionValue` semantics.
+prove final `PatternValue` or meta-construction semantics.
 
 ```text
 IdentityType proves:
@@ -654,7 +657,7 @@ IdentityType proves:
 
 IdentityType does NOT prove:
   PatternValue computation under compile capability;
-  SymbolConstructionValue production under meta capability;
+  meta root establishment and sealing under meta capability;
   MetaInstanceScopeId or return TypeFacet self-root validation;
   rank-directed symbol/type/value parameter identity;
   declaration binding from arbitrary meta return values;
@@ -663,7 +666,7 @@ IdentityType does NOT prove:
 ```
 
 Any implementation, test, or document that uses `IdentityType` as evidence that
-ordinary `PatternValue` / `SymbolConstructionValue` semantics have been
+ordinary `PatternValue` / meta-construction semantics have been
 implemented is incorrect.
 
 ## 5. Match and If Share One Pattern Mechanism
@@ -787,7 +790,7 @@ Neither class grants arbitrary token splicing or parser re-entry.
 A meta object may produce:
 
 ```text
-a SymbolConstructionValue with symbol/facet/pattern construction material
+a pattern value with symbol/facet/pattern construction material
 a residual expression
 a diagnostic
 ```
@@ -860,8 +863,8 @@ Current state:
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
-Not yet present are `SymbolCell` facets, `PatternValue` as the compile result
-model, `SymbolConstructionValue` as the meta result model,
+Not yet present are `SymbolCell` facets, `PatternValue` as the single static
+result model, meta root establishment/sealing,
 `ResolvedPatternScope`, final binding-independent `struct` owner resolution, or
 functional `inject`.
 
@@ -978,7 +981,8 @@ pattern, type-value, and meta-invocation machinery exists.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.
-5. Introduce SymbolConstructionValue and rank-directed canonical instance keys.
+5. Introduce the meta-construction carrier and rank-directed canonical instance
+   keys.
 6. Carry canonical `Pv:Pp` through candidate qualification and every
    invocation-frame slot.
 7. Introduce ResolvedPatternScope and binding-independent `struct` ownership.

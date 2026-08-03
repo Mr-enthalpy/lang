@@ -376,9 +376,10 @@ result pair rather than a substitute parameter policy.
 
 Explicit `runtime:seal` remains valid. `compile`, `meta`, and `seal` remain
 distinct static capabilities/domains.
-Compile computes static values and PatternValue. Meta constructs
-SymbolConstructionValue inside a MetaConstructionUnit. Seal excludes ordinary
-OpenStatic meta visibility and provides no global scan privilege by itself.
+Compile computes static values and PatternValue. Meta computes values as well,
+and additionally carries the authority to root and seal a MetaInstance. Seal
+excludes ordinary OpenStatic meta visibility and provides no global scan
+privilege by itself.
 
 ### 3.3 Derived objects and must-select
 

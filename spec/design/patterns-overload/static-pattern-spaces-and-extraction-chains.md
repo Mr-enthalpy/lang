@@ -1146,8 +1146,10 @@ let id = (self, t: type): compile -> r: type => {
 };
 ```
 
-This compile body computes a `PatternValue`. A meta body instead constructs a
-`SymbolConstructionValue`, for example:
+This compile body computes a `PatternValue`. A meta body computes a
+`PatternValue` as well, and additionally roots and seals its own `MetaInstance`;
+when its declared return shape is a symbol value, it returns the symbol value of
+that root, for example:
 
 ```lang
 let box = (self, t: type): meta -> r: symbol => {
@@ -1178,7 +1180,7 @@ Thus compile/meta return behavior is a normal consequence of:
 call result semantics
 block-local return boundaries
 result consumption
-symbol / place / PatternValue / SymbolConstructionValue rules
+symbol / place / PatternValue rules
 ```
 
 not a special exception to them.
@@ -1841,9 +1843,9 @@ form uses `|`, the sum-pattern result form.
 The decoder lives in `struct_decoder.rs` and is called from the `core::struct`
 invocation path. It produces `TypePatternExprShape`, which is attached to
 the current `GeneratedTypeDefinitionValue` substrate. This remains private
-structured carrier material; final public `struct` result rank is
-`SymbolConstructionValue : symbol`, not AST. The decoder does not install
-symbols into the namespace graph — only binding/materialization installs
+structured carrier material; the final public `struct` result is the ordinary
+PatternValue of its own declared return shape, not AST. The decoder does not
+install symbols into the namespace graph — only binding/materialization installs
 `NamespaceDelta`.
 
 ## 19. Callable Implementation Tail and Pattern Remainders

@@ -70,9 +70,11 @@ Consequences:
    What it may not do is create a new global root: it registers no global
    Symbol, produces no nominal type lacking a normal global root, and never
    promotes a local temporary pattern value into a global type (§4.2).
-4. `meta` is the only construction that establishes a global symbol root. Entry
-   into a meta invocation creates a globally live but unsealed `MetaInstance`
-   root; the return stage seals it (§4.3).
+4. `meta` is static evaluation **plus** world authority, and that authority is
+   what `P2 = meta` means: every meta invocation establishes a globally live but
+   unsealed `MetaInstance` root on entry and no other coordinate may, so
+   `P2 = meta <=> Establish(M)`. The return stage seals it (§4.1, §4.3). The
+   authority says nothing about the declared return shape.
 5. `struct` and `inject` are pure functions producing uninstalled values.
    Neither operation installs a graph delta and neither mutates its input.
 6. A `let` binding or injection path chooses the installation place. It does
@@ -529,28 +531,40 @@ ReturnShape ::= Unit | SingleType | SingleVal | SymbolValue
 Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
-The declared `ReturnShape` decides the shape of the returned value. The one
-authorization law is about *rooting*, not about shape:
+The declared `ReturnShape` decides the shape of the returned value. World
+authority is not a fourth ontology axis; it *is* the `meta` coordinate of `P2`,
+because `meta` means static evaluation **plus** world authority. So root
+authority has exactly one positive source, and it is biconditional:
 
 ```text
-SealsAMetaInstanceRoot(F) => P2(F) = meta
+P2(F) = meta  <=>  Establish( MetaInstance(F, Norm(args)) )
 
-P2(F) = meta  !=>  F returns a SymbolValue
+P2(F) = meta  !=>  ReturnShape(F) = SymbolValue
 ```
 
-Only a pure meta result P2 may seal a `MetaInstance` and thereby install a new
-global symbol root. The converse never holds: a meta callable may legally return
-`SingleType`, `SingleVal`, or `Unit`, and every `ReturnShape` — including
-`SymbolValue` — is legal under `compile`, because returning a symbol *value* is
-not the same act as rooting a new global Symbol (§4.2).
+Read left to right, the first law is the *grant*: entering any `P2 = meta`
+invocation establishes `M` as a globally live unsealed root (§4.3), and sealing
+that root at the return stage is the ordinary end of that same invocation. Read
+right to left, it is the *exclusivity*: no other coordinate, and no `compile`
+callable, may establish or seal a root. `SealsAMetaInstanceRoot(F)` is therefore
+not an independent predicate needing its own source — it is a spelling of
+`P2(F) = meta`, and no separate `RootAuthority` coordinate is introduced.
+
+What the second law denies is only the *shape* inference. A meta callable may
+legally return `SingleType`, `SingleVal`, or `Unit` while still having rooted
+`M`; and every `ReturnShape` — including `SymbolValue` — is legal under
+`compile`, because returning a symbol *value* is not the act of rooting a new
+global Symbol (§4.2). The two laws are independent: the first fixes who may root,
+the second refuses to read shape off that authority.
 
 An implementation must not derive return ontology from whether a result policy
 pair contains the `Meta` stage, and must not maintain a callable-kind table as a
 second ontology authority parallel to `ReturnShape`. Where prose still
 distinguishes "meta functions" from ordinary functions, the distinction means
-exactly "is this callable authorized to seal a new global root", never a
-hardwired return shape. Policy stages (`meta` / `compile` / `seal` / `runtime`
-in `P1` / `P2`) decide only visibility and execution timing.
+exactly "is this callable authorized to root and seal a new global Symbol", never
+a hardwired return shape. Apart from carrying that authority in the `meta` case,
+policy stages (`meta` / `compile` / `seal` / `runtime` in `P1` / `P2`) decide only
+visibility and execution timing.
 
 `ClusterSymbol` and `ReturnShape::ClusterSymbol` survive in the current
 implementation as a **transitional carrier** for the multi-member return of a
@@ -737,14 +751,16 @@ ownership. This owner is not a meta-instance owner such as
 ### 4.3 Ordinary `meta`
 
 `meta` is symbol-level staging. A meta invocation is the only construction that
-establishes a new global symbol root.
+establishes a new global symbol root, and by §4.1 every meta invocation does so:
 
 ```text
-M = MetaInstance(F, Norm(args))
+P2(F) = meta  =>  M = MetaInstance(F, Norm(args))
 ```
 
 Entering the invocation immediately creates `M` as a **globally live but unsealed
-root**. `M` exists in the global world from the first statement of the body; what
+root**. This is unconditional in `P2`; it does not depend on the declared
+`ReturnShape`. A meta callable returning `Unit` still rooted and sealed its `M`.
+`M` exists in the global world from the first statement of the body; what
 the return stage adds is not existence but *seal*.
 
 When the declared `ReturnShape` is `SymbolValue`, the returned value is the
@@ -871,11 +887,11 @@ establish its own symbol layer rather than act as a value-level forwarding
 function.
 
 The externally navigable result symbol is `M` itself. The declared return slot
-is only a lexical construction handle to that symbol:
+is only a lexical name for that symbol, not a transferable construction rank:
 
 ```text
 symbol_of_result(invoke_meta(callee, canonical_arguments)) = M
-return_slot(r) = lexical_handle(M)
+return_slot(r) = lexical_name(M)
 ```
 
 The slot name `r` does not add another component to the final navigation path.
@@ -1072,18 +1088,53 @@ Consequently:
   analogous to dead code — not erroneous, because intermediate computation may
   have side effects.
 
-Assignment checks exactly three conditions:
+Assignment carries no `inject`-specific validation, but that is not the same as
+carrying no validation. The one obligation the left side is relieved of is
+re-verifying that an `inject` in the right side satisfied
+`Open ∧ ParentToChild ∧ NoPatternConflict`; that was already discharged when the
+right side was evaluated. Everything else that applies to any write still
+applies. A write `lhs = rhs` is checked in four independent layers:
 
 ```text
-the left side names a writable place
-the right value conforms to the target's Pattern
-lifetime and capability conditions of the target place hold
+1. RHS operation legality
+     Evaluate(rhs) ⇓ v
+     -- an inject inside rhs checks its own Open here, not at the write
+
+2. universal write applicability
+     Writable(lhs)
+     Compatible( P(lhs), v )
+     ValidCapability(lhs)
+     -- a type share is not a write target; a stale type ref cannot be written
+
+3. result-object invariants
+     WellFounded(v)
+     Canonicalizable(v)
+     NoForbiddenCycle(v)
+     -- a write forming a non-normalizable Val2 cycle fails, even when it comes
+        from an ordinary assignment
+
+4. semantic-boundary constraints of the enclosing region
+     meta return self-root; ref / pattern-value lifetimes; Open-witness escape;
+     mutability limits on global type-bearing values; seal / global-promotion
+     rules; the single-type-member bound on a returned Symbol
+     -- these may run at write time, normalization time, return time, or
+        install time, but they all remain in force
 ```
 
-It does not inspect how the right value was produced. Assignment requires no
+The two validation families are therefore distinct and must not be conflated:
+
+```text
+InjectSpecificValidation             -- discharged during RHS evaluation, once
+UniversalObjectAndBoundaryValidation -- always applies to the write result
+```
+
+Assignment does not inspect how the right value was produced: it asks for no
 provenance, no construction witness, and no transition proof from any particular
-producer; a value that conforms to the target Pattern is acceptable regardless of
-which operation built it.
+producer, and a value that conforms to the target Pattern is acceptable
+regardless of which operation built it. That freedom covers layer 1 only. It
+does **not** exempt the result from layers 2–4 — the write result must still
+satisfy every ordinary type, capability, lifetime, normal-form, and boundary
+invariant.
 
 This distinction does not cancel `let f::t = expr` (ordinary `Val2` member
 contribution) and does not change the `r;` terminal semantics. The current
@@ -1135,6 +1186,24 @@ Because the member set is the mutable part, it lives in `Val1`:
 Val1(Symbol) = Member * omega
 ```
 
+`Member * omega` is not free notation: `*` is the finite-repetition pattern
+constructor, defined minimally as follows.
+
+```text
+T * N      =  T^N              -- exactly N objects of T, N a compile-time count
+T * omega  =  ⨄_{n in ℕ} T^n     -- a dynamic array: some finite T^n, n not fixed
+```
+
+`T * N` is an ordered whole of exactly `N` `T` objects. `T * omega` is the
+disjoint union over every finite length: each concrete value is a `T^n` for some
+finite `n`, and that `n` is a property of the value, not of the type — two
+`T * omega` values of different lengths still have the same type identity. Both
+forms are ordered (position `0 .. len-1` is meaningful) and neither promises a
+machine-contiguous layout; contiguity, if any, is a later representation choice,
+not part of this pattern-value identity. The initial `Member * omega` carrier
+for symbol members is supplied by a built-in atom; the same public semantics may
+later be described by ordinary normalized source once the surface stabilizes.
+
 The consequence is that symbol-level operations are `Val1` transformations and
 leave the symbol's own pattern untouched:
 
@@ -1162,7 +1231,7 @@ BuiltinPrivilegedAstMetaFunction {
     compiler_known_identity,
     accepted_normalized_ast_or_pattern_rank,
     required_ambient_construction_capability,
-    result_rank,
+    declared_ReturnShape,
     special_scope_rule,
     special_owner_rule,
     bounded_privileged_behavior,
@@ -1177,8 +1246,17 @@ have function-object, type, and associated () identity;
 use the ordinary invocation frame, including implicit self;
 may accept a bounded Normalized-AST or pattern carrier;
 remain graph-installation-free and binding-free;
-return SymbolConstructionValue or an owned construction handle;
+return the ordinary PatternValue of their own declared ReturnShape;
 leave graph installation to an outer binding.
+```
+
+Privilege buys a bounded AST carrier and a special scope/owner rule — it buys no
+result ontology. There is no shared "construction handle" return family and no
+third result rank (§4.1):
+
+```text
+inject  ->  type
+struct  ->  the ordinary pattern value its own declaration states
 ```
 
 Unlike an `OrdinaryMetaFunction`, an individual built-in may define a special
@@ -1385,11 +1463,12 @@ The public semantic boundary is:
 ```text
 struct:
   PatternSyntax / normalized pattern material
-  -> SymbolConstructionValue : symbol
+  -> the ordinary PatternValue of its declared ReturnShape
 ```
 
 An implementation may carry AST or Normalized AST as a private structured
-carrier. The public result rank is not AST and this capability does not expose a
+carrier. The public result is an ordinary pattern value, not AST and not a
+separate construction rank (§4.1, §4.8), and this capability does not expose a
 general macro system.
 
 ### 7.2 Owner resolution
@@ -1444,7 +1523,7 @@ does not reroot the right-hand pattern into the internal pattern scope of
 
 ```text
 evaluate the right-hand struct invocation
-  -> obtain an uninstalled SymbolConstructionValue with an already resolved owner
+  -> obtain an uninstalled pattern value with an already resolved owner
 resolve the destination symbol/place t1::t
   -> bind/install the construction result there without changing that owner
 ```
@@ -1664,7 +1743,9 @@ The write itself is still the ordinary `=` write governed by §4.5.1 — the lef
 side must name a writable place, the right value must conform to the target's
 Pattern, and lifetime/capability conditions of the target place must hold.
 Assignment does not inspect how the right value was produced, so it asks for no
-construction witness and no proof that the value came from `inject`.
+construction witness and no proof that the value came from `inject`; but the
+write result is not thereby exempt from the universal object and boundary
+invariants of §4.5.1 (layers 2–4), which apply here as to any other write.
 
 A navigated `let child::target = result;` is **not** a structural installer:
 like every ordinary navigated `let`, it only installs a Val2 associated
@@ -1757,16 +1838,30 @@ This is the whole reason `inject` needs an existing pattern value as input: it
 needs a pattern whose navigation path is already resolved, so that the new
 children can be linked beneath that path.
 
-Example:
+Example. `t1::r` is an ordinary pure-pattern path, so it is not a legal
+assignment left side (§8.2.2); the carrier slot has to be taken first:
 
 ```lang
-t1::r = t1::r
+let r_ref = (t1::r)@;
+
+r_ref = r_ref
+    |> inject(t first)
+    |> inject(u second);
+```
+
+The right side may equally read the path by value, since `inject` accepts
+`type | type ref`:
+
+```lang
+let r_ref = (t1::r)@;
+
+r_ref = t1::r
     |> inject(t first)
     |> inject(u second);
 ```
 
 Each `inject` reads a value and produces a value; the single `=` at the end
-performs the one write. The resulting pattern is:
+performs the one write, through the `type ref`. The resulting pattern is:
 
 ```text
 (
@@ -1776,8 +1871,9 @@ performs the one write. The resulting pattern is:
 ```
 
 `inject` determines the child set of the resulting pattern value. It does not
-change owner identity, and it does not reopen anything: whether `t1::r` may be
-written at all is decided by §8.2.2 and §8.2.3, before `inject` is reached.
+change owner identity, and it does not reopen anything: whether `r_ref` may be
+formed and written at all is decided by §8.2.2 and §8.2.3, before `inject` is
+reached.
 
 As with `struct`, the lowest-level leaf reduction has the form:
 
@@ -2832,7 +2928,7 @@ The installation flow is:
 
 ```text
 compile/meta invocation
-  -> PatternValue or SymbolConstructionValue
+  -> an ordinary PatternValue of the declared ReturnShape
   -> for a source path: resolve Symbol -> read its value/facets
   -> let binding/injection judgment binds that value/construction
   -> resolve writable install PlaceId

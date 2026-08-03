@@ -282,9 +282,8 @@ behind named operations, at least:
 - **declare** — introduce a declared symbol under a node.
 - **inject child material** — add a direct child to a contribution or
   construction under a legal owner (see §4). The future source-level `inject`
-  built-in is functional and returns a new `SymbolConstructionValue`; only the
-  outer binding/assembly layer installs the resulting delta.
-- **alias** — forward a name to an existing globally visible symbol.
+  built-in is functional and returns a new ordinary `type` pattern value; only
+  the outer binding/assembly layer installs the resulting delta.
 - **open virtual node** — open a virtual namespace node for generated structure.
 - **install namespace delta** — apply a set of physical, declared, or generated
   contributions as one unit under a legal node.
@@ -294,7 +293,11 @@ behind named operations, at least:
 - **assert / hard error** — raise a compile-time hard error.
 
 Capabilities may be stubbed in early versions, but the **surface** must be the
-shared one above, not narrowed to package scanning.
+shared one above, not narrowed to package scanning. There is no name-forwarding
+alias capability in this layer: a second name for one place is not expressible,
+and shared observation is a borrow view of one target place
+([`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md)
+§5).
 
 ### SymbolObject
 
@@ -508,10 +511,14 @@ and later compile/meta construction callables.
 The final boundary is sharper:
 
 ```text
-compile -> PatternValue
-meta -> SymbolConstructionValue
+compile -> PatternValue, rooting nothing
+meta -> PatternValue, plus the authority to root and seal M
 let binding/injection -> NamespaceDelta atomic install
 ```
+
+The `compile` / `meta` difference is world authority, not result rank; see
+[`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
+§4.1.
 
 Formal `struct`, formal meta invocation, and functional `inject` do not install
 the graph. `MetaExpansionResult` may remain an implementation adapter, but it
@@ -830,9 +837,9 @@ special case.
   namespaces are installed only under a legal parent / instance node; no
   arbitrary rewrite of parent / sibling / global namespace.
 
-The future public boundary is `struct: normalized pattern material ->
-SymbolConstructionValue : symbol`; AST remains an internal carrier, and graph
-installation remains in the outer binding layer.
+The future public boundary is `struct: normalized pattern material -> the
+ordinary PatternValue of its own declared ReturnShape`; AST remains an internal
+carrier, and graph installation remains in the outer binding layer.
 
 ## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 
@@ -844,7 +851,7 @@ records the migration boundary:
 ```text
 restricted evaluator
   -> shared invocation frame and policy checks
-  -> PatternValue or SymbolConstructionValue result rank
+  -> PatternValue result rank
   -> outer binding/NamespaceDelta installation
 ```
 
@@ -866,7 +873,7 @@ resolve callee
   -> RawArgShape / ParameterShape
   -> rank-directed Symbol / TypeValueId / PatternValue classification
   -> policy body-entry check
-  -> PatternValue or SymbolConstructionValue
+  -> PatternValue
   -> binding-layer installation adapter
   -> NamespaceDelta atomic install
 ```
@@ -964,9 +971,10 @@ inside formal `struct` or `inject` invocation.
   AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
-- Functional `inject` accepts only the current construction unit's owned,
-  open/uninstalled construction handle and adds direct children without
-  installing the graph.
+- Functional `inject` requires either a `type ref` to its target or an ambient
+  `Open` fact for a by-value `type` argument, and adds direct children without
+  installing the graph. There is no owned/uninstalled construction handle rank
+  to pass around.
 - v0.6–v0.8 do not claim full policy checking, full type checking, full pattern
   checking, or full value-level compile-time evaluation. Those remain later
   stages.

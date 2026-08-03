@@ -447,7 +447,7 @@ assembled transactionally; the files may not reopen one another's child
 subtrees.
 
 The future source-level `inject` built-in is functional and returns an
-uninstalled `SymbolConstructionValue`. Formal `struct` and `inject` do not
+uninstalled ordinary pattern value. Formal `struct` and `inject` do not
 install the graph; the outer namespace assembler or `let` binding does. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 

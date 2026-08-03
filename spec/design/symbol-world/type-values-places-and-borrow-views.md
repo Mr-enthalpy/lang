@@ -1,11 +1,13 @@
 # Type Values, Places, and Borrow Views
 
 **Status: canonical target semantics for object identity, place identity, and
-borrow views. The identity core (recursive object normal form, canonical
-observation `Addr(Norm)`, per-carrier `Val2` places) is current `lang_build`
-behavior; the borrow-view operators (`ref`, `share`, `@`, `rebind`), the
-extension-eligibility judgment, and the type checker remain unimplemented
-target semantics. §10 registers the implementation debt.**
+borrow views. What is current `lang_build` behavior is the identity core up to a
+boundary: the recursive normal form over type-object / `Val2` structure with an
+**opaque `Val1` leaf**, the canonical observation `Addr(Norm)`, and per-carrier
+`Val2` places. The full unified three-component normal form (recursive
+`Norm_Val1?`), the borrow-view operators (`ref`, `share`, `@`, `rebind`), the
+extension-eligibility judgment, and the type checker remain unimplemented target
+semantics. §10 registers the implementation debt.**
 
 This document specifies the semantic boundary between *object values*, *symbol
 identity*, *places*, *borrow views*, and *namespace extension targets*. It
@@ -760,17 +762,22 @@ by type-rank:
 
 | what the expression reads | `E ref` | `@` needed |
 | --- | --- | --- |
-| ordinary value with `Val1` | borrow of that `Val1` value | no |
+| ordinary value with `Val1` | borrow of the complete value-bearing object | no |
 | symbol value with `Val1` | `symbol ref` | no |
-| type-rank value with `Val1` | `ref` of that value's type | no |
+| type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |
 | pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
 | pure `type` slot | `ref` of the concrete type | `E@` is what yields `type ref` |
+
+The `Val1` column decides only *which path applies* — `ref` on the value versus
+carrier-slot `@`. It never means that the result of `ref` descends to the `Val1`
+sub-object: in every row above the view's referent is the complete object that
+`Read` produced (§5.1).
 
 Consequently the compile stage offers no borrow-meaning `@` candidate for an
 operand that has a `Val1` payload:
 
 ```lang
-s ref   // borrows the Val1 value of s
+s ref   // borrows the complete symbol value carried by s
 s@      // not an ordinary way to obtain a borrow
 ```
 
@@ -801,7 +808,14 @@ capability index changes, so the whole family collapses to one layer:
 | `share share` | the same `share` view | same |
 | `ref share` | a `share` view of the same target | legal weakening |
 | `share ref` | **no candidate** | illegal strengthening |
-| `@@` | the same view | no retarget occurs |
+| `@@` | the same view | matched as an overlap, before any `Val1` dispatch |
+
+The `@@` row is not derivable from the two base groups of `@`: a view value does
+carry a `Val1`, so `@` on a view is matched by its own overlap group, which is
+ordered ahead of the `Val1` dispatch and consults no `CarrierPlace`. That group is
+stated in
+[`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
+§2.3.
 
 So the two statements that used to sit next to each other are now one statement.
 Idempotence is the *consequence* of providing the equal-capability overload, not a
@@ -1200,8 +1214,16 @@ argument-passing / move design and is only referenced here, not expanded.
 
 ## 9. Borrow views and policy
 
-A borrow view observes; it does not grant capabilities. It must operate within
-the existing policy, visibility, and place-eligibility restrictions.
+A borrow view neither manufactures nor amplifies capability:
+
+```text
+Capability( view )  ⪯  Capability( source )      -- never above the source
+```
+
+It may expose a restricted capability that its own formation overload explicitly
+grants — that is exactly how `ref` differs from `share` (§5.5) — but it can only
+surrender, never regain (§5.3). It must operate within the existing policy,
+visibility, and place-eligibility restrictions.
 
 ```text
 A borrow view may expose an observation of its source value.
@@ -1218,7 +1240,8 @@ different policy is a separate, later design and is **not** defined here.
 ## 10. Relation to current implementation
 
 The `lang_build` semantic spine implements the identity core of this
-document: the recursive object normal form, the canonical
+document up to the `Val1` boundary: the recursive normal form over
+type-object / `Val2` structure with an opaque `Val1` leaf, the canonical
 observation identity consumed by struct residents,
 canonical pattern atoms, and meta instance keys, per-carrier `Val2` places
 for ordinary type bindings (`Pattern(T) = Pattern(U)` coexisting with
@@ -1234,7 +1257,7 @@ full three-component Norm(x) including recursive Norm_Val1?
 ref / share / @ / rebind operations and their overloads
 type ref and type share values, and ValidContext for them
 the writability and extension-eligibility judgments of §6
-the = assignment operator and its three-condition check
+the = assignment operator and its four-layer check (§4.5.1 there)
 migration of remaining first-order TypeValueId comparison consumers
   to full by-value comparison
 construction-unit ownership enforcement

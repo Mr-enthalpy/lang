@@ -24,22 +24,34 @@ E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
 sensitivity is what distinguishes `@` from `ref` and `share`, which consume only
 `Read(E)` — the complete object read out of the slot, never the slot itself. An
 expression with no carrier place — a freshly computed temporary — supplies none,
-so no `@` candidate applies to it.
+so no *place-observing* `@` candidate applies to it. The overlap group of §2.3 is
+the one candidate that never consults `CarrierPlace`, because it retargets
+nothing.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. Its candidate
-set is the two groups of §2 and nothing else; there is no third, generic
+set is nevertheless closed: the two base groups of §2, dispatched by the `Val1`
+dimension, for an operand that is not already a borrow view, plus the single
+overlap group of §2.3 for an operand that is. There is no third, generic
 "address of this expression" meaning to fall back on.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
 policy is not a fifth stage in that dimension. `@` is evaluated at a stage; it
 does not name one.
 
-## 2. The two overload groups of `@`
+## 2. The two base overload groups of `@`
 
-`@` has two positively defined overload groups, selected by whether the observed
-object carries an internal `Val1` payload. Neither group is a general
+`@` has two positively defined **base** overload groups, selected by whether the
+observed object carries an internal `Val1` payload. They govern operands that are
+not already borrow views; a view operand is matched first by the overlap group of
+§2.3. Neither base group is a general
 "take a borrow" facility: for a value-bearing operand that job already belongs to
-`ref`.
+`ref`. The whole dispatch is:
+
+```text
+E : BorrowView_j               ->  §2.3, whatever the view's own Val1 is
+else Val1?( Value(E) ) ≠ null  ->  §2.1
+else Val1?( Value(E) ) = null  ->  §2.2
+```
 
 ### 2.1 Value-bearing objects: lifetime facts
 
@@ -129,9 +141,27 @@ GlobalLifetime(x) does not imply EffectiveOpen(x)
 A pattern value that is reachable for the whole program is still not observable
 as `P ref` outside its open capability region.
 
-### 2.3 Idempotence
+### 2.3 Overlapping borrow: `@` on an operand that is already a view
 
-`@` participates in the general borrow-view overlap rule:
+A third group matches on the operand's *view-ness*, and it is tried before the
+`Val1` dispatch of §2.1–§2.2:
+
+```text
+E : BorrowView_j
+--------------------------------------------
+E@  ⇓  Coerce_{j->@}( E )
+
+Target( E@ )  =  Target( E )
+```
+
+This group is a positively stated overload, not an exemption from resolution, and
+it is required rather than derivable: a view value does carry a `Val1`, so without
+it `@@` would be dragged into the `LifetimeFact` group of §2.1, or — for a view
+held only as a temporary — would find no `CarrierPlace` and no candidate at all.
+Matching on view-ness first means `@@` never re-enters the `Val1` dispatch and
+never observes the holder slot of the intermediate view value.
+
+It is the `@` instance of the general borrow-view overlap rule:
 
 ```text
 Borrow_k( Borrow_j(q) )  =  Coerce_{j->k}( Borrow_j(q) )
