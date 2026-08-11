@@ -319,8 +319,8 @@ Must cover:
 - resolver returning a `SymbolObject`, not a string path
 - provenance and diagnostic attachment
 - role-aware child-name buckets: object/function role and namespace-subspace
-  role; same-role conflicts are hard errors, while field functions may share
-  names with projection namespace subspaces such as `ref` / `share`
+  role; same-role conflicts are hard errors. This remains generic graph
+  substrate and is not a semantic `ref` / `share` projection-space model
 - ordinary source authority begins at direct children; one source unit may fully
   construct a new child subtree in its own delta, while parallel files may not
   reopen that subtree
@@ -371,8 +371,9 @@ generated type-associated namespaces are installed atomically. v0.7-prep has
 implemented policy-aware resolver visibility and callable policy-plane
 clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
-with runtime-only bodies. Fields named `ref` / `share` are accepted as
-object-role field functions that coexist with projection namespace subspaces.
+with runtime-only bodies. The current implementation's legacy projection nodes
+are transitional; target field access uses one same-name associated Symbol with
+`T` / `T ref` / `T share` receiver candidates.
 The crate also implements a bounded cross-Policy demand preparer: ordinary omitted P1
 continues to preserve the complete RHS, explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without

@@ -33,7 +33,7 @@ The namespace graph world model and symbol-level identity:
 - namespace-facet origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
 - the borrow views `ref` / `share` / `@`, writability, and construction-lineage Open
-- field functions, `ref` / `share` projection namespaces
+- field functions and same-name value/ref/share receiver overload families
 - type-associated function objects and namespace extension targets
 - the early-meta / namespace-graph bootstrap (broad bootstrap document)
 
@@ -67,7 +67,7 @@ policy checker (referenced from the other blocks).
   `PlaceId` / `SymbolId` distinction, object normal form, and the borrow views
   `ref` / `share` / `@`.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
-  projection namespaces, access-tree implications.
+  same-name receiver overload families, and access-tree implications.
 - `entity-ref-design.md` — general `EntityRef` design (alias-RHS subset
   implemented as raw AST preservation).
 - `entity-alias-design.md` — historical record of the frozen surface

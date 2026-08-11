@@ -11,7 +11,7 @@ writable-place semantics are specified in
 short summary and the field/access-tree specifics that build on that
 distinction.
 
-## Field Functions and Projection Spaces
+## Field Functions and Same-Name Overload Families
 
 Fields and member-like operations are function objects installed in a
 type-associated companion space. A field is the unary special case; a
@@ -19,14 +19,17 @@ member-like operation may consume a receiver plus ordinary remaining
 arguments:
 
 ```text
-field::T        : T       -> field
-field::ref::T   : T ref   -> field ref
-field::share::T : T share -> field share
-push::T         : (T, value) -> result
+AssociatedSymbol(T, field):
+  field : (object: T)       -> field
+  field : (object: T ref)   -> field ref
+  field : (object: T share) -> field share
+
+AssociatedSymbol(T, push):
+  push : (object: T, value) -> result
 ```
 
-For a `struct`-generated field these are ordinary generated
-`SemanticMember`s, accompanied by an assignment/write candidate over
+For a `struct`-generated field these are ordinary typed candidate objects in one
+associated Symbol, accompanied by an assignment/write candidate over
 `T ref × field` whenever field policy admits mutation. `const let`, unqualified
 `let`, and `mut let` select the admitted cells of the same general access/
 borrow/write family; there is no special semantic field category.
@@ -73,7 +76,9 @@ product normalization forwards the bound remainder; no pack type or unpack
 operator is introduced. The generated `self` formal binds the implicitly
 injected field-function object; `val` remains the first explicit receiver
 argument.
-`E..field(product)` remains the direct member-call sugar.
+`E..field(product)` remains the direct member-call sugar. Candidate selection
+uses the actual receiver Pattern (`T`, `T ref`, or `T share`) in the ordinary
+overload family; it does not navigate through a `ref` or `share` child namespace.
 
 An ordinary let-shaped declaration consumed by `struct` contributes its
 initializer as Val2 material under the current Pattern owner:
@@ -95,7 +100,7 @@ slot-0 caller by position. A mismatch between the invoked object type and this
 first formal is an ordinary invocation type error, not a separate declaration
 rule.
 
-`field::T` is value semantics (`T == T move`). Borrowed field access must begin
+The value receiver candidate has value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form, for example:
 
 ```text
@@ -105,32 +110,20 @@ val share.field1.field2
 
 This document does not specify evaluation or lowering for those forms.
 
-Because source navigation is inner-to-outer, `ref::T` denotes the `ref` child
-under owner `T`. A construction authorized to add children of `T` can create
-that path. `T::ref` would instead place `T` below an outer `ref` owner and is
-not the same injection.
-
 Automatic `ref` / `share` argument passing constructs a borrow object and moves
 the borrow handle. Moving a borrow handle keeps the same parent/origin and does
 not deepen the access tree, so access-tree depth does not grow through argument
 passing. The mechanical pass-insertion semantics are specified in
 `spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
-## Role-Aware Namespace Lookup
+## Same-Name Candidate Lookup
 
-`ref` and `share` are namespace subspaces. Field functions are object-role
-symbols. Therefore a field function and a namespace subspace may have the same
-textual name under the same parent:
-
-```text
-ref::T          // may refer to a field function or projection namespace
-ref::ref::T     // field named ref under the ref projection namespace
-ref::share::T   // field named ref under the share projection namespace
-```
-
-Terminal lookup of `ref::T` or `share::T` requires a resolver expectation when
-both roles exist. `AnyUnique` lookup must report ambiguity. Intermediate path
-components resolve as namespace-capable parents.
+One associated field Symbol contains every value/ref/share observation
+candidate. `ref` and `share` are types/observation kinds in candidate formals and
+results, not generated namespace subspaces. A structural field literally named
+`ref` or `share` is therefore just another same-name associated Symbol and does
+not collide with a projection namespace. Ordinary overload resolution selects
+the candidate from the receiver Pattern and Policy.
 
 ## Type Values, Places, and Injection (summary)
 
@@ -148,9 +141,10 @@ The consequences that field/access-tree work must preserve:
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
   alias.
-- `let f::((t |> type)@) = ...` explicitly creates the prospective child under
-  `place(t)`, never `place(uint8)`. `@` performs no implicit Symbol-to-type
-  projection. Type-value
+- `let f::(t@) = ...` explicitly creates the prospective child under
+  `place(t)`, never `place(uint8)`, because `t` is already a pure type slot. For
+  a Symbol `S`, the corresponding place form is `let f::((S ref).type) = ...`.
+  `AsType(S)` never recovers a place. Type-value
   equality must not canonicalize extension targets, and a `type`-kind symbol may
   own a companion namespace place distinct from the type value it stores.
 - There is no place-forwarding declaration form. Every binding allocates its own

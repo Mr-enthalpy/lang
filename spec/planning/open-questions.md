@@ -50,22 +50,17 @@ track:
 - Build-world harvesting consumes `PatternValidatedNormProgram` from
   `normalize_and_validate_patterns`. This proves only global normalized
   Pattern invariants; it does not claim recovery-free syntax.
-- `ref` and `share` are namespace subspaces, not reserved field names.
-- Function-object names and namespace-subspace names may be identical under the
-  same parent when they occupy different child-name roles.
-- Fields named `ref` or `share` are allowed.
-- Terminal `ref::T` or `share::T` may be ambiguous without a resolver expected
-  role.
-- `a::T`, `a::ref::T`, and `a::share::T` are intended type-associated namespace
-  paths for field function objects.
+- Fields named `ref` or `share` are ordinary associated Symbols. Generated field
+  access uses one same-name overload family whose receiver formals are `T`,
+  `T ref`, and `T share`; no `ref` / `share` projection subspaces are generated.
 - `let T: type = uint8` is ordinary type-value binding: it creates a new symbol
   `T` whose type value equals `uint8`.
 - Type/rank use evaluates by type value, not by symbol name.
 - `let T: type = uint8` creates a fresh symbol/place whose type value equals
   `uint8`.
 - Creating an associated member of a pure type slot names the carrier place
-  explicitly: `let f::(T |> type)@ = ...`. Bare `=` never creates a missing
-  member, and `@` never performs an implicit Symbol-to-type projection.
+  explicitly: `let f::(T@) = ...`. For a Symbol `S`, the type-member place is
+  `(S ref).type`; bare `=` never creates a missing member.
 - `extend(old, Δ)` is the pure PatternValue transformation. It accepts a type
   value, preserves its construction root, and writes no place. `inject(r, Δ)`
   is the separate convenience wrapper `Read(r) -> extend -> Write(r)` over a
@@ -79,12 +74,13 @@ track:
   reference to the member array inside the symbol value.
 - Which of `ref` and `@` applies is decided by the presence of a `Val1` payload,
   not by type-rank. For `let t: type = uint8`, `t ref` is `uint8 ref` and is not
-  an error; explicit `(t |> type)@` is what yields `type ref`.
+  an error; explicit `t@` is what yields `type ref`.
 - Borrow-operator overlap is a real overload family, not a gap:
   `Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))` with the target preserved.
   Equal capability is idempotent, `ref share` is an admitted weakening (which is
-  what makes `r share` legal), `@@` retargets nothing, and only `share ref` has no
-  candidate. Retargeting is available only through `rebind`, which consumes a
+  what makes `r share` legal), and only `share ref` has no candidate. Borrow
+  constructor composition never retargets. `@` on a value instance remains a
+  lifetime observation. Retargeting is available only through `rebind`, which consumes a
   place (`Target(E)` or `CarrierPlace(E)`) rather than `Ref(Read(E))`.
 - A `type ref` proves only target, lifetime, and borrow capability. It does not
   prove that the current pointee value is open. `extend(Read(r), Δ)` separately
@@ -179,7 +175,7 @@ Still open after this correction:
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
   construction-lineage Open checking.
-- Implementation of source-level `let f::((U |> type)@)` against an already
+- Implementation of source-level `let f::(U@)` against an already
   installed type carrier/place: the associated-extension entry point currently
   requires a still-open construction and resolves the target object from the
   constructed Pattern. Bare `let f::U` is not the target place form.
@@ -201,11 +197,11 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
-- Final surface mechanism, if any, for requesting coordinated `()` generation
-  under `T`, `ref::T`, and `share::T`; the current rule requires separate
-  authorized contributions.
+- Final surface mechanism, if any, for requesting coordinated value/ref/share
+  receiver candidates in one associated `()` Symbol; the current rule requires
+  separate authorized contributions.
 - End-to-end syntax/integration for an externally navigated call-entry
-  extension such as `let ()::((ref::T |> type)@) = ...`; the semantic
+  extension such as `let ()::((T ref).type) = ...`; the semantic
   destination and ordinary type-check behavior are fixed, but the current
   frontend does not claim this complete declaration path.
 
@@ -719,13 +715,14 @@ here so they are not mistaken for design decisions:
   its coarse `note_residual_runtime_fork_or_end` event is implementation debt,
   not a broader language rule.
 - The privileged `extend` and `inject` built-ins do not exist yet.
-  `let member::((target |> type)@) = RHS;` is only associated-member installation
+  `let member::((target ref).type) = RHS;` is only associated-member installation
   (never a Pattern-structure write); the end-to-end equivalence
   `let t = ((x inner) t) |> struct;`  ≡
-  `let t = (() t) |> struct; let t_ref = (t |> type)@;`
-  `t_ref = (t_ref, (x inner)) |> inject;`
-  is a *future acceptance test*, blocked on `@`, expression-level `=`, and
-  `extend`/`inject`. `inject` denotes the ordinary three-step read–extend–write
+  `let t = (() t) |> struct; let t_ref = (t ref).type;`
+  `(t_ref, (x inner)) |> inject;`
+  is a *future acceptance test*, blocked on Symbol borrowing, same-name `.type`
+  place projection, and `extend`/`inject`. `inject` denotes the ordinary
+  three-step read–extend–write
   wrapper, and its left side must be an existing writable `type ref`: a pure
   PatternValue is not writable through its own name. It must not be
   abbreviated to `t = t |> extend(x inner)`, and it must not be
@@ -782,12 +779,12 @@ them explicitly:
    is captured") must be solved together.
 
 3. **Installed-carrier member creation / `type ref` targets / writability
-   need explicit owners.** Source-level `let f::(U |> type)@` against an already
+   need explicit owners.** Source-level `let f::(U@)` against an already
    installed type carrier/place, place-level `inject`, and
    writability / construction-open checking exist today only as substrate
    (also listed in the general future-work pool above). The next stage must
    assign them explicit scope rather than leaving them pooled. Canonical source
-   spells the host place explicitly as `let f::(U |> type)@ = expr`. Navigation
+   spells the host place explicitly as `let f::(U@) = expr`. Navigation
    to a missing child yields a prospective SubPlace whose contents are `None`;
    `let` may instantiate it, while bare `=` may not.
 
@@ -1029,24 +1026,30 @@ documents named in each line.
   value component and runtime visibility. There is no central const/mut
   propagation pass — only member overloads and `delete`.
   (`symbol-policy-and-compile-flow-projection.md`)
-- A Symbol is an ordinary PatternValue with at most one type member;
-  `Val1(Symbol) = SemanticMember * ω`. The cluster carrier is a transitional
-  implementation role, not a distinct ontology. Normalization is extensional:
-  `Norm_Val1?^P_symbol = Set{Norm(member_i)}`. Stable member/candidate identity,
-  callable body identity, and selection-relevant declaration annotations remain
-  semantic member content; only insertion order and repeated contribution of
-  the same member are quotiented away. Duplicate/conflicting declarations are
+- A Symbol is an ordinary PatternValue with `Σ = ⟨T?, V⟩`,
+  `V = ⨄_{T_c} V[T_c]`, and homogeneous buckets `V[T_c] : T_c * ω`.
+  Normalization maps each normalized `T_c` to a set of ordinary recursively
+  normalized member objects. Stable member/candidate identity, callable body
+  identity, and selection-relevant declaration annotations remain in those
+  objects; only insertion order and repeated contribution of the same member
+  are quotiented away. Duplicate/conflicting declarations are
   diagnosed during construction. The meta return seal validates the same *at
   most one* type-member bound and skips promotion when none exists.
   (`symbol-first-meta-construction-and-pattern-injection.md`)
+- The global privileged type-forming builtin `*` constructs `T*N` and
+  `T*omega`; both preserve `rank(T)`. These homogeneous containers, bare
+  Product, and `product` form the closed ordered-container kernel. Layout,
+  capacity, growth APIs, and general `product[]` remain outside this PR.
 - `compile` may return any ordinary PatternValue (including `type`, `symbol`,
   `type ref`, `type share`) under root conservation
   `Roots(Output) ⊆ Roots(Arguments) ∪ Roots(GlobalConstants) ∪
   LexicallyDeclaredStableRoots`. (`symbol-policy-and-compile-flow-projection.md`)
 - For an ordinary meta callable, `P2(F) = meta` is biconditional with
   `EstablishNavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))`. Canonical
-  arguments must be `GlobalKeyable`; a binder local to the caller is allowed,
-  but an ephemeral PatternValue dependency cannot enter a new MetaInstance key.
+  arguments must be `GlobalKeyable` at key-creation time; a binder local to the
+  caller is allowed, but every owned dependency and horizontal borrow target
+  must be already globally stable or already promoted. Future seal promotion
+  cannot justify a key created now.
   The exclusivity covers that root kind only. `struct` establishes/selects its
   lexical root from input navigation and ambient scope; `extend` establishes no
   root and preserves `Root(output) = Root(input)`; every other privileged
@@ -1058,6 +1061,9 @@ documents named in each line.
   transparent construction intrinsics may consume them, but another ordinary
   meta invocation may not implicitly globalize them. At seal, only the owned
   PatternValue closure of the returned Symbol's unique type member is promoted.
+  Returned val siblings may depend only on already-global material plus that
+  promoted closure (only already-global material when no type member exists),
+  and borrow targets participate in the check.
   (`symbol-first-meta-construction-and-pattern-injection.md`)
 - `Open_Γ(v)` relates `ConstructionLineage(v)` to the current compile-time stack
   and has a one-way `Open -> Frozen` transition. For
@@ -1085,7 +1091,9 @@ documents named in each line.
   value instance `t : type ref` has `t@ = lifetime(t)`. In the pure-slot group
   `Val1?(Value(E)) = null` selects the group and ordinary borrow formation checks
   the explicit carrier place; no Open fact is implied. `@` never performs
-  implicit Symbol-to-type projection, so canonical source uses `(S |> type)@`.
+  implicit Symbol-to-type projection. A pure type slot uses `t@`; a Symbol uses
+  `S.type` by value, `(S ref).type` for `type ref`, and `(S share).type` for
+  shared observation.
   (`lifetime/lifetime-policy-and-overload-boundary.md`)
 - A `type ref` is an ordinary borrow view of a type-valued slot. Its validity and
   write capability follow ordinary borrow/policy rules; it neither contains nor

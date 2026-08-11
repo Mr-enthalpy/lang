@@ -585,13 +585,16 @@ well formed only if:
   forall a in Canonicalize(args): GlobalKeyable(a)
 ```
 
-`GlobalKeyable` is a dependency condition, not a source-location condition. A
-meta-local binder may hold and pass an already-global-keyable value. A fresh
-ephemeral PatternValue dependency created inside the current meta invocation may
-not enter another `MetaInstanceKey` unless it belongs to the explicitly promoted
-owned closure of a returned unique type member. `compile` and transparent
-construction intrinsics do not impose this boundary because they form no
-MetaInstance key and generate no root.
+`GlobalKeyable` is a dependency condition evaluated at key-creation time, not a
+source-location condition. A meta-local binder may hold and pass a value whose
+dependencies are already globally stable or already promoted. A fresh ephemeral
+PatternValue dependency created inside the current meta invocation may not enter
+another `MetaInstanceKey`; promotion that may occur only when an enclosing meta
+later seals cannot justify an inner key now. Horizontal borrow targets are also
+global-key dependencies even though they are excluded from owned recursive
+normalization: `GlobalKeyable(Borrow(q))` requires `q` to be already globally
+stable. `compile` and transparent construction intrinsics do not impose this
+boundary because they form no MetaInstance key and generate no root.
 
 The public future boundary is conceptually:
 

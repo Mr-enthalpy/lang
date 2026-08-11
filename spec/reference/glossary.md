@@ -165,7 +165,8 @@ _See also: CallableReceiverType, PatternRoot, PackageBoundary, Mount._
 The type of the caller object injected into invocation-frame slot 0. It is
 independent of `CallableOwner`. For a standalone function object it defaults to
 the owner-derived anonymous function-object type; for an associated `()` entry
-it is the type whose namespace supplied that entry, such as `ref::T`.
+it is the formal receiver type selected from the same-name candidate family,
+such as `T ref`.
 
 The first written formal binds this object by position under any legal spelling.
 Only later formals consume the explicit call-site Product. A mismatch is an
@@ -650,11 +651,12 @@ normal form includes `⟨BorrowKind_k, StableTargetIdentity(q)⟩` without recur
 into the referent. Two views of distinct targets remain distinct even when the
 targets currently contain equal values.
 
-Pattern-specific normalization may quotient a representation carrier. In
-particular, `Val1(Symbol) = SemanticMember * omega` is physically ordered but
-`Norm_Val1?^P_symbol = Set{Norm(member_i)}`. Stable member/candidate identity,
-callable body identity, and selection-relevant declaration annotations survive;
-only insertion order and repeated contribution of the same member are
+Pattern-specific normalization may quotient representation order. For Symbol,
+`Σ = ⟨T?, V⟩`, `V = ⨄_{T_c} V[T_c]`, and each homogeneous bucket
+`V[T_c] : T_c * omega`; normalization maps each normalized `T_c` to a set of
+ordinary recursively normalized member objects. Stable member/candidate
+identity, callable body identity, and selection-relevant declaration annotations
+survive; only insertion order and repeated contribution of the same member are
 quotiented away. Duplicate/conflicting declarations are construction-time
 well-formedness errors rather than Symbol multiplicity. Where another complex `Val1` cannot yet be normalized
 structurally, an opaque summary is a safe under-merge, never a definition of
@@ -703,6 +705,10 @@ retained in `Val1` rather than the outer classification type; `T * N` converts
 to `T * omega`. Both have mechanically generated `[]` value/ref/share members.
 This says nothing about contiguous layout, capacity, or `push_back`.
 
+They are formed by the global privileged type constructor `*`:
+`*(T,N) -> T*N` and `*(T,omega) -> T*omega`. Both preserve the element type's
+universe rank: `rank(T*N) = rank(T*omega) = rank(T)`.
+
 A bare Product retains its concrete arity and element-type vector in its fixed
 shape. The global built-in `product` type classifies any finite heterogeneous
 bare Product without moving that concrete vector into the outer type identity.
@@ -717,14 +723,17 @@ _See also: ProductForm, Object normal form (`Norm`), Symbol value._
 ## Symbol value
 
 An ordinary value of the ordinary `symbol` type. Its mutable member content is
-`Val1(Symbol) = SemanticMember * omega`, never a mutable `P x Val2` side
-structure. A Symbol contains at most one type member and any number of val
-members; callable val members project to the formal `OverloadSet`.
+`Val1(Symbol) = Σ = ⟨T?, ⨄_{T_c}V[T_c]⟩`, never a mutable `P x Val2` side
+structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
+member objects. A Symbol contains at most one type member and any number of val
+members; callable val members project across those buckets to the formal
+`OverloadSet`.
 
-Symbol normalization is an extensional `Set<SemanticMember>`. Stable member and
-candidate identities, callable-body identity, and selection-relevant declaration
-annotations survive normalization. Only order and repeated contribution of the
-same member are quotiented away; conflicting declarations remain diagnostics.
+Symbol normalization is an extensional optional type member plus map of typed
+member sets. Stable member and candidate identities, callable-body identity, and
+selection-relevant declaration annotations live in the ordinary member objects
+and survive normalization. Only order and repeated contribution of the same
+member are quotiented away; conflicting declarations remain diagnostics.
 
 The privileged `struct` operation returns such a Symbol: it creates the unique
 type member and mechanically generated field/access/assignment/borrow partner
@@ -764,9 +773,9 @@ On a pure pattern slot the selected candidate is
 never ask for it. A freshly computed temporary supplies no carrier place, so no
 `@` candidate applies to it.
 
-`@` is **not** a general `PlaceOf(E)`. It has two positively defined base
-overload groups with disjoint premises, plus the target-preserving overlap for
-an existing borrow view. For a value instance carrying `Val1`, `@` takes that
+`@` is **not** a general `PlaceOf(E)`. Its groups distinguish a borrow type value
+fixed point, a value-instance lifetime observation, and the carrier borrow of an
+already-pure pattern slot. For a value instance carrying `Val1`, `@` takes that
 instance's lifetime and yields a `LifetimeFact`; that is a fact, not a borrow.
 For `Val1?(Value(E)) = null`, `CarrierPlace(E) = q`, and ordinary borrow
 formation validity, it yields `P ref` with `Target(E@) = q`. The second group is why `@`
@@ -777,9 +786,11 @@ value's lineage independently. There is deliberately no compile-stage
 borrow-producing `@` candidate for a value-bearing operand — `s ref` already
 does that job. `@` is not a stage name and not an ordinary policy atom.
 
-`@` never projects a Symbol to its type member. Canonical source names both
-steps: `(S |> type)@`. Any future `S@` shorthand in a type-place context would
-require an explicitly specified, place-preserving TypeExpected elaboration.
+`@` never projects a Symbol to its type member. Symbol supplies the ordinary
+same-name family `S.type : type`, `(S ref).type : type ref`, and
+`(S share).type : type share`. The borrow is formed before field projection, so
+no source place is recovered from `AsType(S)`. An already-pure type slot uses
+direct `t@`.
 
 `@` is itself resolved by the ordinary selector. The three steps are strictly
 ordered and non-circular: ordinary selection inside the operand, then ordinary
@@ -788,8 +799,8 @@ then lifetime validation, which may reject the first two but never reselects the
 
 Borrow **type values** are fixed points: `type ref@ = type ref` and
 `type share@ = type share`. A borrow **value instance** is different: if
-`t : type ref`, then `t@ = lifetime(t)`. Equal-view overlap such as `@@`
-preserves the target and builds no second borrow layer.
+`t : type ref`, then `t@ = lifetime(t)`. Target-preserving composition belongs
+to the `ref`/`share` borrow constructors, not to a blanket `@@` rule.
 
 _See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary, `type ref`._
 
@@ -819,7 +830,7 @@ Whether `ref` or `@` is the right operation is decided by the presence of a
 `s ref : symbol ref` borrows the symbol value `s` carries — not the binding slot
 that carries `s` — and a type-rank object with a payload behaves the same way.
 For `let t: type = uint8`, `t ref` is `uint8 ref` (a correct borrow of what was
-read) and only explicit `(t |> type)@` yields `type ref`.
+read) and only explicit `t@` yields `type ref`.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
 `SymbolId`, and its member set is not silently that of its target. It does carry
@@ -843,8 +854,9 @@ Target( Coerce_{j->k}(v) )  = Target(v)
 ```
 
 So `ref ref` and `share share` are idempotent (`Coerce` at equal capability is the
-identity), `ref share` is an admitted weakening to the same target — which is what
-makes `r share` on a `type ref` legal — and `@@` retargets nothing. Only
+identity), and `ref share` is an admitted weakening to the same target — which is what
+makes `r share` on a `type ref` legal. Borrow constructor composition never
+retargets. Only
 `share ref` has no candidate, because capability may be surrendered and never
 regained. No composition nests, and no provenance or cycle detection is required.
 
@@ -973,14 +985,15 @@ _See also: `extend`, EffectiveOpen, Meta-function, Borrow view, `type ref`._
 
 ## `type ref`
 
-A borrow view of a type-valued carrier slot. Canonical source forms it from an
-explicit type-place expression such as `(S |> type)@`; ordinary borrow lifetime
-and policy rules determine formation, validity, and writability.
+A borrow view of a type-valued carrier slot. An already-pure type slot uses
+`t@`; a Symbol's unique type member uses the ordinary projection `(S ref).type`.
+Ordinary borrow lifetime and policy rules determine formation, validity, and
+writability.
 
 ```text
 Carrier(t) = q      CanBorrowRef_Γ(q)
 --------------------------------------
-Γ ⊢ (t |> type)@ : type ref
+Γ ⊢ t@ : type ref
 ```
 
 A `type ref` carries only ordinary borrow facts:
@@ -1509,15 +1522,18 @@ An ordinary user meta-function receives rank-constrained semantic values,
 creates that canonical navigable `MetaInstanceScope`, and has no unrestricted
 AST access. The biconditional excludes alternate ways to create an ordinary
 navigable `M`; it does not claim that `MetaInstanceRoot` is the only stable root
-kind in the language. Its canonical arguments must be `GlobalKeyable`: a
-caller-local binder is not forbidden, but no fresh ephemeral PatternValue
-dependency may enter the new instance key.
+kind in the language. Its canonical arguments must be `GlobalKeyable` when the
+key is created: a caller-local binder is not forbidden, but every owned
+dependency and horizontal borrow target must be already globally stable or
+already promoted. Future promotion at an outer seal cannot justify the key.
 
 Meta-local PatternValues have `MetaInvocation` lifetime. They may pass through
 construction-transparent `compile`/intrinsic frames, but may not be passed to a
 new ordinary meta invocation as an implicit promotion. At seal, only the owned
 PatternValue closure of the returned Symbol's unique type member gains global
-lifetime.
+lifetime. Every returned val sibling must depend only on already-global material
+plus that promoted closure (only already-global material if the type member is
+absent), and borrow targets participate in the escape check.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
 subclass. A member such as `struct`, `extend`, or `inject` may accept one
@@ -1965,8 +1981,9 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 
 `AsType(E) = E |> type` selects/interprets `E` as a type value and does not
 raise universe rank. A type-expected position may insert only this operation.
-In particular, a Symbol is not silently projected by `@`; canonical place
-source is `(S |> type)@`.
+It is by-value and never preserves a source place. Symbol's ordinary `type`
+field supplies `S.type`, `(S ref).type`, and `(S share).type`; only an already
+pure type slot uses `t@`.
 
 `TypeOf(E)` is classifier extraction and may move to the next universe. Its
 explicit source family is `let <typeof> x : typeof = RHS`, not ordinary
@@ -1976,6 +1993,7 @@ type-expected elaboration. The global `type` object is first a Symbol:
 typeof(type) = symbol
 typeof(type |> type) = type_1
 rank(type ref/share) = rank(type)
+rank(T*N) = rank(T*omega) = rank(T)
 ```
 
 _See also: Type-object, Kind/rank object, `@`, Symbol value._

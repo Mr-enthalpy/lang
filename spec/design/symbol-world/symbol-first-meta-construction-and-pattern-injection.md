@@ -137,8 +137,10 @@ AsType(E) != TypeOf(E)
 
 `AsType` neither raises universe rank nor manufactures a carrier place. Only
 explicit type-of extraction may obtain the next classifier. `@` never supplies
-`AsType` implicitly; canonical access to a Symbol's unique type slot is
-`(S |> type)@`.
+`AsType` implicitly. A Symbol's unique type member is an ordinary same-name
+field: `S.type` reads it by value, `(S ref).type` projects `type ref`, and
+`(S share).type` projects `type share`. Only an already-pure type slot uses
+direct `t@`.
 
 Each cluster member carries its own complete Policy view; the cluster itself
 stores no flat Symbol-level Policy. The cluster-level Policy exists only as a
@@ -766,7 +768,7 @@ rules apply. Its ambient lexical/Pattern owner is the current
 does not determine the invocation receiver type. Standalone function-object
 materialization defaults to an anonymous callable type derived from the owner;
 an associated `()` implementation may instead bind invocation slot 0 and the
-type facet of its local `Self` to a named receiver such as `ref::T`.
+type facet of its local `Self` to a named receiver such as `T ref`.
 
 Nested paths print in source order, current/innermost callable-local `Self`
 first and outermost `Self` last, but identity is the parent-linked owner graph.
@@ -881,8 +883,8 @@ shape — at most one type member, any number of val members:
 Σ = ⟨ T?, V ⟩
 
 1. validate that there is at most one type member
-2. if T exists, promote OwnedClosure(T) into M
-3. validate the remaining returned members
+2. if T exists, promote OwnedClosure(T) into M and call it P_T
+3. validate the escape dependencies of every returned val sibling
 4. seal M
 ```
 
@@ -893,8 +895,15 @@ must be rooted at `M`, which is vacuous when there is none. So a namespace-only,
 val-only, or type-less mixed return is well-formed, and step 2 is simply skipped:
 
 ```text
-T absent  ->  step 2 is a no-op; steps 3 and 4 proceed unchanged
+T present -> Deps(V_return) ⊆ AlreadyGlobalStable ∪ P_T
+T absent  -> Deps(V_return) ⊆ AlreadyGlobalStable
 ```
+
+`Deps(V_return)` includes both owned PatternValue dependencies and every target
+reached through a horizontal `ref` / `share` value. A val sibling therefore
+cannot smuggle an unrelated meta-local PatternValue or place out of the
+invocation. Borrow edges remain excluded from `OwnedClosure(T)` and hence are
+never promoted merely because they are referenced.
 
 Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
 ownership and are never dragged into the promotion:
@@ -904,8 +913,9 @@ OwnedClosure(x) excludes every ref / share edge reachable from x
 ```
 
 A member reachable only through a borrow view is therefore not promoted, and its
-presence does not extend `M`'s owned material. After step 4, `M` is sealed and
-nothing may reopen it.
+presence does not extend `M`'s owned material. Its target must already satisfy
+the step-3 escape condition. After step 4, `M` is sealed and nothing may reopen
+it.
 
 #### 4.3.3 `M` as a navigable layer
 
@@ -922,16 +932,23 @@ Formation additionally requires:
 for every canonical argument a:
   GlobalKeyable(a)
 
-GlobalKeyable(a)
-  => every PatternValue dependency of a is either
-       GlobalStable
-     | PromotedOwnedClosure(ReturnTypeMember)
+OwnedDependency(a) != GlobalKeyDependency(a)
+
+Borrow(q) in a
+  => Target(q) in GlobalKeyDependency(a)
+
+GlobalKeyable_Γ(a)
+  <=> every d in GlobalKeyDependency(a) is, at key-creation time,
+        AlreadyGlobalStable_Γ(d)
+      | AlreadyPromoted_Γ(d)
 ```
 
 A binder local to a meta invocation is not rejected merely for being local: if
 it holds a canonical value whose dependencies are already global-keyable, that
 value may enter the key. What is rejected is a fresh ephemeral PatternValue
-dependency entering a new `MetaInstance` key. `compile` and transparent
+dependency or a borrow of a meta-local place entering a new `MetaInstance` key.
+A closure that might be promoted only when an enclosing meta invocation later
+seals is not `AlreadyPromoted` for an inner key created now. `compile` and transparent
 construction intrinsics impose no such boundary because they establish no
 `MetaInstance` key and no new root.
 
@@ -1208,8 +1225,9 @@ does **not** exempt the result from layers 2–4 — the write result must still
 satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
-This distinction does not cancel `let f::((t |> type)@) = expr` (ordinary
-`Val2` member creation at an explicit type place) and does not change the `r;`
+This distinction does not cancel `let f::(t@) = expr` for an already-pure type
+slot, or `let f::((S ref).type) = expr` for a Symbol's unique type member
+(ordinary `Val2` member creation at an explicit type place), and does not change the `r;`
 terminal semantics. The current
 `let r =` binding-to-return-value with no-shadow is a transitional encoding, not
 the target rule.
@@ -1243,7 +1261,11 @@ A symbol value is not a separate ontological rank. It is an object with the same
 three components as every other object:
 
 ```text
-SymbolValue = ⟨ MemberContainer, P_symbol, Val2_symbol ⟩
+SymbolValue = ⟨ Σ, P_symbol, Val2_symbol ⟩
+
+Σ = ⟨ T?, V ⟩
+V = ⨄_{T_c} V[T_c]
+V[T_c] : T_c * omega
 ```
 
 Its member content is ordinary object content:
@@ -1253,24 +1275,41 @@ at most one type member
 any number of val members
 ```
 
-Because the member set is the mutable part, it lives in `Val1`:
+Because the member content is the mutable part, it lives in `Val1`:
 
 ```text
-Val1(Symbol) = SemanticMember * omega
+Val1(Symbol) = Σ = ⟨ T?, ⨄_{T_c} V[T_c] ⟩
 ```
 
-`SemanticMember` preserves stable member/candidate identity, its complete value
-or callable body, and all declaration annotations that affect semantics. Symbol
-is not a set of erased callable bodies, and its mutability is not mutation of
-`P_symbol × Val2_symbol`.
+Each `V[T_c]` contains ordinary member/candidate objects of their actual type
+`T_c`. Those objects preserve stable declaration/candidate identity, their
+complete value or callable body, and every annotation that affects semantics
+through their own ordinary recursive identity. Symbol is not a set of erased
+callable bodies, and there is no universal `SemanticMember` wrapper type.
+Symbol mutability is not mutation of `P_symbol × Val2_symbol`.
 
-`SemanticMember * omega` uses the ordinary built-in finite-sequence PatternValue
-family. The minimum public container kernel is:
+The typed buckets use the ordinary built-in finite-sequence PatternValue family.
+The minimum public container kernel is:
 
 ```text
 T * N      =  T^N              -- exactly N objects of T, N a compile-time count
 T * omega  =  ⨄_{n in ℕ} T^n     -- some finite T^n; n is not type identity
 ```
+
+These are formal language type constructors, not specification metavariables.
+The global privileged type-forming builtin `*` supplies the reconstruction:
+
+```text
+*(T, N)     -> T * N          where N is a compile-time natural number
+*(T, omega) -> T * omega
+
+rank(T * N)     = rank(T)
+rank(T * omega) = rank(T)
+```
+
+`*` establishes no ordinary `MetaInstanceRoot`; its member-declared privileged
+owner rule derives the result from the element type and shape argument. Like the
+borrow modalities, the container modality does not climb the type universe.
 
 Both are finite, homogeneous, anonymous, and ordered. `N` enters the type
 identity of `T * N`; the concrete length of a `T * omega` value remains in its
@@ -1314,32 +1353,51 @@ or a type witness and remains deferred. The four ordered-container cases are:
 | homogeneous | `T * N` | `T * omega` |
 | heterogeneous | bare Product | `product` |
 
-The Symbol Pattern applies an unordered identity quotient to that carrier:
+The Symbol Pattern applies an unordered identity quotient to each typed bucket:
 
 ```text
-Norm_Val1?^P_symbol(SemanticMember * omega value)
-  = Set{ Norm_semantic_member(member_i) }
+Norm_Val1?^P_symbol(Σ)
+  = ⟨ Norm(T)? ,
+      { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V[T_c] } } ⟩
 ```
 
-Thus carrier position, insertion order, and replayed contribution of the same
-stable member do not enter Symbol identity. Duplicate declarations, conflicting
-definitions, and same-root conflicts are diagnosed in construction/
-well-formedness before normalization; they are not remembered as value
-multiplicity. Distinct stable members remain distinct even when their callable
-bodies normalize alike. In particular, `s += a; s += b;` and
-`s += b; s += a;` normalize equally exactly when their final
-`SemanticMember` sets are equal.
+If distinct `T_c` keys normalize equally, their buckets are combined under that
+normalized key before the set quotient. Carrier position, insertion order, and
+replayed contribution of the same stable member do not enter Symbol identity:
+`Σ + Σ = Σ`. Duplicate declarations, conflicting definitions, and same-root
+conflicts are diagnosed in construction/well-formedness before normalization;
+they are not remembered as value multiplicity. Distinct stable member objects
+remain distinct even when their callable bodies normalize alike. In particular,
+`s += a; s += b;` and `s += b; s += a;` normalize equally exactly when their
+optional type member and every typed member set are equal.
 
 Callable val members project the formal overload set directly from this value:
 
 ```text
 OverloadSet(Σ, q)
-  = { m ∈ Val1(Σ) | Callable(m) ∧ q(m) }
+  = ⨄_{T_c} { v ∈ V[T_c] | Callable(v) ∧ q(v) }
 ```
 
-This is a set projection of Symbol content, not a resolver-private multiset.
-The ordered `SemanticMember * omega` carrier may remain an implementation
-choice, but Rust `Vec<SemanticObject>` identity is never language value identity.
+This is an ordinary projection from the typed Symbol buckets, not a
+resolver-private multiset. An implementation may use heterogeneous registries or
+Rust vectors to transport these objects, but such storage is not a language
+container and never contributes value identity.
+
+The global `symbol` type demonstrates the same generated-field mechanism. Its
+ordinary associated Symbol named `type` contains:
+
+```text
+type : (object: symbol)       -> type
+type : (object: symbol ref)   -> type ref
+type : (object: symbol share) -> type share
+
+Applicable(type candidate, Σ) <=> |T(Σ)| = 1
+```
+
+Thus `S.type` agrees by value with `AsType(S)`, while `(S ref).type` and
+`(S share).type` preserve the borrow observation of the unique type-member slot.
+This is ordinary field/candidate selection, not a resolver primitive that
+projects a value and then recovers its provenance.
 
 The consequence is that symbol-level operations are `Val1` transformations and
 leave the symbol's own pattern untouched:
@@ -1395,6 +1453,7 @@ third result rank (§4.1):
 extend  : type × StructLikeMaterial -> type
 inject  : type ref × StructLikeMaterial -> type ref
 struct  : StructLikePattern -> symbol
+*       : type × (CompileNatural | omega) -> type
 ```
 
 Unlike an `OrdinaryMetaFunction`, an individual built-in defines a
@@ -1425,6 +1484,11 @@ extend:
 inject:
   establish no root
   read the target, call extend, and write the result to that same target
+
+*:
+  establish no navigable MetaInstance root
+  derive T*N or T*omega from the normalized element type and shape argument
+  preserve rank(T)
 
 other privileged built-in:
   must declare its own special_owner_rule and special_scope_rule
@@ -1770,13 +1834,18 @@ meaning to an anonymous bare `() |> struct`; that is a separate boundary.
 
 For a structural field `f : A` owned by the generated type member `T`, `struct`
 uses one general field rule. It does not introduce a separate semantic category
-for “type fields”. The minimum generated observation family is:
+for “type fields”. All observations are candidates of one same-name associated
+Symbol `f`; receiver and result observation kinds distinguish the overloads:
 
 ```text
-f::T        : T       -> A
-f::ref::T   : T ref   -> A ref
-f::share::T : T share -> A share
+f : (object: T)       -> A
+f : (object: T ref)   -> A ref
+f : (object: T share) -> A share
 ```
+
+`ref` and `share` are not generated navigation subspaces. The associated Symbol
+is installed once beneath the type member's place; `const let` / `let` /
+`mut let` policy and the formal object type determine its candidates.
 
 Where the field policy permits mutation, the same generator also contributes
 the corresponding assignment/write candidate over `T ref × A`; assignment
@@ -1796,12 +1865,12 @@ Stage(accessor(runtime-materializable field)) = runtime || compile
 Stage(accessor(type/PatternValue field))       = compile
 ```
 
-The generated members live in the returned Symbol's `Val1` and in the generated
-type member's associated `Val2`/sibling callable universe according to their
-ordinary owner roles. They are normal `SemanticMember`s: user construction may
-remove them, replace them, or add a more specific declaration subject to the
-ordinary duplicate, fallback, and overload rules. They are not hidden compiler
-metadata.
+The generated members live in the returned Symbol's typed `Val1` buckets and in
+the generated type member's associated `Val2`/sibling callable universe
+according to their ordinary owner roles. They are ordinary typed member objects:
+user construction may remove them, replace them, or add a more specific
+declaration subject to the ordinary duplicate, fallback, and overload rules.
+They are not hidden compiler metadata.
 
 Construction state propagates only along owned field relations:
 
@@ -1834,7 +1903,7 @@ and the construction sequence using place-level `inject`:
 
 ```lang
 let s = (()t) |> struct;
-let t_ref = (s |> type)@;
+let t_ref = (s ref).type;
 (t_ref, bool inner) |> inject;
 ```
 
@@ -1851,13 +1920,13 @@ NamedPattern(
 
 The first form inherits/completes `inner` under `t`; the second supplies the
 same complete navigation through pure `extend`, then writes it back through the
-carrier slot reached by `(s |> type)@`. After
+type-member slot reached by `(s ref).type`. After
 completion, normalization retains only the complete navigation and normalized
 resident value. It erases whether the element was internal or extended, and
 whether its navigation was inherited or explicit.
 
 > **Correction:** Ordinary navigated
-> `let inner::((s |> type)@) = bool::;` does **not** produce the same PatternValue.
+> `let inner::((s ref).type) = bool::;` does **not** produce the same PatternValue.
 > It only installs `bool::` as an associated type (Val2 member) named
 > `inner` under `t`'s scope, without registering `inner` into `t`'s
 > Pattern canonical structure. Registering a member into the Pattern
@@ -1994,12 +2063,13 @@ in pure value computation where their ordinary value is accepted.
 Canonical source makes the type slot explicit:
 
 ```lang
-let r = (S |> type)@;
+let r = (S ref).type;
 (r, delta) |> inject;
 ```
 
-`@` performs no implicit Symbol-to-type projection. The result is the same ref
-`r`, now observing the successfully written value.
+The `.type` field preserves the explicit Symbol borrow observation and performs
+no provenance recovery. The result is the same ref `r`, now observing the
+successfully written value.
 
 ### 8.3 Navigation direction
 
@@ -2027,7 +2097,7 @@ Example. `t1::r` is an ordinary pure-pattern path, so it is not a legal
 assignment left side (§8.2.2); the carrier slot has to be taken first:
 
 ```lang
-let r_ref = ((t1::r |> type)@);
+let r_ref = (t1::r ref).type;
 (r_ref, (t first, u second)) |> inject;
 ```
 
@@ -2719,7 +2789,7 @@ ContributionExpectation =
 > expectation is never guessed from the RHS shape.
 >
 > ```text
-> let f::((t |> type)@)   -> NamespaceValueMember (always)
+> let f::((t ref).type)   -> NamespaceValueMember (always)
 > struct inline / extend  -> PatternChild (privileged)
 > ```
 
@@ -2750,7 +2820,7 @@ resolve source Symbol
 ```
 
 This is the expectation of:
-- Explicit-place navigated `let f::((t |> type)@) = expr`
+- Explicit-place navigated `let f::((t ref).type) = expr`
 - An ordinary let-shaped declaration consumed inside `struct` construction:
 
 ```lang
@@ -2819,8 +2889,8 @@ x ∉ Members(C_t)
 x  = PureP(C_f),  C_f ∈ Val2(T_t)
 ```
 
-Resolving `let f::((t |> type)@) = x` explicitly projects the target cluster's
-unique type member `T_t`, obtains its carrier-place `type ref`, derives the
+Resolving `let f::((t ref).type) = x` borrows the target Symbol and projects its
+ordinary same-name type-member field as `type ref`, derives the
 stable prospective `SubPlace(ObjectPlace(T_t), f)`, interns the associated
 Symbol `C_f` there, and installs `x`
 as `C_f.pure_p` with the binding-level member view in `C_f.member_views`.
@@ -2850,7 +2920,7 @@ Pattern(T) = Pattern(U) = Pattern(uint8)
 Place(T)  != Place(U)  != Place(uint8)
 ```
 
-`let f::((T |> type)@)` therefore creates beneath `T`'s own pure-type place, and
+`let f::(T@)` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
 Symbol-to-type projection and is not this operation. Reads fall back from the carrier's own place to
 the Pattern's canonical type object, which is where construction-time and
@@ -2901,7 +2971,7 @@ own member views, and the layered exposure conjunction on explicitly
 navigated targets are implemented in `crates/lang_build`. Still open debt:
 the associated-extension entry point is reached only through a still-open
 construction, so it resolves the target object from the constructed
-Pattern; source-level `let f::((U |> type)@)` against an already installed
+Pattern; source-level `let f::(U@)` against an already installed pure-type
 rebinding carrier, navigation through that explicit `type ref` view, and
 writability checking of the selected place remain future implementation work.
 Bare `let f::U` is not shorthand for obtaining the carrier place.
@@ -3053,11 +3123,13 @@ In a meta body the same sequence is simply legal, because the first step did not
 freeze anything.
 
 The empty destination `()` is the special call-entry leaf rather than a normal
-value-member name. Inside construction of `T`, `let () = impl` contributes
-`()` below `T` only. A separate `()::ref::T` or `()::share::T` requires a
-separate authorized contribution. The body of an associated `()` entry still
-has its own `CallableOwner`, while invocation-frame slot 0 receives the object
-whose type supplied that entry.
+value-member name. Inside construction of `T`, `let () = impl` contributes one
+candidate to the same associated `()` Symbol. Candidates for receivers `T`,
+`T ref`, and `T share` are distinguished by their formal object Pattern, not by
+`ref`/`share` navigation subspaces; a borrowed-receiver candidate still requires
+its own authorized contribution. The body of an associated `()` entry has its
+own `CallableOwner`, while invocation-frame slot 0 receives the object matched
+by the selected candidate.
 
 Under equal owner/construction authority, an inner contribution and a later
 inner-to-outer navigated declaration denote the same pending namespace delta:

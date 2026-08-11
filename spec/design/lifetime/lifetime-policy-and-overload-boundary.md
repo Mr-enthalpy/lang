@@ -111,7 +111,7 @@ pattern value, and `ref` then borrows *that*:
 let t: type = uint8;
 
 t ref   // uint8 ref — a correct borrow of the value that was read
-(t |> type)@  // type ref — the explicitly projected type carrier slot
+t@      // type ref — the pure type carrier slot
 ```
 
 `t ref` is not an error to be repaired. A value-directed operation has no basis
@@ -122,7 +122,7 @@ by taking `CarrierPlace(E)` as input.
 
 The selector is the `Val1` dimension of what was read, never type-rank. A
 value-bearing operand needs no place observation to be borrowed: for `s : symbol`
-the payload exists (`Val1(Symbol) = SemanticMember * ω`), so `s ref` is the ordinary
+the payload exists (`Val1(Symbol) = Σ = ⟨T?, V⟩`), so `s ref` is the ordinary
 "form a borrow of this value" operation, and a type-rank object that carries a
 payload behaves the same way. An explicit `E |> type` is well-formed exactly
 when `E` exposes one unambiguous type facet (`|TypeMembers(E)| = 1`), never
@@ -143,9 +143,12 @@ therefore still yield `type ref`.
 Consequently the two judgments remain independent:
 
 ```text
-Γ ⊢ (t |> type)@ : type ref  does not imply Open_Γ(Read((t |> type)@))
+Γ ⊢ t@ : type ref  does not imply Open_Γ(Read(t@))
 Open_Γ(Value(q))   does not imply CanBorrowRef_Γ(q)
 ```
+
+For a Symbol `S`, the distinct ordinary field path is `(S ref).type : type ref`;
+`AsType(S)` remains by-value and is never followed by `@` to recover a place.
 
 ### 2.3 Borrow type values are fixed points; borrow instances are not
 

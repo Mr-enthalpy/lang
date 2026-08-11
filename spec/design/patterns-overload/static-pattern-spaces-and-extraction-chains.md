@@ -1149,10 +1149,10 @@ let id = (self, t: type): compile -> r: type => {
 };
 ```
 
-This compile body computes a `PatternValue`. A meta body computes a
-`PatternValue` as well, and additionally roots and seals its own `MetaInstance`;
-when its declared return shape is a symbol value, it returns the symbol value of
-that root, for example:
+This compile body computes a declared ordinary `PatternValue`. An ordinary meta
+body specifically computes and returns the Symbol of its rooted and sealed
+`MetaInstance`; arbitrary PatternValue results belong to compile, while
+privileged builtins declare their own result Pattern. For example:
 
 ```lang
 let box = (self, t: type): meta -> r: symbol => {

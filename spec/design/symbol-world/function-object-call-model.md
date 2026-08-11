@@ -204,7 +204,9 @@ complete P2 until the later demanded `Project_out`.
 
 ## 4. Direct function object call method
 
-For `let f = (self) => {};`, the generated anonymous function-object type `F` has the call method under `F` itself: `() :: F`. Not under `ref::F`, `share::F`, or `move::F`.
+For `let f = (self) => {};`, the generated anonymous function-object type `F` has
+one associated call Symbol `()`. Receiver observation is expressed by candidate
+formals, not by generated `ref::F`, `share::F`, or `move::F` namespaces.
 
 A directly defined function object call receives that function object as its
 caller/self. Ownership is not written by the user — it is part of the generated
@@ -219,25 +221,21 @@ Product |> object
   → associated namespace search for `()`
 ```
 
-User-defined call entries are commonly installed under borrowed associated namespaces (e.g. `() :: ref::T`). The user writes `ref` explicitly; the expression's type becomes `ref::T`, and lookup follows from there. The language does not automatically jump from `T` to `ref::T`.
+User-defined call entries are candidates in one same-name associated `()`
+Symbol. Candidates for `object: T`, `object: T ref`, and `object: T share` are
+distinguished by ordinary formal-Pattern matching and Policy. Borrowing changes
+the receiver value's type; it does not navigate to a `ref` or `share` child
+namespace.
 
-Direct function objects are not merely sugar for user-defined `ref::T` callables. They have their call method directly under their anonymous function-object type.
-
-The implementation body installed under `()::ref::T` does not thereby acquire
-`ref::T` as its lexical owner. Its `CallableOwner` still owns local symbols,
-Pattern roots, nested callables, and code identity. `ref::T` is instead the
+The implementation body of a borrowed-receiver candidate does not thereby
+acquire `T ref` as its lexical owner. Its `CallableOwner` still owns local
+symbols, Pattern roots, nested callables, and code identity; `T ref` is only the
 receiver type of invocation slot 0.
 
-Source navigation is inner-to-outer. `ref::T` therefore means the `ref` child
-owned below `T`. A construction currently authorized to add children of `T`
-may contribute `ref::T`; the reversed spelling `T::ref` would require modifying
-the unrelated outer owner `ref` and is not equivalent.
-
-Likewise, `let ()` inside construction of `T` contributes only `()::T`.
-`()` entries below `ref::T` and `share::T` are independent injections. `move`
-does not require another call namespace because it is the type fixed point
-`T move == T`; borrowing constructs distinct `ref::T` and `share::T` object
-types.
+Likewise, one `let ()` contribution inside construction of `T` contributes only
+the candidate it writes. Value/ref/share receiver candidates require separate
+authorized contributions but join the same associated `()` Symbol. `move` is
+the type fixed point `T move == T` and requires no additional candidate family.
 
 ### 5.1 First-class field-function closures
 
@@ -312,7 +310,7 @@ declares the Pattern/binder for that position. Its spelling is unrestricted;
 
 The selected call entry `()` always receives the value being invoked as
 implicit `self`. For a standalone function this value is the function object;
-for an associated call entry it may be a `T`, `ref::T`, `share::T`, or another
+for an associated call entry it may be a `T`, `T ref`, `T share`, or another
 ordinary callable object. The user cannot manually pass this slot.
 
 The source product contains only the explicit user arguments. `ProductObject`, `ArgProductShape`, and `RawArgShape` represent only the explicit product supplied by the user. They do not contain the implicit `self`.
@@ -565,7 +563,7 @@ Product |> Expr
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
    while retaining visible derived companion objects
-7. Determine receiver binding: caller type `F` / `ref::T` / `share::T` and
+7. Determine receiver binding: caller type `F` / `T ref` / `T share` and
    selected associated `()`
 8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
@@ -610,7 +608,8 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - Every function object has a type.
 - A directly defined function object has an anonymous function-object type.
 - The call entry `()` for a directly defined function object lives under that anonymous type.
-- User-defined callable objects may define `()` under `ref::T` / `share::T` / other associated namespaces.
+- User-defined callable objects may add value/ref/share receiver candidates to
+  one associated `()` Symbol.
 - `CallableOwner` and receiver type are independent semantic facts.
 - Implicit `self` is always the invoked caller object and is passed by the call
   mechanism.

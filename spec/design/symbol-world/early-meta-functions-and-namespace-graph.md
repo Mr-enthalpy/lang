@@ -117,8 +117,8 @@ call modes; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-l
 | Source-contributed ordinary value placeholders | `runtime` |
 | Source-contributed type-annotated placeholders (`: type`) | `{meta, runtime}` |
 | Struct-generated `TypeObject` | `{meta, runtime}` |
-| Projection namespace symbols (`ref`/`share` under a generated type) | `{meta, runtime}` |
-| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `{meta, runtime}` |
+| Transitional projection namespace symbols (`ref`/`share` under a generated type) | `{meta, runtime}`; implementation substrate only |
+| Generated field-function Symbol and its value/ref/share candidates | `{meta, runtime}` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
 
 Generated `struct` expansion currently assigns these transitional metadata
@@ -127,7 +127,7 @@ fields:
 | Generated object | Current metadata |
 |---|---|
 | Generated `TypeObject` | symbol policy = `{meta, runtime}` |
-| Projection namespace `ref` / `share` | symbol policy = `{meta, runtime}` |
+| Transitional projection node `ref` / `share` | symbol policy = `{meta, runtime}`; not target semantics |
 | Generated field function | symbol policy = `{meta, runtime}` |
 | Generated field function | body entry policy = `runtime` |
 | Generated field function | transitional return object policy = `runtime` |
@@ -209,10 +209,11 @@ model boundary:
   field binders are private `struct` checker material.
 - Resolver contexts distinguish current namespace lookup, explicit mounted paths
   such as `uint8::core`, and short-name default mounts such as `uint8`.
-- Successful `struct` expansion produces a placeholder type object and a
-  generated type-associated namespace containing `a::T`, `a::ref::T`,
-  `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
-  symbols. These field-function symbols are visible under `PolicyEnv::OpenStatic`
+- Successful `struct` expansion currently produces a placeholder type object and
+  legacy per-observation field symbols. The target model replaces those
+  `a::ref::T` / `a::share::T` transport nodes with one associated Symbol `a`
+  containing candidates whose receiver formals are `T`, `T ref`, and `T share`.
+  These field-function candidates are visible under `PolicyEnv::OpenStatic`
   because their compatibility symbol policy is `{meta, runtime}`, but their callable
   body-entry and return-object policies are runtime-only.
 - PR #94 adds an explicit pattern-head attachment helper with generated,
@@ -228,8 +229,8 @@ model boundary:
 - Failed `struct` expansion returns hard diagnostics and leaves no partial
   generated subtree. Duplicate fields, unknown field types, unit/trailing-unit
   fields, and unsupported nested products are rejected. Fields named `ref` or
-  `share` are allowed because generated data fields are unary function objects while
-  `ref` / `share` are namespace subspaces.
+  `share` are allowed as ordinary associated Symbols. Current legacy projection
+  nodes are implementation substrate, not the reason for their legality.
 - v0.8 ordinary initializer evaluation can materialize
   `let T: type = uint8` as an ordinary type-value binding: resolve
   `symbol(uint8)`, read its type value, and bind that value to fresh
@@ -421,8 +422,9 @@ heterogeneous value entries. That future same-symbol facet rule is not the same
 as silently merging two independently declared `SymbolObject`s today; it
 requires facet-aware declaration identity and conflict checking first.
 
-This is required for fields named `ref` or `share`: the field is an object
-symbol, while `ref` / `share` projection spaces are namespace subspaces.
+This coexistence facility is generic graph substrate. It is not a target
+semantic requirement for fields named `ref` or `share`; those are ordinary
+associated Symbols and borrow observation kind belongs to candidate types.
 
 If the implementation needs temporary permissiveness, it must be marked as an
 implementation limitation, not as language semantics.
@@ -654,8 +656,9 @@ then applies the conservative namespace-capable cross-role restriction above.
 
 A **type-associated namespace** is the namespace space associated with a type
 object. It holds the type's companion symbols, for example generated field
-functions, `ref` / `share` projections, layout metadata, pattern interfaces, and
-related companion symbols.
+functions, layout metadata, pattern interfaces, and related companion symbols.
+Borrow observation kinds are candidate types, not `ref` / `share` projection
+subspaces.
 
 A type-associated namespace is **not** simply a "declared namespace object". Its
 members may be **declared**, **generated**, or **virtual** depending on origin.
@@ -684,12 +687,12 @@ caller/self (the field-function object) is injected, it dispatches through the f
 argument type and may forward a normalized remainder product as additional
 arguments.
 
-The unary generated-field shape is:
+The unary generated-field shape is one same-name associated Symbol:
 
 ```text
-field::T        : T       -> field
-field::ref::T   : T ref   -> field ref
-field::share::T : T share -> field share
+field : (object: T)       -> field
+field : (object: T ref)   -> field ref
+field : (object: T share) -> field share
 ```
 
 For directly runtime-materializable fields the target exposure is
@@ -698,15 +701,14 @@ The generated assignment partner exists only when the ordinary field Policy
 admits mutation. Current compatibility fields remain transport and do not
 override these target semantics.
 
-`field::T` is value semantics (`T == T move`). Borrowed field access must begin
+The value candidate has value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form such as `val ref.field1` or
 `val share.field1`. Field access evaluation, borrow normalization, and
 access-tree construction are future work.
 
-Because fields are object-role function symbols and `ref` / `share` are
-namespace-subspace-role projection spaces, fields named `ref` or `share` are
-valid. Terminal `ref::T` or `share::T` may be ambiguous unless resolver callers
-provide an expected role.
+Fields named `ref` or `share` are valid ordinary associated Symbols. There is no
+generated projection namespace with which they can conflict; receiver type and
+Policy select among the same-name candidates.
 
 ### 3.4 Type values, symbol places, and aliasing
 
@@ -730,9 +732,8 @@ let b = 1
 `a` and `b` are distinct symbols, while their values are equal.
 
 Member creation is not pure type-value evaluation.
-`let f::((T |> type)@) = ...` explicitly targets `place(T)`, not
-`place(uint8)`. `@` performs no implicit Symbol-to-type projection, and
-type-value equality must not
+Because this `T` is already a pure type slot, `let f::(T@) = ...` explicitly
+targets `place(T)`, not `place(uint8)`. Type-value equality must not
 canonicalize injection targets.
 
 `let` and the frozen `===` surface form are not interchangeable, and only `let`
@@ -740,13 +741,13 @@ has target semantics:
 
 | Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::((T |> type)@)` may create under `place(T)` when separately authorized |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T@)` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
-| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with one type member | `let f::((T |> type)@)` may create under that explicit type place |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with one type member | `let f::((T ref).type)` may create under that explicit type-member place |
 
 Fresh generated Symbols own/provide their unique type member's associated
-namespace, so `let T = (uint8 a, uint8 b) |> struct` creates the Symbol whose
-field functions are visible as `a::T`, `a::ref::T`, and `a::share::T`.
+namespace, so `let T = (uint8 a, uint8 b) |> struct` creates one associated
+Symbol for `a` and one for `b`; each contains value/ref/share receiver candidates.
 
 By contrast, `let T: type = uint8` does not create a fresh type value, but it
 may own a fresh current-level companion namespace place. Future namespace

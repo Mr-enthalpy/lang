@@ -155,19 +155,20 @@ Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
                                 Norm_Val2(Val2(x)) ⟩
 Norm_Val1?^P(null)         = null
 Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
-Norm_Val1?^P_symbol(ms)    = Set{ Norm_semantic_member(member_i) | member_i in ms }
-Norm_Val2(V)               = Map_name( Norm_Cluster(V[name]) )
-Norm_Cluster(C)            = ⟨ Norm_pureP(C.pureP)?,
-                                Set{ Norm_member(v) } ⟩
-Norm_pureP(x)              = Norm(x)
+Norm_Val1?^P_symbol(Σ)     = ⟨ Norm(T)? ,
+                                Map_{Norm(T_c)}(
+                                  Set{ Norm(v) | v in V[T_c] }) ⟩
+Norm_Val2(V)               = Map_name( Norm(V[name]) )
+                               -- every same-name entry is an ordinary Symbol
 ```
 
-The `P_symbol` clause is a Pattern-specific quotient: `SemanticMember * omega` may use
-an ordered dynamic array as its carrier, but insertion position is not Symbol
-identity. Its elements are complete `SemanticMember` values, not erased callable
-bodies. `Norm_member` preserves stable member/candidate identity, the normalized
-member body, and every declaration annotation that affects semantic selection.
-It erases only representation and contribution-history coordinates.
+The `P_symbol` clause is a Pattern-specific quotient over the ordinary Symbol
+content `Σ = ⟨T?, V⟩`, where `V = ⨄_{T_c} V[T_c]` and every homogeneous bucket
+`V[T_c] : T_c * omega`. The member objects inside a bucket retain their own
+ordinary recursive identity, including stable declaration/candidate identity,
+callable body, and every annotation that affects semantic selection. There is no
+universal `SemanticMember` wrapper type and no exception to the homogeneity of
+`T * omega`.
 
 Multiplicity is not retained by the final Symbol normal form. Replaying the
 same contribution of the same stable member is idempotent in value identity;
@@ -175,7 +176,8 @@ conflicting declarations and duplicate definitions are rejected by construction
 or well-formedness before the quotient is observed. Two distinct members are
 not collapsed merely because their bodies normalize alike. In particular,
 inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
-form exactly when the resulting `SemanticMember` sets are equal.
+form exactly when the optional type member and every normalized `V[T_c]` set are
+equal.
 
 There is no case split in which one component is ignored. Earlier revisions
 normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
@@ -304,11 +306,11 @@ This is what makes an open construction observable at all. Given
 let fn = (...): meta -> _ :symbol = {
     let t = (() t) |> struct;
 
-    let f::((t |> type)@) = X;
-    let A = t |> meta_fn;
+    let f::((t ref).type) = X;
+    let A = t |> compile_fn;
 
-    let g::((t |> type)@) = Y;
-    let B = t |> meta_fn;
+    let g::((t ref).type) = Y;
+    let B = t |> compile_fn;
     t;
 };
 ```
@@ -320,11 +322,11 @@ t_1 = ⟨ P_t, {f} ⟩
 t_2 = ⟨ P_t, {f, g} ⟩
 ```
 
-so `Norm_type(t_1) ≠ Norm_type(t_2)` and therefore
-`MetaKey(meta_fn, t_1) ≠ MetaKey(meta_fn, t_2)` — both observations invoke the
-SAME callable, so only the recursive `Val2` separates the keys. Reading the
-shared Pattern's canonical object instead of the observing carrier's own
-object would merge the two meta instances.
+so `Norm_type(t_1) ≠ Norm_type(t_2)`. The `compile_fn` calls may consume both
+meta-local observations because compile creates no `MetaInstanceKey`; an
+ordinary nested meta call on fresh `t` would instead fail `GlobalKeyable`.
+Reading the shared Pattern's canonical object instead of the observing
+carrier's own object would still incorrectly merge the two values.
 
 Memoizing FINISHED cycle-free subtrees is permitted (a shared acyclic diamond
 is DAG reuse, not a cycle), but no `PlaceId` or memo node number may appear in
@@ -379,14 +381,16 @@ means a declaration extension / namespace injection / assignment-like operation
 resolves `x` to a writable place `p`.
 
 These are not interchangeable. Canonical creation beneath a pure type slot uses
-an explicit place-bearing view:
+`@` directly on that slot:
 
 ```lang
-let f::((T |> type)@) = ...;
+let f::(t@) = ...;
 ```
 
-The `|> type` is `AsType`; `@` then observes the carrier place of that projected
-type slot. Neither operation is implicit in ordinary navigation.
+When the source is instead a Symbol `S`, the Symbol must first be borrowed and
+its ordinary same-name `type` field projected: `let f::((S ref).type) = ...`.
+`AsType(S) = S |> type` is by-value only and never participates in place
+recovery.
 
 ### 3.1 General value binding resolves symbols first
 
@@ -472,11 +476,11 @@ type value read through `T` after `let T: type = uint8`; comparing the strings
 The same rule applies to an externally owned pattern value:
 
 ```lang
-let t1::((t |> type)@) = bool;
+let t1::((t ref).type) = bool;
 ```
 
 resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
-destination prospective SubPlace under `(t |> type)@`. It does not reroot the pattern, rewrite its
+destination prospective SubPlace under `(t ref).type`. It does not reroot the pattern, rewrite its
 navigation, or make the destination symbol identical to the pattern owner.
 
 Literal syntax is the explicit exception only to source-path resolution. It
@@ -573,7 +577,7 @@ Consequently `f::T` denotes `Val2(T)[f]` in all of
 ```lang
 let A: type = f::T;
 let B = (f::T) meta_fn;
-let g::((U |> type)@) = f::T;
+let g::((U ref).type) = f::T;
 (…) |> f::T;
 g::f::T
 ```
@@ -643,7 +647,7 @@ type construction is rejected.
 Consequently, associated-member creation through `T`:
 
 ```text
-let f::((T |> type)@) = ...
+let f::(T@) = ...
 ```
 
 executes:
@@ -762,8 +766,8 @@ ObjectPlace(value) ≠ CarrierPlace(E)
 for `let t: type = uint8`, `Read(t)` reads the `uint8` type object, so `t ref`
 is a `uint8 ref` whose referent is `uint8`'s own resident/global object place,
 **not** `CarrierPlace(t)`. Keeping the two coordinates distinct is exactly why
-`t ref` (the value's object place) and `(t |> type)@` (the explicitly projected
-carrier slot `t`) do not merge;
+`t ref` (the value's object place) and `t@` (the pure type carrier slot `t`) do
+not merge;
 letting `ref` fall back to `CarrierPlace(E)` would erase the whole point of `@`
 (§5.2).
 
@@ -785,7 +789,8 @@ let r = t ref;
 
 binds `r` to `uint8 ref` — a borrow view of the type object `uint8` — and not to
 a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
-`r`. The slot itself is reached only by `(t |> type)@` (§5.2).
+`r`. Because `t` is already a pure type slot, the slot itself is reached by
+`t@` (§5.2). A Symbol's type-member slot instead uses `(S ref).type`.
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
 uses: a `share` view admits reading and passing but is not an assignable place
@@ -802,7 +807,7 @@ let s: symbol = ...;
 let r = s ref;              // Read(s) : symbol, so r : symbol ref
 ```
 
-A symbol value is value-bearing (`Val1(Symbol) = SemanticMember * ω`), so `s ref` is the
+A symbol value is value-bearing (`Val1(Symbol) = Σ = ⟨T?, V⟩`), so `s ref` is the
 ordinary "form a borrow of this value" operation. Because `Read` does not descend
 into `Val1`, `r` is a `symbol ref` and **not** a reference to the member array
 held inside the symbol. What `r` borrows is the symbol value that `s` holds, not
@@ -828,7 +833,7 @@ Facet projection stays explicit there (`|> type`, `|> val`, `|> namespace`), and
 an explicit `E |> type` is well-formed exactly when the selected object/Symbol
 exposes one unambiguous type facet (`|TypeMembers(S)| = 1`, i.e.
 `HasUniqueTypeFacet(S)`). Whether `E` carries a `Val1` payload is irrelevant to
-type-projection applicability: `Val1(Symbol) = SemanticMember * omega` is present even
+type-projection applicability: `Val1(Symbol) = ⟨T?, V⟩` is present even
 for a Symbol that has only ordinary val members and no type member, so
 `Val1? != null` never implies that `ProjectType` is defined. `Val1?`
 participates only in the `ref`-versus-`@` dispatch, never as a type-facet
@@ -875,7 +880,7 @@ reachable from the value:
 let t: type = uint8;
 
 t ref   // Ref(Read(t))            = uint8 ref
-(t |> type)@ // RefCarrierSlot(t)  = type ref, pointing at the slot t
+t@       // RefCarrierSlot(t)      = type ref, pointing at the slot t
 ```
 
 `t ref` is not a mistake to be corrected; it is the correct borrow of the value
@@ -980,7 +985,7 @@ share -> ref   is a capability strengthening   no candidate
 Capability weakening remains well-formed:
 
 ```lang
-let r = (t |> type)@;       // r : type ref
+let r = t@;                 // r : type ref
 let s = r share;            // ref share: s : type share, same target
 ```
 
@@ -1060,7 +1065,7 @@ that view:
 ```text
 Carrier(t) = q      CanBorrowRef_Γ(q)
 -------------------------------------
-Γ ⊢ (t |> type)@ : type ref
+Γ ⊢ t@ : type ref
 ```
 
 A canonical `type ref` therefore contains only the ordinary borrow coordinates:
@@ -1182,17 +1187,21 @@ operand's shape. An operand position never acquires a projection because a
 projection would make the program check.
 
 `@` is always an operand operation, so it never performs this implicit
-projection. Canonical source that needs the place of a Symbol's unique type
-member writes:
+projection. `AsType` therefore cannot be followed by `@` to recover the source
+Symbol's type-member slot. Symbol provides an ordinary same-name field/accessor
+family instead:
 
 ```lang
-(S |> type)@
+S.type         : type
+(S ref).type   : type ref
+(S share).type : type share
 ```
 
-A future `S@` shorthand in a type-place context would require a separately
-specified, place-preserving `TypeExpected` elaboration. This document defines no
-such shorthand; ordinary `AsType` alone is a value projection and may not invent
-or recover a carrier place after the fact.
+`S.type` is the by-value unique-type projection and agrees in value with
+`AsType(S)`. The ref/share cases preserve their borrow observation through
+ordinary field projection; they do not reverse-map a type value to an origin.
+When `t` itself is already a pure `type` slot, `t@` remains the direct carrier
+borrow. No `S@` or `(S |> type)@` shorthand is defined.
 
 ## 6. Writability, member creation, and construction openness
 
@@ -1251,7 +1260,7 @@ accepted:
 
 ```lang
 let T = (() t) |> struct;
-let f::((T |> type)@) = ...;
+let f::((T ref).type) = ...;
 ```
 
 No binding or borrow view can amplify the place authority it observes:
@@ -1331,8 +1340,8 @@ from repeated ordinary binding.
 The two forms are distinct operations on the same resolved prospective target:
 
 ```text
-let f::((T |> type)@) = expr   — instantiate a missing associated member
-f::((T |> type)@) = expr       — write an already existing member
+let f::((T ref).type) = expr   — instantiate a missing associated member
+f::((T ref).type) = expr       — write an already existing member
 ```
 
 Bare `=` never creates a missing member. There is no declaration shorthand in
@@ -1350,9 +1359,9 @@ freshness. `let` is the only operation that changes `None` to `Some(value)`.
 The two forms also differ in what they change about the host:
 
 ```text
-let f::((T |> type)@) = expr -> Val2(type(T))[f] := expr (P unchanged)
-extend(T |> type, Δ)          -> new type value with widened P/Val2
-inject((T |> type)@, Δ)       -> read + extend + write through the type ref
+let f::((T ref).type) = expr -> Val2(T.type)[f] := expr (P unchanged)
+extend(T.type, Δ)            -> new type value with widened P/Val2
+inject((T ref).type, Δ)      -> read + extend + write through the type ref
 ```
 
 An ordinary member declaration adds a `Val2` entry under an existing pattern
@@ -1515,7 +1524,7 @@ meaning.
   `@`, its overload groups, and escape checking. This document supplies only the
   `Origin`/`Value` split that `@` consumes.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
-  projection namespaces, role-aware lookup, and access-tree work. It references
+  same-name receiver overloads and access-tree work. It references
   this document for the canonical value / place / borrow-view distinction rather
   than restating it.
 - `early-meta-functions-and-namespace-graph.md` — the build / namespace graph and

@@ -374,9 +374,10 @@ textual child name -> object/function role + namespace-subspace role
 
 Same parent + same textual child name + same role is a hard conflict. An
 object/function symbol without a namespace node may coexist with a pure
-namespace-subspace symbol of the same textual name. This is required for
-`struct` field functions named `ref` or `share`: the field is a unary function
-object, while `ref` / `share` are projection namespace subspaces.
+namespace-subspace symbol of the same textual name. This is generic transitional
+graph capability; it is not required for borrow observations. Target `struct`
+fields named `ref` or `share` are ordinary associated Symbols, while receiver
+observation kind is represented in their overload candidates.
 
 The conservative v0.6 restriction is that an object with a namespace node
 (notably a type object with a type-associated namespace) may not coexist with a
@@ -392,8 +393,9 @@ generalized into final mutually exclusive `SymbolKind`s.
 ### 7.2 Type-associated namespace
 
 A **type-associated namespace** is the namespace space associated with a type
-object: generated field functions, `ref` / `share` projections, layout metadata,
-pattern interfaces, and related companion symbols. It is a category by **role**,
+object: generated field functions, layout metadata, pattern interfaces, and
+related companion symbols. Borrow `ref` / `share` are candidate observation
+kinds rather than projection subspaces. This is a category by **role**,
 not by origin: its members may be declared, generated, or virtual. For a
 `struct`-generated type, it is a virtual / generated child namespace attached to
 the type node. It is therefore not equivalent to the "declared namespace

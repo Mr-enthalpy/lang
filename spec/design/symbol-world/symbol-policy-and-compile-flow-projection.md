@@ -1210,15 +1210,17 @@ in authority, not in value rank:
 
 ```text
 ordinary meta
-        -> establishes and seals one navigable MetaInstanceRoot
-compile -> ordinary PatternValue only; root-conserving, with no root authority
+        -> establishes and seals one navigable MetaInstanceRoot; returns symbol
+compile -> any declared ordinary PatternValue; root-conserving, with no root authority
 privileged builtin
-        -> follows its member-specific owner rule; no generic root conclusion
+        -> follows its member-declared result and owner rules
 ```
 
-Both may return any ordinary `PatternValue`, including a type value, a symbol
-value, or a `type ref`. `compile` is restricted by what it may *root*, not by
-which value shapes it may produce; the root condition is owned by
+An ordinary meta callable's result Pattern is exactly `symbol`; it does not use a
+generic “any PatternValue” return rule. `compile` may return a type value, Symbol
+value, `type ref`, or any other declared ordinary PatternValue. Privileged
+builtins are member-specific: in this closure `struct -> symbol`,
+`extend -> type`, and `inject -> type ref`. The root conditions are owned by
 `symbol-first-meta-construction-and-pattern-injection.md`.
 
 No OpenStatic task may read a runtime value or depend on a runtime effect. If a
