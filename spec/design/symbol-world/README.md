@@ -3,10 +3,11 @@
 **Status: Non-normative future design with a partial implementation note. A
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
-extension-eligibility checking,
-`SymbolCell` facets, `PatternValue`, `SymbolConstruction`,
+construction-lineage Open checking,
+`SymbolCell` facets, `PatternValue`, ordinary Symbol-valued meta results
+(current transitional carrier: `SymbolConstruction`),
 `ResolvedPatternScope`, `MetaInstanceScopeId`, meta type self-root checking,
-functional `inject`, `NamespaceOrigin`, construction-unit ownership,
+pure `extend`, place-level `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
 access-tree construction are not implemented. Layered symbol policy,
 compile-flow projection, complete derived compile-companion objects,
@@ -26,12 +27,12 @@ The namespace graph world model and symbol-level identity:
   const/mut product order, compile-flow projection over ordinary call nodes,
   complete derived compile-companion objects, coarse inferred require, and
   shared compile evaluation
-- resolved pattern scopes, `struct` ownership, functional child-only `inject`,
-  and binding/install separation
+- resolved pattern scopes, `struct -> symbol`, pure child-only `extend`,
+  place-level `inject`, and binding/install separation
 - meta-return type self-root identity and complete meta-instance navigation atoms
 - namespace-facet origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
-- the borrow views `ref` / `share` / `@`, writability, and extension eligibility
+- the borrow views `ref` / `share` / `@`, writability, and construction-lineage Open
 - field functions, `ref` / `share` projection namespaces
 - type-associated function objects and namespace extension targets
 - the early-meta / namespace-graph bootstrap (broad bootstrap document)
@@ -45,8 +46,9 @@ policy checker (referenced from the other blocks).
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
   direction for SymbolCell facets, heterogeneous value/call candidates,
-  `compile` / `meta`, meta type self-root, resolved pattern scopes, `struct`,
-  functional `inject`, pattern-layer ordering, uniqueness/replay, and outer
+  `compile` / `meta`, meta type self-root, resolved pattern scopes,
+  `struct -> symbol`, pure `extend`, place-level `inject`, pattern-layer
+  ordering, uniqueness/replay, and outer
   graph installation.
 - `symbol-construction-units-and-namespace-origin.md` — canonical future
   namespace-origin, source/meta construction-unit ownership, physical-directory

@@ -27,7 +27,7 @@ and residualization — are specified in
 `spec/design/meta-invocation/meta-object-invocation-and-policy-reduction.md`.
 
 The canonical future symbol-facet, `compile` / `meta`, pattern-owner,
-`struct`, and functional `inject` boundaries are specified in
+`struct`, pure `extend`, and place-level `inject` boundaries are specified in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 That document supersedes the older formal return-slot split between `r = ...`
 and `r === ...`, the interim single-form `r = ...` reading (the final model
@@ -136,6 +136,9 @@ These fields are implementation substrate. They do not establish final scalar
 policy planes. The future model stores `Pv:Pp`, elaborates P1 as a binding/view
 projection, normalizes P2 as the call-result pair, derives function-object stage
 views from P2, and has no independent P3.
+Return positions may nevertheless refine inherited P1 mutability only,
+symmetrically with parameter refinement of P2; no other policy dimension may
+change.
 
 ### Policy-aware resolver
 
@@ -511,19 +514,20 @@ The final boundary is sharper:
 
 ```text
 compile -> PatternValue, with root conservation and no root authority of its own
-ordinary meta -> PatternValue, plus authority to establish and seal one
+ordinary meta -> symbol PatternValue, plus authority to establish and seal one
                  navigable MetaInstanceRoot M
 privileged builtin -> PatternValue under its member-specific owner rule
 let binding / namespace contribution -> NamespaceDelta atomic install
 ```
 
-The `compile` / ordinary-`meta` difference is world authority over a navigable
-`MetaInstanceRoot`, not result rank; see
+The `compile` / ordinary-`meta` authority difference remains within the ordinary
+PatternValue domain and introduces no construction rank; see
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
 §4.1.
 
-Formal `struct`, formal meta invocation, and functional `inject` do not install
-the graph. `MetaExpansionResult` may remain an implementation adapter, but it
+Formal `struct`, formal meta invocation, and pure `extend` do not install the
+graph. `inject` only writes an already existing type slot and creates no graph
+member/root. `MetaExpansionResult` may remain an implementation adapter, but it
 must not erase the distinction between an uninstalled construction value and
 the outer installation operation.
 
@@ -688,11 +692,11 @@ field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
 ```
 
-Their compatibility symbol policy is `{meta, runtime}`, so the compiler can resolve and inspect
-them during meta/type-checking phases and can construct residual runtime calls
-that reference them. Their current callable body-entry policy is `runtime`, and
-their transitional return-object field is `runtime`; meta lookup visibility does not permit a meta
-evaluator to enter their bodies.
+For directly runtime-materializable fields the target exposure is
+`runtime || compile`; type/PatternValue fields are conservatively compile-only.
+The generated assignment partner exists only when the ordinary field Policy
+admits mutation. Current compatibility fields remain transport and do not
+override these target semantics.
 
 `field::T` is value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form such as `val ref.field1` or
@@ -725,8 +729,10 @@ let b = 1
 
 `a` and `b` are distinct symbols, while their values are equal.
 
-Namespace injection is not pure type-value evaluation. `let f::T = ...`
-targets `place(T)`, not `place(uint8)`. Type-value equality must not
+Member creation is not pure type-value evaluation.
+`let f::((T |> type)@) = ...` explicitly targets `place(T)`, not
+`place(uint8)`. `@` performs no implicit Symbol-to-type projection, and
+type-value equality must not
 canonicalize injection targets.
 
 `let` and the frozen `===` surface form are not interchangeable, and only `let`
@@ -734,12 +740,12 @@ has target semantics:
 
 | Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `f::T` extends `place(T)` if current-level and open |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::((T |> type)@)` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
-| `let T: type = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a fresh generated type value | `f::T` extends `place(T)` if open |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with one type member | `let f::((T |> type)@)` may create under that explicit type place |
 
-Fresh generated type values own/provide their own type-associated namespace, so
-`let T: type = (uint8 a, uint8 b) |> struct` creates the fresh type value whose
+Fresh generated Symbols own/provide their unique type member's associated
+namespace, so `let T = (uint8 a, uint8 b) |> struct` creates the Symbol whose
 field functions are visible as `a::T`, `a::ref::T`, and `a::share::T`.
 
 By contrast, `let T: type = uint8` does not create a fresh type value, but it
@@ -839,9 +845,9 @@ special case.
   namespaces are installed only under a legal parent / instance node; no
   arbitrary rewrite of parent / sibling / global namespace.
 
-The future public boundary is `struct: normalized pattern material -> the
-ordinary PatternValue of its own declared ReturnShape`; AST remains an internal
-carrier, and graph installation remains in the outer binding layer.
+The future public boundary is
+`struct: StructLikePattern -> symbol`; AST remains an internal carrier, and
+graph installation remains in the outer binding layer.
 
 ## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 
@@ -859,8 +865,9 @@ restricted evaluator
 
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
-transport. They do not implement canonical facets, `MetaInstanceScope`, owned-
-open `inject`, type self-root validation, or construction-unit authority.
+transport. They do not implement canonical facets, `MetaInstanceScope`,
+construction-lineage `Open`, `extend`/`inject`, type self-root validation, or
+construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the
 construction contract in
@@ -928,8 +935,9 @@ Must cover the transition from the restricted type-shaped evaluator toward:
 ordinary normalized structured input; `compile` producing `PatternValue`;
 `meta` sealing a `MetaInstance` and returning its symbol value; rank-directed
 canonical
-argument identity; the return construction-effect family
-(`let r = expr;` fresh member, `r = expr;`
+argument identity; orthogonal creation/write/return events (current compatibility
+encoding:
+`let r = expr;` fresh member, `r = expr;`
 existing-target write — currently a placeholder overwrite scaffold, `r;`
 delivery terminal); binding-layer
 installation under a legal writable place; and first-class `(T Vec)` /
@@ -937,8 +945,8 @@ installation under a legal writable place; and first-class `(T Vec)` /
 
 Non-goals: unrestricted compile-time IO; runtime execution; full
 borrow/lifetime checking; full pattern-space subtraction / exhaustiveness;
-complete operator overload semantics; general macros; direct graph mutation
-inside formal `struct` or `inject` invocation.
+complete operator overload semantics; general macros; graph-member creation
+inside formal `struct`/`extend` or through `inject`.
 
 ## 8. Conceptual constraints
 
@@ -958,10 +966,9 @@ inside formal `struct` or `inject` invocation.
 - Compile/meta bodies consume ordinary parsed and normalized structured material
   under capability policy — not a separate compile-time DSL or text macro.
 - `compile` computes `PatternValue`; `meta` seals a `MetaInstance` and returns
-  its symbol value, which is an ordinary `PatternValue`. Formal meta return
-  material uses the
-  construction-effect family (spellings shown in the current `let`-only
-  compatibility encoding pending expression-level `=`): `let r = expr;` adds
+  its symbol value, which is an ordinary `PatternValue`. Target semantics use
+  ordinary `let` creation, existing-place `=` writes, and a separate return
+  event. The current `let`-only compatibility encoding is: `let r = expr;` adds
   a fresh member, `r = expr;` writes to an existing
   target (today a placeholder overwrite scaffold; the final write
   algebra is not fixed), and `r;` delivers the construction. There is no
@@ -973,10 +980,11 @@ inside formal `struct` or `inject` invocation.
   AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
-- Functional `inject` requires either a `type ref` to its target or an ambient
-  `Open` fact for a by-value `type` argument, and adds direct children without
-  installing the graph. There is no owned/uninstalled construction handle rank
-  to pass around.
+- Pure `extend(type, material)` adds direct children only when the value's
+  `ConstructionLineage` is Open in the current stack. `inject(type ref,
+  material)` is read--extend--write and additionally requires the target place
+  writable. A ref proves neither Open nor promotion, and there is no
+  construction-handle rank.
 - v0.6–v0.8 do not claim full policy checking, full type checking, full pattern
   checking, or full value-level compile-time evaluation. Those remain later
   stages.

@@ -3,7 +3,7 @@
 > **Retirement notice — the semantic alias model described in this document is
 > retired.**
 >
-> Two separate things were recorded here, and only the first survives:
+> Two separate things were recorded here, and only the parser fact survives:
 >
 > 1. **Frozen parser fact (retained).** `===` is lexed as
 >    `Symbol::TripleEqual` and the parser preserves `LetAliasAst` /
@@ -30,9 +30,9 @@
 > `ref`, `share`, and `@`, specified in
 > `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 >
-> Operator-name binding remains a separate, narrow mechanism with its own
-> rules. Its surface spelling is an open question; nothing about it licenses
-> reading ordinary aliases back into the language.
+> Operator-name binding is not an exception. The target direction models
+> `operator` as an ordinary global type and operator environments as ordinary
+> copyable/shadowable values. No semantic `let ===` form survives.
 >
 > Everything below is retained as the historical record of the surface form and
 > of the retired semantic direction. Do not cite it as a specification of
@@ -205,76 +205,34 @@ let Vec === Vector::collections::std
 let map === map::iter::std
 ```
 
-These examples are future syntax only.
+These examples are frozen parser-surface history only; they have no target
+semantic alias meaning.
 
-The alias shadows previous visible bindings named `local_name`, `Vec`, or
-`map` in the current lexical scope.
+Under the retired model the alias would have shadowed previous visible bindings
+named `local_name`, `Vec`, or `map` in the current lexical scope.
 
 No target existence check occurs in the parser.
 
 No namespace or package loading occurs in the parser.
 
-## Operator Alias
+## Operator Alias (retired)
 
-Operator-name binding is the one mechanism in this document that is **not**
-retired, and it is deliberately narrow. Its surface spelling is an open
-question, and its rules do not generalize: an operator-name binding is not
-evidence that ordinary aliases exist, and no rule stated here transfers to
-ordinary names.
+The operator-name branch of the frozen `LetAliasAst` is parser-preserved history
+only. It receives no semantic identity check, lookup rule, or forwarding pass.
 
-For operator binders, binding is stricter than for ordinary names.
-
-An operator alias may select a concrete visible operator implementation from
-another namespace, but it may **not** rename one operator into another.
-
-The operator binder and the final operator leaf of the target `EntityRef` must
-have the same operator identity.
-
-Operator identity is:
+The closed design direction is value-based:
 
 ```text
-spelling + fixity + arity
+operator                    -- ordinary global type
+operator : operator         -- current lexical operator-environment value
+RHS `a op b`                -- desugars toward `(a, b) |> operator[op]`
 ```
 
-Prefix negative `-x` is not an overloadable operator identity (see
-`spec/history/v0.1/operator-design.md`). The `Prefix` fixity is a Raw AST surface marker
-reserved for the prefix-negative sugar and does not participate in operator
-alias identity. The `-` spelling in alias binder or target position refers
-exclusively to binary minus.
-
-Valid future design examples:
-
-```text
-let << === <<::xxx_bit
-let >> === xxx_bit::>>
-let + === +::checked_int
-```
-
-Invalid future design examples:
-
-```text
-let << === xxx_bit::>>
-let + === <<::xxx_bit
-let - === some_lib::+
-```
-
-These are rejected because the operator spelling differs between binder and
-target leaf.
-
-### Where identity checking belongs
-
-The parser may later preserve both sides as raw AST. The identity check belongs
-to a later static validation or name-resolution-adjacent phase, because fixity,
-arity, and operator declaration lookup may be needed to disambiguate the
-target.
-
-A purely syntactic first-pass rule (comparing the operator spelling token text)
-is possible as optional future parser validation, but it is not a Phase 4.3
-implementation item. Operator identity is `spelling + fixity + arity`, and
-fixity/arity may depend on the target's resolved declaration, which is not
-available in the parser.
-
-Phase 4.3 does not implement this validation.
+A local operator environment is produced by ordinary value copy, lexical
+shadowing, and Symbol `+=` / `-=` transformations. It is not an alias and does
+not make two names share a place. The complete operator-environment layout,
+lookup rules, and selector algebra remain future design and do not block this
+document's retirement decision.
 
 ## Lexical Scope Rule (retired)
 
@@ -365,7 +323,7 @@ implementation). It does **not**:
 - perform dependency resolution;
 - load packages;
 - interpret import/use/include/module syntax;
-- validate operator alias identity (beyond optional spelling comparison);
+- validate operator alias identity (the semantic operation is retired);
 - perform type checking;
 - perform kind checking;
 - perform overload resolution;
@@ -384,14 +342,14 @@ The following diagnostic codes are implemented in `DiagnosticCode` (Phase 4.4):
 | `InvalidEntityRef`                  | Implemented    | The `EntityRef` on the RHS is malformed (e.g., operator in segment position). |
 | `UnexpectedAliasRhsExpression`      | Implemented    | The RHS of `===` is an expression form (PipeExpr, product, closure, etc.) instead of `EntityRef`. |
 
-Future diagnostics, not implemented:
+Retired/reserved diagnostic inventory:
 
 | Diagnostic                          | Note                                                                     |
 | ----------------------------------- | ------------------------------------------------------------------------ |
-| `OperatorAliasIdentityMismatch`     | Spelling + fixity + arity check. Deferred to future semantic validation. |
+| `OperatorAliasIdentityMismatch`     | Historical reserved code; no target semantic validator is planned. |
 
-`OperatorAliasIdentityMismatch` may be a parser diagnostic (spelling-only) or
-a later static-semantic diagnostic (including fixity/arity).
+`OperatorAliasIdentityMismatch` must not be used to revive operator alias
+semantics. The frozen parser may retain the code/inventory for compatibility.
 
 ## Alias binding AST (current Phase 4.4 shape)
 

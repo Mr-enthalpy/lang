@@ -78,7 +78,7 @@ For declaration-context call-entry injection, the self-position may have a
 non-anonymous type such as `T ref` in:
 
 ```lang
-let ()::ref::T = (object: T ref) => { ... }
+let ()::((ref::T |> type)@) = (object: T ref) => { ... }
 ```
 
 The same rule still holds: `object` is self by position, is passed implicitly,

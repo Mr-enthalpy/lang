@@ -52,17 +52,25 @@ Pp  policy of the Pattern/anonymous-type component observed at this edge
 There is no scalar replacement for this pair and no third policy slot. A
 result object carries its own `PolicyPair` when it re-enters the flow.
 
-The two axes of the pair are independent of the object's internal shape:
+The pair is an observation edge, but its two axes are constrained by whether the
+object actually has an independent value projection:
 
 ```text
-Val1?(x) = null   does not imply  Pv = absent
-Pv = absent       does not imply  Val1?(x) = null
+Val1?(x) = null  =>  Pv = Pp
+
+Pv != Pp  =>  Val1?(x) != null
+          and runtime ∈ Stage(Pv)
+
+Pv = absent  does not imply  Val1?(x) = null
 ```
 
-The first says an object without an internal `Val1` payload may still be
-observed through a value-bearing edge. The second says an observer may be denied
-the value axis of an object that does carry a payload. Reading either direction
-as an implication collapses the object into its observation.
+The first rule does **not** say `Pv = absent`: a pure PatternValue still has one
+Policy, observed identically as `Pv` and `Pp`. Divergence becomes meaningful only
+when an independent runtime value projection exists. The final rule preserves
+observer hiding: an edge may suppress the value projection of an object that
+does carry `Val1`. Object shape is therefore not inferred back from an
+observation, while an impossible two-policy split is not invented for a pure
+PatternValue.
 
 Policy dimensions are typed and orthogonal:
 
@@ -377,6 +385,32 @@ callable body and comparison of this callable against other fully admissible
 overloads. “Inherit P2” must not be implemented by updating only the body
 environment while leaving the candidate externally `unspecified`.
 
+#### 3.2.1 Return policy refinement inherits P1
+
+There is no independent `P3`, but a return position may refine the mutability
+coordinate inherited from the callable's declaration P1:
+
+```text
+ReturnBase(callable) = P1(callable)
+ReturnPolicy         = Refine_mutability(ReturnBase, written_qualifier)
+```
+
+Omitting the qualifier preserves P1 exactly. A written `const` or `mut`
+restricts only the inherited value-mutability domain, symmetrically with the
+formal-parameter rule above:
+
+```text
+return let x        -> inherited P1
+return const let x  -> const refinement of P1
+return mut let x    -> mut refinement of P1
+```
+
+The refinement may not alter stage, value presence, Pattern policy, ordinary
+visibility, or export-root status. A qualifier contradictory to an already
+restricted P1 is invalid rather than an expansion. “No P3” therefore means that
+the return site has no third complete Policy vector; it does not prohibit this
+single-axis refinement of P1.
+
 ### 3.3 Namespace declaration attributes
 
 `public`, `private`, and `export` are accepted only by namespace-declaration
@@ -386,9 +420,10 @@ are not namespace declaration positions.
 
 `export` has the narrower placement rule described in section 9. Export
 elaboration derives a separate external view; it does not crop the namespace's
-complete internal declaration view. If the exported symbol has a value facet,
-that external view must have a non-empty `const` projection. A pure
-`absent:Pp` type/Pattern symbol has no value-mutability obligation.
+complete internal declaration view. If the exported symbol has an independent
+value facet, that external view must have a non-empty `const` projection. A pure
+PatternValue has `Pv = Pp` and no independent runtime-value mutability
+obligation.
 
 Absence removes the complete value subspace of *this observation edge* rather
 than merely selecting a presence tag:
@@ -400,8 +435,8 @@ Pv = absent
 ```
 
 This is a statement about the edge, not about the object behind it. Per §1,
-`Pv = absent` does not assert `Val1?(x) = null`, and an object with
-`Val1?(x) = null` is not thereby forced to `Pv = absent`.
+`Pv = absent` does not assert `Val1?(x) = null`; when `Val1?(x) = null`, the
+canonical unhidden observation instead has `Pv = Pp`.
 
 Consequently `const + S : compile`, `mut + S : compile`, and their `export`
 forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
@@ -702,22 +737,22 @@ their storage/lowering algorithms are not implemented:
   leaf normal form contains
   `⟨BorrowKind, StableTargetIdentity(Target(view))⟩`; two targets remain distinct
   even when their current contents normalize equally.
-- Cache keying does not swallow the caller's construction context wholesale. A
-  `compile` function that only injects through a `type ref` needs no ambient
-  `Open` fact in its key: the parameter's canonical identity already carries the
-  referent identity, and its applicability is proved by the parameter type. A
-  `compile` function that injects a by-value `type` is the case where the same
-  value can be legal or illegal depending on the call site:
+- Cache keying does not swallow the caller's construction context wholesale.
+  Canonical value identity and `ConstructionLineage` remain separate inputs to
+  applicability. A `compile` function that calls pure `extend` on a transported
+  type, or place-level `inject` through a ref, may be legal or illegal for the
+  same normalized contents in different stacks:
 
   ```text
   Eval(F, t; Γ_open)  ≠  Eval(F, t; Γ_closed)
   ```
 
-  Admissible treatments are: fold the required `Open` capability into the
-  applicability judgment; cache the pure computation but not the call's
-  legality; or record `requires Open(t)` in the function summary and verify it
-  at the call site. Admitting the whole lexical context into the key
-  indiscriminately is not required by this asymmetry.
+  `extend` requires `Open_Γ(value)`; `inject` independently also requires
+  `Writable_Γ(Target(ref))`. A `type ref` key preserves referent identity but
+  proves neither current premise. Cache the pure value computation separately
+  from applicability, or record/recheck those requirements in a function
+  summary. Admitting the whole lexical context into canonical value identity is
+  forbidden; the current stack is consulted only by the applicability judgment.
 - Storage requested by `[[global]]` materialization does not mutate the
   source-visible `NamespaceGraph`; generated storage and source namespace
   declarations remain distinct semantic facts.
@@ -1078,8 +1113,9 @@ candidate set.
 Admission does not arbitrarily select individual overloads. Within an admitted
 symbol's complete overload set, every candidate whose resolved pair has a
 const value projection enters `Σ_export`; a mut-only candidate remains in
-`Σ_full` but has no external candidate view. A pure `absent:Pp` candidate
-enters unchanged.
+`Σ_full` but has no external candidate view. A pure PatternValue candidate has
+`Pv = Pp` and enters unchanged unless the observer explicitly hides its value
+axis.
 
 A direct source declaration that explicitly writes `export + mut` is still
 invalid at declaration elaboration. This direct-root error is distinct from
@@ -1280,10 +1316,12 @@ Delete members enter the same fully admissible set and order. A unique maximal
 delete produces a diagnostic naming that member.
 
 Current source cannot construct a fallback candidate role, so the ordinary
-pipeline above remains exactly `A -> Bp'` and `Af = A`. If a future fallback
-strategy is introduced, its already-fixed semantics inserts
-`SuppressFallback(A)` before Bp': any admissible non-fallback member, including
-`delete`, permanently removes fallback. This future behavior is not B6
+declaration-policy stage is currently `D = A`. If a future fallback strategy is
+introduced, its already-fixed semantics applies inside `D` after full
+admissibility and before `Bp'`: any admissible non-fallback member, including
+`delete`, permanently removes fallback. A distinct call-site candidate-family
+annotation acts before candidate generation; only that position is closed, not
+its syntax or selector algebra. This future behavior is not B6
 named-strategy execution, and later delete/lowering/lifetime failure cannot
 reopen fallback.
 

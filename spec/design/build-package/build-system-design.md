@@ -446,9 +446,11 @@ pipeline order from filename or discovery order. Distinct children may be
 assembled transactionally; the files may not reopen one another's child
 subtrees.
 
-The future source-level `inject` built-in is functional and returns an
-uninstalled ordinary pattern value. Formal `struct` and `inject` do not
-install the graph; the outer namespace assembler or `let` binding does. See
+The future `extend` primitive is the pure transformation that returns an
+uninstalled ordinary PatternValue. Formal `struct` and `extend` do not install
+the graph. Place-level `inject` reads, extends, and writes one already existing
+type slot but creates no graph member/root; the outer namespace assembler or
+`let` binding performs creation. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 Core rules:

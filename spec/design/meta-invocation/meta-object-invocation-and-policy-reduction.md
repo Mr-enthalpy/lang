@@ -10,9 +10,11 @@ The canonical future result-rank and construction boundary is
 It supersedes the older formal-meta-return interpretation that used `r = ...`
 for generation and `r === ...` for forwarding, and also supersedes the interim
 single-form `r = ...` reading: the final model distinguishes
-`let r = expr;` (add fresh member), `r = expr;` (write an existing member), and
-the `r;` terminal (delivery, not a member event). There is no fourth
-alias-member event — the semantic alias/forwarding direction is retired.
+ordinary `let` creation, existing-place `=` writes, and return control transfer.
+The current `let r = expr;` / `r = expr;` / `r;` construction-carrier mapping is
+a compatibility encoding, not special long-term semantics of the return-slot
+name. There is no fourth alias-member event — the semantic alias/forwarding
+direction is retired.
 References to the older splits below are
 explicitly transitional implementation notes, not final semantics.
 Namespace-origin and `MetaConstructionUnit` ownership are canonical in
@@ -70,9 +72,11 @@ rules and does not grant `default` an implicit priority.
 This `r === ...` behavior describes only the restricted v0.8 evaluator that is
 currently implemented; it is a transitional spelling carried by the frozen
 parser surface, not a semantic forwarding mechanism. The final formal meta model
-uses the construction-effect family on the return symbol: `let r = expr;` adds a
-fresh member, `r = expr;` writes an existing member, and `r;` is the delivery
-terminal. Where a member must observe an external object, it holds a borrow view
+does not grant the return-slot name special `let` semantics: ordinary `let`
+creates a Symbol/member, ordinary `=` writes an existing place, and the return
+event alone delivers control. The current `let r = ...` return-cluster behavior
+is a transitional compatibility encoding of those separate operations. Where a
+member must observe an external object, it holds a borrow view
 (`ref` / `share`), which is an ordinary value — and a borrow edge is not owned
 material, so it is not promoted at seal. Forwarding an external type value as a
 meta return type still fails the self-root invariant. No declaration form,
@@ -378,8 +382,9 @@ Visibility does not imply executability. A static view may inspect a
 runtime-capable object's pattern component or derived companion, but may not
 execute the original runtime value body as compile/meta.
 
-`compile` and `meta` remain different capabilities: compile computes static
-values and roots nothing; meta computes values and establishes a
+`compile` and `meta` remain different capabilities: compile transports and
+computes static values construction-transparently while generating no new root;
+meta computes values and establishes a
 MetaConstructionUnit root. OpenStatic exposes both meta and compile; SealStatic
 exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
@@ -387,7 +392,9 @@ must wait for SealStatic.
 
 There is no independent P3 and no scalar policy for the whole result symbol.
 Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
-retains its own pair. Current `self_policy`, `body_entry_policy`, and
+retains its own pair. Return positions inherit P1 and may refine mutability
+only; parameters symmetrically refine inherited P2 mutability only. Current
+`self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional compatibility transport.
 
 This separation is load-bearing for candidate qualification, partial versus
@@ -542,10 +549,11 @@ execution capability. A successful compile-time result is not merely a
 `TypeValueId`:
 
 ```text
-compile callable -> PatternValue, root-conserving and with no root authority
+compile callable -> PatternValue, construction-transparent, root-conserving,
+                    and with no root authority
 ordinary meta callable
-                  -> PatternValue, plus authority to establish and seal one
-                     navigable MetaInstanceRoot M
+                  -> symbol PatternValue, plus authority to establish and seal
+                     one navigable MetaInstanceRoot M
 privileged builtin
                   -> PatternValue, with only its member-specific owner rule
 runtime callable -> runtime value
@@ -554,10 +562,10 @@ runtime callable -> runtime value
 `PatternValue` includes ordinary compile-time values, type values, symbol values,
 and structured pattern values. A type value is not thereby an installed type
 symbol. The `compile` / `meta` difference is world authority, not result rank:
-there is no third rank, and a meta callable returns whatever ordinary pattern
-value its declared `ReturnShape` states. What the current implementation calls
-`SymbolConstructionValue` is the transitional carrier for a multi-member meta
-return; it remains uninstalled.
+there is no third rank, and the meta result is an ordinary value of type
+`symbol`. What the current implementation calls `SymbolConstructionValue` is
+the transitional carrier for that ordinary Symbol's multi-member material; it
+remains uninstalled and does not define another ontology.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
 slot relation, rank-directed identity, type self-root validation, and complete
@@ -566,6 +574,24 @@ navigation atom belong to
 This document consumes those result ranks only to define candidate preparation,
 policy filtering, and partial/strict reduction; it does not restate their
 construction semantics.
+
+An ordinary meta invocation additionally forms a globally reusable instance key:
+
+```text
+MetaInstanceKey(F, args)
+  = MetaCallableIdentity(F) × Addr(Product(Canonicalize(args)))
+
+well formed only if:
+  forall a in Canonicalize(args): GlobalKeyable(a)
+```
+
+`GlobalKeyable` is a dependency condition, not a source-location condition. A
+meta-local binder may hold and pass an already-global-keyable value. A fresh
+ephemeral PatternValue dependency created inside the current meta invocation may
+not enter another `MetaInstanceKey` unless it belongs to the explicitly promoted
+owned closure of a returned unique type member. `compile` and transparent
+construction intrinsics do not impose this boundary because they form no
+MetaInstance key and generate no root.
 
 The public future boundary is conceptually:
 
@@ -588,10 +614,11 @@ The canonical note also owns the complete invocation navigation atom; this
 document assumes that atom has already been resolved before candidate identity
 and caching are finalized.
 
-Namespace graph installation is not part of formal invocation. Binding or
-injection consumes a construction value, resolves a writable `PlaceId`, forms a
-`NamespaceDelta`, and installs it atomically. Internal control-state vocabulary
-must stay below the invocation boundary.
+Namespace graph installation is not part of formal invocation. `let` consumes a
+value and creates a destination/member through a `NamespaceDelta`; ordinary `=`
+writes an existing place. Place-level `inject` is a bounded read--extend--write
+operation on one existing type slot and creates no member or root. Internal
+control-state vocabulary must stay below the invocation boundary.
 
 When candidate preparation or invocation cannot proceed, diagnostics should name
 the current semantic boundary:
@@ -801,8 +828,9 @@ a residual expression
 a diagnostic
 ```
 
-Graph deltas and declaration bindings belong to the expansion/binding layer
-(§4.2), not the ordinary returned-value layer.
+Graph deltas and member creation belong to the expansion/binding layer (§4.2),
+not the ordinary returned-value layer. Place-level `inject` writes one already
+existing type slot; it creates no member and installs no new root.
 
 A `compile` callable uses the same invocation framework but produces a
 `PatternValue`, not symbol construction. The distinction is an execution
@@ -858,7 +886,8 @@ Current state:
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with the
   construction-effect family (`let r = expr;` fresh member, `r = expr;` write,
-  `r;` delivery terminal) producing a `SymbolConstruction`; the legacy `===`
+  `r;` delivery terminal) producing an ordinary Symbol PatternValue (current
+  carrier: `SymbolConstruction`); the legacy `===`
   spelling has no successor, because the semantic alias/forwarding direction is
   retired.
 - The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and
@@ -871,8 +900,8 @@ Current state:
 
 Not yet present are `SymbolCell` facets, `PatternValue` as the single static
 result model, meta root establishment/sealing,
-`ResolvedPatternScope`, final binding-independent `struct` owner resolution, or
-functional `inject`.
+`ResolvedPatternScope`, final binding-independent `struct` owner resolution,
+pure `extend`, or place-level `inject`.
 
 Intended convergence: the existing `struct` and `verify` paths should eventually
 stop being bespoke code and instead become clients of one shared meta invocation
@@ -993,7 +1022,7 @@ pattern, type-value, and meta-invocation machinery exists.
    invocation-frame slot.
 7. Introduce ResolvedPatternScope and binding-independent `struct` ownership.
 8. Move `struct` and `verify` dispatch behind the common invocation engine.
-9. Add functional child-only `inject` without graph installation.
+9. Add pure child-only `extend`, then the read--extend--write `inject` wrapper.
 10. Add partial versus strict reduction over the intrinsic D/Done match flow.
 11. Add mechanical compile-flow projection, derived companions, must-select,
     and shared inferred-require/body evaluation nodes.

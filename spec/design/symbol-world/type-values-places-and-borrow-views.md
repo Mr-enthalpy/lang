@@ -6,7 +6,7 @@ boundary: the recursive normal form over type-object / `Val2` structure with an
 **opaque `Val1` leaf**, the canonical observation `Addr(Norm)`, and per-carrier
 `Val2` places. The full unified three-component normal form (recursive
 `Norm_Val1?`), the borrow-view operators (`ref`, `share`, `@`, `rebind`), the
-extension-eligibility judgment, and the type checker remain unimplemented target
+construction-lineage Open judgment, and the type checker remain unimplemented target
 semantics. §10 registers the implementation debt.**
 
 This document specifies the semantic boundary between *object values*, *symbol
@@ -27,7 +27,7 @@ Sharing an observation of another object is expressed by the borrow operators
 defined in §5, never by a declaration that makes two symbols name one place.
 
 The broader symbol-first facet, `PatternValue`, `compile` / `meta`, pattern
-scope, `struct`, and functional `inject` model is canonicalized in
+scope, `struct`, pure `extend`, and place-level `inject` model is canonicalized in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 That document composes with this identity/place model rather than replacing it.
 
@@ -44,7 +44,9 @@ The invariants this document protects:
 ```text
 value equality must not collapse symbol-place identity
 a borrow view must not manufacture a place that its source does not own
-namespace extension must target extendable places, not values
+member creation must target a place or stable prospective SubPlace
+structural extension must transform an Open value, not borrow authority
+writability and Open must be checked independently
 ```
 
 This document does **not** define:
@@ -153,20 +155,27 @@ Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
                                 Norm_Val2(Val2(x)) ⟩
 Norm_Val1?^P(null)         = null
 Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
-Norm_Val1?^P_symbol(ms)    = Multiset{ Norm(member_i) | member_i in ms }
+Norm_Val1?^P_symbol(ms)    = Set{ Norm_semantic_member(member_i) | member_i in ms }
 Norm_Val2(V)               = Map_name( Norm_Cluster(V[name]) )
 Norm_Cluster(C)            = ⟨ Norm_pureP(C.pureP)?,
-                                Multiset{ Norm_val(v) } ⟩
+                                Set{ Norm_member(v) } ⟩
 Norm_pureP(x)              = Norm(x)
 ```
 
-The `P_symbol` clause is a Pattern-specific quotient: `Member * omega` may use
+The `P_symbol` clause is a Pattern-specific quotient: `SemanticMember * omega` may use
 an ordered dynamic array as its carrier, but insertion position is not Symbol
-identity. Multiplicity is retained by the normal form; whether equal duplicate
-members are rejected at formation or later overload validation is a separate
-well-formedness decision. In particular, inserting `a` then `b` and inserting
-`b` then `a` produce the same Symbol normal form when the normalized member
-multisets are equal.
+identity. Its elements are complete `SemanticMember` values, not erased callable
+bodies. `Norm_member` preserves stable member/candidate identity, the normalized
+member body, and every declaration annotation that affects semantic selection.
+It erases only representation and contribution-history coordinates.
+
+Multiplicity is not retained by the final Symbol normal form. Replaying the
+same contribution of the same stable member is idempotent in value identity;
+conflicting declarations and duplicate definitions are rejected by construction
+or well-formedness before the quotient is observed. Two distinct members are
+not collapsed merely because their bodies normalize alike. In particular,
+inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
+form exactly when the resulting `SemanticMember` sets are equal.
 
 There is no case split in which one component is ignored. Earlier revisions
 normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
@@ -260,8 +269,9 @@ Target(Borrow_k(q))           ∈ Norm(Borrow_k(q))
 
 The second coordinate is not provenance about where an ordinary value happened
 to be stored; it is the observable referent identity of the borrow-view value.
-Assignment, `rebind`, escape checking, `OpenRegion`, and compile-reference cache
-identity all depend on that distinction.
+Assignment, `rebind`, ordinary borrow escape checking, and compile-reference
+cache identity all depend on that distinction. Construction-lineage Open does
+not depend on the target coordinate.
 
 For an ordinary by-value object, its `PlaceId` is **not** identity material. A
 place is only the coordinate from which that object's `Val2` is observed:
@@ -294,10 +304,10 @@ This is what makes an open construction observable at all. Given
 let fn = (...): meta -> _ :symbol = {
     let t = (() t) |> struct;
 
-    let f::t = X;
+    let f::((t |> type)@) = X;
     let A = t |> meta_fn;
 
-    let g::t = Y;
+    let g::((t |> type)@) = Y;
     let B = t |> meta_fn;
     t;
 };
@@ -368,9 +378,15 @@ Place resolution:
 means a declaration extension / namespace injection / assignment-like operation
 resolves `x` to a writable place `p`.
 
-These are not interchangeable. `let f::T = ...` uses the **place** judgment on
-`T`, not the value judgment: it targets the place that `T` owns, not the value
-that `T` evaluates to.
+These are not interchangeable. Canonical creation beneath a pure type slot uses
+an explicit place-bearing view:
+
+```lang
+let f::((T |> type)@) = ...;
+```
+
+The `|> type` is `AsType`; `@` then observes the carrier place of that projected
+type slot. Neither operation is implicit in ordinary navigation.
 
 ### 3.1 General value binding resolves symbols first
 
@@ -456,11 +472,11 @@ type value read through `T` after `let T: type = uint8`; comparing the strings
 The same rule applies to an externally owned pattern value:
 
 ```lang
-let t1::t = bool;
+let t1::((t |> type)@) = bool;
 ```
 
 resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
-destination symbol/place `t1::t`. It does not reroot the pattern, rewrite its
+destination prospective SubPlace under `(t |> type)@`. It does not reroot the pattern, rewrite its
 navigation, or make the destination symbol identical to the pattern owner.
 
 Literal syntax is the explicit exception only to source-path resolution. It
@@ -557,7 +573,7 @@ Consequently `f::T` denotes `Val2(T)[f]` in all of
 ```lang
 let A: type = f::T;
 let B = (f::T) meta_fn;
-let g::U = f::T;
+let g::((U |> type)@) = f::T;
 (…) |> f::T;
 g::f::T
 ```
@@ -624,10 +640,10 @@ facet's outer pattern root must be the `MetaInstanceScope`. Thus ordinary
 `let T: type = uint8` remains legal while direct `r = uint8` as a meta return
 type construction is rejected.
 
-Consequently, injection through `T`:
+Consequently, associated-member creation through `T`:
 
 ```text
-let f::T = ...
+let f::((T |> type)@) = ...
 ```
 
 executes:
@@ -642,9 +658,9 @@ and not:
 place(uint8) += { f ↦ ... }
 ```
 
-Injection is closer to `+=` on a place than to pure expression evaluation. The
-right-hand use of a name is a value; the injection target is a place being
-extended.
+Member creation is a place operation. Structural extension is different: it is
+the pure value transformation `extend`, while `inject` is the explicit
+read--extend--write wrapper defined in the symbol-first construction document.
 
 ### 4.1 Atomic builtin types, concrete numeric types, and literal typing
 
@@ -746,7 +762,8 @@ ObjectPlace(value) ≠ CarrierPlace(E)
 for `let t: type = uint8`, `Read(t)` reads the `uint8` type object, so `t ref`
 is a `uint8 ref` whose referent is `uint8`'s own resident/global object place,
 **not** `CarrierPlace(t)`. Keeping the two coordinates distinct is exactly why
-`t ref` (the value's object place) and `t@` (the carrier slot `t`) do not merge;
+`t ref` (the value's object place) and `(t |> type)@` (the explicitly projected
+carrier slot `t`) do not merge;
 letting `ref` fall back to `CarrierPlace(E)` would erase the whole point of `@`
 (§5.2).
 
@@ -768,7 +785,7 @@ let r = t ref;
 
 binds `r` to `uint8 ref` — a borrow view of the type object `uint8` — and not to
 a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
-`r`. The slot itself is reached only by `t@` (§5.2).
+`r`. The slot itself is reached only by `(t |> type)@` (§5.2).
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
 uses: a `share` view admits reading and passing but is not an assignable place
@@ -785,7 +802,7 @@ let s: symbol = ...;
 let r = s ref;              // Read(s) : symbol, so r : symbol ref
 ```
 
-A symbol value is value-bearing (`Val1(Symbol) = Member * ω`), so `s ref` is the
+A symbol value is value-bearing (`Val1(Symbol) = SemanticMember * ω`), so `s ref` is the
 ordinary "form a borrow of this value" operation. Because `Read` does not descend
 into `Val1`, `r` is a `symbol ref` and **not** a reference to the member array
 held inside the symbol. What `r` borrows is the symbol value that `s` holds, not
@@ -811,7 +828,7 @@ Facet projection stays explicit there (`|> type`, `|> val`, `|> namespace`), and
 an explicit `E |> type` is well-formed exactly when the selected object/Symbol
 exposes one unambiguous type facet (`|TypeMembers(S)| = 1`, i.e.
 `HasUniqueTypeFacet(S)`). Whether `E` carries a `Val1` payload is irrelevant to
-type-projection applicability: `Val1(Symbol) = Member * omega` is present even
+type-projection applicability: `Val1(Symbol) = SemanticMember * omega` is present even
 for a Symbol that has only ordinary val members and no type member, so
 `Val1? != null` never implies that `ProjectType` is defined. `Val1?`
 participates only in the `ref`-versus-`@` dispatch, never as a type-facet
@@ -858,7 +875,7 @@ reachable from the value:
 let t: type = uint8;
 
 t ref   // Ref(Read(t))            = uint8 ref
-t@      // RefCarrierSlot(t)       = type ref, pointing at the slot t
+(t |> type)@ // RefCarrierSlot(t)  = type ref, pointing at the slot t
 ```
 
 `t ref` is not a mistake to be corrected; it is the correct borrow of the value
@@ -896,7 +913,7 @@ separate from the compile-stage pure-pattern-slot group and is not a way to
 obtain a borrow, and the narrowing above does not weaken it — the two groups have
 disjoint premises and neither is a fallback for the other.
 
-### 5.3 Borrow views are non-stacking because the overlapping overloads exist
+### 5.3 Borrow constructors have fixed points; `@` still observes value instances
 
 Applying a borrow operator to something that is already a borrow view is
 **well-formed**. There is a candidate for it, and that candidate is what makes
@@ -909,7 +926,7 @@ Target( Coerce_{j->k}(v) )  =  Target(v)
 ```
 
 The result is never a view of a view. The target is preserved and only the
-capability index changes, so the whole family collapses to one layer:
+capability index changes, so the borrow-type family collapses to one layer:
 
 | composition | result | why |
 | --- | --- | --- |
@@ -917,12 +934,36 @@ capability index changes, so the whole family collapses to one layer:
 | `share share` | the same `share` view | same |
 | `ref share` | a `share` view of the same target | legal weakening |
 | `share ref` | **no candidate** | illegal strengthening |
-| `@@` | the same view | matched as an overlap, before any `Val1` dispatch |
+| `type ref ref` | `type ref` | borrow type-value fixed point |
+| `type share share` | `type share` | borrow type-value fixed point |
+| `type ref rebind rebind` | `type ref rebind` | retargeting type-value fixed point |
 
-The `@@` row is not derivable from the two base groups of `@`: a view value does
-carry a `Val1`, so `@` on a view is matched by its own overlap group, which is
-ordered ahead of the `Val1` dispatch and consults no `CarrierPlace`. That group is
-stated in
+`@` needs a sharper distinction. When its operand is itself a **borrow type
+value**, universe overlap is a fixed point:
+
+```text
+type ref@    = type ref
+type share@  = type share
+
+rank(type ref)                 = rank(type)
+rank(type share)               = rank(type)
+rank(type ref/share rebind)    = rank(type)
+```
+
+This prevents borrow classifiers from climbing the type universe. It does not
+apply to a runtime/compile-time **value instance** whose Pattern is a borrow
+type. Such an instance has a `Val1` payload and follows the ordinary
+value-bearing `@` group:
+
+```lang
+let t: type ref = ...;
+t@;                         // lifetime(t), not `t`
+```
+
+Therefore the old blanket equation “`@@` is identity on every borrow view” is
+retired. Type-value fixed points are selected before instance evaluation; after
+an expression has evaluated to a borrow value instance, `@` observes that
+instance's lifetime. The canonical groups are stated in
 [`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
 §2.3.
 
@@ -936,10 +977,10 @@ ref  -> share  is a capability weakening       admitted
 share -> ref   is a capability strengthening   no candidate
 ```
 
-This is what makes the weakening used throughout this document well-formed:
+Capability weakening remains well-formed:
 
 ```lang
-let r = t@;                 // r : type ref
+let r = (t |> type)@;       // r : type ref
 let s = r share;            // ref share: s : type share, same target
 ```
 
@@ -951,7 +992,7 @@ applicable overload" rather than being evaluated and then diagnosed: a `share`
 view never carries the write/extension capability that `ref` would have to
 produce. Capability can be surrendered, never regained.
 
-No overlapping composition changes what is observed:
+No borrow-constructor overlap retargets the view:
 
 ```text
 retargeting is available only through rebind (§5.4)
@@ -1004,73 +1045,60 @@ assignment target. There is no context in which the same spelling means both.
 
 ### 5.5 `type`, `type ref`, and `type share`
 
-A by-value `type` carries no carrier-slot place and no `Open` capability;
+A by-value `type` carries no carrier-slot place or borrow capability;
 consuming one can only produce a new value. This does not deny it an
 `ObjectPlace`: `Read` of a bound type still yields the type object's own
 object place, which is what `ref` borrows (§5.1.0). What it lacks is a
-carrier slot for `@` and a construction capability: the same pure pattern value
-may be inside an open window in one context and merely frozen-but-globally-live
-in another, and nothing in the value distinguishes the two.
+carrier slot for `@`. Construction openness is not a capability carried by the
+type value or by a view; it is the separate `Open_Γ(value)` judgment over the
+value's `ConstructionLineage` (§6 and the symbol-first construction document).
 
-A `type ref` is different in kind. It can only be formed inside the open window
-of its target's carrier:
-
-```text
-Carrier(t) = q      Open_Γ(q)
----------------------------------
-Γ ⊢ t@ : type ref
-```
-
-So a well-formed `type ref` is not merely `⟨Place, type⟩`. It is
-capability-equivalent to
+A `type ref` is a borrow view of a slot whose contents conform to `type`. It is
+formed whenever ordinary place, policy, lifetime, and capability rules admit
+that view:
 
 ```text
-⟨ Place, type, OpenWitness ⟩
+Carrier(t) = q      CanBorrowRef_Γ(q)
+-------------------------------------
+Γ ⊢ (t |> type)@ : type ref
 ```
 
-and therefore carries the invariant
+A canonical `type ref` therefore contains only the ordinary borrow coordinates:
 
 ```text
-Γ ⊢ r : type ref   =>   Open_Γ( Target(r) )
+type ref = ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-`OpenWitness` is not required to exist as a runtime field. It is required to be
-an unforgeable fact of the static judgment.
+A frozen type-valued slot may still be observed through `type ref`. If the view
+is writable, the complete current value may be replaced by any compatible,
+well-formed type value. What is forbidden is using the frozen pointee as the
+`old` input of `extend`; holding a reference does not change that value's
+construction lineage.
 
-The consequence is a holdable interval, not a permission re-check:
-
-```text
-holdable interval of a type ref  =  the Open window
-holdable interval of a type ref  ≠  Lifetime(Target) has not ended yet
-```
-
-Once the window closes, that `type ref` cannot continue to exist as a legal
-usable value in any later context. The way to carry something across the
-boundary is to weaken it *before* the boundary:
+The holdable interval is consequently its ordinary borrow-valid region, not an
+Open window. Weakening remains useful when write authority is unnecessary:
 
 ```lang
-r share    // type share: still observable, no structural extension eligibility
+r share    // type share: still observable, no write authority
 ```
 
-This is also why a `type ref` satisfies the capability requirement of `inject`
-directly, with no ambient query — see
-`symbol-first-meta-construction-and-pattern-injection.md` §8.2.3.
-
-Reachability alone still forms no view:
+Reachability alone still forms no view, and neither reachability nor a view
+decides construction state:
 
 ```text
-GlobalLifetime(x) does not imply Open_Γ(x)
+GlobalLifetime(q) does not imply Open_Γ(Value(q))
+Γ ⊢ r : type ref does not imply Open_Γ(Read(r))
 ```
 
-`EffectiveOpen` — the context-relative form of `Open_Γ` — is defined in
+`Open_Γ` is defined from `ConstructionLineage` and the current compile-time call
+stack in
 `symbol-first-meta-construction-and-pattern-injection.md` §12.
 
-`type share` is the deliberately weaker view. It may cross an open-capability
-boundary and be stored or passed where a `type ref` may not, precisely because
-it is not assignable and not an `inject` target:
+`type share` is the deliberately weaker view. It may be stored or passed across
+any region admitted by the ordinary lifetime relation, but is not assignable and
+is not an `inject` target:
 
 ```text
-type share crosses an Open boundary
 type share is not a valid assignment left side
 type share is not a valid inject target
 ```
@@ -1079,22 +1107,20 @@ The last two lines are domain facts. A `type share` in an assignment-target or
 `inject`-target position produces "no applicable overload", never a permission
 error discovered after the operation has begun.
 
-#### 5.5.1 Three separate responsibilities
+#### 5.5.1 Three independent judgments
 
-Because the witness travels with the view, the three obligations never collapse
-into one check:
+The following obligations never collapse into one check:
 
 ```text
-inject on a type            ->  ask the evaluation context for ambient Open
-inject on a type ref        ->  the view already proves Open; ask nothing
-returning / storing a ref   ->  escape check: does the Open capability escape?
+extend on a type value      ->  Open_Γ(value)
+inject through a type ref   ->  Open_Γ(Read(ref)) and Writable(Target(ref))
+returning / storing a ref   ->  ordinary lifetime/capability escape check
 ```
 
-Returning a `type ref` from a `compile` callable is therefore not forbidden. A
-return that stays inside the same open window is well-formed; a return that
-crosses the closing boundary fails at the third obligation — the receiving
-context cannot derive `out : type ref` at all — rather than surfacing later as a
-failed `inject`.
+Returning a `type ref` from a `compile` callable is therefore governed by the
+same borrow escape rule as any other reference. It may remain usable after the
+pointee freezes; a later `extend`/`inject` attempt rechecks the current value's
+lineage and may fail independently of the reference's validity.
 
 ### 5.6 Type-expected positions do elaborate `|> type`
 
@@ -1111,7 +1137,24 @@ TypeExpectedPosition   ==>  ImplicitTypeProjection
 In a language-designated type-expected position the elaboration is supplied:
 
 ```text
-Elab_Type(E)  =  E |> type
+AsType(E)  =  E |> type
+```
+
+`AsType` selects the unique type member exposed by an ordinary PatternValue. It
+does not compute the type of the expression and does not raise universe rank:
+
+```text
+AsType(E) != TypeOf(E)
+rank(AsType(E)) = rank(the selected type member)
+```
+
+Only explicit type-of extraction — for example the future canonical form
+`let <typeof> x : typeof = RHS` — may produce the classifier one universe above
+`RHS`. In particular, the global `type` object is first a Symbol:
+
+```text
+typeof(type)          = symbol
+typeof(type |> type)  = type_1
 ```
 
 The designated positions are:
@@ -1138,30 +1181,51 @@ The distinction is positional and fixed by the language, never inferred from the
 operand's shape. An operand position never acquires a projection because a
 projection would make the program check.
 
-## 6. Writability and extension eligibility
+`@` is always an operand operation, so it never performs this implicit
+projection. Canonical source that needs the place of a Symbol's unique type
+member writes:
 
-A future checker decides whether a place may be written or extended from the
-current context. A place is eligible only when it satisfies the current stage,
-the current construction anchor, and the current lexical boundary.
-
-```text
-Γ ⊢ place p writable_at current_context
-Γ ⊢ place p extendable_at current_context
+```lang
+(S |> type)@
 ```
 
-At minimum, the following are **not** eligible for an ordinary current-level
-extension:
+A future `S@` shorthand in a type-place context would require a separately
+specified, place-preserving `TypeExpected` elaboration. This document defines no
+such shorthand; ordinary `AsType` alone is a value projection and may not invent
+or recover a carrier place after the fact.
+
+## 6. Writability, member creation, and construction openness
+
+The checker owns three independent judgments:
 
 ```text
-core built-in stable object
-external package stable object
-closed generated object
-place reached through a share view
-place whose target is no longer EffectiveOpen at this context
-place from an inner lexical level escaping into a longer-lived extension target
-place whose namespace delta is sealed/frozen
-place whose policy does not admit the current action
+Writable_Γ(q)
+CanCreateMember_Γ(parent_place, selector)
+Open_Γ(v)
 ```
+
+`Writable` is a place/borrow-capability question. `CanCreateMember` combines a
+stable parent place with construction-unit, lexical, policy, and freshness
+authority. `Open` is a value-lineage question used by structural `extend`.
+None is a spelling or proof of another:
+
+```text
+Writable_Γ(q)           does not imply Open_Γ(Read(q))
+Open_Γ(v)               does not imply Writable_Γ(Carrier(v))
+CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
+```
+
+A writable slot may contain a frozen type value that can be replaced wholesale
+but cannot be structurally extended from. Conversely an Open value may be
+extended purely and bound elsewhere even when its source is immutable or has no
+write-back place.
+
+At minimum, ordinary place operations reject a core/external stable place, a
+place reached only through `share`, a place outside its borrow lifetime, or a
+place whose policy denies the action. Member creation additionally rejects a
+parent outside the current construction unit or an already-instantiated child.
+Structural `extend` independently rejects a value whose `ConstructionLineage`
+is not Open in the current compile-time stack.
 
 Value equality grants no write permission. Even when:
 
@@ -1181,29 +1245,60 @@ and it certainly does not follow that:
 place(uint8) is writable
 ```
 
-This is the concrete reason `let f::uint8 = ...` must be rejected while
-`let T = (() t) |> struct; let f::T = ...;` is accepted: extension eligibility
-is a property of the target place, and no binding or borrow view can promote an
-externally stable place into an extendable one. A borrow view never widens the
-eligibility of the place it observes:
+This is the concrete reason member creation under the globally stable `uint8`
+slot is rejected while creation under a locally constructed type place may be
+accepted:
+
+```lang
+let T = (() t) |> struct;
+let f::((T |> type)@) = ...;
+```
+
+No binding or borrow view can amplify the place authority it observes:
 
 ```text
-Eligible(view of p) ≤ Eligible(p)
+Capability(view of p) ≤ Capability(p)
 ```
 
 ## 7. Namespace extension target
 
-Namespace extension is a *place* operation, not a value operation. The target is
-not determined by ordinary expression evaluation of the target path.
+Namespace/member creation is a *place* operation, not a value operation. The
+target is not determined by ordinary expression evaluation of the target path.
 
 The intended flow:
 
 ```text
 parse / normalize the target path
-resolve the path as an extension-place target
-check the final place's extension eligibility
+resolve the path as a parent place plus selector
+obtain the stable prospective SubPlace
+check creation or write applicability
 install NamespaceDelta under that place
 ```
+
+Navigation does not fail merely because the final child has not yet been
+instantiated:
+
+```text
+SubPlace(parent, selector)
+Contents(SubPlace) ∈ Some(value) | None
+```
+
+The pair `(ParentPlace, Selector)` is stable identity for that prospective
+location. `let` may instantiate it when its contents are `None`; ordinary `=`
+requires `Some(existing)` and never creates the missing child. Continuing
+navigation *from* `None` is ill-formed because there is no child value whose own
+associated space could host the next selector.
+
+Navigation preserves the observation kind:
+
+```text
+Nav(type,       n) -> type | None
+Nav(type ref,   n) -> (type | None) ref
+Nav(type share, n) -> (type | None) share
+```
+
+The optionality describes current contents, not the existence of the prospective
+SubPlace. Full optional-pattern algebra remains deferred.
 
 There is no forwarding-chain step: a path resolves to exactly one place, and a
 borrow view interposed on that path either denotes the same place (`ref`) or
@@ -1233,42 +1328,42 @@ from repeated ordinary binding.
 
 ### 7.1 `let` creates a member; `=` writes an existing target
 
-The two forms are distinct operations on the same resolved target place:
+The two forms are distinct operations on the same resolved prospective target:
 
 ```text
-let f::T = expr   — creates a new associated member (fresh child symbol)
-f::T = expr       — writes an already existing target
+let f::((T |> type)@) = expr   — instantiate a missing associated member
+f::((T |> type)@) = expr       — write an already existing member
 ```
 
-Both use the extension/write-place resolution of §7, but they discharge
-different obligations:
+Bare `=` never creates a missing member. There is no declaration shorthand in
+which omitting `let` silently recovers creation semantics. Both forms use the
+place resolution of §7, but they discharge different obligations:
 
 ```text
-Fresh(child)            — the created member symbol is fresh
-CanExtend(parent_place) — the host place admits this extension
+let: Contents(subplace) = None and CanCreateMember(parent, selector)
+=  : Contents(subplace) = Some(old) and Writable(subplace)
 ```
 
-`let f::T = expr` satisfies `Fresh(f)` trivially, but the creation still extends
-`T`'s `Val2` object/place, so the host must independently satisfy
-`CanExtend(place(T))`: construction authority, `EffectiveOpen` state, lexical
-lifetime, and external-stability conditions on the parent place all still apply.
-Freshness of the child never implies extension eligibility of the parent.
+Freshness never implies creation authority, and writability never implies
+freshness. `let` is the only operation that changes `None` to `Some(value)`.
 
 The two forms also differ in what they change about the host:
 
 ```text
-let f::T = expr   ->  Val2(T)[f] += expr        (P(T) unchanged)
-T |> inject(Δ)    ->  P(T) + child pattern, Val2 + interpretation
+let f::((T |> type)@) = expr -> Val2(type(T))[f] := expr (P unchanged)
+extend(T |> type, Δ)          -> new type value with widened P/Val2
+inject((T |> type)@, Δ)       -> read + extend + write through the type ref
 ```
 
 An ordinary member declaration adds a `Val2` entry under an existing pattern
 name; it does not widen `P(T)`. Widening the host pattern with a new child
-pattern is exactly what `inject` does, and it is specified in
+pattern is exactly what `extend` does; `inject` is its place-level wrapper. Both
+are specified in
 `symbol-first-meta-construction-and-pattern-injection.md` §8. Both are limited to
 extending the current parent pattern with a *direct* child; neither reaches into
 a grandchild pattern.
 
-Assignment carries no `inject`-specific construction-history check, but that is
+Assignment carries no `extend`-specific construction-lineage check, but that is
 not the same as carrying no check. The canonical four-layer assignment model in
 `symbol-first-meta-construction-and-pattern-injection.md` §4.5.1 governs, and the
 text below only spells out its layer 2 for this document.
@@ -1281,14 +1376,14 @@ Compatible(P(lhs), rhs)    — the right value conforms to the target's Pattern
 ValidCapability(lhs)       — lifetime and capability conditions of lhs hold
 ```
 
-Assignment performs no `inject`-specific construction-history check: there is no
-requirement of a construction witness, a transition proof, or provenance from
-any particular producer. That freedom covers layer 1 (the RHS discharges its own
-`inject` Open check during its own evaluation) and nothing more. Layers 1, 3,
+Assignment performs no `extend`-specific construction-lineage check: there is no
+requirement that the RHS came from a particular producer. That freedom covers
+layer 1 (the RHS operation, including `extend`, discharged its own Open check)
+and nothing more. Layers 1, 3,
 and 4 of the canonical model — RHS operation legality, result-object invariants
 (`WellFounded` / `Canonicalizable` / `NoForbiddenCycle`), and the enclosing
 region's semantic-boundary constraints (meta self-root, ref / pattern-value
-lifetimes, Open-witness escape, global type-bearing mutability limits, seal /
+lifetimes, global type-bearing mutability limits, seal /
 global promotion, single-type-member bound) — remain independently applicable to
 the write result.
 
@@ -1380,7 +1475,7 @@ full three-component Norm(x) including recursive Norm_Val1?
   (current normalizer keeps an opaque Val1 leaf)
 ref / share / @ / rebind operations and their overloads
 type ref and type share values, and ValidContext for them
-the writability and extension-eligibility judgments of §6
+the independent writability and construction-lineage Open judgments of §6
 the = assignment operator and its four-layer check (§4.5.1 there)
 migration of remaining first-order TypeValueId comparison consumers
   to full by-value comparison
@@ -1412,7 +1507,8 @@ meaning.
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical
   symbol-first facet resolution, `PatternValue`, `compile` / `meta`, pattern
-  scopes, `struct`, functional `inject`, `EffectiveOpen`, and the
+  scopes, `struct`, pure `extend`, place-level `inject`, construction-lineage
+  `Open_Γ`, and the
   binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
   `TypeValueId` and place judgments.
 - `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of

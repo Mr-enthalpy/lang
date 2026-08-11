@@ -7,7 +7,7 @@ here are unimplemented target semantics; §6 registers the implementation debt.
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md);
-`EffectiveOpen` is owned by
+construction-lineage `Open_Γ(value)` is owned by
 [`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
 ## 1. `@` is an ordinary place-sensitive operation
@@ -29,9 +29,9 @@ the one candidate that never consults `CarrierPlace`, because it retargets
 nothing.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. Its candidate
-set is nevertheless closed: the two base groups of §2, dispatched by the `Val1`
-dimension, for an operand that is not already a borrow view, plus the single
-overlap group of §2.3 for an operand that is. There is no third, generic
+set is nevertheless closed: the two instance groups of §2, dispatched by the
+`Val1` dimension, plus the borrow-type-value fixed point of §2.3. There is no
+third, generic
 "address of this expression" meaning to fall back on.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
@@ -40,15 +40,16 @@ does not name one.
 
 ## 2. The two base overload groups of `@`
 
-`@` has two positively defined **base** overload groups, selected by whether the
-observed object carries an internal `Val1` payload. They govern operands that are
-not already borrow views; a view operand is matched first by the overlap group of
-§2.3. Neither base group is a general
+`@` has two positively defined **instance** overload groups, selected by whether
+the observed object carries an internal `Val1` payload. A borrow **type value**
+is matched first by the universe fixed point of §2.3; an ordinary value instance
+whose Pattern happens to be a borrow type still follows the `Val1` dispatch.
+Neither instance group is a general
 "take a borrow" facility: for a value-bearing operand that job already belongs to
 `ref`. The whole dispatch is:
 
 ```text
-E : BorrowView_j               ->  §2.3, whatever the view's own Val1 is
+E is a borrow type value       ->  §2.3
 else Val1?( Value(E) ) ≠ null  ->  §2.1
 else Val1?( Value(E) ) = null  ->  §2.2
 ```
@@ -91,7 +92,7 @@ lifetime observation was always what `@` meant on a value-bearing operand.
 Val1?( Value(E) ) = null
 CarrierPlace(E) = q
 policy ∈ { compile, lifetime policy }
-EffectiveOpen(q, current_context)
+CanBorrowRef_Γ(q)
 --------------------------------------------
 E@ : P ref
 Target(E@) = q
@@ -110,7 +111,7 @@ pattern value, and `ref` then borrows *that*:
 let t: type = uint8;
 
 t ref   // uint8 ref — a correct borrow of the value that was read
-t@      // type ref  — the carrier slot t itself
+(t |> type)@  // type ref — the explicitly projected type carrier slot
 ```
 
 `t ref` is not an error to be repaired. A value-directed operation has no basis
@@ -121,7 +122,7 @@ by taking `CarrierPlace(E)` as input.
 
 The selector is the `Val1` dimension of what was read, never type-rank. A
 value-bearing operand needs no place observation to be borrowed: for `s : symbol`
-the payload exists (`Val1(Symbol) = Member * ω`), so `s ref` is the ordinary
+the payload exists (`Val1(Symbol) = SemanticMember * ω`), so `s ref` is the ordinary
 "form a borrow of this value" operation, and a type-rank object that carries a
 payload behaves the same way. An explicit `E |> type` is well-formed exactly
 when `E` exposes one unambiguous type facet (`|TypeMembers(E)| = 1`), never
@@ -132,62 +133,61 @@ The value-side rules and the full classification are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.1.1–§5.2.1.
 
-`Val1?(Value(E))` selects the overload group; it does not select the object on
-which openness is checked. Because the result refers to `q = CarrierPlace(E)`,
-`EffectiveOpen` is checked on `q`, not on the read value `Value(E)`. For
-`let t: type = uint8`, the premise is therefore `Open_Γ(CarrierPlace(t))`, not
-openness of the globally resident `uint8` object.
+`Val1?(Value(E))` selects the overload group; it does not decide construction
+openness. Because the result refers to `q = CarrierPlace(E)`, ordinary borrow
+formation checks `q`'s addressability, policy, lifetime, and requested
+capability. It does **not** ask whether the current contents are Open. For
+`let t: type = uint8`, a frozen but live and borrowable `CarrierPlace(t)` may
+therefore still yield `type ref`.
 
-The `EffectiveOpen` premise is a real premise, not a post-hoc permission check.
-When the carrier target is no longer effectively open at the observation context, this
-group has **no applicable candidate**; the failure is "no matching overload for
-`@`", not "`@` succeeded and then the result was rejected".
-
-Consequently:
+Consequently the two judgments remain independent:
 
 ```text
-GlobalLifetime(q) does not imply EffectiveOpen(q, current_context)
+Γ ⊢ (t |> type)@ : type ref  does not imply Open_Γ(Read((t |> type)@))
+Open_Γ(Value(q))   does not imply CanBorrowRef_Γ(q)
 ```
 
-A pattern value that is reachable for the whole program is still not observable
-as `P ref` outside its open capability region.
+### 2.3 Borrow type values are fixed points; borrow instances are not
 
-### 2.3 Overlapping borrow: `@` on an operand that is already a view
-
-A third group matches on the operand's *view-ness*, and it is tried before the
-`Val1` dispatch of §2.1–§2.2:
+Universe overlap is selected only when the operand denotes the borrow **type
+value** itself:
 
 ```text
-E : BorrowView_j
---------------------------------------------
-E@  ⇓  E                 -- Coerce_{j->@}(E) = E
+type ref@    = type ref
+type share@  = type share
 
-Target( E@ )  =  Target( E )
+rank(type ref)               = rank(type)
+rank(type share)             = rank(type)
+rank(type ref/share rebind)  = rank(type)
 ```
 
-`@` is not a distinct capability in the borrow ordering, so `Coerce_{j->@}` is
-not a coercion to a new target element: on a value that is already a
-`BorrowView_j`, `@` is the identity `E@ = E`, preserving both the view's
-capability `j` and its target. This group is a positively stated overload, not an
-exemption from resolution, and it is required rather than derivable: a view value
-does carry a `Val1`, so without it `@@` would be dragged into the `LifetimeFact`
-group of §2.1, or — for a view held only as a temporary — would find no
-`CarrierPlace` and no candidate at all. Matching on view-ness first means `@@`
-never re-enters the `Val1` dispatch and never observes the holder slot of the
-intermediate view value.
+These equations prevent a borrow classifier from manufacturing an ever-higher
+classifier. They are not an identity overload for every value whose Pattern is
+a borrow type.
 
-It is the `@` instance of the general borrow-view overlap rule:
+Once an expression evaluates to a borrow **value instance**, that value carries
+`Val1` and §2.1 applies:
+
+```lang
+let t: type ref = ...;
+t@;                         // LifetimeFact(t)
+```
+
+The lifetime observed is the lifetime of the instance `t`, not a second borrow
+of its referent and not the borrow type value. The former blanket rule
+`E : BorrowView => E@ = E` is retired.
+
+The independent borrow-constructor overlap remains:
 
 ```text
-Borrow_k( Borrow_j(q) )  =  Coerce_{j->k}( Borrow_j(q) )
-Target( Coerce_{j->k}(v) )  =  Target(v)
+Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))
+Target(Coerce_{j->k}(v)) = Target(v)
 ```
 
-So `@@` is not a missing operation. It is admitted, it preserves the target, and
-it builds no second layer — which is what "idempotent" means here. Retargeting is
-available only through `rebind`. Of the overlapping compositions only `share ref`
-has no candidate, because capability may be surrendered and never regained. The
-full table is owned by
+Equal-capability `ref ref` / `share share` are fixed points, `ref share` weakens,
+and `share ref` has no candidate. `rebind rebind` is likewise a type-level fixed
+point. None of these constructor equations changes the value-instance meaning of
+`@`. The full table is owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.3.
 
@@ -207,69 +207,52 @@ The destinations subject to this check are the ones that can outlive the origin:
 storing into a longer-lived place, returning from a callable, capturing into a
 materialized callable entity, and installing into global namespace material.
 
-### 3.1 `ValidRegion` is indexed by the view's capability
+### 3.1 `ValidRegion` is a borrow-lifetime judgment
 
-`ValidRegion` is **not** uniformly the target's open capability region. `Open` is
-the *extension* capability region, not a single observation lifetime shared by
-every view of the target:
+`ValidRegion` is determined by the target lifetime, the holder/destination
+relation, and the view's ordinary capability. It is never a construction-Open
+region:
 
 ```text
-ValidRegion( type ref )   =  OpenRegion( Target )
+ValidRegion( type ref )   =  LifetimeRegion( Target ) ∩ RefCapabilityRegion
 ValidRegion( type share ) =  LifetimeRegion( Target )
-
-OpenRegion( Target )  ⊆  LifetimeRegion( Target )
 ```
 
-So the two views are checked against different regions, and the difference is
-exactly the capability each one carries:
+The two views differ in write capability, not in whether their pointee is Open:
 
-| view | carries | may leave the `Open` window | may leave the target's lifetime |
+| view | carries | requires pointee Open | may leave the target's lifetime |
 | --- | --- | --- | --- |
-| `type ref` | write + `inject` + `OpenWitness` | no | no |
-| `type share` | read/observe only | yes | no |
+| `type ref` | read and policy-bounded write | no | no |
+| `type share` | read/observe only | no | no |
 
-A `type ref` cannot leave the window because its own formation condition is the
-window. A `type share` may, precisely because it surrendered the extension
-capability that made the window relevant; it still may not outlive the target
-itself.
+Both views may remain valid after the current pointee freezes. `type ref` may
+then replace the pointee wholesale if `Writable(Target)` holds, but neither view
+can make the frozen value admissible as `extend`'s old value.
 
-For a `type ref`, then, the escape check and the `EffectiveOpen` premise of §2.2
-are the same condition applied at two moments: at production and at every
-destination.
+### 3.2 Borrow validity never discharges construction openness
 
-### 3.2 A well-formed `type ref` is its own witness
-
-Because the premise holds at production and the view cannot be held past the
-window:
+The positive separation is:
 
 ```text
-Γ ⊢ r : type ref   =>   Open_Γ( Target(r) )
-
-holdable interval of a type ref  =  the Open window
+Γ ⊢ r : type ref  does not imply Open_Γ(Read(r))
+Open_Γ(v)          does not imply that v has a writable carrier
 ```
 
-A consumer that already holds such a view therefore does not re-ask for openness;
-see `inject` input validity in
+A consumer that performs `extend` must query `Open_Γ(old_value)` even when the
+value was read through `type ref`. The place-level `inject` wrapper in
 [`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md)
-§8.2.3. The obligation this places on this section is the converse direction: the
-escape check must reject exactly the destinations that would carry the view past
-the closing boundary.
+§8 performs two checks independently:
 
-This is what makes returning a `type ref` a question with an answer rather than a
-blanket prohibition. A return inside the same open window is well-formed; a
-return that crosses the boundary is rejected here, because the receiving context
-cannot derive `out : type ref` at all — not later, as a failed `inject`. The
-author's option is to weaken before the boundary:
-
-```lang
-r share
+```text
+Open_Γ(Read(r))
+Writable_Γ(Target(r))
 ```
 
-That weakening is the admitted `ref share` composition, not a missing overload
-(§2.3). `share` is the view that is allowed to leave an open capability region,
-and it pays for that with a strictly smaller capability set: it is not an
-assignment left side and not an `inject` target. It does **not** buy escape from
-`LifetimeRegion(Target)`.
+Returning or storing `type ref` asks only the ordinary escape question of this
+section. A later `inject` may fail because the then-current value is frozen even
+though the reference remains lifetime-valid. Weakening to `share` surrenders
+write capability, but does not alter construction lineage and never extends the
+target lifetime.
 
 ## 4. `@` and lifetime rules never reselect an ordinary call
 
@@ -334,7 +317,7 @@ consumes.
 Semantics closed here, not yet built:
 
 ```text
-the `@` operation and both overload groups of §2
+the `@` operation, both instance groups, and borrow-type fixed point of §2
 LifetimeFact and its region/origin projections
 the escape check of §3 at all four destination classes
 the lifetime policy stage as an evaluation stage

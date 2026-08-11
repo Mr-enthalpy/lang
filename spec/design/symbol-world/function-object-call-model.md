@@ -403,8 +403,8 @@ anchored by a parent-linked
 Ordinary meta callables still use the implicit-self mechanics described above,
 but their returned type construction is rooted in the meta-instance scope.
 
-A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct` or
-`inject`, also has a function object, type, associated `()`, and implicit self,
+A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct`,
+`extend`, or `inject`, also has a function object, type, associated `()`, and implicit self,
 but may use its specified special owner/scope rule instead of creating an
 ordinary externally navigable `MetaInstanceScope`.
 

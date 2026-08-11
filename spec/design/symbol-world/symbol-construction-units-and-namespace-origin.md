@@ -14,8 +14,8 @@ which physical files have authority to contribute at a directory namespace?
 when may independently produced deltas be combined?
 ```
 
-The symbol/facet, `compile` / `meta`, meta type self-root, `struct`, and
-functional `inject` semantics are canonical in
+The symbol/facet, `compile` / `meta`, meta type self-root, `struct`, pure
+`extend`, and place-level `inject` semantics are canonical in
 `symbol-first-meta-construction-and-pattern-injection.md`. The build projection
 and assembly phases are described in
 `../build-package/build-system-design.md` and
@@ -60,11 +60,12 @@ value facets, anchors its returned type root, and is a candidate cache/
 incremental unit.
 
 Formal ordinary meta invocation produces uninstalled construction material.
-Compiler-defined privileged AST meta functions such as `struct` and `inject`
-also remain graph-installation-free, but use their individually bounded ambient
-scope/owner and current-unit capability rather than creating an ordinary meta
-instance. Physical assembly or an outer `let` binding/injection performs
-`NamespaceDelta` validation and installation.
+Compiler-defined privileged AST operations such as `struct` and `extend` remain
+graph-installation-free, but use their individually bounded ambient scope/owner
+and current-unit capability rather than creating an ordinary meta instance.
+`inject` may write one existing type slot but creates no graph member/root.
+Physical assembly or an outer `let` performs `NamespaceDelta` creation,
+validation, and installation.
 
 ## 2. Namespace Origin Is Unique
 
@@ -269,18 +270,19 @@ all symbol construction performed by that invocation
 
 Within that transaction, the meta body may:
 
-- chain pure-functional `inject` operations for different children over pattern
-  values owned by this `MetaConstructionUnit` and still `EffectiveOpen` in it;
+- chain pure `extend` operations for different children over PatternValues whose
+  construction lineage is still Open in this `MetaConstructionUnit`, and use
+  `inject` only when writing an existing local type slot is also required;
 - construct a complete type/pattern subtree;
 - establish multiple heterogeneous value entries;
 - call `compile` helpers to obtain `PatternValue`s;
 - combine other uninstalled construction material;
-- return one atomic `SymbolConstruction`, from which the outer
+- return one ordinary Symbol PatternValue, for which the outer
   binding/assembly layer may form one `NamespaceDelta` candidate.
 
 These operations are not cross-file or cross-construction-unit reopening.
-They do not make arbitrary installed symbols injectable. The canonical
-`inject` input and ownership preconditions are defined in
+They do not make arbitrary installed Symbol values structurally extendable. The
+canonical `extend`/`inject` input and ownership preconditions are defined in
 `symbol-first-meta-construction-and-pattern-injection.md`.
 
 A helper ordinary-meta invocation with its own canonical instance has a separate
@@ -291,7 +293,7 @@ not directly mutate an already installed subtree owned by the helper instance.
 The ordinary-meta return symbol's type self-root invariant follows from this
 ownership: the invocation's `MetaInstanceScope` is the type root identity
 anchor. An external type value may be a member under that root but cannot
-replace it. Compiler-defined privileged AST meta functions such as `struct` and
+replace it. Compiler-defined privileged AST operations `struct`, `extend`, and
 `inject` use their separately specified scope/owner rule and do not acquire an
 ordinary externally navigable instance root merely by being called.
 
@@ -352,12 +354,12 @@ These remain separate operations:
 
 ```text
 ordinary first type installation
-explicit child construction through inject or an equivalent owned API
+explicit child construction through extend (directly or through inject)
 explicit sum construction / sum extension
 ```
 
 The sum API's final spelling is undecided. Neither duplicate declaration nor
-`inject` implicitly turns an existing type/child into a sum. An explicit
+`extend`/`inject` implicitly turns an existing type/child into a sum. An explicit
 read-transform-bind operation may be considered by later place/update rules,
 but unrelated repeated definitions remain conflicts.
 
@@ -518,7 +520,7 @@ This document does not:
 
 - modify the lexer, parser, Raw AST, or Normalized AST;
 - define source syntax for partial declarations or reopening;
-- implement `compile`, `inject`, or a sum API;
+- implement `compile`, `extend`, `inject`, or a sum API;
 - define final overload-entry identity or future mergeable-value syntax;
 - implement namespace-origin or construction-unit enforcement in Rust;
 - turn physical files or internal AST carriers into a macro system.

@@ -134,10 +134,11 @@ This block records implementation behavior only; it must not be used to infer
 a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
-meta-return semantics. Final meta construction uses the construction-effect
-family on the return symbol — `let r = expr;` adds a fresh member,
-`r = expr;` writes an existing member, and `r;` delivers the construction —
-producing a `SymbolConstruction`. There is no alias-member event. See
+meta-return semantics. Target semantics use an ordinary Symbol value: `let`
+creates members, `=` writes existing places, and the return event transfers
+control. The current `let r`/`r =`/`r;` cluster behavior is a transitional
+compatibility encoding, and `SymbolConstruction` is its carrier rather than a
+result rank. There is no alias-member event. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
@@ -247,8 +248,9 @@ namespace-delta boundaries.
 The final candidate source is symbol-first:
 
 ```text
-resolve callee path
-  -> Symbol
+ResolveSymbol(callee path)
+  -> Symbol Σ
+  -> apply call-site candidate-family filter to Σ
   -> project heterogeneous value facet
   -> enumerate heterogeneous Val2 objects
   -> observe each object's policy-projected view for the lookup stage
@@ -263,12 +265,25 @@ own type and associated compile `()`. It is inserted into the symbol value
 facet before ordinary candidate preparation, not after overload failure.
 
 ```text
-C0 = EnumerateValueObjects(Symbol)
+C0 = EnumerateValueObjects(CallSiteFamilyView(Symbol, call_site_annotation))
 C1 = VisibleObjects(C0, V)
 C2 = ExposePhaseViews(C1, Phase)
 C3 = AssociatedCallEntryAndShapeMatch(C2, E)
 A  = FullyAdmissible(C3, Phase, invocation_frame, expectation)
+D  = DeclarationCandidatePolicy(A)
 ```
+
+The call-site annotation acts **before** candidate generation. Its only closed
+semantics in this PR is its pipeline position: it limits which declared or
+generated candidate families may contribute to `C0` for this call. A future
+surface may resemble `args |[[annotation]]> callee` (for example default-only or
+nongeneric-only), but spelling and general selector algebra remain deferred.
+With no annotation, the family view is the complete value facet.
+
+Declaration-side annotations act only after `A` has been formed. They control
+how already-fully-admissible candidates participate — for example fallback
+suppression or must-select consistency. They never generate a candidate or make
+an inadmissible candidate viable.
 
 - `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
   callee symbol.
@@ -721,7 +736,9 @@ cannot reopen its discarded candidate set.
 ### 5.1 Notation
 
 ```text
-C0  = EnumerateValueObjects(Symbol)
+Σ   = ResolveSymbol(callee_path)
+F   = CallSiteCandidateFilter(Σ, call_site_annotation)
+C0  = EnumerateValueObjects(F)                -- candidate generation begins
 C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -733,8 +750,10 @@ A   = FullyAdmissible(
         compile_type_requirements
       )
 
+D   = DeclarationCandidatePolicy(A)
+
 Bp' = MaxPolicyProduct(
-        A,
+        D,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -745,21 +764,36 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, A)
+B6  = ApplyNamedStrategyRules(B5, D)
 
 M = {
-  c in A
+  c in D
   |
   overload_strategy(c) = must_select_if_qualified
 }
 ```
+
+The canonical stage order is therefore:
+
+```text
+Resolve Symbol
+-> call-site candidate-family filter
+-> generate candidates (C0--C3)
+-> FullyAdmissible (A)
+-> declaration-side candidate policy (D)
+-> ordinary partial orders (Bp', B1--B6)
+-> unique selection
+```
+
+Only the two annotation layers' positions and separation are closed here.
+Call-site annotation syntax and general selector algebra remain deferred.
 
 ### 5.2 Pipeline invariants
 
 Every `Bi+1 = f(Bi, ...)` preference step satisfies:
 
 ```text
-Bp' ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi     -- monotonic filtering
+Bp' ⊆ D ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
@@ -838,50 +872,38 @@ overload, ordering, refinement, or second selection; ordinary overload must
 already be unique, as bounded by
 `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-### 5.7 Future fallback strategy semantics
+### 5.7 Declaration-side candidate policy
 
-The current source language does not expose a fallback strategy and current
-ordinary candidate preparation cannot construct a fallback role. Therefore:
-
-```text
-Fallback(A) = empty
-Af = A
-```
-
-and the current normative pipeline remains the old `A -> Bp'` pipeline shown
-in §5.1.
-
-When/if a future candidate carries the fallback strategy, its semantics is
-already constrained:
+Declaration-side annotations are evaluated over the complete fully-admissible
+set `A`, before any ordinary preference order:
 
 ```text
-Aordinary = {c in A | not fallback(c)}
-Af =
-  Aordinary, when Aordinary is non-empty
-  A,         otherwise
+ApplyDeclarationCandidatePolicy(A):
+  ordinary = { c in A | not fallback(c) }
+  candidates = ordinary, when ordinary is non-empty
+               A,        otherwise
+  must_select = { c in candidates | must_select(c) }
+
+D = candidates
 ```
 
-Thus:
-
-```text
-A -> SuppressFallback -> Bp'
-```
-
-This future extension is not B6 named-strategy execution. It observes the
-complete fully admissible set before Policy or Pattern preference. Any
+This is not B6 named-strategy execution. It observes the complete fully
+admissible set before Policy or Pattern preference. Any
 admissible non-fallback candidate counts, including an admissible `delete`.
 Once such a candidate exists, fallback candidates leave the future extended
 survivor set permanently. A later unique delete rejection, ambiguity,
 body/lowering failure, or lifetime failure cannot reopen fallback candidates.
 
-Its syntax and final ordinary candidate storage are not yet frozen. The
-current Rust fallback marker is only a prototype fixture for this future
-strategy. Because current source always has `Af = A`, every current ordinary
-overload judgment and candidate identity is preserved exactly.
+Must-select is likewise a declaration policy over candidates already in `D`;
+it contributes a final consistency obligation but no preference score. Syntax
+for fallback/must-select and final ordinary candidate storage remain under
+surface consolidation. The current Rust fallback marker is only a prototype
+fixture; the semantic pipeline position above is closed.
 
 ### 5.8 Bp and B1–B6: Preference filters
 
-Only fully admissible candidates enter current-language preference filtering:
+Only candidates surviving declaration-side policy enter ordinary preference
+filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
@@ -910,13 +932,13 @@ Only fully admissible candidates enter current-language preference filtering:
 - **B6 Named strategy rules**: apply strategy metadata carried by
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration
-  order, and restricted to candidates already in `A`; it cannot restart
+  order, and restricted to candidates already in `D`; it cannot restart
   lookup or make an inadmissible candidate viable. It receives `B5` as its
-  input and may only remove members of `B5`; access to `A` is read-only
+  input and may only remove members of `B5`; access to `D` is read-only
   metadata for consistency checks such as must-select. Atomic-migration
   endpoint Policy coordinates are already consumed by `Bp'` in §4.5 and are
-  not a named strategy. If the future fallback strategy is introduced, its
-  suppression will already have occurred before Bp' and cannot be emulated or
+  not a named strategy. Fallback suppression has already occurred before Bp'
+  and cannot be emulated or
   reversed here.
 
 Each stage only removes candidates. First-order preference does not override
@@ -925,12 +947,13 @@ shallower monomorphic pattern before B4 is reached.
 
 ### 5.9 Must-select consistency and uniqueness
 
-Compute must-select membership from `A`, not from `C0`, `C2`, `C3`, or an
-earlier set that has not passed concept/require legality:
+Compute must-select membership from `D`, after full admissibility and fallback
+suppression, not from `C0`, `C2`, `C3`, or an earlier set that has not passed
+concept/require legality:
 
 ```text
 M = {
-  c in A
+  c in D
   |
   overload_strategy(c) = must_select_if_qualified
 }
@@ -983,13 +1006,15 @@ Derivation:
 
 ```text
 CalleeSymbol = ResolveSymbol(Γ, name)
-C0  = EnumerateValueObjects(CalleeSymbol)
+F   = CallSiteCandidateFilter(CalleeSymbol, call_site_annotation)
+C0  = EnumerateValueObjects(F)
 C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
+D   = DeclarationCandidatePolicy(A)
 Bp' = MaxPolicyProduct(
-        A,
+        D,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -1000,8 +1025,8 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, A)
-M   = MustSelectMembers(A)
+B6  = ApplyNamedStrategyRules(B5, D)
+M   = MustSelectMembers(D)
 
 OrdinaryUnique(B6, f)
 MustSelectConsistent(M, B6, f)

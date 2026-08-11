@@ -30,7 +30,7 @@ has one normative owner inside the staging area:
 
 | Topic | Normative owner | Other documents retain only |
 |---|---|---|
-| Symbol-first resolution, facets, `compile` / `meta`, `struct` / `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
+| Symbol-first resolution, facets, `compile` / `meta`, `struct -> symbol`, pure `extend`, place-level `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
 | Namespace origin, construction-unit ownership, physical contribution authority, cross-file closure | `symbol-world/symbol-construction-units-and-namespace-origin.md` | Build-phase application, implementation gap, and link |
 | Semantic owner identity, PatternRoot alpha boundary, namespace views, package boundary, and mount redirects | `../contracts/v0.6-semantic-owner-namespace-graph.md` | Historical context and implementation mapping only |
 | Canonical `Pv:Pp`, contextual binding `P1`, result `P2`, function-object stage derivation, seal visibility/snapshot, const/mut product order, no scalar result policy, mechanical compile projection, companions, match staging, and coarse automatic require | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Implementation mapping, invocation handoff, pattern algebra, and links |
@@ -107,7 +107,7 @@ implementation guardrail, not the semantic entry point.
 | Block | Responsibility | Not responsible for |
 |---|---|---|
 | `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, physical-directory contribution authority, export surface, cache/fingerprint/provenance. | Language expression semantics. |
-| `symbol-world/` | Namespace graph world model: symbol-first facets and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut member overloads, compile-flow projection and companions, automatic require, meta type self-root, `EffectiveOpen` and freezing, borrow views (`ref` / `share` / `rebind`), pattern scopes, `struct` / pure-functional `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, borrow-view/writability checking implementation, access-tree construction, lifetime checking implementation. |
+| `symbol-world/` | Namespace graph world model: symbol-first facets and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut member overloads, compile-flow projection and companions, automatic require, meta type self-root, construction-lineage Open/frozen state, borrow views (`ref` / `share` / `rebind`), pattern scopes, `struct -> symbol`, pure `extend`, place-level `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, borrow-view/writability checking implementation, access-tree construction, lifetime checking implementation. |
 | `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and pattern-directed decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
 | `meta-invocation/` | Symbol-first invocation frames, candidate-selection handoff, partial vs strict demand, residualization, and policy-staged pattern matching. | Defining symbol construction, layered policy, overload ordering, or pattern algebra (it references their canonical owners). |
 | `policy-capability/` | Current flat-metadata mapping to canonical `Pv:Pp`, P1/P2 contextual elaboration, and orthogonal policy dimensions. | Compile-flow/require semantics and mechanical return normalization. |
@@ -137,8 +137,9 @@ implementation guardrail, not the semantic entry point.
 - Future design only (not implemented): `patterns-overload/`,
   `meta-invocation/`, `mechanical-lowering/`, `lifetime/`, and the remaining
   `symbol-world/` and `policy-capability/` semantics (TypeValueId, borrow views
-  and `rebind`, `EffectiveOpen` freezing, writability / extension-eligibility
-  checking, pure-functional `inject`, full policy checking).
+  and `rebind`, construction-lineage Open/frozen checking, independent
+  writability/member-creation checking, pure `extend`, place-level `inject`,
+  full policy checking).
 
 ## Reading order
 

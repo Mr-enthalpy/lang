@@ -5,7 +5,7 @@ evaluation, borrow checking, lifetime checking, full meta execution, or
 canonical type-value equality is implemented.**
 
 This note records the v0.6 namespace-graph implications for field-access and
-access-tree work. The canonical type-value / place / alias-forwarding /
+access-tree work. The canonical type-value / place / borrow-view /
 writable-place semantics are specified in
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`; this note only keeps a
 short summary and the field/access-tree specifics that build on that
@@ -23,6 +23,23 @@ field::T        : T       -> field
 field::ref::T   : T ref   -> field ref
 field::share::T : T share -> field share
 push::T         : (T, value) -> result
+```
+
+For a `struct`-generated field these are ordinary generated
+`SemanticMember`s, accompanied by an assignment/write candidate over
+`T ref × field` whenever field policy admits mutation. `const let`, unqualified
+`let`, and `mut let` select the admitted cells of the same general access/
+borrow/write family; there is no special semantic field category.
+
+Runtime-materializable fields may expose access at `runtime || compile`.
+Fields whose values are types or other PatternValues are conservatively
+compile-only until runtime PatternValue materialization exists. Owned
+construction relations propagate Open/frozen state but never mutability:
+
+```text
+Open(child)   => Open(parent)
+Frozen(parent) => Frozen(child)
+mut(child)    does not imply mut(parent)
 ```
 
 These signatures display only the explicit call-site Product. Every listed
@@ -131,19 +148,24 @@ The consequences that field/access-tree work must preserve:
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
   alias.
-- `let f::t = ...` extends `place(t)`, never `place(uint8)`. Type-value
+- `let f::((t |> type)@) = ...` explicitly creates the prospective child under
+  `place(t)`, never `place(uint8)`. `@` performs no implicit Symbol-to-type
+  projection. Type-value
   equality must not canonicalize extension targets, and a `type`-kind symbol may
   own a companion namespace place distinct from the type value it stores.
 - There is no place-forwarding declaration form. Every binding allocates its own
   place, so no second name reaches `place(uint8)`. Where shared observation is
   wanted, the value held is a borrow view (`ref` / `share` / `@`), and its
-  eligibility never exceeds the underlying place's own
-  (`Eligible(view of p) ≤ Eligible(p)`); a built-in / external stable / frozen /
-  inner-escaping place is not writable and yields no applicable overload.
+  capability never exceeds the underlying place's own. A missing final child
+  still has stable `SubPlace(parent, selector)` identity: `let` may instantiate
+  it, while bare `=` may only write `Some(existing)`.
+- `Writable(place)` and `Open(Value(place))` are independent. A frozen type slot
+  may remain writable for wholesale replacement, and an Open value may be
+  extended purely without a writable carrier.
 
 This is only a summary. For the canonical `TypeValueId` / `PlaceId` / `SymbolId`
 distinction — including the object normal form, the borrow views, writability,
-extension eligibility, and the namespace extension pipeline — see
+construction-lineage Open, and the namespace member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 ## v0.6 Implementation Note
