@@ -225,7 +225,8 @@ The closed design direction is value-based:
 ```text
 operator                    -- ordinary global type
 operator : operator         -- current lexical operator-environment value
-RHS `a op b`                -- desugars toward `(a, b) |> operator[op]`
+RHS `a op b`                -- selects operator[spelling + Binary + 2]
+                            -- then desugars toward an ordinary call
 ```
 
 A local operator environment is produced by ordinary value copy, lexical

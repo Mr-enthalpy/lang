@@ -464,9 +464,10 @@ while each retaining its own distinct symbol and place.
 
 No operator-name binding exception survives. The closed direction treats
 `operator` as an ordinary global type and the nearest lexical
-`operator : operator` as an ordinary value mapping spellings to Symbols or
-`None`. Local environments use value copy, shadowing, and Symbol `+=`/`-=`;
-complete selector algebra remains deferred.
+`operator : operator` as an ordinary value mapping `OperatorIdentity` to Symbols
+or `None`, where `OperatorIdentity = spelling + fixity + arity`. Local
+environments use value copy, shadowing, and Symbol `+=`/`-=`; complete selector
+algebra remains deferred.
 
 ## 3. Value Facets and Calls
 
@@ -565,6 +566,20 @@ forall a in Norm(args): GlobalKeyable(a)
 
 ResultPattern(F) = symbol
 ```
+
+Equivalently, and without overloading “return shape”:
+
+```text
+ReturnClassifier(F) = symbol
+ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ T?, V ⟩
+```
+
+The first equation is fixed for every ordinary meta callable. The second
+describes the contents of the returned Symbol and permits type-only, val-only,
+namespace-only, or mixed results subject to `|T| <= 1`. Shorthands such as
+`meta -> type` or `meta -> valset` are not result ontologies: they mean an
+ordinary `symbol` result whose content happens to be `⟨T, empty⟩` or
+`⟨absent, V⟩` respectively.
 
 Read left to right, the first law is the *grant*: entering any `P2 = meta`
 ordinary-meta invocation establishes `M` as a globally live unsealed navigable
@@ -1281,6 +1296,28 @@ Because the member content is the mutable part, it lives in `Val1`:
 Val1(Symbol) = Σ = ⟨ T?, ⨄_{T_c} V[T_c] ⟩
 ```
 
+`Σ` is a logical view over ordinary Object containers, not a
+specification-private record carrier. Using the constructor lemmas in
+`type-values-places-and-borrow-views.md`:
+
+```text
+TypeOption(absent) = BareProduct()
+TypeOption(T)      = BareProduct(T)
+
+BucketEntry(T_c)  = ProductValue(T_c, V[T_c]) : product
+BucketCarrier(V)  = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
+
+Σ_Object(T?, V)   = BareProduct(TypeOption(T?), BucketCarrier(V)) ∈ Object
+Val1(Symbol)       = Σ_Object(T?, V)
+```
+
+The notation `⟨T?, V⟩` merely projects the two ordinal positions of this bare
+Product Object. Every `V[T_c]` is itself the ordinary `T_c * omega` Sequence
+Object, and every bucket entry is classified by the global `product` type so
+the bucket carrier remains genuinely homogeneous. Symbol normalization applies
+its unordered quotient to this ordinary carrier; neither `Σ` nor its buckets
+introduce a compiler-private semantic collection.
+
 Each `V[T_c]` contains ordinary member/candidate objects of their actual type
 `T_c`. Those objects preserve stable declaration/candidate identity, their
 complete value or callable body, and every annotation that affects semantics
@@ -1356,7 +1393,9 @@ or a type witness and remains deferred. The four ordered-container cases are:
 The Symbol Pattern applies an unordered identity quotient to each typed bucket:
 
 ```text
-Norm_Val1?^P_symbol(Σ)
+DecodeSymbolPayload(Σ_Object) = ⟨ T?, V ⟩
+
+Norm_Val1?^P_symbol(Σ_Object)
   = ⟨ Norm(T)? ,
       { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V[T_c] } } ⟩
 ```
@@ -1704,8 +1743,12 @@ struct:
 An implementation may carry AST or Normalized AST as a private structured
 carrier. The public result is an ordinary Symbol PatternValue, not AST and not a
 separate construction rank (§4.1, §4.7–§4.8). Its `Val1` contains exactly one
-generated type member plus the generated/declared sibling members described in
-§7.5. This bounded capability does not expose a general macro system.
+generated type member plus any ordinary sibling values explicitly contributed
+by the construction. Section 7.5 closes the mechanically generated
+field/access/ref/share/assignment partners in the type member's associated
+`Val2`; it does not imply a closed defining-Symbol recovery path for other
+type-as-callee sibling families. This bounded capability does not expose a
+general macro system.
 
 ### 7.2 Owner resolution
 
@@ -1846,6 +1889,10 @@ f : (object: T share) -> A share
 `ref` and `share` are not generated navigation subspaces. The associated Symbol
 is installed once beneath the type member's place; `const let` / `let` /
 `mut let` policy and the formal object type determine its candidates.
+Their selection uses the ordinary context-indexed preference relations. In a
+plain context `succ_plain: let > const = mut`; if no plain `let` candidate is
+admissible, a surviving `const` and `mut` pair remains ambiguous rather than
+being resolved by generation order.
 
 Where the field policy permits mutation, the same generator also contributes
 the corresponding assignment/write candidate over `T ref × A`; assignment
@@ -1855,22 +1902,55 @@ admitted value, shared, mutable, and assignment cells of this ordinary overload
 family. The exact machine body and access-tree representation are implementation
 debt, not additional semantics.
 
-For a field with directly runtime-materializable `Val1`, access candidates may
-be exposed at `runtime || compile`. A field whose value is currently a type or
-another PatternValue is conservatively compile-only because this PR does not
-define runtime PatternValue materialization:
+Accessor stage follows one structural predicate rather than a coarse “type” or
+“PatternValue field” category:
 
 ```text
-Stage(accessor(runtime-materializable field)) = runtime || compile
-Stage(accessor(type/PatternValue field))       = compile
+RuntimeField(f)
+  <=> Val1_f != absent
+    and Materializable_0(Val1_f)
+    and not RequiresStaticPattern(f)
+
+Stage(accessor(f))
+  = runtime || compile   if RuntimeField(f)
+  = compile              otherwise
 ```
 
-The generated members live in the returned Symbol's typed `Val1` buckets and in
-the generated type member's associated `Val2`/sibling callable universe
-according to their ordinary owner roles. They are ordinary typed member objects:
-user construction may remove them, replace them, or add a more specific
-declaration subject to the ordinary duplicate, fallback, and overload rules.
-They are not hidden compiler metadata.
+`Materializable_0` means that the current first-order runtime object model can
+materialize the complete selected `Val1` without a static-only witness;
+`RequiresStaticPattern(f)` means that selecting or constructing the field
+observation intrinsically depends on PatternValue material unavailable at
+runtime. Both are structural judgments over the field object, not nominal type
+lists.
+
+A type-valued field is compile-only only because it fails this predicate in the
+current runtime model; it is not a special field category. Ordinary runtime
+values remain PatternValues and are not excluded by that fact. The mechanically
+generated `[]` observations of `T*N` and `T*omega` inherit this same predicate
+from their selected element; no Sequence-specific stage rule exists.
+
+The generated partner candidates live in same-name associated Symbols in the
+generated type member's `Val2`. The returned Symbol's `Val1` contains its unique
+type member and any ordinary sibling values explicitly contributed by the
+construction; this section does not duplicate the generated accessors into a
+second sibling universe. The partners are ordinary typed member objects: user
+construction may remove them, replace them, or add a more specific declaration
+subject to the ordinary duplicate, fallback, and overload rules. They are not
+hidden compiler metadata.
+
+The closure claim of this PR stops at the same-name field value/ref/share
+observations and the corresponding assignment/write partners described above:
+
+```text
+#99 closes = field + access + ref/share observation + assignment/write partners
+```
+
+It does not yet define `HomeSymbol(TypeValue)` (or an equivalent recovery from a
+canonical type root), nor how a copied or extracted type used as a callee finds
+constructor or policy-transform siblings of its defining Symbol. Those are
+explicitly deferred. Any future solution must be a semantic property or
+recoverable relation of the canonical type root; it may not use the most recent
+binding carrier, source place, or reverse provenance from `AsType`.
 
 Construction state propagates only along owned field relations:
 
@@ -1886,8 +1966,9 @@ mut(child) does not imply mut(parent)
 mut(parent) does not imply mut(child)
 ```
 
-This same rule makes a typeclass-like object merely an ordinary struct whose
-type/PatternValue fields currently have compile-only accessors.
+This same rule makes a typeclass-like object an ordinary struct; its fields are
+compile-only exactly when they fail `RuntimeField`, not because they inhabit a
+separate “type/PatternValue field” category.
 
 ### 7.6 Internal construction and later extension normalize equally
 
@@ -3093,8 +3174,8 @@ canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). `compile` and
 transparent construction intrinsics may consume it because they create no new
 MetaInstance key.
 
-At seal, only the `OwnedClosure` of the returned Symbol's unique type member is
-promoted. Other local PatternValues expire with the invocation. Consequently
+At seal, only the `OwnedClosure` of the returned Symbol's unique type member, if
+present, is promoted. Other local PatternValues expire with the invocation. Consequently
 `UseForVal1 -> Frozen` must not be read as a universal invariant, while “meta
 body is transparent” must not be read as implicit global promotion.
 

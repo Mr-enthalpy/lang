@@ -551,20 +551,20 @@ be a type-rank object. This node's depth contributes to specificity.
 
 ### 4.5 Policy product partial order
 
-`const` and `mut` belong to the value component `Pv`. An unspecified policy
-position is broad.
-
-For a const actual value:
-
-```text
-const > unspecified > mut
-```
-
-For a mut actual value:
+`const` and `mut` belong to the value component `Pv`. Plain `let` is the
+previously named unspecified policy point. The preference relation is indexed
+by the actual/demand context:
 
 ```text
-mut > unspecified > const
+succ_const: const > let > mut
+succ_mut:   mut > let > const
+succ_plain: let > const = mut
 ```
+
+The equality in `succ_plain` does not authorize an arbitrary tie break. If a
+plain context has one fully admissible `const` candidate and one fully
+admissible `mut` candidate but no plain `let` candidate, both are co-maximal and
+the call is ambiguous.
 
 Across the first written self formal, later explicit parameters, and a target
 result policy when one is actually supplied, compare candidates by product
@@ -644,11 +644,12 @@ OutputMutabilityPreference
 ```
 
 Consequently an opposite const/mut endpoint remains in fully admissible set
-`A`; it is merely worse than `unspecified`, which is worse than the matching
-endpoint. For a const source/target the ordering is therefore
-`const > unspecified > mut`, and it reverses for a mut source/target. This is
-the same ordinary Bp relation, not a migration-specific subset order. If a
-unique ordinary winner later produces a result that `Project_out` cannot
+`A`; it is merely worse than plain `let`, which is worse than the matching
+endpoint. For a const source/target the ordering is `const > let > mut`, and it
+reverses for a mut source/target. A plain target uses
+`let > const = mut`, preserving ambiguity when only the tied endpoints survive.
+This is the same ordinary Bp relation, not a migration-specific subset order.
+If a unique ordinary winner later produces a result that `Project_out` cannot
 expose to the consumer, that failure does not reopen overload selection.
 
 One explanatory semantic normal form is a type Symbol with one pure Pattern

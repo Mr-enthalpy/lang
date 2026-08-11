@@ -187,8 +187,8 @@ Still open after this correction:
   facet exposure;
   semantically, formal invocation remains uninstalled and outer binding resolves
   the installation place.
-- Interaction between graph freeze, seal phase, and `EffectiveOpen` freezing
-  events.
+- Exact Rust/IR scheduling of `ConstructionLineage` freeze events relative to
+  graph seal, without reintroducing a place-level Open capability.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
   outside the object/subspace case handled here.
@@ -197,6 +197,10 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
+- `HomeSymbol(TypeValue)` or equivalent canonical-root recovery for a copied or
+  extracted type used as a callee, including lookup of defining-Symbol sibling
+  constructors/policy transforms. This cannot be derived from the most recent
+  binding carrier or `AsType` provenance.
 - Final surface mechanism, if any, for requesting coordinated value/ref/share
   receiver candidates in one associated `()` Symbol; the current rule requires
   separate authorized contributions.
@@ -971,10 +975,11 @@ flow. That semantic decision does not change the current lexer/parser boundary.
 
 No semantic operator-alias exception survives. `operator` is an ordinary
 global type, and the nearest lexical `operator : operator` value maps an
-operator spelling to a Symbol or `None`. Operator expressions select from that
-ordinary value; local environments use value copy, shadowing, and Symbol
-`+=`/`-=`. The complete environment shape and selector algebra remain later
-design work, but they must not revive alias/place forwarding.
+`OperatorIdentity = spelling + fixity + arity` to a Symbol or `None`. Operator
+expressions select from that ordinary value; local environments use value copy,
+shadowing, and Symbol `+=`/`-=`. The complete environment shape and selector
+algebra remain later design work, but they must not revive alias/place
+forwarding or spelling-only lookup.
 
 ---
 
@@ -1013,8 +1018,11 @@ documents named in each line.
 - Object ontology and normal form: `Object x = ⟨Val1?(x), P(x), Val2(x)⟩` with
   `Val1?(x) ∈ 1 + Object`, and `Norm(x)` recursive over all three components.
   There is no `Val1`-presence ontology fork. Well-foundedness covers
-  `Children_Val1 ∪ Children_Val2 ∪ Children_product`, so direct/mutual `Val1`
-  cycles and all other owned cycles have no normal form. An ordinary object's
+  `Children_Val1 ∪ Children_Val2`; bare-Product ordinal elements are ordinary
+  `Val2(pos_i)` children, while `T*N`, `T*omega`, and `product` wrappers carry
+  that bare Product Object in `Val1`. Product and Sequence are therefore closed
+  under Object recursion rather than traversed as compiler aggregates. Direct/
+  mutual `Val1` cycles and all other owned cycles have no normal form. An ordinary object's
   carrier/ObjectPlace, `SymbolId`, allocation order, and provenance are not
   identity material; a borrow view's `StableTargetIdentity(Target(view))` is
   value content and is present in its leaf normal form.
@@ -1024,10 +1032,16 @@ documents named in each line.
   `Val1?(x) = null => Pv = Pp`, not `Pv = absent`; conversely an observer may
   hide an existing `Val1`. A distinct runtime projection requires an existing
   value component and runtime visibility. There is no central const/mut
-  propagation pass — only member overloads and `delete`.
+  propagation pass — only member overloads and `delete`. The preference rows are
+  `succ_const: const > let > mut`, `succ_mut: mut > let > const`, and
+  `succ_plain: let > const = mut`; the last row leaves tied `const`/`mut`
+  maxima ambiguous when no plain `let` candidate exists.
   (`symbol-policy-and-compile-flow-projection.md`)
 - A Symbol is an ordinary PatternValue with `Σ = ⟨T?, V⟩`,
   `V = ⨄_{T_c} V[T_c]`, and homogeneous buckets `V[T_c] : T_c * ω`.
+  `Σ` is an ordinary Object composition: the optional type member is an
+  empty/singleton bare Product, `(T_c, V[T_c])` bucket entries are `product`
+  values, and those entries form a homogeneous `product*omega` Sequence.
   Normalization maps each normalized `T_c` to a set of ordinary recursively
   normalized member objects. Stable member/candidate identity, callable body
   identity, and selection-relevant declaration annotations remain in those
@@ -1038,8 +1052,14 @@ documents named in each line.
   (`symbol-first-meta-construction-and-pattern-injection.md`)
 - The global privileged type-forming builtin `*` constructs `T*N` and
   `T*omega`; both preserve `rank(T)`. These homogeneous containers, bare
-  Product, and `product` form the closed ordered-container kernel. Layout,
+  Product, and `product` form the closed ordered-container kernel and are all
+  ordinary Object instances. Generated `[]` stage follows the same
+  `RuntimeField`/materialization predicate as structural fields. Layout,
   capacity, growth APIs, and general `product[]` remain outside this PR.
+- `struct` closes one generated field mechanism: same-name value/ref/share
+  access candidates plus assignment/write partners, all derived from ordinary
+  receiver Policy and `RuntimeField`. It does not close defining-Symbol recovery
+  for copied/extracted type-as-callee sibling overloads.
 - `compile` may return any ordinary PatternValue (including `type`, `symbol`,
   `type ref`, `type share`) under root conservation
   `Roots(Output) ⊆ Roots(Arguments) ∪ Roots(GlobalConstants) ∪
@@ -1060,7 +1080,8 @@ documents named in each line.
   PatternValues nevertheless have `MetaInvocation` lifetime: compile and
   transparent construction intrinsics may consume them, but another ordinary
   meta invocation may not implicitly globalize them. At seal, only the owned
-  PatternValue closure of the returned Symbol's unique type member is promoted.
+  PatternValue closure of the returned Symbol's unique type member, if present,
+  is promoted.
   Returned val siblings may depend only on already-global material plus that
   promoted closure (only already-global material when no type member exists),
   and borrow targets participate in the check.
@@ -1080,8 +1101,13 @@ documents named in each line.
   `rebind` retargets from a place and is not `Ref(Read(E))`. The target is
   horizontal rather than owned recursion, but
   `Norm(Borrow_k(q))` includes `StableTargetIdentity(q)`.
+  A prospective `SubPlace(parent, selector)` coordinate is not that resident
+  target identity: wholesale parent replacement may invalidate an existing
+  child borrow but cannot retarget it to the replacement child. Only `rebind`
+  acquires a new target. Both `type ref rebind` and `type share rebind` are
+  fixed under a second `rebind` constructor.
   (`type-values-places-and-borrow-views.md`)
-- `@` has two positively defined base groups plus the existing-view overlap and
+- `@` has two positively defined base groups plus borrow-type-value fixed points and
   is an ordinary overloaded operation, not a general `PlaceOf(E)`; the lifetime boundary restricts
   lifetime *rules*, not `@`. Whether `ref` or `@` applies is decided by the
   presence of a `Val1` payload, not by type-rank. On a complete

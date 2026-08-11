@@ -248,7 +248,8 @@ package/manifest identity
   -> ProductObject / ArgProductShape
   -> pattern normalization + first-order candidate shapes
   -> compile PatternValue computation
-  -> ordinary container PatternValues: T*N / T*omega / product / Symbol
+  -> Object-closed container PatternValues: bare Product / T*N / T*omega /
+     product / Symbol (no compiler-private collection identity)
   -> meta Symbol-valued construction (current SymbolConstruction is substrate)
   -> ResolvedPatternScope / struct -> symbol / pure extend / place inject
   -> let-only creation + existing-place writes + NamespaceDelta install

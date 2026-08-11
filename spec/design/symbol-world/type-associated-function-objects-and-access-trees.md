@@ -34,10 +34,24 @@ associated Symbol, accompanied by an assignment/write candidate over
 `let`, and `mut let` select the admitted cells of the same general access/
 borrow/write family; there is no special semantic field category.
 
-Runtime-materializable fields may expose access at `runtime || compile`.
-Fields whose values are types or other PatternValues are conservatively
-compile-only until runtime PatternValue materialization exists. Owned
-construction relations propagate Open/frozen state but never mutability:
+The stage rule is structural:
+
+```text
+RuntimeField(f)
+  <=> Val1_f != absent
+    and Materializable_0(Val1_f)
+    and not RequiresStaticPattern(f)
+
+Stage(accessor(f)) = runtime || compile  if RuntimeField(f)
+Stage(accessor(f)) = compile             otherwise
+```
+
+A type-valued field is compile-only only because it currently fails this
+predicate, not because “type/PatternValue field” is a separate category.
+Generated candidates use the ordinary context preference
+`succ_plain: let > const = mut`; if no plain `let` candidate exists, tied
+`const` and `mut` candidates are ambiguous rather than arbitrarily selected.
+Owned construction relations propagate Open/frozen state but never mutability:
 
 ```text
 Open(child)   => Open(parent)
@@ -153,6 +167,10 @@ The consequences that field/access-tree work must preserve:
   capability never exceeds the underlying place's own. A missing final child
   still has stable `SubPlace(parent, selector)` identity: `let` may instantiate
   it, while bare `=` may only write `Some(existing)`.
+- That prospective coordinate is not the target identity of a borrow already
+  formed from a resident child. Parent wholesale replacement may invalidate the
+  old borrow, but never redirects it to a new child at the same coordinate;
+  only `rebind` selects a new target.
 - `Writable(place)` and `Open(Value(place))` are independent. A frozen type slot
   may remain writable for wholesale replacement, and an Open value may be
   extended purely without a writable carrier.
@@ -185,6 +203,9 @@ This note does not implement or specify:
 - writability or extension-place lifetime checking;
 - field access evaluation;
 - access-tree scanning;
+- `HomeSymbol(TypeValue)` or equivalent canonical-root recovery for copied or
+  extracted type-as-callee lookup; no future solution may rely on most-recent
+  carrier provenance;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
 - generic meta execution;

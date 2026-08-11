@@ -27,6 +27,8 @@ The namespace graph world model and symbol-level identity:
   const/mut product order, compile-flow projection over ordinary call nodes,
   complete derived compile-companion objects, coarse inferred require, and
   shared compile evaluation
+- Object-closed bare Product, `T*N`, `T*omega`, `product`, and Symbol carriers;
+  their normalization uses only ordinary `Val1`/`Val2` recursion
 - resolved pattern scopes, `struct -> symbol`, pure child-only `extend`,
   place-level `inject`, and binding/install separation
 - meta-return type self-root identity and complete meta-instance navigation atoms
@@ -40,7 +42,10 @@ The namespace graph world model and symbol-level identity:
 ## Not in scope
 
 Pattern/overload candidate adaptation, meta invocation execution, and the full
-policy checker (referenced from the other blocks).
+policy checker (referenced from the other blocks). Defining-Symbol recovery for
+a copied/extracted type used as a callee (`HomeSymbol(TypeValue)` or equivalent)
+also remains outside the current closure; it cannot be inferred from carrier
+provenance.
 
 ## Documents
 

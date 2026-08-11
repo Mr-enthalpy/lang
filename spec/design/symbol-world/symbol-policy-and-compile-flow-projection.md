@@ -366,9 +366,20 @@ expansion.
 
 The const/mut singleton above is a formal Pattern and preference input. It is
 not an ordinary P1 query applied to the actual argument. Consequently an
-oppositely qualified actual is not removed before the product order: for a
-const actual the order remains `const > unspecified > mut`, and it reverses
-for a mut actual.
+oppositely qualified actual is not removed before the product order. Writing
+plain `let` supplies the previously named `unspecified` point. The three
+context-indexed relations are:
+
+```text
+succ_const: const > let > mut
+succ_mut:   mut > let > const
+succ_plain: let > const = mut
+```
+
+The equality in `succ_plain` is semantic: if the fully admissible set contains
+one `const` and one `mut` candidate but no plain `let` candidate, both are
+co-maximal and selection is ambiguous. An implementation may not choose either
+one arbitrarily or use declaration order to break the tie.
 
 The elaborated formal pair is not body-local policy metadata. Candidate
 formation exports its written/inherited mutability Pattern into the callable's
@@ -578,13 +589,16 @@ removed by a hard Policy-domain intersection. They reuse ordinary
 actual-relative preference:
 
 ```text
-const actual/demand: const > unspecified > mut
-mut actual/demand:   mut > unspecified > const
+const actual/demand: const > let > mut
+mut actual/demand:   mut > let > const
+plain demand:        let > const = mut
 ```
 
 Stage, presence, Pp capability, Type, and structural applicability remain hard
 endpoint conditions. Mutability is a preference coordinate, not a structural
-repair and not a capability intersection.
+repair and not a capability intersection. In the plain-demand row, equal
+maximal `const` and `mut` endpoints remain ambiguous when no `let` endpoint
+survives.
 
 `Pp` equality is about Policy capability; it is not an implementation license
 to copy or reroot a source Pattern object. The eventual result Pattern comes
@@ -1280,8 +1294,9 @@ maximum, or an unfinished terminal SealStatic task.
 For each const/mut comparison position:
 
 ```text
-const actual: const > unspecified > mut
-mut actual:   mut > unspecified > const
+succ_const: const > let > mut
+succ_mut:   mut > let > const
+succ_plain: let > const = mut
 ```
 
 This order is a *preference* among candidates that are already fully admissible.
@@ -1289,7 +1304,9 @@ Being higher in the order never grants a capability, and being lower never
 removes one: the order chooses between existing candidates and does not decide
 whether a candidate exists. Nor does it propagate: the selected candidate's
 mutability qualifier describes that one observation edge and is not pushed into
-the argument's other members (§1.1).
+the argument's other members (§1.1). `const = mut` in `succ_plain` leaves two
+co-maximal candidates and therefore an ambiguity if no plain `let` candidate is
+available; it never means “pick either”.
 
 Multiple positions form a product partial order: `f` dominates `g` iff `f` is
 not worse at every participating position and is strictly better at at least

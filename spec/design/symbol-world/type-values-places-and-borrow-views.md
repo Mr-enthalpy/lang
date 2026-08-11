@@ -125,6 +125,64 @@ Object x  = ⟨ Val1?(x), P(x), Val2(x) ⟩
 Val1?(x) ∈ 1 + Object
 ```
 
+`Val2` is a finite map from semantic selectors to ordinary Objects. Most
+selectors are names and their entries are same-name Symbols; the built-in bare
+Product Pattern additionally supplies intrinsic ordinal selectors `pos_i`.
+Those ordinal entries are not a compiler aggregate outside `Object`.
+
+The least Object domain is closed by the following constructors:
+
+```text
+a_i ∈ Object
+-----------------------------------------------------------------
+BareProduct(a_0, ..., a_{n-1})
+  = ⟨ null,
+      P_bare_product(P(a_0), ..., P(a_{n-1})),
+      { pos_i ↦ a_i | 0 <= i < n } ⟩
+  ∈ Object
+
+forall i < N: v_i ∈ Object and v_i : T
+-----------------------------------------------------------------
+Seq_N(T; v_0, ..., v_{N-1})
+  = ⟨ BareProduct(v_0, ..., v_{N-1}), P_(T*N), GeneratedVal2(T*N) ⟩
+  ∈ Object
+
+forall i < n: v_i ∈ Object and v_i : T
+-----------------------------------------------------------------
+Seq_omega(T; v_0, ..., v_{n-1})
+  = ⟨ BareProduct(v_0, ..., v_{n-1}), P_(T*omega),
+      GeneratedVal2(T*omega) ⟩
+  ∈ Object
+```
+
+Thus a bare Product's fixed heterogeneous shape is carried by its Pattern and
+its owned elements are ordinary ordinal `Val2` children. A homogeneous Sequence
+is an ordinary Object whose `Val1` is that bare Product Object and whose `Val2`
+contains the mechanically generated associated operations. The erased
+classifier case is likewise an ordinary wrapper:
+
+`Val1(BareProduct) = absent` does not erase its elements: the bare Product is
+the concrete structural carrier, and each `pos_i` child remains a complete
+Object with its own Policy projections. An outer `product` or Sequence value has
+an independent runtime value projection precisely because its `Val1` contains
+that bare Product Object.
+
+```text
+ProductValue(a_0, ..., a_{n-1})
+  = ⟨ BareProduct(a_0, ..., a_{n-1}), P_product, GeneratedVal2(product) ⟩
+  ∈ Object
+```
+
+This is the precise meaning of `Val1(p) = (a_0, ..., a_{n-1})` for
+`p : product`: the right-hand side denotes the `BareProduct(...)` Object above,
+not a compiler-private tuple carrier. No constructor adds a fourth Object
+component or a semantic collection outside the recursive Object domain.
+For the empty case, `BareProduct() = ()` and
+`P_bare_product() = P_FunctionItem`, agreeing with the standard leaf below.
+Mentions of the host classifier in a mechanically generated accessor signature
+are Pattern/type references, not owned vertical Object edges back to the host;
+the generated member object otherwise follows the same ordinary recursion rule.
+
 `Val1?(x) = null` states exactly one fact: this object carries no internal
 `Val1` payload. It does not mean the object is untyped, unobservable,
 value-less at the observation edge, or a different kind of entity.
@@ -155,15 +213,41 @@ Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
                                 Norm_Val2(Val2(x)) ⟩
 Norm_Val1?^P(null)         = null
 Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
-Norm_Val1?^P_symbol(Σ)     = ⟨ Norm(T)? ,
+DecodeSymbolPayload(Σ_Object) = ⟨ T?, V ⟩
+Norm_Val1?^P_symbol(Σ_Object) = ⟨ Norm(T)? ,
                                 Map_{Norm(T_c)}(
                                   Set{ Norm(v) | v in V[T_c] }) ⟩
-Norm_Val2(V)               = Map_name( Norm(V[name]) )
-                               -- every same-name entry is an ordinary Symbol
+Norm_Val2(V)               = Map_selector( Norm(V[selector]) )
+                               -- named entries are ordinary Symbols;
+                               -- bare-Product pos_i entries are ordinary Objects
 ```
 
-The `P_symbol` clause is a Pattern-specific quotient over the ordinary Symbol
-content `Σ = ⟨T?, V⟩`, where `V = ⨄_{T_c} V[T_c]` and every homogeneous bucket
+The Product and Sequence equations require no parallel normalizer:
+
+```text
+Norm(BareProduct(a_0, ..., a_{n-1}))
+  = ⟨ null,
+      Norm_P(P_bare_product(P(a_0), ..., P(a_{n-1}))),
+      { pos_i ↦ Norm(a_i) | 0 <= i < n } ⟩
+
+Norm(Seq_N(T; values))
+  = ⟨ Norm(BareProduct(values)), Norm_P(P_(T*N)),
+      Norm_Val2(GeneratedVal2(T*N)) ⟩
+
+Norm(Seq_omega(T; values))
+  = ⟨ Norm(BareProduct(values)), Norm_P(P_(T*omega)),
+      Norm_Val2(GeneratedVal2(T*omega)) ⟩
+```
+
+Positions remain ordered because `pos_i` is part of the selector identity. `N`
+remains in `P_(T*N)` identity; the current finite length of `T*omega` is visible
+only through its `BareProduct` Val1. These are instances of `Norm(Object)`, not
+compiler-container identities beside it.
+
+The `P_symbol` clause first decodes the two ordinal positions of the ordinary
+`Σ_Object` composition specified in `symbol-first-meta-construction-and-pattern-injection.md`,
+then applies a Pattern-specific quotient to the logical view
+`Σ = ⟨T?, V⟩`, where `V = ⨄_{T_c} V[T_c]` and every homogeneous bucket
 `V[T_c] : T_c * omega`. The member objects inside a bucket retain their own
 ordinary recursive identity, including stable declaration/candidate identity,
 callable body, and every annotation that affects semantic selection. There is no
@@ -211,13 +295,15 @@ edge that a component normalizer traverses, not only over `Val2`:
 Children_owned(x)
   = Children_Val1(x)
   ∪ Children_Val2(x)
-  ∪ Children_product(x)
 ```
 
-`Children_product` includes owned product/aggregate elements reached while
-normalizing a component. These three sets exhaust owned-object descent in the
-current normal form; any future component rule that introduces another owned
-object edge must add it to `Children_owned` before that rule is canonicalizable.
+For a bare Product, `Children_Val2` includes every ordinal element selected by
+`pos_i`. For a Sequence or a value classified by `product`,
+`Children_Val1` contains its `BareProduct` Object, whose ordinal children are
+then reached by the same `Val2` rule. These two sets exhaust owned-object descent
+in the current normal form; any future component rule that introduces another
+owned object edge must express that edge through `Val1` or `Val2` before the rule
+is canonicalizable.
 The leaf boundary is the general condition
 
 ```text
@@ -249,11 +335,31 @@ Children_owned(t share) = ∅
 PatternOf(t ref)        = t ref        (extraction still matches the form)
 ```
 
-`StableTargetIdentity(q)` is the stable semantic identity of the referent
-coordinate. Its final representation remains an implementation choice, but it
-must distinguish `q1 != q2` even when the two referents currently contain
-equal values. It is not the borrow view's incidental holder/carrier place, and
-normalization does not recurse into the current contents of `q`.
+`StableTargetIdentity(q)` is the stable semantic identity of the resident
+referent selected when the borrow forms. Its final representation remains an
+implementation choice, but it must distinguish `q1 != q2` even when the two
+referents currently contain equal values. It is not merely a reusable logical
+navigation coordinate, is not the borrow view's incidental holder/carrier
+place, and normalization does not recurse into the current contents of `q`.
+
+In particular:
+
+```text
+SubPlaceCoordinate(parent, selector)
+  != BorrowTargetIdentity(resident child selected there)
+
+Target(Borrow(Nav(parent_borrow, selector)))
+  = ResidentIdentityAtBorrowFormation(parent, selector)
+```
+
+The prospective `SubPlaceCoordinate` remains stable for later navigation and
+creation. An already formed borrow remains bound to the resident identity that
+existed at formation time. Wholesale replacement of the parent that destroys
+or replaces that resident makes the old borrow invalid under the ordinary
+lifetime/validity rules; it never causes the borrow to observe the new child at
+the same logical coordinate. Only an explicit `rebind` can acquire that new
+target. A generation, resident id, or versioned target is an implementation
+choice rather than target ontology.
 
 The `t` in `(t ref)` is pattern material of the built-in operation that
 produced the value, not a vertical object edge inside the produced value.
@@ -942,6 +1048,7 @@ capability index changes, so the borrow-type family collapses to one layer:
 | `type ref ref` | `type ref` | borrow type-value fixed point |
 | `type share share` | `type share` | borrow type-value fixed point |
 | `type ref rebind rebind` | `type ref rebind` | retargeting type-value fixed point |
+| `type share rebind rebind` | `type share rebind` | retargeting type-value fixed point |
 
 `@` needs a sharper distinction. When its operand is itself a **borrow type
 value**, universe overlap is a fixed point:
@@ -1297,6 +1404,13 @@ location. `let` may instantiate it when its contents are `None`; ordinary `=`
 requires `Some(existing)` and never creates the missing child. Continuing
 navigation *from* `None` is ill-formed because there is no child value whose own
 associated space could host the next selector.
+
+This coordinate stability is not borrow retargeting. Once navigation through a
+borrow has selected an existing resident child, the resulting borrow records
+that child's formation-time `StableTargetIdentity`, not only
+`(ParentPlace, Selector)`. Replacing the parent wholesale may invalidate the old
+borrow but cannot redirect it to the replacement's same-named child; only
+`rebind` changes a borrow target (§5.4).
 
 Navigation preserves the observation kind:
 

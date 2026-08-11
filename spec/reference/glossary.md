@@ -342,7 +342,9 @@ Leading `.name` is a base atom, distinct from suffix folding.
 
 `BracketCallSugar` is source-preserving sugar for the operator spelling `[]`; it
 is not indexing/slicing/container access. The `[]` operator is a contextual
-paired operator name, bindable/aliasable/referable in operator-name positions.
+paired operator name, bindable and referable in operator-name positions. Raw AST
+may preserve it inside historical alias-let syntax, but no semantic operator
+alias operation exists.
 
 _See also: ClosureAST, ProductForm, OperatorSugar, PostfixOperator, SelectorAst, NavPath._
 
@@ -389,7 +391,7 @@ The syntactic position of an operator relative to its operands. The operator
 design distinguishes:
 
 - `Binary` and `Postfix`: overloadable operator fixities (part of operator
-  identity for declaration, alias, and lookup).
+  identity for declaration, lexical operator-environment selection, and lookup).
 - `Prefix`: a Raw AST surface marker used only for the prefix-negative `-x`
   sugar. Prefix negative is normalized to typed-zero binary subtraction before
   operator lookup. The `Prefix` fixity is not a declarable or overloadable
@@ -422,8 +424,11 @@ OperatorExprAst ::=
   }
 ```
 
-Operator lookup is a future semantic pass and follows ordinary visible binding
-lookup, not ADL or type-directed parser lookup.
+Operator lookup is a future semantic pass. It first resolves the nearest lexical
+ordinary value `operator : operator`, then selects
+`operator[OperatorIdentity]`, where
+`OperatorIdentity = spelling + fixity + arity`. It is not direct lookup of an
+operator spelling as a visible binding, ADL, or type-directed parser lookup.
 
 _See also: OperatorName, Fixity, Arity._
 
@@ -496,13 +501,16 @@ _See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
 ## Const/Mut Product Order
 
 The overload preference relation for value mutability. At one constrained
-position, a const actual prefers `const`, then unspecified, then `mut`; a mut
-actual reverses the endpoints. Across receiver, parameters, and a target-result
-constraint when present, candidates are compared by product partial order. A
-candidate dominates only when it is no worse everywhere and strictly better
-somewhere. Incomparable maxima remain ambiguous; there is no score,
-exact-match count, position weight, or lexicographic fallback. Delete members
-participate in the same comparison.
+position the context-indexed rows are `succ_const: const > let > mut`,
+`succ_mut: mut > let > const`, and `succ_plain: let > const = mut`. Plain `let`
+is the formerly unspecified point. In a plain context, `const` and `mut` remain
+co-maximal and ambiguous when no `let` candidate survives; equality never means
+arbitrary choice. Across receiver, parameters, and a target-result constraint
+when present, candidates are compared by product partial order. A candidate
+dominates only when it is no worse everywhere and strictly better somewhere.
+Incomparable maxima remain ambiguous; there is no score, exact-match count,
+position weight, or lexicographic fallback. Delete members participate in the
+same comparison. Preference never grants capability.
 
 _See also: FullyAdmissibleCandidate, OverloadResolutionPipeline._
 
@@ -612,10 +620,12 @@ a stage; it does not name one.
 This boundary is *not* a claim that `@` lacks semantics or overloads. `@` is the
 carrier-slot observation `E@ = ObservePlace_policy(CarrierPlace(E), Value(E))`
 with two positively defined base groups (`LifetimeFact` for value instances;
-`P ref` for borrowable pure pattern slots) plus
-the target-preserving overlap group for an operand that is already a borrow
-view. What remains undefined is the region/origin algebra, checking order,
-refinement phase, and handoff object.
+`P ref` for borrowable pure pattern slots). Borrow **type values** additionally
+have the universe fixed points `type ref@ = type ref` and
+`type share@ = type share`; an ordinary borrow value instance still uses
+`LifetimeFact`. Borrow-constructor composition preserves its resident target,
+but that is not a blanket `@` overlap. What remains undefined is the
+region/origin algebra, checking order, refinement phase, and handoff object.
 
 _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
 
@@ -637,8 +647,15 @@ Well-foundedness covers every owned vertical edge:
 
 ```text
 Children_owned(x)
-  = Children_Val1(x) ∪ Children_Val2(x) ∪ Children_product(x)
+  = Children_Val1(x) ∪ Children_Val2(x)
 ```
+
+The Object domain is constructor-closed. A bare Product is an Object whose
+intrinsic ordinal `pos_i` selectors are ordinary owned `Val2` entries. `T*N` and
+`T*omega` values are Sequence Objects whose `Val1` is that bare Product Object;
+a value classified by `product` uses the same representation. Product and
+Sequence therefore normalize through the two equations above, never through a
+compiler aggregate beside `Object`.
 
 Re-entering an active object through any positive owned path gives
 `NoNormalForm`, including direct or mutual `Val1` cycles. Horizontal borrow
@@ -666,7 +683,7 @@ Construction lineage and an ordinary carrier place are both outside the normal
 form: they are independent context/capability layers, not hidden PatternValue
 components.
 
-_See also: Policy Pair, Borrow view, ConstructionLineage, EffectiveOpen._
+_See also: Policy Pair, Borrow view, ConstructionLineage._
 
 ---
 
@@ -686,7 +703,7 @@ its stable lexical-owner interval and freezes on the specified semantic-use,
 meta-argument, residual-runtime/control, or owner-exit events. This judgment is
 orthogonal to place writability and borrow lifetime.
 
-_See also: EffectiveOpen, `extend`, `type ref`._
+_See also: `Open_Γ`, `extend`, `type ref`._
 
 ---
 
@@ -708,6 +725,12 @@ This says nothing about contiguous layout, capacity, or `push_back`.
 They are formed by the global privileged type constructor `*`:
 `*(T,N) -> T*N` and `*(T,omega) -> T*omega`. Both preserve the element type's
 universe rank: `rank(T*N) = rank(T*omega) = rank(T)`.
+
+All four cases are ordinary Objects. `BareProduct(a_0,...,a_n)` uses intrinsic
+ordinal `Val2(pos_i)` children; a `T*N` or `T*omega` Sequence Object holds that
+bare Product Object in `Val1`. A `product` value is the same ordinary wrapper
+with the erased outer classifier. Their normalization and owned traversal are
+therefore exactly the general `Object` rules.
 
 A bare Product retains its concrete arity and element-type vector in its fixed
 shape. The global built-in `product` type classifies any finite heterogeneous
@@ -735,6 +758,12 @@ selection-relevant declaration annotations live in the ordinary member objects
 and survive normalization. Only order and repeated contribution of the same
 member are quotiented away; conflicting declarations remain diagnostics.
 
+`Σ` is not a private record carrier. Its optional member is represented by an
+empty/singleton bare Product, each typed bucket is an ordinary `T_c*omega`
+Sequence, each `(T_c, bucket)` entry is classified by `product`, and those
+homogeneous entries form a `product*omega` carrier. The logical
+`⟨T?, V⟩` notation projects this ordinary Object composition.
+
 The privileged `struct` operation returns such a Symbol: it creates the unique
 type member and mechanically generated field/access/assignment/borrow partner
 families. It is therefore a symbol-producing structural generator, not merely a
@@ -752,6 +781,11 @@ error or a fabricated value. `let` may instantiate it, while bare `=` may write
 only an already existing place and never creates the missing member. Navigation
 through a `type ref` or `type share` propagates the same view kind; continuing
 navigation from `None` is invalid.
+
+The prospective coordinate is not the resident target identity captured by an
+already formed borrow. Wholesale parent replacement may invalidate that borrow,
+but cannot redirect it to the replacement child at the same coordinate. Only
+`rebind` obtains a new target.
 
 _See also: Let binding, BindingSlot, `@`._
 
@@ -802,7 +836,7 @@ Borrow **type values** are fixed points: `type ref@ = type ref` and
 `t : type ref`, then `t@ = lifetime(t)`. Target-preserving composition belongs
 to the `ref`/`share` borrow constructors, not to a blanket `@@` rule.
 
-_See also: Borrow view, EffectiveOpen, Lifetime Policy Boundary, `type ref`._
+_See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref`._
 
 ---
 
@@ -907,34 +941,6 @@ _See also: Borrow view, `@`, Lifetime Policy Boundary, `type ref`._
 
 ---
 
-## EffectiveOpen
-
-Legacy spelling for the context-relative `Open_Γ(v)` construction judgment.
-The canonical operand is a PatternValue, not a place or borrow view:
-
-```text
-Open_Γ(v) = Open( ConstructionLineage(v), CompileTimeStack_Γ )
-```
-
-The state transition is one-way: `Open -> Frozen`, never `Frozen -> Open`.
-Compile and construction-intrinsic frames are transparent to an existing
-lineage and create no new root. An ordinary meta invocation is a new construction
-boundary and requires `GlobalKeyable` canonical arguments. Inside a meta
-instance body the ordinary freezing events do not fire, but local PatternValues
-still have MetaInvocation lifetime; only return-type-member-owned closure is
-promoted at seal. In ordinary static control, actual control dependencies and
-identity/version merges freeze; mere `LiveAcross` is not a dependency. A
-residual-runtime fork remains a separate closing event for carried open
-material. `Open_Γ(v)` is a premise of `extend`, never evidence for place
-writability and never implied by a ref/share type.
-
-Canonical owner:
-`spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-
-_See also: ConstructionLineage, `@`, `extend`, `inject`, Borrow view._
-
----
-
 ## `extend`
 
 The pure PatternValue transformation for structural extension:
@@ -951,7 +957,7 @@ Root(new) = Root(old)
 creates no root, modifies no place, and preserves the input root. Failure is
 total: no partial value, write, or rollback.
 
-_See also: `inject`, EffectiveOpen, ConstructionLineage._
+_See also: `inject`, `Open_Γ`, ConstructionLineage._
 
 ---
 
@@ -979,7 +985,7 @@ Neither check proves the other. In particular, a `type ref` does not prove that
 its current pointee is open. Pure value code calls `extend`; `inject` is only the
 read–extend–write wrapper.
 
-_See also: `extend`, EffectiveOpen, Meta-function, Borrow view, `type ref`._
+_See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
 
 ---
 
@@ -1019,11 +1025,13 @@ ValidRegion( type share ) =  LifetimeRegion( Target )
 
 Borrow type constructors are universe fixed points:
 `rank(type ref/share) = rank(type)`, `type ref ref = type ref`,
-`type share share = type share`, and `rebind rebind = rebind`. These equations
+`type share share = type share`,
+`type ref rebind rebind = type ref rebind`, and
+`type share rebind rebind = type share rebind`. These equations
 do not turn a borrow value instance into a type value: for `t : type ref`,
 `t@ = lifetime(t)`.
 
-_See also: `@`, `extend`, `inject`, Borrow view, Escape check, EffectiveOpen._
+_See also: `@`, `extend`, `inject`, Borrow view, Escape check, ConstructionLineage._
 
 ---
 
@@ -1049,8 +1057,8 @@ Normalization rewrites prefix negative to typed-zero binary subtraction:
     -x  ⟶  ()zero::(x |> type) - x
 
 Prefix negative is not an overloadable operator identity. The spelling `-`
-as a declarable or aliasable operator identity refers only to binary minus.
-Only the generated binary `-` participates in operator lookup after
+as a declarable operator identity refers only to binary minus. Only the
+generated binary `-` participates in operator-environment selection after
 normalization.
 
 _See also: OperatorSugar, Fixity, OperatorName._
@@ -1207,23 +1215,7 @@ The binder position in a `let binder === EntityRef` form. It may be a
 `Name` or `OperatorName`. The parser preserves the binder as raw AST syntax
 without resolving the target entity.
 
-_See also: Alias binding, Operator alias._
-
----
-
-## Operator alias
-
-**Retired semantic term.** The Raw AST still preserves an `OperatorName` binder
-inside the historical alias-let syntax, but no semantic operator-alias family,
-identity forwarding, or later alias validation survives. The parser-preserved
-shape is not a source-language commitment.
-
-The closed semantic direction instead uses an ordinary global `operator` type
-and the nearest lexical `operator : operator` value. Operator spellings select
-Symbols from that value; local environments use ordinary copy, shadowing, and
-Symbol `+=`/`-=`. The complete selector algebra remains deferred.
-
-_See also: Alias binding, AliasBinder, OperatorName, EntityRef._
+_See also: Alias binding, EntityRef, `spec/history/v0.1/operator-design.md`._
 
 ---
 
@@ -1530,8 +1522,8 @@ already promoted. Future promotion at an outer seal cannot justify the key.
 Meta-local PatternValues have `MetaInvocation` lifetime. They may pass through
 construction-transparent `compile`/intrinsic frames, but may not be passed to a
 new ordinary meta invocation as an implicit promotion. At seal, only the owned
-PatternValue closure of the returned Symbol's unique type member gains global
-lifetime. Every returned val sibling must depend only on already-global material
+PatternValue closure of the returned Symbol's unique type member, if present,
+gains global lifetime. Every returned val sibling must depend only on already-global material
 plus that promoted closure (only already-global material if the type member is
 absent), and borrow targets participate in the escape check.
 
@@ -1831,12 +1823,14 @@ Migration endpoint mutability uses ordinary actual-relative Bp preference, not
 hard Policy-domain intersection or subset specificity:
 
 ```text
-const actual/demand: const > unspecified > mut
-mut actual/demand:   mut > unspecified > const
+succ_const: const > let > mut
+succ_mut:   mut > let > const
+succ_plain: let > const = mut
 ```
 
 Opposite endpoint Patterns remain fully admissible. Stage, presence, Pp
-capability, Type, and structural applicability remain hard constraints.
+capability, Type, and structural applicability remain hard constraints. The
+plain row preserves ambiguity when only tied `const`/`mut` endpoints survive.
 Generic ordinary members may realize the four default transports
 `const <- const`, `const <- mut`, `mut <- const`, and `mut <- mut`; more
 specific Pattern members may refine or delete regions of that relation.

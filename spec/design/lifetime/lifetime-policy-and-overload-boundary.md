@@ -24,9 +24,9 @@ E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
 sensitivity is what distinguishes `@` from `ref` and `share`, which consume only
 `Read(E)` — the complete object read out of the slot, never the slot itself. An
 expression with no carrier place — a freshly computed temporary — supplies none,
-so no *place-observing* `@` candidate applies to it. The overlap group of §2.3 is
-the one candidate that never consults `CarrierPlace`, because it retargets
-nothing.
+so no *place-observing* `@` candidate applies to it. The borrow-type-value fixed
+points of §2.3 do not consult `CarrierPlace`; they stabilize the classifier
+universe and are not an existing-borrow-value overlap or retargeting rule.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. Its candidate
 set is nevertheless closed: the two instance groups of §2, dispatched by the
@@ -188,11 +188,31 @@ Target(Coerce_{j->k}(v)) = Target(v)
 ```
 
 Equal-capability `ref ref` / `share share` are fixed points, `ref share` weakens,
-and `share ref` has no candidate. `rebind rebind` is likewise a type-level fixed
-point. None of these constructor equations changes the value-instance meaning of
-`@`. The full table is owned by
+and `share ref` has no candidate. Retargeting type values have the symmetric
+fixed points:
+
+```text
+type ref rebind rebind   = type ref rebind
+type share rebind rebind = type share rebind
+```
+
+None of these constructor equations changes the value-instance meaning of `@`.
+The full table is owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.3.
+
+Prospective navigation identity and formed-borrow identity are also distinct:
+
+```text
+SubPlaceCoordinate(parent, selector)
+  != BorrowTargetIdentity(resident child)
+```
+
+The coordinate remains available for later navigation or `let` creation. A
+borrow of an existing child binds the resident target selected at formation;
+wholesale parent replacement may invalidate that borrow but never retargets it
+to a replacement child at the same coordinate. Only `rebind` selects a new
+target. Generation/version representation remains deferred.
 
 ## 3. Escape checking
 

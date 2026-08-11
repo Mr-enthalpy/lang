@@ -167,7 +167,15 @@ Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
 requires `TypeValue -> original carrier Symbol`: source navigation resolves a
 Symbol and reads its values, while an already-held PatternValue directly
-provides its owner/associated Val2.
+provides its canonical associated `Val2`.
+
+This closes calls whose entry is owned by that associated `Val2`; it does not
+yet close copied/extracted **type-as-callee** lookup when the intended
+constructor or policy-transform overload is a sibling value of the defining
+Symbol rather than an associated member of the type value. A future
+`HomeSymbol(TypeValue)` relation or equivalent canonical-root recovery remains
+deferred. It may not be reconstructed from the most recent carrier, binding
+provenance, or an `AsType` source path.
 
 Associated source navigation obeys the same forward-only rule. If:
 

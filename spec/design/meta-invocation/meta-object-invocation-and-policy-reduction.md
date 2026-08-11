@@ -567,6 +567,18 @@ there is no third rank, and the meta result is an ordinary value of type
 the transitional carrier for that ordinary Symbol's multi-member material; it
 remains uninstalled and does not define another ontology.
 
+Two names keep classifier and content shape distinct:
+
+```text
+ReturnClassifier(ordinary meta) = symbol
+ReturnShapeWithinSymbol         = Σ = ⟨ T?, V ⟩, with |T| <= 1
+```
+
+The returned Symbol may therefore be type-only, val-only, namespace-only, or
+mixed. “Meta returns type” is only shorthand for a `symbol` result whose
+within-Symbol shape is `⟨T, empty⟩`; “meta returns valset” similarly means
+`⟨absent, V⟩`. Neither spelling defines another return classifier or rank.
+
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
 slot relation, rank-directed identity, type self-root validation, and complete
 navigation atom belong to
@@ -696,7 +708,7 @@ IdentityType does NOT prove:
   meta root establishment and sealing under meta capability;
   MetaInstanceScopeId or return TypeFacet self-root validation;
   rank-directed symbol/type/value parameter identity;
-  declaration binding from arbitrary meta return values;
+  declaration binding from arbitrary within-Symbol meta return shapes;
   extraction-facing interface exposure;
   ordinary generic type constructor behavior.
 ```

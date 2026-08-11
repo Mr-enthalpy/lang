@@ -695,11 +695,25 @@ field : (object: T ref)   -> field ref
 field : (object: T share) -> field share
 ```
 
-For directly runtime-materializable fields the target exposure is
-`runtime || compile`; type/PatternValue fields are conservatively compile-only.
-The generated assignment partner exists only when the ordinary field Policy
-admits mutation. Current compatibility fields remain transport and do not
-override these target semantics.
+Target exposure follows the general structural predicate:
+
+```text
+RuntimeField(f)
+  <=> Val1_f != absent
+    and Materializable_0(Val1_f)
+    and not RequiresStaticPattern(f)
+
+Stage(accessor(f)) = runtime || compile  if RuntimeField(f)
+Stage(accessor(f)) = compile             otherwise
+```
+
+Type-valued fields are compile-only only because they currently fail this
+predicate, not because “type/PatternValue field” is a separate category. The
+generated assignment partner exists only when the ordinary field Policy admits
+mutation. Current compatibility fields remain transport and do not override
+these target semantics. In a plain use context generated candidates obey
+`succ_plain: let > const = mut`; tied `const` and `mut` candidates remain
+ambiguous when no plain `let` candidate exists.
 
 The value candidate has value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form such as `val ref.field1` or
