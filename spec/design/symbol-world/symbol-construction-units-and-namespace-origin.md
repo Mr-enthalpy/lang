@@ -1,6 +1,6 @@
 # Symbol Construction Units and Namespace Origin
 
-**Status: Canonical future-design note for namespace-facet origin,
+**Status: Canonical future-design note for pure-role namespace origin,
 construction-unit ownership, physical contribution authority, and cross-file
 reopening. These rules are not implemented by the current v0.6–v0.9
 substrate.**
@@ -14,7 +14,7 @@ which physical files have authority to contribute at a directory namespace?
 when may independently produced deltas be combined?
 ```
 
-The symbol/facet, `compile` / `meta`, meta type self-root, `struct`, pure
+The Symbol role/member, `compile` / `meta`, meta pure-role self-root, `struct`, pure
 `extend`, and place-level `inject` semantics are canonical in
 `symbol-first-meta-construction-and-pattern-injection.md`. The build projection
 and assembly phases are described in
@@ -34,8 +34,8 @@ Physical source assembly and ordinary meta invocation use the same symbol-world
 construction capabilities:
 
 ```text
-declare symbol/facet material
-open a namespace facet
+declare Symbol role/value material
+extend a pure role member's navigable structure
 construct a direct child
 construct descendants owned by that new child
 form a replayable contribution/delta
@@ -55,8 +55,8 @@ ordinary canonical meta invocation
 ```
 
 An ordinary meta instance is therefore not merely “like a folder.” It is a real
-virtual symbol layer: it participates in navigation, may carry namespace/type/
-value facets, anchors its returned type root, and is a candidate cache/
+virtual Symbol layer: it participates in navigation, may carry one optional
+pure role member plus typed value members, anchors its returned role root, and is a candidate cache/
 incremental unit.
 
 Formal ordinary meta invocation produces uninstalled construction material.
@@ -69,7 +69,8 @@ validation, and installation.
 
 ## 2. Namespace Origin Is Unique
 
-Every namespace facet records exactly one creation origin:
+Every created pure role member / derived namespace projection records exactly
+one creation origin:
 
 ```text
 NamespaceOrigin =
@@ -95,7 +96,7 @@ by exactly one of:
 3. one ordinary canonical meta invocation in `ns`, as a meta-owned virtual
    node.
 
-The three sources are mutually exclusive creators of that namespace facet.
+The three sources are mutually exclusive creators of that role member/path.
 This does **not** mean that a physical directory may contain only one
 implementation file. Multiple files in `ns/` may create different direct
 children of `ns`; they may not co-create or reopen the same child subtree.
@@ -103,7 +104,7 @@ children of `ns`; they may not co-create or reopen the same child subtree.
 Origin/provenance may remain attached for caching and diagnostics. It does not
 become part of a resulting `PatternValue` identity.
 
-## 3. Type Role Structurally Includes Namespace Role
+## 3. Pure Objects Carry Namespace Role; Type Role Refines It
 
 Type and namespace are judgments over the common Object domain, not facets or
 parallel nominal Object kinds. The canonical definitions are owned by
@@ -111,8 +112,9 @@ parallel nominal Object kinds. The canonical definitions are owned by
 
 ```text
 Pure(x)          <=> Val1(x) = absent
-NamespaceRole(x) <=> Pure(x) and Navigable(Val2(x))
-TypeRole(x)      <=> NamespaceRole(x) and DefinesVal1(P(x))
+WellFormedObject(x) => Navigable(Val2(x))
+NamespaceRole(x) <=> Pure(x)
+TypeRole(x)      <=> Pure(x) and DefinesVal1(P(x))
 
 TypeRole subset NamespaceRole
 NamespaceRole not-subset TypeRole
@@ -121,7 +123,8 @@ NamespaceRole not-subset TypeRole
 This is not type-system subtyping. It describes role implication:
 
 ```text
-TypeRole(x)      => x is navigable and P(x) defines admissible Val1
+Pure(x)          => x is navigable and has NamespaceRole
+TypeRole(x)      => P(x) defines admissible Val1
 NamespaceRole(x) and not TypeRole(x)
                  => x is navigable but unavailable to AsType
 ```
@@ -290,16 +293,17 @@ A helper ordinary-meta invocation with its own canonical instance has a separate
 uninstalled construction value according to explicit composition rules. It may
 not directly mutate an already installed subtree owned by the helper instance.
 
-The ordinary-meta return symbol's type self-root invariant follows from this
-ownership: the invocation's `MetaInstanceScope` is the type root identity
-anchor. An external type value may be a member under that root but cannot
-replace it. Compiler-defined privileged AST operations `struct`, `extend`, and
+The ordinary-meta return Symbol's pure-role self-root invariant follows from
+this ownership: its optional `Q` is rooted at the invocation's
+`MetaInstanceScope`, whether or not `TypeRole(Q)` holds. An external Object may
+be a member under that root but cannot replace it. Compiler-defined privileged
+AST operations `struct`, `extend`, and
 `inject` use their separately specified scope/owner rule and do not acquire an
 ordinary externally navigable instance root merely by being called.
 
 ## 8. Pattern Material and Namespace Values Are Orthogonal
 
-A pattern-material leaf belongs to a type facet's `PatternValue`. It
+A pattern-material leaf belongs to a pure role member's `PatternValue`. It
 participates in:
 
 ```text
@@ -307,14 +311,15 @@ PatternValue identity
 pattern normalization
 ordered Product/layer or fully named Pattern-body navigation-map formation
 pattern matching and extraction
-type semantics
+type semantics when the owner additionally satisfies `TypeRole`
 ```
 
-An ordinary namespace value member is a normal value-bearing symbol under a
-namespace facet, analogous to a static member in some languages. Adding one:
+An ordinary namespace value member is a normal value-bearing Symbol under a
+pure role member's namespace projection, analogous to a static member in some
+languages. Adding one:
 
 ```text
-changes namespace graph / value-facet material
+changes namespace graph / value-member material
 does not change PatternValue
 does not change pattern normal form
 does not enter a pattern set or ordered sequence
@@ -327,33 +332,34 @@ For example:
 val::ns1::ns2::ns3
 ```
 
-navigates namespace facets to `val` and then reads `val`'s value facet. “Value
+navigates the pure role member's namespace projection to `val` and then reads
+`val`'s value member. “Value
 is a leaf” means only:
 
 ```text
 value projection is terminal for the current value lookup
 ```
 
-It does not mean that a `SymbolCell` with a value facet cannot also have a
-namespace facet and namespace children. Namespace, type, and heterogeneous
-value facets may coexist on one symbol.
+It does not mean that a Symbol with `V` members cannot also have a pure role
+member `Q` and namespace children. Type projection is the refinement
+`TypeRole(Q)`, not another stored Object.
 
-## 9. Ordinary Type Installation Is Not Sum Extension
+## 9. Ordinary Pure-Role Installation Is Not Sum Extension
 
-One symbol place's type facet may be installed once by ordinary definition:
+One Symbol place's pure role member may be installed once by ordinary definition:
 
 ```lang
 let T = A;
 let T = B;
 ```
 
-If both forms attempt type-facet installation, the second conflicts. It does not
+If both forms attempt pure-role installation, the second conflicts. It does not
 form `A | B`.
 
 These remain separate operations:
 
 ```text
-ordinary first type installation
+ordinary first pure-role installation
 explicit child construction through extend (directly or through inject)
 explicit sum construction / sum extension
 ```
@@ -497,7 +503,7 @@ construction ownership, or meta return root identity.
 Not implemented:
 
 ```text
-meta result type self-root checking
+meta result pure-role self-root checking
 complete compile/meta language-level separation
 MetaInstanceScopeId
 ordinary canonical meta invocation navigation atom
@@ -505,14 +511,15 @@ NamespaceOrigin uniqueness checking
 SourceConstructionUnit / MetaConstructionUnit ownership
 physical directory contribution authority checking
 cross-file reopening diagnostics
-ordinary namespace value vs pattern-material facet implementation
-TypeRole(x) => NamespaceRole(x) structural enforcement
+ordinary namespace value vs pattern-material role/cache implementation
+Pure(x) => NamespaceRole(x) and TypeRole refinement enforcement
 explicit sum construction/extension API
 ```
 
 In particular, the current binding/materialization destination must not be
-described as determining or rerooting a meta result type's pattern identity.
-Final meta type identity is anchored by the meta instance's own symbol scope.
+described as determining or rerooting a meta result role member's pattern
+identity. Final meta role-root identity is anchored by the meta instance's own
+symbol scope.
 
 ## 13. Non-Goals
 

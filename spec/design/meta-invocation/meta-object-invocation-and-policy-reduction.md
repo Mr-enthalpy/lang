@@ -78,8 +78,8 @@ event alone delivers control. The current `let r = ...` return-cluster behavior
 is a transitional compatibility encoding of those separate operations. Where a
 member must observe an external object, it holds a borrow view
 (`ref` / `share`), which is an ordinary value — and a borrow edge is not owned
-material, so it is not promoted at seal. Forwarding an external type value as a
-meta return type still fails the self-root invariant. No declaration form,
+material, so it is not promoted at seal. Installing an external pure Object as
+the meta return role member still fails the self-root invariant. No declaration form,
 inside or outside a meta body, forwards a symbol or a place.
 
 Unsupported selected body forms return hard diagnostics. In particular, a body
@@ -228,8 +228,9 @@ MetaPartial invokes restricted overload selection under MetaAction lookup
 selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
 RHS value is `ForwardedValue(int)`
 `: type` assertion checks that the RHS is a type-level value
-binding materialization installs `X` as a fresh symbol/place whose type facet
-projects the `int` type value; the binding is an ordinary fresh symbol and place,
+binding materialization installs `X` as a fresh symbol/place whose unique pure
+role member `Q` projects the `int` type value and satisfies `TypeRole(Q)`; the
+binding is an ordinary fresh symbol and place,
 not a forwarding of `int`'s own symbol or place
 ```
 
@@ -336,7 +337,7 @@ The judgments are:
 
 ```text
 Gamma |- ResolveSymbol(path) => Symbol
-Gamma; Phase |- ExposePolicySlice(value_facet(Symbol)) => Val2View*
+Gamma; Phase |- ExposePolicySlice(typed_val_members(Symbol)) => Val2View*
 
 Gamma |- invoke(selected object, InvocationFrame)
       => result(P2v:P2p)
@@ -345,9 +346,10 @@ Gamma |- derive_function_object_P1(P2v:P2p) => P1base
 Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 ```
 
-Omitted P1 keeps the complete result. Single P1 `Q` selects values visible
-under Q and follows their associated pattern components. Pair P1 `Qv:Qp`
-filters both. Single P1 is not normalized to `Q:Q`.
+Omitted P1 keeps the complete result. Single P1 `q` selects values visible
+under `q` and follows their associated pattern components. Pair P1 `qv:qp`
+filters both. Single P1 is not normalized to `q:q`. These lower-case policy
+metavariables are distinct from the Symbol pure-role member `Q`.
 
 P2 is an explicit pair or a context-specific single-policy shorthand:
 
@@ -410,7 +412,7 @@ earlier decision.
 resolve name/path:
   -> Symbol
 
-project value facet:
+project typed val members:
   -> zero or more heterogeneous values
 
 stage-visible object pool:
@@ -478,7 +480,7 @@ A formal sketch of the intended end-to-end frame:
 
 ```text
 Gamma |- ResolveSymbol(callee_path) => Symbol
-Gamma; Phase |- value_facet(Symbol) => V*
+Gamma; Phase |- typed_val_members(Symbol) => V*
 Gamma; Phase |- ExposePolicySlice(V*) => V_phase*
 Gamma; Phase |- type(V_phase*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
@@ -571,17 +573,18 @@ Two names keep classifier and content shape distinct:
 
 ```text
 ReturnClassifier(ordinary meta) = symbol
-ReturnShapeWithinSymbol         = Σ = ⟨ T?, V ⟩, with |T| <= 1
+ReturnShapeWithinSymbol         = Σ = ⟨ Q?, V ⟩, with |Q| <= 1 and Pure(Q)
 ```
 
-`T` may be present or absent and `V` may contain any ordinary sibling values.
+`Q` may be present or absent and `V` may contain any ordinary sibling values.
 Those are content facts within one returned Symbol Object, not type/val/namespace
-return categories. Navigability is the ordinary `NamespaceRole` judgment over
-Object `Val2`; it adds no third component to `Sigma`. “Meta returns type” is only
-shorthand for a `symbol` result whose content is `⟨T, empty⟩`.
+return categories. `Q` is the one optional pure role member: namespace
+projection selects it directly, while type projection additionally requires
+`TypeRole(Q)`. “Meta returns type” is only shorthand for a `symbol` result whose
+content is `⟨Q, empty⟩` and whose `Q` satisfies `TypeRole`.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
-slot relation, rank-directed identity, type self-root validation, and complete
+slot relation, rank-directed identity, pure-role self-root validation, and complete
 navigation atom belong to
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 This document consumes those result ranks only to define candidate preparation,
@@ -629,7 +632,7 @@ The current Rust substrate still uses `MetaInvocationResult::Value` with
 `MetaInvocationValue::{ForwardedValue, GeneratedConstructionValue,
 GeneratedTypeDefinitionValue}`. Those cases describe transitional v0.8/v0.9
 implementation transport, not the final public rank model. It also does not
-implement `MetaInstanceScopeId`, meta return type self-root checking, complete
+implement `MetaInstanceScopeId`, meta return pure-role self-root checking, complete
 `compile`/`meta` separation, or the canonical meta-instance navigation atom.
 
 The canonical note also owns the complete invocation navigation atom; this
@@ -920,7 +923,8 @@ Current state:
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
-Not yet present are `SymbolCell` facets, `PatternValue` as the single static
+Not yet present are Symbol `Q` role projection / implementation caches,
+`PatternValue` as the single static
 result model, meta root establishment/sealing,
 `ResolvedPatternScope`, final binding-independent `struct` owner resolution,
 pure `extend`, or place-level `inject`.
@@ -1034,7 +1038,7 @@ pattern, type-value, and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
-2. Introduce SymbolCell facets and symbol-first value-facet candidate lookup.
+2. Introduce Symbol `Q` role projection and typed value-member candidate lookup.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.

@@ -355,8 +355,8 @@ metaprogramming system may extend the namespace graph with declared and virtual
 namespace nodes.
 
 In the final symbol-first model these are not mutually exclusive `SymbolKind`s.
-They describe namespace-facet origin/provenance on a `SymbolCell`. Every
-namespace facet has one creation origin:
+They describe origin/provenance for one Symbol's pure role member `Q` and its
+derived namespace projection. Every such role member has one creation origin:
 
 ```text
 PhysicalDirectory(path)
@@ -386,8 +386,9 @@ make intermediate path traversal ambiguous before the resolver expectation API
 is fully designed.
 
 This bucket representation is transitional. In the final symbol-first model a
-name first resolves to one `SymbolCell`, and namespace/type/heterogeneous value
-facets may coexist on that symbol. Role-aware current lookup must not be
+name first resolves to one Symbol; its optional `Q` supplies namespace and,
+when `TypeRole(Q)`, type projection, while heterogeneous value members occupy
+typed buckets. Role-aware current lookup must not be
 generalized into final mutually exclusive `SymbolKind`s.
 
 ### 7.2 Type-associated namespace
@@ -404,11 +405,13 @@ objects" node kind alone.
 The final Object-role relationship is:
 
 ```text
+Pure(x) <=> NamespaceRole(x)
 TypeRole(x) subset NamespaceRole(x)
 NamespaceRole(x) not-subset TypeRole(x)
 ```
 
-A type-role Object is therefore a pure navigable Object whose Pattern satisfies
+A well-formed Object's `Val2` is navigable, so every pure Object has namespace
+role. A type-role Object additionally has a Pattern satisfying
 `DefinesVal1(P)`. A namespace-role-only Object may have ordinary navigable
 members but fails that judgment. These are roles over one Object ontology, not
 facet inclusion or type-system subtyping.
@@ -439,8 +442,8 @@ the bootstrap application is summarized in
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4.
 
 Physical source fragments and meta-produced symbol constructions share the
-same symbol-world capability base: declare facet material, add direct children,
-open namespace facets, form replayable contributions/deltas, and install a
+same symbol-world capability base: declare role/member material, add direct
+children to namespace-role Objects, form replayable contributions/deltas, and install a
 validated `NamespaceDelta` atomically. For example, `ns/impl.lang` and
 `ns/export.lang` may create distinct same-level children of `ns` through
 independently derived contribution values. They do not acquire meta-body

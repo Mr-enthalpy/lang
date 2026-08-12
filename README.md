@@ -116,7 +116,7 @@ design-fusion staging area; non-normative, not current behavior). Start at
 | Block | Purpose |
 |---|---|
 | `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, physical contribution authority, export surface, provenance |
-| `spec/design/symbol-world/` | Canonical symbol-first facets, `Pv:Pp`, contextual P1/P2 elaboration, seal visibility/snapshot, const/mut product order, compile-flow projection, companions, automatic require, `PatternValue` / `SymbolConstructionValue`, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, and identity/alias foundations |
+| `spec/design/symbol-world/` | Canonical Object roles and Symbol `<Q?,V>` projections, `Pv:Pp`, contextual P1/P2 elaboration, seal visibility/snapshot, const/mut product order, compile-flow projection, companions, automatic require, meta pure-role self-root, pattern scopes, `struct -> symbol`, pure `extend`, place-level `inject`, namespace origin/construction ownership, and retired-alias boundaries |
 | `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
 | `spec/design/meta-invocation/` | Symbol-first callable invocation, policy-pair handoff, partial/strict demand, and residualization |
 | `spec/design/policy-capability/` | Current flat policy-metadata mapping to canonical pairs and future orthogonal policy dimensions |
@@ -357,7 +357,7 @@ Read these only when implementing, auditing, or repairing the frontend.
 
 Read these only when working on future design topics.
 
-1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` — Canonical symbol facets, compile/meta, pattern scope, struct/inject, and install boundary.
+1. `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` — Canonical Object roles, Symbol `<Q?,V>`, compile/meta, pattern scope, struct/extend/inject, and install boundary.
 2. `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md` — Canonical namespace origin, physical authority, and source/meta construction ownership.
 3. `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` — Canonical layered policy, contextual P1 binding projection, P2 result normalization, mechanical call projection, derived compile-companion objects, match staging, and coarse inferred require.
 4. `spec/design/symbol-world/entity-ref-design.md` — Future general EntityRef design.

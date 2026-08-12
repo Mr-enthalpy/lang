@@ -124,8 +124,9 @@ val share.field1.field2
 
 This document does not specify evaluation or lowering for those forms.
 
-Automatic `ref` / `share` argument passing constructs a borrow object and moves
-the borrow handle. Moving a borrow handle keeps the same parent/origin and does
+Explicit `ref` / `share` constructs a borrow object before candidate adaptation;
+argument passing only moves that already formed borrow handle. Moving a borrow
+handle keeps the same parent/origin and does
 not deepen the access tree, so access-tree depth does not grow through argument
 passing. The mechanical pass-insertion semantics are specified in
 `spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
@@ -165,7 +166,7 @@ The consequences that field/access-tree work must preserve:
   place, so no second name reaches `place(uint8)`. Where shared observation is
   wanted, the value held is a borrow view (`ref` / `share` / `@`), and its
   capability never exceeds the underlying place's own. A missing final child
-  still has stable `SubPlace(parent, selector)` identity: `let` may instantiate
+  still has stable `ProjectionSlot(parent, selector)` identity: `let` may instantiate
   it, while bare `=` may only write `Some(existing)`.
 - That prospective coordinate is not the target identity of a borrow already
   formed from a resident child. Parent wholesale replacement may invalidate the

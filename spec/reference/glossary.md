@@ -437,7 +437,7 @@ _See also: OperatorName, Fixity, Arity._
 ## Overload Candidate
 
 A callable entry prepared for a given call. Final preparation first resolves a
-symbol, projects its heterogeneous value facet for the current policy view,
+Symbol, projects its heterogeneous typed `V` members for the current policy view,
 enumerates `Val2` objects, obtains each surviving value's type, and resolves
 that type's associated `()` entry. Non-callable values are discarded. A derived
 compile companion is itself a complete `Val2` function object with stable
@@ -640,9 +640,10 @@ not parallel aggregates. Borrow targets are horizontal identity-bearing leaves.
 The complete equations and well-foundedness rules belong to
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
-`Val1? = absent` is payload absence only. `DefinesVal1(P)`, `TypeRole`, and
-`NamespaceRole` are separate judgments; `TypeRole` implies `NamespaceRole`, not
-conversely. Construction lineage and carrier place remain outside normal form.
+`Val1? = absent` is payload absence only. In the well-formed Object kernel every
+`Val2` is navigable, so `Pure(x) <=> NamespaceRole(x)`. `TypeRole(x)` further
+requires `DefinesVal1(P(x))` and is therefore the strict refinement.
+Construction lineage and carrier place remain outside normal form.
 
 _See also: Policy Pair, Borrow view, ConstructionLineage._
 
@@ -695,6 +696,11 @@ bare Product Object in `Val1`. A `product` value is the same ordinary wrapper
 with the erased outer classifier. Their normalization and owned traversal are
 therefore exactly the general `Object` rules.
 
+Sequence indexing therefore selects
+`ProjectionSlot(Resident(Val1(sequence)), pos_i)`, not `Nav(sequence,pos_i)` on
+the outer Sequence `Val2`. Value/ref/share indexing changes only observation
+kind and shares one bounds domain.
+
 A bare Product retains its concrete arity and element-type vector in its fixed
 shape. The global built-in `product` type classifies any finite heterogeneous
 bare Product without moving that concrete vector into the outer type identity.
@@ -709,13 +715,13 @@ _See also: ProductForm, Object normal form (`Norm`), Symbol value._
 ## Symbol value
 
 An ordinary value of the ordinary `symbol` type. Its mutable member content is
-`Val1(Symbol) = Σ = ⟨T?, ⨄_{T_c}V[T_c]⟩`, never a mutable `P x Val2` side
+`Val1(Symbol) = Σ = ⟨Q?, ⨄_{T_c}V[T_c]⟩`, never a mutable `P x Val2` side
 structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
-member objects. A Symbol contains at most one type member and any number of val
-members; callable val members project across those buckets to the formal
-`OverloadSet`.
+member objects. `Q`, when present, is the unique pure role member. Namespace
+projection selects `Q`; type projection selects it only when `TypeRole(Q)`.
+Callable val members project across the typed buckets to the formal `OverloadSet`.
 
-Symbol normalization is an extensional optional type member plus map of typed
+Symbol normalization is an extensional optional pure role member plus map of typed
 member sets. Stable member and candidate identities, callable-body identity, and
 selection-relevant declaration annotations live in the ordinary member objects
 and survive normalization. Only order and repeated contribution of the same
@@ -725,18 +731,18 @@ member are quotiented away; conflicting declarations remain diagnostics.
 empty/singleton bare Product, each typed bucket is an ordinary `T_c*omega`
 Sequence, each `(T_c, bucket)` entry is classified by `product`, and those
 homogeneous entries form a `product*omega` carrier. The logical
-`⟨T?, V⟩` notation projects this ordinary Object composition.
+`⟨Q?, V⟩` notation projects this ordinary Object composition.
 
 The privileged `struct` operation returns such a Symbol: it creates the unique
-type member and mechanically generated field/access/assignment/borrow partner
-families. It is therefore a symbol-producing structural generator, not merely a
-type constructor.
+pure-role member `Q_struct` satisfying `TypeRole(Q_struct)` and mechanically
+generated field/access/assignment/borrow partner families. It is therefore a
+symbol-producing structural generator, not merely a type constructor.
 
 _See also: PatternValue container kernel, Overload Candidate, `extend`._
 
 ---
 
-## ProjectionSlot (prospective SubPlace)
+## ProjectionSlot
 
 The resident-specific projection location
 `<ParentResidentIdentity, Selector>`, whose contents are `None` or `Some(Object)`.
@@ -869,6 +875,23 @@ _See also: `@`, Escape check, Alias binding (retired semantics), `type ref`._
 
 ---
 
+## NoImplicitBorrowFormation
+
+The negative invariant that candidate adaptation, structural repair, Policy
+migration, and automatic argument passing cannot turn an ordinary
+Object/Symbol/type actual into `ref` or `share` merely to make a candidate
+applicable. The source or normalized expression must explicitly form the view
+with `ref`, `share`, or `@`. Fixed points and legal weakening of an already
+formed borrow preserve its target and are not implicit formation; callable-frame
+implicit `self` is a separate narrow capability rule.
+
+Canonical owner:
+`spec/design/symbol-world/type-values-places-and-borrow-views.md` §5.1.2.
+
+_See also: Borrow view, Overload Candidate, `@`._
+
+---
+
 ## Escape check
 
 The check that a borrow view is not carried where it outlives its own valid
@@ -953,7 +976,7 @@ _See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
 ## `type ref`
 
 A borrow view of a type-valued carrier slot. An already-pure type slot uses
-`t@`; a Symbol's unique type member uses the ordinary projection `(S ref).type`.
+`t@`; a Symbol uses `(S ref).type` when its unique `Q` satisfies `TypeRole`.
 Ordinary borrow lifetime and policy rules determine formation, validity, and
 writability.
 
@@ -1469,7 +1492,9 @@ successful call establishes root identity and construction navigation, not
 external installation. The canonical judgments and seal algorithm belong to
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-At seal only the returned unique type member's owned closure may be promoted.
+At seal only the returned unique pure role member `Q`'s owned closure may be
+promoted. `Q` may be namespace-only; type capability is the additional
+`TypeRole(Q)` refinement.
 `EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
 horizontal borrow targets; it is not a val-sibling-only check.
 
@@ -1477,7 +1502,7 @@ Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
 subclass. A member such as `struct`, `extend`, or `inject` may accept one
 specifically bounded Normalized-AST/pattern carrier and use a member-specific
 scope/owner rule. `struct` produces a Symbol and establishes or selects its
-unique type member's stable lexical root from input navigation plus ambient
+`Q_struct` type-role member's stable lexical root from input navigation plus ambient
 scope. `extend` establishes no root and preserves the input root; `inject` is
 its place-level read–extend–write wrapper. Any later privileged member must declare its own owner rule. Users
 may call these objects but cannot define new privileged members; the privilege
@@ -1526,7 +1551,7 @@ form forwards a Symbol or a place; to observe another object's place, bind a
 borrow view (`uint8 ref`, `uint8 share`, `p@`).
 
 At the semantic layer this is also the only missing-member creation operation.
-Navigation may yield a prospective SubPlace containing `None`; `let` may
+Navigation may yield a prospective ProjectionSlot containing `None`; `let` may
 instantiate it. Bare `=` writes only an already existing place, and a return
 event performs only control transfer. A return-name `let`/overwrite cluster in
 the current evaluator is a transitional compatibility encoding, not this rule.
@@ -1920,9 +1945,10 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 ## AsType and TypeOf
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
-For Symbol it selects the unique type member. For a pure Object `x`, it is the
+For Symbol it selects the unique pure role member `Q` exactly when
+`TypeRole(Q)`. For a pure Object `x`, it is the
 identity exactly when `DefinesVal1(P(x))`; otherwise it is undefined. It never
-wraps a namespace-role Object or searches it for a hidden type facet. Symbol's
+wraps a namespace-role Object or searches it for a hidden Q/type-role member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
 only an already-pure type slot uses `t@`.
 

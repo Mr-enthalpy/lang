@@ -5,7 +5,7 @@ Design consolidation note. Not a user-visible syntax document.
 The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
-resolves to a symbol and heterogeneous value facet.
+resolves to a Symbol and heterogeneous typed `V` members.
 Policy pairs, binding P1, result P2, compile companions, and must-select consistency
 are canonical in `symbol-policy-and-compile-flow-projection.md`.
 
@@ -20,7 +20,7 @@ let f = (self) => {};
 `f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
 
 The converse is not true: a value entry need not be a function. A symbol's
-value facet may contain ordinary uncallable values and multiple heterogeneous
+typed `V` members may contain ordinary uncallable values and multiple heterogeneous
 values of unrelated types. Callability is tested only in a call position by
 resolving each value's type-associated `()` entry.
 
@@ -45,7 +45,7 @@ Product |> Expr
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
 When `Expr` is a name/path, resolution first produces a symbol and projects its
-heterogeneous value facet. Candidate preparation observes each enumerated
+heterogeneous typed `V` members. Candidate preparation observes each enumerated
 object's `Pv:Pp` view for the current lookup domain before type-associated call
 lookup. The remaining steps run independently for each surviving value entry;
 entries without an applicable `()` call entry are discarded.
@@ -384,13 +384,16 @@ associated () implementation:
   ReceiverType(C) = type carrying the selected call entry
 ```
 
-The callable-local `Self` symbol may therefore combine:
+The callable-local `Self` frame may therefore combine these local projections:
 
 ```text
-namespace facet = callable-local semantic space
-type facet      = ReceiverType(C)
-value facet     = invocation slot 0
+namespace role          = callable-local semantic space
+receiver-type projection = ReceiverType(C)
+caller value slot       = invocation slot 0
 ```
+
+These are callable-frame labels, not independently stored Symbol facets in the
+target Object ontology.
 
 This does not inject callable-local declarations into the named receiver
 type's namespace. Nested owner paths use source navigation order:
@@ -565,7 +568,7 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol and project/enumerate its heterogeneous value facet
+2. Resolve a name/path to Symbol and project/enumerate its heterogeneous typed V members
 3. Expose each Val2 object's policy-pair view for the current `Phase`
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`

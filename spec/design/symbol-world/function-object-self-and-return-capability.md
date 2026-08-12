@@ -114,6 +114,11 @@ borrow that allows the function body to:
 The implicit borrow is not written by the user. It is an automatic consequence
 of being inside the function body.
 
+This is a callable-frame-only capability, not argument adaptation. It does not
+permit a user actual `T` to become `T ref`/`T share` for overload selection and
+does not weaken `NoImplicitBorrowFormation` in
+`type-values-places-and-borrow-views.md` §5.1.2.
+
 ## 4. `return` as a built-in capability under the callable-local `Self` space
 
 The current callable frame has a built-in return capability:

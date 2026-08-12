@@ -3,7 +3,8 @@
 **Status: Non-normative future design. Not implemented as current parser, normalizer, type checker, borrow checker, ABI, or IR lowering behavior.**
 
 This document specifies the future *mechanical argument passing* layer: how a
-call argument is normalized into a concrete pass action (move, borrow, or copy)
+call argument is normalized into a concrete pass action (move or copy), while
+an explicitly formed borrow is moved as an already existing borrow value,
 before a function or meta-function body receives it. Its central claim is that
 pass modes are mechanically inserted, source-expressible actions — not backend
 ABI heuristics and not optimizer decisions — and that `move` is the fixed point
@@ -23,13 +24,13 @@ at a call's argument slots. The problem it solves:
 source argument
   -> raw argument shape
   -> explicit pass extraction
-  -> automatic pass selection, if no explicit pass
+  -> automatic move/copy selection, if no explicit pass
   -> concrete pass action
   -> eventual IR/action layer receives fully decided movement/borrow/copy actions
 ```
 
 The compiler's only privilege is to fix the *insertion framework* during
-normalization / lowering: it mechanically inserts a pass action at each value
+normalization / lowering: it mechanically inserts a move/copy pass action at each value
 argument slot. The actual action that gets inserted is still decided by
 in-language facts — types, traits, policy, meta-functions, and symbol lookup —
 not by an opaque backend convention.
@@ -44,6 +45,10 @@ defines a future semantic direction only.
 calling-convention choices. At the language level they are visible, checkable
 actions that meta-code can describe and that legality checks can inspect.
 
+`ref` and `share` are nevertheless different from automatic move/copy choice:
+they form borrow Objects and must be explicit before candidate adaptation. This
+layer may transport an already formed borrow handle; it may not invent one.
+
 The compiler may mechanically insert a default pass action, but once inserted it
 must become an ordinary semantic object/action. The IR must not carry a
 "default pass undecided" state.
@@ -54,8 +59,7 @@ IR must not receive `in`
 IR receives concrete actions:
   Move
   CopyConstruct + Move
-  MakeRefBorrow + Move
-  MakeShareBorrow + Move
+  Move(existing explicit ref/share handle)
 ```
 
 By the time an action reaches the IR/action layer, the movement/borrow/copy
@@ -90,9 +94,9 @@ the point is that a manual pass mode is a requirement, not a suggestion.
 ## 4. Default Pass Insertion
 
 When no explicit pass mode is given, the lowering framework inserts a concrete
-pass action selected from the value argument's first-order type and static facts.
-The action must be explicit after lowering; the IR must not carry a deferred
-"default pass" state.
+`move` or `copy` action selected from the value argument's first-order type and
+static facts. It never inserts `ref`, `share`, or `@`. The action must be
+explicit after lowering; the IR must not carry a deferred "default pass" state.
 
 The inserted action can be described schematically in language-shaped form:
 
@@ -143,7 +147,8 @@ Semantic points:
    legality checker, or concrete pass-selection algorithm.
 
 `T |> get_default_pass` is a source-shaped placeholder for the future static
-selection procedure. It may depend on `Copyable`, layout/size, target facts, and
+selection procedure. Its result domain is `move | copy`; it may depend on
+`Copyable`, layout/size, target facts, and
 policy. Those details are not the inserted action's surface shape. The inserted
 argument action is still explicit after lowering; the IR must not receive an
 undecided default pass.
@@ -155,8 +160,9 @@ Key properties:
 - the default action must become a concrete pass action before IR/action lower;
 - `Copyable` only guarantees copyability; it does not guarantee that the default
   copies;
-- a large `Copyable` object may still pass by `share` under default policy;
+- a large `Copyable` object may still move rather than copy under default policy;
 - a small but non-copyable object is not copied merely because it is small;
+- no default policy forms a `ref` or `share` view;
 - if no selected pass action is viable, a later checking stage should report an
   error; this document does not define the full error conditions.
 
@@ -282,7 +288,7 @@ callee-independent raw argument normalization:
 
 candidate-dependent argument adaptation:
   given ParameterShape
-  choose concrete pass action if no explicit pass
+  validate an already explicit borrow, or choose move/copy if no explicit pass
 ```
 
 As judgments:
@@ -310,7 +316,10 @@ argument explicitly copy, parameter expects move
   => candidate incompatible
 
 argument automatic in, parameter expects share
-  => adapt to share if legal
+  => candidate incompatible; adaptation must not form a borrow
+
+argument explicitly share, parameter expects share
+  => candidate may be compatible after ordinary borrow legality checks
 
 argument automatic in, parameter expects copy
   => adapt to copy if legal
@@ -322,6 +331,18 @@ argument automatic in, parameter pass unspecified
 This document does not define candidate ranking; it only states that pass
 adaptation is part of candidate adaptation. The `RawArgShape` / `ParameterShape`
 objects come from `pattern-normalization-and-first-order-overload.md`.
+
+The hard boundary is `NoImplicitBorrowFormation`:
+
+```text
+candidate adaptation cannot rewrite T to T ref or T share
+structural repair cannot insert ref, share, or @
+default pass selection returns only move or copy
+```
+
+The fixed points and weakening of an already formed borrow remain ordinary
+borrow-constructor rules; the callable-frame implicit `self` capability is a
+separate, narrow rule and is not argument adaptation.
 
 ## 10. Relation to type values and rank
 
@@ -350,11 +371,9 @@ The final IR / lower-action layer sees only fully decided actions, for example:
 CopyConstruct x -> tmp
 Move tmp -> arg_slot
 
-MakeShareBorrow x -> b
-Move b -> arg_slot
+Move explicit_share_handle -> arg_slot
 
-MakeRefBorrow x -> b
-Move b -> arg_slot
+Move explicit_ref_handle -> arg_slot
 
 Move x -> arg_slot
 ```
@@ -407,7 +426,7 @@ meaning.
 - `type-values-places-and-borrow-views.md` — defines `TypeValueId`; pass mode
   is explicitly not part of it, and `T move == T`.
 - `type-associated-function-objects-and-access-trees.md` — field-function and
-  access-tree work; automatic `ref` / `share` produces a borrow object whose
+  access-tree work; an explicit `ref` / `share` produces a borrow object whose
   handle is moved while preserving parent/origin.
 - `overload-resolution-design.md` — candidate matching must separate type/rank
   compatibility from pass compatibility.

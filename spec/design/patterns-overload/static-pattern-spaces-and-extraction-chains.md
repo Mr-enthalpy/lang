@@ -1161,8 +1161,8 @@ let box = (self, t: type): meta -> r: symbol => {
 };
 ```
 
-If a meta return symbol has a type facet, its root must be the canonical
-ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta type returns are
+If a meta return Symbol has a pure role member `Q`, its root must be the canonical
+ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta role returns are
 invalid. This additional construction invariant does not alter the ordinary
 block-result rule. In both examples the final expression:
 
@@ -1487,7 +1487,7 @@ Extraction participates in overload candidate filtering and resolution. A candid
 ### 12.1 Overload Set Construction
 
 Final candidate preparation first resolves a `Symbol`, projects its
-heterogeneous value facet for the current policy view, enumerates `Val2`
+heterogeneous typed `V` members for the current policy view, enumerates `Val2`
 objects, obtains each surviving object's type, resolves the type-associated
 `()` entry, and discards non-callable entries. The current same-name namespace
 bucket is only transitional substrate.
@@ -1498,7 +1498,7 @@ views are derived from `P2`. Candidate hard legality checks the actual
 parameter, receiver, target-result, stage, concept, and require constraints; it
 does not reconstruct one scalar total policy or apply `external(P2) subset P1`.
 
-Derived compile companions enter the symbol value facet as complete first-class
+Derived compile companions enter the Symbol's typed `V` members as complete first-class
 `Val2` function objects with their own types and associated compile `()`
 entries. They are not added after overload failure. `export` remains an
 independent cross-package visibility filter.

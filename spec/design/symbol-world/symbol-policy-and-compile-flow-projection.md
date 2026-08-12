@@ -432,7 +432,8 @@ are not namespace declaration positions.
 `export` has the narrower placement rule described in section 9. Export
 elaboration derives a separate external view; it does not crop the namespace's
 complete internal declaration view. If the exported symbol has an independent
-value facet, that external view must have a non-empty `const` projection. A pure
+runtime-value projection, that external view must have a non-empty `const`
+projection. A pure
 PatternValue has `Pv = Pp` and no independent runtime-value mutability
 obligation.
 
@@ -636,8 +637,9 @@ not StructurallyApplicable(candidate, actual)
 ```
 
 In particular, `T` is never changed implicitly to `T ref` merely because a
-consumer requires runtime. Explicit/mechanical `ref` remains an independent
-ordinary operation.
+consumer requires runtime. This is `NoImplicitBorrowFormation`: explicit `ref`,
+`share`, or `@` remains an independent ordinary operation, never candidate or
+Policy repair.
 
 ### 3.6 Existing runtime capability versus runtime value readability
 

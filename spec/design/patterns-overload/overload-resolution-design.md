@@ -66,7 +66,7 @@ Implemented for this slice:
   never as a second resolver or source-language callable family.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
-symbol, projects and enumerates its heterogeneous value facet, observes each
+Symbol, projects and enumerates its heterogeneous typed `V` members, observes each
 object's policy-projected view, obtains each surviving value's type, resolves each
 type-associated `()` entry, discards non-callable entries, and then performs
 parameter-pair, stage, P2-result, and applicability filtering to a unique
@@ -177,6 +177,7 @@ This document does **not** define:
   `../lifetime/lifetime-policy-and-overload-boundary.md`
 - ADL or unrestricted symbol search
 - implicit type conversion or coercion
+- implicit borrow formation (`T` is never repaired to `T ref` / `T share`)
 - partial-application overloads
 - package-internal symbol aliases as overload candidates
 
@@ -235,7 +236,7 @@ Visible(C, External)
 
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
-candidate construction proceeds from that symbol's value facet.
+candidate construction proceeds from that Symbol's typed `V` members.
 
 Candidate construction is closed over the namespace-graph view selected for the
 query: it performs no ADL-like expansion and no external scope search, external
@@ -251,7 +252,7 @@ The final candidate source is symbol-first:
 ResolveSymbol(callee path)
   -> Symbol Σ
   -> apply call-site candidate-family filter to Σ
-  -> project heterogeneous value facet
+  -> project heterogeneous typed V members
   -> enumerate heterogeneous Val2 objects
   -> observe each object's policy-projected view for the lookup stage
   -> obtain each value's type
@@ -278,7 +279,7 @@ semantics in this PR is its pipeline position: it limits which declared or
 generated candidate families may contribute to `C0` for this call. A future
 surface may resemble `args |[[annotation]]> callee` (for example default-only or
 nongeneric-only), but spelling and general selector algebra remain deferred.
-With no annotation, the family view is the complete value facet.
+With no annotation, the family view is the complete typed `V` member family.
 
 Declaration-side annotations act only after `A` has been formed. They control
 how already-fully-admissible candidates participate — for example fallback
@@ -348,8 +349,11 @@ and does not participate in this routing.
 The connected restricted path still lacks full Pattern applicability,
 requires/concepts, and the non-identity B1/B2/B4/B5/B6 implementations. These
 are missing dimensions of the one ordinary resolver, not permission to search
-`ref`, `share`, `alias`, or another structure-changing operation after a
-Policy failure.
+`ref`, `share`, `@`, `alias`, or another structure-changing operation after a
+Policy failure. `NoImplicitBorrowFormation` applies before and throughout
+candidate generation: a candidate that requires a borrow is structurally
+applicable only when the actual already contains the explicit borrow
+observation (apart from fixed-point/weakening rules on an existing borrow).
 
 ### 3.2 P2 pair at the fully admissible boundary
 
@@ -842,6 +846,18 @@ match the call operand.
 
 - extraction pattern is structurally inapplicable to `E`
 - type signature is incompatible with the argument types
+
+It performs no borrow-producing repair:
+
+```text
+E : T       =/=> E : T ref | T share
+E : symbol  =/=> E : symbol ref | symbol share
+E : type    =/=> E : type ref | type share
+```
+
+The explicit `ref`, `share`, or `@` operation must already have formed the
+actual observation before this stage. Policy preference, candidate filtering,
+and automatic pass lowering cannot introduce it merely to rescue a candidate.
 
 ### 5.6 A: Fully admissible candidates
 

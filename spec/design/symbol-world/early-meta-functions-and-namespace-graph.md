@@ -238,7 +238,7 @@ model boundary:
   namespace injection targets.
 - The current slice does not implement `NamespaceOrigin`, source/meta
   construction-unit ownership, physical contribution authority, cross-file
-  reopening diagnostics, or meta return type self-root checking.
+  reopening diagnostics, or meta return pure-role self-root checking.
 - v0.8 source-declared callable overload selection reports structured failure
   kinds. Initializer MetaPartial residualization is driven by those kinds, not
   by diagnostic message text. Ambiguity remains a hard diagnostic; no
@@ -311,12 +311,16 @@ objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
 
 `SymbolObject` is the current implementation substrate. The final conceptual
-model is a symbol-first `SymbolCell` with one `SymbolId`, one `PlaceId`, and
-optional namespace/type plus heterogeneous value facets:
+model is one Symbol with one `SymbolId`, one `PlaceId`, an optional pure role
+member `Q`, and heterogeneous typed value-member buckets:
 
 ```text
-path/name -> Symbol -> context-directed facet projection
+path/name -> Symbol -> context-directed role/member projection
 ```
+
+Namespace projection selects `Q`; type projection selects the same `Q` only
+when `TypeRole(Q)`. Current namespace/type facet buckets may cache those derived
+views but do not define independent semantic Objects.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint
@@ -417,10 +421,10 @@ object/function child without namespace_node
 ```
 
 This is the conservative current v0.6 bucket model. The canonical future
-`SymbolCell` model permits one symbol's value facet to contain multiple
-heterogeneous value entries. That future same-symbol facet rule is not the same
+Symbol model permits one Symbol's `V` buckets to contain multiple heterogeneous
+value entries. That future same-symbol member rule is not the same
 as silently merging two independently declared `SymbolObject`s today; it
-requires facet-aware declaration identity and conflict checking first.
+requires role/member-aware declaration identity and conflict checking first.
 
 This coexistence facility is generic graph substrate. It is not a target
 semantic requirement for fields named `ref` or `share`; those are ordinary
@@ -757,9 +761,9 @@ has target semantics:
 | --- | --- | --- | --- |
 | `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T@)` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
-| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with one type member | `let f::((T ref).type)` may create under that explicit type-member place |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with `Q_struct` satisfying `TypeRole` | `let f::((T ref).type)` may create under that explicit type-member place |
 
-Fresh generated Symbols own/provide their unique type member's associated
+Fresh generated Symbols own/provide their `Q_struct` type-role member's associated
 namespace, so `let T = (uint8 a, uint8 b) |> struct` creates one associated
 Symbol for `a` and one for `b`; each contains value/ref/share receiver candidates.
 
@@ -795,12 +799,14 @@ The role-aware `SymbolObject` buckets above describe the current substrate. The
 target model uses Object judgments:
 
 ```text
+Pure(x) <=> NamespaceRole(x)
 TypeRole(x) subset NamespaceRole(x)
 NamespaceRole(x) not-subset TypeRole(x)
 ```
 
-This is not type-system subtyping. `TypeRole(x)` means the pure navigable Object
-also satisfies `DefinesVal1(P(x))`; namespace-role-only Objects remain navigable
+This is not type-system subtyping. Every pure Object is navigable and therefore
+has `NamespaceRole`; `TypeRole(x)` additionally requires
+`DefinesVal1(P(x))`. Namespace-role-only Objects remain navigable
 but cannot be used by `AsType`. `TypeFacet` and `NamespaceFacet` remain names for
 current implementation buckets only, not target ontology.
 
@@ -879,7 +885,7 @@ restricted evaluator
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
 transport. They do not implement canonical facets, `MetaInstanceScope`,
-construction-lineage `Open`, `extend`/`inject`, type self-root validation, or
+construction-lineage `Open`, `extend`/`inject`, pure-role self-root validation, or
 construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the

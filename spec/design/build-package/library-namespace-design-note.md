@@ -107,8 +107,8 @@ The current graph/provenance model may record three namespace origin categories:
   file; the resolver observes them but does not create their namespace origin.
 
 In the final model these are navigable-construction origins, not mutually
-exclusive symbol kinds. Type and namespace are Object roles:
-`TypeRole(x) subset NamespaceRole(x)`, while the converse does not hold.
+exclusive symbol kinds. Every pure Object has `NamespaceRole`; `TypeRole(x)`
+further requires `DefinesVal1(P(x))`, so it is a strict refinement.
 Current `SymbolCell` facet buckets are implementation substrate only.
 
 A navigable child name is role-aware: object/function symbols and pure

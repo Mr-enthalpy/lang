@@ -44,7 +44,7 @@ The invariants this document protects:
 ```text
 value equality must not collapse symbol-place identity
 a borrow view must not manufacture a place that its source does not own
-member creation must target a place or stable prospective SubPlace
+member creation must target a place or stable prospective ProjectionSlot
 structural extension must transform an Open value, not borrow authority
 writability and Open must be checked independently
 ```
@@ -112,9 +112,10 @@ declaration-extension site cares about the *place*. A borrow view is itself a
 value that carries a place coordinate. The three concerns must not be folded
 into one another.
 
-In the symbol-first model, a path initially resolves to one symbol cell and the
-use site then projects namespace, type, or heterogeneous value facets. Facet
-projection does not collapse these identities and is not a cast.
+In the symbol-first model, a path initially resolves to one Symbol and the use
+site then projects its optional `Q` role member or heterogeneous typed `V`
+members. Namespace and type projections are judgments over `Q`; projection
+does not collapse these identities and is not a cast.
 
 ### 2.1 Object identity is the recursive three-component normal form
 
@@ -194,8 +195,10 @@ Pure(x)          <=> Val1?(x) = null
 DefinesVal1(P)   <=> P determines an admissible Val1 schema
 Navigable(V)     <=> V is a well-formed finite semantic-selector map
                      on which ProjectionSlot lookup is defined
-NamespaceRole(x) <=> Pure(x) and Navigable(Val2(x))
-TypeRole(x)      <=> NamespaceRole(x) and DefinesVal1(P(x))
+
+WellFormedObject(x) => Navigable(Val2(x))
+NamespaceRole(x)   <=> Pure(x)
+TypeRole(x)        <=> Pure(x) and DefinesVal1(P(x))
 
 TypeRole subset NamespaceRole
 NamespaceRole not-subset TypeRole
@@ -203,15 +206,19 @@ NamespaceRole not-subset TypeRole
 
 `Navigable(V)` means selector lookup yields the resident-specific
 `ProjectionSlot` defined in §7; a missing final selector still yields a slot
-whose contents are `None`, while continuation from `None` is invalid. The empty
-map is navigable, so a pure type need not have children to satisfy
-`NamespaceRole`. A pure namespace-like Object whose Pattern does not define an
+whose contents are `None`, while continuation from `None` is invalid. Being a
+well-formed Object already supplies such a `Val2`, including the empty map.
+Consequently every pure Object has `NamespaceRole`; namespace capability is not
+an extra entity or witness. A pure Object whose Pattern does not define an
 admissible Val1 remains navigable but is not usable as a type. These are
-predicates; no `NamespaceFacet`, hidden type facet, or parallel
-`NamespaceObject` ontology is introduced.
+predicates; no `NamespaceFacet`, hidden Q/type-role member, or parallel
+`NamespaceObject` ontology is introduced. Bare Product and the empty pure
+Pattern therefore have intrinsic structural namespace capability through their
+ordinary selectors; whether a tuple-like user-facing namespace API exposes
+that capability remains a narrow surface question.
 
 An Object carrying `Val1` may still be used where a type is expected when an
-ordinary projection such as Symbol's unique type-member projection applies
+ordinary projection such as Symbol's `Q` projection under `TypeRole(Q)` applies
 (§5.6). Conversely, `Pure(x)` alone does not imply `TypeRole(x)`. Keeping these
 judgments separate prevents payload presence from becoming an implicit kind
 classifier.
@@ -227,8 +234,8 @@ Norm(x)                    = ⟨ Norm_Val1?^(P(x))(Val1?(x)),
                                 Norm_Val2(Val2(x)) ⟩
 Norm_Val1?^P(null)         = null
 Norm_Val1?^P(v)            = Norm(v)       -- default owned-object case
-DecodeSymbolPayload(Σ_Object) = ⟨ T?, V ⟩
-Norm_Val1?^P_symbol(Σ_Object) = ⟨ Norm(T)? ,
+DecodeSymbolPayload(Σ_Object) = ⟨ Q?, V ⟩
+Norm_Val1?^P_symbol(Σ_Object) = ⟨ Norm(Q)? ,
                                 Map_{Norm(T_c)}(
                                   Set{ Norm(v) | v in V[T_c] }) ⟩
 Norm_Val2(V)               = Map_selector( Norm(V[selector]) )
@@ -261,7 +268,8 @@ compiler-container identities beside it.
 The `P_symbol` clause first decodes the two ordinal positions of the ordinary
 `Σ_Object` composition specified in `symbol-first-meta-construction-and-pattern-injection.md`,
 then applies a Pattern-specific quotient to the logical view
-`Σ = ⟨T?, V⟩`, where `V = ⨄_{T_c} V[T_c]` and every homogeneous bucket
+`Σ = ⟨Q?, V⟩`, where `Q`, when present, is the unique pure role member,
+`V = ⨄_{T_c} V[T_c]`, and every homogeneous bucket
 `V[T_c] : T_c * omega`. The member objects inside a bucket retain their own
 ordinary recursive identity, including stable declaration/candidate identity,
 callable body, and every annotation that affects semantic selection. There is no
@@ -274,7 +282,7 @@ conflicting declarations and duplicate definitions are rejected by construction
 or well-formedness before the quotient is observed. Two distinct members are
 not collapsed merely because their bodies normalize alike. In particular,
 inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
-form exactly when the optional type member and every normalized `V[T_c]` set are
+form exactly when the optional pure role member and every normalized `V[T_c]` set are
 equal.
 
 There is no case split in which one component is ignored. Earlier revisions
@@ -601,7 +609,7 @@ let t1::((t ref).type) = bool;
 ```
 
 resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
-destination prospective SubPlace under `(t ref).type`. It does not reroot the pattern, rewrite its
+destination prospective ProjectionSlot under `(t ref).type`. It does not reroot the pattern, rewrite its
 navigation, or make the destination symbol identical to the pattern owner.
 
 Literal syntax is the explicit exception only to source-path resolution. It
@@ -657,11 +665,12 @@ overload resolution failing inside the selected head
   -> NOT a reason to resume the outward walk
 ```
 
-This is what keeps a local type-only Symbol from silently shadowing an outer
-callable Symbol of the same spelling: at a call site the coarse facet demanded is
-callability, so a local Symbol that carries no callable facet is simply not a
+This is what keeps a local Symbol with a type-capable `Q` but no callable val
+member from silently shadowing an outer callable Symbol of the same spelling:
+at a call site the coarse role/member demand is callability, so a local Symbol
+that carries no callable val member is simply not a
 candidate head. It is equally what stops the search from degenerating into
-"retry outward until something type-checks" — the facet is coarse, and it is
+"retry outward until something type-checks" — the demand is coarse, and it is
 consulted once.
 
 `q` is coarse in the strict sense: it distinguishes facet presence, never
@@ -758,10 +767,11 @@ value* is the value read through `uint8`, while its *place* is its own. Binding 
 type value does not generate a new type, and it does not forward to `uint8`'s
 symbol or place.
 
-This ordinary declaration rule does not license a meta return symbol to use an
-external type value as its type root. A canonical meta instance has an
-additional self-root invariant: if its return Symbol contains type-role member
-`T`, `T`'s outer Pattern root must be the `MetaInstanceScope`. Thus ordinary
+This ordinary declaration rule does not license a meta return Symbol to use an
+external pure Object as its role root. A canonical meta instance has an
+additional self-root invariant: if its return Symbol contains pure role member
+`Q`, `Q`'s outer Pattern root must be the `MetaInstanceScope`, whether or not
+`TypeRole(Q)` holds. Thus ordinary
 `let T: type = uint8` remains legal while direct `r = uint8` as a meta return
 type construction is rejected.
 
@@ -928,7 +938,7 @@ let s: symbol = ...;
 let r = s ref;              // Read(s) : symbol, so r : symbol ref
 ```
 
-A symbol value is value-bearing (`Val1(Symbol) = Σ = ⟨T?, V⟩`), so `s ref` is the
+A symbol value is value-bearing (`Val1(Symbol) = Σ = ⟨Q?, V⟩`), so `s ref` is the
 ordinary "form a borrow of this value" operation. Because `Read` does not descend
 into `Val1`, `r` is a `symbol ref` and **not** a reference to the member array
 held inside the symbol. What `r` borrows is the symbol value that `s` holds, not
@@ -953,8 +963,8 @@ operand or argument position performs no implicit type conversion. An explicit
 `AsType(E) = E |> type` has two ordinary cases:
 
 ```text
-AsType(S : symbol) = UniqueTypeMember(Val1(S))
-                     when exactly one such member exists
+AsType(S : symbol) = Q
+                     when Val1(S) = ⟨Q, V⟩ and TypeRole(Q)
 
 AsType(x) = x       when Pure(x) and DefinesVal1(P(x))
 AsType(x) undefined when Pure(x) and not DefinesVal1(P(x))
@@ -962,9 +972,30 @@ AsType(x) undefined when Pure(x) and not DefinesVal1(P(x))
 
 The second rule validates an existing pure Object; it neither wraps a namespace
 nor searches for a hidden type member. Payload presence alone remains
-irrelevant to type applicability: a Symbol may carry `Val1(Symbol) = <T?, V>`
-without a unique type member. A language-designated type-expected position may
+irrelevant to type applicability: a Symbol may carry `Val1(Symbol) = <Q?, V>`
+with no `Q`, or with a namespace-only `Q` for which `TypeRole(Q)` is false. A
+language-designated type-expected position may
 insert `AsType`; ordinary operand positions may not. See §5.6.
+
+#### 5.1.2 No implicit borrow formation
+
+Borrow formation is never candidate adaptation, structural repair, policy
+migration, or automatic argument passing:
+
+```text
+Object =/=> Object ref | Object share
+Symbol =/=> Symbol ref | Symbol share
+type   =/=> type ref   | type share
+```
+
+An overload requiring `T ref` or `T share` is applicable only when the actual
+argument already is the corresponding borrow observation. The compiler may not
+invent `ref`, `share`, or `@` merely to make a candidate applicable. Borrow
+formation requires the explicit operator in the source/normalized expression;
+ordinary value copy such as `let b = a` creates no borrow edge. The established
+fixed points and weakening on an **existing** borrow (`ref ref`, `share share`,
+and `ref share`) remain valid (§5.3), as does the separately specified implicit
+`self` capability of a callable frame; neither is ordinary argument repair.
 
 ### 5.2 `@` is the carrier-slot operation
 
@@ -1271,8 +1302,9 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` either selects Symbol's unique type member or validates an already-pure
-Object by `DefinesVal1(P)` as specified in §5.1. It does not compute the type of
+`AsType` either selects Symbol's unique pure role member `Q` when `TypeRole(Q)`
+holds or validates an already-pure Object by `DefinesVal1(P)` as specified in
+§5.1. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 
 ```text
@@ -1294,14 +1326,14 @@ The designated positions are:
 | position | example |
 | --- | --- |
 | declaration annotation | `let x: E` |
-| a path component that demands the type facet | the type-facet step of §3.2 |
+| a path component that demands `TypeRole` | the type projection step of §3.2 |
 | type argument position | a parameter declared to receive a type |
 | `t: type` | a parameter or binder at type rank |
 | `t: type ref` | the borrow-view form of the same |
 | type-rank return position | a callable whose return is declared at type rank |
 
-So `E` supplying a `Val1` dimension in one of these positions is projected to its
-type facet without the author writing `|> type`, while the very same `E` under
+So `E` supplying a `Val1` dimension in one of these positions is projected to
+its `Q` when `TypeRole(Q)` without the author writing `|> type`, while the very same `E` under
 `ref` is not:
 
 ```lang
@@ -1324,8 +1356,8 @@ S.type         : type
 (S share).type : type share
 ```
 
-`S.type` is the by-value unique-type projection and agrees in value with
-`AsType(S)`. The ref/share cases preserve their borrow observation through
+`S.type` is the by-value projection of `Q` when `TypeRole(Q)` and agrees in
+value with `AsType(S)`. The ref/share cases preserve their borrow observation through
 ordinary field projection; they do not reverse-map a type value to an origin.
 When `t` itself is already a pure `type` slot, `t@` remains the direct carrier
 borrow. No `S@` or `(S |> type)@` shorthand is defined.
@@ -1485,14 +1517,15 @@ type, pattern, ordinary value-member, or overload subtree created by a parallel
 directory authority and construction-unit ownership are specified in
 `symbol-construction-units-and-namespace-origin.md`.
 
-An ordinary type facet is installed once. Repeating:
+An ordinary Symbol's pure role member is installed at most once. Repeating:
 
 ```lang
 let T = A;
 let T = B;
 ```
 
-as two type-facet definitions is a conflict, not implicit `A | B`. Child
+as two competing pure-role definitions is a conflict, not implicit `A | B`.
+For `struct`, the installed member additionally satisfies `TypeRole`. Child
 construction and sum construction require explicit APIs and remain distinct
 from repeated ordinary binding.
 
@@ -1510,8 +1543,8 @@ which omitting `let` silently recovers creation semantics. Both forms use the
 place resolution of §7, but they discharge different obligations:
 
 ```text
-let: Contents(subplace) = None and CanCreateMember(parent, selector)
-=  : Contents(subplace) = Some(old) and Writable(subplace)
+let: Contents(slot) = None and CanCreateMember(parent, selector)
+=  : Contents(slot) = Some(old) and Writable(slot)
 ```
 
 Freshness never implies creation authority, and writability never implies
@@ -1693,7 +1726,7 @@ meaning.
   this document supersedes as the long-term semantics.
 - `symbol-construction-units-and-namespace-origin.md` — canonical
   `NamespaceOrigin`, construction-unit ownership, physical contribution
-  authority, type/namespace facet inclusion, and cross-file closure rules.
+  authority, pure/type role refinement, and cross-file closure rules.
 - `pattern-normalization-and-first-order-overload.md` — the pattern/type
   candidate-preparation layer that uses `TypeValueId` for first-order type
   matching.

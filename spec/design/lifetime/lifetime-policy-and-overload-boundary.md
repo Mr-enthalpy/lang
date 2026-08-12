@@ -122,16 +122,28 @@ by taking `CarrierPlace(E)` as input.
 
 The selector is the `Val1` dimension of what was read, never type-rank. A
 value-bearing operand needs no place observation to be borrowed: for `s : symbol`
-the payload exists (`Val1(Symbol) = Σ = ⟨T?, V⟩`), so `s ref` is the ordinary
+the payload exists (`Val1(Symbol) = Σ = ⟨Q?, V⟩`), so `s ref` is the ordinary
 "form a borrow of this value" operation, and a type-rank object that carries a
 payload behaves the same way. An explicit `E |> type` is well-formed exactly
-when `E` exposes one unambiguous type facet (`|TypeMembers(E)| = 1`), never
+when `E` exposes a unique pure role member `Q` with `TypeRole(Q)`, never
 merely because it carries a `Val1` dimension — the `Val1` payload is present even
-for a Symbol with no type member, and it selects only `ref`-versus-`@`, never
+for a Symbol with no `Q` satisfying `TypeRole`, and it selects only
+`ref`-versus-`@`, never
 type-projection applicability. The projection is also never supplied implicitly.
 The value-side rules and the full classification are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.1.1–§5.2.1.
+
+This explicitness is also an overload boundary. Candidate adaptation, policy
+migration, and automatic argument passing never form a borrow merely because a
+formal requires `T ref` or `T share`:
+
+```text
+NoImplicitBorrowFormation
+```
+
+The actual must already contain the explicit `ref`, `share`, or `@` result.
+Fixed points and legal weakening of an existing borrow do not form a new target.
 
 `Val1?(Value(E))` selects the overload group; it does not decide construction
 openness. Because the result refers to `q = CarrierPlace(E)`, ordinary borrow

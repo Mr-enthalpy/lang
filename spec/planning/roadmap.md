@@ -307,7 +307,7 @@ Must cover:
 - physical namespace skeleton from directories
 - implementation file as source fragment; file name does not contribute a
   namespace segment
-- namespace facet creation has exactly one origin: physical directory, one
+- namespace-role Object creation has exactly one origin: physical directory, one
   source construction unit, or one canonical meta construction unit
 - physical directory namespaces define contribution authority: only files in
   that directory may create their direct contents
@@ -449,7 +449,7 @@ Must cover:
 - `assert` as a compile-time hard-check primitive
 - `struct` as the first real globally visible
   `BuiltinPrivilegedAstMetaFunction` object from the core namespace, producing
-  a Symbol with one type member plus generated partner families
+  a Symbol with one `Q_struct` satisfying `TypeRole` plus generated partner families
 - current meta call replacement adapter
 - current `MetaExpansionResult` transport (replacement object / namespace delta /
   diagnostics / provenance); final formal invocation returns an uninstalled

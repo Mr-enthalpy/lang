@@ -2,8 +2,8 @@
 
 **Status: Canonical future-design direction. Not current public language
 behavior and not fully implemented.** This document is the canonical design
-note for symbol-first resolution, symbol facets, `compile` / `meta` result
-boundaries, meta return type self-root identity, resolved pattern scopes,
+note for symbol-first resolution, Symbol role/member projections, `compile` / `meta` result
+boundaries, meta return pure-role self-root identity, resolved pattern scopes,
 `struct`, pure `extend`, place-level `inject`, and the binding/install boundary.
 
 The current implementation is a transitional substrate described in §13. In
@@ -40,7 +40,7 @@ The design has five load-bearing boundaries:
 
 ```text
 name/path resolution:
-  path/name -> Symbol -> context-directed facet projection
+  path/name -> Symbol -> context-directed role/member projection
 
 ordinary value binding:
   let destination = source
@@ -79,7 +79,7 @@ Consequences:
    without externally installing it, and no
    other ordinary callable coordinate may establish or seal that *kind* of
    root. It returns the ordinary Symbol value of that instance; the return stage
-   promotes only the unique type-member-owned closure and seals the instance
+   promotes only the unique pure-role-member-owned closure and seals the instance
    (§4.1, §4.3). Privileged built-ins retain member-specific owner rules (§4.8).
 5. In target semantics, `struct` is a symbol-producing structural generator and
    `extend` is the primitive referentially pure value transformation. `inject`
@@ -90,35 +90,50 @@ Consequences:
 6. A `let` binding or installation path chooses the installation place. It does
    not retroactively choose or reroot the pattern owner carried by the value.
 
-## 2. Symbol-First Resolution and Facets
+## 2. Symbol-First Resolution and Role Projections
 
-### 2.1 Conceptual SymbolCell
+### 2.1 Conceptual Symbol value
 
 The specification model is:
 
 ```text
-SymbolCell {
+SymbolValue {
     SymbolId
     PlaceId
 
-    namespace_facet: optional
-    type_facet: optional
-    value_facet: zero or more heterogeneous value entries
+    Q: zero or one pure Object role member
+    V: zero or more heterogeneous value members in typed buckets
 }
 ```
 
-This is a semantic model, not a requirement that this PR refactor the current
-Rust `SymbolObject` into a structure with these exact fields.
+The target ontology stores neither an independent namespace facet nor an
+independent type facet. `Q`, when present, is pure. Namespace and type
+projections are derived judgments over that same Object:
+
+```text
+NamespaceProjection(S) = Q
+  iff Val1(S) = <Q, V>
+
+TypeProjection(S) = Q
+  iff Val1(S) = <Q, V> and TypeRole(Q)
+
+TypeProjection(S) defined => NamespaceProjection(S) defined
+```
+
+An implementation may cache role projections in separate buckets, but those
+caches are transitional substrate, not two semantic Objects. This is not a
+requirement that this PR refactor the current Rust `SymbolObject` into these
+exact fields.
 
 Resolution is always:
 
 ```text
 path/name
   -> Symbol
-  -> context-directed facet projection
+  -> context-directed role/member projection
 ```
 
-The following are facet projections:
+The following are derived projections:
 
 ```lang
 symbol |> type
@@ -126,8 +141,8 @@ symbol |> val
 symbol |> namespace
 ```
 
-They are not traditional casts or conversions. Projection selects a facet of
-the same symbol under the expectation of the use site.
+They are not traditional casts or conversions. Projection selects an ordinary
+member/role view of the same symbol under the expectation of the use site.
 
 The type projection is `AsType`, not `TypeOf`:
 
@@ -138,8 +153,9 @@ AsType(E) != TypeOf(E)
 
 `AsType` neither raises universe rank nor manufactures a carrier place. Only
 explicit type-of extraction may obtain the next classifier. `@` never supplies
-`AsType` implicitly. A Symbol's unique type member is an ordinary same-name
-field: `S.type` reads it by value, `(S ref).type` projects `type ref`, and
+`AsType` implicitly. A Symbol's `.type` family is applicable exactly when its
+unique `Q` satisfies `TypeRole`: `S.type` reads `Q` by value, `(S ref).type`
+projects `type ref`, and
 `(S share).type` projects `type share`. Only an already-pure type slot uses
 direct `t@`.
 
@@ -182,18 +198,19 @@ there and nowhere else. There is no second disjunction site to look for:
 - no namespace, owner, or overload-selection layer forms a Policy
   disjunction.
 
-### 2.2 Facets may coexist
+### 2.2 Role and value projections coexist
 
 One symbol may simultaneously provide:
 
-- a namespace facet;
-- a type facet;
+- one optional pure role member `Q` and its namespace projection;
+- the type projection of that same `Q` when `TypeRole(Q)`;
 - an ordinary value;
 - a callable value;
 - multiple heterogeneous value entries forming an overload candidate set.
 
-The symbol remains one symbol. Facet coexistence does not imply that namespace,
-type, and value identity collapse into one identity.
+The symbol remains one symbol. Namespace and type are not independently stored
+Objects, and coexistence does not collapse role, value, symbol, or place
+identity.
 
 ### 2.3 Identity separation
 
@@ -470,11 +487,11 @@ or `None`, where `OperatorIdentity = spelling + fixity + arity`. Local
 environments use value copy, shadowing, and Symbol `+=`/`-=`; complete selector
 algebra remains deferred.
 
-## 3. Value Facets and Calls
+## 3. Value Members and Calls
 
 ### 3.1 A value entry is not necessarily a function
 
-The value facet may contain any value:
+The typed `V` member buckets may contain any value:
 
 ```lang
 let f = expr;
@@ -485,7 +502,7 @@ the symbol `f`. The entry need not originate from closure syntax and need not
 be callable.
 
 Multiple entries under the same symbol may have heterogeneous types. A same-name
-value facet is therefore not equivalent to a traditional same-signature
+value-member family is therefore not equivalent to a traditional same-signature
 function-overload bucket.
 
 ### 3.2 Call candidate preparation
@@ -494,7 +511,7 @@ A call position performs the following conceptual flow:
 
 ```text
 resolve symbol
-  -> project value facet
+  -> project typed V members
   -> enumerate heterogeneous values
   -> observe each Val2 object's Pv:Pp view for the current lookup stage
   -> obtain each value's type
@@ -578,14 +595,14 @@ Equivalently, and without overloading “return shape”:
 
 ```text
 ReturnClassifier(F) = symbol
-ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ T?, V ⟩
+ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ Q?, V ⟩
 ```
 
-The classifier is fixed for every ordinary meta callable. The content equation
-allows `T` to be present or absent and allows any ordinary `V`; these are
-content facts about one Symbol Object, not type/val/namespace result categories.
-Navigation may also be carried by any returned Object's `Val2` under
-`NamespaceRole`; no namespace facet is added to `Sigma`.
+The classifier is fixed for every ordinary meta callable. `Q`, when present, is
+the unique pure role member and may or may not satisfy `TypeRole`; `V` may
+contain any ordinary sibling values. These are content facts about one Symbol
+Object, not type/val/namespace result categories. Namespace projection selects
+`Q`; type projection selects the same `Q` only when `TypeRole(Q)`.
 
 Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
@@ -601,7 +618,7 @@ ordinary navigable `M`.
 
 This is not a new SymbolConstruction rank. The returned Symbol is an ordinary
 PatternValue whose mutable member content is `Val1`; root authority governs the
-construction lineage and global lifetime of its unique type-member-owned
+construction lineage and global lifetime of its unique pure-role-member-owned
 closure. An implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
 
@@ -785,7 +802,7 @@ rules apply. Its ambient lexical/Pattern owner is the current
 does not determine the invocation receiver type. Standalone function-object
 materialization defaults to an anonymous callable type derived from the owner;
 an associated `()` implementation may instead bind invocation slot 0 and the
-type facet of its local `Self` to a named receiver such as `T ref`.
+receiver-type projection of its local `Self` to a named receiver such as `T ref`.
 
 Nested paths print in source order, current/innermost callable-local `Self`
 first and outermost `Self` last, but identity is the parent-linked owner graph.
@@ -825,9 +842,19 @@ meta:
 A meta callable may accept a `symbol` parameter, or constrain a parameter to a
 narrower `type` or ordinary PatternValue. That does not introduce another result
 rank: successful ordinary meta invocation still yields `symbol`. `M` exists in
-the global world from body entry; the return stage validates the at-most-one type
-member constraint, promotes only that member's owned PatternValue closure, and
+the global world from body entry; the return stage validates the at-most-one pure
+role member constraint, promotes only that member's owned PatternValue closure, and
 seals the result.
+
+Failure never publishes construction material:
+
+```text
+FailedMetaCall(M) => not ExternallyObservablePartialInstallation(M)
+```
+
+Whether an implementation retains the failed canonical root identity for cache
+or diagnostics is non-semantic. No partial namespace delta becomes externally
+visible.
 
 Meta functions are divided into two privilege classes:
 
@@ -901,28 +928,29 @@ closure type itself has a stable site name.
 
 The only construction-closing event of a meta invocation is its final return
 stage, and it runs in a fixed order. The returned symbol has the ordinary Symbol
-shape — at most one type member, any number of val members:
+shape — at most one pure role member, any number of val members:
 
 ```text
-Σ = ⟨ T?, V ⟩
+Σ = ⟨ Q?, V ⟩
 
-1. validate that there is at most one type member
-2. if T exists, promote OwnedClosure(T) into M and call it P_T
+1. validate that there is at most one pure role member and that Q is Pure
+2. if Q exists, promote OwnedClosure(Q) into M and call it P_Q
 3. validate the escape dependencies of the entire returned Symbol Object
 4. seal M
 ```
 
-Step 1 is a cardinality bound, **not** a requirement that a type member be
+Step 1 is a cardinality bound, **not** a requirement that a role member be
 present. Nothing in the Symbol ontology or in the self-root constraint promotes
-`|T| <= 1` to `|T| = 1`: the self-root rule says that *if* `T` exists it must be
-rooted at `M`, which is vacuous when there is none. `Val2` navigation and
-ordinary sibling values require no extra namespace/type category, and step 2 is
-simply skipped when `T` is absent:
+`|Q| <= 1` to `|Q| = 1`: the self-root rule says that *if* `Q` exists it must be
+rooted at `M`, which is vacuous when there is none. A namespace-only `Q` is
+therefore a valid promotion anchor even when `TypeRole(Q)` is false; type-role
+requirements are refinements, not generic Symbol constraints. Step 2 is simply
+skipped when `Q` is absent:
 
 ```text
-T present -> EscapeDeps(ReturnSymbol)
-               subset AlreadyGlobalStable union P_T
-T absent  -> EscapeDeps(ReturnSymbol)
+Q present -> EscapeDeps(ReturnSymbol)
+               subset AlreadyGlobalStable union P_Q
+Q absent  -> EscapeDeps(ReturnSymbol)
                subset AlreadyGlobalStable
 ```
 
@@ -931,15 +959,40 @@ T absent  -> EscapeDeps(ReturnSymbol)
 callables, and navigable `Val2` structures. It additionally includes every
 target reached through a horizontal `ref` / `share` / `rebind` view. Thus no
 returned branch can smuggle unrelated meta-local material out of the invocation.
-Borrow edges remain excluded from `OwnedClosure(T)` and are never promoted
+Borrow edges remain excluded from `OwnedClosure(Q)` and are never promoted
 merely because they are referenced.
 
 Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
 ownership and are never dragged into the promotion:
 
 ```text
-OwnedClosure(x) excludes every ref / share edge reachable from x
+OwnedClosure(x) excludes every ref / share / rebind edge reachable from x
 ```
+
+For this promotion, “owned closure” is not arbitrary graph reachability. Let
+`OwnedNavigation_Q(x, y)` hold only when `y` is a genuine direct child owned by
+`x` in Q's construction tree. Then `OwnedClosure(Q)` is the least closure under
+that relation, subject to all of these invariants:
+
+```text
+direct child only:       every step is parent -> direct child
+no jump:                 a parent cannot inherit a deeper descendant directly
+bare termination:        Bare(x) stops expansion for Q
+external termination:    ExternalTo(Q, x) is an opaque dependency leaf
+no external re-entry:    expansion never leaves Q, enters an external subtree,
+                         and later re-enters Q-owned material
+no cycle:                 x not-in OwnedNavigation_Q+(x)
+
+OwnedNavigation_Q(x, y) => DirectOwnedChild(x, y)
+Bare(x) | ExternalTo(Q, x) => no y: OwnedNavigation_Q(x, y)
+ExternalTo(Q, q_i) => no j > i: Owner(q_j) = Owner(Q)
+```
+
+External leaves may retain their own independently owned trees, but those trees
+are not promoted through `Q`; their dependencies must already be globally
+stable. The ordinary recursive Object normal form still traverses
+`Children_Val1 union Children_Val2`; this construction judgment only determines
+which fresh-owned part may acquire M's global lifetime.
 
 A member reachable only through a borrow view is therefore not promoted, and its
 presence does not extend `M`'s owned material. Its target must already satisfy
@@ -994,8 +1047,8 @@ the diagnostic navigation projection of `M` is:
 ```
 
 This is not merely a folder analogy. `M` is a symbol/namespace layer that
-participates in default pattern navigation and name shadowing, may carry
-namespace, type, and value facets, anchors cache/incremental identity, and owns
+participates in default pattern navigation and name shadowing, may carry the
+optional pure role member and ordinary value members, anchors cache/incremental identity, and owns
 the return construction transaction. An ordinary meta invocation must therefore
 establish its own symbol layer rather than act as a value-level forwarding
 function.
@@ -1009,7 +1062,7 @@ return_slot(r) = lexical_name(M)
 ```
 
 The slot name `r` does not add another component to the final navigation path.
-Material written through `r` contributes facets or children to `M`; it does not
+Material written through `r` contributes role/value members or children to `M`; it does not
 create `r::M` or place an extra symbol named `r` beneath `M`. For example, a
 pattern-child contribution written as `let t1::r = bool;` inside the invocation
 targets `t1::M` under the applicable pattern-construction expectation, not
@@ -1029,21 +1082,22 @@ The exact inclusion of `PlaceId` in a symbol-parameter key depends on whether
 the callable observes the symbol's installation place. A key must not silently
 replace symbol identity with type-value equality.
 
-### 4.4 Ordinary meta return type self-root invariant
+### 4.4 Ordinary meta return pure-role self-root invariant
 
-If the return symbol of an ordinary canonical meta invocation has a type facet,
-the outermost pattern root of that facet must be the invocation's own `M`:
+If the return symbol of an ordinary canonical meta invocation has a pure role
+member `Q`, its outermost pattern root must be the invocation's own `M`:
 
 ```text
-type_facet(r) = tau
-  => root_pattern_scope(tau) = M
+RoleMember(r) = Q
+  => Pure(Q)
+   and root_pattern_scope(Q) = M
 ```
 
 This is identity equality between a pattern root and the meta-instance symbol
 scope. It is not equality of rendered strings. The root identity is:
 
 ```text
-MetaTypeRoot = MetaFunctionIdentity
+MetaRoleRoot = MetaFunctionIdentity
              + Normalize(Arguments where every argument is GlobalKeyable)
 ```
 
@@ -1068,8 +1122,9 @@ let fn = (self, t: type): meta -> r: symbol => {
 The right sides are valid external type values, but their `PatternValue` roots
 belong to external scopes. Resolving `symbol(t)` or `symbol(uint8)` and reading
 its value does not make that external root identical to `(t f)` or `(t fn)`.
-Neither value may directly replace the return symbol's required type root.
-The failure is the hard diagnostic `MetaReturnTypeRootMismatch`. An
+Neither value may directly replace the return symbol's required role root.
+The failure is the hard diagnostic `MetaReturnRoleRootMismatch` (the current
+implementation may retain `MetaReturnTypeRootMismatch` as a transitional code). An
 implementation must not silently repair the mismatch by wrapping the external
 value in a synthetic self-rooted node; check failure is failure.
 
@@ -1088,7 +1143,7 @@ Its complete pattern is:
 (t inner::(t f))::(t f)
 ```
 
-External `PatternValue`s may be members of the self-rooted type; they may not
+External `PatternValue`s may be members of the self-rooted `Q`; they may not
 replace the root. For example:
 
 ```lang
@@ -1100,11 +1155,13 @@ let fn = (self, t: type): meta -> r: symbol => {
 
 keeps `(t fn)` as the return symbol's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
-`type_facet(r) = bool::`.
+`RoleMember(r) = bool::`.
 
-The self-root check is conditional on a type facet. A return symbol with only a
-namespace facet, ordinary value facet, or both does not acquire a synthetic
-type facet merely to satisfy this rule.
+The self-root check is conditional on `Q`, not on `TypeRole(Q)`. A namespace-only
+`Q` is self-rooted and may own fresh invocation-local material. A return Symbol
+with no `Q` does not acquire a synthetic role member merely to satisfy this
+rule. When `TypeRole(Q)` does hold, `DefinesVal1(P(Q))` is the additional type
+refinement; namespace-only `Q` is not required to define Val1.
 
 ### 4.5 Formal return material
 
@@ -1157,7 +1214,7 @@ Target orthogonal semantics (future, once `=` is semantic):
   existing member of the written facet, purely to validate
   existing-target addressing. That unique-member replacement rule is not
   the final write algebra for a multi-member symbol — how a real `=` adds or
-  replaces type facets / val siblings by RHS shape is registered
+  replaces the pure role member / val siblings by RHS shape is registered
   implementation debt in §13.
 - In the current compatibility encoding, `r;` is the TailValue terminal. It
   delivers the constructed symbol to the directly enclosing layer. It is not a
@@ -1173,8 +1230,8 @@ by the function-object type `T`.
 Add-fresh-member and write-to-existing-target are two distinct construction
 effects. They must not be collapsed into one injection event, and neither is a
 return. Whether contributed material references an existing `PatternValue`,
-computes new material, or projects a symbol facet is represented inside the
-construction value; any resulting type facet must pass the self-root invariant in
+computes new material, or projects a symbol member is represented inside the
+construction value; any resulting pure role member must pass the self-root invariant in
 §4.4.
 
 There is no fourth "alias member" event. A member is created by `let`, written by
@@ -1255,7 +1312,7 @@ satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
 This distinction does not cancel `let f::(t@) = expr` for an already-pure type
-slot, or `let f::((S ref).type) = expr` for a Symbol's unique type member
+slot, or `let f::((S ref).type) = expr` for a Symbol whose `Q` satisfies `TypeRole`
 (ordinary `Val2` member creation at an explicit type place), and does not change the `r;`
 terminal semantics. The current
 `let r =` binding-to-return-value with no-shadow is a transitional encoding, not
@@ -1270,7 +1327,7 @@ type construction:
 ```text
 SymbolConstruction {
     return_symbol_identity,
-    assigned_facets_or_values,
+    assigned_role_or_value_members,
     optional_child_contributions,
     provenance,
 }
@@ -1280,8 +1337,8 @@ assigned non-root value/member may equal an already existing PatternValue
 
 Value equality remains independent of source name and navigation path and does
 not merge symbol or place identity. However, that general identity separation
-does not waive the type self-root invariant: `r = uint8` as a direct meta return
-type installation is rejected after symbol resolution/value read, rather than
+does not waive the pure-role self-root invariant: `r = uint8` as a direct meta
+return role installation is rejected after symbol resolution/value read, rather than
 being reinterpreted as forwarding or accepted as an identity meta type.
 
 ### 4.7 A symbol is an ordinary PatternValue
@@ -1292,7 +1349,7 @@ three components as every other object:
 ```text
 SymbolValue = ⟨ Σ, P_symbol, Val2_symbol ⟩
 
-Σ = ⟨ T?, V ⟩
+Σ = ⟨ Q?, V ⟩
 V = ⨄_{T_c} V[T_c]
 V[T_c] : T_c * omega
 ```
@@ -1300,14 +1357,14 @@ V[T_c] : T_c * omega
 Its member content is ordinary object content:
 
 ```text
-at most one type member
+at most one pure role member Q
 any number of val members
 ```
 
 Because the member content is the mutable part, it lives in `Val1`:
 
 ```text
-Val1(Symbol) = Σ = ⟨ T?, ⨄_{T_c} V[T_c] ⟩
+Val1(Symbol) = Σ = ⟨ Q?, ⨄_{T_c} V[T_c] ⟩
 ```
 
 `Σ` is a logical view over ordinary Object containers, not a
@@ -1315,17 +1372,17 @@ specification-private record carrier. Using the constructor lemmas in
 `type-values-places-and-borrow-views.md`:
 
 ```text
-TypeOption(absent) = BareProduct()
-TypeOption(T)      = BareProduct(T)
+RoleOption(absent) = BareProduct()
+RoleOption(Q)      = BareProduct(Q) where Pure(Q)
 
 BucketEntry(T_c)  = ProductValue(T_c, V[T_c]) : product
 BucketCarrier(V)  = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
 
-Σ_Object(T?, V)   = BareProduct(TypeOption(T?), BucketCarrier(V)) ∈ Object
-Val1(Symbol)       = Σ_Object(T?, V)
+Σ_Object(Q?, V)   = BareProduct(RoleOption(Q?), BucketCarrier(V)) ∈ Object
+Val1(Symbol)       = Σ_Object(Q?, V)
 ```
 
-The notation `⟨T?, V⟩` merely projects the two ordinal positions of this bare
+The notation `⟨Q?, V⟩` merely projects the two ordinal positions of this bare
 Product Object. Every `V[T_c]` is itself the ordinary `T_c * omega` Sequence
 Object, and every bucket entry is classified by the global `product` type so
 the bucket carrier remains genuinely homogeneous. Symbol normalization applies
@@ -1386,7 +1443,12 @@ Index : (T * omega) ref   x number ->? T ref
 Index : (T * omega) share x number ->? T share
 
 Dom(Index) = { (s, i) | 0 <= i < Length(s) }
-Index(s, i) = Nav(s, pos_i) within Dom(Index)
+ElementBase(s) = Val1(s) = BareProduct(v_0, ..., v_(Length(s)-1))
+IndexSlot(s, i) = ProjectionSlot(Resident(ElementBase(s)), pos_i)
+
+Index(s, i)       = Read(IndexSlot(s, i))  within Dom(Index)
+Index(s ref, i)   = Ref(IndexSlot(s, i))   within Dom(Index)
+Index(s share, i) = Share(IndexSlot(s, i)) within Dom(Index)
 CanCreateMember(sequence, pos_i) = false
 ```
 
@@ -1416,10 +1478,10 @@ or a type witness and remains deferred. The four ordered-container cases are:
 The Symbol Pattern applies an unordered identity quotient to each typed bucket:
 
 ```text
-DecodeSymbolPayload(Σ_Object) = ⟨ T?, V ⟩
+DecodeSymbolPayload(Σ_Object) = ⟨ Q?, V ⟩
 
 Norm_Val1?^P_symbol(Σ_Object)
-  = ⟨ Norm(T)? ,
+  = ⟨ Norm(Q)? ,
       { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V[T_c] } } ⟩
 ```
 
@@ -1431,7 +1493,7 @@ conflicts are diagnosed in construction/well-formedness before normalization;
 they are not remembered as value multiplicity. Distinct stable member objects
 remain distinct even when their callable bodies normalize alike. In particular,
 `s += a; s += b;` and `s += b; s += a;` normalize equally exactly when their
-optional type member and every typed member set are equal.
+optional pure role member and every typed member set are equal.
 
 Callable val members project the formal overload set directly from this value:
 
@@ -1453,11 +1515,12 @@ type : (object: symbol)       -> type
 type : (object: symbol ref)   -> type ref
 type : (object: symbol share) -> type share
 
-Applicable(type candidate, Σ) <=> |T(Σ)| = 1
+Applicable(type candidate, Σ) <=> Σ = <Q, V> and TypeRole(Q)
 ```
 
 Thus `S.type` agrees by value with `AsType(S)`, while `(S ref).type` and
-`(S share).type` preserve the borrow observation of the unique type-member slot.
+`(S share).type` preserve the borrow observation of the `Q` slot when
+`TypeRole(Q)`.
 This is ordinary field/candidate selection, not a resolver primitive that
 projects a value and then recovers its provenance.
 
@@ -1602,7 +1665,7 @@ Both origins share capabilities for:
 ```text
 declare symbol/facet material
 inject a direct child into a construction
-open a namespace facet
+extend the current pure role member's navigable structure
 form a replayable contribution/delta
 install a delta transactionally at the outer assembly/binding layer
 ```
@@ -1766,12 +1829,24 @@ struct:
 An implementation may carry AST or Normalized AST as a private structured
 carrier. The public result is an ordinary Symbol PatternValue, not AST and not a
 separate construction rank (§4.1, §4.7–§4.8). Its `Val1` contains exactly one
-generated type member plus any ordinary sibling values explicitly contributed
-by the construction. Section 7.5 closes the mechanically generated
-field/access/ref/share/assignment partners in the type member's associated
+pure-role member `Q_struct` satisfying `TypeRole(Q_struct)`, plus any ordinary
+sibling values explicitly contributed by the construction. Section 7.5 closes
+the mechanically generated field/access/ref/share/assignment partners in
+`Q_struct`'s associated
 `Val2`; it does not imply a closed defining-Symbol recovery path for other
 type-as-callee sibling families. This bounded capability does not expose a
 general macro system.
+
+In the general Symbol notation this producer-specific guarantee is:
+
+```text
+Val1(struct(material)) = <Q_struct, V>
+Pure(Q_struct)
+TypeRole(Q_struct)
+```
+
+Thus general Symbol and ordinary-meta ontology use optional pure `Q`; `struct`
+specifically guarantees that its `Q_struct` exists and is type-capable.
 
 ### 7.2 Owner resolution
 
@@ -1898,7 +1973,8 @@ meaning to an anonymous bare `() |> struct`; that is a separate boundary.
 
 ### 7.5 Generated field and companion members
 
-For a structural field `f : A` owned by the generated type member `T`, `struct`
+For a structural field `f : A` owned by `Q_struct`, let
+`T = AsType(Q_struct)`. `struct`
 uses one general field rule. It does not introduce a separate semantic category
 for “type fields”. All observations are candidates of one same-name associated
 Symbol `f`; receiver and result observation kinds distinguish the overloads:
@@ -1910,7 +1986,7 @@ f : (object: T share) -> A share
 ```
 
 `ref` and `share` are not generated navigation subspaces. The associated Symbol
-is installed once beneath the type member's place; `const let` / `let` /
+is installed once beneath `Q_struct`'s place; `const let` / `let` /
 `mut let` policy and the formal object type determine its candidates.
 Their selection uses the ordinary context-indexed preference relations. In a
 plain context `succ_plain: let > const = mut`; if no plain `let` candidate is
@@ -1962,9 +2038,9 @@ Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
 `RuntimeField(selected element)` is one local condition inside that meet. No
 Sequence-specific stage rule exists.
 
-The generated partner candidates live in same-name associated Symbols in the
-generated type member's `Val2`. The returned Symbol's `Val1` contains its unique
-type member and any ordinary sibling values explicitly contributed by the
+The generated partner candidates live in same-name associated Symbols in
+`Q_struct`'s `Val2`. The returned Symbol's `Val1` contains `Q_struct` and any
+ordinary sibling values explicitly contributed by the
 construction; this section does not duplicate the generated accessors into a
 second sibling universe. The partners are ordinary typed member objects: user
 construction may remove them, replace them, or add a more specific declaration
@@ -2021,8 +2097,8 @@ let t_ref = (s ref).type;
 (t_ref, bool inner) |> inject;
 ```
 
-produce Symbols whose unique type members have the same normalized
-PatternValue, provided the read value is Open and the destination slot is
+produce Symbols whose `Q_struct` members both satisfy `TypeRole` and have the
+same normalized PatternValue, provided the read value is Open and the destination slot is
 writable:
 
 ```text
@@ -2289,7 +2365,7 @@ Within that scope, `extend`:
 It does not:
 
 - replace the owner;
-- overwrite an existing type facet;
+- overwrite an existing pure role member;
 - delete an existing child;
 - implicitly reroot an arbitrary external pattern value;
 - mutate the input value or the installed namespace graph;
@@ -2674,7 +2750,7 @@ value.
 
 The pattern expectation permits only a `PatternValue`/pattern interface exposed
 by that symbol. It does not fall back to invoking arbitrary ordinary values or
-callables from the heterogeneous value facet.
+callables from the heterogeneous typed `V` members.
 
 ### 11.2 Binding a fully qualified PatternValue through another symbol
 
@@ -2921,9 +2997,10 @@ This expectation is exercised by `struct` inline construction elements and
 `extend`. It requires the input PatternValue to be `Open_Γ`; `inject` reaches
 the same rule only by reading its ref and invoking `extend`.
 
-Under `NamespaceValueMember`, the source is projected through its ordinary
-value facet and a namespace value symbol is constructed. This changes only the
-namespace graph/value facet; it does not enter or change the owner's
+Under the current `NamespaceValueMember` implementation expectation, the source
+is projected through its ordinary `V` members and a namespace value Symbol is
+constructed. This changes only the namespace graph/value members; it does not
+enter or change the owner's
 `PatternValue`:
 
 ```text
@@ -2942,7 +3019,7 @@ let name = expr
 ```
 
 It contributes one associated member to the current Pattern owner's
-`Val2`/namespace value facet:
+`Val2` value-member structure:
 
 ```text
 target pure-P contribution = none
@@ -3005,7 +3082,7 @@ x  = PureP(C_f),  C_f ∈ Val2(T_t)
 
 Resolving `let f::((t ref).type) = x` borrows the target Symbol and projects its
 ordinary same-name type-member field as `type ref`, derives the
-stable prospective `SubPlace(ObjectPlace(T_t), f)`, interns the associated
+stable prospective `ProjectionSlot(ObjectPlace(T_t), f)`, interns the associated
 Symbol `C_f` there, and installs `x`
 as `C_f.pure_p` with the binding-level member view in `C_f.member_views`.
 Same-named associated vals join that very same `C_f` as its sibling vals
@@ -3046,7 +3123,7 @@ rebinding carrier existed. There is no second, place-forwarding declaration
 form: every carrier allocates its own place (§2.6), so a per-carrier extension
 is always local to that carrier. Where one place must be reached through
 another name, the value held is a borrow view. Member creation still requires a
-prospective SubPlace plus `let`; later writes require an existing place and
+prospective ProjectionSlot plus `let`; later writes require an existing place and
 `Writable(place)`. Neither obtains structural `Open` from the view, as specified
 in `type-values-places-and-borrow-views.md`.
 
@@ -3065,13 +3142,13 @@ reaches its target with an empty host chain and composes only the member
 factor. Two carriers of one TypeValue with
 different written P1 expose the same `C_f` differently, which a
 `PatternValueId` alone cannot express. Everything else is invariant: the
-target cluster's member ledger, the type member's own Policy, the derived
+target cluster's member ledger, the selected type-capable `Q`'s own Policy, the derived
 cluster Policy, the Pattern canonical norm, and the Val2 of the cluster's
 same-named ordinary value members. Navigation and invocation always take
 the Symbol route:
 
 ```text
-target Symbol -> unique type member -> its Val2 Symbol -> facet projection
+target Symbol -> Q where TypeRole(Q) -> Q.Val2 Symbol -> member projection
 ```
 
 A raw `PatternValueId → Vec<SemanticValueId>` read is transport material
@@ -3207,7 +3284,7 @@ canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). `compile` and
 transparent construction intrinsics may consume it because they create no new
 MetaInstance key.
 
-At seal, only the `OwnedClosure` of the returned Symbol's unique type member, if
+At seal, only the `OwnedClosure` of the returned Symbol's unique pure role member, if
 present, is promoted. Other local PatternValues expire with the invocation. Consequently
 `UseForVal1 -> Frozen` must not be read as a universal invariant, while “meta
 body is transparent” must not be read as implicit global promotion.
@@ -3261,36 +3338,36 @@ rank/facet annotation. It must not guess `PatternChild` merely because the
 right side happens to carry a type or `PatternValue`. Both paths still obey the
 general symbol-resolution-then-facet-projection rule.
 
-### 12.2 Same-symbol facet rules
+### 12.2 Same-symbol role/member rules
 
-The future symbol-facet direction is:
+The future Symbol direction is:
 
 ```text
-namespace facet:
-  establish the facet from exactly one NamespaceOrigin;
+pure role member Q:
+  install at most once by ordinary definition;
+  require Pure(Q);
+  derive NamespaceProjection from Q;
+  derive TypeProjection only when TypeRole(Q);
   add children only under the owning construction/authority rules
 
-type facet:
-  install once by ordinary definition
-
-value facet:
+value members V:
   admit multiple heterogeneous value entries;
   form candidates only in a call position;
   do not infer cross-construction-unit merge authority
 ```
 
-When `struct` establishes a type/pattern facet inside an already resolved owner
-pattern scope, an existing incompatible facet is a hard conflict. Same-origin,
-same-material cache replay may reuse the existing facet.
+When `struct` establishes a type-role `Q` inside an already resolved owner
+pattern scope, an existing incompatible role member is a hard conflict.
+Same-origin, same-material cache replay may reuse the existing member.
 
-In particular, an ordinary symbol place receives its type facet at most once:
+In particular, an ordinary symbol place receives its pure role member at most once:
 
 ```lang
 let T = A;
 let T = B;
 ```
 
-If both declarations attempt to install `T`'s type facet, the second is a hard
+If both declarations attempt to install `T`'s role member, the second is a hard
 conflict. It is never interpreted as:
 
 ```text
@@ -3300,8 +3377,8 @@ A | B
 Three operations must remain distinct:
 
 ```text
-first type-facet installation
-  -> ordinary type installation
+first pure-role-member installation
+  -> ordinary role-member installation
 
 add a direct child under an owned, still-open construction
   -> extend (directly or through inject)
@@ -3396,15 +3473,15 @@ This substrate does **not** implement:
 
 - `PatternScopeId` or `ResolvedPatternScope`;
 - `MetaInstanceScopeId` or a meta-instance pattern scope such as `(t f)`;
-- meta return type self-root validation;
+- meta return pure-role self-root validation;
 - the canonical meta-invocation navigation atom;
-- `SymbolCell` facets;
+- Symbol `Q` role projection and any corresponding implementation caches;
 - the `compile` / `meta` capability split specified here;
 - ordinary Symbol as the public meta result (the current
   `SymbolConstruction` carrier is transitional);
 - pure value `extend`;
 - place-level `inject` with independent `Open_Γ(Read(ref))` and writability;
-- contribution-expectation-driven pattern-child versus namespace-value facet
+- contribution-expectation-driven pattern-child versus namespace-value cache
   selection;
 - an explicit sum construction/extension API;
 - the final owner-resolution rule for `struct`;
@@ -3413,7 +3490,7 @@ This substrate does **not** implement:
   pattern-layer representation;
 - namespace-origin uniqueness or source/meta construction-unit ownership;
 - physical-directory contribution authority or cross-file reopening checks;
-- the structural `TypeRole`-implies-`NamespaceRole` judgment and its
+- the structural `Pure`-implies-`NamespaceRole` and `TypeRole` refinement judgments and their
   implementation enforcement;
 - the distinction between ordinary namespace value members and
   pattern-material leaves as implemented facets;
@@ -3427,7 +3504,7 @@ not select among them: it preserves attached provisional owner
 material, or restores stripped material under the anonymous
 `GeneratedTypeDefinition(type_definition_id)` fallback. It must not be
 described as determining or rerooting `struct` pattern-owner identity or a meta
-return type's root. In final semantics, the meta instance's own symbol scope
+return role member's root. In final semantics, the meta instance's own symbol scope
 anchors that root.
 
 Formal `struct` invocation currently may allocate or attach registry material
@@ -3458,12 +3535,12 @@ This document does not:
 Future implementation should converge in this order:
 
 ```text
-SymbolCell / facet-aware resolution
+Symbol Q-role / typed-value-member resolution
   -> PatternValue identity and rank-directed canonical arguments
   -> ordinary Symbol result (current carrier: transitional SymbolConstruction)
   -> ResolvedPatternScope / PatternScopeId / MetaInstanceScopeId
   -> namespace origin and construction-unit ownership
-  -> meta return type self-root validation
+  -> meta return pure-role self-root validation
   -> struct owner resolution independent of binding place
   -> = operator (distinct from let =)
   -> pure child-only extend and read--extend--write inject
@@ -3498,7 +3575,7 @@ The consequences are:
   not restate the missing `=` as a semantic restriction on `extend`.
 
 Remaining engineering questions in this area are about representation, not about
-meaning: the exact ordinary write algebra for type facets and val siblings
+meaning: the exact ordinary write algebra for the optional Q member and val siblings
 (§13), and how ConstructionLineage/stack applicability is tracked efficiently
 without entering canonical value identity.
 

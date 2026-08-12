@@ -53,11 +53,9 @@ track:
 - Fields named `ref` or `share` are ordinary associated Symbols. Generated field
   access uses one same-name overload family whose receiver formals are `T`,
   `T ref`, and `T share`; no `ref` / `share` projection subspaces are generated.
-- `let T: type = uint8` is ordinary type-value binding: it creates a new symbol
-  `T` whose type value equals `uint8`.
-- Type/rank use evaluates by type value, not by symbol name.
 - `let T: type = uint8` creates a fresh symbol/place whose type value equals
   `uint8`.
+- Type/rank use evaluates by type value, not by symbol name.
 - Creating an associated member of a pure type slot names the carrier place
   explicitly: `let f::(T@) = ...`. For a Symbol `S`, the type-member place is
   `(S ref).type`; bare `=` never creates a missing member.
@@ -97,8 +95,9 @@ track:
 - Inner lexical symbols cannot be exposed as longer-lived extension targets;
   storing a view of one outside its observation region is an escape.
 - Type values can be equal even when their binding symbols differ.
-- `struct` is a symbol-producing structural generator. Its result has a unique
-  type member plus generated field/access/assignment/borrow partner families;
+- `struct` is a symbol-producing structural generator. Its result has one
+  `Q_struct` satisfying `Pure(Q_struct)` and `TypeRole(Q_struct)`, plus generated
+  field/access/assignment/borrow partner families;
   ordinary `let` copies that Symbol value into a fresh binding.
 - A let-shaped declaration consumed inside `struct` contributes ordinary Val2
   material to the current Pattern owner. It is neither a structural member nor
@@ -134,15 +133,16 @@ track:
 - Path resolution is
   `Path -> SelectedHead -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection`.
   Head selection is its own step: a bare head resolves as `ResolveBare_q(name)` —
-  the nearest enclosing same-spelled Symbol carrying the required *coarse* facet
+  the nearest enclosing same-spelled Symbol satisfying the required *coarse* role
   `q` — and the outward walk stops at that Symbol permanently, so a later overload
   failure inside it is an error rather than a reason to resume searching. An
   explicitly anchored path performs no outward walk. This is what keeps a local
-  type-only Symbol from shadowing an outer callable Symbol, while `q` stays coarse
-  (facet presence only, never signature, arity, or specificity).
+  Symbol with a type-capable `Q` but no callable val member from shadowing an
+  outer callable Symbol, while `q` stays coarse (role/member presence only,
+  never signature, arity, or specificity).
   After the head is fixed, one shared navigator serves every use context. A step
   enters the current symbol's own object `Val2` place and its associated namespace
-  and records the traversed object as a host layer; only the final facet projection
+  and records the traversed object as a host layer; only the final role/member projection
   (callable vals / pure-P member / sibling vals / writable place / Pattern) is
   context-directed. `f::T` therefore denotes the same terminal symbol as a call
   target, a type, an extension RHS, a meta argument, and an extraction prefix,
@@ -152,9 +152,9 @@ track:
 - Implicit type projection is positional, and the two halves are complements:
   an operand/argument position never elaborates `|> type` (`s ref` stays
   `symbol ref`), while a language-designated type-expected position does
-  (`Elab_Type(E) = E |> type`) — annotations, type-facet path components, type
+  (`Elab_Type(E) = E |> type`) — annotations, type-role path components, type
   argument positions, `t: type`, `t: type ref`, and type-rank return positions.
-- A meta return seal validates *at most* one type member. When none exists the
+- A meta return seal validates *at most* one pure role member `Q`. When none exists the
   promotion step is skipped; navigable `Val2` and sibling values remain ordinary
   Object content rather than namespace/val return categories.
 
@@ -675,9 +675,9 @@ here so they are not mistaken for design decisions:
   `Write(ClusterSymbol, RHS)` algebra. What this stage freezes is only
   the boundary pair `let` (creation) ≠ `=` (write to an existing target)
   and return event ≠ binding/write; how a real `=` on a cluster target
-  adds or replaces type facets / val siblings by RHS shape is future
-  work. Facet resolution currently distinguishes only the pure-P
-  type-member facet of the executable slice, and the placeholder
+  adds or replaces the Q-role cache / val siblings by RHS shape is future
+  work. Current executable-slice cache resolution distinguishes only the pure-P
+  type-role projection, and the placeholder
   selection and harvest-shape behavior are pinned by unit tests only.
 - Cluster member contributions carry per-member views: each member's own
   written binding P1 is elaborated and projected over its initializer's
@@ -789,7 +789,7 @@ them explicitly:
    (also listed in the general future-work pool above). The next stage must
    assign them explicit scope rather than leaving them pooled. Canonical source
    spells the host place explicitly as `let f::(U@) = expr`. Navigation
-   to a missing child yields a prospective SubPlace whose contents are `None`;
+   to a missing child yields a prospective ProjectionSlot whose contents are `None`;
    `let` may instantiate it, while bare `=` may not.
 
 ---
@@ -925,15 +925,30 @@ into the value key is excluded.
 
 ---
 
+### Pure Product namespace surface
+
+#### Should intrinsic ordinal navigation be user-visible as a tuple namespace API?
+
+**Status:** Open (surface only; does not block #99)
+
+The semantic kernel is closed: every pure Object has `NamespaceRole`, and bare
+Product owns intrinsic `pos_i` selectors in ordinary `Val2`. The remaining
+question is only whether bare Product / empty pure Pattern should expose those
+selectors through a user-visible tuple-style built-in namespace interface, or
+keep them as structural navigation used by products and Sequences. No extra
+namespace Object or facet may be introduced to answer this question.
+
+---
+
 ### Closed-decision index
 
 Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
 
 | Decision | Canonical owner | Remaining implementation question |
 | --- | --- | --- |
-| Object closure, roles, AsType, ProjectionSlot, borrow targets | `design/symbol-world/type-values-places-and-borrow-views.md` | concrete root/slot generation representation |
+| Object closure, `Pure => NamespaceRole`, AsType, ProjectionSlot, borrow targets, NoImplicitBorrowFormation | `design/symbol-world/type-values-places-and-borrow-views.md` | concrete root/slot generation representation |
 | Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
-| Symbol Set quotient, ordinary meta, seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate and deferred HomeSymbol |
+| Symbol `<Q?,V>` Set quotient, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate and deferred HomeSymbol |
 | construction lineage and Open/frozen | same canonical construction document plus `design/lifetime/` | region/stack representation |
 | retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
 

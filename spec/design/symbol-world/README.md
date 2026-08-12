@@ -4,9 +4,9 @@
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
 construction-lineage Open checking,
-`SymbolCell` facets, `PatternValue`, ordinary Symbol-valued meta results
+Symbol `<Q?,V>` role/member projections, `PatternValue`, ordinary Symbol-valued meta results
 (current transitional carrier: `SymbolConstruction`),
-`ResolvedPatternScope`, `MetaInstanceScopeId`, meta type self-root checking,
+`ResolvedPatternScope`, `MetaInstanceScopeId`, meta pure-role self-root checking,
 pure `extend`, place-level `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
 access-tree construction are not implemented. Layered symbol policy,
@@ -19,7 +19,7 @@ evaluation are also not implemented.**
 The namespace graph world model and symbol-level identity:
 
 - `SymbolObject` and the namespace graph world model
-- symbol-first `SymbolCell` facets and context-directed projection
+- symbol-first `<Q?,V>` role/member projections and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
 - `Val1? x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
@@ -31,8 +31,8 @@ The namespace graph world model and symbol-level identity:
   their normalization uses only ordinary `Val1`/`Val2` recursion
 - resolved pattern scopes, `struct -> symbol`, pure child-only `extend`,
   place-level `inject`, and binding/install separation
-- meta-return type self-root identity and complete meta-instance navigation atoms
-- namespace-facet origin, source/meta construction-unit ownership, physical
+- meta-return pure-role self-root identity and complete meta-instance navigation atoms
+- pure-role namespace origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
 - the borrow views `ref` / `share` / `@`, writability, and construction-lineage Open
 - field functions and same-name value/ref/share receiver overload families
@@ -50,14 +50,14 @@ provenance.
 ## Documents
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
-  direction for SymbolCell facets, heterogeneous value/call candidates,
-  `compile` / `meta`, meta type self-root, resolved pattern scopes,
+  direction for Symbol `<Q?,V>` role/member projection, heterogeneous value/call candidates,
+  `compile` / `meta`, meta pure-role self-root, resolved pattern scopes,
   `struct -> symbol`, pure `extend`, place-level `inject`, pattern-layer
   ordering, uniqueness/replay, and outer
   graph installation.
 - `symbol-construction-units-and-namespace-origin.md` — canonical future
   namespace-origin, source/meta construction-unit ownership, physical-directory
-  authority, type/namespace facet inclusion, value-member/pattern-material
+  authority, pure/type role refinement, value-member/pattern-material
   separation, and current cross-file closure.
 - `symbol-policy-and-compile-flow-projection.md` — canonical future `Pv:Pp`,
   P1/P2 contextual elaboration, function-object stage derivation, seal
