@@ -789,27 +789,25 @@ between type values, symbol places, borrow views, and writable extension
 targets is documented in
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
-### 3.5 Final facet inclusion and value-member boundary
+### 3.5 Final role inclusion and value-member boundary
 
 The role-aware `SymbolObject` buckets above describe the current substrate. The
-final `SymbolCell` model uses structural facet inclusion:
+target model uses Object judgments:
 
 ```text
-has TypeFacet => has NamespaceFacet
-has NamespaceFacet ⇏ has TypeFacet
+TypeRole(x) subset NamespaceRole(x)
+NamespaceRole(x) not-subset TypeRole(x)
 ```
 
-This is not type-system subtyping. A type symbol has a namespace facet, a
-`TypeFacet(PatternValue)`, and optionally a heterogeneous value facet. A pure
-namespace has no type `PatternValue` but may still contain ordinary value
-members.
+This is not type-system subtyping. `TypeRole(x)` means the pure navigable Object
+also satisfies `DefinesVal1(P(x))`; namespace-role-only Objects remain navigable
+but cannot be used by `AsType`. `TypeFacet` and `NamespaceFacet` remain names for
+current implementation buckets only, not target ontology.
 
-Pattern-material leaves belong to the `PatternValue` in a type facet and affect
-normalization, matching, and extraction. Ordinary namespace value members alter
-only the namespace/value graph. They do not enter a fully named Pattern-body
-navigation map, do not change ordered Product/pattern material, and do not
-participate in extraction. A value projection is terminal for the current
-lookup; it does not prevent the same symbol from also owning namespace children.
+Pattern-material leaves belong to `P(x)` and affect normalization, matching, and
+extraction. Ordinary navigable `Val2` members do not become Pattern leaves merely
+because `NamespaceRole(x)` holds. A value projection is terminal for the current
+lookup; it does not prevent the same Object from owning navigable children.
 
 The complete origin and ownership rules for these facets are in
 `symbol-construction-units-and-namespace-origin.md`.
@@ -990,7 +988,7 @@ inside formal `struct`/`extend` or through `inject`.
   alias-member event; a member that must observe an external object holds a
   borrow view.
 - `compile` creates no meta-instance scope. An ordinary canonical meta
-  invocation does, and any return `TypeFacet` is rooted in that scope rather
+  invocation does, and any returned type-role member is rooted in that scope rather
   than in an external `PatternValue` or a later binding destination. Privileged
   AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient

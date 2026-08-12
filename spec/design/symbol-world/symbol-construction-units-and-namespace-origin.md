@@ -103,39 +103,39 @@ children of `ns`; they may not co-create or reopen the same child subtree.
 Origin/provenance may remain attached for caching and diagnostics. It does not
 become part of a resulting `PatternValue` identity.
 
-## 3. Type Structurally Includes Namespace
+## 3. Type Role Structurally Includes Namespace Role
 
-Type and namespace are facets of one symbol, with this structural inclusion:
-
-```text
-has TypeFacet => has NamespaceFacet
-has NamespaceFacet ⇏ has TypeFacet
-```
-
-This is not type-system subtyping. It describes facet containment:
+Type and namespace are judgments over the common Object domain, not facets or
+parallel nominal Object kinds. The canonical definitions are owned by
+`type-values-places-and-borrow-views.md`:
 
 ```text
-TypeSymbol =
-    NamespaceFacet
-  + TypeFacet(PatternValue)
-  + optional ValueFacet
+Pure(x)          <=> Val1(x) = absent
+NamespaceRole(x) <=> Pure(x) and Navigable(Val2(x))
+TypeRole(x)      <=> NamespaceRole(x) and DefinesVal1(P(x))
 
-PureNamespaceSymbol =
-    NamespaceFacet
-  + optional ValueFacet
-  + no TypeFacet
+TypeRole subset NamespaceRole
+NamespaceRole not-subset TypeRole
 ```
 
-A type's `PatternValue` may contain pattern-material leaves. A pure namespace
-has no type `PatternValue` and therefore no pattern-material leaves, although it
-may still contain ordinary namespace value members.
+This is not type-system subtyping. It describes role implication:
 
-When one construction creates a type symbol, its namespace and type facets are
-created as one owned construction. A namespace facet created by another origin
-cannot later be upgraded into that type. In particular, if `ns1::ns` already
-comes from physical directory `ns/ns1/`, source in the parent directory may not
-install a `TypeFacet` at `ns1::ns`: doing so would make one namespace facet have
-both physical and source creation origins.
+```text
+TypeRole(x)      => x is navigable and P(x) defines admissible Val1
+NamespaceRole(x) and not TypeRole(x)
+                 => x is navigable but unavailable to AsType
+```
+
+A type-role Object's Pattern may contain pattern-material leaves. A
+namespace-role-only Object may still contain ordinary navigable `Val2` members,
+but `AsType(x)` is undefined because `DefinesVal1(P(x))` is false.
+
+When one construction establishes `TypeRole(x)`, the Object and its navigable
+`Val2` share one owned construction origin. An Object whose namespace role was
+created by another origin cannot later acquire a new type-role definition. In
+particular, if `ns1::ns` already comes from physical directory `ns/ns1/`, source
+in the parent directory may not install a new `DefinesVal1(P)` contribution at
+that Object: doing so would give one navigable construction two creation origins.
 
 ## 4. Construction Units
 
@@ -506,7 +506,7 @@ SourceConstructionUnit / MetaConstructionUnit ownership
 physical directory contribution authority checking
 cross-file reopening diagnostics
 ordinary namespace value vs pattern-material facet implementation
-has TypeFacet => has NamespaceFacet structural enforcement
+TypeRole(x) => NamespaceRole(x) structural enforcement
 explicit sum construction/extension API
 ```
 

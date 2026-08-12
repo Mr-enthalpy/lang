@@ -75,7 +75,8 @@ Consequences:
    promotes a local temporary pattern value into a global type (§4.2).
 4. For an ordinary meta callable, `meta` is static evaluation **plus** the
    authority to establish one navigable `MetaInstanceRoot`. Every such
-   invocation establishes that globally live but unsealed root on entry, and no
+   invocation establishes that globally identified but unsealed root on entry,
+   without externally installing it, and no
    other ordinary callable coordinate may establish or seal that *kind* of
    root. It returns the ordinary Symbol value of that instance; the return stage
    promotes only the unique type-member-owned closure and seals the instance
@@ -554,17 +555,23 @@ Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
 `compile` may return any declared ordinary PatternValue, including a Symbol.
-For an `OrdinaryMetaFunction`, the result Pattern is `symbol`, and the `meta`
-coordinate of `P2` additionally grants authority over its navigable
-`MetaInstanceRoot`. Both are expressed inside the ordinary value/policy model:
+Ordinary-meta callable kind, call legality, and successful-call effects are
+separate judgments inside the ordinary value/policy model:
 
 ```text
-F ∈ OrdinaryMetaFunction
-P2(F) = meta
-forall a in Norm(args): GlobalKeyable(a)
-  <=> EstablishNavigableMetaInstanceRoot( MetaInstance(F, Norm(args)) )
+F in OrdinaryMetaFunction
+  => P2(F) = meta
+  and ResultPattern(F) = symbol
 
-ResultPattern(F) = symbol
+WellFormedMetaCall_Gamma(F, args)
+  <=> F in OrdinaryMetaFunction
+   and Admissible_Gamma(F, args)
+   and forall a in Canonicalize(args): GlobalKeyable_Gamma(a)
+
+WellFormedMetaCall_Gamma(F, args)
+  => M = MetaInstance(F, Canonicalize(args))
+   and RootIdentityExists(M)
+   and ConstructionNavigationAvailable_Gamma(M)
 ```
 
 Equivalently, and without overloading “return shape”:
@@ -574,22 +581,17 @@ ReturnClassifier(F) = symbol
 ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ T?, V ⟩
 ```
 
-The first equation is fixed for every ordinary meta callable. The second
-describes the contents of the returned Symbol and permits type-only, val-only,
-namespace-only, or mixed results subject to `|T| <= 1`. Shorthands such as
-`meta -> type` or `meta -> valset` are not result ontologies: they mean an
-ordinary `symbol` result whose content happens to be `⟨T, empty⟩` or
-`⟨absent, V⟩` respectively.
+The classifier is fixed for every ordinary meta callable. The content equation
+allows `T` to be present or absent and allows any ordinary `V`; these are
+content facts about one Symbol Object, not type/val/namespace result categories.
+Navigation may also be carried by any returned Object's `Val2` under
+`NamespaceRole`; no namespace facet is added to `Sigma`.
 
-Read left to right, the first law is the *grant*: entering any `P2 = meta`
-ordinary-meta invocation establishes `M` as a globally live unsealed navigable
-root (§4.3), and sealing that root at the return stage is the ordinary end of
-that same invocation. Read right to left, it is the *exclusivity*: no other
-ordinary callable coordinate, and no `compile` callable, may establish or seal
-a `NavigableMetaInstanceRoot`. `SealsNavigableMetaInstanceRoot(F)` is therefore
-not an independent predicate needing its own source — within the stated domain
-it is a spelling of `P2(F) = meta`, and no separate ordinary-meta
-`RootAuthority` coordinate is introduced.
+Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
+particular call's well-formedness, never to the callable type itself. A
+successful call establishes a globally stable root identity and makes it
+navigable to the construction, while sealing remains the return-stage effect.
+No `compile` callable may establish or seal this root kind.
 
 This exclusivity does not claim that every stable owner/root in the language is
 a `MetaInstanceRoot`. Lexical declarations and privileged built-ins may
@@ -798,14 +800,21 @@ construction that establishes a new navigable `MetaInstanceRoot`, and by §4.1
 every ordinary meta invocation does so:
 
 ```text
-F ∈ OrdinaryMetaFunction ∧ P2(F) = meta
-∧ forall a in Norm(args): GlobalKeyable(a)
-  => M = MetaInstance(F, Norm(args))
-  ∧ EstablishNavigableMetaInstanceRoot(M)
+WellFormedMetaCall_Gamma(F, args)
+  => M = MetaInstance(F, Canonicalize(args))
+   and RootIdentityExists(M)
+   and ConstructionNavigationAvailable_Gamma(M)
+
+RootIdentityExists(M) != ExternallyInstalled(M)
+ConstructionNavigationAvailable_Gamma(M) != ExternallyInstalled(M)
 ```
 
-Entering the invocation immediately creates `M` as a **globally live but unsealed
-root**. The returned value is the ordinary Symbol value of `M`:
+Entering the invocation creates `M` as a **globally identified but unsealed
+root** available to its construction. This does not publish a partially built
+namespace delta. `ExternallyInstalled(M)` becomes true only after the returned
+Symbol crosses an ordinary outer binding/namespace-installation boundary and
+that delta commits atomically (§12.4). The returned value is the ordinary Symbol
+value of `M`:
 
 ```text
 meta:
@@ -899,26 +908,31 @@ shape — at most one type member, any number of val members:
 
 1. validate that there is at most one type member
 2. if T exists, promote OwnedClosure(T) into M and call it P_T
-3. validate the escape dependencies of every returned val sibling
+3. validate the escape dependencies of the entire returned Symbol Object
 4. seal M
 ```
 
 Step 1 is a cardinality bound, **not** a requirement that a type member be
 present. Nothing in the Symbol ontology or in the self-root constraint promotes
-`|T| <= 1` to `|T| = 1`: the self-root rule says that *if* a type facet exists it
-must be rooted at `M`, which is vacuous when there is none. So a namespace-only,
-val-only, or type-less mixed return is well-formed, and step 2 is simply skipped:
+`|T| <= 1` to `|T| = 1`: the self-root rule says that *if* `T` exists it must be
+rooted at `M`, which is vacuous when there is none. `Val2` navigation and
+ordinary sibling values require no extra namespace/type category, and step 2 is
+simply skipped when `T` is absent:
 
 ```text
-T present -> Deps(V_return) ⊆ AlreadyGlobalStable ∪ P_T
-T absent  -> Deps(V_return) ⊆ AlreadyGlobalStable
+T present -> EscapeDeps(ReturnSymbol)
+               subset AlreadyGlobalStable union P_T
+T absent  -> EscapeDeps(ReturnSymbol)
+               subset AlreadyGlobalStable
 ```
 
-`Deps(V_return)` includes both owned PatternValue dependencies and every target
-reached through a horizontal `ref` / `share` value. A val sibling therefore
-cannot smuggle an unrelated meta-local PatternValue or place out of the
-invocation. Borrow edges remain excluded from `OwnedClosure(T)` and hence are
-never promoted merely because they are referenced.
+`EscapeDeps(ReturnSymbol)` traverses the entire returned Symbol Object through
+`Children_Val1 union Children_Val2`, including nested products, Sequences,
+callables, and navigable `Val2` structures. It additionally includes every
+target reached through a horizontal `ref` / `share` / `rebind` view. Thus no
+returned branch can smuggle unrelated meta-local material out of the invocation.
+Borrow edges remain excluded from `OwnedClosure(T)` and are never promoted
+merely because they are referenced.
 
 Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
 ownership and are never dragged into the promotion:
@@ -1359,17 +1373,26 @@ T * N -> T * omega
 
 Neither family promises a machine array, contiguous layout, capacity,
 `push_back`, or any growth API. Their mechanically generated `[]` associated
-Val2 is only indexed observation with view-kind propagation:
+Val2 is bounded indexed observation over the same ordinal `ProjectionSlot`
+mechanism as named fields:
 
 ```text
-T * N         × number -> T
-(T * N) ref   × number -> T ref
-(T * N) share × number -> T share
+Index : T * N         x number ->? T
+Index : (T * N) ref   x number ->? T ref
+Index : (T * N) share x number ->? T share
 
-T * omega         × number -> T
-(T * omega) ref   × number -> T ref
-(T * omega) share × number -> T share
+Index : T * omega         x number ->? T
+Index : (T * omega) ref   x number ->? T ref
+Index : (T * omega) share x number ->? T share
+
+Dom(Index) = { (s, i) | 0 <= i < Length(s) }
+Index(s, i) = Nav(s, pos_i) within Dom(Index)
+CanCreateMember(sequence, pos_i) = false
 ```
+
+The value/ref/share candidates have the same bounds domain; view kind changes
+only observation capability. Out-of-domain behavior (diagnostic, trap, proof,
+or error representation) remains deferred, so `Index` is not total.
 
 The heterogeneous counterparts are bare Product and the global built-in
 `product` type. A bare Product has a fixed concrete arity/type vector. A value
@@ -1538,7 +1561,7 @@ A special owner rule cannot be used as an alternate route to an ordinary
 navigable `M`. Liveness, visibility, borrowability, and installation of a
 built-in result follow the particular member rule and ordinary outer binding;
 the privilege class supplies no generic conclusion that every result is rooted
-under the call-site `Self` chain or is globally live.
+under the call-site `Self` chain, has global root identity, or is externally installed.
 
 `struct`, `extend`, and `inject` are the first specified members. Future candidates may
 include explicit sum construction/extension, bounded AST injection, or a
@@ -1926,8 +1949,18 @@ lists.
 A type-valued field is compile-only only because it fails this predicate in the
 current runtime model; it is not a special field category. Ordinary runtime
 values remain PatternValues and are not excluded by that fact. The mechanically
-generated `[]` observations of `T*N` and `T*omega` inherit this same predicate
-from their selected element; no Sequence-specific stage rule exists.
+generated `[]` observations of `T*N` and `T*omega` use this predicate for the
+selected element but retain all ordinary call dependencies:
+
+```text
+Dependencies(Index(s, i)) = { container observation s,
+                              index observation i,
+                              selected element observation }
+Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
+```
+
+`RuntimeField(selected element)` is one local condition inside that meet. No
+Sequence-specific stage rule exists.
 
 The generated partner candidates live in same-name associated Symbols in the
 generated type member's `Val2`. The returned Symbol's `Val1` contains its unique
@@ -2881,7 +2914,7 @@ the owner's type construction and participates in normalization and extraction:
 ```text
 resolve source Symbol
   -> project/read PatternValue
-  -> contribute to owner TypeFacet(PatternValue)
+  -> contribute to the owner Object's Pattern/type-role construction
 ```
 
 This expectation is exercised by `struct` inline construction elements and
@@ -3380,7 +3413,8 @@ This substrate does **not** implement:
   pattern-layer representation;
 - namespace-origin uniqueness or source/meta construction-unit ownership;
 - physical-directory contribution authority or cross-file reopening checks;
-- the structural `TypeFacet`-implies-`NamespaceFacet` model;
+- the structural `TypeRole`-implies-`NamespaceRole` judgment and its
+  implementation enforcement;
 - the distinction between ordinary namespace value members and
   pattern-material leaves as implemented facets;
 - full place / writability / borrow-view checking;

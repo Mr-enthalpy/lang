@@ -185,22 +185,36 @@ the generated member object otherwise follows the same ordinary recursion rule.
 
 `Val1?(x) = null` states exactly one fact: this object carries no internal
 `Val1` payload. It does not mean the object is untyped, unobservable,
-value-less at the observation edge, or a different kind of entity.
+value-less at the observation edge, or a different kind of entity. Type and
+namespace are judgments over this one Object domain, not facets or nominal
+Object subclasses:
 
-Two distinct notions must not be collapsed here:
+```text
+Pure(x)          <=> Val1?(x) = null
+DefinesVal1(P)   <=> P determines an admissible Val1 schema
+Navigable(V)     <=> V is a well-formed finite semantic-selector map
+                     on which ProjectionSlot lookup is defined
+NamespaceRole(x) <=> Pure(x) and Navigable(Val2(x))
+TypeRole(x)      <=> NamespaceRole(x) and DefinesVal1(P(x))
 
-| notion | condition | what it is |
-| --- | --- | --- |
-| pure type object (type seed) | `Val1?(x) = null` | an object with no payload; the operand of `@` in §5.2 |
-| type-rank use of an object | positional | what a type-expected position asks for (§5.6) |
+TypeRole subset NamespaceRole
+NamespaceRole not-subset TypeRole
+```
 
-A pure type object is simply an object whose `Val1?` is `null`. It is **not** a
-definition of "type rank": an object that carries a `Val1` payload may still be
-used where a type is expected, and the type-expected position supplies the
-projection (§5.6). Conversely, `Val1?(x) = null` does not by itself make `x` a
-type for every purpose — it makes `x` payload-less, which is what §5.2 depends on.
-Keeping these apart is what prevents `Val1?` from being re-read as an implicit
-kind classifier.
+`Navigable(V)` means selector lookup yields the resident-specific
+`ProjectionSlot` defined in §7; a missing final selector still yields a slot
+whose contents are `None`, while continuation from `None` is invalid. The empty
+map is navigable, so a pure type need not have children to satisfy
+`NamespaceRole`. A pure namespace-like Object whose Pattern does not define an
+admissible Val1 remains navigable but is not usable as a type. These are
+predicates; no `NamespaceFacet`, hidden type facet, or parallel
+`NamespaceObject` ontology is introduced.
+
+An Object carrying `Val1` may still be used where a type is expected when an
+ordinary projection such as Symbol's unique type-member projection applies
+(§5.6). Conversely, `Pure(x)` alone does not imply `TypeRole(x)`. Keeping these
+judgments separate prevents payload presence from becoming an implicit kind
+classifier.
 
 The canonical identity of an object is the recursive normal form over **all
 three** components. `Val1` normalization is indexed by the host Pattern because
@@ -335,31 +349,32 @@ Children_owned(t share) = ∅
 PatternOf(t ref)        = t ref        (extraction still matches the form)
 ```
 
-`StableTargetIdentity(q)` is the stable semantic identity of the resident
-referent selected when the borrow forms. Its final representation remains an
-implementation choice, but it must distinguish `q1 != q2` even when the two
-referents currently contain equal values. It is not merely a reusable logical
-navigation coordinate, is not the borrow view's incidental holder/carrier
-place, and normalization does not recurse into the current contents of `q`.
+`StableTargetIdentity(q)` is the stable semantic identity of the target selected
+when the borrow forms. For direct places it identifies the resident place; for
+a projected target it is the `ProjectionSlotIdentity` defined in §7. Its final
+representation remains an implementation choice, but it must distinguish
+`q1 != q2` even when the two targets currently contain equal values. It is not
+merely a reusable logical navigation coordinate, is not the borrow view's
+incidental holder/carrier place, and normalization does not recurse into the
+current contents of `q`.
 
 In particular:
 
 ```text
-SubPlaceCoordinate(parent, selector)
-  != BorrowTargetIdentity(resident child selected there)
+ProjectionCoordinate(parent_place, selector)
+  != ProjectionSlotIdentity(parent_resident, selector)
 
 Target(Borrow(Nav(parent_borrow, selector)))
-  = ResidentIdentityAtBorrowFormation(parent, selector)
+  = ProjectionSlotIdentity(parent_resident_at_formation, selector)
 ```
 
-The prospective `SubPlaceCoordinate` remains stable for later navigation and
-creation. An already formed borrow remains bound to the resident identity that
-existed at formation time. Wholesale replacement of the parent that destroys
-or replaces that resident makes the old borrow invalid under the ordinary
-lifetime/validity rules; it never causes the borrow to observe the new child at
-the same logical coordinate. Only an explicit `rebind` can acquire that new
-target. A generation, resident id, or versioned target is an implementation
-choice rather than target ontology.
+The prospective coordinate remains reusable for later navigation and creation.
+An already formed borrow remains bound to the parent-resident slot generation
+that existed at formation time, whether its contents were `None` or `Some`.
+Wholesale parent replacement makes the old slot invalid under ordinary
+lifetime/validity rules; it never causes the borrow to observe a new slot at the
+same logical coordinate. Only an explicit `rebind` can acquire that target. A
+generation, resident id, or versioned encoding remains an implementation choice.
 
 The `t` in `(t ref)` is pattern material of the built-in operation that
 produced the value, not a vertical object edge inside the produced value.
@@ -745,8 +760,8 @@ symbol or place.
 
 This ordinary declaration rule does not license a meta return symbol to use an
 external type value as its type root. A canonical meta instance has an
-additional self-root invariant: if its return symbol has a `TypeFacet`, the
-facet's outer pattern root must be the `MetaInstanceScope`. Thus ordinary
+additional self-root invariant: if its return Symbol contains type-role member
+`T`, `T`'s outer Pattern root must be the `MetaInstanceScope`. Thus ordinary
 `let T: type = uint8` remains legal while direct `r = uint8` as a meta return
 type construction is rejected.
 
@@ -933,19 +948,23 @@ Reaching `v` itself is an ordinary member/projection operation on the read
 result, not something `Read` or `ref` performs implicitly.
 
 No implicit projection or conversion participates in an operand position. `s ref`
-is never elaborated into `s |> type ref`, or into any other facet projection,
-because an operand or argument position performs no implicit type conversion.
-Facet projection stays explicit there (`|> type`, `|> val`, `|> namespace`), and
-an explicit `E |> type` is well-formed exactly when the selected object/Symbol
-exposes one unambiguous type facet (`|TypeMembers(S)| = 1`, i.e.
-`HasUniqueTypeFacet(S)`). Whether `E` carries a `Val1` payload is irrelevant to
-type-projection applicability: `Val1(Symbol) = ⟨T?, V⟩` is present even
-for a Symbol that has only ordinary val members and no type member, so
-`Val1? != null` never implies that `ProjectType` is defined. `Val1?`
-participates only in the `ref`-versus-`@` dispatch, never as a type-facet
-classifier. What is excluded is supplying the projection on the writer's behalf.
-A language-designated type-expected position is the separate case where the
-projection *is* supplied; see §5.6.
+is never elaborated into `s |> type ref` or another role projection, because an
+operand or argument position performs no implicit type conversion. An explicit
+`AsType(E) = E |> type` has two ordinary cases:
+
+```text
+AsType(S : symbol) = UniqueTypeMember(Val1(S))
+                     when exactly one such member exists
+
+AsType(x) = x       when Pure(x) and DefinesVal1(P(x))
+AsType(x) undefined when Pure(x) and not DefinesVal1(P(x))
+```
+
+The second rule validates an existing pure Object; it neither wraps a namespace
+nor searches for a hidden type member. Payload presence alone remains
+irrelevant to type applicability: a Symbol may carry `Val1(Symbol) = <T?, V>`
+without a unique type member. A language-designated type-expected position may
+insert `AsType`; ordinary operand positions may not. See §5.6.
 
 ### 5.2 `@` is the carrier-slot operation
 
@@ -1252,12 +1271,13 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` selects the unique type member exposed by an ordinary PatternValue. It
-does not compute the type of the expression and does not raise universe rank:
+`AsType` either selects Symbol's unique type member or validates an already-pure
+Object by `DefinesVal1(P)` as specified in §5.1. It does not compute the type of
+the expression, wrap a namespace-like Object, or raise universe rank:
 
 ```text
 AsType(E) != TypeOf(E)
-rank(AsType(E)) = rank(the selected type member)
+rank(AsType(E)) = rank(the selected or validated type Object)
 ```
 
 Only explicit type-of extraction — for example the future canonical form
@@ -1376,7 +1396,7 @@ No binding or borrow view can amplify the place authority it observes:
 Capability(view of p) ≤ Capability(p)
 ```
 
-## 7. Namespace extension target
+## 7. Projection slots and namespace extension targets
 
 Namespace/member creation is a *place* operation, not a value operation. The
 target is not determined by ordinary expression evaluation of the target path.
@@ -1386,7 +1406,7 @@ The intended flow:
 ```text
 parse / normalize the target path
 resolve the path as a parent place plus selector
-obtain the stable prospective SubPlace
+obtain the stable prospective ProjectionSlot
 check creation or write applicability
 install NamespaceDelta under that place
 ```
@@ -1395,22 +1415,38 @@ Navigation does not fail merely because the final child has not yet been
 instantiated:
 
 ```text
-SubPlace(parent, selector)
-Contents(SubPlace) ∈ Some(value) | None
+ProjectionCoordinate(parent_place, selector)
+ProjectionSlot(parent_resident, selector)
+ProjectionSlotIdentity
+  = <ParentResidentIdentity(parent_resident), selector>
+Contents(ProjectionSlot) ∈ Some(Object) | None
 ```
 
-The pair `(ParentPlace, Selector)` is stable identity for that prospective
-location. `let` may instantiate it when its contents are `None`; ordinary `=`
-requires `Some(existing)` and never creates the missing child. Continuing
-navigation *from* `None` is ill-formed because there is no child value whose own
-associated space could host the next selector.
+`ProjectionCoordinate` is the reusable logical navigation coordinate.
+`ProjectionSlotIdentity` additionally names the current parent resident. `let`
+may change one slot's contents from `None` to `Some(value)` without changing the
+slot identity; ordinary `=` requires `Some(existing)` and never creates the
+missing child. Continuing navigation *from* `None` is ill-formed because there
+is no child Object whose own `Val2` could host the next selector.
 
-This coordinate stability is not borrow retargeting. Once navigation through a
-borrow has selected an existing resident child, the resulting borrow records
-that child's formation-time `StableTargetIdentity`, not only
-`(ParentPlace, Selector)`. Replacing the parent wholesale may invalidate the old
-borrow but cannot redirect it to the replacement's same-named child; only
-`rebind` changes a borrow target (§5.4).
+Borrowing a projection records its formation-time `ProjectionSlotIdentity`,
+including when `Contents = None`:
+
+```text
+ProjectionCoordinate(parent_place, selector)
+  != ProjectionSlotIdentity(parent_resident, selector)
+
+Target(Borrow(Nav(parent_borrow, selector)))
+  = ProjectionSlotIdentity(parent_resident_at_formation, selector)
+```
+
+Changing `None` to `Some` within that slot is not retargeting. Wholesale parent
+replacement ends the old parent resident, produces a distinct family of
+projection slots, and invalidates borrows of the old slots under ordinary
+lifetime rules. It never redirects them to the replacement parent's same-named
+or same-positioned slot; only `rebind` acquires that new target (§5.4). The
+concrete generation/version encoding remains implementation debt, but this
+resident-slot distinction is target semantics.
 
 Navigation preserves the observation kind:
 
@@ -1420,8 +1456,19 @@ Nav(type ref,   n) -> (type | None) ref
 Nav(type share, n) -> (type | None) share
 ```
 
-The optionality describes current contents, not the existence of the prospective
-SubPlace. Full optional-pattern algebra remains deferred.
+The optionality describes current slot contents, not the existence of the
+ProjectionSlot. Full optional-pattern algebra remains deferred.
+
+Named selectors and bare-Product ordinal selectors use this same mechanism:
+
+```text
+ProjectionSlot(parent_resident, name)
+ProjectionSlot(parent_resident, pos_i)
+```
+
+For `T*N` and `T*omega`, ordinal topology belongs to the current Sequence value,
+so `CanCreateMember(sequence, pos_i) = false`. Indexing observes an existing
+in-domain slot; it cannot grow or resize a Sequence through `let`.
 
 There is no forwarding-chain step: a path resolves to exactly one place, and a
 borrow view interposed on that path either denotes the same place (`ref`) or

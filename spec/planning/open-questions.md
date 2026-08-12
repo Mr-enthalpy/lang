@@ -154,9 +154,9 @@ track:
   `symbol ref`), while a language-designated type-expected position does
   (`Elab_Type(E) = E |> type`) — annotations, type-facet path components, type
   argument positions, `t: type`, `t: type ref`, and type-rank return positions.
-- A meta return seal validates *at most* one type member, matching the Symbol
-  ontology; the type-facet promotion step is skipped when no type member exists, so
-  namespace-only, val-only, and type-less mixed meta returns are well-formed.
+- A meta return seal validates *at most* one type member. When none exists the
+  promotion step is skipped; navigable `Val2` and sibling values remain ordinary
+  Object content rather than namespace/val return categories.
 
 Still open after this correction:
 
@@ -828,99 +828,15 @@ when value/type canonical forms are designed.
 Future design note:
 `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
-The following questions are **resolved at the future-design level**. They are
-not open semantic decisions — only the implementation mechanics and IR-level
-representation remain future work.
+Resolved semantics are indexed rather than restated here:
 
-#### Resolved: no silent discard including void/unit
-
-Status: **Resolved at future-design level** (see §7 of the pattern-spaces document).
-
-The rejected rule was `final pattern = void => silent completion allowed`.
-The correct rule is `every expression result must be consumed`. There is no
-void exception. If an implementation would otherwise silently discard an
-expression result, that position must be interpreted as an error or as the
-current block's return boundary.
-
-#### Resolved: block-final unconsumed result is current-block return
-
-Status: **Resolved at future-design level**.
-
-A block-final expression whose result is not otherwise consumed is the return
-value of the current block. This applies to `unit` and `void` as well — there
-is no silent completion with no result.
-
-#### Resolved: non-final unconsumed result is an error
-
-Status: **Resolved at future-design level**.
-
-If an expression result is not consumed and later same-block material exists,
-the program is ill-formed. The repar is either consume/discard the result, or
-remove the later material and let the expression become the block return.
-
-#### Resolved: Done isolates completed branch results
-
-Status: **Resolved at future-design level** (see §6 of the pattern-spaces document).
-
-`Done` separates completed branch results from unprocessed continuation
-material. It is not eliminated while same-level extraction continuation is
-still processing input residuals. Return/result boundaries perform one local
-`Done` reduction and re-wrap the result. `Done` is isolated by default but
-explicitly re-enterable.
-
-#### Resolved: early function return via self..return(d)
-
-Status: **Resolved at future-design level** (see §6.3.1, §7.5 of the
-pattern-spaces document, and the function-object-self-and-return-capability
-design note).
-
-Early function return is modeled by calling `self..return(d)` — the current
-callable frame's built-in return capability. The effect uses a dual-channel
-model: local branch produces `Done(unit)`, and the final return accumulator
-receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
-pattern-space reduction, not silent discard.
-
-#### Resolved: meta return does not collapse creation, write, and control transfer
-
-Status: **Resolved at future-design level** (see the canonical symbol-first
-construction note, §4.5).
-
-Target semantics assign no special `let` meaning to the return-slot name: a meta
-body computes an ordinary Symbol, ordinary `let` creates members, ordinary `=`
-writes existing places, and the return event transfers control. In the current
-open-cluster `let`-only encoding (compatibility spellings pending expression-level `=`;
-the settled orthogonal target remains `let` creates, `=` writes, return
-events deliver): `let r = expr;` adds a
-fresh member binding; `r = expr;` writes to an existing target (currently a
-placeholder overwrite scaffold; the final cluster write algebra is open); bare
-`r;` is the delivery terminal and not a member event. There are three events, not
-four: the former interpretations — `r === ...` as a distinct formal forwarding
-category, and the interim single-form `r = ...` reading — are both superseded,
-and the alias/forwarding member event is retired rather than deferred. There is
-likewise no declaration-layer aliasing: `let a = b` binds a fresh symbol in a
-fresh place carrying `b`'s value, and a member that must observe an external
-object holds a borrow view (`ref` / `share`).
-
-#### Resolved: TypeValueId is value-side material, not carrier identity
-
-Status: **Resolved at future-design level**.
-
-The current bootstrap may first derive a `TypeValueId` projection from an
-installed defining core Type Symbol. After that projection has been read as a
-value, ordinary binding carries it directly. It is not a carrier Symbol,
-installation Place, construction identity, or type-definition identity, and
-there is no semantic `TypeValueId -> original carrier Symbol` inverse map.
-Thus `let T: type = uint8; let U: type = T` allocates distinct carrier
-Symbols/Places while preserving one evaluated TypeValue/PatternValue.
-On the value side, `TypeValueId` is only the stable first-order root: the
-full type-object semantic identity at an observation moment is the canonical
-observation `Addr(Norm_type)`, which identity-critical positions consume
-instead of the bare root.
-
-Final invocation plumbing returns an ordinary `PatternValue` for `compile` and
-an ordinary `symbol` PatternValue for `meta`. Current `SymbolConstruction` and
-`MetaInvocationValue` variants remain transitional implementation transport,
-not result ranks or canonical ontology.
+| Decision | Canonical owner | Remaining implementation work |
+| --- | --- | --- |
+| every expression result is consumed; block-final is return, non-final unconsumed is error | `design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §7 | diagnostics and IR plumbing |
+| `Done` isolation and early `self..return(d)` | same document §6–§7 plus `design/symbol-world/function-object-self-and-return-capability.md` | concrete `Done` and lifetime-fact representation |
+| `let` creates, `=` writes, return transfers control; alias event retired | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.5 | remove compatibility return accumulator |
+| `TypeValueId` is only a first-order root projection; canonical equality is `Addr(Norm_type)` | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
+| compile returns declared PatternValue; ordinary meta returns Symbol | canonical symbol-first construction document §4 | transitional transport removal |
 
 #### Still open
 
@@ -1009,136 +925,17 @@ into the value key is excluded.
 
 ---
 
-### Closed by the value/Policy/Open/borrow/`extend`/`inject` semantic closure
+### Closed-decision index
 
-These are no longer open questions. They are recorded here only so that they are
-not reopened from older wording elsewhere; their canonical owners are the
-documents named in each line.
+Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
 
-- Object ontology and normal form: `Object x = ⟨Val1?(x), P(x), Val2(x)⟩` with
-  `Val1?(x) ∈ 1 + Object`, and `Norm(x)` recursive over all three components.
-  There is no `Val1`-presence ontology fork. Well-foundedness covers
-  `Children_Val1 ∪ Children_Val2`; bare-Product ordinal elements are ordinary
-  `Val2(pos_i)` children, while `T*N`, `T*omega`, and `product` wrappers carry
-  that bare Product Object in `Val1`. Product and Sequence are therefore closed
-  under Object recursion rather than traversed as compiler aggregates. Direct/
-  mutual `Val1` cycles and all other owned cycles have no normal form. An ordinary object's
-  carrier/ObjectPlace, `SymbolId`, allocation order, and provenance are not
-  identity material; a borrow view's `StableTargetIdentity(Target(view))` is
-  value content and is present in its leaf normal form.
-  (`type-values-places-and-borrow-views.md`)
-- Policy is an observation edge, not an intrinsic field:
-  `View_Γ(x) = ⟨x, Pv:Pp, capability_Γ(x)⟩`.
-  `Val1?(x) = null => Pv = Pp`, not `Pv = absent`; conversely an observer may
-  hide an existing `Val1`. A distinct runtime projection requires an existing
-  value component and runtime visibility. There is no central const/mut
-  propagation pass — only member overloads and `delete`. The preference rows are
-  `succ_const: const > let > mut`, `succ_mut: mut > let > const`, and
-  `succ_plain: let > const = mut`; the last row leaves tied `const`/`mut`
-  maxima ambiguous when no plain `let` candidate exists.
-  (`symbol-policy-and-compile-flow-projection.md`)
-- A Symbol is an ordinary PatternValue with `Σ = ⟨T?, V⟩`,
-  `V = ⨄_{T_c} V[T_c]`, and homogeneous buckets `V[T_c] : T_c * ω`.
-  `Σ` is an ordinary Object composition: the optional type member is an
-  empty/singleton bare Product, `(T_c, V[T_c])` bucket entries are `product`
-  values, and those entries form a homogeneous `product*omega` Sequence.
-  Normalization maps each normalized `T_c` to a set of ordinary recursively
-  normalized member objects. Stable member/candidate identity, callable body
-  identity, and selection-relevant declaration annotations remain in those
-  objects; only insertion order and repeated contribution of the same member
-  are quotiented away. Duplicate/conflicting declarations are
-  diagnosed during construction. The meta return seal validates the same *at
-  most one* type-member bound and skips promotion when none exists.
-  (`symbol-first-meta-construction-and-pattern-injection.md`)
-- The global privileged type-forming builtin `*` constructs `T*N` and
-  `T*omega`; both preserve `rank(T)`. These homogeneous containers, bare
-  Product, and `product` form the closed ordered-container kernel and are all
-  ordinary Object instances. Generated `[]` stage follows the same
-  `RuntimeField`/materialization predicate as structural fields. Layout,
-  capacity, growth APIs, and general `product[]` remain outside this PR.
-- `struct` closes one generated field mechanism: same-name value/ref/share
-  access candidates plus assignment/write partners, all derived from ordinary
-  receiver Policy and `RuntimeField`. It does not close defining-Symbol recovery
-  for copied/extracted type-as-callee sibling overloads.
-- `compile` may return any ordinary PatternValue (including `type`, `symbol`,
-  `type ref`, `type share`) under root conservation
-  `Roots(Output) ⊆ Roots(Arguments) ∪ Roots(GlobalConstants) ∪
-  LexicallyDeclaredStableRoots`. (`symbol-policy-and-compile-flow-projection.md`)
-- For an ordinary meta callable, `P2(F) = meta` is biconditional with
-  `EstablishNavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))`. Canonical
-  arguments must be `GlobalKeyable` at key-creation time; a binder local to the
-  caller is allowed, but every owned dependency and horizontal borrow target
-  must be already globally stable or already promoted. Future seal promotion
-  cannot justify a key created now.
-  The exclusivity covers that root kind only. `struct` establishes/selects its
-  lexical root from input navigation and ambient scope; `extend` establishes no
-  root and preserves `Root(output) = Root(input)`; every other privileged
-  builtin must declare its own owner rule.
-  (`symbol-first-meta-construction-and-pattern-injection.md` §4.1, §4.8)
-- Meta body transparency: a `MetaInstance` is globally live and unsealed on
-  entry, and its body does not fire ordinary freezing events. Meta-local
-  PatternValues nevertheless have `MetaInvocation` lifetime: compile and
-  transparent construction intrinsics may consume them, but another ordinary
-  meta invocation may not implicitly globalize them. At seal, only the owned
-  PatternValue closure of the returned Symbol's unique type member, if present,
-  is promoted.
-  Returned val siblings may depend only on already-global material plus that
-  promoted closure (only already-global material when no type member exists),
-  and borrow targets participate in the check.
-  (`symbol-first-meta-construction-and-pattern-injection.md`)
-- `Open_Γ(v)` relates `ConstructionLineage(v)` to the current compile-time stack
-  and has a one-way `Open -> Frozen` transition. For
-  non-meta static control, `Freeze*(Dependencies(c))`; mere `LiveAcross(c)` is
-  not a dependency. Values carried across a residual-runtime fork and values
-  leaving their ordinary owner interval still freeze.
-  (`symbol-first-meta-construction-and-pattern-injection.md` §12.1)
-- Borrow views: `ref` / `share` / `@` / `rebind`, and `OwnedClosure` excluding view
-  edges. `ref` / `share` consume `Read(E)`, which yields a complete
-  `⟨Val1?, P, Val2⟩` object rather than the bare `Val1` payload; `@` consumes
-  `CarrierPlace(E)`. Borrowing is non-stacking *because* the overlapping overloads
-  exist: `Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))` preserves the target,
-  `ref share` is an admitted weakening, and only `share ref` has no candidate.
-  `rebind` retargets from a place and is not `Ref(Read(E))`. The target is
-  horizontal rather than owned recursion, but
-  `Norm(Borrow_k(q))` includes `StableTargetIdentity(q)`.
-  A prospective `SubPlace(parent, selector)` coordinate is not that resident
-  target identity: wholesale parent replacement may invalidate an existing
-  child borrow but cannot retarget it to the replacement child. Only `rebind`
-  acquires a new target. Both `type ref rebind` and `type share rebind` are
-  fixed under a second `rebind` constructor.
-  (`type-values-places-and-borrow-views.md`)
-- `@` has two positively defined base groups plus borrow-type-value fixed points and
-  is an ordinary overloaded operation, not a general `PlaceOf(E)`; the lifetime boundary restricts
-  lifetime *rules*, not `@`. Whether `ref` or `@` applies is decided by the
-  presence of a `Val1` payload, not by type-rank. On a complete
-  `⟨Val1, P, Val2⟩` object `@` takes that object's lifetime; that group is
-  unchanged by the narrowing of the borrow-producing group. Borrow type values
-  are fixed points (`type ref@ = type ref`, `type share@ = type share`), while a
-  value instance `t : type ref` has `t@ = lifetime(t)`. In the pure-slot group
-  `Val1?(Value(E)) = null` selects the group and ordinary borrow formation checks
-  the explicit carrier place; no Open fact is implied. `@` never performs
-  implicit Symbol-to-type projection. A pure type slot uses `t@`; a Symbol uses
-  `S.type` by value, `(S ref).type` for `type ref`, and `(S share).type` for
-  shared observation.
-  (`lifetime/lifetime-policy-and-overload-boundary.md`)
-- A `type ref` is an ordinary borrow view of a type-valued slot. Its validity and
-  write capability follow ordinary borrow/policy rules; it neither contains nor
-  proves an Open witness. Consequently a frozen type ref is coherent: it can be
-  read and, if writable, can receive an independently legal replacement value.
-  (`type-values-places-and-borrow-views.md` §5.5)
-- `extend : type × StructLikeMaterial ⇀ type` is the pure value primitive. It
-  separately checks `Open_Γ(old)`, writes no place, creates no root, and preserves
-  `Root(output) = Root(old)`. `inject : type ref × StructLikeMaterial ⇀ type ref`
-  is `Read -> extend -> Write`; legality requires both Open of the read value and
-  writability/lifetime validity of the place, with neither implying the other.
-  (`symbol-first-meta-construction-and-pattern-injection.md` §8)
-- A `compile` evaluation is construction-transparent and root-non-generative.
-  It transports existing PatternValues and lineages, while each Open-sensitive
-  operation is checked in the caller's current stack. Returning a `type ref` is
-  permitted subject to its ordinary borrow lifetime.
-  (`symbol-first-meta-construction-and-pattern-injection.md` §4.2)
-- The semantic alias/forwarding family is retired, not deferred. No declaration
-  form forwards a Symbol, place, or operator identity; the frozen alias-let Raw
-  AST is historical parser preservation only. Operator environments use ordinary
-  values, lexical shadowing, and Symbol algebra.
-  (`entity-alias-design.md` retirement notice)
+| Decision | Canonical owner | Remaining implementation question |
+| --- | --- | --- |
+| Object closure, roles, AsType, ProjectionSlot, borrow targets | `design/symbol-world/type-values-places-and-borrow-views.md` | concrete root/slot generation representation |
+| Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
+| Symbol Set quotient, ordinary meta, seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate and deferred HomeSymbol |
+| construction lineage and Open/frozen | same canonical construction document plus `design/lifetime/` | region/stack representation |
+| retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
+
+The concrete unresolved items remain in the earlier “Still open” lists. This
+index intentionally does not duplicate their closed judgments.

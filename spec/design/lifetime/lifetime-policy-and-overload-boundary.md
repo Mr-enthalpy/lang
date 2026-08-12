@@ -204,14 +204,15 @@ The full table is owned by
 Prospective navigation identity and formed-borrow identity are also distinct:
 
 ```text
-SubPlaceCoordinate(parent, selector)
-  != BorrowTargetIdentity(resident child)
+ProjectionCoordinate(parent_place, selector)
+  != ProjectionSlotIdentity(parent_resident, selector)
 ```
 
-The coordinate remains available for later navigation or `let` creation. A
-borrow of an existing child binds the resident target selected at formation;
-wholesale parent replacement may invalidate that borrow but never retargets it
-to a replacement child at the same coordinate. Only `rebind` selects a new
+The logical coordinate remains available for later navigation. A projected
+borrow binds the parent-resident slot selected at formation, including a slot
+whose contents are `None`; `let` may populate that same slot without retargeting.
+Wholesale parent replacement may invalidate that borrow but never retargets it
+to a replacement slot at the same coordinate. Only `rebind` selects a new
 target. Generation/version representation remains deferred.
 
 ## 3. Escape checking

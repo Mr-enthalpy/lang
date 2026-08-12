@@ -633,55 +633,16 @@ _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload
 
 ## Object normal form (`Norm`)
 
-The structural identity of an object. Every object has three components:
+The structural identity of an object. Every language-visible semantic carrier
+has `Object = <Val1?, P, Val2>` and normalizes recursively through `Val1` and
+`Val2`. Bare Product, Sequence, `product`, and Symbol are constructor instances,
+not parallel aggregates. Borrow targets are horizontal identity-bearing leaves.
+The complete equations and well-foundedness rules belong to
+[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
-```text
-Object x    = ⟨ Val1?(x), P(x), Val2(x) ⟩
-Val1?(x)   ∈ 1 + Object
-```
-
-`Val1?(x) = null` means only that the object carries no internal `Val1` payload;
-it is not a separate ontology. `Norm(x)` is the recursive normal form over all
-three components; there is no `Val1`-presence fork that drops a component.
-Well-foundedness covers every owned vertical edge:
-
-```text
-Children_owned(x)
-  = Children_Val1(x) ∪ Children_Val2(x)
-```
-
-The Object domain is constructor-closed. A bare Product is an Object whose
-intrinsic ordinal `pos_i` selectors are ordinary owned `Val2` entries. `T*N` and
-`T*omega` values are Sequence Objects whose `Val1` is that bare Product Object;
-a value classified by `product` uses the same representation. Product and
-Sequence therefore normalize through the two equations above, never through a
-compiler aggregate beside `Object`.
-
-Re-entering an active object through any positive owned path gives
-`NoNormalForm`, including direct or mutual `Val1` cycles. Horizontal borrow
-targets are not owned recursion edges.
-
-An ordinary object's `ObjectPlaceId`/carrier, `SymbolId`, allocation order, and
-construction provenance are not part of its normal form. A borrow view is
-different: `Target(Borrow_k(q))` is semantic content of that value, so its leaf
-normal form includes `⟨BorrowKind_k, StableTargetIdentity(q)⟩` without recursing
-into the referent. Two views of distinct targets remain distinct even when the
-targets currently contain equal values.
-
-Pattern-specific normalization may quotient representation order. For Symbol,
-`Σ = ⟨T?, V⟩`, `V = ⨄_{T_c} V[T_c]`, and each homogeneous bucket
-`V[T_c] : T_c * omega`; normalization maps each normalized `T_c` to a set of
-ordinary recursively normalized member objects. Stable member/candidate
-identity, callable body identity, and selection-relevant declaration annotations
-survive; only insertion order and repeated contribution of the same member are
-quotiented away. Duplicate/conflicting declarations are construction-time
-well-formedness errors rather than Symbol multiplicity. Where another complex `Val1` cannot yet be normalized
-structurally, an opaque summary is a safe under-merge, never a definition of
-identity.
-
-Construction lineage and an ordinary carrier place are both outside the normal
-form: they are independent context/capability layers, not hidden PatternValue
-components.
+`Val1? = absent` is payload absence only. `DefinesVal1(P)`, `TypeRole`, and
+`NamespaceRole` are separate judgments; `TypeRole` implies `NamespaceRole`, not
+conversely. Construction lineage and carrier place remain outside normal form.
 
 _See also: Policy Pair, Borrow view, ConstructionLineage._
 
@@ -716,11 +677,13 @@ The four ordinary ordered-container cases used by the value model:
 | homogeneous | `T * N` | `T * omega` |
 | heterogeneous | bare Product | `product` |
 
-`T * N` is finite, homogeneous, anonymous, ordered, and includes `N` in type
-identity. `T * omega` is also finite and ordered, but its current length is
-retained in `Val1` rather than the outer classification type; `T * N` converts
-to `T * omega`. Both have mechanically generated `[]` value/ref/share members.
-This says nothing about contiguous layout, capacity, or `push_back`.
+`T * N` and `T * omega` are finite homogeneous ordered Object containers; the
+former includes `N` in classifier identity and converts to the latter. Their
+mechanical `[]` value/ref/share members are bounds-domain partial projections
+over ordinal `ProjectionSlot`s. Ordinal topology is fixed:
+`CanCreateMember(sequence,pos_i)=false`. Stage is the ordinary dependency meet
+over container, index, and selected observation. This says nothing about layout,
+capacity, or growth.
 
 They are formed by the global privileged type constructor `*`:
 `*(T,N) -> T*N` and `*(T,omega) -> T*omega`. Both preserve the element type's
@@ -773,19 +736,17 @@ _See also: PatternValue container kernel, Overload Candidate, `extend`._
 
 ---
 
-## Prospective SubPlace
+## ProjectionSlot (prospective SubPlace)
 
-A stable place coordinate `(ParentPlace, Selector)` returned when navigation
-reaches a child that does not yet exist. Its contents are `None`; it is not an
-error or a fabricated value. `let` may instantiate it, while bare `=` may write
-only an already existing place and never creates the missing member. Navigation
-through a `type ref` or `type share` propagates the same view kind; continuing
-navigation from `None` is invalid.
-
-The prospective coordinate is not the resident target identity captured by an
-already formed borrow. Wholesale parent replacement may invalidate that borrow,
-but cannot redirect it to the replacement child at the same coordinate. Only
-`rebind` obtains a new target.
+The resident-specific projection location
+`<ParentResidentIdentity, Selector>`, whose contents are `None` or `Some(Object)`.
+The reusable logical `ProjectionCoordinate(parent_place,selector)` is distinct
+from this slot identity. `let` may change one slot from `None` to `Some` without
+retargeting; bare `=` never creates. A projected borrow records the slot identity
+even when contents are `None`. Wholesale parent replacement creates new slots
+and invalidates old borrows; only `rebind` obtains a new target. Named and
+ordinal selectors use this same mechanism. See the canonical projection-slot
+rules in `type-values-places-and-borrow-views.md` §7.
 
 _See also: Let binding, BindingSlot, `@`._
 
@@ -1501,31 +1462,16 @@ _See also: ClosureAST, ClosureObject._
 
 ## Meta-function
 
-A callable whose entry executes under meta construction capability. For an
-ordinary meta function, the law is scoped to one root kind:
+A callable whose entry executes under meta construction capability. Callable
+kind fixes `P2=meta` and result classifier `symbol`; a particular call is
+well-formed only after ordinary admissibility and `GlobalKeyable` checks. A
+successful call establishes root identity and construction navigation, not
+external installation. The canonical judgments and seal algorithm belong to
+[`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-```text
-F ∈ OrdinaryMetaFunction
-P2(F) = meta
-  <=> EstablishNavigableMetaInstanceRoot(MetaInstance(F, Norm(args)))
-```
-
-An ordinary user meta-function receives rank-constrained semantic values,
-creates that canonical navigable `MetaInstanceScope`, and has no unrestricted
-AST access. The biconditional excludes alternate ways to create an ordinary
-navigable `M`; it does not claim that `MetaInstanceRoot` is the only stable root
-kind in the language. Its canonical arguments must be `GlobalKeyable` when the
-key is created: a caller-local binder is not forbidden, but every owned
-dependency and horizontal borrow target must be already globally stable or
-already promoted. Future promotion at an outer seal cannot justify the key.
-
-Meta-local PatternValues have `MetaInvocation` lifetime. They may pass through
-construction-transparent `compile`/intrinsic frames, but may not be passed to a
-new ordinary meta invocation as an implicit promotion. At seal, only the owned
-PatternValue closure of the returned Symbol's unique type member, if present,
-gains global lifetime. Every returned val sibling must depend only on already-global material
-plus that promoted closure (only already-global material if the type member is
-absent), and borrow targets participate in the escape check.
+At seal only the returned unique type member's owned closure may be promoted.
+`EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
+horizontal borrow targets; it is not a val-sibling-only check.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
 subclass. A member such as `struct`, `extend`, or `inject` may accept one
@@ -1973,11 +1919,12 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 
 ## AsType and TypeOf
 
-`AsType(E) = E |> type` selects/interprets `E` as a type value and does not
-raise universe rank. A type-expected position may insert only this operation.
-It is by-value and never preserves a source place. Symbol's ordinary `type`
-field supplies `S.type`, `(S ref).type`, and `(S share).type`; only an already
-pure type slot uses `t@`.
+`AsType(E) = E |> type` does not raise universe rank or preserve a source place.
+For Symbol it selects the unique type member. For a pure Object `x`, it is the
+identity exactly when `DefinesVal1(P(x))`; otherwise it is undefined. It never
+wraps a namespace-role Object or searches it for a hidden type facet. Symbol's
+ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
+only an already-pure type slot uses `t@`.
 
 `TypeOf(E)` is classifier extraction and may move to the next universe. Its
 explicit source family is `let <typeof> x : typeof = RHS`, not ordinary

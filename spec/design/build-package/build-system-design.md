@@ -50,7 +50,7 @@ validation, overlays, access-control checking, source-level import syntax, or a
 complete build CLI. It also does not implement final `NamespaceOrigin`
 uniqueness, source/meta construction-unit ownership, physical-directory
 contribution authority, cross-file reopening diagnostics, or the
-`TypeFacet`-implies-`NamespaceFacet` model. The canonical future contract for
+`TypeRole`-implies-`NamespaceRole` model. The canonical future contract for
 those rules is
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
@@ -401,17 +401,17 @@ not by origin: its members may be declared, generated, or virtual. For a
 the type node. It is therefore not equivalent to the "declared namespace
 objects" node kind alone.
 
-The final structural relationship is:
+The final Object-role relationship is:
 
 ```text
-has TypeFacet => has NamespaceFacet
-has NamespaceFacet ⇏ has TypeFacet
+TypeRole(x) subset NamespaceRole(x)
+NamespaceRole(x) not-subset TypeRole(x)
 ```
 
-A type symbol therefore combines a namespace facet with a
-`TypeFacet(PatternValue)` and an optional value facet. A pure namespace may have
-ordinary value members but has no type `PatternValue`. This is facet inclusion,
-not type-system subtyping.
+A type-role Object is therefore a pure navigable Object whose Pattern satisfies
+`DefinesVal1(P)`. A namespace-role-only Object may have ordinary navigable
+members but fails that judgment. These are roles over one Object ontology, not
+facet inclusion or type-system subtyping.
 
 See `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §3 for the full
 model.

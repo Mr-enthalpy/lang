@@ -106,9 +106,10 @@ The current graph/provenance model may record three namespace origin categories:
   installed by the namespace assembler. They are not tied to a physical source
   file; the resolver observes them but does not create their namespace origin.
 
-In the final `SymbolCell` model these are namespace-facet origins, not mutually
-exclusive symbol kinds. A symbol may simultaneously have namespace, type, and
-value facets; structurally, `has TypeFacet => has NamespaceFacet`.
+In the final model these are navigable-construction origins, not mutually
+exclusive symbol kinds. Type and namespace are Object roles:
+`TypeRole(x) subset NamespaceRole(x)`, while the converse does not hold.
+Current `SymbolCell` facet buckets are implementation substrate only.
 
 A navigable child name is role-aware: object/function symbols and pure
 namespace subspaces may share the same textual name when resolver callers

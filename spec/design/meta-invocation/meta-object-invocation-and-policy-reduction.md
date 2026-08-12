@@ -574,10 +574,11 @@ ReturnClassifier(ordinary meta) = symbol
 ReturnShapeWithinSymbol         = Σ = ⟨ T?, V ⟩, with |T| <= 1
 ```
 
-The returned Symbol may therefore be type-only, val-only, namespace-only, or
-mixed. “Meta returns type” is only shorthand for a `symbol` result whose
-within-Symbol shape is `⟨T, empty⟩`; “meta returns valset” similarly means
-`⟨absent, V⟩`. Neither spelling defines another return classifier or rank.
+`T` may be present or absent and `V` may contain any ordinary sibling values.
+Those are content facts within one returned Symbol Object, not type/val/namespace
+return categories. Navigability is the ordinary `NamespaceRole` judgment over
+Object `Val2`; it adds no third component to `Sigma`. “Meta returns type” is only
+shorthand for a `symbol` result whose content is `⟨T, empty⟩`.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
 slot relation, rank-directed identity, type self-root validation, and complete
@@ -596,6 +597,12 @@ MetaInstanceKey(F, args)
 well formed only if:
   forall a in Canonicalize(args): GlobalKeyable(a)
 ```
+
+The canonical owner separates callable kind, call admissibility, and effect:
+`OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and result classifier `symbol`;
+`WellFormedMetaCall(F,args)` contains admissibility plus `GlobalKeyable`; only a
+well-formed call establishes `RootIdentityExists(M)` and construction-local
+navigation. Root identity is not external namespace installation.
 
 `GlobalKeyable` is a dependency condition evaluated at key-creation time, not a
 source-location condition. A meta-local binder may hold and pass a value whose
@@ -706,7 +713,7 @@ IdentityType proves:
 IdentityType does NOT prove:
   PatternValue computation under compile capability;
   meta root establishment and sealing under meta capability;
-  MetaInstanceScopeId or return TypeFacet self-root validation;
+  MetaInstanceScopeId or returned type-role member self-root validation;
   rank-directed symbol/type/value parameter identity;
   declaration binding from arbitrary within-Symbol meta return shapes;
   extraction-facing interface exposure;
