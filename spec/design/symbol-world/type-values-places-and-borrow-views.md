@@ -204,6 +204,11 @@ TypeRole subset NamespaceRole
 NamespaceRole not-subset TypeRole
 ```
 
+`DefinesVal1(P)` is an imported judgment in this layer. Its derivation belongs
+to the later pattern-extraction/type-checking semantics, together with the
+relation of `P` to both `Val1` and `Val2`. This layer only consumes it to
+define `TypeRole`.
+
 `Navigable(V)` means selector lookup yields the resident-specific
 `ProjectionSlot` defined in §7; a missing final selector still yields a slot
 whose contents are `None`, while continuation from `None` is invalid. Being a
@@ -1587,7 +1592,7 @@ and 4 of the canonical model — RHS operation legality, result-object invariant
 (`WellFounded` / `Canonicalizable` / `NoForbiddenCycle`), and the enclosing
 region's semantic-boundary constraints (meta self-root, ref / pattern-value
 lifetimes, global type-bearing mutability limits, seal /
-global promotion, single-type-member bound) — remain independently applicable to
+global promotion, single-pure-role-member bound) — remain independently applicable to
 the write result.
 
 ## 8. Type values in overload and pattern matching

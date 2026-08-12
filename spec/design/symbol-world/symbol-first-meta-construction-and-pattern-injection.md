@@ -1291,7 +1291,7 @@ write still applies. A write `lhs = rhs` is checked in four independent layers:
 4. semantic-boundary constraints of the enclosing region
      meta return self-root; ref / pattern-value lifetimes;
      mutability limits on global type-bearing values; seal / global-promotion
-     rules; the single-type-member bound on a returned Symbol
+     rules; the single-pure-role-member bound (`|Q| ≤ 1`) on a returned Symbol
      -- these may run at write time, normalization time, return time, or
         install time, but they all remain in force
 ```
@@ -1530,7 +1530,7 @@ leave the symbol's own pattern untouched:
 ```text
 s = new_symbol                   -> replaces Val1(s)
 s += contribution                -> extends Val1(s)
-s -= associated_type_family       -> removes members from Val1(s)
+s -= contribution_family          -> removes a typed contribution family from Val1(s)
 
 in every case:  P_symbol unchanged
 ```
@@ -1588,7 +1588,7 @@ define new privileged AST meta functions. Privilege is member-specific: one
 built-in's accepted carrier and bounded transformation do not imply a general
 macro system or arbitrary AST rewriting.
 
-The ordinary-meta biconditional in §4.1 governs only a navigable
+The ordinary-meta root-establishment rule in §4.1 governs only a navigable
 `MetaInstanceRoot`; it does not claim authority over every stable owner/root in
 the language. Built-in root behavior is therefore split by member rather than
 inferred from the privilege class:
