@@ -411,9 +411,9 @@ NamespaceRole(x) not-subset TypeRole(x)
 ```
 
 A well-formed Object's `Val2` is navigable, so every pure Object has namespace
-role. A type-role Object additionally has a Pattern satisfying
-`DefinesVal1(P)`. A namespace-role-only Object may have ordinary navigable
-members but fails that judgment. These are roles over one Object ontology, not
+role. A type-role Object is one for which `TypeRole` holds. A
+namespace-role-only Object may have ordinary navigable
+members but does not satisfy that judgment. These are roles over one Object ontology, not
 facet inclusion or type-system subtyping.
 
 See `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §3 for the full

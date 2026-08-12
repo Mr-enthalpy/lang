@@ -192,30 +192,30 @@ Object subclasses:
 
 ```text
 Pure(x)          <=> Val1?(x) = null
-DefinesVal1(P)   <=> P determines an admissible Val1 schema
 Navigable(V)     <=> V is a well-formed finite semantic-selector map
                      on which ProjectionSlot lookup is defined
 
 WellFormedObject(x) => Navigable(Val2(x))
 NamespaceRole(x)   <=> Pure(x)
-TypeRole(x)        <=> Pure(x) and DefinesVal1(P(x))
+TypeRole(x)        =>  NamespaceRole(x)
 
 TypeRole subset NamespaceRole
 NamespaceRole not-subset TypeRole
 ```
 
-`DefinesVal1(P)` is an imported judgment in this layer. Its derivation belongs
-to the later pattern-extraction/type-checking semantics, together with the
-relation of `P` to both `Val1` and `Val2`. This layer only consumes it to
-define `TypeRole`.
+`TypeRole(x)` is an imported relational judgment over the Pattern/Object
+relation. Its derivation belongs to the subsequent P–Val1–Val2
+relational-semantics design, which will define how `P` simultaneously
+constrains, observes, and extracts both `Val1` and `Val2`. This layer only
+consumes `TypeRole` as an opaque predicate.
 
 `Navigable(V)` means selector lookup yields the resident-specific
 `ProjectionSlot` defined in §7; a missing final selector still yields a slot
 whose contents are `None`, while continuation from `None` is invalid. Being a
 well-formed Object already supplies such a `Val2`, including the empty map.
 Consequently every pure Object has `NamespaceRole`; namespace capability is not
-an extra entity or witness. A pure Object whose Pattern does not define an
-admissible Val1 remains navigable but is not usable as a type. These are
+an extra entity or witness. A pure Object for which `TypeRole` does not hold remains
+navigable but is not usable as a type. These are
 predicates; no `NamespaceFacet`, hidden Q/type-role member, or parallel
 `NamespaceObject` ontology is introduced. Bare Product and the empty pure
 Pattern therefore have intrinsic structural namespace capability through their
@@ -971,8 +971,8 @@ operand or argument position performs no implicit type conversion. An explicit
 AsType(S : symbol) = Q
                      when Val1(S) = ⟨Q, V⟩ and TypeRole(Q)
 
-AsType(x) = x       when Pure(x) and DefinesVal1(P(x))
-AsType(x) undefined when Pure(x) and not DefinesVal1(P(x))
+AsType(x) = x       when TypeRole(x)
+AsType(x) undefined when Pure(x) and not TypeRole(x)
 ```
 
 The second rule validates an existing pure Object; it neither wraps a namespace
@@ -1308,7 +1308,7 @@ AsType(E)  =  E |> type
 ```
 
 `AsType` either selects Symbol's unique pure role member `Q` when `TypeRole(Q)`
-holds or validates an already-pure Object by `DefinesVal1(P)` as specified in
+holds or validates an already-pure Object by `TypeRole` as specified in
 §5.1. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 

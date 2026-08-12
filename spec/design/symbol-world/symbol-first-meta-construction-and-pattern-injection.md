@@ -1160,8 +1160,8 @@ keeps `(t fn)` as the return symbol's root and includes the externally owned
 The self-root check is conditional on `Q`, not on `TypeRole(Q)`. A namespace-only
 `Q` is self-rooted and may own fresh invocation-local material. A return Symbol
 with no `Q` does not acquire a synthetic role member merely to satisfy this
-rule. When `TypeRole(Q)` does hold, `DefinesVal1(P(Q))` is the additional type
-refinement; namespace-only `Q` is not required to define Val1.
+rule. When `TypeRole(Q)` does hold, it is the additional type
+refinement (imported judgment); namespace-only `Q` is not required to define Val1.
 
 ### 4.5 Formal return material
 
@@ -1534,6 +1534,12 @@ s -= contribution_family          -> removes a typed contribution family from Va
 
 in every case:  P_symbol unchanged
 ```
+
+These equations are value-algebra shorthand describing how `Val1(s)`
+transforms. They are not source-level elaborations that implicitly form
+borrow edges or adapt `s` into `s ref`. An explicit source operation
+would spell `s ref += contribution` and satisfy the ordinary borrow
+formation boundary (§9).
 
 A symbol is therefore an ordinary value that can be computed, passed, and
 returned like any other — including by `compile`, subject only to root

@@ -805,8 +805,8 @@ NamespaceRole(x) not-subset TypeRole(x)
 ```
 
 This is not type-system subtyping. Every pure Object is navigable and therefore
-has `NamespaceRole`; `TypeRole(x)` additionally requires
-`DefinesVal1(P(x))`. Namespace-role-only Objects remain navigable
+has `NamespaceRole`; `TypeRole(x)` is an additional imported
+judgment over pure Objects. Namespace-role-only Objects remain navigable
 but cannot be used by `AsType`. `TypeFacet` and `NamespaceFacet` remain names for
 current implementation buckets only, not target ontology.
 

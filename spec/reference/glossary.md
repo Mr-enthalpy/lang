@@ -641,8 +641,8 @@ The complete equations and well-foundedness rules belong to
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
 `Val1? = absent` is payload absence only. In the well-formed Object kernel every
-`Val2` is navigable, so `Pure(x) <=> NamespaceRole(x)`. `TypeRole(x)` further
-requires `DefinesVal1(P(x))` and is therefore the strict refinement.
+`Val2` is navigable, so `Pure(x) <=> NamespaceRole(x)`. `TypeRole(x)` is an
+additional imported judgment and is therefore the strict refinement.
 Construction lineage and carrier place remain outside normal form.
 
 _See also: Policy Pair, Borrow view, ConstructionLineage._
@@ -1947,7 +1947,7 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
 For Symbol it selects the unique pure role member `Q` exactly when
 `TypeRole(Q)`. For a pure Object `x`, it is the
-identity exactly when `DefinesVal1(P(x))`; otherwise it is undefined. It never
+identity exactly when `TypeRole(x)`; otherwise it is undefined. It never
 wraps a namespace-role Object or searches it for a hidden Q/type-role member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
 only an already-pure type slot uses `t@`.

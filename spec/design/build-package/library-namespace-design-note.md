@@ -108,7 +108,7 @@ The current graph/provenance model may record three namespace origin categories:
 
 In the final model these are navigable-construction origins, not mutually
 exclusive symbol kinds. Every pure Object has `NamespaceRole`; `TypeRole(x)`
-further requires `DefinesVal1(P(x))`, so it is a strict refinement.
+is an additional imported judgment, so it is a strict refinement.
 Current `SymbolCell` facet buckets are implementation substrate only.
 
 A navigable child name is role-aware: object/function symbols and pure

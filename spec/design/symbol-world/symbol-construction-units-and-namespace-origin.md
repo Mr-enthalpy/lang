@@ -114,30 +114,35 @@ parallel nominal Object kinds. The canonical definitions are owned by
 Pure(x)          <=> Val1(x) = absent
 WellFormedObject(x) => Navigable(Val2(x))
 NamespaceRole(x) <=> Pure(x)
-TypeRole(x)      <=> Pure(x) and DefinesVal1(P(x))
+TypeRole(x)      =>  NamespaceRole(x)
 
 TypeRole subset NamespaceRole
 NamespaceRole not-subset TypeRole
 ```
 
+`TypeRole` is an imported judgment; see
+`type-values-places-and-borrow-views.md` §2.1. Its derivation belongs to the
+subsequent P–Val1–Val2 relational-semantics design. This layer only consumes
+it as an opaque predicate.
+
 This is not type-system subtyping. It describes role implication:
 
 ```text
 Pure(x)          => x is navigable and has NamespaceRole
-TypeRole(x)      => P(x) defines admissible Val1
+TypeRole(x)      => x is usable as a type (imported judgment)
 NamespaceRole(x) and not TypeRole(x)
                  => x is navigable but unavailable to AsType
 ```
 
 A type-role Object's Pattern may contain pattern-material leaves. A
 namespace-role-only Object may still contain ordinary navigable `Val2` members,
-but `AsType(x)` is undefined because `DefinesVal1(P(x))` is false.
+but `AsType(x)` is undefined because `TypeRole(x)` does not hold.
 
 When one construction establishes `TypeRole(x)`, the Object and its navigable
 `Val2` share one owned construction origin. An Object whose namespace role was
 created by another origin cannot later acquire a new type-role definition. In
 particular, if `ns1::ns` already comes from physical directory `ns/ns1/`, source
-in the parent directory may not install a new `DefinesVal1(P)` contribution at
+in the parent directory may not install a new type-role definition at
 that Object: doing so would give one navigable construction two creation origins.
 
 ## 4. Construction Units
