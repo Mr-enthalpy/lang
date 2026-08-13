@@ -10,9 +10,12 @@ The canonical future result-rank and construction boundary is
 It supersedes the older formal-meta-return interpretation that used `r = ...`
 for generation and `r === ...` for forwarding, and also supersedes the interim
 single-form `r = ...` reading: the final model distinguishes
-`let r = expr;` (add fresh member), `let r === path;` (add alias member),
-`r = expr;` (overwrite existing member), and the `r;` terminal (cluster
-delivery, not a member event). References to the older splits below are
+ordinary `let` creation, existing-place `=` writes, and return control transfer.
+The current `let r = expr;` / `r = expr;` / `r;` construction-carrier mapping is
+a compatibility encoding, not special long-term semantics of the return-slot
+name. There is no fourth alias-member event — the semantic alias/forwarding
+direction is retired.
+References to the older splits below are
 explicitly transitional implementation notes, not final semantics.
 Namespace-origin and `MetaConstructionUnit` ownership are canonical in
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
@@ -67,12 +70,17 @@ restricted applicability. This slice does not execute arbitrary named strategy
 rules and does not grant `default` an implicit priority.
 
 This `r === ...` behavior describes only the restricted v0.8 evaluator that is
-currently implemented. The final formal meta model uses the construction-effect
-family on the return cluster: `let r = expr;` adds a fresh member,
-`let r === path;` adds an alias member (Val2 forwarding; forwarding an external
-type value fails the self-root invariant), `r = expr;` overwrites an existing
-member, and `r;` is the delivery terminal. Ordinary `let a === b` outside meta
-bodies remains the same alias mechanism applied to a declaration-layer symbol.
+currently implemented; it is a transitional spelling carried by the frozen
+parser surface, not a semantic forwarding mechanism. The final formal meta model
+does not grant the return-slot name special `let` semantics: ordinary `let`
+creates a Symbol/member, ordinary `=` writes an existing place, and the return
+event alone delivers control. The current `let r = ...` return-cluster behavior
+is a transitional compatibility encoding of those separate operations. Where a
+member must observe an external object, it holds a borrow view
+(`ref` / `share`), which is an ordinary value — and a borrow edge is not owned
+material, so it is not promoted at seal. Installing an external pure Object as
+the meta return role member still fails the self-root invariant. No declaration form,
+inside or outside a meta body, forwards a symbol or a place.
 
 Unsupported selected body forms return hard diagnostics. In particular, a body
 that requires guarded branch evaluation, predicate calls, postfix `?`,
@@ -220,8 +228,10 @@ MetaPartial invokes restricted overload selection under MetaAction lookup
 selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
 RHS value is `ForwardedValue(int)`
 `: type` assertion checks that the RHS is a type-level value
-binding materialization installs `X` as a fresh symbol/place whose type facet
-projects the `int` type value; this is not ordinary `let X === int` aliasing
+binding materialization installs `X` as a fresh symbol/place whose unique pure
+role member `Q` projects the `int` type value and satisfies `TypeRole(Q)`; the
+binding is an ordinary fresh symbol and place,
+not a forwarding of `int`'s own symbol or place
 ```
 
 The identity path does not require full canonical sum-pattern values. A
@@ -277,9 +287,12 @@ The language wants exactly one invocation model. The same mechanism must serve:
 
 There is intentionally no second mechanism reserved for "compile-time code."
 Compile-time behavior uses the ordinary callable framework under either
-`compile` capability (producing `PatternValue`) or `meta` capability (producing
-`SymbolConstructionValue`). Policy and partial/strict demand determine whether
-the callable may execute or residualize; they do not merge the two result ranks.
+`compile` capability (computing a root-conserving `PatternValue` with no root
+authority of the compile coordinate itself) or ordinary `meta` capability
+(computing a `PatternValue` and establishing a navigable `M`). A privileged
+builtin instead follows only its member-specific owner rule. Policy and
+partial/strict demand determine whether
+the callable may execute or residualize; they do not merge the two capabilities.
 
 ```text
 There is no privileged `if constexpr` split.
@@ -324,7 +337,7 @@ The judgments are:
 
 ```text
 Gamma |- ResolveSymbol(path) => Symbol
-Gamma; Phase |- ExposePolicySlice(value_facet(Symbol)) => Val2View*
+Gamma; Phase |- ExposePolicySlice(typed_val_members(Symbol)) => Val2View*
 
 Gamma |- invoke(selected object, InvocationFrame)
       => result(P2v:P2p)
@@ -333,9 +346,10 @@ Gamma |- derive_function_object_P1(P2v:P2p) => P1base
 Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 ```
 
-Omitted P1 keeps the complete result. Single P1 `Q` selects values visible
-under Q and follows their associated pattern components. Pair P1 `Qv:Qp`
-filters both. Single P1 is not normalized to `Q:Q`.
+Omitted P1 keeps the complete result. Single P1 `q` selects values visible
+under `q` and follows their associated pattern components. Pair P1 `qv:qp`
+filters both. Single P1 is not normalized to `q:q`. These lower-case policy
+metavariables are distinct from the Symbol pure-role member `Q`.
 
 P2 is an explicit pair or a context-specific single-policy shorthand:
 
@@ -370,16 +384,19 @@ Visibility does not imply executability. A static view may inspect a
 runtime-capable object's pattern component or derived companion, but may not
 execute the original runtime value body as compile/meta.
 
-`compile` and `meta` remain different capabilities: compile computes static
-values and PatternValue; meta constructs SymbolConstructionValue in a
-MetaConstructionUnit. OpenStatic exposes both meta and compile; SealStatic
+`compile` and `meta` remain different capabilities: compile transports and
+computes static values construction-transparently while generating no new root;
+meta computes values and establishes a
+MetaConstructionUnit root. OpenStatic exposes both meta and compile; SealStatic
 exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
 
 There is no independent P3 and no scalar policy for the whole result symbol.
 Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
-retains its own pair. Current `self_policy`, `body_entry_policy`, and
+retains its own pair. Return positions inherit P1 and may refine mutability
+only; parameters symmetrically refine inherited P2 mutability only. Current
+`self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional compatibility transport.
 
 This separation is load-bearing for candidate qualification, partial versus
@@ -395,7 +412,7 @@ earlier decision.
 resolve name/path:
   -> Symbol
 
-project value facet:
+project typed val members:
   -> zero or more heterogeneous values
 
 stage-visible object pool:
@@ -463,7 +480,7 @@ A formal sketch of the intended end-to-end frame:
 
 ```text
 Gamma |- ResolveSymbol(callee_path) => Symbol
-Gamma; Phase |- value_facet(Symbol) => V*
+Gamma; Phase |- typed_val_members(Symbol) => V*
 Gamma; Phase |- ExposePolicySlice(V*) => V_phase*
 Gamma; Phase |- type(V_phase*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
@@ -505,7 +522,7 @@ Evaluation demand is orthogonal to execution capability and result rank:
 ```text
 execution capability: compile / meta / seal / runtime
 evaluation demand:     partial | strict
-result rank:           PatternValue | SymbolConstructionValue | runtime value
+result rank:           PatternValue | runtime value
 ```
 
 `MetaPartialContext` and `MetaStrictContext` retain their existing purpose: they
@@ -534,30 +551,78 @@ execution capability. A successful compile-time result is not merely a
 `TypeValueId`:
 
 ```text
-compile callable -> PatternValue
-meta callable    -> SymbolConstructionValue : symbol
+compile callable -> PatternValue, construction-transparent, root-conserving,
+                    and with no root authority
+ordinary meta callable
+                  -> symbol PatternValue, plus authority to establish and seal
+                     one navigable MetaInstanceRoot M
+privileged builtin
+                  -> PatternValue, with only its member-specific owner rule
 runtime callable -> runtime value
 ```
 
-`PatternValue` includes ordinary compile-time values, type values, and
-structured pattern values. A type value is not thereby an installed type
-symbol. `SymbolConstructionValue` carries symbol/facet/pattern construction
-material but remains uninstalled.
+`PatternValue` includes ordinary compile-time values, type values, symbol values,
+and structured pattern values. A type value is not thereby an installed type
+symbol. The `compile` / `meta` difference is world authority, not result rank:
+there is no third rank, and the meta result is an ordinary value of type
+`symbol`. What the current implementation calls `SymbolConstructionValue` is
+the transitional carrier for that ordinary Symbol's multi-member material; it
+remains uninstalled and does not define another ontology.
+
+Two names keep classifier and content shape distinct:
+
+```text
+ReturnClassifier(ordinary meta) = symbol
+ReturnShapeWithinSymbol         = Σ = ⟨ Q?, V ⟩, with |Q| <= 1 and Pure(Q)
+```
+
+`Q` may be present or absent and `V` may contain any ordinary sibling values.
+Those are content facts within one returned Symbol Object, not type/val/namespace
+return categories. `Q` is the one optional pure role member: namespace
+projection selects it directly, while type projection additionally requires
+`TypeRole(Q)`. “Meta returns type” is only shorthand for a `symbol` result whose
+content is `⟨Q, empty⟩` and whose `Q` satisfies `TypeRole`.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
-slot relation, rank-directed identity, type self-root validation, and complete
+slot relation, rank-directed identity, pure-role self-root validation, and complete
 navigation atom belong to
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 This document consumes those result ranks only to define candidate preparation,
 policy filtering, and partial/strict reduction; it does not restate their
 construction semantics.
 
+An ordinary meta invocation additionally forms a globally reusable instance key:
+
+```text
+MetaInstanceKey(F, args)
+  = MetaCallableIdentity(F) × Addr(Product(Canonicalize(args)))
+
+well formed only if:
+  forall a in Canonicalize(args): GlobalKeyable(a)
+```
+
+The canonical owner separates callable kind, call admissibility, and effect:
+`OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and result classifier `symbol`;
+`WellFormedMetaCall(F,args)` contains admissibility plus `GlobalKeyable`; only a
+well-formed call establishes `RootIdentityExists(M)` and construction-local
+navigation. Root identity is not external namespace installation.
+
+`GlobalKeyable` is a dependency condition evaluated at key-creation time, not a
+source-location condition. A meta-local binder may hold and pass a value whose
+dependencies are already globally stable or already promoted. A fresh ephemeral
+PatternValue dependency created inside the current meta invocation may not enter
+another `MetaInstanceKey`; promotion that may occur only when an enclosing meta
+later seals cannot justify an inner key now. Horizontal borrow targets are also
+global-key dependencies even though they are excluded from owned recursive
+normalization: `GlobalKeyable(Borrow(q))` requires `q` to be already globally
+stable. `compile` and transparent construction intrinsics do not impose this
+boundary because they form no MetaInstance key and generate no root.
+
 The public future boundary is conceptually:
 
 ```text
 InvocationResult =
   | PatternValue(...)
-  | SymbolConstructionValue(...)
   | RuntimeValue(...)
   | Residual(expr, suspension_reason)
   | Diagnostic(error)
@@ -567,17 +632,18 @@ The current Rust substrate still uses `MetaInvocationResult::Value` with
 `MetaInvocationValue::{ForwardedValue, GeneratedConstructionValue,
 GeneratedTypeDefinitionValue}`. Those cases describe transitional v0.8/v0.9
 implementation transport, not the final public rank model. It also does not
-implement `MetaInstanceScopeId`, meta return type self-root checking, complete
+implement `MetaInstanceScopeId`, meta return pure-role self-root checking, complete
 `compile`/`meta` separation, or the canonical meta-instance navigation atom.
 
 The canonical note also owns the complete invocation navigation atom; this
 document assumes that atom has already been resolved before candidate identity
 and caching are finalized.
 
-Namespace graph installation is not part of formal invocation. Binding or
-injection consumes a construction value, resolves a writable `PlaceId`, forms a
-`NamespaceDelta`, and installs it atomically. Internal control-state vocabulary
-must stay below the invocation boundary.
+Namespace graph installation is not part of formal invocation. `let` consumes a
+value and creates a destination/member through a `NamespaceDelta`; ordinary `=`
+writes an existing place. Place-level `inject` is a bounded read--extend--write
+operation on one existing type slot and creates no member or root. Internal
+control-state vocabulary must stay below the invocation boundary.
 
 When candidate preparation or invocation cannot proceed, diagnostics should name
 the current semantic boundary:
@@ -611,8 +677,8 @@ well-identified call; it does not defer candidate choice.
 
 ### 4.2 Expansion / binding layer
 
-After the invocation layer produces a `PatternValue` or
-`SymbolConstructionValue`, the expansion / binding layer applies it to a build
+After the invocation layer produces a `PatternValue`, the expansion / binding
+layer applies it to a build
 or declaration context. This includes:
 
 ```text
@@ -636,7 +702,7 @@ permanent model.
 `IdentityType` proves graph-resolved invocation plumbing: it demonstrates that
 a prepared candidate can flow through the candidate preparation, key
 computation, cache lookup, and primitive reduction pipeline. It does **not**
-prove final `PatternValue` or `SymbolConstructionValue` semantics.
+prove final `PatternValue` or meta-construction semantics.
 
 ```text
 IdentityType proves:
@@ -649,16 +715,16 @@ IdentityType proves:
 
 IdentityType does NOT prove:
   PatternValue computation under compile capability;
-  SymbolConstructionValue production under meta capability;
-  MetaInstanceScopeId or return TypeFacet self-root validation;
+  meta root establishment and sealing under meta capability;
+  MetaInstanceScopeId or returned type-role member self-root validation;
   rank-directed symbol/type/value parameter identity;
-  declaration binding from arbitrary meta return values;
+  declaration binding from arbitrary within-Symbol meta return shapes;
   extraction-facing interface exposure;
   ordinary generic type constructor behavior.
 ```
 
 Any implementation, test, or document that uses `IdentityType` as evidence that
-ordinary `PatternValue` / `SymbolConstructionValue` semantics have been
+ordinary `PatternValue` / meta-construction semantics have been
 implemented is incorrect.
 
 ## 5. Match and If Share One Pattern Mechanism
@@ -782,13 +848,14 @@ Neither class grants arbitrary token splicing or parser re-entry.
 A meta object may produce:
 
 ```text
-a SymbolConstructionValue with symbol/facet/pattern construction material
+a pattern value with symbol/facet/pattern construction material
 a residual expression
 a diagnostic
 ```
 
-Graph deltas and declaration bindings belong to the expansion/binding layer
-(§4.2), not the ordinary returned-value layer.
+Graph deltas and member creation belong to the expansion/binding layer (§4.2),
+not the ordinary returned-value layer. Place-level `inject` writes one already
+existing type slot; it creates no member and installs no new root.
 
 A `compile` callable uses the same invocation framework but produces a
 `PatternValue`, not symbol construction. The distinction is an execution
@@ -843,10 +910,11 @@ Current state:
   integration-test substrate, not as a stable owner-construction API.
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with the
-  construction-effect family (`let r = expr;` fresh member, `let r === path;`
-  alias member, `r = expr;` overwrite, `r;` delivery terminal) producing a
-  `SymbolConstructionValue`; the alias form is the same cluster-member
-  mechanism as namespace-level `let name === target` aliasing.
+  construction-effect family (`let r = expr;` fresh member, `r = expr;` write,
+  `r;` delivery terminal) producing an ordinary Symbol PatternValue (current
+  carrier: `SymbolConstruction`); the legacy `===`
+  spelling has no successor, because the semantic alias/forwarding direction is
+  retired.
 - The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and
   Runtime variants; it projects flat visibility metadata while the restricted
   overload selector also checks the
@@ -855,10 +923,11 @@ Current state:
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
-Not yet present are `SymbolCell` facets, `PatternValue` as the compile result
-model, `SymbolConstructionValue` as the meta result model,
-`ResolvedPatternScope`, final binding-independent `struct` owner resolution, or
-functional `inject`.
+Not yet present are Symbol `Q` role projection / implementation caches,
+`PatternValue` as the single static
+result model, meta root establishment/sealing,
+`ResolvedPatternScope`, final binding-independent `struct` owner resolution,
+pure `extend`, or place-level `inject`.
 
 Intended convergence: the existing `struct` and `verify` paths should eventually
 stop being bespoke code and instead become clients of one shared meta invocation
@@ -913,7 +982,7 @@ layered policy / compile projection / companions / automatic require:
   `../symbol-world/symbol-policy-and-compile-flow-projection.md`
 
 type/place/alias identity:
-  `type-values-places-and-alias-forwarding.md`
+  `type-values-places-and-borrow-views.md`
 
 later extraction/static pattern semantics:
   `static-pattern-spaces-and-extraction-chains.md`
@@ -969,16 +1038,17 @@ pattern, type-value, and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
-2. Introduce SymbolCell facets and symbol-first value-facet candidate lookup.
+2. Introduce Symbol `Q` role projection and typed value-member candidate lookup.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.
-5. Introduce SymbolConstructionValue and rank-directed canonical instance keys.
+5. Introduce the meta-construction carrier and rank-directed canonical instance
+   keys.
 6. Carry canonical `Pv:Pp` through candidate qualification and every
    invocation-frame slot.
 7. Introduce ResolvedPatternScope and binding-independent `struct` ownership.
 8. Move `struct` and `verify` dispatch behind the common invocation engine.
-9. Add functional child-only `inject` without graph installation.
+9. Add pure child-only `extend`, then the read--extend--write `inject` wrapper.
 10. Add partial versus strict reduction over the intrinsic D/Done match flow.
 11. Add mechanical compile-flow projection, derived companions, must-select,
     and shared inferred-require/body evaluation nodes.

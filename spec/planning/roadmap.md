@@ -146,8 +146,9 @@ v0.4 normalization boundary is recorded in
 `spec/contracts/v0.4-normalization-prototype-notes.md`.
 
 v0.4 did **not** implement name resolution, type checking, operator lookup,
-alias resolution, pattern-head resolution, canonical matching, or closure
-materialization.
+alias-target resolution, pattern-head resolution, canonical matching, or closure
+materialization. (Alias-target resolution has since been retired as a semantic
+direction; `LetAliasAst` remains frozen parser material only.)
 
 ---
 
@@ -221,7 +222,8 @@ Narrative:
 - v0.6 builds package / namespace graph infrastructure.
 - v0.7 introduces early meta-function lookup and expansion.
 - v0.8 evolves the restricted type-shaped evaluator toward `compile`
-  `PatternValue` computation and `meta` `SymbolConstructionValue` construction.
+  `PatternValue` computation and `meta` ordinary-Symbol construction; the
+  current `SymbolConstruction` is an implementation carrier only.
 - Later stages resume canonical forms, pattern spaces, value-directed
   compile/meta control flow, type/kind checking, closure materialization,
   ownership/NLL, the semantic prototype, HIR, and codegen.
@@ -230,7 +232,7 @@ The canonical detailed direction for v0.6–v0.8 is
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`, building on
 `spec/design/build-package/build-system-design.md`, `spec/design/build-package/namespace-assembly-v0.md`,
 and `spec/design/build-package/package-manifest-v0.md`. Future field-projection and
-injection-place constraints are recorded in
+extension-place constraints are recorded in
 `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md`.
 
 Before formal meta object invocation can become stable, package/manifest records
@@ -242,13 +244,15 @@ The active design route (documented under `spec/design/`) is:
 ```text
 package/manifest identity
   -> namespace graph / SymbolCell (current substrate: SymbolObject)
-  -> SymbolId / PlaceId / PatternValue / TypeValueId / AliasChain
+  -> SymbolId / PlaceId / PatternValue / TypeValueId / borrow views
   -> ProductObject / ArgProductShape
   -> pattern normalization + first-order candidate shapes
   -> compile PatternValue computation
-  -> meta SymbolConstructionValue construction
-  -> ResolvedPatternScope / struct / functional inject
-  -> let binding/injection + NamespaceDelta install
+  -> Object-closed container PatternValues: bare Product / T*N / T*omega /
+     product / Symbol (no compiler-private collection identity)
+  -> meta Symbol-valued construction (current SymbolConstruction is substrate)
+  -> ResolvedPatternScope / struct -> symbol / pure extend / place inject
+  -> let-only creation + existing-place writes + NamespaceDelta install
   -> formal invocation demand/policy integration
   -> mechanical lowering family
   -> later runtime lookup
@@ -303,7 +307,7 @@ Must cover:
 - physical namespace skeleton from directories
 - implementation file as source fragment; file name does not contribute a
   namespace segment
-- namespace facet creation has exactly one origin: physical directory, one
+- namespace-role Object creation has exactly one origin: physical directory, one
   source construction unit, or one canonical meta construction unit
 - physical directory namespaces define contribution authority: only files in
   that directory may create their direct contents
@@ -316,8 +320,8 @@ Must cover:
 - resolver returning a `SymbolObject`, not a string path
 - provenance and diagnostic attachment
 - role-aware child-name buckets: object/function role and namespace-subspace
-  role; same-role conflicts are hard errors, while field functions may share
-  names with projection namespace subspaces such as `ref` / `share`
+  role; same-role conflicts are hard errors. This remains generic graph
+  substrate and is not a semantic `ref` / `share` projection-space model
 - ordinary source authority begins at direct children; one source unit may fully
   construct a new child subtree in its own delta, while parallel files may not
   reopen that subtree
@@ -343,7 +347,7 @@ Must cover:
 - conflict is a hard error by default; no merge / overlay / duplicate /
   overload-set semantics or package overlay in v0.6
 - current cross-file closure forbids type-child, namespace-child, ordinary
-  value-member, and overload-entry injection into an existing symbol; value
+  value-member, and overload-entry extension into an existing symbol; value
   overload union may be reconsidered only after explicit merge authority and
   stable candidate identity are designed
 - engineering invariants: snapshot + transaction delta discipline,
@@ -368,8 +372,9 @@ generated type-associated namespaces are installed atomically. v0.7-prep has
 implemented policy-aware resolver visibility and callable policy-plane
 clarification: `PolicyEnv` is resolver visibility, not callable execution
 permission, and generated field functions are `meta+runtime` visible symbols
-with runtime-only bodies. Fields named `ref` / `share` are accepted as
-object-role field functions that coexist with projection namespace subspaces.
+with runtime-only bodies. The current implementation's legacy projection nodes
+are transitional; target field access uses one same-name associated Symbol with
+`T` / `T ref` / `T share` receiver candidates.
 The crate also implements a bounded cross-Policy demand preparer: ordinary omitted P1
 continues to preserve the complete RHS, explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without
@@ -384,16 +389,17 @@ admissible and reuse ordinary `matching > unspecified > opposite` preference.
 The four default transport members in the toolchain-source fixture declare complete
 `(compile || runtime):compile` input/output Policies; `Project_in` and
 `Project_out` select the compile and runtime views around the ordinary result.
-Current source has no fallback role (`Af = A`). The prototype fixture verifies
-that if/when such a future strategy exists, suppression runs after full
-admissibility and before Bp', and an admissible non-fallback delete suppresses
-fallback without retry.
+Current source has no fallback role (`D = A`). The prototype fixture verifies
+that if/when such a future declaration-side strategy exists, suppression runs
+after full admissibility and before Bp', and an admissible non-fallback delete
+suppresses fallback without retry. A distinct future call-site annotation acts
+before candidate generation; only this pipeline position is closed here.
 The retained endpoint-only maxima helper is private. The connected
 `PreparedCallCandidate` path now composes the implemented ordinary
 formal/phase coordinates and optional migration endpoint coordinates in one
 Bp' product before a single maxima pass.
 Policy migration cannot repair Type/Pattern structural failure; explicit
-`ref`/`share`/`alias` mechanical operations remain separate ordinary calls.
+`ref`/`share`/`rebind` mechanical operations remain separate ordinary calls.
 T and Tnum registries
 carry current first-order
 TypeValue projections derived from installed Type symbols, not final canonical
@@ -406,7 +412,7 @@ associated `()`, `InvocationFrame`, ordinary candidate pipeline, and complete
 result entries. Pattern-owner-authorized calls enter the same trunk with an
 explicit semantic receiver. A typed `ToolchainGlobalSourceRoot` supplies
 source-visible root construction authority (`Gsrc`); ordinary packages retain
-a non-empty install prefix and cannot inject direct root members. `Gsrc` is not
+a non-empty install prefix and cannot install direct root members. `Gsrc` is not
 a prelude and cross-package calls still require public visibility.
 
 Atomic Runtime migration can consume a checked request through source-backed
@@ -442,7 +448,8 @@ Must cover:
 - closed `SyntaxObject` passing
 - `assert` as a compile-time hard-check primitive
 - `struct` as the first real globally visible
-  `BuiltinPrivilegedAstMetaFunction` object from the core namespace
+  `BuiltinPrivilegedAstMetaFunction` object from the core namespace, producing
+  a Symbol with one `Q_struct` satisfying `TypeRole` plus generated partner families
 - current meta call replacement adapter
 - current `MetaExpansionResult` transport (replacement object / namespace delta /
   diagnostics / provenance); final formal invocation returns an uninstalled
@@ -458,7 +465,9 @@ Must cover:
 - policy fields on callable objects retained as transitional symbol,
   body-entry, and result metadata; final source semantics use canonical
   `Pv:Pp`, contextual P1 projection, P2 result normalization, and no independent
-  `P3`; the typed pair substrate now exists, while migration of every legacy
+  `P3`. Parameters may refine inherited P2 mutability, and returns symmetrically
+  may refine inherited P1 mutability; neither may alter other policy dimensions.
+  The typed pair substrate now exists, while migration of every legacy
   `PolicySet` consumer and end-to-end execution checking remain future work (see
   `spec/design/policy-capability/policy-visibility-symbols.md`)
 
@@ -500,8 +509,8 @@ Before implementing ordinary generic type-style meta-functions, the v0.8
 construction contract must be absorbed:
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`. The following are
 preconditions, not optional local conveniences: `ProductObject` /
-`ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / `AliasChain`,
-`SymbolConstructionValue` / `ResolvedPatternScope`, contextual P1 projection,
+`ArgProductShape`, `PatternValue` / `TypeValueId` / `PlaceId` / borrow views,
+transitional `SymbolConstruction` transport / `ResolvedPatternScope`, contextual P1 projection,
 P2 pair normalization and function-object stage derivation while preserving
 current metadata transport,
 canonical meta instance key, and `NamespaceDelta` atomic install. This does not
@@ -557,9 +566,10 @@ targets. Detailed design note:
 
 #### v0.11+ — Value-directed compile/meta control flow
 
-Extend `compile` PatternValue computation and `meta` SymbolConstructionValue
+Extend `compile` PatternValue computation and `meta` ordinary-Symbol
 construction with value-directed control flow beyond the v0.8 restricted
-bootstrap.
+bootstrap. `SymbolConstruction` remains an implementation substrate until it is
+lowered into that ordinary value domain.
 
 This later track owns implementation planning for mechanical compile-flow
 projection over ordinary call nodes, complete derived `Val2` compile-companion
@@ -609,7 +619,8 @@ The following remain deferred and are not numbered precisely here:
   projection, P2 result validation, function-object views, and compile/runtime/
   seal namespace lookup; formal parameter elaboration must feed the same
   P2-inherited const/mut Pattern both to body entry and to the candidate's
-  external policy product-order position;
+  external policy product-order position, while return elaboration applies the
+  symmetric P1-inherited mutability-only refinement;
 - seal dependency ordering, complete reflection objects, and any future policy
   stage beyond the current three-phase model;
 - integrating const/mut product order into the complete overload resolver, plus

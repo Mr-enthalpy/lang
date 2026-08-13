@@ -79,11 +79,11 @@ the restricted evaluator reports the structured
 `UnsupportedCanonicalSumPatternValue` diagnostic instead of treating `|` as
 policy union, expression-level operator lookup, or `+` reduction.
 
-This is an implementation-substrate note. Final formal meta return material is
-the construction-effect family (`let r = expr;` fresh member,
-`let r === path;` alias member, `r = expr;` overwrite, `r;` delivery
-terminal) building a `SymbolConstructionValue`; bare `r === ...` is not a
-future formal-return category.
+This is an implementation-substrate note. Target semantics build an ordinary
+Symbol using ordinary `let` creation and existing-place `=` writes, then return
+it through a separate control event. The current `let r`/`r =`/`r;` carrier
+mapping and `SymbolConstruction` are compatibility substrate; bare `r === ...`
+is not a future formal-return category, and there is no alias-member event.
 
 Restricted overload failure is structured in v0.8. Ambiguous candidates,
 missing source-declared callables, lookup-phase visibility misses,
@@ -360,7 +360,7 @@ differ.
 
 This document does **not** fully specify symbol identity, places, or injection
 targets; the canonical `TypeValueId` / `PlaceId` / `SymbolId` distinction is
-defined in `spec/design/symbol-world/type-values-places-and-alias-forwarding.md`. Here it is
+defined in `spec/design/symbol-world/type-values-places-and-borrow-views.md`. Here it is
 enough to state the comparison rule: candidate matching uses type value, not
 source name.
 
@@ -527,7 +527,7 @@ them for its definitions.
   pattern-space / extraction-chain semantics. The pattern normalization layer
   here is an earlier candidate-shape layer and is a different layer from that
   pattern-space design.
-- `type-values-places-and-alias-forwarding.md` — the canonical `TypeValueId` /
+- `type-values-places-and-borrow-views.md` — the canonical `TypeValueId` /
   `PlaceId` / `SymbolId` distinction that first-order type matching here relies
   on. First-order type matching uses `TypeValueId`; that document defines what
   type-value, place, and symbol identity mean.

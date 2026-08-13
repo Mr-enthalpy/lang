@@ -66,7 +66,7 @@ Implemented for this slice:
   never as a second resolver or source-language callable family.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
-symbol, projects and enumerates its heterogeneous value facet, observes each
+Symbol, projects and enumerates its heterogeneous typed `V` members, observes each
 object's policy-projected view, obtains each surviving value's type, resolves each
 type-associated `()` entry, discards non-callable entries, and then performs
 parameter-pair, stage, P2-result, and applicability filtering to a unique
@@ -134,11 +134,11 @@ This block records implementation behavior only; it must not be used to infer
 a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
-meta-return semantics. Final meta construction uses the construction-effect
-family on the return cluster — `let r = expr;` adds a fresh member,
-`let r === path;` adds an alias member (Val2 forwarding), `r = expr;`
-overwrites an existing member, and `r;` delivers the cluster — producing a
-`SymbolConstructionValue`. See
+meta-return semantics. Target semantics use an ordinary Symbol value: `let`
+creates members, `=` writes existing places, and the return event transfers
+control. The current `let r`/`r =`/`r;` cluster behavior is a transitional
+compatibility encoding, and `SymbolConstruction` is its carrier rather than a
+result rank. There is no alias-member event. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
@@ -177,6 +177,7 @@ This document does **not** define:
   `../lifetime/lifetime-policy-and-overload-boundary.md`
 - ADL or unrestricted symbol search
 - implicit type conversion or coercion
+- implicit borrow formation (`T` is never repaired to `T ref` / `T share`)
 - partial-application overloads
 - package-internal symbol aliases as overload candidates
 
@@ -235,7 +236,7 @@ Visible(C, External)
 
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
-candidate construction proceeds from that symbol's value facet.
+candidate construction proceeds from that Symbol's typed `V` members.
 
 Candidate construction is closed over the namespace-graph view selected for the
 query: it performs no ADL-like expansion and no external scope search, external
@@ -248,9 +249,10 @@ namespace-delta boundaries.
 The final candidate source is symbol-first:
 
 ```text
-resolve callee path
-  -> Symbol
-  -> project heterogeneous value facet
+ResolveSymbol(callee path)
+  -> Symbol Σ
+  -> apply call-site candidate-family filter to Σ
+  -> project heterogeneous typed V members
   -> enumerate heterogeneous Val2 objects
   -> observe each object's policy-projected view for the lookup stage
   -> obtain each value's type
@@ -264,12 +266,25 @@ own type and associated compile `()`. It is inserted into the symbol value
 facet before ordinary candidate preparation, not after overload failure.
 
 ```text
-C0 = EnumerateValueObjects(Symbol)
+C0 = EnumerateValueObjects(CallSiteFamilyView(Symbol, call_site_annotation))
 C1 = VisibleObjects(C0, V)
 C2 = ExposePhaseViews(C1, Phase)
 C3 = AssociatedCallEntryAndShapeMatch(C2, E)
 A  = FullyAdmissible(C3, Phase, invocation_frame, expectation)
+D  = DeclarationCandidatePolicy(A)
 ```
+
+The call-site annotation acts **before** candidate generation. Its only closed
+semantics in this PR is its pipeline position: it limits which declared or
+generated candidate families may contribute to `C0` for this call. A future
+surface may resemble `args |[[annotation]]> callee` (for example default-only or
+nongeneric-only), but spelling and general selector algebra remain deferred.
+With no annotation, the family view is the complete typed `V` member family.
+
+Declaration-side annotations act only after `A` has been formed. They control
+how already-fully-admissible candidates participate — for example fallback
+suppression or must-select consistency. They never generate a candidate or make
+an inadmissible candidate viable.
 
 - `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
   callee symbol.
@@ -334,8 +349,11 @@ and does not participate in this routing.
 The connected restricted path still lacks full Pattern applicability,
 requires/concepts, and the non-identity B1/B2/B4/B5/B6 implementations. These
 are missing dimensions of the one ordinary resolver, not permission to search
-`ref`, `share`, `alias`, or another structure-changing operation after a
-Policy failure.
+`ref`, `share`, `@`, `alias`, or another structure-changing operation after a
+Policy failure. `NoImplicitBorrowFormation` applies before and throughout
+candidate generation: a candidate that requires a borrow is structurally
+applicable only when the actual already contains the explicit borrow
+observation (apart from fixed-point/weakening rules on an existing borrow).
 
 ### 3.2 P2 pair at the fully admissible boundary
 
@@ -377,9 +395,11 @@ result pair rather than a substitute parameter policy.
 
 Explicit `runtime:seal` remains valid. `compile`, `meta`, and `seal` remain
 distinct static capabilities/domains.
-Compile computes static values and PatternValue. Meta constructs
-SymbolConstructionValue inside a MetaConstructionUnit. Seal excludes ordinary
-OpenStatic meta visibility and provides no global scan privilege by itself.
+Compile computes any declared static PatternValue. Ordinary meta computes the
+Symbol of its MetaInstance and additionally carries the authority to root and
+seal that instance; privileged builtins have member-declared results. Seal
+excludes ordinary OpenStatic meta visibility and provides no global scan
+privilege by itself.
 
 ### 3.3 Derived objects and must-select
 
@@ -535,20 +555,20 @@ be a type-rank object. This node's depth contributes to specificity.
 
 ### 4.5 Policy product partial order
 
-`const` and `mut` belong to the value component `Pv`. An unspecified policy
-position is broad.
-
-For a const actual value:
-
-```text
-const > unspecified > mut
-```
-
-For a mut actual value:
+`const` and `mut` belong to the value component `Pv`. Plain `let` is the
+previously named unspecified policy point. The preference relation is indexed
+by the actual/demand context:
 
 ```text
-mut > unspecified > const
+succ_const: const > let > mut
+succ_mut:   mut > let > const
+succ_plain: let > const = mut
 ```
+
+The equality in `succ_plain` does not authorize an arbitrary tie break. If a
+plain context has one fully admissible `const` candidate and one fully
+admissible `mut` candidate but no plain `let` candidate, both are co-maximal and
+the call is ambiguous.
 
 Across the first written self formal, later explicit parameters, and a target
 result policy when one is actually supplied, compare candidates by product
@@ -628,11 +648,12 @@ OutputMutabilityPreference
 ```
 
 Consequently an opposite const/mut endpoint remains in fully admissible set
-`A`; it is merely worse than `unspecified`, which is worse than the matching
-endpoint. For a const source/target the ordering is therefore
-`const > unspecified > mut`, and it reverses for a mut source/target. This is
-the same ordinary Bp relation, not a migration-specific subset order. If a
-unique ordinary winner later produces a result that `Project_out` cannot
+`A`; it is merely worse than plain `let`, which is worse than the matching
+endpoint. For a const source/target the ordering is `const > let > mut`, and it
+reverses for a mut source/target. A plain target uses
+`let > const = mut`, preserving ambiguity when only the tied endpoints survive.
+This is the same ordinary Bp relation, not a migration-specific subset order.
+If a unique ordinary winner later produces a result that `Project_out` cannot
 expose to the consumer, that failure does not reopen overload selection.
 
 One explanatory semantic normal form is a type Symbol with one pure Pattern
@@ -721,7 +742,9 @@ cannot reopen its discarded candidate set.
 ### 5.1 Notation
 
 ```text
-C0  = EnumerateValueObjects(Symbol)
+Σ   = ResolveSymbol(callee_path)
+F   = CallSiteCandidateFilter(Σ, call_site_annotation)
+C0  = EnumerateValueObjects(F)                -- candidate generation begins
 C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -733,8 +756,10 @@ A   = FullyAdmissible(
         compile_type_requirements
       )
 
+D   = DeclarationCandidatePolicy(A)
+
 Bp' = MaxPolicyProduct(
-        A,
+        D,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -745,21 +770,36 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, A)
+B6  = ApplyNamedStrategyRules(B5, D)
 
 M = {
-  c in A
+  c in D
   |
   overload_strategy(c) = must_select_if_qualified
 }
 ```
+
+The canonical stage order is therefore:
+
+```text
+Resolve Symbol
+-> call-site candidate-family filter
+-> generate candidates (C0--C3)
+-> FullyAdmissible (A)
+-> declaration-side candidate policy (D)
+-> ordinary partial orders (Bp', B1--B6)
+-> unique selection
+```
+
+Only the two annotation layers' positions and separation are closed here.
+Call-site annotation syntax and general selector algebra remain deferred.
 
 ### 5.2 Pipeline invariants
 
 Every `Bi+1 = f(Bi, ...)` preference step satisfies:
 
 ```text
-Bp' ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi     -- monotonic filtering
+Bp' ⊆ D ⊆ A, B1 ⊆ Bp', and Bi+1 ⊆ Bi -- monotonic filtering
 f is side-effect-free                  -- no observable effects
 f is independent of candidate order    -- same result regardless of iteration order
 ```
@@ -807,6 +847,18 @@ match the call operand.
 - extraction pattern is structurally inapplicable to `E`
 - type signature is incompatible with the argument types
 
+It performs no borrow-producing repair:
+
+```text
+E : T       =/=> E : T ref | T share
+E : symbol  =/=> E : symbol ref | symbol share
+E : type    =/=> E : type ref | type share
+```
+
+The explicit `ref`, `share`, or `@` operation must already have formed the
+actual observation before this stage. Policy preference, candidate filtering,
+and automatic pass lowering cannot introduce it merely to rescue a candidate.
+
 ### 5.6 A: Fully admissible candidates
 
 `A` removes every hard-illegal candidate before any preference filter runs.
@@ -838,50 +890,38 @@ overload, ordering, refinement, or second selection; ordinary overload must
 already be unique, as bounded by
 `../lifetime/lifetime-policy-and-overload-boundary.md`.
 
-### 5.7 Future fallback strategy semantics
+### 5.7 Declaration-side candidate policy
 
-The current source language does not expose a fallback strategy and current
-ordinary candidate preparation cannot construct a fallback role. Therefore:
-
-```text
-Fallback(A) = empty
-Af = A
-```
-
-and the current normative pipeline remains the old `A -> Bp'` pipeline shown
-in §5.1.
-
-When/if a future candidate carries the fallback strategy, its semantics is
-already constrained:
+Declaration-side annotations are evaluated over the complete fully-admissible
+set `A`, before any ordinary preference order:
 
 ```text
-Aordinary = {c in A | not fallback(c)}
-Af =
-  Aordinary, when Aordinary is non-empty
-  A,         otherwise
+ApplyDeclarationCandidatePolicy(A):
+  ordinary = { c in A | not fallback(c) }
+  candidates = ordinary, when ordinary is non-empty
+               A,        otherwise
+  must_select = { c in candidates | must_select(c) }
+
+D = candidates
 ```
 
-Thus:
-
-```text
-A -> SuppressFallback -> Bp'
-```
-
-This future extension is not B6 named-strategy execution. It observes the
-complete fully admissible set before Policy or Pattern preference. Any
+This is not B6 named-strategy execution. It observes the complete fully
+admissible set before Policy or Pattern preference. Any
 admissible non-fallback candidate counts, including an admissible `delete`.
 Once such a candidate exists, fallback candidates leave the future extended
 survivor set permanently. A later unique delete rejection, ambiguity,
 body/lowering failure, or lifetime failure cannot reopen fallback candidates.
 
-Its syntax and final ordinary candidate storage are not yet frozen. The
-current Rust fallback marker is only a prototype fixture for this future
-strategy. Because current source always has `Af = A`, every current ordinary
-overload judgment and candidate identity is preserved exactly.
+Must-select is likewise a declaration policy over candidates already in `D`;
+it contributes a final consistency obligation but no preference score. Syntax
+for fallback/must-select and final ordinary candidate storage remain under
+surface consolidation. The current Rust fallback marker is only a prototype
+fixture; the semantic pipeline position above is closed.
 
 ### 5.8 Bp and B1–B6: Preference filters
 
-Only fully admissible candidates enter current-language preference filtering:
+Only candidates surviving declaration-side policy enter ordinary preference
+filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
   phase-local stage specificity and const/mut positions; include target-result
@@ -910,13 +950,13 @@ Only fully admissible candidates enter current-language preference filtering:
 - **B6 Named strategy rules**: apply strategy metadata carried by
   `UserBody(Named(strategy), ...)` or by compiler-generated function objects.
   A strategy rule is monotone, side-effect-free, independent of iteration
-  order, and restricted to candidates already in `A`; it cannot restart
+  order, and restricted to candidates already in `D`; it cannot restart
   lookup or make an inadmissible candidate viable. It receives `B5` as its
-  input and may only remove members of `B5`; access to `A` is read-only
+  input and may only remove members of `B5`; access to `D` is read-only
   metadata for consistency checks such as must-select. Atomic-migration
   endpoint Policy coordinates are already consumed by `Bp'` in §4.5 and are
-  not a named strategy. If the future fallback strategy is introduced, its
-  suppression will already have occurred before Bp' and cannot be emulated or
+  not a named strategy. Fallback suppression has already occurred before Bp'
+  and cannot be emulated or
   reversed here.
 
 Each stage only removes candidates. First-order preference does not override
@@ -925,12 +965,13 @@ shallower monomorphic pattern before B4 is reached.
 
 ### 5.9 Must-select consistency and uniqueness
 
-Compute must-select membership from `A`, not from `C0`, `C2`, `C3`, or an
-earlier set that has not passed concept/require legality:
+Compute must-select membership from `D`, after full admissibility and fallback
+suppression, not from `C0`, `C2`, `C3`, or an earlier set that has not passed
+concept/require legality:
 
 ```text
 M = {
-  c in A
+  c in D
   |
   overload_strategy(c) = must_select_if_qualified
 }
@@ -983,13 +1024,15 @@ Derivation:
 
 ```text
 CalleeSymbol = ResolveSymbol(Γ, name)
-C0  = EnumerateValueObjects(CalleeSymbol)
+F   = CallSiteCandidateFilter(CalleeSymbol, call_site_annotation)
+C0  = EnumerateValueObjects(F)
 C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
 A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
+D   = DeclarationCandidatePolicy(A)
 Bp' = MaxPolicyProduct(
-        A,
+        D,
         Phase,
         invocation_frame,
         target_result_policy,
@@ -1000,8 +1043,8 @@ B2  = MaxConceptOrder(B1, E)
 B3  = MaxExtractionSpecificity(B2, E)
 B4  = PreferFirstOrderOverInstantiated(B3)
 B5  = PreferInPlaceOverNonInPlace(B4)
-B6  = ApplyNamedStrategyRules(B5, A)
-M   = MustSelectMembers(A)
+B6  = ApplyNamedStrategyRules(B5, D)
+M   = MustSelectMembers(D)
 
 OrdinaryUnique(B6, f)
 MustSelectConsistent(M, B6, f)
@@ -1090,7 +1133,11 @@ closed overload-name declarations
 
 Lifetime checking is separately deferred by
 `../lifetime/lifetime-policy-and-overload-boundary.md`. This revision defines
-no lifetime overload, refinement, ABI class, or second selection stage.
+no refinement, ABI class, or second selection stage, and no lifetime-driven
+re-selection: a lifetime rule never reopens the unique ordinary overload result.
+That is a restriction on lifetime *rules*, not a claim that `@` lacks overloads
+— `@` is an ordinary place-sensitive operation with its own candidate set,
+specified in that document.
 
 ---
 
@@ -1105,7 +1152,7 @@ no lifetime overload, refinement, ABI class, or second selection stage.
 | `call-modes-recursion-and-tail-lowering.md` | Candidate selection feeds invocation lowering, which may eventually produce explicit call modes (`normal` / `tco` / `loop`) |
 | `../policy-capability/policy-visibility-symbols.md` | Implementation mapping for current policy metadata |
 | `../symbol-world/symbol-policy-and-compile-flow-projection.md` | Canonical `P1` / `P2`, companion, and must-select semantics |
-| `../lifetime/lifetime-policy-and-overload-boundary.md` | Negative boundary: lifetime syntax cannot reopen the unique ordinary overload result |
+| `../lifetime/lifetime-policy-and-overload-boundary.md` | Canonical owner of `@` and escape checking; also the negative boundary that a lifetime rule cannot reopen the unique ordinary overload result |
 | `early-meta-functions-and-namespace-graph.md` | Namespace graph resolves the callee `Symbol`; the current same-name child bucket is only transitional candidate substrate |
 | `entity-ref-design.md` | Entity references may resolve through overload candidate sets in later phases |
 | `glossary.md` | Defines OverloadCandidate, OverloadSpecificity, OverloadResolutionPipeline |

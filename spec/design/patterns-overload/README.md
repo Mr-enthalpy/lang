@@ -19,7 +19,8 @@ Pattern normalization and the candidate model that feeds invocation:
 - in-place closure candidate metadata and its fixed preference position; lazy
   embedding lookup/capture boundaries are owned by the function-object model
 
-Resolved pattern owners, `struct` / functional `inject`, and the rule that a
+Resolved pattern owners, `struct -> symbol`, pure `extend`, place-level
+`inject`, and the rule that a
 fully named body of a Pattern normalizes to
 `Map<CanonicalFullNavigation, CanonicalPatternValue>` while every naked
 Product (and any Pattern body with a bare child) remains positional are owned by

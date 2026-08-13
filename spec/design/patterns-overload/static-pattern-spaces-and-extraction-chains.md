@@ -26,7 +26,8 @@ This design is not an arbitrary set-theoretic pattern algebra. It does not make 
 
 This file is the fuller, later pattern-space / extraction-chain design. The earlier pattern normalization / candidate-shape layer used to prepare meta-invocation candidates is a different, earlier layer, documented in `spec/design/patterns-overload/pattern-normalization-and-first-order-overload.md`.
 
-Resolved pattern ownership, symbol-first facets, `struct`, functional `inject`,
+Resolved pattern ownership, symbol-first facets, `struct`, pure `extend`, and
+place-level `inject`,
 and the fully named Pattern-body navigation map versus ordered naked-Product
 rule are
 canonicalized in
@@ -154,9 +155,12 @@ must either construct a real canonical sum-pattern value with commutative,
 associative, and idempotent identity, or report an explicit unsupported
 diagnostic. The current restricted slice reports the diagnostic.
 
-This paragraph describes the implemented v0.8 evaluator only. Final formal meta
-return uses `r = ...` to build `SymbolConstructionValue`; ordinary `let ===`
-aliasing remains separate.
+This paragraph describes the implemented v0.8 evaluator only. Target meta
+semantics build an ordinary Symbol through ordinary `let` creation and
+existing-place `=` writes, then transfer it through a separate return event.
+The current `r = ...` / `SymbolConstruction` path is compatibility substrate.
+There is no ordinary declaration aliasing: the semantic alias/forwarding
+direction is retired, and `===` survives only as a frozen parser spelling.
 
 ## 2. Core Principles
 
@@ -214,7 +218,7 @@ A `Val1` leaf is not a `Pattern`, and a `Pattern` is not a `Val1` leaf. They are
 layers of the same symbol flow, not separate semantic worlds:
 
 ```text
-Symbol = Val1 x Pattern x Val2
+Symbol = Val1? x Pattern x Val2
 ```
 
 Pattern matching may directly read the symbol's `Pattern` layer. It does not
@@ -360,9 +364,9 @@ are not semantic identity.
 
 In final semantics, `struct` resolves its owner from input navigation plus the
 ambient pattern scope before binding. The later `let` installation path does not
-reroot that owner. Functional `inject` is the explicit operation that selects an
-input symbol's internal pattern scope and returns a new child-extended,
-uninstalled construction.
+reroot that owner. Pure `extend` selects an input PatternValue's internal scope
+and returns a child-extended uninstalled value; `inject` is its independent
+read--extend--write wrapper for an existing type slot.
 
 The canonical `let bool = ((if | else) bool) |> struct;`,
 `let t1::t = bool;`, and inherited/explicit extraction equivalence are specified
@@ -530,11 +534,11 @@ a necessary condition for unordered Pattern-layer normalization, not a
 sufficient condition and not a replacement for the `PatternLayerNode`
 boundary.
 
-Thus different-name functional `inject` operations commute in a fully named
+Thus different-name pure `extend` operations commute in a fully named
 Pattern body. A layer such as `{bool::, t1::t, t2::t}` contains canonical
 navigation/`PatternValue` entries, even when an entry's navigation spelling
 matches the symbol path that carries it.
-Inherited/explicit navigation, ordinary binding, and `inject` are
+Inherited/explicit navigation, ordinary binding, and `extend` are
 pre-normalization production routes; provenance may retain them for diagnostics
 but they do not affect value identity or extraction.
 
@@ -1145,8 +1149,10 @@ let id = (self, t: type): compile -> r: type => {
 };
 ```
 
-This compile body computes a `PatternValue`. A meta body instead constructs a
-`SymbolConstructionValue`, for example:
+This compile body computes a declared ordinary `PatternValue`. An ordinary meta
+body specifically computes and returns the Symbol of its rooted and sealed
+`MetaInstance`; arbitrary PatternValue results belong to compile, while
+privileged builtins declare their own result Pattern. For example:
 
 ```lang
 let box = (self, t: type): meta -> r: symbol => {
@@ -1155,8 +1161,8 @@ let box = (self, t: type): meta -> r: symbol => {
 };
 ```
 
-If a meta return symbol has a type facet, its root must be the canonical
-ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta type returns are
+If a meta return Symbol has a pure role member `Q`, its root must be the canonical
+ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta role returns are
 invalid. This additional construction invariant does not alter the ordinary
 block-result rule. In both examples the final expression:
 
@@ -1167,9 +1173,11 @@ r
 is the current block result of the callable body. It is not a special
 compile/meta-only return form.
 
-Formal meta return has no separate `r === ...` forwarding category. `r = ...`
-populates the return layer of the `SymbolConstructionValue`. Ordinary
-declaration aliasing remains `let a === b` at the symbol/place binding layer.
+Formal meta return has no separate `r === ...` forwarding category. The current
+`r = ...` carrier write is transitional; target semantics use an ordinary Symbol,
+ordinary existing-place writes, and a separate return event. There is no
+ordinary declaration aliasing either: every `let` binds a fresh symbol and a
+fresh place.
 
 Thus compile/meta return behavior is a normal consequence of:
 
@@ -1177,7 +1185,7 @@ Thus compile/meta return behavior is a normal consequence of:
 call result semantics
 block-local return boundaries
 result consumption
-symbol / place / PatternValue / SymbolConstructionValue rules
+symbol / place / PatternValue rules
 ```
 
 not a special exception to them.
@@ -1479,7 +1487,7 @@ Extraction participates in overload candidate filtering and resolution. A candid
 ### 12.1 Overload Set Construction
 
 Final candidate preparation first resolves a `Symbol`, projects its
-heterogeneous value facet for the current policy view, enumerates `Val2`
+heterogeneous typed `V` members for the current policy view, enumerates `Val2`
 objects, obtains each surviving object's type, resolves the type-associated
 `()` entry, and discards non-callable entries. The current same-name namespace
 bucket is only transitional substrate.
@@ -1490,7 +1498,7 @@ views are derived from `P2`. Candidate hard legality checks the actual
 parameter, receiver, target-result, stage, concept, and require constraints; it
 does not reconstruct one scalar total policy or apply `external(P2) subset P1`.
 
-Derived compile companions enter the symbol value facet as complete first-class
+Derived compile companions enter the Symbol's typed `V` members as complete first-class
 `Val2` function objects with their own types and associated compile `()`
 entries. They are not added after overload failure. `export` remains an
 independent cross-package visibility filter.
@@ -1840,9 +1848,9 @@ form uses `|`, the sum-pattern result form.
 The decoder lives in `struct_decoder.rs` and is called from the `core::struct`
 invocation path. It produces `TypePatternExprShape`, which is attached to
 the current `GeneratedTypeDefinitionValue` substrate. This remains private
-structured carrier material; final public `struct` result rank is
-`SymbolConstructionValue : symbol`, not AST. The decoder does not install
-symbols into the namespace graph — only binding/materialization installs
+structured carrier material; the final public `struct` result is the ordinary
+PatternValue of its own declared return shape, not AST. The decoder does not
+install symbols into the namespace graph — only binding/materialization installs
 `NamespaceDelta`.
 
 ## 19. Callable Implementation Tail and Pattern Remainders

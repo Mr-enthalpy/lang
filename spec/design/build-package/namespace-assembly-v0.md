@@ -60,7 +60,8 @@ traversal.
 ### Build Phase C: physical namespace skeleton
 
 Walk source roots to build the physical namespace skeleton from directory
-structure. Each physical directory creates a namespace facet with
+structure. Each physical directory creates a pure Object serving
+`NamespaceRole` with
 `NamespaceOrigin::PhysicalDirectory(path)` and establishes contribution
 authority for files physically in that directory. Implementation filenames do
 not contribute namespace segments.
@@ -117,10 +118,10 @@ virtual namespaces, populate cache metadata, and integrate closure object
 materialization. This phase validates:
 
 ```text
-one NamespaceOrigin per child namespace facet
+one NamespaceOrigin per child namespace-role Object
 source/meta construction-unit ownership
 physical directory contribution authority
-type-facet single installation
+single installation of the optional pure-role `Q` member
 cross-file reopening prohibition
 NamespaceDelta atomicity
 semantic-owner identity

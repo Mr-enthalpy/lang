@@ -27,14 +27,13 @@ and residualization — are specified in
 `spec/design/meta-invocation/meta-object-invocation-and-policy-reduction.md`.
 
 The canonical future symbol-facet, `compile` / `meta`, pattern-owner,
-`struct`, and functional `inject` boundaries are specified in
+`struct`, pure `extend`, and place-level `inject` boundaries are specified in
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 That document supersedes the older formal return-slot split between `r = ...`
 and `r === ...`, the interim single-form `r = ...` reading (the final model
-distinguishes fresh-member, alias-member, and existing-target-write effects
-plus
-the `r;` delivery terminal), and the transitional idea that a binding
-destination determines the final `struct` owner identity.
+distinguishes fresh-member creation, existing-target write, and delivery — there
+is no alias-member event), and the transitional idea that a binding destination
+determines the final `struct` owner identity.
 
 Namespace-facet origin, source/meta construction-unit ownership, physical
 directory contribution authority, and current cross-file closure are canonical
@@ -118,8 +117,8 @@ call modes; see `spec/design/mechanical-lowering/call-modes-recursion-and-tail-l
 | Source-contributed ordinary value placeholders | `runtime` |
 | Source-contributed type-annotated placeholders (`: type`) | `{meta, runtime}` |
 | Struct-generated `TypeObject` | `{meta, runtime}` |
-| Projection namespace symbols (`ref`/`share` under a generated type) | `{meta, runtime}` |
-| Generated field-function symbols (`field::T`, `field::ref::T`, `field::share::T`) | `{meta, runtime}` |
+| Transitional projection namespace symbols (`ref`/`share` under a generated type) | `{meta, runtime}`; implementation substrate only |
+| Generated field-function Symbol and its value/ref/share candidates | `{meta, runtime}` |
 | Alias symbols | `runtime` (not transparent for early meta yet) |
 
 Generated `struct` expansion currently assigns these transitional metadata
@@ -128,7 +127,7 @@ fields:
 | Generated object | Current metadata |
 |---|---|
 | Generated `TypeObject` | symbol policy = `{meta, runtime}` |
-| Projection namespace `ref` / `share` | symbol policy = `{meta, runtime}` |
+| Transitional projection node `ref` / `share` | symbol policy = `{meta, runtime}`; not target semantics |
 | Generated field function | symbol policy = `{meta, runtime}` |
 | Generated field function | body entry policy = `runtime` |
 | Generated field function | transitional return object policy = `runtime` |
@@ -137,6 +136,9 @@ These fields are implementation substrate. They do not establish final scalar
 policy planes. The future model stores `Pv:Pp`, elaborates P1 as a binding/view
 projection, normalizes P2 as the call-result pair, derives function-object stage
 views from P2, and has no independent P3.
+Return positions may nevertheless refine inherited P1 mutability only,
+symmetrically with parameter refinement of P2; no other policy dimension may
+change.
 
 ### Policy-aware resolver
 
@@ -207,10 +209,11 @@ model boundary:
   field binders are private `struct` checker material.
 - Resolver contexts distinguish current namespace lookup, explicit mounted paths
   such as `uint8::core`, and short-name default mounts such as `uint8`.
-- Successful `struct` expansion produces a placeholder type object and a
-  generated type-associated namespace containing `a::T`, `a::ref::T`,
-  `a::share::T`, `b::T`, `b::ref::T`, and `b::share::T`-style field-function
-  symbols. These field-function symbols are visible under `PolicyEnv::OpenStatic`
+- Successful `struct` expansion currently produces a placeholder type object and
+  legacy per-observation field symbols. The target model replaces those
+  `a::ref::T` / `a::share::T` transport nodes with one associated Symbol `a`
+  containing candidates whose receiver formals are `T`, `T ref`, and `T share`.
+  These field-function candidates are visible under `PolicyEnv::OpenStatic`
   because their compatibility symbol policy is `{meta, runtime}`, but their callable
   body-entry and return-object policies are runtime-only.
 - PR #94 adds an explicit pattern-head attachment helper with generated,
@@ -226,8 +229,8 @@ model boundary:
 - Failed `struct` expansion returns hard diagnostics and leaves no partial
   generated subtree. Duplicate fields, unknown field types, unit/trailing-unit
   fields, and unsupported nested products are rejected. Fields named `ref` or
-  `share` are allowed because generated data fields are unary function objects while
-  `ref` / `share` are namespace subspaces.
+  `share` are allowed as ordinary associated Symbols. Current legacy projection
+  nodes are implementation substrate, not the reason for their legality.
 - v0.8 ordinary initializer evaluation can materialize
   `let T: type = uint8` as an ordinary type-value binding: resolve
   `symbol(uint8)`, read its type value, and bind that value to fresh
@@ -235,7 +238,7 @@ model boundary:
   namespace injection targets.
 - The current slice does not implement `NamespaceOrigin`, source/meta
   construction-unit ownership, physical contribution authority, cross-file
-  reopening diagnostics, or meta return type self-root checking.
+  reopening diagnostics, or meta return pure-role self-root checking.
 - v0.8 source-declared callable overload selection reports structured failure
   kinds. Initializer MetaPartial residualization is driven by those kinds, not
   by diagnostic message text. Ambiguity remains a hard diagnostic; no
@@ -282,9 +285,8 @@ behind named operations, at least:
 - **declare** — introduce a declared symbol under a node.
 - **inject child material** — add a direct child to a contribution or
   construction under a legal owner (see §4). The future source-level `inject`
-  built-in is functional and returns a new `SymbolConstructionValue`; only the
-  outer binding/assembly layer installs the resulting delta.
-- **alias** — forward a name to an existing globally visible symbol.
+  built-in is functional and returns a new ordinary `type` pattern value; only
+  the outer binding/assembly layer installs the resulting delta.
 - **open virtual node** — open a virtual namespace node for generated structure.
 - **install namespace delta** — apply a set of physical, declared, or generated
   contributions as one unit under a legal node.
@@ -294,7 +296,11 @@ behind named operations, at least:
 - **assert / hard error** — raise a compile-time hard error.
 
 Capabilities may be stubbed in early versions, but the **surface** must be the
-shared one above, not narrowed to package scanning.
+shared one above, not narrowed to package scanning. There is no name-forwarding
+alias capability in this layer: a second name for one place is not expressible,
+and shared observation is a borrow view of one target place
+([`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md)
+§5).
 
 ### SymbolObject
 
@@ -305,12 +311,16 @@ objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
 
 `SymbolObject` is the current implementation substrate. The final conceptual
-model is a symbol-first `SymbolCell` with one `SymbolId`, one `PlaceId`, and
-optional namespace/type plus heterogeneous value facets:
+model is one Symbol with one `SymbolId`, one `PlaceId`, an optional pure role
+member `Q`, and heterogeneous typed value-member buckets:
 
 ```text
-path/name -> Symbol -> context-directed facet projection
+path/name -> Symbol -> context-directed role/member projection
 ```
+
+Namespace projection selects `Q`; type projection selects the same `Q` only
+when `TypeRole(Q)`. Current namespace/type facet buckets may cache those derived
+views but do not define independent semantic Objects.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint
@@ -411,13 +421,14 @@ object/function child without namespace_node
 ```
 
 This is the conservative current v0.6 bucket model. The canonical future
-`SymbolCell` model permits one symbol's value facet to contain multiple
-heterogeneous value entries. That future same-symbol facet rule is not the same
+Symbol model permits one Symbol's `V` buckets to contain multiple heterogeneous
+value entries. That future same-symbol member rule is not the same
 as silently merging two independently declared `SymbolObject`s today; it
-requires facet-aware declaration identity and conflict checking first.
+requires role/member-aware declaration identity and conflict checking first.
 
-This is required for fields named `ref` or `share`: the field is an object
-symbol, while `ref` / `share` projection spaces are namespace subspaces.
+This coexistence facility is generic graph substrate. It is not a target
+semantic requirement for fields named `ref` or `share`; those are ordinary
+associated Symbols and borrow observation kind belongs to candidate types.
 
 If the implementation needs temporary permissiveness, it must be marked as an
 implementation limitation, not as language semantics.
@@ -508,13 +519,21 @@ and later compile/meta construction callables.
 The final boundary is sharper:
 
 ```text
-compile -> PatternValue
-meta -> SymbolConstructionValue
-let binding/injection -> NamespaceDelta atomic install
+compile -> PatternValue, with root conservation and no root authority of its own
+ordinary meta -> symbol PatternValue, plus authority to establish and seal one
+                 navigable MetaInstanceRoot M
+privileged builtin -> PatternValue under its member-specific owner rule
+let binding / namespace contribution -> NamespaceDelta atomic install
 ```
 
-Formal `struct`, formal meta invocation, and functional `inject` do not install
-the graph. `MetaExpansionResult` may remain an implementation adapter, but it
+The `compile` / ordinary-`meta` authority difference remains within the ordinary
+PatternValue domain and introduces no construction rank; see
+[`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
+§4.1.
+
+Formal `struct`, formal meta invocation, and pure `extend` do not install the
+graph. `inject` only writes an already existing type slot and creates no graph
+member/root. `MetaExpansionResult` may remain an implementation adapter, but it
 must not erase the distinction between an uninstalled construction value and
 the outer installation operation.
 
@@ -641,8 +660,9 @@ then applies the conservative namespace-capable cross-role restriction above.
 
 A **type-associated namespace** is the namespace space associated with a type
 object. It holds the type's companion symbols, for example generated field
-functions, `ref` / `share` projections, layout metadata, pattern interfaces, and
-related companion symbols.
+functions, layout metadata, pattern interfaces, and related companion symbols.
+Borrow observation kinds are candidate types, not `ref` / `share` projection
+subspaces.
 
 A type-associated namespace is **not** simply a "declared namespace object". Its
 members may be **declared**, **generated**, or **virtual** depending on origin.
@@ -671,29 +691,42 @@ caller/self (the field-function object) is injected, it dispatches through the f
 argument type and may forward a normalized remainder product as additional
 arguments.
 
-The unary generated-field shape is:
+The unary generated-field shape is one same-name associated Symbol:
 
 ```text
-field::T        : T       -> field
-field::ref::T   : T ref   -> field ref
-field::share::T : T share -> field share
+field : (object: T)       -> field
+field : (object: T ref)   -> field ref
+field : (object: T share) -> field share
 ```
 
-Their compatibility symbol policy is `{meta, runtime}`, so the compiler can resolve and inspect
-them during meta/type-checking phases and can construct residual runtime calls
-that reference them. Their current callable body-entry policy is `runtime`, and
-their transitional return-object field is `runtime`; meta lookup visibility does not permit a meta
-evaluator to enter their bodies.
+Target exposure follows the general structural predicate:
 
-`field::T` is value semantics (`T == T move`). Borrowed field access must begin
+```text
+RuntimeField(f)
+  <=> Val1_f != absent
+    and Materializable_0(Val1_f)
+    and not RequiresStaticPattern(f)
+
+Stage(accessor(f)) = runtime || compile  if RuntimeField(f)
+Stage(accessor(f)) = compile             otherwise
+```
+
+Type-valued fields are compile-only only because they currently fail this
+predicate, not because “type/PatternValue field” is a separate category. The
+generated assignment partner exists only when the ordinary field Policy admits
+mutation. Current compatibility fields remain transport and do not override
+these target semantics. In a plain use context generated candidates obey
+`succ_plain: let > const = mut`; tied `const` and `mut` candidates remain
+ambiguous when no plain `let` candidate exists.
+
+The value candidate has value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form such as `val ref.field1` or
 `val share.field1`. Field access evaluation, borrow normalization, and
 access-tree construction are future work.
 
-Because fields are object-role function symbols and `ref` / `share` are
-namespace-subspace-role projection spaces, fields named `ref` or `share` are
-valid. Terminal `ref::T` or `share::T` may be ambiguous unless resolver callers
-provide an expected role.
+Fields named `ref` or `share` are valid ordinary associated Symbols. There is no
+generated projection namespace with which they can conflict; receiver type and
+Policy select among the same-name candidates.
 
 ### 3.4 Type values, symbol places, and aliasing
 
@@ -716,21 +749,23 @@ let b = 1
 
 `a` and `b` are distinct symbols, while their values are equal.
 
-Namespace injection is not pure type-value evaluation. `let f::T = ...`
+Member creation is not pure type-value evaluation.
+Because this `T` is already a pure type slot, `let f::(T@) = ...` explicitly
 targets `place(T)`, not `place(uint8)`. Type-value equality must not
 canonicalize injection targets.
 
-`=` and `===` are not interchangeable:
+`let` and the frozen `===` surface form are not interchangeable, and only `let`
+has target semantics:
 
-| Form | Symbol effect | Type-value effect | Injection-place effect |
+| Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `f::T` injects into `place(T)` if current-level and open |
-| `let T === uint8` | `T` forwards to symbol `uint8` | `value(T) == value(uint8)` | `f::T` attempts `place(uint8)` and is rejected because `uint8` is external stable |
-| `let T: type = ... |> struct` | Creates new symbol/place `T` | `value(T)` is a fresh generated type value | `f::T` injects into `place(T)` if open |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T@)` may create under `place(T)` when separately authorized |
+| `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with `Q_struct` satisfying `TypeRole` | `let f::((T ref).type)` may create under that explicit type-member place |
 
-Fresh generated type values own/provide their own type-associated namespace, so
-`let T: type = (uint8 a, uint8 b) |> struct` creates the fresh type value whose
-field functions are visible as `a::T`, `a::ref::T`, and `a::share::T`.
+Fresh generated Symbols own/provide their `Q_struct` type-role member's associated
+namespace, so `let T = (uint8 a, uint8 b) |> struct` creates one associated
+Symbol for `a` and one for `b`; each contains value/ref/share receiver candidates.
 
 By contrast, `let T: type = uint8` does not create a fresh type value, but it
 may own a fresh current-level companion namespace place. Future namespace
@@ -745,39 +780,40 @@ let A: type = (int Vec::std)
 let B: type = (int Vec::std)
 ```
 
-means `A == B` by type-value equality while `A` and `B` remain distinct symbols
-unless one is declared via `===`. The canonical type-value equality relation
+means `A == B` by type-value equality while `A` and `B` remain distinct symbols.
+No declaration form can make them the same symbol or the same place. The
+canonical type-value equality relation
 is defined as the recursive observation `Addr(Norm_type)` (bare `TypeValueId`
 is only the stable first-order root); carrying that settled relation into all
 remaining semantic comparison sites is future work.
 
 See `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md` for the
 field-function and access-tree implications. The intended final distinction
-between type values, symbol places, alias forwarding, and writable injection
+between type values, symbol places, borrow views, and writable extension
 targets is documented in
-`spec/design/symbol-world/type-values-places-and-alias-forwarding.md`.
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
-### 3.5 Final facet inclusion and value-member boundary
+### 3.5 Final role inclusion and value-member boundary
 
 The role-aware `SymbolObject` buckets above describe the current substrate. The
-final `SymbolCell` model uses structural facet inclusion:
+target model uses Object judgments:
 
 ```text
-has TypeFacet => has NamespaceFacet
-has NamespaceFacet ⇏ has TypeFacet
+Pure(x) <=> NamespaceRole(x)
+TypeRole(x) subset NamespaceRole(x)
+NamespaceRole(x) not-subset TypeRole(x)
 ```
 
-This is not type-system subtyping. A type symbol has a namespace facet, a
-`TypeFacet(PatternValue)`, and optionally a heterogeneous value facet. A pure
-namespace has no type `PatternValue` but may still contain ordinary value
-members.
+This is not type-system subtyping. Every pure Object is navigable and therefore
+has `NamespaceRole`; `TypeRole(x)` is an additional imported
+judgment over pure Objects. Namespace-role-only Objects remain navigable
+but cannot be used by `AsType`. `TypeFacet` and `NamespaceFacet` remain names for
+current implementation buckets only, not target ontology.
 
-Pattern-material leaves belong to the `PatternValue` in a type facet and affect
-normalization, matching, and extraction. Ordinary namespace value members alter
-only the namespace/value graph. They do not enter a fully named Pattern-body
-navigation map, do not change ordered Product/pattern material, and do not
-participate in extraction. A value projection is terminal for the current
-lookup; it does not prevent the same symbol from also owning namespace children.
+Pattern-material leaves belong to `P(x)` and affect normalization, matching, and
+extraction. Ordinary navigable `Val2` members do not become Pattern leaves merely
+because `NamespaceRole(x)` holds. A value projection is terminal for the current
+lookup; it does not prevent the same Object from owning navigable children.
 
 The complete origin and ownership rules for these facets are in
 `symbol-construction-units-and-namespace-origin.md`.
@@ -828,9 +864,9 @@ special case.
   namespaces are installed only under a legal parent / instance node; no
   arbitrary rewrite of parent / sibling / global namespace.
 
-The future public boundary is `struct: normalized pattern material ->
-SymbolConstructionValue : symbol`; AST remains an internal carrier, and graph
-installation remains in the outer binding layer.
+The future public boundary is
+`struct: StructLikePattern -> symbol`; AST remains an internal carrier, and
+graph installation remains in the outer binding layer.
 
 ## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 
@@ -842,14 +878,15 @@ records the migration boundary:
 ```text
 restricted evaluator
   -> shared invocation frame and policy checks
-  -> PatternValue or SymbolConstructionValue result rank
+  -> PatternValue result rank
   -> outer binding/NamespaceDelta installation
 ```
 
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
-transport. They do not implement canonical facets, `MetaInstanceScope`, owned-
-open `inject`, type self-root validation, or construction-unit authority.
+transport. They do not implement canonical facets, `MetaInstanceScope`,
+construction-lineage `Open`, `extend`/`inject`, pure-role self-root validation, or
+construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the
 construction contract in
@@ -864,7 +901,7 @@ resolve callee
   -> RawArgShape / ParameterShape
   -> rank-directed Symbol / TypeValueId / PatternValue classification
   -> policy body-entry check
-  -> PatternValue or SymbolConstructionValue
+  -> PatternValue
   -> binding-layer installation adapter
   -> NamespaceDelta atomic install
 ```
@@ -915,9 +952,11 @@ semantics; HIR/codegen integration beyond placeholder nodes.
 
 Must cover the transition from the restricted type-shaped evaluator toward:
 ordinary normalized structured input; `compile` producing `PatternValue`;
-`meta` producing `SymbolConstructionValue : symbol`; rank-directed canonical
-argument identity; the return-cluster construction-effect family
-(`let r = expr;` fresh member, `let r === path;` alias member, `r = expr;`
+`meta` sealing a `MetaInstance` and returning its symbol value; rank-directed
+canonical
+argument identity; orthogonal creation/write/return events (current compatibility
+encoding:
+`let r = expr;` fresh member, `r = expr;`
 existing-target write — currently a placeholder overwrite scaffold, `r;`
 delivery terminal); binding-layer
 installation under a legal writable place; and first-class `(T Vec)` /
@@ -925,8 +964,8 @@ installation under a legal writable place; and first-class `(T Vec)` /
 
 Non-goals: unrestricted compile-time IO; runtime execution; full
 borrow/lifetime checking; full pattern-space subtraction / exhaustiveness;
-complete operator overload semantics; general macros; direct graph mutation
-inside formal `struct` or `inject` invocation.
+complete operator overload semantics; general macros; graph-member creation
+inside formal `struct`/`extend` or through `inject`.
 
 ## 8. Conceptual constraints
 
@@ -945,24 +984,26 @@ inside formal `struct` or `inject` invocation.
   another construction unit.
 - Compile/meta bodies consume ordinary parsed and normalized structured material
   under capability policy — not a separate compile-time DSL or text macro.
-- `compile` computes `PatternValue`; `meta` creates or transforms
-  `SymbolConstructionValue : symbol`. Formal meta return material uses the
-  construction-effect family (spellings shown in the current `let`-only
-  compatibility encoding pending expression-level `=`): `let r = expr;` adds
-  a fresh cluster member,
-  `let r === path;` adds an alias member (the same cluster-member mechanism as
-  namespace-level `let a === b` aliasing), `r = expr;` writes to an existing
-  target (today a placeholder overwrite scaffold; the final cluster write
-  algebra is not fixed), and `r;` delivers the cluster.
+- `compile` computes `PatternValue`; `meta` seals a `MetaInstance` and returns
+  its symbol value, which is an ordinary `PatternValue`. Target semantics use
+  ordinary `let` creation, existing-place `=` writes, and a separate return
+  event. The current `let`-only compatibility encoding is: `let r = expr;` adds
+  a fresh member, `r = expr;` writes to an existing
+  target (today a placeholder overwrite scaffold; the final write
+  algebra is not fixed), and `r;` delivers the construction. There is no
+  alias-member event; a member that must observe an external object holds a
+  borrow view.
 - `compile` creates no meta-instance scope. An ordinary canonical meta
-  invocation does, and any return `TypeFacet` is rooted in that scope rather
+  invocation does, and any returned type-role member is rooted in that scope rather
   than in an external `PatternValue` or a later binding destination. Privileged
   AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
-- Functional `inject` accepts only the current construction unit's owned,
-  open/uninstalled construction handle and adds direct children without
-  installing the graph.
+- Pure `extend(type, material)` adds direct children only when the value's
+  `ConstructionLineage` is Open in the current stack. `inject(type ref,
+  material)` is read--extend--write and additionally requires the target place
+  writable. A ref proves neither Open nor promotion, and there is no
+  construction-handle rank.
 - v0.6–v0.8 do not claim full policy checking, full type checking, full pattern
   checking, or full value-level compile-time evaluation. Those remain later
   stages.

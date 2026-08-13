@@ -9,10 +9,10 @@ The policy-governed meta object invocation model:
 
 - symbol-first heterogeneous value-facet candidate preparation
 - orthogonal execution capability / evaluation demand / result rank
-- ordinary-meta `MetaInstanceScope`, return type self-root validation, and
+- ordinary-meta `MetaInstanceScope`, return pure-role self-root validation, and
   complete invocation navigation atom
 - bounded compiler-defined `BuiltinPrivilegedAstMetaFunction` invocation,
-  including `struct` / `inject` special scope and owner rules
+  including `struct` / `extend` / `inject` special scope and owner rules
 - the dual judgment of symbol lookup vs callable execution
 - canonical pair views, parameter-policy qualification, and P2 result handoff
 - partial meta reduction vs strict meta execution
@@ -34,8 +34,9 @@ built.
 
 Read
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` for
-the canonical SymbolCell, `compile` / `meta`, result-rank, pattern-owner,
-`struct`, `inject`, and meta type self-root boundary. Read
+the canonical Symbol `<Q?,V>` role/member model, `compile` / `meta`, result-rank, pattern-owner,
+`struct -> symbol`, pure `extend`, place-level `inject`, and meta pure-role self-root
+boundary. Read
 `../symbol-world/symbol-construction-units-and-namespace-origin.md` for the
 `MetaConstructionUnit` transaction and namespace ownership boundary. Then read
 `../symbol-world/symbol-policy-and-compile-flow-projection.md` for `P1` / `P2`,
@@ -45,7 +46,7 @@ policy reduction.
 
 ## Dependencies
 
-References `symbol-world/` (symbol facets, construction, lookup),
+References `symbol-world/` (symbol role/member projections, construction, lookup),
 `patterns-overload/` (candidate preparation and selection), and
 `policy-capability/` (current metadata mapping and orthogonal policy). The
 mechanical-lowering family feeds it fully decided pass/return actions.

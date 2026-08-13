@@ -50,7 +50,7 @@ validation, overlays, access-control checking, source-level import syntax, or a
 complete build CLI. It also does not implement final `NamespaceOrigin`
 uniqueness, source/meta construction-unit ownership, physical-directory
 contribution authority, cross-file reopening diagnostics, or the
-`TypeFacet`-implies-`NamespaceFacet` model. The canonical future contract for
+`TypeRole`-implies-`NamespaceRole` model. The canonical future contract for
 those rules is
 `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`.
 
@@ -355,8 +355,8 @@ metaprogramming system may extend the namespace graph with declared and virtual
 namespace nodes.
 
 In the final symbol-first model these are not mutually exclusive `SymbolKind`s.
-They describe namespace-facet origin/provenance on a `SymbolCell`. Every
-namespace facet has one creation origin:
+They describe origin/provenance for one Symbol's pure role member `Q` and its
+derived namespace projection. Every such role member has one creation origin:
 
 ```text
 PhysicalDirectory(path)
@@ -374,9 +374,10 @@ textual child name -> object/function role + namespace-subspace role
 
 Same parent + same textual child name + same role is a hard conflict. An
 object/function symbol without a namespace node may coexist with a pure
-namespace-subspace symbol of the same textual name. This is required for
-`struct` field functions named `ref` or `share`: the field is a unary function
-object, while `ref` / `share` are projection namespace subspaces.
+namespace-subspace symbol of the same textual name. This is generic transitional
+graph capability; it is not required for borrow observations. Target `struct`
+fields named `ref` or `share` are ordinary associated Symbols, while receiver
+observation kind is represented in their overload candidates.
 
 The conservative v0.6 restriction is that an object with a namespace node
 (notably a type object with a type-associated namespace) may not coexist with a
@@ -385,31 +386,35 @@ make intermediate path traversal ambiguous before the resolver expectation API
 is fully designed.
 
 This bucket representation is transitional. In the final symbol-first model a
-name first resolves to one `SymbolCell`, and namespace/type/heterogeneous value
-facets may coexist on that symbol. Role-aware current lookup must not be
+name first resolves to one Symbol; its optional `Q` supplies namespace and,
+when `TypeRole(Q)`, type projection, while heterogeneous value members occupy
+typed buckets. Role-aware current lookup must not be
 generalized into final mutually exclusive `SymbolKind`s.
 
 ### 7.2 Type-associated namespace
 
 A **type-associated namespace** is the namespace space associated with a type
-object: generated field functions, `ref` / `share` projections, layout metadata,
-pattern interfaces, and related companion symbols. It is a category by **role**,
+object: generated field functions, layout metadata, pattern interfaces, and
+related companion symbols. Borrow `ref` / `share` are candidate observation
+kinds rather than projection subspaces. This is a category by **role**,
 not by origin: its members may be declared, generated, or virtual. For a
 `struct`-generated type, it is a virtual / generated child namespace attached to
 the type node. It is therefore not equivalent to the "declared namespace
 objects" node kind alone.
 
-The final structural relationship is:
+The final Object-role relationship is:
 
 ```text
-has TypeFacet => has NamespaceFacet
-has NamespaceFacet ⇏ has TypeFacet
+Pure(x) <=> NamespaceRole(x)
+TypeRole(x) subset NamespaceRole(x)
+NamespaceRole(x) not-subset TypeRole(x)
 ```
 
-A type symbol therefore combines a namespace facet with a
-`TypeFacet(PatternValue)` and an optional value facet. A pure namespace may have
-ordinary value members but has no type `PatternValue`. This is facet inclusion,
-not type-system subtyping.
+A well-formed Object's `Val2` is navigable, so every pure Object has namespace
+role. A type-role Object is one for which `TypeRole` holds. A
+namespace-role-only Object may have ordinary navigable
+members but does not satisfy that judgment. These are roles over one Object ontology, not
+facet inclusion or type-system subtyping.
 
 See `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §3 for the full
 model.
@@ -437,8 +442,8 @@ the bootstrap application is summarized in
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md` §4.
 
 Physical source fragments and meta-produced symbol constructions share the
-same symbol-world capability base: declare facet material, add direct children,
-open namespace facets, form replayable contributions/deltas, and install a
+same symbol-world capability base: declare role/member material, add direct
+children to namespace-role Objects, form replayable contributions/deltas, and install a
 validated `NamespaceDelta` atomically. For example, `ns/impl.lang` and
 `ns/export.lang` may create distinct same-level children of `ns` through
 independently derived contribution values. They do not acquire meta-body
@@ -446,9 +451,11 @@ pipeline order from filename or discovery order. Distinct children may be
 assembled transactionally; the files may not reopen one another's child
 subtrees.
 
-The future source-level `inject` built-in is functional and returns an
-uninstalled `SymbolConstructionValue`. Formal `struct` and `inject` do not
-install the graph; the outer namespace assembler or `let` binding does. See
+The future `extend` primitive is the pure transformation that returns an
+uninstalled ordinary PatternValue. Formal `struct` and `extend` do not install
+the graph. Place-level `inject` reads, extends, and writes one already existing
+type slot but creates no graph member/root; the outer namespace assembler or
+`let` binding performs creation. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 Core rules:

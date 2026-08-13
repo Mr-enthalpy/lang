@@ -78,14 +78,17 @@ For declaration-context call-entry injection, the self-position may have a
 non-anonymous type such as `T ref` in:
 
 ```lang
-let ()::ref::T = (object: T ref) => { ... }
+let ()::((T ref).type) = (object: T ref) => { ... }
 ```
 
+The candidate joins the same associated `()` Symbol as value/share receiver
+candidates; `T ref` is its formal receiver type, not a `ref::T` namespace.
 The same rule still holds: `object` is self by position, is passed implicitly,
 and is not part of the explicit argument product. Its spelling has no semantic
 role.
 
-The body above has a lexical `CallableOwner` independent from `ref::T`.
+The body above has a lexical `CallableOwner` independent from receiver type
+`T ref`.
 Standalone materialization of an ordinary closure defaults slot 0 to its
 owner-derived anonymous function-object type; associated call-entry
 installation instead uses the selected receiver type. If the actual caller
@@ -110,6 +113,11 @@ borrow that allows the function body to:
 
 The implicit borrow is not written by the user. It is an automatic consequence
 of being inside the function body.
+
+This is a callable-frame-only capability, not argument adaptation. It does not
+permit a user actual `T` to become `T ref`/`T share` for overload selection and
+does not weaken `NoImplicitBorrowFormation` in
+`type-values-places-and-borrow-views.md` §5.1.2.
 
 ## 4. `return` as a built-in capability under the callable-local `Self` space
 

@@ -30,14 +30,14 @@ has one normative owner inside the staging area:
 
 | Topic | Normative owner | Other documents retain only |
 |---|---|---|
-| Symbol-first resolution, facets, `compile` / `meta`, `struct` / `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
+| Symbol-first resolution, Object-role and `<Q?,V>` projections, `compile` / `meta`, `struct -> symbol`, pure `extend`, place-level `inject`, pattern-layer set/ordering, binding/install boundary | `symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | A consistency summary, implementation gap, and link |
 | Namespace origin, construction-unit ownership, physical contribution authority, cross-file closure | `symbol-world/symbol-construction-units-and-namespace-origin.md` | Build-phase application, implementation gap, and link |
 | Semantic owner identity, PatternRoot alpha boundary, namespace views, package boundary, and mount redirects | `../contracts/v0.6-semantic-owner-namespace-graph.md` | Historical context and implementation mapping only |
 | Canonical `Pv:Pp`, contextual binding `P1`, result `P2`, function-object stage derivation, seal visibility/snapshot, const/mut product order, no scalar result policy, mechanical compile projection, companions, match staging, and coarse automatic require | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Implementation mapping, invocation handoff, pattern algebra, and links |
 | Existing-First/Constructible-Second demand satisfaction, binding-P1 conservative-extension corollary, atomic Runtime Val1 migration, and mixed-stage boundary | `symbol-world/symbol-policy-and-compile-flow-projection.md` | Current binding-P1 helper coverage stays in the v0.6 transition contract; runtime is the current constructible stage branch; mixed-stage Policy existence/readability/progressive-evaluation semantics are fixed while residual representation and effect/ABI mechanics stay in planning |
 | Atomic migration as compiler-inserted ordinary function-object invocation, distinct from structure-changing mechanical operations | `symbol-world/function-object-call-model.md` | The bounded SemanticWorld/PreparedCallCandidate route is connected; caller-supplied transition carriers remain isolated algebra fixtures, not a new callable ontology |
 | Transition endpoint Policy preference placement in the overload pipeline | `patterns-overload/overload-resolution-design.md` | Connected Bp' composes implemented ordinary and optional endpoint coordinates once; the older endpoint-only maxima remains a private non-composable fixture |
-| Literal family, atomic builtin type T, and concrete numeric Tnum identity | `symbol-world/type-values-places-and-alias-forwarding.md` | Current helper/core coverage stays in the v0.6 transition contract |
+| Literal family, atomic builtin type T, and concrete numeric Tnum identity | `symbol-world/type-values-places-and-borrow-views.md` | Current helper/core coverage stays in the v0.6 transition contract |
 | Current cross-Policy, ordinary-invocation spine, Gsrc transport, and literal-helper implementation subset | `../contracts/v0.6-cross-policy-value-transition.md` | Records implemented carriers and deferred integration only; does not own language semantics |
 | Current `PatternHeadId` registry/materialization substrate | `../contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` | No claim of final owner resolution |
 | Pattern/argument shape adaptation before overload qualification | `patterns-overload/pattern-normalization-and-first-order-overload.md` | Structural handoff only; no competing policy or final selection rules |
@@ -107,11 +107,11 @@ implementation guardrail, not the semantic entry point.
 | Block | Responsibility | Not responsible for |
 |---|---|---|
 | `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, physical-directory contribution authority, export surface, cache/fingerprint/provenance. | Language expression semantics. |
-| `symbol-world/` | Namespace graph world model: symbol-first facets and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut product order, compile-flow projection and companions, automatic require, meta type self-root, pattern scopes, `struct` / `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, full alias resolver, access-tree construction, lifetime checking implementation. |
+| `symbol-world/` | Namespace graph world model: Symbol `<Q?,V>` role/member projection and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut member overloads, compile-flow projection and companions, automatic require, meta pure-role self-root, construction-lineage Open/frozen state, explicit borrow views (`ref` / `share` / `rebind`), pattern scopes, `struct -> symbol`, pure `extend`, place-level `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, borrow-view/writability checking implementation, access-tree construction, lifetime checking implementation. |
 | `patterns-overload/` | `PatternObject`, occurrence roles, `RawArgShape` / `ParameterShape`, first-order type-value candidate adaptation, applicability, specificity; the full overload-resolution vision; static pattern spaces and extraction chains; return-value extraction view and pattern-directed decomposition. | Runtime overload resolution implementation; full pattern-space algebra. |
 | `meta-invocation/` | Symbol-first invocation frames, candidate-selection handoff, partial vs strict demand, residualization, and policy-staged pattern matching. | Defining symbol construction, layered policy, overload ordering, or pattern algebra (it references their canonical owners). |
 | `policy-capability/` | Current flat-metadata mapping to canonical `Pv:Pp`, P1/P2 contextual elaboration, and orthogonal policy dimensions. | Compile-flow/require semantics and mechanical return normalization. |
-| `lifetime/` | Negative stage boundary separating lifetime policy/refinement from completed first-order type/compile overload selection. | Region/origin algebra, lifetime checking, specificity, Horae logic, or implementation. |
+| `lifetime/` | Canonical owner of `@`: its two overload groups, the escape check on borrow views, and the stage boundary separating lifetime rules from completed first-order type/compile overload selection. | Region/origin algebra, lifetime checking, specificity, Horae logic, or implementation. |
 | `control-flow/` | Targeted return, D-reduction, Done_Return, control-flow lowering — design only | Implemented parser / normalizer return syntax (lives in `spec/public/` and `spec/contracts/`); runtime return execution semantics. |
 | `mechanical-lowering/` | Compiler-inserted mechanical action frameworks: automatic argument passing and the `move` fixed point, return normalization and error policy, and `normal`/`tco`/`loop` call modes (no loop core). | Backend/machine ABI, final IR instruction format. |
 
@@ -136,8 +136,10 @@ implementation guardrail, not the semantic entry point.
   metadata and pair helpers).
 - Future design only (not implemented): `patterns-overload/`,
   `meta-invocation/`, `mechanical-lowering/`, `lifetime/`, and the remaining
-  `symbol-world/` and `policy-capability/` semantics (TypeValueId, alias
-  forwarding, writable-place checking, full policy checking).
+  `symbol-world/` and `policy-capability/` semantics (TypeValueId, borrow views
+  and `rebind`, construction-lineage Open/frozen checking, independent
+  writability/member-creation checking, pure `extend`, place-level `inject`,
+  full policy checking).
 
 ## Reading order
 

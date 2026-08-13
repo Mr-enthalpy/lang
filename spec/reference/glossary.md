@@ -165,7 +165,8 @@ _See also: CallableReceiverType, PatternRoot, PackageBoundary, Mount._
 The type of the caller object injected into invocation-frame slot 0. It is
 independent of `CallableOwner`. For a standalone function object it defaults to
 the owner-derived anonymous function-object type; for an associated `()` entry
-it is the type whose namespace supplied that entry, such as `ref::T`.
+it is the formal receiver type selected from the same-name candidate family,
+such as `T ref`.
 
 The first written formal binds this object by position under any legal spelling.
 Only later formals consume the explicit call-site Product. A mismatch is an
@@ -341,7 +342,9 @@ Leading `.name` is a base atom, distinct from suffix folding.
 
 `BracketCallSugar` is source-preserving sugar for the operator spelling `[]`; it
 is not indexing/slicing/container access. The `[]` operator is a contextual
-paired operator name, bindable/aliasable/referable in operator-name positions.
+paired operator name, bindable and referable in operator-name positions. Raw AST
+may preserve it inside historical alias-let syntax, but no semantic operator
+alias operation exists.
 
 _See also: ClosureAST, ProductForm, OperatorSugar, PostfixOperator, SelectorAst, NavPath._
 
@@ -388,7 +391,7 @@ The syntactic position of an operator relative to its operands. The operator
 design distinguishes:
 
 - `Binary` and `Postfix`: overloadable operator fixities (part of operator
-  identity for declaration, alias, and lookup).
+  identity for declaration, lexical operator-environment selection, and lookup).
 - `Prefix`: a Raw AST surface marker used only for the prefix-negative `-x`
   sugar. Prefix negative is normalized to typed-zero binary subtraction before
   operator lookup. The `Prefix` fixity is not a declarable or overloadable
@@ -421,8 +424,11 @@ OperatorExprAst ::=
   }
 ```
 
-Operator lookup is a future semantic pass and follows ordinary visible binding
-lookup, not ADL or type-directed parser lookup.
+Operator lookup is a future semantic pass. It first resolves the nearest lexical
+ordinary value `operator : operator`, then selects
+`operator[OperatorIdentity]`, where
+`OperatorIdentity = spelling + fixity + arity`. It is not direct lookup of an
+operator spelling as a visible binding, ADL, or type-directed parser lookup.
 
 _See also: OperatorName, Fixity, Arity._
 
@@ -431,7 +437,7 @@ _See also: OperatorName, Fixity, Arity._
 ## Overload Candidate
 
 A callable entry prepared for a given call. Final preparation first resolves a
-symbol, projects its heterogeneous value facet for the current policy view,
+Symbol, projects its heterogeneous typed `V` members for the current policy view,
 enumerates `Val2` objects, obtains each surviving value's type, and resolves
 that type's associated `()` entry. Non-callable values are discarded. A derived
 compile companion is itself a complete `Val2` function object with stable
@@ -495,13 +501,16 @@ _See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
 ## Const/Mut Product Order
 
 The overload preference relation for value mutability. At one constrained
-position, a const actual prefers `const`, then unspecified, then `mut`; a mut
-actual reverses the endpoints. Across receiver, parameters, and a target-result
-constraint when present, candidates are compared by product partial order. A
-candidate dominates only when it is no worse everywhere and strictly better
-somewhere. Incomparable maxima remain ambiguous; there is no score,
-exact-match count, position weight, or lexicographic fallback. Delete members
-participate in the same comparison.
+position the context-indexed rows are `succ_const: const > let > mut`,
+`succ_mut: mut > let > const`, and `succ_plain: let > const = mut`. Plain `let`
+is the formerly unspecified point. In a plain context, `const` and `mut` remain
+co-maximal and ambiguous when no `let` candidate survives; equality never means
+arbitrary choice. Across receiver, parameters, and a target-result constraint
+when present, candidates are compared by product partial order. A candidate
+dominates only when it is no worse everywhere and strictly better somewhere.
+Incomparable maxima remain ambiguous; there is no score, exact-match count,
+position weight, or lexicographic fallback. Delete members participate in the
+same comparison. Preference never grants capability.
 
 _See also: FullyAdmissibleCandidate, OverloadResolutionPipeline._
 
@@ -548,10 +557,23 @@ _See also: OverloadCandidate, OverloadResolutionPipeline,
 
 ## Overload Resolution Pipeline
 
-The fixed process that selects a unique overload candidate. Path resolution and
-the current policy view enumerate `Val2` objects. Associated-call preparation
-and every hard structural, Pattern, policy-pair, stage, target-result, concept,
-and ordinary-require check first form fully admissible set `A`. `Bp` then uses
+The fixed process that selects a unique overload candidate:
+
+```text
+Resolve Symbol
+  -> call-site candidate-family filter
+  -> generate candidates
+  -> fully admissible A
+  -> declaration-side candidate policy D
+  -> ordinary partial orders
+  -> unique selection
+```
+
+The call-site layer acts before candidate generation; this PR closes only its
+pipeline position, while source syntax such as future `|[[annotation]]>` and a
+general selector algebra remain deferred. Declaration-side `fallback` /
+`must-select` policy acts only after hard admissibility and cannot repair a
+rejected candidate or restart name lookup. `Bp` then uses
 the Policy product partial order across all constrained positions; no total
 score or lexicographic fallback resolves incomparable candidates. For an
 authorized atomic Runtime-migration call only, input/output endpoint Policy fit
@@ -566,16 +588,18 @@ restart lookup. Delete members participate normally, and ordinary uniqueness is
 constrained by `must_select_if_qualified` strategies activated from `A`.
 
 Current source cannot construct a fallback candidate role, so current calls
-have `Af = A`. If a future fallback strategy is exposed, its fixed semantics
-will insert `SuppressFallback(A)` before Bp: any admissible non-fallback
+have `D = A`. If a future fallback strategy is exposed, its fixed semantics
+will apply within declaration-side policy before Bp: any admissible non-fallback
 candidate, including `delete`, suppresses fallback permanently. This future
 suppression is not B6 and later failure cannot restore fallback.
 
-Lifetime policy is not a type/compile candidate filter. This revision defines
-no lifetime overload, refinement order, ABI class, or second selection. Any
-future lifetime check receives the already unique ordinary overload result,
-under the boundary in
-`spec/design/lifetime/lifetime-policy-and-overload-boundary.md`.
+Lifetime policy is not a type/compile candidate filter. This revision defines no
+lifetime-driven re-selection, refinement order, ABI class, or second selection
+stage. Any future lifetime check receives the already unique ordinary overload
+result, under the boundary in
+`spec/design/lifetime/lifetime-policy-and-overload-boundary.md`. That is a
+restriction on lifetime *rules*; `@` itself is an ordinary overloaded operation
+with its own candidate set.
 
 Full overload resolution is deferred to v0.10+ and depends on the pattern-space
 and extraction-chain infrastructure. The formal specification is in
@@ -588,12 +612,410 @@ _See also: OverloadCandidate, OverloadSpecificity, Concept,
 
 ## Lifetime Policy Boundary
 
-A negative boundary only: `@` belongs to lifetime syntax, lifetime policy is
-not ordinary stage policy, and it cannot reopen or change the already unique
-ordinary overload result. No lifetime algorithm, ordering, overload, ABI
-equivalence class, refinement phase, or handoff object is defined.
+The stage boundary between lifetime rules and ordinary overload selection:
+lifetime policy is not an ordinary stage policy atom, and no lifetime rule may
+reopen or change the already unique ordinary overload result. `@` is evaluated at
+a stage; it does not name one.
 
-_See also: `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
+This boundary is *not* a claim that `@` lacks semantics or overloads. `@` is the
+carrier-slot observation `E@ = ObservePlace_policy(CarrierPlace(E), Value(E))`
+with two positively defined base groups (`LifetimeFact` for value instances;
+`P ref` for borrowable pure pattern slots). Borrow **type values** additionally
+have the universe fixed points `type ref@ = type ref` and
+`type share@ = type share`; an ordinary borrow value instance still uses
+`LifetimeFact`. Borrow-constructor composition preserves its resident target,
+but that is not a blanket `@` overlap. What remains undefined is the
+region/origin algebra, checking order, refinement phase, and handoff object.
+
+_See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
+
+---
+
+## Object normal form (`Norm`)
+
+The structural identity of an object. Every language-visible semantic carrier
+has `Object = <Val1?, P, Val2>` and normalizes recursively through `Val1` and
+`Val2`. Bare Product, Sequence, `product`, and Symbol are constructor instances,
+not parallel aggregates. Borrow targets are horizontal identity-bearing leaves.
+The complete equations and well-foundedness rules belong to
+[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
+
+`Val1? = absent` is payload absence only. In the well-formed Object kernel every
+`Val2` is navigable, so `Pure(x) <=> NamespaceRole(x)`. `TypeRole(x)` is an
+additional imported judgment and is therefore the strict refinement.
+Construction lineage and carrier place remain outside normal form.
+
+_See also: Policy Pair, Borrow view, ConstructionLineage._
+
+---
+
+## ConstructionLineage
+
+Context carried alongside a PatternValue for deciding whether the value is
+still within its construction window. It is preserved by value clone and by
+construction-transparent `compile` frames, but it is neither source-place
+identity nor part of `Norm(value)`.
+
+```text
+Open_Γ(v) = Open(ConstructionLineage(v), CompileTimeStack_Γ)
+```
+
+An ordinary meta invocation forms a new boundary. Non-meta construction follows
+its stable lexical-owner interval and freezes on the specified semantic-use,
+meta-argument, residual-runtime/control, or owner-exit events. This judgment is
+orthogonal to place writability and borrow lifetime.
+
+_See also: `Open_Γ`, `extend`, `type ref`._
+
+---
+
+## PatternValue container kernel
+
+The four ordinary ordered-container cases used by the value model:
+
+| element structure | fixed outer shape | erased outer shape |
+| --- | --- | --- |
+| homogeneous | `T * N` | `T * omega` |
+| heterogeneous | bare Product | `product` |
+
+`T * N` and `T * omega` are finite homogeneous ordered Object containers; the
+former includes `N` in classifier identity and converts to the latter. Their
+mechanical `[]` value/ref/share members are bounds-domain partial projections
+over ordinal `ProjectionSlot`s. Ordinal topology is fixed:
+`CanCreateMember(sequence,pos_i)=false`. Stage is the ordinary dependency meet
+over container, index, and selected observation. This says nothing about layout,
+capacity, or growth.
+
+They are formed by the global privileged type constructor `*`:
+`*(T,N) -> T*N` and `*(T,omega) -> T*omega`. Both preserve the element type's
+universe rank: `rank(T*N) = rank(T*omega) = rank(T)`.
+
+All four cases are ordinary Objects. `BareProduct(a_0,...,a_n)` uses intrinsic
+ordinal `Val2(pos_i)` children; a `T*N` or `T*omega` Sequence Object holds that
+bare Product Object in `Val1`. A `product` value is the same ordinary wrapper
+with the erased outer classifier. Their normalization and owned traversal are
+therefore exactly the general `Object` rules.
+
+Sequence indexing therefore selects
+`ProjectionSlot(Resident(Val1(sequence)), pos_i)`, not `Nav(sequence,pos_i)` on
+the outer Sequence `Val2`. Value/ref/share indexing changes only observation
+kind and shares one bounds domain.
+
+A bare Product retains its concrete arity and element-type vector in its fixed
+shape. The global built-in `product` type classifies any finite heterogeneous
+bare Product without moving that concrete vector into the outer type identity.
+No general runtime `product[]` is defined in this stage. In both erased cases,
+“erased” affects only outer classification; the actual `Val1` information is not
+discarded.
+
+_See also: ProductForm, Object normal form (`Norm`), Symbol value._
+
+---
+
+## Symbol value
+
+An ordinary value of the ordinary `symbol` type. Its mutable member content is
+`Val1(Symbol) = Σ = ⟨Q?, ⨄_{T_c}V[T_c]⟩`, never a mutable `P x Val2` side
+structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
+member objects. `Q`, when present, is the unique pure role member. Namespace
+projection selects `Q`; type projection selects it only when `TypeRole(Q)`.
+Callable val members project across the typed buckets to the formal `OverloadSet`.
+
+Symbol normalization is an extensional optional pure role member plus map of typed
+member sets. Stable member and candidate identities, callable-body identity, and
+selection-relevant declaration annotations live in the ordinary member objects
+and survive normalization. Only order and repeated contribution of the same
+member are quotiented away; conflicting declarations remain diagnostics.
+
+`Σ` is not a private record carrier. Its optional member is represented by an
+empty/singleton bare Product, each typed bucket is an ordinary `T_c*omega`
+Sequence, each `(T_c, bucket)` entry is classified by `product`, and those
+homogeneous entries form a `product*omega` carrier. The logical
+`⟨Q?, V⟩` notation projects this ordinary Object composition.
+
+The privileged `struct` operation returns such a Symbol: it creates the unique
+pure-role member `Q_struct` satisfying `TypeRole(Q_struct)` and mechanically
+generated field/access/assignment/borrow partner families. It is therefore a
+symbol-producing structural generator, not merely a type constructor.
+
+_See also: PatternValue container kernel, Overload Candidate, `extend`._
+
+---
+
+## ProjectionSlot
+
+The resident-specific projection location
+`<ParentResidentIdentity, Selector>`, whose contents are `None` or `Some(Object)`.
+The reusable logical `ProjectionCoordinate(parent_place,selector)` is distinct
+from this slot identity. `let` may change one slot from `None` to `Some` without
+retargeting; bare `=` never creates. A projected borrow records the slot identity
+even when contents are `None`. Wholesale parent replacement creates new slots
+and invalidates old borrows; only `rebind` obtains a new target. Named and
+ordinal selectors use this same mechanism. See the canonical projection-slot
+rules in `type-values-places-and-borrow-views.md` §7.
+
+_See also: Let binding, BindingSlot, `@`._
+
+---
+
+## `@`
+
+The carrier-slot observation operation:
+
+```text
+E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
+```
+
+On a pure pattern slot the selected candidate is
+`E@ = RefCarrierSlot( CarrierPlace(E) )`.
+
+`CarrierPlace(E)` is the carrier slot through which `E` was read; `ref` and
+`share` consume only `Read(E)` — the complete object read out of the slot — and
+never ask for it. A freshly computed temporary supplies no carrier place, so no
+`@` candidate applies to it.
+
+`@` is **not** a general `PlaceOf(E)`. Its groups distinguish a borrow type value
+fixed point, a value-instance lifetime observation, and the carrier borrow of an
+already-pure pattern slot. For a value instance carrying `Val1`, `@` takes that
+instance's lifetime and yields a `LifetimeFact`; that is a fact, not a borrow.
+For `Val1?(Value(E)) = null`, `CarrierPlace(E) = q`, and ordinary borrow
+formation validity, it yields `P ref` with `Target(E@) = q`. The second group is why `@`
+exists: an ordinary read of a pure pattern slot selects the pattern value and so
+hides the carrier slot, and `ref` has no basis for guessing otherwise. Formation
+does not require or manufacture `Open`; a later `extend` checks the pointee
+value's lineage independently. There is deliberately no compile-stage
+borrow-producing `@` candidate for a value-bearing operand — `s ref` already
+does that job. `@` is not a stage name and not an ordinary policy atom.
+
+`@` never projects a Symbol to its type member. Symbol supplies the ordinary
+same-name family `S.type : type`, `(S ref).type : type ref`, and
+`(S share).type : type share`. The borrow is formed before field projection, so
+no source place is recovered from `AsType(S)`. An already-pure type slot uses
+direct `t@`.
+
+`@` is itself resolved by the ordinary selector. The three steps are strictly
+ordered and non-circular: ordinary selection inside the operand, then ordinary
+selection of `@` among the candidate groups visible in the operand's policy stage,
+then lifetime validation, which may reject the first two but never reselects them.
+
+Borrow **type values** are fixed points: `type ref@ = type ref` and
+`type share@ = type share`. A borrow **value instance** is different: if
+`t : type ref`, then `t@ = lifetime(t)`. Target-preserving composition belongs
+to the `ref`/`share` borrow constructors, not to a blanket `@@` rule.
+
+_See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref`._
+
+---
+
+## Borrow view
+
+An ordinary value that observes another object without owning it. What `ref` and
+`share` observe is the value the expression read, and a read always yields a
+complete three-component object:
+
+```text
+Read(Σ) = ⟨ Val1(Σ), P(Σ), Val2(Σ) ⟩    when Val1(Σ) ≠ ⊥
+Read(Σ) = ⟨ ⊥,       P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
+
+E ref    = Ref( Read(E) )
+E share  = Share( Read(E) )
+E@       = RefCarrierSlot( CarrierPlace(E) )
+```
+
+`Val1` is the object's internal payload, not the read result: `Read` never
+projects an object down to its payload. So for `s : symbol`, `Read(s)` is the
+symbol value — not the member array inside it — and `s ref : symbol ref`.
+
+Whether `ref` or `@` is the right operation is decided by the presence of a
+`Val1` payload, never by type-rank: for `s : symbol` the payload exists, so
+`s ref : symbol ref` borrows the symbol value `s` carries — not the binding slot
+that carries `s` — and a type-rank object with a payload behaves the same way.
+For `let t: type = uint8`, `t ref` is `uint8 ref` (a correct borrow of what was
+read) and only explicit `t@` yields `type ref`.
+
+A borrow view is a value, not a second name for a symbol: it does not forward
+`SymbolId`, and its member set is not silently that of its target. It does carry
+the stable semantic identity of its referent as value content:
+
+```text
+Norm(Borrow_k(q)) contains ⟨BorrowKind_k, StableTargetIdentity(q)⟩
+```
+
+That is why assignment, `rebind`, escape/Open-region checks, and compile
+reference caching distinguish views of `q1` and `q2` even when the pointee
+values are equal. The target is horizontal and remains a normalization leaf;
+its current contents are not recursively owned by the view.
+
+Applying a borrow operator to an existing view is **well-formed**, and that
+overlapping overload is precisely what makes borrowing non-stacking:
+
+```text
+Borrow_k( Borrow_j(q) )     = Coerce_{j->k}( Borrow_j(q) )
+Target( Coerce_{j->k}(v) )  = Target(v)
+```
+
+So `ref ref` and `share share` are idempotent (`Coerce` at equal capability is the
+identity), and `ref share` is an admitted weakening to the same target — which is what
+makes `r share` on a `type ref` legal. Borrow constructor composition never
+retargets. Only
+`share ref` has no candidate, because capability may be surrendered and never
+regained. No composition nests, and no provenance or cycle detection is required.
+
+`r_ref = v` writes the referent. `r_ref rebind = E` retargets the view, and it is
+a place operation rather than a value borrow: it takes `Target(E)` when `E` is
+already a view, or `CarrierPlace(E)` when `E` supplies one, and has no candidate
+otherwise. It is deliberately not `Ref(Read(E))`, which for a pure `type` slot
+would yield `uint8 ref` instead of a reference to the slot.
+`OwnedClosure(x)` excludes every `ref` / `share` edge.
+
+Borrow views replace the retired alias-forwarding model. Canonical owner:
+`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
+
+_See also: `@`, Escape check, Alias binding (retired semantics), `type ref`._
+
+---
+
+## NoImplicitBorrowFormation
+
+The negative invariant that candidate adaptation, structural repair, Policy
+migration, and automatic argument passing cannot turn an ordinary
+Object/Symbol/type actual into `ref` or `share` merely to make a candidate
+applicable. The source or normalized expression must explicitly form the view
+with `ref`, `share`, or `@`. Fixed points and legal weakening of an already
+formed borrow preserve its target and are not implicit formation; callable-frame
+implicit `self` is a separate narrow capability rule.
+
+Canonical owner:
+`spec/design/symbol-world/type-values-places-and-borrow-views.md` §5.1.2.
+
+_See also: Borrow view, Overload Candidate, `@`._
+
+---
+
+## Escape check
+
+The check that a borrow view is not carried where it outlives its own valid
+region:
+
+```text
+Escapes(view, destination)
+  = Region(destination) ⊄ ValidRegion(view)
+```
+
+`ValidRegion` is determined by ordinary borrow lifetime and capability; it is
+not a construction-open interval:
+
+```text
+ValidRegion( type ref )   =  BorrowLifetimeRegion( Target, ref )
+ValidRegion( type share ) =  LifetimeRegion( Target )
+```
+
+A `type ref` may remain valid while its pointee type value is frozen. A mutable
+ref may then replace the whole slot with another legal value, but cannot use the
+frozen value as `extend` input. `Open(value)` and `Writable(place)` are separate
+judgments in both directions.
+
+It applies to the destination classes that can outlive a valid region
+(global/normalized structures, returned values, captured closure state, and
+longer-lived member slots). It is a property of the destination and the view's
+valid region only; it is not an RHS-provenance or construction-history check on
+assignment.
+
+_See also: Borrow view, `@`, Lifetime Policy Boundary, `type ref`._
+
+---
+
+## `extend`
+
+The pure PatternValue transformation for structural extension:
+
+```text
+extend : type x StructLikeMaterial ⇀ type
+
+Extend(old, Δ) ⇓ new
+Root(new) = Root(old)
+```
+
+`extend` accepts a type value, never a `type ref` or `type share`. It checks
+`Open_Γ(old)` from `ConstructionLineage(old)` and the current compile-time stack,
+creates no root, modifies no place, and preserves the input root. Failure is
+total: no partial value, write, or rollback.
+
+_See also: `inject`, `Open_Γ`, ConstructionLineage._
+
+---
+
+## `inject`
+
+The place-level convenience operation over an existing `type ref`:
+
+```text
+inject : type ref x StructLikeMaterial ⇀ type ref
+
+old = Clone(Read(t_ref))
+new = Extend(old, Δ)
+Write(t_ref, new)
+return t_ref
+```
+
+Legality is the conjunction of two independent checks:
+
+```text
+Open_Γ(old)
+Writable(Target(t_ref)) ∧ BorrowValid_Γ(t_ref)
+```
+
+Neither check proves the other. In particular, a `type ref` does not prove that
+its current pointee is open. Pure value code calls `extend`; `inject` is only the
+read–extend–write wrapper.
+
+_See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
+
+---
+
+## `type ref`
+
+A borrow view of a type-valued carrier slot. An already-pure type slot uses
+`t@`; a Symbol uses `(S ref).type` when its unique `Q` satisfies `TypeRole`.
+Ordinary borrow lifetime and policy rules determine formation, validity, and
+writability.
+
+```text
+Carrier(t) = q      CanBorrowRef_Γ(q)
+--------------------------------------
+Γ ⊢ t@ : type ref
+```
+
+A `type ref` carries only ordinary borrow facts:
+
+```text
+⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
+```
+
+It contains no construction-open witness. A frozen type can therefore be read
+through `type ref`; if the ref is writable, the whole slot can be replaced by an
+independently legal type value. Using the current frozen value as input to
+`extend` still fails. Returning or storing the view is an ordinary borrow escape
+question.
+
+`type share` keeps observability but has no write capability and therefore no
+applicable `inject` operation. The weakening `r share` is the admitted
+`ref share` composition.
+
+```text
+ValidRegion( type ref )   =  BorrowLifetimeRegion( Target, ref )
+ValidRegion( type share ) =  LifetimeRegion( Target )
+```
+
+Borrow type constructors are universe fixed points:
+`rank(type ref/share) = rank(type)`, `type ref ref = type ref`,
+`type share share = type share`,
+`type ref rebind rebind = type ref rebind`, and
+`type share rebind rebind = type share rebind`. These equations
+do not turn a borrow value instance into a type value: for `t : type ref`,
+`t@ = lifetime(t)`.
+
+_See also: `@`, `extend`, `inject`, Borrow view, Escape check, ConstructionLineage._
 
 ---
 
@@ -619,8 +1041,8 @@ Normalization rewrites prefix negative to typed-zero binary subtraction:
     -x  ⟶  ()zero::(x |> type) - x
 
 Prefix negative is not an overloadable operator identity. The spelling `-`
-as a declarable or aliasable operator identity refers only to binary minus.
-Only the generated binary `-` participates in operator lookup after
+as a declarable operator identity refers only to binary minus. Only the
+generated binary `-` participates in operator-environment selection after
 normalization.
 
 _See also: OperatorSugar, Fixity, OperatorName._
@@ -716,41 +1138,56 @@ _See also: NavPath, OperatorName, EntityRef._
 
 ## Alias binding
 
-A declaration form `let binder === EntityRef` that creates a compile-time
-lookup alias in the current lexical scope. Phase 4.4 implements raw parser
-preservation: the parser produces `LetAliasAst` with `AliasBinderAst` and
-`EntityRefAst`. Alias binding is not runtime value binding, not an expression,
-not equality, not operator syntax, and not package import syntax. No target
-resolution, operator identity validation, or entity lookup is performed.
+The frozen *parser* declaration form `let binder === EntityRef`. Phase 4.4
+implements raw parser preservation: the parser produces `LetAliasAst` with
+`AliasBinderAst` and `EntityRefAst`. Alias binding is not runtime value binding,
+not an expression, not equality, not operator syntax, and not package import
+syntax. No target resolution, operator identity validation, or entity lookup is
+performed.
+
+> **Semantic direction: retired.** The semantic reading of this form — a
+> compile-time lookup alias that forwards symbol identity, place, or writability
+> to a target — is retired, not deferred. There is no declaration form that
+> forwards a Symbol or a place. `let a = b` creates a fresh symbol in a fresh
+> place carrying `b`'s value (`SymbolId(a) ≠ SymbolId(b)`,
+> `PlaceId(a) ≠ PlaceId(b)`, `Value(a) = Value(b)`). Shared observation of another
+> object is expressed only by a borrow view (`ref` / `share` / `@`). No
+> operator-name exception survives: operator environments are ordinary values
+> under the global `operator` type, with lexical copy/shadow and Symbol algebra.
+> See
+> `spec/design/symbol-world/entity-alias-design.md` (retirement notice) and
+> `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 > **Distinction**: Alias binding is implemented as raw parser preservation
 > only. It is not an ordinary `let name: annotation = expr`. It has no `=`
 > value expression, no declaration annotation, no `guard`, and no `with`.
 > EntityRef parsing is implemented only inside alias-let RHS.
 
-_See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef._
+_See also: Lexical alias, Entity alias, AliasBinder, Operator alias, EntityRef,
+Borrow view._
 
 ---
 
 ## Lexical alias
 
-A compile-time lookup name introduced by alias binding into a lexical
-scope. A lexical alias shadows previous bindings of the same name in the
-current scope and nested scopes but does not mutate the original entity or
-change namespace state globally. Lexical aliases are parser-preserved in Raw
-AST, but their scope and target semantics are future work and are not resolved
-by the parser.
+**Retired semantic term.** It named a compile-time lookup name introduced by
+alias binding into a lexical scope, shadowing previous bindings of the same name
+without mutating the original entity. That forwarding-based scope/target model is
+retired: no declaration form forwards lookup. Ordinary shadowing by a fresh `let`
+binding covers the shadowing behavior; observing another object is a borrow view.
+The `LetAliasAst` shape it described remains a frozen parser fact.
 
-_See also: Alias binding, Entity alias._
+_See also: Alias binding, Entity alias, Borrow view._
 
 ---
 
 ## Entity alias
 
-A lexical alias whose target is a compile-time entity reference (`EntityRef`).
-The alias binds a name or operator to a compile-time entity path without
-evaluating or constructing a runtime value. Entity aliases are preserved by the
-v0.1 parser, but target resolution is a future name-resolution construct.
+**Retired semantic term.** It named a lexical alias whose target is a
+compile-time entity reference (`EntityRef`), binding a name or operator to a
+compile-time entity path. Target resolution for this reading is retired, not
+future work. `EntityRefAst` preservation in alias-let RHS remains a frozen parser
+fact.
 
 _See also: Alias binding, Lexical alias, EntityRef._
 
@@ -762,22 +1199,7 @@ The binder position in a `let binder === EntityRef` form. It may be a
 `Name` or `OperatorName`. The parser preserves the binder as raw AST syntax
 without resolving the target entity.
 
-_See also: Alias binding, Operator alias._
-
----
-
-## Operator alias
-
-An alias binding whose binder is an `OperatorName`. Operator aliases are
-parser-preserved as Raw AST. Later validation may require the operator binder
-and the innermost operator component of the target `EntityRef` to have the same
-overloadable operator identity (`spelling + fixity + arity`, where fixity is
-`Binary` or `Postfix`). Prefix negative is not an overloadable operator
-identity and cannot appear as an alias binder or target. An operator alias
-cannot rename one operator spelling into another. Operator alias validation is
-future static validation or name-resolution work, not current parser behavior.
-
-_See also: Alias binding, AliasBinder, OperatorName, EntityRef._
+_See also: Alias binding, EntityRef, `spec/history/v0.1/operator-design.md`._
 
 ---
 
@@ -1063,17 +1485,28 @@ _See also: ClosureAST, ClosureObject._
 
 ## Meta-function
 
-A callable whose entry executes with `P2 = meta` and constructs
-`SymbolConstructionValue` under symbol-world construction capability. An
-ordinary user meta-function receives rank-constrained semantic values, creates
-an ordinary canonical `MetaInstanceScope`, and has no unrestricted AST access.
+A callable whose entry executes under meta construction capability. Callable
+kind fixes `P2=meta` and result classifier `symbol`; a particular call is
+well-formed only after ordinary admissibility and `GlobalKeyable` checks. A
+successful call establishes root identity and construction navigation, not
+external installation. The canonical judgments and seal algorithm belong to
+[`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
+
+At seal only the returned unique pure role member `Q`'s owned closure may be
+promoted. `Q` may be namespace-only; type capability is the additional
+`TypeRole(Q)` refinement.
+`EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
+horizontal borrow targets; it is not a val-sibling-only check.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
-subclass. A member such as `struct` or `inject` may accept one specifically
-bounded Normalized-AST/pattern carrier and use a member-specific scope/owner
-rule. Users may call these objects but cannot define new privileged members;
-the privilege does not imply text substitution, parser re-entry, or a general
-macro system.
+subclass. A member such as `struct`, `extend`, or `inject` may accept one
+specifically bounded Normalized-AST/pattern carrier and use a member-specific
+scope/owner rule. `struct` produces a Symbol and establishes or selects its
+`Q_struct` type-role member's stable lexical root from input navigation plus ambient
+scope. `extend` establishes no root and preserves the input root; `inject` is
+its place-level read–extend–write wrapper. Any later privileged member must declare its own owner rule. Users
+may call these objects but cannot define new privileged members; the privilege
+does not imply text substitution, parser re-entry, or a general macro system.
 
 > **Distinction**: meta execution capability is not AST privilege. Names such
 > as `match` and `struct` remain ordinary parser-level names; parser code does
@@ -1113,8 +1546,15 @@ bind that exact v to the LHS Symbol
 
 If RHS is a path, the path first resolves a Symbol and reads `v`; the RHS
 carrier Symbol is not part of `v` after that read. `let T: type = uint8`
-therefore binds the existing type value under a fresh carrier, whereas
-`let T === uint8` is the separate Symbol/place-forwarding form.
+therefore binds the existing type value under a fresh carrier. No declaration
+form forwards a Symbol or a place; to observe another object's place, bind a
+borrow view (`uint8 ref`, `uint8 share`, `p@`).
+
+At the semantic layer this is also the only missing-member creation operation.
+Navigation may yield a prospective ProjectionSlot containing `None`; `let` may
+instantiate it. Bare `=` writes only an already existing place, and a return
+event performs only control transfer. A return-name `let`/overwrite cluster in
+the current evaluator is a transitional compatibility encoding, not this rule.
 
 _See also: Declaration, BindingSlot, BindingAnnotation._
 
@@ -1211,6 +1651,21 @@ ordinary namespace visibility, and export-root are typed orthogonal dimensions. 
 is surface shorthand or a derived summary and cannot reconstruct the pair.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
+
+The positive presence invariant is:
+
+```text
+Val1 = absent  =>  Pv = Pp
+Pv != Pp       =>  Val1 != absent ∧ runtime ∈ Stage(Pv)
+```
+
+This does not say `Pv = absent`: the PatternValue itself still has policy. An
+observer may hide an existing `Val1`, so `Pv = absent` does not prove physical
+absence.
+
+There is no independent `P3`. Written parameters inherit `P2`, and returns
+inherit `P1`; either position may refine only the inherited mutability dimension.
+Stage, presence, visibility, and every other policy dimension remain invariant.
 
 At namespace direct top level, `export` derives an external view without
 cropping the complete internal `Pv:Pp`. A value-bearing external view is
@@ -1339,12 +1794,14 @@ Migration endpoint mutability uses ordinary actual-relative Bp preference, not
 hard Policy-domain intersection or subset specificity:
 
 ```text
-const actual/demand: const > unspecified > mut
-mut actual/demand:   mut > unspecified > const
+succ_const: const > let > mut
+succ_mut:   mut > let > const
+succ_plain: let > const = mut
 ```
 
 Opposite endpoint Patterns remain fully admissible. Stage, presence, Pp
-capability, Type, and structural applicability remain hard constraints.
+capability, Type, and structural applicability remain hard constraints. The
+plain row preserves ambiguity when only tied `const`/`mut` endpoints survive.
 Generic ordinary members may realize the four default transports
 `const <- const`, `const <- mut`, `mut <- const`, and `mut <- mut`; more
 specific Pattern members may refine or delete regions of that relation.
@@ -1386,7 +1843,7 @@ Project_out o Migration o Project_in
 
 No transitive migration graph, candidate backtracking, temporary-lifetime
 extension, universal transition Symbol, or new callable ontology is implied.
-Explicit mechanical `ref`, `share`, and `alias` operations remain ordinary
+Explicit mechanical `ref`, `share`, and `rebind` operations remain ordinary
 function-object calls distinct from Policy-demand satisfaction.
 Binding P1 is the currently connected demand consumer. Consumer-neutral
 parameter/result demand preparation, complete Pattern/result construction,
@@ -1482,6 +1939,31 @@ represents a type. In v0.1 declarations:
   source name `fn`.
 
 _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
+
+---
+
+## AsType and TypeOf
+
+`AsType(E) = E |> type` does not raise universe rank or preserve a source place.
+For Symbol it selects the unique pure role member `Q` exactly when
+`TypeRole(Q)`. For a pure Object `x`, it is the
+identity exactly when `TypeRole(x)`; otherwise it is undefined. It never
+wraps a namespace-role Object or searches it for a hidden Q/type-role member. Symbol's
+ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
+only an already-pure type slot uses `t@`.
+
+`TypeOf(E)` is classifier extraction and may move to the next universe. Its
+explicit source family is `let <typeof> x : typeof = RHS`, not ordinary
+type-expected elaboration. The global `type` object is first a Symbol:
+
+```text
+typeof(type) = symbol
+typeof(type |> type) = type_1
+rank(type ref/share) = rank(type)
+rank(T*N) = rank(T*omega) = rank(T)
+```
+
+_See also: Type-object, Kind/rank object, `@`, Symbol value._
 
 ---
 

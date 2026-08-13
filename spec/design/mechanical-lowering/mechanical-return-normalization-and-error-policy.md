@@ -304,17 +304,21 @@ this requires the current policy/capability environment to permit that return ca
 ## 9. Local Error Binding and Active Propagation
 
 Because `Error` is an ordinary lookupable symbol in the carrier predicate and
-branch shape, a local alias/binding may intercept an unqualified `Error` lookup.
-This lets a `noerror` function turn an error into an ordinary return value
-explicitly, instead of using the default return capability.
+branch shape, an ordinary local binding may shadow an unqualified `Error`
+lookup. This lets a `noerror` function turn an error into an ordinary return
+value explicitly, instead of using the default return capability.
 
 Conceptually:
 
 ```text
-let Error === MyPureResultHandler
+let Error = MyPureResultHandler
 ```
 
-or an equivalent local binding, so that the Error carrier branch constructs an
+This is ordinary shadowing by a fresh symbol, not symbol forwarding: `Error`
+becomes a distinct symbol in a distinct place that happens to carry the same
+value.
+
+An equivalent local binding makes the Error carrier branch construct an
 ordinary value, for example:
 
 ```text
@@ -378,8 +382,9 @@ error-policy checker exists. The relevant dimensions are:
   `Error` branch predicate or handler objects are available;
 - receiver/parameter policy pairs and stage constraints determine whether a
   handler call is admissible, while P2 describes its result pair;
-- the produced result remains layered `Val1 x Pattern x Val2` material; there is
-  no independent return-policy `P3` or scalar whole-result policy;
+- the produced result remains layered `Val1? x Pattern x Val2` material; there is
+  no independent return-policy `P3` or scalar whole-result policy, while the
+  return position may refine inherited P1 mutability only;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 
@@ -443,7 +448,7 @@ model specified here, and this document does not depend on them for its meaning.
   should reuse.
 - `pattern-normalization-and-first-order-overload.md` — provides `is_val` and the
   first-order type information that `T |> has(Error)` is evaluated over.
-- `type-values-places-and-alias-forwarding.md` — defines `TypeValueId`, over
+- `type-values-places-and-borrow-views.md` — defines `TypeValueId`, over
   which `T |> has(Error)` is computed as projection material.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the argument-slot
   counterpart of this return-slot normalization; both are mechanical source-level

@@ -13,6 +13,18 @@
 EntityRef remains later-stage work and must not become a name-resolution,
 namespace-resolution, or semantic lookup feature in this window.
 
+> **Semantic direction notice.** Every mention of "alias" below names the frozen
+> *parser* position `let binder === EntityRef` (`Symbol::TripleEqual` +
+> `LetAliasAst`), which stays in the v0.2 frozen surface. The *semantic* alias
+> model — lexical alias binding, symbol/place forwarding, `AliasChain`, and
+> alias-inherited writability — is retired; see the retirement notice in
+> [`entity-alias-design.md`](entity-alias-design.md). Shared observation of
+> another object is expressed by a borrow view (`ref` / `share` / `@`), owned by
+> [`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md).
+> Operator-name binding is not a surviving semantic exception. Operator values
+> use ordinary copy/shadow/Symbol algebra; the frozen operator-binder branch is
+> parser-preserved history only.
+
 This document records the future compile-time entity reference syntax used by
 later parser/design phases (Phase 4.2 design). Phase 4.4 implements a raw
 EntityRef parser inside alias-let RHS only; EntityRef is not a general
@@ -114,9 +126,9 @@ EntityComponent ::= Name | OperatorName
 ```
 
 This does not implement operator lookup. It does not check that the operator
-exists. It does not validate operator identity. Operator alias identity
-validation belongs to a later alias-binding phase or semantic/static validation
-phase (see `spec/design/symbol-world/entity-alias-design.md` Phase 4.3 design).
+exists and receives no future operator-alias identity validation: the semantic
+alias family is retired. Any future operator environment is an ordinary value
+environment, not an `EntityRef` alias pass.
 
 The current `<` operator-binder ambiguity documented in
 `spec/history/v0.1/operator-design.md` concerns `let` binder syntax. It does not by itself

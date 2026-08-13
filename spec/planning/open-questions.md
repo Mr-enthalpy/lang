@@ -12,6 +12,9 @@ Resolved records live in history:
 - v0.3 Normalized AST questions (`N-AST-1..9`), their resolutions, the N-AST-9
   review audit trail, and the documentation-reset debt log:
   `spec/history/v0.3/normalized-ast-design-history-v0.3.md`.
+- v0.6 semantic correction record and the resolved symbol-first construction
+  direction index:
+  `spec/history/v0.6/resolved-questions.md`.
 
 The v0.6–v0.8 build / namespace graph / early meta direction is
 `spec/design/symbol-world/early-meta-functions-and-namespace-graph.md`. It is not an open
@@ -21,100 +24,9 @@ design question; it is the next post-v0.5 roadmap track.
 
 ## v0.6 semantic correction record
 
-The following points are resolved for the v0.6 namespace graph / early-meta
-track:
-
-- Generated data fields are unary function objects; the first-class `.name`
-  constructor generalizes the same first-argument dispatch to ordinary
-  remainder arguments without creating a separate member system.
-- Once `.name` is lowered, it is an ordinary expression. Its provenance does
-  not alter how `P1 |> E P2` associates; replacing `.name` with a bound
-  equivalent must preserve the general pipe/product spine. Compact `E.name`
-  mechanically uses the same core. Direct `..name(product)` remains the
-  distinct direct member-call simulation and is not redundant.
-- The post-v0.2 parser changes are versioned by frontend amendment v0.5-A and
-  Raw AST contract v0.5; the closed v0.1/v0.2/v0.3 documents remain historical
-  snapshots.
-- Closure placement and generated provenance are independent in both Raw and
-  Normalized AST. Generated dot closures retain `InPlace` placement.
-- Product-versus-closure classification and capture-slot bypass recognize only
-  the complete `[[Name]] {` tail. Deduce alone leaves capture available; the
-  weaker `[[` recovery candidate is confined to independently proven
-  post-capture closure heads and never disables ordinary bracket-call suffixes.
-- Ordinary capture items are let-shaped bindings. A naked capture expression
-  is retained as shorthand only when normalization finds exactly one distinct
-  free non-call bare name; all initializers use the pre-capture environment.
-- Pack is a direct canonical Pattern Sequence child as well as a Product child.
-  The parser preserves Pack shape, while the normalized Pattern validator alone
-  owns the one-pack-per-Product-or-Sequence-level invariant.
-- Build-world harvesting consumes `PatternValidatedNormProgram` from
-  `normalize_and_validate_patterns`. This proves only global normalized
-  Pattern invariants; it does not claim recovery-free syntax.
-- `ref` and `share` are namespace subspaces, not reserved field names.
-- Function-object names and namespace-subspace names may be identical under the
-  same parent when they occupy different child-name roles.
-- Fields named `ref` or `share` are allowed.
-- Terminal `ref::T` or `share::T` may be ambiguous without a resolver expected
-  role.
-- `a::T`, `a::ref::T`, and `a::share::T` are intended type-associated namespace
-  paths for field function objects.
-- `let T: type = uint8` is ordinary type-value binding: it creates a new symbol
-  `T` whose type value equals `uint8`.
-- Type/rank use evaluates by type value, not by symbol name.
-- `let T: type = uint8` creates a fresh symbol/place whose type value equals
-  `uint8`.
-- `let f::T = ...` injects into `T` as a place, not into `uint8` as a value.
-- Injection is place update, analogous to `a = a + 1`, not value rewriting.
-- `let T === uint8` is symbol alias / forwarding, not ordinary type-value
-  binding.
-- `let T === uint8` does not create a fresh writable place.
-- Injection through an alias is allowed only if the final forwarded target is a
-  current-level open writable object.
-- External stable values are readable / aliasable but not writable injection
-  targets.
-- Inner lexical symbols cannot be exposed as longer-lived injection targets.
-- Type values can be equal even when their binding symbols differ.
-- `struct` meta generation creates a fresh type value; ordinary `let` binding
-  to an existing type value does not.
-- A let-shaped declaration consumed inside `struct` contributes ordinary Val2
-  material to the current Pattern owner. It is neither a structural member nor
-  restricted to `Pv=absent`; callable values are admitted.
-- `let ()` is the special current-owner call-entry contribution. It creates
-  only that owner's `()` entry and does not synthesize entries for `ref` or
-  `share` child owners.
-- A pure-P member is a real object: each ordinary type binding owns its own
-  Val2 place, so `Pattern(T) = Pattern(U) = Pattern(uint8)` coexists with
-  `Place(T) != Place(U) != Place(uint8)`. Reads fall back to the Pattern's
-  canonical type object for inherited members; writes stay local to the
-  carrier's object.
-- `Val2(T_t)[f] = C_f` is a recursive ClusterSymbol, and `C_f` is the single
-  authority for the source-visible name `f`. A raw value list under the same
-  name is transport material for compiler-installed anonymous entries only.
-- Exposure of a navigated target is the per-layer phase conjunction over the
-  whole host chain (`Expose(g::f::T, φ) = Expose(T_t, φ) ∧ Expose(C_f, φ) ∧ …`),
-  decided from each host carrier's own binding-level view rather than from the
-  shared TypeObject adapter. It is not a stage-set intersection: a `meta` host
-  may carry `compile` members. Ordinary invocation enforces the full
-  conjunction — a hidden outer host makes the target unreachable even when the
-  terminal is visible.
-- A type object's canonical identity is the recursive object normal form
-  `Norm_type(x) = ⟨Norm_P(P_x), Norm_Val2(Val2_x)⟩`, where `Norm_Val2` resolves
-  each name to its cluster symbol and normalizes that symbol's own members down
-  to empty-`Val2` leaves such as `()`. `PlaceId` is the observation coordinate
-  `place(x) ⟼ Val2_x` and never identity material: equal `P` with equal
-  recursive `Val2` is one identity across different places, and one open type
-  observed before and after an injection is two identities (and two meta
-  instance keys) through one place.
-- Path resolution is `Path -> ⟨HostChain, TerminalSymbol⟩ -> ContextDirectedProjection`,
-  executed by one shared navigator for every use context. A step enters the
-  current symbol's own object `Val2` place and its associated namespace and
-  records the traversed object as a host layer; only the final facet projection
-  (callable vals / pure-P member / sibling vals / writable place / Pattern) is
-  context-directed. `f::T` therefore denotes the same terminal symbol as a call
-  target, a type, an injection RHS, a meta argument, and an extraction prefix,
-  and every consumer sees the same host chain. Cross-root resolution
-  deduplicates on the full navigation, so one terminal reached through distinct
-  host chains is a navigation ambiguity rather than a search-root-order pick.
+The resolved v0.6 semantic correction facts and the resolved symbol-first
+construction direction index moved to
+`spec/history/v0.6/resolved-questions.md`.
 
 Still open after this correction:
 
@@ -124,23 +36,29 @@ Still open after this correction:
   observation `Addr(Norm_type)`; what remains open is the root representation
   itself and the normal form of value payloads that currently
   keep an identity-stable opaque form.
-- Exact representation of symbol/place identity.
+- Exact representation of symbol/place identity and
+  `StableTargetIdentity(q)`. The representation is open; the semantic
+  requirement that distinct borrow targets normalize distinctly is closed.
 - Exact future lowering of generic/meta-generated type expressions such as
   `(int Vec::std)`.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
-- Exact future implementation of writable-place checking.
-- Source-level `let f::U` against an already installed rebinding carrier: the
-  associated-injection entry point currently requires a still-open
-  construction and resolves the target object from the constructed Pattern.
-- Alias-forwarded injection places: `let T === uint8` must forward the aliased
-  object's place instead of allocating a fresh one, and the forwarded object's
-  writability verdict decides whether injection is legal.
-- Exact future implementation of alias forwarding resolution.
-- Exact Rust/IR representation of `SymbolConstructionValue` facet exposure;
+- Exact future implementation of independent place-writability and
+  construction-lineage Open checking.
+- Implementation of source-level `let f::(U@)` against an already
+  installed type carrier/place: the associated-extension entry point currently
+  requires a still-open construction and resolves the target object from the
+  constructed Pattern. Bare `let f::U` is not the target place form.
+- Exact future implementation of borrow-view evaluation (`ref` / `share` / `@` /
+  `rebind`), of the capability coercion `Coerce_{j->k}` behind borrow-operator
+  overlap, and of the escape check
+  `Escapes(view, destination) = Region(destination) ⊄ ValidRegion(view)`.
+- Exact Rust/IR representation of the transitional `SymbolConstruction` carrier's
+  facet exposure;
   semantically, formal invocation remains uninstalled and outer binding resolves
   the installation place.
-- Interaction between graph freeze, seal phase, and injection-place mutability.
+- Exact Rust/IR scheduling of `ConstructionLineage` freeze events relative to
+  graph seal, without reintroducing a place-level Open capability.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
   outside the object/subspace case handled here.
@@ -149,37 +67,18 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
-- Final surface mechanism, if any, for requesting coordinated `()` generation
-  under `T`, `ref::T`, and `share::T`; the current rule requires separate
-  authorized contributions.
+- `HomeSymbol(TypeValue)` or equivalent canonical-root recovery for a copied or
+  extracted type used as a callee, including lookup of defining-Symbol sibling
+  constructors/policy transforms. This cannot be derived from the most recent
+  binding carrier or `AsType` provenance.
+- Final surface mechanism, if any, for requesting coordinated value/ref/share
+  receiver candidates in one associated `()` Symbol; the current rule requires
+  separate authorized contributions.
 - End-to-end syntax/integration for an externally navigated call-entry
-  injection such as `let ()::ref::T = ...`; the semantic destination and
-  ordinary type-check behavior are fixed, but the current frontend does not
-  claim this complete declaration path.
+  extension such as `let ()::((T ref).type) = ...`; the semantic
+  destination and ordinary type-check behavior are fixed, but the current
+  frontend does not claim this complete declaration path.
 
-### Resolved symbol-first construction direction
-
-These decisions are no longer open questions and are intentionally not repeated
-here. Their normative future-design owners are:
-
-- `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
-  for symbol-first facets, `compile` / `meta`, pattern scopes, owned-open
-  `inject`, ordering, extraction handoff, and binding/install boundaries;
-- `spec/design/symbol-world/symbol-construction-units-and-namespace-origin.md`
-  for namespace origin, construction ownership, physical authority, and
-  cross-file closure;
-- `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
-  `Val1 x Pattern x Val2`, canonical `Pv:Pp`, contextual P1/P2 elaboration,
-  three-phase visibility, seal/const-mut boundaries, mechanical
-  compile-flow projection over ordinary call nodes, complete derived `Val2`
-  compile-companion objects, must-select consistency, policy-staged match,
-  intrinsic D/Done flow, coarse automatic require, and shared compile
-  evaluation;
-- `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
-  negative rule that lifetime syntax cannot reopen the unique ordinary
-  overload result.
-
-Unimplemented portions remain roadmap work, not reopened design questions.
 
 ---
 
@@ -380,7 +279,7 @@ Not implemented after this correction:
   is connected; the caller-supplied migration fixture remains isolated and no
   universal transition Symbol or new callable ontology is implied.
 - Full, separately selected mechanical `ref` storage construction,
-  `share`/`alias` composition, `[[global]]` seal scanning, and any future
+  `share`/`rebind` composition, `[[global]]` seal scanning, and any future
   non-Runtime Policy-migration legality.
 - Runtime owner/place allocation, static-materialization cache identity, and
   the generated-storage boundary that keeps `[[global]]` out of the
@@ -393,8 +292,10 @@ Not implemented after this correction:
 - Result Pattern delivery/D-reduction; the current return-target substrate only
   retains the complete return binding slot and selects a restricted active
   frame.
-- Any positive lifetime/Horae design.
-- Alias forwarding under policy projection, type checking, and runtime IR.
+- Any positive lifetime/Horae design beyond the `@` overload groups and the
+  escape check.
+- Borrow-view evaluation (`ref` / `share` / `@` / `rebind`) under policy
+  projection, type checking, and runtime IR.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:
@@ -405,10 +306,10 @@ complete choice empty + runtime accepted => construct runtime branch
 compiler mandates static -> runtime; callable owns legal mutability endpoints
 compile -> runtime = new runtime object, not lifetime extension
 addressable runtime value => ordinary owner/place
-compile-ref cache identity = referent identity, not pointee equality
+compile-ref cache identity = StableTargetIdentity(Target(ref)), not pointee equality
 generated [[global]] storage != source-visible NamespaceGraph mutation
 materialization place != Pattern owner
-ref/share/alias are explicit mechanical operations, not Policy-demand repair
+ref/share/rebind are explicit mechanical operations, not Policy-demand repair
 Resolve once; Evaluate progressively; Residualize runtime dependencies
 ```
 
@@ -445,20 +346,24 @@ prototype:
 - the final composition of mixed-stage evaluation with future capability and
   effect systems.
 
-Current source does not expose a fallback candidate strategy, so current calls
-have `Af = A`. The semantic effect is nevertheless fixed if/when that future
-strategy is introduced:
+Current source does not expose declaration-side fallback/must-select syntax or
+call-site candidate-family annotations. Their pipeline positions are fixed:
 
 ```text
-A = FullyAdmissible(...)
-Af = SuppressFallback(A)
-Af -> Bp'
+ResolveSymbol
+  -> CallSiteCandidateFilter
+  -> GenerateCandidates
+  -> A = FullyAdmissible(...)
+  -> D = DeclarationCandidatePolicy(A)
+  -> Bp'
+  -> ordinary partial orders
+  -> Unique
 ```
 
 Any admissible non-fallback candidate, including `delete`, then suppresses
-fallback permanently. Its final surface spelling and ordinary
-candidate-storage representation remain open, but its conditional semantic
-observation point and no-retry behavior are fixed.
+fallback permanently within `D`. Declaration policy cannot revive an
+inadmissible candidate. Call-site annotations filter candidate families before
+generation; their final syntax and general selector algebra remain open.
 
 Build-world integration gates (not blockers for the current frontend/build
 substrate):
@@ -521,25 +426,22 @@ Still open for later design:
   `must_select_if_qualified` are provided, and each rule's monotone comparison
   semantics (the source spelling `=> name {}` / no-`=>` `[[name]] {}` is now
   fixed);
-- the remaining semantic surface of alias member bindings inside meta bodies.
-  The construction-effect *family* split is fixed — fresh member, alias
-  member, existing-target write, and the delivery terminal are four distinct
-  events that never collapse. The spellings that currently reach them are the
-  transitional `let`-only encoding while the grammar lacks expression-level
-  `=`: `let r = expr;` adds a fresh
-  member, `let r === path;` adds an alias member (Val2 forwarding on the
-  shared cluster substrate, the same mechanism as namespace-level
-  `let + === +::adl`), `r = expr;` writes to an existing target (today a
-  placeholder overwrite scaffold — the final cluster write algebra is not
-  fixed), and bare `r;` is the delivery terminal, not a member event.
+- the remaining semantic surface of member bindings inside meta bodies.
+  The construction-effect *family* split is fixed — fresh member,
+  existing-target write, and the delivery terminal are three distinct
+  events that never collapse. There is no fourth alias-member event: the
+  alias/forwarding member direction is retired, and a member that must observe
+  an external object holds a borrow view (`ref` / `share`), which is an ordinary
+  value. The spellings that currently reach these events are the transitional
+  `let`-only encoding while the grammar lacks expression-level `=`:
+  `let r = expr;` adds a fresh member, `r = expr;` writes to an existing target
+  (today a placeholder overwrite scaffold — the final cluster write algebra is
+  not fixed), and bare `r;` is the delivery terminal, not a member event.
   The settled orthogonal target remains `let` creates, `=` writes, return
   events deliver; the return-slot spelling reading and its no-shadow
   restriction are compatibility encoding, not final surface rules.
-  Forwarding an external
-  type value as an alias member is illegal under the self-root invariant.
-  Still open is the full alias-identity algebra (which facets an alias member
-  exposes for later structural writes, and how alias rebinding interacts with
-  overwrite);
+  Still open is the cluster write algebra itself (which facets an existing member
+  exposes for later structural writes, and how a write interacts with overwrite);
 - how source code references a derived compile companion and associates an
   explicit replacement;
 - whether default companion suppression is permitted and which equivalent
@@ -562,8 +464,10 @@ pattern transformation (`if`/`else`/`unit` absorption) as an ordinary
 global function family. That family is still wanted, but every member was
 written against retired semantic invariants:
 
-- forwarding-terminal bodies (`r === t;` returning an external type value),
-  which the self-root invariant now rejects for meta return members;
+- forwarding-terminal bodies (the legacy `r === t;` spelling returning an
+  external type value), which the self-root invariant rejects for meta return
+  members and which has no successor spelling — the forwarding direction itself
+  is retired;
 - no meaningful-Pv-dimension requirement on cross-policy value transitions
   (`N2(runtime) = runtime:compile` now makes a runtime-only result P2 with a
   pure-P return slot a declaration-time hard error);
@@ -601,11 +505,12 @@ here so they are not mistaken for design decisions:
   `MetaInstanceKey = MetaCallableIdentity × Addr(Product(args))`; the digest
   keys only the compatibility cache and does not participate in canonical
   semantic identity (see "Not implemented after this correction" above).
-- Alias member bindings (`let r === path;`) inside meta bodies are
-  unconditionally rejected as `MetaReturnTypeRootMismatch`. The self-root
-  invariant makes external type-value forwarding illegal, but a future
-  self-rooted alias member (aliasing another member of the same open
-  cluster) is not yet distinguished from the illegal external case.
+- Legacy `let r === path;` member bindings inside meta bodies are
+  unconditionally rejected as `MetaReturnTypeRootMismatch`. That rejection is
+  now permanently correct for a different reason: the alias/forwarding member
+  direction is retired, so there is no future self-rooted alias member to
+  distinguish. The diagnostic code is a legacy label; a member that must observe
+  another object holds a borrow view (`ref` / `share`) instead.
 - Member write (`r = expr;`) is a CURRENT PLACEHOLDER (internally
   `PlaceholderOverwrite`): while the frozen v0.2 grammar has no
   expression-level `=`, the scaffold exists only to validate
@@ -616,15 +521,15 @@ here so they are not mistaken for design decisions:
   `Write(ClusterSymbol, RHS)` algebra. What this stage freezes is only
   the boundary pair `let` (creation) ≠ `=` (write to an existing target)
   and return event ≠ binding/write; how a real `=` on a cluster target
-  adds or replaces type facets / val siblings by RHS shape is future
-  work. Facet resolution currently distinguishes only the pure-P
-  type-member facet of the executable slice, and the placeholder
+  adds or replaces the Q-role cache / val siblings by RHS shape is future
+  work. Current executable-slice cache resolution distinguishes only the pure-P
+  type-role projection, and the placeholder
   selection and harvest-shape behavior are pinned by unit tests only.
 - Cluster member contributions carry per-member views: each member's own
   written binding P1 is elaborated and projected over its initializer's
   complete result (an empty projection is a hard error, never a collapse
   onto the callable's function P2). The executable slice is still
-  self-rooted generated type members only; val members and alias members
+  self-rooted generated type members only; val members
   remain future work, and a positive member-specific P1 over a pure-P
   type member is not yet spellable because the `Absent` value-component
   policy has no frozen source spelling.
@@ -643,22 +548,36 @@ here so they are not mistaken for design decisions:
   meta-body path (the outer meta invocation injects its MetaInstance root).
   User-spelled explicit pattern navigation overriding the ambient owner of a
   direct `struct` generation is not implemented.
-- Ordinary construction windows carry the settled closing coordinates
+- Ordinary construction windows carry provisional closing coordinates
   (`OrdinaryOpenWindow { creation_flow_segment, first_use_seen,
   closed_by_fork_or_end }`) and freeze on the explicit events
-  `note_first_semantic_use` / `note_residual_runtime_fork_or_end`
-  (compile-only branching is an explicit no-op). Deriving these events
-  from real source-level control-flow analysis of the residual runtime
-  flow is not wired; today the evaluation driver must raise them
-  explicitly.
-- The privileged `inject` built-in meta function does not exist yet.
-  `let member::target = RHS;` is only associated-member installation
+  `note_first_semantic_use` / `note_residual_runtime_fork_or_end`, which the
+  evaluation driver must raise by hand. The canonical freezing event set for an
+  ordinary (non-meta) construction is defined in
+  `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
+  §12.1.2 and covers `UseForVal1`, use as a meta argument, entry into a global
+  normalized structure, actual dependencies/identity merges of non-meta static
+  control, values carried across a residual-runtime fork, and leaving the
+  construction interval of the owning in-place closure. Mere `LiveAcross` over
+  an unrelated compile-only branch/join/loop is not a freezing dependency. The
+  current API does not derive `Dependencies(control)` or distinguish every
+  static edge from a residual-runtime fork through real control-flow analysis;
+  its coarse `note_residual_runtime_fork_or_end` event is implementation debt,
+  not a broader language rule.
+- The privileged `extend` and `inject` built-ins do not exist yet.
+  `let member::((target ref).type) = RHS;` is only associated-member installation
   (never a Pattern-structure write); the end-to-end equivalence
   `let t = ((x inner) t) |> struct;`  ≡
-  `let t = (() t) |> struct;  t = t |> inject(x inner);`
-  is a *future acceptance test*, blocked on both expression-level `=` and
-  `inject`. It must not be approximated with `let inner::t = x`, which is
-  a different (non-privileged, Val2-only) operation.
+  `let t = (() t) |> struct; let t_ref = (t ref).type;`
+  `(t_ref, (x inner)) |> inject;`
+  is a *future acceptance test*, blocked on Symbol borrowing, same-name `.type`
+  place projection, and `extend`/`inject`. `inject` denotes the ordinary
+  three-step read–extend–write
+  wrapper, and its left side must be an existing writable `type ref`: a pure
+  PatternValue is not writable through its own name. It must not be
+  abbreviated to `t = t |> extend(x inner)`, and it must not be
+  approximated with `let inner::t = x`, which is a different (non-privileged,
+  Val2-only) operation.
 - The `let`-only meta construction encoding (`let r = expr` → AddMember,
   `r = expr` → PlaceholderOverwrite, `r;` → Delivery) is a transitional
   encoding while the grammar lacks `=`; the settled orthogonal rule
@@ -705,19 +624,19 @@ them explicitly:
    object; `T`/`U` may then diverge through their own places. Giving `U`
    an empty fresh place with fallback to the Pattern's canonical object
    would silently drop `T`'s carrier-local `Val2`. The path is not
-   executable yet (installed-carrier injection is not wired), but the
+   executable yet (installed-carrier extension is not wired), but the
    comparison question ("what is equal") and the binding question ("what
    is captured") must be solved together.
 
-3. **Installed-carrier injection / alias-forwarded places / writability
-   need explicit owners.** Source-level `let f::U` against an already
-   installed rebinding carrier, alias-forwarded injection places, and
-   writable-place checking exist today only as substrate (also listed in
-   the general future-work pool above). The next stage must assign them
-   explicit scope rather than leaving them pooled. Note that per the
-   `Fresh(child)` / `CanExtend(parent_place)` split, `let f::T = expr`
-   creating a fresh child does not exempt the host place from extension
-   eligibility.
+3. **Installed-carrier member creation / `type ref` targets / writability
+   need explicit owners.** Source-level `let f::(U@)` against an already
+   installed type carrier/place, place-level `inject`, and
+   writability / construction-open checking exist today only as substrate
+   (also listed in the general future-work pool above). The next stage must
+   assign them explicit scope rather than leaving them pooled. Canonical source
+   spells the host place explicitly as `let f::(U@) = expr`. Navigation
+   to a missing child yields a prospective ProjectionSlot whose contents are `None`;
+   `let` may instantiate it, while bare `=` may not.
 
 ---
 
@@ -755,97 +674,15 @@ when value/type canonical forms are designed.
 Future design note:
 `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`.
 
-The following questions are **resolved at the future-design level**. They are
-not open semantic decisions — only the implementation mechanics and IR-level
-representation remain future work.
+Resolved semantics are indexed rather than restated here:
 
-#### Resolved: no silent discard including void/unit
-
-Status: **Resolved at future-design level** (see §7 of the pattern-spaces document).
-
-The rejected rule was `final pattern = void => silent completion allowed`.
-The correct rule is `every expression result must be consumed`. There is no
-void exception. If an implementation would otherwise silently discard an
-expression result, that position must be interpreted as an error or as the
-current block's return boundary.
-
-#### Resolved: block-final unconsumed result is current-block return
-
-Status: **Resolved at future-design level**.
-
-A block-final expression whose result is not otherwise consumed is the return
-value of the current block. This applies to `unit` and `void` as well — there
-is no silent completion with no result.
-
-#### Resolved: non-final unconsumed result is an error
-
-Status: **Resolved at future-design level**.
-
-If an expression result is not consumed and later same-block material exists,
-the program is ill-formed. The repar is either consume/discard the result, or
-remove the later material and let the expression become the block return.
-
-#### Resolved: Done isolates completed branch results
-
-Status: **Resolved at future-design level** (see §6 of the pattern-spaces document).
-
-`Done` separates completed branch results from unprocessed continuation
-material. It is not eliminated while same-level extraction continuation is
-still processing input residuals. Return/result boundaries perform one local
-`Done` reduction and re-wrap the result. `Done` is isolated by default but
-explicitly re-enterable.
-
-#### Resolved: early function return via self..return(d)
-
-Status: **Resolved at future-design level** (see §6.3.1, §7.5 of the
-pattern-spaces document, and the function-object-self-and-return-capability
-design note).
-
-Early function return is modeled by calling `self..return(d)` — the current
-callable frame's built-in return capability. The effect uses a dual-channel
-model: local branch produces `Done(unit)`, and the final return accumulator
-receives `Done(D)`. `unit` is absorbed as the zero element of `+` — this is
-pattern-space reduction, not silent discard.
-
-#### Resolved: formal meta return material is a construction-effect family
-
-Status: **Resolved at future-design level** (see the canonical symbol-first
-construction note, §4.5).
-
-The return slot name denotes the open cluster Symbol under construction, on
-the same substrate as namespace-level cluster symbols. In the current
-`let`-only encoding (compatibility spellings pending expression-level `=`;
-the settled orthogonal target remains `let` creates, `=` writes, return
-events deliver): `let r = expr;` adds a
-fresh member binding; `let r === path;` adds an alias member binding (Val2
-forwarding — forwarding an external type value fails the self-root invariant);
-`r = expr;` writes to an existing target (currently a placeholder overwrite
-scaffold; the final cluster write algebra is open); bare `r;` is the delivery
-terminal
-and not a member event. The former interpretations — `r === ...` as a distinct
-formal forwarding category, and the interim single-form `r = ...` reading —
-are both superseded. Ordinary declaration aliasing `let a === b` is the same
-alias mechanism applied to a declaration-layer symbol.
-
-#### Resolved: TypeValueId is value-side material, not carrier identity
-
-Status: **Resolved at future-design level**.
-
-The current bootstrap may first derive a `TypeValueId` projection from an
-installed defining core Type Symbol. After that projection has been read as a
-value, ordinary binding carries it directly. It is not a carrier Symbol,
-installation Place, construction identity, or type-definition identity, and
-there is no semantic `TypeValueId -> original carrier Symbol` inverse map.
-Thus `let T: type = uint8; let U: type = T` allocates distinct carrier
-Symbols/Places while preserving one evaluated TypeValue/PatternValue.
-On the value side, `TypeValueId` is only the stable first-order root: the
-full type-object semantic identity at an observation moment is the canonical
-observation `Addr(Norm_type)`, which identity-critical positions consume
-instead of the bare root.
-
-Final invocation plumbing returns `PatternValue` for `compile` and
-`SymbolConstructionValue` for `meta`. Current `MetaInvocationValue` variants
-remain transitional implementation transport.
+| Decision | Canonical owner | Remaining implementation work |
+| --- | --- | --- |
+| every expression result is consumed; block-final is return, non-final unconsumed is error | `design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §7 | diagnostics and IR plumbing |
+| `Done` isolation and early `self..return(d)` | same document §6–§7 plus `design/symbol-world/function-object-self-and-return-capability.md` | concrete `Done` and lifetime-fact representation |
+| `let` creates, `=` writes, return transfers control; alias event retired | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.5 | remove compatibility return accumulator |
+| `TypeValueId` is only a first-order root projection; canonical equality is `Addr(Norm_type)` | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
+| compile returns declared PatternValue; ordinary meta returns Symbol | canonical symbol-first construction document §4 | transitional transport removal |
 
 #### Still open
 
@@ -894,22 +731,72 @@ flow. That semantic decision does not change the current lexer/parser boundary.
 
 ---
 
-### Name resolution and alias validation
+### Operator environments
 
-#### Operator alias identity mismatch: diagnostic phase
+**Status:** Closed direction; detailed selector algebra deferred
 
-**Status:** Open (active at name resolution)
+No semantic operator-alias exception survives. `operator` is an ordinary
+global type, and the nearest lexical `operator : operator` value maps an
+`OperatorIdentity = spelling + fixity + arity` to a Symbol or `None`. Operator
+expressions select from that ordinary value; local environments use value copy,
+shadowing, and Symbol `+=`/`-=`. The complete environment shape and selector
+algebra remain later design work, but they must not revive alias/place
+forwarding or spelling-only lookup.
 
-**Current Phase 4.3 design:**
-The operator alias rule requires `spelling + fixity + arity` match between
-binder and target leaf, where fixity is `Binary` or `Postfix` (overloadable
-fixities only). Prefix negative `-x` is a normalization-special-cased surface
-sugar, not an overloadable operator identity; the `-` spelling in alias binder
-or target position refers exclusively to binary minus. The design document
-recommends deferring the full identity check to a static validation or
-name-resolution-adjacent phase. A first-pass spelling-only comparison is
-possible as optional future parser validation.
+---
 
-**Question:** Should operator alias identity mismatch be a parser diagnostic
-(spelling-only), a static semantic diagnostic (full identity), or deferred
-to name resolution?
+### Static materialization cache
+
+#### How should a compile cache represent Open-sensitive applicability?
+
+**Status:** Open (engineering, active at v0.10+)
+
+**Closed part of the question:**
+The semantics do not place `ConstructionLineage`, `Open`, or a borrow witness in
+normalized PatternValue identity. A `compile` frame transports the input value
+and its lineage without creating a root, while every `extend` application
+rechecks `Open_Γ(value)` in the current compile-time stack. A `type ref`
+parameter does not discharge that check. Thus the same normalized value may be
+extension-legal at one call site and illegal at another:
+
+```text
+Eval(F, t; Γ_open)  ≠  Eval(F, t; Γ_closed)
+```
+
+**Question:** Which implementation representation should carry the mandatory
+call-site applicability recheck — an uncached legality judgment or an explicit
+`requires Open(value)` summary? Caching the pure computation may not cache or
+manufacture construction authority, and admitting the whole lexical context
+into the value key is excluded.
+
+---
+
+### Pure Product namespace surface
+
+#### Should intrinsic ordinal navigation be user-visible as a tuple namespace API?
+
+**Status:** Open (surface only; does not block #99)
+
+The semantic kernel is closed: every pure Object has `NamespaceRole`, and bare
+Product owns intrinsic `pos_i` selectors in ordinary `Val2`. The remaining
+question is only whether bare Product / empty pure Pattern should expose those
+selectors through a user-visible tuple-style built-in namespace interface, or
+keep them as structural navigation used by products and Sequences. No extra
+namespace Object or facet may be introduced to answer this question.
+
+---
+
+### Closed-decision index
+
+Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
+
+| Decision | Canonical owner | Remaining implementation question |
+| --- | --- | --- |
+| Object closure, `Pure => NamespaceRole`, AsType, ProjectionSlot, borrow targets, NoImplicitBorrowFormation | `design/symbol-world/type-values-places-and-borrow-views.md` | concrete root/slot generation representation |
+| Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
+| Symbol `<Q?,V>` Set quotient, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate and deferred HomeSymbol |
+| construction lineage and Open/frozen | same canonical construction document plus `design/lifetime/` | region/stack representation |
+| retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
+
+The concrete unresolved items remain in the earlier “Still open” lists. This
+index intentionally does not duplicate their closed judgments.

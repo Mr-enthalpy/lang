@@ -5,7 +5,7 @@ Design consolidation note. Not a user-visible syntax document.
 The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
-resolves to a symbol and heterogeneous value facet.
+resolves to a Symbol and heterogeneous typed `V` members.
 Policy pairs, binding P1, result P2, compile companions, and must-select consistency
 are canonical in `symbol-policy-and-compile-flow-projection.md`.
 
@@ -20,7 +20,7 @@ let f = (self) => {};
 `f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
 
 The converse is not true: a value entry need not be a function. A symbol's
-value facet may contain ordinary uncallable values and multiple heterogeneous
+typed `V` members may contain ordinary uncallable values and multiple heterogeneous
 values of unrelated types. Callability is tested only in a call position by
 resolving each value's type-associated `()` entry.
 
@@ -45,7 +45,7 @@ Product |> Expr
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
 When `Expr` is a name/path, resolution first produces a symbol and projects its
-heterogeneous value facet. Candidate preparation observes each enumerated
+heterogeneous typed `V` members. Candidate preparation observes each enumerated
 object's `Pv:Pp` view for the current lookup domain before type-associated call
 lookup. The remaining steps run independently for each surviving value entry;
 entries without an applicable `()` call entry are discarded.
@@ -167,7 +167,15 @@ Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
 requires `TypeValue -> original carrier Symbol`: source navigation resolves a
 Symbol and reads its values, while an already-held PatternValue directly
-provides its owner/associated Val2.
+provides its canonical associated `Val2`.
+
+This closes calls whose entry is owned by that associated `Val2`; it does not
+yet close copied/extracted **type-as-callee** lookup when the intended
+constructor or policy-transform overload is a sibling value of the defining
+Symbol rather than an associated member of the type value. A future
+`HomeSymbol(TypeValue)` relation or equivalent canonical-root recovery remains
+deferred. It may not be reconstructed from the most recent carrier, binding
+provenance, or an `AsType` source path.
 
 Associated source navigation obeys the same forward-only rule. If:
 
@@ -204,7 +212,9 @@ complete P2 until the later demanded `Project_out`.
 
 ## 4. Direct function object call method
 
-For `let f = (self) => {};`, the generated anonymous function-object type `F` has the call method under `F` itself: `() :: F`. Not under `ref::F`, `share::F`, or `move::F`.
+For `let f = (self) => {};`, the generated anonymous function-object type `F` has
+one associated call Symbol `()`. Receiver observation is expressed by candidate
+formals, not by generated `ref::F`, `share::F`, or `move::F` namespaces.
 
 A directly defined function object call receives that function object as its
 caller/self. Ownership is not written by the user — it is part of the generated
@@ -219,25 +229,21 @@ Product |> object
   → associated namespace search for `()`
 ```
 
-User-defined call entries are commonly installed under borrowed associated namespaces (e.g. `() :: ref::T`). The user writes `ref` explicitly; the expression's type becomes `ref::T`, and lookup follows from there. The language does not automatically jump from `T` to `ref::T`.
+User-defined call entries are candidates in one same-name associated `()`
+Symbol. Candidates for `object: T`, `object: T ref`, and `object: T share` are
+distinguished by ordinary formal-Pattern matching and Policy. Borrowing changes
+the receiver value's type; it does not navigate to a `ref` or `share` child
+namespace.
 
-Direct function objects are not merely sugar for user-defined `ref::T` callables. They have their call method directly under their anonymous function-object type.
-
-The implementation body installed under `()::ref::T` does not thereby acquire
-`ref::T` as its lexical owner. Its `CallableOwner` still owns local symbols,
-Pattern roots, nested callables, and code identity. `ref::T` is instead the
+The implementation body of a borrowed-receiver candidate does not thereby
+acquire `T ref` as its lexical owner. Its `CallableOwner` still owns local
+symbols, Pattern roots, nested callables, and code identity; `T ref` is only the
 receiver type of invocation slot 0.
 
-Source navigation is inner-to-outer. `ref::T` therefore means the `ref` child
-owned below `T`. A construction currently authorized to add children of `T`
-may contribute `ref::T`; the reversed spelling `T::ref` would require modifying
-the unrelated outer owner `ref` and is not equivalent.
-
-Likewise, `let ()` inside construction of `T` contributes only `()::T`.
-`()` entries below `ref::T` and `share::T` are independent injections. `move`
-does not require another call namespace because it is the type fixed point
-`T move == T`; borrowing constructs distinct `ref::T` and `share::T` object
-types.
+Likewise, one `let ()` contribution inside construction of `T` contributes only
+the candidate it writes. Value/ref/share receiver candidates require separate
+authorized contributions but join the same associated `()` Symbol. `move` is
+the type fixed point `T move == T` and requires no additional candidate family.
 
 ### 5.1 First-class field-function closures
 
@@ -312,7 +318,7 @@ declares the Pattern/binder for that position. Its spelling is unrestricted;
 
 The selected call entry `()` always receives the value being invoked as
 implicit `self`. For a standalone function this value is the function object;
-for an associated call entry it may be a `T`, `ref::T`, `share::T`, or another
+for an associated call entry it may be a `T`, `T ref`, `T share`, or another
 ordinary callable object. The user cannot manually pass this slot.
 
 The source product contains only the explicit user arguments. `ProductObject`, `ArgProductShape`, and `RawArgShape` represent only the explicit product supplied by the user. They do not contain the implicit `self`.
@@ -378,13 +384,16 @@ associated () implementation:
   ReceiverType(C) = type carrying the selected call entry
 ```
 
-The callable-local `Self` symbol may therefore combine:
+The callable-local `Self` frame may therefore combine these local projections:
 
 ```text
-namespace facet = callable-local semantic space
-type facet      = ReceiverType(C)
-value facet     = invocation slot 0
+namespace role          = callable-local semantic space
+receiver-type projection = ReceiverType(C)
+caller value slot       = invocation slot 0
 ```
+
+These are callable-frame labels, not independently stored Symbol facets in the
+target Object ontology.
 
 This does not inject callable-local declarations into the named receiver
 type's namespace. Nested owner paths use source navigation order:
@@ -403,8 +412,8 @@ anchored by a parent-linked
 Ordinary meta callables still use the implicit-self mechanics described above,
 but their returned type construction is rooted in the meta-instance scope.
 
-A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct` or
-`inject`, also has a function object, type, associated `()`, and implicit self,
+A compiler-provided `BuiltinPrivilegedAstMetaFunction`, such as `struct`,
+`extend`, or `inject`, also has a function object, type, associated `()`, and implicit self,
 but may use its specified special owner/scope rule instead of creating an
 ordinary externally navigable `MetaInstanceScope`.
 
@@ -559,13 +568,13 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol and project/enumerate its heterogeneous value facet
+2. Resolve a name/path to Symbol and project/enumerate its heterogeneous typed V members
 3. Expose each Val2 object's policy-pair view for the current `Phase`
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
 6. Discard non-callable/non-applicable entries
    while retaining visible derived companion objects
-7. Determine receiver binding: caller type `F` / `ref::T` / `share::T` and
+7. Determine receiver binding: caller type `F` / `T ref` / `T share` and
    selected associated `()`
 8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
@@ -610,7 +619,8 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
 - Every function object has a type.
 - A directly defined function object has an anonymous function-object type.
 - The call entry `()` for a directly defined function object lives under that anonymous type.
-- User-defined callable objects may define `()` under `ref::T` / `share::T` / other associated namespaces.
+- User-defined callable objects may add value/ref/share receiver candidates to
+  one associated `()` Symbol.
 - `CallableOwner` and receiver type are independent semantic facts.
 - Implicit `self` is always the invoked caller object and is passed by the call
   mechanism.
