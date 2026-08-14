@@ -283,6 +283,11 @@ fn pipe_explicit_param_closure() {
 }
 
 #[test]
+fn pipe_explicit_param_closure_empty_deduce() {
+    assert_parser_case("pipe_explicit_param_closure_empty_deduce", false);
+}
+
+#[test]
 fn pipe_explicit_capture_closure() {
     assert_parser_case("pipe_explicit_capture_closure", false);
 }
@@ -539,7 +544,7 @@ fn let_extract_name_hole() {
 
 #[test]
 fn let_extract_empty_deduce() {
-    assert_parser_case("let_extract_empty_deduce", true);
+    assert_parser_case("let_extract_empty_deduce", false);
 }
 
 #[test]

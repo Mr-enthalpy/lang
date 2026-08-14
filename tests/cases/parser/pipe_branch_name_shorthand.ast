@@ -7,23 +7,27 @@ Program
             Atom
               Name x
         Segment has_incoming=true
-          Product
-            elements:
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name _
-              Expr
-                Pipe
-                  Segment has_incoming=false
-                    OperatorExpr
-                      Atom
-                        Name name
           OperatorExpr
             Atom
-              Closure InPlace
+              Closure Ordinary
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                          BindingSlot let=false
+                            deduce:
+                              DeduceList
+                                binders:
+                            pattern:
+                              Binder
+                                TextName name
+                            annotation:
+                              None
+                            with_clause:
+                              None
+                            initializer:
+                              None
                 BodyBlock
                   forms:
                     ExprForm

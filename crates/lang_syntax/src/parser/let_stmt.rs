@@ -109,21 +109,6 @@ pub fn parse_binding_slot(
     };
     let local_deduce_scope_mark = parser.push_deduce_scope(deduce.as_ref());
 
-    if matches!(
-        context,
-        BindingSlotContext::Let | BindingSlotContext::Capture
-    ) {
-        if let Some(deduce) = &deduce {
-            if deduce.binders.is_empty() {
-                parser.error(
-                    DiagnosticCode::InvalidDeduceList,
-                    "empty deduce list",
-                    deduce.span,
-                );
-            }
-        }
-    }
-
     let active_deduce = merge_active_deduce(inherited_deduce, deduce.as_ref(), start);
     let pattern = parse_binding_pattern(parser, context, has_let, Some(&active_deduce));
     let mut end = binding_pattern_span(&pattern);

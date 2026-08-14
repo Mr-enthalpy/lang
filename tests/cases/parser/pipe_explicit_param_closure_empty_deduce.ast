@@ -21,7 +21,7 @@ Program
                                 binders:
                             pattern:
                               Binder
-                                TextName name
+                                TextName a
                             annotation:
                               None
                             with_clause:
@@ -37,6 +37,3 @@ Program
                             OperatorExpr
                               Atom
                                 Name y
-          OperatorExpr
-            Atom
-              Name z
