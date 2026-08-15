@@ -102,30 +102,77 @@ pub fn parse_binding_slot(
         };
     }
 
-    let deduce = if starts_binding_deduce_list(parser) {
+    let has_deduce = starts_binding_deduce_list(parser);
+    let binderless = has_deduce
+        && matches!(
+            parser.cursor.peek_next_non_trivia().kind,
+            TokenKind::Symbol(Symbol::Greater)
+        );
+    let deduce = if has_deduce {
         Some(parse_deduce_list(parser))
     } else {
         None
     };
+
+    parse_binding_slot_after_prefix(
+        parser,
+        context,
+        inherited_deduce,
+        require_initializer,
+        start,
+        policy,
+        has_let,
+        binderless,
+        deduce,
+    )
+}
+
+/// Parse the atomic Pattern of pipe branch shorthand through the same
+/// BindingSlot path as an explicitly written `(<> P)` parameter.
+///
+/// The empty DeduceList is semantic, not decorative: it selects a binderless
+/// Pattern position. The caller is responsible for proving that the current
+/// token is the one atomic Pattern admitted by branch shorthand.
+pub(super) fn parse_synthesized_empty_deduce_binding_slot(
+    parser: &mut Parser<'_>,
+    context: BindingSlotContext,
+) -> BindingSlotAst {
+    let start = parser.cursor.current_span();
+    let inherited_deduce = parser.active_deduce_list();
+    let deduce = Some(DeduceListAst {
+        binders: Vec::new(),
+        span: start,
+    });
+
+    parse_binding_slot_after_prefix(
+        parser,
+        context,
+        inherited_deduce.as_ref(),
+        false,
+        start,
+        None,
+        false,
+        true,
+        deduce,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn parse_binding_slot_after_prefix(
+    parser: &mut Parser<'_>,
+    context: BindingSlotContext,
+    inherited_deduce: Option<&DeduceListAst>,
+    require_initializer: bool,
+    start: Span,
+    policy: Option<PolicySpecAst>,
+    has_let: bool,
+    binderless: bool,
+    deduce: Option<DeduceListAst>,
+) -> BindingSlotAst {
     let local_deduce_scope_mark = parser.push_deduce_scope(deduce.as_ref());
 
-    if matches!(
-        context,
-        BindingSlotContext::Let | BindingSlotContext::Capture
-    ) {
-        if let Some(deduce) = &deduce {
-            if deduce.binders.is_empty() {
-                parser.error(
-                    DiagnosticCode::InvalidDeduceList,
-                    "empty deduce list",
-                    deduce.span,
-                );
-            }
-        }
-    }
-
     let active_deduce = merge_active_deduce(inherited_deduce, deduce.as_ref(), start);
-    let pattern = parse_binding_pattern(parser, context, has_let, Some(&active_deduce));
+    let pattern = parse_binding_pattern(parser, context, has_let, binderless, Some(&active_deduce));
     let mut end = binding_pattern_span(&pattern);
 
     let annotation = parse_binding_annotation(parser, context);
@@ -303,6 +350,7 @@ fn parse_binding_pattern(
     parser: &mut Parser<'_>,
     context: BindingSlotContext,
     _has_let: bool,
+    binderless: bool,
     active_deduce: Option<&DeduceListAst>,
 ) -> BindingPatternAst {
     let token = parser.cursor.peek_non_trivia();
@@ -348,7 +396,8 @@ fn parse_binding_pattern(
         ));
     }
 
-    if starts_skeleton_name(parser, context)
+    if binderless
+        || starts_skeleton_name(parser, context)
         || matches!(token.kind, TokenKind::Name if token.text == "_")
         || matches!(token.kind, TokenKind::IntLiteral | TokenKind::StringLiteral)
     {

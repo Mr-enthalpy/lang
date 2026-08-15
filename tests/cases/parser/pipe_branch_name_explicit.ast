@@ -15,9 +15,6 @@ Program
                     OperatorExpr
                       Atom
                         Name _
-              Expr
-                Pipe
-                  Segment has_incoming=false
                     OperatorExpr
                       Atom
                         Name name

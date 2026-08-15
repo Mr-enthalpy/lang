@@ -1,12 +1,15 @@
 use crate::{
     AtomAst, AtomKind, ClosureAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode, ExprAst,
-    ExprKind, NameAst, OperatorExprAst, OperatorExprKind, PipeExprAst, ProductElementAst,
-    ProductExprAst, SegmentAst, SegmentElementAst, Span, Symbol, TokenKind,
+    ExprKind, OperatorExprAst, OperatorExprKind, PipeExprAst, SegmentAst, SegmentElementAst, Span,
+    Symbol, TokenKind,
 };
 
 use super::{
-    closure::parse_body_block, cursor::ParenClassification, form::Parser,
-    operator::parse_operator_expr, product::parse_product_expr,
+    closure::{parse_binderless_pipe_branch_closure, parse_body_block},
+    cursor::ParenClassification,
+    form::Parser,
+    operator::parse_operator_expr,
+    product::parse_product_expr,
 };
 
 pub fn parse_pipe_expr(
@@ -203,10 +206,7 @@ fn parse_segment(
 }
 
 fn try_parse_pipe_branch_sugar(parser: &mut Parser<'_>) -> Option<Vec<SegmentElementAst>> {
-    if let Some(elements) = try_parse_bare_name_pipe_branch_sugar(parser) {
-        return Some(elements);
-    }
-    try_parse_explicit_pipe_branch_head(parser)
+    try_parse_bare_name_pipe_branch_sugar(parser)
 }
 
 fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<SegmentElementAst>> {
@@ -214,6 +214,18 @@ fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<Segm
     let (_, open) = parser.cursor.peek_at_skip_trivia(start_index);
     if !matches!(open.kind, TokenKind::Symbol(Symbol::LParen)) {
         return None;
+    }
+
+    // `(<> P) { ... }` is a normal headed in-place closure. Let the closure
+    // parser consume it so the branch shorthand and its explicit expansion
+    // share one BindingSlot/Pattern construction. Other parenthesized heads,
+    // including `(_ P)`, remain on the established Product + body path.
+    let (less_index, less) = parser.cursor.peek_at_skip_trivia(start_index + 1);
+    if matches!(less.kind, TokenKind::Symbol(Symbol::Less)) {
+        let (_, greater) = parser.cursor.peek_at_skip_trivia(less_index + 1);
+        if matches!(greater.kind, TokenKind::Symbol(Symbol::Greater)) {
+            return None;
+        }
     }
 
     let (_, after_idx) = parser.cursor.classify_paren_at_segment_position();
@@ -238,77 +250,18 @@ fn try_parse_bare_name_pipe_branch_sugar(
         return None;
     }
 
-    let (after_name_index, after_name) = parser.cursor.peek_at_skip_trivia(start_index + 1);
+    let (_, after_name) = parser.cursor.peek_at_skip_trivia(start_index + 1);
     if !matches!(after_name.kind, TokenKind::Symbol(Symbol::LBrace)) {
         return None;
     }
 
     parser.cursor.set_index(start_index);
-    let name = parser.cursor.bump_non_trivia();
-    let product = pipe_branch_product_head(None, name.text.clone(), name.span, name.span);
-    parser.cursor.set_index(after_name_index);
-    let closure = pipe_branch_body(parser);
-    Some(vec![SegmentElementAst::Product(product), closure])
-}
-
-fn try_parse_explicit_pipe_branch_head(parser: &mut Parser<'_>) -> Option<Vec<SegmentElementAst>> {
-    let start_index = parser.cursor.current_index();
-    let (_, open) = parser.cursor.peek_at_skip_trivia(start_index);
-    if !matches!(open.kind, TokenKind::Symbol(Symbol::LParen)) {
-        return None;
-    }
-
-    let (underscore_index, underscore) = parser.cursor.peek_at_skip_trivia(start_index + 1);
-    if !matches!(underscore.kind, TokenKind::Name) || underscore.text != "_" {
-        return None;
-    }
-
-    let (name_index, name) = parser.cursor.peek_at_skip_trivia(underscore_index + 1);
-    if !matches!(name.kind, TokenKind::Name) {
-        return None;
-    }
-
-    let (close_index, close) = parser.cursor.peek_at_skip_trivia(name_index + 1);
-    if !matches!(close.kind, TokenKind::Symbol(Symbol::RParen)) {
-        return None;
-    }
-
-    let (body_index, body_start) = parser.cursor.peek_at_skip_trivia(close_index + 1);
-    if !matches!(body_start.kind, TokenKind::Symbol(Symbol::LBrace)) {
-        return None;
-    }
-
-    parser.cursor.set_index(start_index);
-    let open = parser.cursor.bump_non_trivia();
-    let underscore = parser.cursor.bump_non_trivia();
-    let name = parser.cursor.bump_non_trivia();
-    let close = parser.cursor.bump_non_trivia();
-    let product = pipe_branch_product_head(
-        Some((underscore.text.clone(), underscore.span)),
-        name.text.clone(),
-        name.span,
-        open.span.join(close.span),
-    );
-    parser.cursor.set_index(body_index);
-    let closure = pipe_branch_body(parser);
-    Some(vec![SegmentElementAst::Product(product), closure])
-}
-
-fn pipe_branch_product_head(
-    underscore: Option<(String, Span)>,
-    name_text: String,
-    name_span: Span,
-    product_span: Span,
-) -> ProductExprAst {
-    let (underscore_text, underscore_span) =
-        underscore.unwrap_or_else(|| ("_".to_string(), name_span));
-    ProductExprAst {
-        elements: vec![
-            ProductElementAst::Expr(name_expr(underscore_text, underscore_span)),
-            ProductElementAst::Expr(name_expr(name_text, name_span)),
-        ],
-        span: product_span,
-    }
+    let atom = parse_binderless_pipe_branch_closure(parser);
+    let span = atom.span;
+    Some(vec![SegmentElementAst::OperatorExpr(OperatorExprAst {
+        kind: OperatorExprKind::Atom(atom),
+        span,
+    })])
 }
 
 fn pipe_branch_body(parser: &mut Parser<'_>) -> SegmentElementAst {
@@ -326,29 +279,6 @@ fn pipe_branch_body(parser: &mut Parser<'_>) -> SegmentElementAst {
         }),
         span,
     })
-}
-
-fn name_expr(text: String, span: Span) -> ExprAst {
-    let atom = AtomAst {
-        kind: AtomKind::Name(NameAst { text, span }),
-        span,
-    };
-    let op_expr = OperatorExprAst {
-        kind: OperatorExprKind::Atom(atom),
-        span,
-    };
-    let segment = SegmentAst {
-        elements: vec![SegmentElementAst::OperatorExpr(op_expr)],
-        has_incoming: false,
-        span,
-    };
-    ExprAst {
-        kind: ExprKind::Pipe(PipeExprAst {
-            segments: vec![segment],
-            span,
-        }),
-        span,
-    }
 }
 
 fn parse_segment_element(

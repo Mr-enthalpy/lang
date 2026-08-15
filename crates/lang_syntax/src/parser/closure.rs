@@ -1,14 +1,18 @@
 use crate::{
     AtomAst, AtomKind, BodyBlockAst, CaptureClauseAst, CaptureItemAst, ClosureAst, ClosureBodyAst,
     ClosurePlacementAst, DeleteBodyAst, DiagnosticCode, ExprAst, FnHeadPrefixAst, FormAst,
-    HeadClauseAst, NameAst, ParamClauseAst, ReturnClauseAst, Span, Symbol, TokenKind,
+    HeadClauseAst, NameAst, ParamClauseAst, ProductExtractAst, ProductExtractElementAst,
+    ReturnClauseAst, Span, Symbol, TokenKind,
 };
 
 use super::{
     deduce::parse_deduce_list,
     expr::parse_expr_until,
     form::Parser,
-    let_stmt::{parse_binding_slot, parse_product_extract, BindingSlotContext},
+    let_stmt::{
+        parse_binding_slot, parse_product_extract, parse_synthesized_empty_deduce_binding_slot,
+        BindingSlotContext,
+    },
     policy::parse_policy_spec_until,
     product::error_expr,
 };
@@ -336,6 +340,37 @@ fn closure_atom(
         }),
         span,
     }
+}
+
+/// Parse the one atomic Pattern and body of `|> P { ... }` as the same
+/// binderless parameter slot produced by an explicit `(<> P) { ... }` head.
+/// A head without `=>` remains an in-place closure.
+pub(super) fn parse_binderless_pipe_branch_closure(parser: &mut Parser<'_>) -> AtomAst {
+    let slot = parse_synthesized_empty_deduce_binding_slot(parser, BindingSlotContext::Param);
+    let head_span = slot.span;
+    let head = FnHeadPrefixAst {
+        deduce: None,
+        captures: None,
+        params: Some(ParamClauseAst {
+            extract: ProductExtractAst {
+                elements: vec![ProductExtractElementAst::Slot(slot)],
+                span: head_span,
+            },
+            span: head_span,
+        }),
+        call_policy: None,
+        returns: None,
+        clauses: Vec::new(),
+        span: head_span,
+    };
+    let body = parse_callable_body_block(parser, &head);
+    let span = head.span.join(body.span);
+    closure_atom(
+        ClosurePlacementAst::InPlace,
+        Some(head),
+        ClosureBodyAst::Block(body),
+        span,
+    )
 }
 
 fn reject_in_place_capture(

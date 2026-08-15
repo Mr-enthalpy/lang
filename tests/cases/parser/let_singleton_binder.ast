@@ -3,11 +3,10 @@ Program
     slot:
       BindingSlot let=true
         deduce:
-          DeduceList
-            binders:
+          None
         pattern:
-          PatternSkeleton
-            CanonicalName role=NodeName name=x
+          Binder
+            TextName x
         annotation:
           None
         with_clause:

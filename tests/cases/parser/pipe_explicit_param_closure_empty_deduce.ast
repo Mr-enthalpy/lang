@@ -9,7 +9,7 @@ Program
         Segment has_incoming=true
           OperatorExpr
             Atom
-              Closure InPlace
+              Closure Ordinary
                 FnHeadPrefix
                   params:
                     ParamClause
@@ -21,7 +21,7 @@ Program
                                 binders:
                             pattern:
                               PatternSkeleton
-                                CanonicalName role=NodeName name=name
+                                CanonicalName role=NodeName name=a
                             annotation:
                               None
                             with_clause:
@@ -37,6 +37,3 @@ Program
                             OperatorExpr
                               Atom
                                 Name y
-          OperatorExpr
-            Atom
-              Name z

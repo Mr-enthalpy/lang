@@ -36,6 +36,40 @@ fn assert_parser_case(name: &str, expect_diagnostics: bool) {
     }
 }
 
+fn assert_parser_cases_same_ast(left: &str, right: &str) {
+    let left_source =
+        fs::read_to_string(case_path(left, "lang")).expect("read left source fixture");
+    let right_source =
+        fs::read_to_string(case_path(right, "lang")).expect("read right source fixture");
+    let left_output = lang_syntax::parse(&left_source);
+    let right_output = lang_syntax::parse(&right_source);
+
+    assert!(left_output.diagnostics.is_empty());
+    assert!(right_output.diagnostics.is_empty());
+    assert_eq!(
+        lang_syntax::dump_ast(&left_output.program),
+        lang_syntax::dump_ast(&right_output.program),
+        "`{left}` and `{right}` must lower to one Raw AST"
+    );
+}
+
+fn assert_parser_cases_different_ast(left: &str, right: &str) {
+    let left_source =
+        fs::read_to_string(case_path(left, "lang")).expect("read left source fixture");
+    let right_source =
+        fs::read_to_string(case_path(right, "lang")).expect("read right source fixture");
+    let left_output = lang_syntax::parse(&left_source);
+    let right_output = lang_syntax::parse(&right_source);
+
+    assert!(left_output.diagnostics.is_empty());
+    assert!(right_output.diagnostics.is_empty());
+    assert_ne!(
+        lang_syntax::dump_ast(&left_output.program),
+        lang_syntax::dump_ast(&right_output.program),
+        "`{left}` and `{right}` must retain distinct binding semantics"
+    );
+}
+
 fn project_current_closures_to_v02(dump: &str) -> Result<Vec<&'static str>, String> {
     let lines = dump.lines().collect::<Vec<_>>();
     let mut projected = Vec::new();
@@ -74,7 +108,7 @@ fn project_current_closures_to_v02(dump: &str) -> Result<Vec<&'static str>, Stri
         }
 
         match (placement, has_head, body) {
-            ("InPlace", false, Some("Block")) => projected.push("I"),
+            ("InPlace", _, Some("Block")) => projected.push("I"),
             ("Ordinary", true, Some("Block" | "Delete")) => projected.push("E"),
             other => {
                 return Err(format!(
@@ -238,6 +272,24 @@ fn pipe_branch_name_shorthand() {
 }
 
 #[test]
+fn pipe_branch_name_binderless_explicit() {
+    assert_parser_case("pipe_branch_name_binderless_explicit", false);
+    assert_parser_cases_same_ast(
+        "pipe_branch_name_shorthand",
+        "pipe_branch_name_binderless_explicit",
+    );
+}
+
+#[test]
+fn pipe_branch_underscore_binderless_explicit() {
+    assert_parser_case("pipe_branch_underscore_binderless_explicit", false);
+    assert_parser_cases_same_ast(
+        "pipe_branch_underscore_shorthand",
+        "pipe_branch_underscore_binderless_explicit",
+    );
+}
+
+#[test]
 fn pipe_branch_name_explicit() {
     assert_parser_case("pipe_branch_name_explicit", false);
 }
@@ -280,6 +332,11 @@ fn pipe_explicit_empty_closure() {
 #[test]
 fn pipe_explicit_param_closure() {
     assert_parser_case("pipe_explicit_param_closure", false);
+}
+
+#[test]
+fn pipe_explicit_param_closure_empty_deduce() {
+    assert_parser_case("pipe_explicit_param_closure_empty_deduce", false);
 }
 
 #[test]
@@ -539,7 +596,18 @@ fn let_extract_name_hole() {
 
 #[test]
 fn let_extract_empty_deduce() {
-    assert_parser_case("let_extract_empty_deduce", true);
+    assert_parser_case("let_extract_empty_deduce", false);
+    assert_parser_cases_different_ast("let_singleton_binder", "let_extract_empty_deduce");
+}
+
+#[test]
+fn let_extract_empty_deduce_wildcard() {
+    assert_parser_case("let_extract_empty_deduce_wildcard", false);
+}
+
+#[test]
+fn let_singleton_binder() {
+    assert_parser_case("let_singleton_binder", false);
 }
 
 #[test]
