@@ -877,7 +877,10 @@ projection selects `Q`. When `TypeRole(Q)`, type projection constructs the
 complete immutable snapshot `T = bind alpha.<Q,V_T[alpha]>`; it does not return
 bare `Q` or recover a defining Symbol later. The raw Symbol stores one `V`,
 partitioned as `V_T disjoint-union V_O`; projection does not duplicate an owned
-copy of `V_T`.
+copy of `V_T`. The binder notation is a judgmental view of an ordinary
+`T in Object`, not a parallel TypeSnapshot carrier, fourth Object coordinate,
+or independently normalized record. Canonical identity remains
+`Addr(Norm(T))` under ordinary Object normalization.
 Callable val members project across the typed buckets to the formal `OverloadSet`.
 
 Symbol normalization is an extensional optional pure role member plus map of typed
@@ -906,7 +909,10 @@ _See also: PatternValue container kernel, Overload Candidate, `extend`._
 An ordinary val member included in a complete type snapshot exactly when its
 anonymous classifier has direct immutable canonical home
 `TypeMemberScope(Q)`. Descendant ownership, copying, rebinding, and namespace
-installation are insufficient. Canonical owner:
+installation are insufficient. Creating a classifier with that direct home
+requires current construction authority for `Q`; ordinary callable creation or
+navigated `let` cannot nominate the scope and thereby forge membership.
+Canonical owner:
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
 _See also: TypeMemberScope, `Self_T`, Symbol value._
@@ -917,7 +923,9 @@ _See also: TypeMemberScope, `Self_T`, Symbol value._
 
 The direct classifier-home scope associated with the pure role `Q` of a type.
 Creation under this scope is the membership proof used to partition Symbol
-members into `V_T` and `V_O`; arbitrary descendants do not qualify.
+members into `V_T` and `V_O`; arbitrary descendants do not qualify. Selecting
+this home at classifier creation requires current construction authority for
+`Q`, so ordinary namespace installation cannot manufacture membership.
 
 _See also: TypeMember, SemanticOwner._
 

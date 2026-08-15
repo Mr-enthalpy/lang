@@ -379,7 +379,7 @@ under their `PatternRoot`; spelling alone is not semantic identity.
 
 ## 9. Pure Pattern nodes and pipe branch shorthand
 
-A pure Pattern node needs no artificial anonymous value layer. For example:
+A pure Pattern node needs no artificial wildcard/value padding layer. For example:
 
 ```lang
 let bool = ((if | else) bool) |> struct;
@@ -614,10 +614,13 @@ children.
 ## 15. Boundary to complete type values
 
 The Pattern component of a type is `Q`, but a complete type value is not bare
-`Q`. The canonical type-value authority defines:
+`Q`. The canonical type-value authority defines the following judgmental view
+of an ordinary `T in Object`:
 
 ```text
-T = bind alpha. <Q, V_T[alpha]>
+CompleteType(T; Q, V_T)
+  iff T in Object
+  and TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
 ```
 
 where `V_T` contains the ordinary val members that belong directly to this type
@@ -630,6 +633,12 @@ TypeMember_Q(F)
   iff Anonymous(F)
   and DirectClassifierHome(F) = TypeMemberScope(Q)
 
+CreateClassifier_Gamma(
+  F,
+  DirectClassifierHome = TypeMemberScope(Q)
+)
+  => CurrentConstructionAuthority_Gamma(Q)
+
 V_T
   = disjoint_union over F where TypeMember_Q(F) of V[F]
 
@@ -637,15 +646,22 @@ Norm^alpha(Self_T) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
-Direct canonical home is fixed at classifier creation. Descendant ownership,
-copying, rebinding, or namespace installation does not establish membership.
+Direct canonical home is fixed at classifier creation. Selecting that home is
+itself privileged: only a process holding current construction authority for
+`Q` may create a classifier directly in `TypeMemberScope(Q)`. Ordinary
+callable creation, navigated `let`, copying, writing, rebinding, or namespace
+installation cannot forge the home at formation and cannot establish
+membership afterward. Descendant ownership is also insufficient.
 After authorized `BoundRef` edges are erased, the owned graph must remain
 finite and well-founded.
 
 This document uses `Q` when discussing structural Pattern relations and `T`
 when discussing a complete type value. `AsType` and type projection produce
-the complete `T`, not bare `Q`. The TypeMember partition, `Self_T` normal form,
-and callspace identity are owned by
+the complete ordinary Object `T`, not bare `Q`. The notation
+`bind alpha.<Q,V_T[alpha]>` is a logical projection of `T`; it adds no parallel
+semantic carrier, fourth Object coordinate, or independently normalized type
+record. The TypeMember partition, `Self_T` normal form, Object embedding, and
+callspace identity are owned by
 `../symbol-world/type-values-places-and-borrow-views.md` and
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 

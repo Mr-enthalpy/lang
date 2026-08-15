@@ -121,23 +121,35 @@ TypeMember_Q(F)
   iff Anonymous(F)
   and DirectClassifierHome(F) = TypeMemberScope(Q)
 
+CreateClassifier_Gamma(
+  F,
+  DirectClassifierHome = TypeMemberScope(Q)
+)
+  => CurrentConstructionAuthority_Gamma(Q)
+
 V_T
   = disjoint_union over F where TypeMember_Q(F) of V[F]
 
 V_O = V \\ V_T
 
-TypeProjection(S)
-  = bind alpha. <Q, V_T[alpha]>
-    iff Val1(S) = <Q, V> and TypeRole(Q)
+TypeProjection(S) = T
+  iff Val1(S) = <Q, V>
+  and TypeRole(Q)
+  and CompleteType(T; Q, V_T)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
 ```
 
 The partition is derived from each callable/member classifier's canonical
 formation identity. `DirectClassifierHome` is fixed when the classifier is
-created. Copying, rebinding, or installing the callable under another Symbol
-does not change it. An anonymous classifier nested inside a direct
-TypeMember classifier is a descendant, not a direct member:
+created, but formation itself is privileged: only a process holding current
+construction authority for `Q` may create an anonymous classifier directly in
+`TypeMemberScope(Q)`. Type/`struct` construction and `extend` over the current
+snapshot may hold that authority; `inject` reaches it only by invoking
+`extend`. Ordinary callable creation, navigated `let`, copying, rebinding,
+writing, and namespace installation may neither nominate this direct home at
+creation nor change it afterward. An anonymous classifier nested inside a
+direct TypeMember classifier is a descendant, not a direct member:
 
 ```text
 DirectClassifierHome(F) = TypeMemberScope(Q)
@@ -150,10 +162,11 @@ and DirectClassifierHome(G) != TypeMemberScope(Q)
 
 Symbol storage does not own two copies of `V_T`. The raw Symbol value stores
 `V`; `TypeProjection` derives the partition and returns one immutable complete
-type snapshot. Its callspace is intrinsic:
+type Object snapshot. Its binder notation is a judgmental view of that
+ordinary Object, not a parallel carrier. Its callspace is intrinsic:
 
 ```text
-T = bind alpha. <Q, V_T[alpha]>
+TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
 CallSpace(T) = V_T
 ```
 

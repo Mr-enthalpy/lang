@@ -147,12 +147,25 @@ completed v0.2 Raw AST Contract Freeze stage:
 * alias-let parser preservation
 * `with { ... }` narrow payload grammar
 
-Completed v0.1.w additions (preserved in the frozen surface):
+Completed v0.1.w additions (preserved in the frozen historical surface):
 
 * richer literal spellings: radix integers, scientific notation,
   digit separators, hexadecimal floats, ranked quote-boundary strings;
   literal-name adjacency as ordinary call/composition material
-* pipe branch-name shorthand `|> name { ... } ⇝ |> (_ name) { ... }`
+* historical pipe branch-name shorthand
+  `|> name { ... } ⇝ |> (_ name) { ... }`
+
+That last expansion records the frozen v0.1.w/v0.2 snapshot only. The current
+frontend amendment after PR100 replaces it with:
+
+```text
+|> P { ... }  ⇝  |> (<> P) { ... }
+```
+
+for the currently covered single atomic bare Pattern `P`. The result is a
+headed `InPlace` closure. `<>` means an empty DeduceList and absent binder;
+`_` remains a real wildcard Pattern position, so explicit `(_ P)` is a
+different form. Do not rewrite the frozen historical snapshots.
 
 Allowed work in the current documentation / stabilization stage:
 
@@ -366,6 +379,15 @@ It is recognized only in specific binding contexts, such as:
 
 Outside these contexts, `<` and `>` are ordinary tokens.
 
+In the current amended frontend, an empty DeduceList is meaningful:
+
+```text
+let <> P
+```
+
+parses `P` as a binderless Pattern. It is distinct from `let _ P`, which has a
+real wildcard position, and from the ordinary binder form `let P`.
+
 ### Calls
 
 Traditional call syntax does not exist in `v0.1`.
@@ -387,8 +409,9 @@ skeleton rules described in `spec/implementation/v0.1/ast-construction-v0.1.md`.
 
 In expression/atom position, bare `{ ... }` produces a `ClosureAst` whose
 `placement` is `ClosurePlacementAst::InPlace` and whose `head` is absent.
-It has no closure head. Braces also delimit explicit closure bodies after
-`FnHeadPrefix =>`.
+It has no closure head. A headed closure without `=>`, `FnHead { ... }`, is
+also `ClosurePlacementAst::InPlace`; `FnHead => { ... }` is the ordinary
+headed closure form.
 
 Closure literals initially produce AST, not callable objects. Object
 materialization is a future semantic pass.

@@ -1269,7 +1269,7 @@ TopPattern(P)? = P
 
 The last equation is only a display shorthand. A successful peel must not
 delete the Pattern-layer boundary. It erases the top Pattern identity while
-retaining an anonymous Pattern layer with the same body and ordering:
+retaining a name-absent Pattern layer with the same body and ordering:
 
 ```text
 OptionalPeel(
@@ -1299,7 +1299,7 @@ This rule does not weaken Product ordering:
 ```
 
 Nor does every successful peel imply order-insensitivity. A peeled Pattern
-body that was positional remains positional. The anonymous layer retains
+body that was positional remains positional. The name-absent layer retains
 exactly the ordering of the peeled layer, not a general “ignore Product order”
 flag.
 
@@ -1318,7 +1318,7 @@ Peeling must commute with normalization:
 PeelView(Norm(x)) = Norm(PeelView(x))
 ```
 
-The retained anonymous `PatternLayer` boundary is what makes this equation
+The retained name-absent `PatternLayer` boundary is what makes this equation
 possible. This behavior is a recorded future semantic requirement; the current
 executable extraction substrate does not yet implement it.
 
@@ -1364,7 +1364,7 @@ bool_cond
 ```
 
 Explicit `bool_cond?` merely requests its one-layer top Pattern view. If a top
-Pattern is peeled, the view retains an anonymous Pattern-layer boundary with
+Pattern is peeled, the view retains a name-absent Pattern-layer boundary with
 the same ordering; it is not a special control-flow entrance. Here `if` and
 `else` are conventional pattern labels, not lexer keywords or a separate
 conditional mechanism.
@@ -1705,7 +1705,7 @@ The core of the design is:
 8. match is an identity closing consumer, not built-in matching syntax.
 9. Expression results must never be silently discarded — no void exception. Unconsumed values must be consumed or become the current block return.
 10. `_` is an explicit consumption pattern.
-11. `?` erases one peelable top Pattern name while retaining an anonymous Pattern-layer boundary and its ordering; Product fixed points gain no unordered authority. Bool Pattern already carries if | else alternatives.
+11. `?` erases one peelable top Pattern name while retaining a name-absent Pattern-layer boundary and its ordering; Product fixed points gain no unordered authority. Bool Pattern already carries if | else alternatives.
 12. Closed control-pattern spaces cannot be added to unrelated patterns.
 13. This non-additivity is guaranteed by package-owned operator implementations, non-reopenable namespaces, and absence of unrestricted lookup.
 14. Construction and extraction may be isomorphic; call and extraction are not.

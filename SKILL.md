@@ -134,12 +134,19 @@ v0.2 is closed. The following remain frozen contract material:
 - inner-to-outer navigation, alias-let parser preservation
 - `with { ... }` narrow payload grammar
 
-Completed v0.1.w additions (preserved in the frozen surface):
+Completed v0.1.w additions (preserved in the frozen historical surface):
 
 - richer literal spellings: radix integers, scientific notation,
   digit separators, hexadecimal floats, ranked quote-boundary strings;
   literal-name adjacency as ordinary call/composition material
-- `|> name { ... }` accepted as mechanical shorthand for `|> (_ name) { ... }`
+- historical `|> name { ... }` expansion to `|> (_ name) { ... }`
+
+The last item records the frozen v0.1.w/v0.2 snapshot only. Under the current
+frontend amendment after PR100, the supported single-atomic-Pattern shorthand
+is `|> P { ... }`, mechanically equivalent to `|> (<> P) { ... }`. It forms a
+headed `InPlace` closure. `<>` means an empty DeduceList and absent binder;
+explicit `(_ P)` instead contains a real wildcard Pattern position and is not
+the shorthand expansion. Keep frozen historical snapshots unchanged.
 
 Allowed v0.2 work:
 
@@ -212,13 +219,16 @@ Do not implement this as a traditional precedence parser.
 
 - Bare `{ ... }` in atom position is a `ClosureAst` with in-place placement
   and no head, not a block expression.
-- `FnHead => { ... }` is explicit closure AST.
-- `FnHead { ... }` without `=>` is invalid and is not reinterpreted.
+- `FnHead { ... }` without `=>` is a headed `InPlace` closure.
+- `FnHead => { ... }` is an ordinary headed closure.
 - A closure literal is AST first. It is not a callable object.
 
 ## 6. `<>` rules
 
 - `<...>` is a deduce list only in strong binding contexts.
+- `let <> P` uses an empty DeduceList, has no binder, and parses `P` as a
+  Pattern. It differs from both wildcard-bearing `let _ P` and ordinary binder
+  form `let P`.
 - Outside binding contexts, `<` and `>` are ordinary symbols.
 
 ## 7. What is out of scope

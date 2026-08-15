@@ -51,7 +51,7 @@ x?? = (x?)?
 ```
 
 `TopPattern(P)? = P` is only display shorthand for the resident body. The
-exposed extraction view must retain an anonymous Pattern-layer boundary:
+exposed extraction view must retain a name-absent Pattern-layer boundary:
 
 ```text
 OptionalPeel(
@@ -77,7 +77,7 @@ OptionalPeel(x) = x
 ```
 
 This is an ordinary fixed point, not matching failure and not a `none` result.
-The retained anonymous layer must also make peeling commute with
+The retained name-absent layer must also make peeling commute with
 normalization:
 
 ```text

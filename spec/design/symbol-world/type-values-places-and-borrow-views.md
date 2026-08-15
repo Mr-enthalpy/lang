@@ -504,17 +504,39 @@ component `Q`. It closes `Q` together with the ordinary value members that
 belong directly to that type:
 
 ```text
-TypeValue T
-  = bind alpha. <Q, V_T[alpha]>
+CompleteType(T; Q, V_T)
+  iff T in Object
+  and TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
 
 CallSpace(T) = V_T
 ```
+
+`bind alpha.<Q,V_T[alpha]>` is a binder-aware **judgmental view of the
+ordinary Object `T`**, not raw carrier syntax and not a second semantic value.
+`Q` and the typed member buckets `V_T` are projected from `Content(T)` through
+the same bare-Product, Sequence, and typed-bucket Object composition used by
+Symbol values in
+[`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
+§4.7. Therefore this notation introduces none of:
+
+```text
+a parallel semantic TypeSnapshot carrier
+a fourth Object coordinate
+an independently normalized TypeValue record
+```
+
+Canonical type identity remains `Addr(Norm(T))`. `Norm(T)` is the ordinary
+Object normal form over `Val1?`, `P`, and `Val2`; the only type-specific step
+is that occurrences of `Self_T` in the projected member content are normalized
+under the binder as described below. An implementation may materialize a
+snapshot-shaped cache, but that cache is substrate for this Object judgment,
+not another ontology or equality relation.
 
 `Q` remains the pure Object on which `TypeRole` and structural Pattern
 judgments are defined. `V_T` contains ordinary typed members; it is not Pattern
 metadata and is not recovered from a defining Symbol when `T` is called.
 
-The canonical normal form is binder-aware:
+The canonical Object normal form is binder-aware at this projection:
 
 ```text
 Norm(T)
