@@ -114,8 +114,10 @@ into one another.
 
 In the symbol-first model, a path initially resolves to one Symbol and the use
 site then projects its optional `Q` role member or heterogeneous typed `V`
-members. Namespace and type projections are judgments over `Q`; projection
-does not collapse these identities and is not a cast.
+members. Namespace projection returns `Q`; the type-role judgment over `Q`
+selects the direct TypeMember partition and constructs the complete immutable
+snapshot `bind alpha.<Q,V_T[alpha]>`. Projection does not collapse these
+identities and is not a cast.
 
 ### 2.1 Object identity is the recursive three-component normal form
 
@@ -476,8 +478,11 @@ normalizes recursively like every other component, and the opaque leaf is a
 placeholder for content normalization that is not yet implemented. It does not
 override a defined Pattern-specific quotient such as `P_symbol` above.
 
-Re-entering any object still on the active recursion stack through any positive
-owned path proves a well-foundedness violation:
+Complete type values contain one tightly scoped normal-form binder
+back-reference, defined below. Such a `BoundRef(alpha)` is not an owned child
+edge. After erasing those authorized back-references, re-entering any object
+still on the active recursion stack through any positive owned path proves a
+well-foundedness violation:
 
 ```text
 x ∈ ActiveStack
@@ -488,9 +493,64 @@ NoNormalForm(x)
 
 Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
 `Val2` such as `let loop::t = t;` all have **no normal form**. A finished shared
-acyclic subtree remains valid DAG reuse. Whether cyclic objects are ever
-admitted is a separate, explicit future language decision — it does not follow
-from the normalizer's ability to detect the cycle.
+acyclic subtree remains valid DAG reuse. `Self_T` does not weaken this rule: it
+is the one bound normal-form reference below, not an Object edge and not a
+general recursive-data constructor.
+
+### 2.2 Complete type values are closed snapshots
+
+A complete language-level type value is not its pure Pattern/namespace role
+component `Q`. It closes `Q` together with the ordinary value members that
+belong directly to that type:
+
+```text
+TypeValue T
+  = bind alpha. <Q, V_T[alpha]>
+
+CallSpace(T) = V_T
+```
+
+`Q` remains the pure Object on which `TypeRole` and structural Pattern
+judgments are defined. `V_T` contains ordinary typed members; it is not Pattern
+metadata and is not recovered from a defining Symbol when `T` is called.
+
+The canonical normal form is binder-aware:
+
+```text
+Norm(T)
+  = bind alpha.
+      <Norm(Q), Norm_V^alpha(V_T)>
+
+Norm^alpha(Self_T)
+  = BoundRef(alpha)
+
+BoundRef(alpha) notin Children_owned
+```
+
+Alpha-renaming of the binder is non-semantic. Removing the authorized binder
+back-references must leave a finite, well-founded owned graph:
+
+```text
+EraseBackRefs(OwnedGraph(T)) is finite and acyclic
+```
+
+This is a normal-form binder, not a `mu`-type, an equi-recursive type rule, or
+permission for cyclic `Object` content.
+
+Each completed type value is an immutable snapshot. Pure extension may preserve
+a construction root while producing a different snapshot:
+
+```text
+T_old = bind alpha. <Q_old, V_old[alpha]>
+T_new = bind beta.  <Q_new, V_new[beta]>
+
+Root(T_old) = Root(T_new)
+  !=> T_old = T_new
+  !=> V_old = V_new
+```
+
+An old copy retains `V_old`. No `Root(T) -> current mutable Symbol -> current V`
+indirection is part of type identity or call lookup.
 
 ## 3. Value judgment versus place judgment
 
@@ -968,17 +1028,19 @@ operand or argument position performs no implicit type conversion. An explicit
 `AsType(E) = E |> type` has two ordinary cases:
 
 ```text
-AsType(S : symbol) = Q
-                     when Val1(S) = ⟨Q, V⟩ and TypeRole(Q)
+AsType(S : symbol) = TypeProjection(S)
+  = bind alpha. <Q, V_T[alpha]>
+    when Val1(S) = <Q, V> and TypeRole(Q)
 
-AsType(x) = x       when TypeRole(x)
-AsType(x) undefined when Pure(x) and not TypeRole(x)
+AsType(T) = T
+  when T is already a complete TypeValue
 ```
 
-The second rule validates an existing pure Object; it neither wraps a namespace
-nor searches for a hidden type member. Payload presence alone remains
-irrelevant to type applicability: a Symbol may carry `Val1(Symbol) = <Q?, V>`
-with no `Q`, or with a namespace-only `Q` for which `TypeRole(Q)` is false. A
+The second rule validates an existing complete type value. It does not treat a
+bare pure namespace Object as a complete type, wrap a namespace, or search for a
+hidden type member. Payload presence alone remains irrelevant to type
+applicability: a Symbol may carry `Val1(Symbol) = <Q?, V>` with no `Q`, or with
+a namespace-only `Q` for which `TypeRole(Q)` is false. A
 language-designated type-expected position may
 insert `AsType`; ordinary operand positions may not. See §5.6.
 
@@ -1307,14 +1369,14 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` either selects Symbol's unique pure role member `Q` when `TypeRole(Q)`
-holds or validates an already-pure Object by `TypeRole` as specified in
-§5.1. It does not compute the type of
+`AsType` either projects a complete `bind alpha.<Q,V_T[alpha]>` snapshot from a
+Symbol whose `Q` has `TypeRole`, or validates an already-complete TypeValue as
+specified in §5.1. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 
 ```text
 AsType(E) != TypeOf(E)
-rank(AsType(E)) = rank(the selected or validated type Object)
+rank(AsType(E)) = rank(the selected or validated complete type value)
 ```
 
 Only explicit type-of extraction — for example the future canonical form
@@ -1338,7 +1400,8 @@ The designated positions are:
 | type-rank return position | a callable whose return is declared at type rank |
 
 So `E` supplying a `Val1` dimension in one of these positions is projected to
-its `Q` when `TypeRole(Q)` without the author writing `|> type`, while the very same `E` under
+its complete type snapshot when its `Q` satisfies `TypeRole`, without the
+author writing `|> type`, while the very same `E` under
 `ref` is not:
 
 ```lang
@@ -1361,8 +1424,9 @@ S.type         : type
 (S share).type : type share
 ```
 
-`S.type` is the by-value projection of `Q` when `TypeRole(Q)` and agrees in
-value with `AsType(S)`. The ref/share cases preserve their borrow observation through
+`S.type` is the by-value projection of the complete type snapshot whose `Q`
+satisfies `TypeRole`, and agrees in value with `AsType(S)`. The ref/share cases
+preserve their borrow observation through
 ordinary field projection; they do not reverse-map a type value to an origin.
 When `t` itself is already a pure `type` slot, `t@` remains the direct carrier
 borrow. No `S@` or `(S |> type)@` shorthand is defined.

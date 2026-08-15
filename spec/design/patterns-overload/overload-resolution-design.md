@@ -4,6 +4,11 @@
 design. v0.8 implements only the restricted source-declared meta-overload
 selection slice described in §0.1.
 
+Pattern satisfaction, proof-relevant observation/extraction, direct structural
+incidence, binderless semantics, and `Norm_P` soundness are canonical in
+`pattern-values-relational-semantics-and-extraction.md`. This document consumes
+their applicability evidence; it does not define another Pattern calculus.
+
 This document remains the broader overload-resolution design. The earlier
 pattern/type candidate-preparation subset used by future meta object invocation
 is documented in `pattern-normalization-and-first-order-overload.md`. That

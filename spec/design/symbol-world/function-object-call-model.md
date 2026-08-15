@@ -166,16 +166,18 @@ not fabricate a source path or require migration metadata.
 Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
 requires `TypeValue -> original carrier Symbol`: source navigation resolves a
-Symbol and reads its values, while an already-held PatternValue directly
-provides its canonical associated `Val2`.
+Symbol and reads its values, while an already-held complete type value carries
+its own callspace:
 
-This closes calls whose entry is owned by that associated `Val2`; it does not
-yet close copied/extracted **type-as-callee** lookup when the intended
-constructor or policy-transform overload is a sibling value of the defining
-Symbol rather than an associated member of the type value. A future
-`HomeSymbol(TypeValue)` relation or equivalent canonical-root recovery remains
-deferred. It may not be reconstructed from the most recent carrier, binding
-provenance, or an `AsType` source path.
+```text
+T = bind alpha. <Q, V_T[alpha]>
+CallSpace(T) = V_T
+```
+
+Copied/extracted type-as-callee lookup selects candidates from that immutable
+`V_T` snapshot. `HomeSymbol(TypeValue)`, defining-Symbol recovery, most-recent
+carrier provenance, and reverse `AsType` provenance are retired designs, not
+deferred candidate entrances.
 
 Associated source navigation obeys the same forward-only rule. If:
 
@@ -183,12 +185,11 @@ Associated source navigation obeys the same forward-only rule. If:
 let T: type = uint8;
 ```
 
-then a target selected through `T` resolves `Symbol(T)`, reads the carried
-TypeValue/PatternValue, enters that PatternValue's resolved scope, and obtains
-the named associated Symbol there. It does not inspect T's provenance, search
-for `Symbol(uint8)`, or copy the associated member into T's fresh companion
-place. The named associated Symbol then supplies its heterogeneous values to
-the same C0/C1/C2/C3 trunk.
+then a target selected through `T` resolves `Symbol(T)` and reads the complete
+type snapshot. Type-as-callee candidates come from its `V_T`; an ordinary
+navigated member may additionally be selected through `Q`/`Val2` under the
+normal navigation rules. Neither path inspects provenance or searches for
+`Symbol(uint8)`.
 
 The older `PolicyTransitionCallable` Rust carrier remains bounded algebra/test
 fixture material. Its caller-supplied result Pattern proves only fixture

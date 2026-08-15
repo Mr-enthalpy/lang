@@ -44,6 +44,7 @@ This amendment therefore classifies each delta explicitly:
 | Global one-pack validation | New post-normalization invariant | Parser-local counting cannot enforce a normalized-level invariant across every binding slot. |
 | DeduceList telescope and exact `HoleBinderId` references | Normalized binding correction | A string-only `HoleRef` cannot identify its declaration or define forward/self/duplicate behavior in nested let-shaped slots. |
 | First written formal = callable self-position | Normalized formal-frame correction | Invocation already injects callable self as slot 0. Treating the first written Pattern as an explicit user argument split one position into two incompatible meanings and made generated receiver helpers consume their own callable object as the business receiver. |
+| Empty DeduceList selects a binderless Pattern; atomic pipe-branch shorthand uses it | Hard binding-shape correction (PR #100) | `let <> P` must preserve binder absence while `let P` remains the ordinary singleton binder. Lowering `|> P { ... }` through `(_ P)` fabricated a wildcard position and changed Pattern structure. |
 
 ## 2. Version boundary
 
@@ -137,6 +138,29 @@ no "=>" -> InPlace
 Head presence does not determine placement. `[[strategy]]` adds named strategy
 metadata without changing in-place placement. Capture lists remain unavailable
 to in-place closures.
+
+An explicit empty DeduceList is valid in a strong binding context:
+
+```text
+let <> P
+  -> DeduceListAst { binders: [] }
+  -> BinderPresence = Absent
+  -> Pattern = P
+```
+
+It is distinct from the ordinary singleton binder `let P` and from a real
+wildcard position `let _ P`.
+
+The current atomic pipe-branch shorthand reuses that binding shape:
+
+```text
+|> P { body }
+  == |> (<> P) { body }
+```
+
+The resulting closure is headed and `InPlace`. Explicit `(_ P)` remains a
+different Product head containing a real wildcard Pattern position. `<` and
+`>` remain the existing two structural tokens; no `<>` token is added.
 
 Parenthesized Product-versus-head classification uses one closure-head
 continuation predicate. Its strategy alternative requires the complete local

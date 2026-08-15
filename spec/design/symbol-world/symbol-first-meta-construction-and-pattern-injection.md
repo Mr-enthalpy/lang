@@ -20,9 +20,11 @@ This document builds on, without replacing:
 - `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` for
   the preserved bare-name versus explicit-`::` distinction and the current
   registry-backed substrate;
+- `spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+  for the canonical Pattern relation, direct structural incidence,
+  binderless Patterns, observation/extraction, and Pattern normalization;
 - `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`
-  for static pattern spaces, bounded extraction, and extraction-chain
-  semantics;
+  for later residual, `Done`, and control-pattern semantics;
 - `spec/design/meta-invocation/meta-object-invocation-and-policy-reduction.md`
   for candidate selection, evaluation demand, policy, and residualization;
 - `spec/design/build-package/build-system-design.md` for transactional
@@ -107,18 +109,65 @@ SymbolValue {
 ```
 
 The target ontology stores neither an independent namespace facet nor an
-independent type facet. `Q`, when present, is pure. Namespace and type
-projections are derived judgments over that same Object:
+independent type facet. `Q`, when present, is pure. Namespace projection is a
+judgment over `Q`; complete type projection closes that same `Q` with the
+ordinary value members that belong directly to it:
 
 ```text
 NamespaceProjection(S) = Q
   iff Val1(S) = <Q, V>
 
-TypeProjection(S) = Q
-  iff Val1(S) = <Q, V> and TypeRole(Q)
+TypeMember_Q(F)
+  iff Anonymous(F)
+  and DirectClassifierHome(F) = TypeMemberScope(Q)
+
+V_T
+  = disjoint_union over F where TypeMember_Q(F) of V[F]
+
+V_O = V \\ V_T
+
+TypeProjection(S)
+  = bind alpha. <Q, V_T[alpha]>
+    iff Val1(S) = <Q, V> and TypeRole(Q)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
 ```
+
+The partition is derived from each callable/member classifier's canonical
+formation identity. `DirectClassifierHome` is fixed when the classifier is
+created. Copying, rebinding, or installing the callable under another Symbol
+does not change it. An anonymous classifier nested inside a direct
+TypeMember classifier is a descendant, not a direct member:
+
+```text
+DirectClassifierHome(F) = TypeMemberScope(Q)
+  => TypeMember_Q(F)
+
+AncestorClassifierHome(G) = TypeMemberScope(Q)
+and DirectClassifierHome(G) != TypeMemberScope(Q)
+  => not TypeMember_Q(G)
+```
+
+Symbol storage does not own two copies of `V_T`. The raw Symbol value stores
+`V`; `TypeProjection` derives the partition and returns one immutable complete
+type snapshot. Its callspace is intrinsic:
+
+```text
+T = bind alpha. <Q, V_T[alpha]>
+CallSpace(T) = V_T
+```
+
+References from members in `V_T` to the current type use the canonical binder:
+
+```text
+Norm^alpha(Self_T) = BoundRef(alpha)
+BoundRef(alpha) notin Children_owned
+```
+
+After those authorized references are erased, the owned graph must remain
+finite and acyclic. This is not a general recursive-Object rule; the complete
+normalization contract is owned by
+`type-values-places-and-borrow-views.md` §2.2.
 
 An implementation may cache role projections in separate buckets, but those
 caches are transitional substrate, not two semantic Objects. This is not a
@@ -144,7 +193,7 @@ symbol |> namespace
 They are not traditional casts or conversions. Projection selects an ordinary
 member/role view of the same symbol under the expectation of the use site.
 
-The type projection is `AsType`, not `TypeOf`:
+The complete type projection is `AsType`, not `TypeOf`:
 
 ```text
 AsType(E) = E |> type
@@ -154,8 +203,8 @@ AsType(E) != TypeOf(E)
 `AsType` neither raises universe rank nor manufactures a carrier place. Only
 explicit type-of extraction may obtain the next classifier. `@` never supplies
 `AsType` implicitly. A Symbol's `.type` family is applicable exactly when its
-unique `Q` satisfies `TypeRole`: `S.type` reads `Q` by value, `(S ref).type`
-projects `type ref`, and
+unique `Q` satisfies `TypeRole`: `S.type` reads the complete type snapshot by
+value, `(S ref).type` projects `type ref`, and
 `(S share).type` projects `type share`. Only an already-pure type slot uses
 direct `t@`.
 
@@ -203,7 +252,7 @@ there and nowhere else. There is no second disjunction site to look for:
 One symbol may simultaneously provide:
 
 - one optional pure role member `Q` and its namespace projection;
-- the type projection of that same `Q` when `TypeRole(Q)`;
+- the complete `bind alpha.<Q,V_T[alpha]>` type projection when `TypeRole(Q)`;
 - an ordinary value;
 - a callable value;
 - multiple heterogeneous value entries forming an overload candidate set.
@@ -414,8 +463,9 @@ TypeValue(U) = TypeValue(T) = TypeValue(uint8)
 PatternValue(U) = PatternValue(T) = PatternValue(uint8)
 ```
 
-`type` is an expected rank/facet assertion applied while evaluating the RHS.
-It does not select a second “type binding” judgment.
+The hole-free annotation `type` is the ordinary result-as transformation
+applied while evaluating the RHS. It does not select a second “type binding”
+judgment or a Boolean compatibility check.
 
 Canonical summary:
 
@@ -602,7 +652,8 @@ The classifier is fixed for every ordinary meta callable. `Q`, when present, is
 the unique pure role member and may or may not satisfy `TypeRole`; `V` may
 contain any ordinary sibling values. These are content facts about one Symbol
 Object, not type/val/namespace result categories. Namespace projection selects
-`Q`; type projection selects the same `Q` only when `TypeRole(Q)`.
+`Q`; when `TypeRole(Q)`, type projection constructs the complete immutable
+snapshot `bind alpha.<Q,V_T[alpha]>`.
 
 Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
@@ -1838,10 +1889,10 @@ separate construction rank (§4.1, §4.7–§4.8). Its `Val1` contains exactly o
 pure-role member `Q_struct` satisfying `TypeRole(Q_struct)`, plus any ordinary
 sibling values explicitly contributed by the construction. Section 7.5 closes
 the mechanically generated field/access/ref/share/assignment partners in
-`Q_struct`'s associated
-`Val2`; it does not imply a closed defining-Symbol recovery path for other
-type-as-callee sibling families. This bounded capability does not expose a
-general macro system.
+the complete type snapshot and exposes corresponding associated views. Other
+direct-home TypeMembers, when present, are likewise part of that snapshot's
+`V_T`; type-as-callee never recovers a defining Symbol. This bounded capability
+does not expose a general macro system.
 
 In the general Symbol notation this producer-specific guarantee is:
 
@@ -1979,8 +2030,9 @@ meaning to an anonymous bare `() |> struct`; that is a separate boundary.
 
 ### 7.5 Generated field and companion members
 
-For a structural field `f : A` owned by `Q_struct`, let
-`T = AsType(Q_struct)`. `struct`
+For a structural field `f : A` produced in returned Symbol `S_struct`, let
+`Q_struct = NamespaceProjection(S_struct)` and
+`T = TypeProjection(S_struct)`. `struct`
 uses one general field rule. It does not introduce a separate semantic category
 for “type fields”. All observations are candidates of one same-name associated
 Symbol `f`; receiver and result observation kinds distinguish the overloads:
@@ -1991,9 +2043,11 @@ f : (object: T ref)   -> A ref
 f : (object: T share) -> A share
 ```
 
-`ref` and `share` are not generated navigation subspaces. The associated Symbol
-is installed once beneath `Q_struct`'s place; `const let` / `let` /
-`mut let` policy and the formal object type determine its candidates.
+`ref` and `share` are not generated navigation subspaces. The same-name family
+is stored once as ordinary callable/member Objects. Its direct anonymous
+classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_T`; `const
+let` / `let` / `mut let` policy and the formal object type determine its
+candidates.
 Their selection uses the ordinary context-indexed preference relations. In a
 plain context `succ_plain: let > const = mut`; if no plain `let` candidate is
 admissible, a surviving `const` and `mut` pair remains ambiguous rather than
@@ -2044,28 +2098,32 @@ Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
 `RuntimeField(selected element)` is one local condition inside that meet. No
 Sequence-specific stage rule exists.
 
-The generated partner candidates live in same-name associated Symbols in
-`Q_struct`'s `Val2`. The returned Symbol's `Val1` contains `Q_struct` and any
-ordinary sibling values explicitly contributed by the
-construction; this section does not duplicate the generated accessors into a
-second sibling universe. The partners are ordinary typed member objects: user
+The generated partner candidates are ordinary members of the returned Symbol's
+typed buckets whose classifiers satisfy `TypeMember_Q_struct`; therefore
+`TypeProjection(S_struct)` closes them into `V_T`. Any navigable associated
+view is a projection of those same members, not a second owned copy in
+`Q_struct` or its `Val2`. The partners are ordinary typed member objects: user
 construction may remove them, replace them, or add a more specific declaration
 subject to the ordinary duplicate, fallback, and overload rules. They are not
 hidden compiler metadata.
 
-The closure claim of this PR stops at the same-name field value/ref/share
-observations and the corresponding assignment/write partners described above:
+The closed structural generator contract stops at the same-name field
+value/ref/share observations and the corresponding assignment/write partners
+described above:
 
 ```text
-#99 closes = field + access + ref/share observation + assignment/write partners
+struct closure = field + access + ref/share observation + assignment/write partners
 ```
 
-It does not yet define `HomeSymbol(TypeValue)` (or an equivalent recovery from a
-canonical type root), nor how a copied or extracted type used as a callee finds
-constructor or policy-transform siblings of its defining Symbol. Those are
-explicitly deferred. Any future solution must be a semantic property or
-recoverable relation of the canonical type root; it may not use the most recent
-binding carrier, source place, or reverse provenance from `AsType`.
+Type-as-callee is now closed without any defining-Symbol recovery:
+
+```text
+CallSpace(T) = V_T
+```
+
+A copied or extracted `T` retains the `V_T` of that immutable snapshot. The
+retired `HomeSymbol(TypeValue)`, `RecoverSymbol(TypeValue)`, most-recent carrier,
+source-place, and reverse-`AsType` routes are not deferred alternatives.
 
 Construction state propagates only along owned field relations:
 
@@ -2150,13 +2208,16 @@ the frozen parser or introduce traditional `f(args)` call syntax.
 
 ### 8.2 `extend` is the primitive pure value transformation
 
-`extend` takes an ordinary type PatternValue and struct-like child material, and
-returns a new type PatternValue:
+`extend` takes one complete ordinary type snapshot and struct-like child
+material, and returns a new complete type snapshot:
 
 ```text
 extend : type × StructLikeMaterial ⇀ type
 
-Extend_Γ(old, Δ) ⇓ new
+old = bind alpha. <Q_old, V_old[alpha]>
+
+Extend_Gamma(old, Delta)
+  => new = bind beta. <Q_new, V_new[beta]>
 ```
 
 `extend` establishes no root and preserves the root already carried by its
@@ -2165,6 +2226,21 @@ input:
 ```text
 Root(new) = Root(old)
 ```
+
+Root preservation is not snapshot equality and never redirects older copies to
+a current mutable Symbol:
+
+```text
+new != old                 when the extension contributes semantic material
+V_new != V_old             when generated/direct TypeMembers change
+CallSpace(old) = V_old
+CallSpace(new) = V_new
+```
+
+The structural contribution first changes `Q_new` under the canonical Pattern
+relation. Any generated classifier whose
+`DirectClassifierHome = TypeMemberScope(Q_new)` contributes its ordinary
+members to `V_new`. Both components belong to the returned snapshot.
 
 There is no construction-handle rank. The input is an ordinary value of rank
 `type`; `type ref` and `type share` are not accepted inputs. A caller may first
@@ -2179,9 +2255,9 @@ Extend does not install a namespace delta
 Extend does not perform an assignment
 ```
 
-`old` is an input value and is left exactly as it was. `new` is a distinct
-resulting value. Discarding `new` produces no symbol-world side effect, because
-there was never a side effect to discard.
+`old` is an input value and is left exactly as it was, including its `V_old`
+callspace. `new` is a distinct resulting value. Discarding `new` produces no
+symbol-world side effect, because there was never a side effect to discard.
 
 #### 8.2.1 Failure is total
 
@@ -2234,7 +2310,7 @@ Inject_Γ(r, Δ):
   require Writable_Γ(Target(r))
   old := Clone(Read(r))
   new := Extend_Γ(old, Δ)       -- independently requires Open_Γ(old)
-  Write(Target(r), new)
+  Write(Target(r), new)           -- installs the complete new snapshot
   return r
 ```
 
@@ -2383,6 +2459,12 @@ relax any `extend` restriction. Failing Open or write applicability produces no
 partial write.
 
 ## 9. Pattern-Layer Ordering
+
+This section applies the canonical named-versus-positional and structural-child
+rules from
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md` to
+Symbol construction. It is not an independent definition of Pattern identity
+or relational equivalence.
 
 Let the direct children of one pattern layer be:
 
@@ -2594,7 +2676,7 @@ The future default `?` operation must therefore use:
 
 ```text
 PatternLayer(c, B, O)
-  ?-> PatternLayer(_, B, O)
+  ?-> PatternLayer(NameAbsent, B, O)
 ```
 
 not:
@@ -2667,6 +2749,12 @@ name-keyed map must not replace either the ordered layer or the normalized
 map keyed by canonical complete Pattern navigation.
 
 ## 11. Extraction and Explicit Navigation
+
+This section applies the canonical navigation-formation and child-identity
+rules from
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md` to
+symbol-first lookup. Formation provenance may be retained for diagnostics but
+does not define a competing Pattern normal form.
 
 ### 11.1 Navigation always reaches a symbol before a value
 

@@ -83,8 +83,10 @@ completed the remaining Raw AST stability-window questions. During this window:
 
 - Richer literal spelling was implemented (radix integers, digit separators,
   scientific notation, hexadecimal floats, ranked quote-boundary strings).
-- The pipe branch-name shorthand (`|> name { ... } ⇝ |> (_ name) { ... }`)
-  was accepted as the only local mechanical whole-shape sugar.
+- The pipe branch-name shorthand was accepted as the only local mechanical
+  whole-shape sugar. Its v0.1.w snapshot used `(_ name)`; the current
+  binderless authority supersedes that expansion with `(<> name)` while the
+  frozen v0.1/v0.2 records remain unchanged.
 - The final current-stage open question was closed.
 
 `v0.1.w` is now complete. The project then entered v0.2; v0.2 is now closed.

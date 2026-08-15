@@ -318,9 +318,10 @@ member `Q`, and heterogeneous typed value-member buckets:
 path/name -> Symbol -> context-directed role/member projection
 ```
 
-Namespace projection selects `Q`; type projection selects the same `Q` only
-when `TypeRole(Q)`. Current namespace/type facet buckets may cache those derived
-views but do not define independent semantic Objects.
+Namespace projection selects `Q`. When `TypeRole(Q)`, type projection closes it
+with its direct TypeMember partition as the complete immutable snapshot
+`bind alpha.<Q,V_T[alpha]>`. Current namespace/type facet buckets may cache
+those derived views but do not define independent semantic Objects.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint

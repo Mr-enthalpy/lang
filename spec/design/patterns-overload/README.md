@@ -1,12 +1,18 @@
 # patterns-overload
 
-**Status: Non-normative future design. Not implemented as a current pattern
-matcher, type checker, or overload resolver.**
+**Status: Target-semantic design block. Not implemented as a current pattern
+matcher, type checker, or overload resolver.** The relational Pattern calculus
+has one canonical owner in
+`pattern-values-relational-semantics-and-extraction.md`; the remaining files
+consume that authority for candidate preparation, overload ordering, return
+delivery, or later residual/control-pattern design.
 
 ## Scope
 
 Pattern normalization and the candidate model that feeds invocation:
 
+- the canonical relational Pattern coordinate, proof-relevant derivations,
+  structural incidence, observation, and extraction
 - `PatternObject` and occurrence roles (binder / type / path / literal / discard)
 - `ProductObject` / `ArgProductShape` as the bridge from normalized products to
   argument-shape formation
@@ -19,12 +25,13 @@ Pattern normalization and the candidate model that feeds invocation:
 - in-place closure candidate metadata and its fixed preference position; lazy
   embedding lookup/capture boundaries are owned by the function-object model
 
-Resolved pattern owners, `struct -> symbol`, pure `extend`, place-level
-`inject`, and the rule that a
-fully named body of a Pattern normalizes to
-`Map<CanonicalFullNavigation, CanonicalPatternValue>` while every naked
-Product (and any Pattern body with a bare child) remains positional are owned by
-`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
+The base Pattern relation, binderless Pattern semantics, direct structural
+incidence, annotation split, constructor/extractor family contracts, and the
+named-versus-positional normalization boundary are owned by
+`pattern-values-relational-semantics-and-extraction.md`. Symbol construction,
+`struct -> symbol`, pure `extend`, and place-level `inject` are owned by
+`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` and
+must satisfy that Pattern authority.
 Canonical policy pairs, seal visibility, const/mut product order, compile-flow
 projection, derived compile companions, must-select semantics, match staging,
 and automatic require are owned by
@@ -58,21 +65,25 @@ candidate preparation, not runtime overload resolution.
 
 ## Documents
 
+- `pattern-values-relational-semantics-and-extraction.md` — the canonical
+  target-semantic authority for Pattern relation, observation, extraction,
+  structural incidence, binderless Patterns, annotations, and the Pattern/type
+  boundary.
 - `pattern-normalization-and-first-order-overload.md` — the earlier
-  candidate-preparation subset.
+  candidate-preparation subset; it does not define the base Pattern relation.
 - `overload-resolution-design.md` — the broader, later full overload-resolution
   vision, including fully admissible set `A`, ordered preference filters
   (including in-place over non-in-place), and must-select consistency.
 - `static-pattern-spaces-and-extraction-chains.md` — the later pattern-space /
-  extraction-chain semantics.
+  residual, `Done`, and extraction-chain consumer semantics.
 - `callable-tail-dot-closure-and-pack-pattern.md` — the canonical connection
   between callable implementation/strategy tails, `.name`, and `...args`.
 
 ## Reading order
 
-Read `pattern-normalization-and-first-order-overload.md` first (the earlier
-candidate-preparation subset), then the broader overload and pattern-space
-documents.
+Read `pattern-values-relational-semantics-and-extraction.md` first. Read
+`pattern-normalization-and-first-order-overload.md` for candidate preparation,
+then the broader overload and residual/control-pattern documents.
 
 ## Dependencies
 

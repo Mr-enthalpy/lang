@@ -67,10 +67,6 @@ Still open after this correction:
 - Full lifetime relation over region/origin facts.
 - Interaction between type-value equality and type-associated namespace
   traversal.
-- `HomeSymbol(TypeValue)` or equivalent canonical-root recovery for a copied or
-  extracted type used as a callee, including lookup of defining-Symbol sibling
-  constructors/policy transforms. This cannot be derived from the most recent
-  binding carrier or `AsType` provenance.
 - Final surface mechanism, if any, for requesting coordinated value/ref/share
   receiver candidates in one associated `()` Symbol; the current rule requires
   separate authorized contributions.
@@ -273,11 +269,11 @@ Not implemented after this correction:
   composes its ordinary formal/phase coordinates and optional migration
   endpoints in one product before maxima; the retained endpoint-only fixture
   remains non-composable algebra evidence only.
-- Completing canonical result constructor/extractor Pattern coherence,
-  materialization place/owner allocation, and all structural slot-0 Pattern
-  applicability. Ordinary Symbol/Val2/associated-`()`/InvocationFrame routing
-  is connected; the caller-supplied migration fixture remains isolated and no
-  universal transition Symbol or new callable ontology is implied.
+- Implementing the already-specified family-specific constructor/extractor
+  role checks, materialization place/owner allocation, and structural slot-0
+  Pattern applicability. Ordinary Symbol/Val2/associated-`()`/InvocationFrame
+  routing is connected; the caller-supplied migration fixture remains isolated
+  and no universal transition Symbol or new callable ontology is implied.
 - Full, separately selected mechanical `ref` storage construction,
   `share`/`rebind` composition, `[[global]]` seal scanning, and any future
   non-Runtime Policy-migration legality.
@@ -589,12 +585,6 @@ here so they are not mistaken for design decisions:
   evaluator rejects it with an explicit execution-gap diagnostic rather
   than silently accepting a dead local, so the future pass that defines
   symbol-rank locals is the first to give the form positive semantics.
-- The bare-value pattern family is not designed or implemented:
-  `(Expr _) name` / `(Expr _ | others) name` admission, the prohibition
-  of `(Expr _, others) name`, merging of equal bare values within one
-  `|` layer, `let t _ : Expr = ...`, and `let _ if::bool = ...` are all
-  unclosed. They are excluded from the current Pattern-semantics closure
-  claim.
 - The future `?` operator's rule — strip exactly one Pattern layer while
   preserving the semantics of the stripped unordered layer — is a
   registered boundary only; no design or implementation exists.
@@ -794,7 +784,8 @@ Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
 | --- | --- | --- |
 | Object closure, `Pure => NamespaceRole`, AsType, ProjectionSlot, borrow targets, NoImplicitBorrowFormation | `design/symbol-world/type-values-places-and-borrow-views.md` | concrete root/slot generation representation |
 | Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
-| Symbol `<Q?,V>` Set quotient, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate and deferred HomeSymbol |
+| Pattern relation, binderless Pattern, structural child and extraction roles | `design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` | derivation/residual IR only |
+| Symbol `<Q?,V>` Set quotient, complete type snapshots, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate only |
 | construction lineage and Open/frozen | same canonical construction document plus `design/lifetime/` | region/stack representation |
 | retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
 

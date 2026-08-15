@@ -204,9 +204,10 @@ This note does not implement or specify:
 - writability or extension-place lifetime checking;
 - field access evaluation;
 - access-tree scanning;
-- `HomeSymbol(TypeValue)` or equivalent canonical-root recovery for copied or
-  extracted type-as-callee lookup; no future solution may rely on most-recent
-  carrier provenance;
+- implementation of complete type snapshots
+  `bind alpha.<Q,V_T[alpha]>` and direct-home TypeMember classification; target
+  type-as-callee lookup is already `CallSpace(T)=V_T` and never performs
+  defining-Symbol or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
 - generic meta execution;

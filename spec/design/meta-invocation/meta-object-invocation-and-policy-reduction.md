@@ -206,18 +206,20 @@ available stage slice for the materialized binding. Namespace export visibility
 is not copied from a forwarded dependency; namespace visibility belongs to the
 destination's namespace-scoped P1 declaration.
 
-If any initializer residualizes and the binding has an assertion annotation
-such as `: type`, the assertion is not considered proven or failed. It is
-deferred with the residual expression. Because v0.8 has no deferred/runtime
-type assertion model, the implementation reports:
+If an initializer residualizes and the binding has a closed annotation such as
+`: type`, the ordinary result-as transformation residualizes with the
+expression. Because v0.8 has no deferred/runtime result-as implementation, the
+current substrate reports the legacy-named diagnostic:
 
 ```text
 UnsupportedDeferredTypeAssertion
 ```
 
-This diagnostic means the assertion boundary is unsupported for residual
-initializers; it does not mean the RHS was already checked and found not to be
-a type-level meta value.
+That diagnostic name does not redefine the annotation as a Boolean assertion.
+
+This diagnostic means the closed result-as boundary is unsupported for
+residual initializers; it does not mean the RHS was already transformed and
+found invalid.
 
 The v0.8 success path for `let X: type = int + unit;` is:
 
@@ -227,12 +229,16 @@ ordinary initializer sees normalized `int + unit`
 MetaPartial invokes restricted overload selection under MetaAction lookup
 selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
 RHS value is `ForwardedValue(int)`
-`: type` assertion checks that the RHS is a type-level value
-binding materialization installs `X` as a fresh symbol/place whose unique pure
-role member `Q` projects the `int` type value and satisfies `TypeRole(Q)`; the
+hole-free `: type` applies the ordinary result-as-`type` transformation
+binding materialization installs `X` as a fresh symbol/place carrying the
+complete immutable `int` type snapshot `bind alpha.<Q,V_T[alpha]>`; `Q`
+satisfies `TypeRole(Q)`, and the
 binding is an ordinary fresh symbol and place,
 not a forwarding of `int`'s own symbol or place
 ```
+
+The current evaluator may still name its narrow check an “assertion”; that is
+implementation substrate, not the target annotation semantics.
 
 The identity path does not require full canonical sum-pattern values. A
 selected body such as `r === t | u` still requires canonical sum-pattern value

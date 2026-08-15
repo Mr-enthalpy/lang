@@ -128,6 +128,12 @@ body, and inherited nested callables. Within a BindingSlot, policy precedes
 the local DeduceList. Norm exact binding covers Pattern/policy occurrences;
 value-side names and navigation remain unresolved.
 
+An explicitly empty DeduceList in `let <> P` is semantically significant: it
+selects `BinderPresence = Absent` and leaves `P` as the Pattern. It is distinct
+from `let _ P`, which contains a real anonymous / wildcard position. Canonical
+semantic owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
 _See also: Hole, Strong context, CanonicalSkeleton._
 
 ---
@@ -141,6 +147,17 @@ spelling with `CanonicalNameRole::Hole`; normalized uses carry an exact
 and targets no DeduceList declaration.
 
 _See also: DeduceList, CanonicalSkeleton._
+
+---
+
+## HoleRef
+
+A resolved use of one declaration in a `DeduceList`. Its identity targets the
+exact owner/root-qualified `HoleBinderId`; equal source spelling alone is never
+enough. `HoleRefs(P)` is computed after this scope resolution and separates
+closed result-as annotations from deduction-bearing annotations.
+
+_See also: DeduceList, Hole, Closed annotation, Deductive annotation._
 
 ---
 
@@ -199,6 +216,144 @@ or callable head creates a new root. Hole names are unique within one root;
 different roots may use normal lexical shadowing.
 
 _See also: DeduceList, Hole, SemanticOwner._
+
+---
+
+## Pattern
+
+The `P` coordinate of `Object = <Val1?,P,Val2>`. It defines a proof-relevant
+relation over the complete content `<Val1?,Val2>`; it is not a pointer to one
+`Val1` schema, a type tag, or a copy of namespace shape. Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Pattern derivation, PatternValue, Direct Pattern child._
+
+---
+
+## PatternValue
+
+An ordinary Object observed together with its Pattern coordinate. The term
+does not name a separate rank or carrier: its value, Pattern, and associated
+members remain the ordinary `<Val1?,P,Val2>` coordinates. Construction lineage,
+places, and borrow capability are orthogonal.
+
+_See also: Pattern, Object normal form (`Norm`), ConstructionLineage._
+
+---
+
+## Relational Pattern semantics
+
+The calculus whose base judgment `R_Gamma(P,c,rho)` relates a Pattern to
+complete Object content and retains a successful derivation `rho`. Satisfaction,
+observation, entailment, and extraction are derived from the set of such
+derivations; the base calculus assumes neither uniqueness nor universal
+invertibility. Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Pattern derivation, Extraction, Pattern normalization._
+
+---
+
+## Pattern derivation
+
+One proof-relevant witness `rho` of `R_Gamma(P,c,rho)`. It may justify selected
+alternatives, direct structural incidence, extraction roles, or binder
+observations. It is semantic evidence, not a fourth Object axis.
+
+Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Relational Pattern semantics, Direct Pattern child, Extraction._
+
+---
+
+## Direct Pattern child
+
+A selector-indexed child registered by privileged structural construction.
+Direct incidence implies that the child is present in `Val2`, but ordinary
+`Val2` presence or navigability does not imply direct Pattern incidence.
+`struct` and `extend` may register it; ordinary navigated `let` may not.
+
+Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Structural Pattern child, Associated Val2 Contribution, FieldView._
+
+---
+
+## Structural Pattern child
+
+Synonym for a direct Pattern child when emphasizing its role in construction
+or extraction structure. It is not inferred from callable availability or
+arbitrary namespace membership.
+
+_See also: Direct Pattern child, Constructor, Extractor._
+
+---
+
+## Extraction
+
+An observation justified by successful Pattern derivations and an extraction
+interface. The base calculus may yield zero, one, or several results; unique
+extraction and constructor/extractor inversion are theorems of particular
+Pattern families, not universal axioms.
+
+Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Relational Pattern semantics, Extractor, DefaultExtractionView._
+
+---
+
+## Constructor
+
+An ordinary callable Object registered as a construction role by a particular
+Pattern family. Merely being callable does not grant that role, and a value
+constructor does not automatically acquire borrowed reverse variants.
+
+Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Extractor, FieldView, Direct Pattern child._
+
+---
+
+## Extractor
+
+An ordinary callable Object registered as an extraction role by a particular
+Pattern family. A structural extractor backed by a real `ProjectionSlot` may
+derive ref/share observations; an arbitrary value isomorphism may not.
+
+Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Extraction, Constructor, ProjectionSlot._
+
+---
+
+## FieldView
+
+A Pattern-interface role connecting a structural selector to an ordinary
+callable field observation. Pattern registration owns the role relation, not a
+second copy of the callable. An ordinary associated helper does not become a
+FieldView merely by being present in `Val2`.
+
+Canonical owner:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md).
+
+_See also: Direct Pattern child, Extractor, Associated Val2 Contribution._
+
+---
+
+## Binderless Pattern
+
+A Pattern position with `BinderPresence = Absent`. The explicit binding form is
+`let <> P`; the current atomic pipe shorthand `|> P { ... }` has the same
+binderless head as `|> (<> P) { ... }`. `_` is instead a real wildcard position,
+so `(_ P)` is distinct. Canonical owner: the Pattern authority linked under
+Pattern.
+
+_See also: DeduceList, Pattern, InPlaceClosureAST._
 
 ---
 
@@ -718,7 +873,11 @@ An ordinary value of the ordinary `symbol` type. Its mutable member content is
 `Val1(Symbol) = Σ = ⟨Q?, ⨄_{T_c}V[T_c]⟩`, never a mutable `P x Val2` side
 structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
 member objects. `Q`, when present, is the unique pure role member. Namespace
-projection selects `Q`; type projection selects it only when `TypeRole(Q)`.
+projection selects `Q`. When `TypeRole(Q)`, type projection constructs the
+complete immutable snapshot `T = bind alpha.<Q,V_T[alpha]>`; it does not return
+bare `Q` or recover a defining Symbol later. The raw Symbol stores one `V`,
+partitioned as `V_T disjoint-union V_O`; projection does not duplicate an owned
+copy of `V_T`.
 Callable val members project across the typed buckets to the formal `OverloadSet`.
 
 Symbol normalization is an extensional optional pure role member plus map of typed
@@ -739,6 +898,41 @@ generated field/access/assignment/borrow partner families. It is therefore a
 symbol-producing structural generator, not merely a type constructor.
 
 _See also: PatternValue container kernel, Overload Candidate, `extend`._
+
+---
+
+## TypeMember
+
+An ordinary val member included in a complete type snapshot exactly when its
+anonymous classifier has direct immutable canonical home
+`TypeMemberScope(Q)`. Descendant ownership, copying, rebinding, and namespace
+installation are insufficient. Canonical owner:
+[`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
+
+_See also: TypeMemberScope, `Self_T`, Symbol value._
+
+---
+
+## TypeMemberScope
+
+The direct classifier-home scope associated with the pure role `Q` of a type.
+Creation under this scope is the membership proof used to partition Symbol
+members into `V_T` and `V_O`; arbitrary descendants do not qualify.
+
+_See also: TypeMember, SemanticOwner._
+
+---
+
+## `Self_T`
+
+The canonical self reference inside `T = bind alpha.<Q,V_T[alpha]>`. During
+normalization it becomes `BoundRef(alpha)`, which is not an owned child. After
+authorized back-references are erased, the owned graph must remain finite and
+well-founded; this rule does not admit general recursive Object graphs.
+Canonical owner:
+[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
+
+_See also: TypeMember, Object normal form (`Norm`)._
 
 ---
 
@@ -1874,6 +2068,28 @@ _See also: BindingSlot, AnnotationTerm, Type-object._
 
 ---
 
+## Closed annotation
+
+A resolved Pattern annotation `P` with `HoleRefs(P) = empty`. In
+`let LHS : P = RHS` it is an ordinary result-as transformation target,
+equivalent to `let LHS = RHS |> P`; it is not a Boolean compatibility check.
+Hole references are resolved `HoleBinderId` identities, not spelling matches.
+
+_See also: Deductive annotation, Hole, BindingAnnotation, Pattern._
+
+---
+
+## Deductive annotation
+
+A resolved Pattern annotation whose `HoleRefs(P)` is non-empty. It participates
+in deduction/extraction constraints for those exact hole identities. It shares
+the ordinary Pattern/call calculus rather than introducing an annotation-only
+compatibility primitive.
+
+_See also: Closed annotation, Extraction, DeduceList._
+
+---
+
 ## AnnotationTerm
 
 The left side of a compound `BindingAnnotation`, before the second `:`. It can
@@ -1945,10 +2161,10 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 ## AsType and TypeOf
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
-For Symbol it selects the unique pure role member `Q` exactly when
-`TypeRole(Q)`. For a pure Object `x`, it is the
-identity exactly when `TypeRole(x)`; otherwise it is undefined. It never
-wraps a namespace-role Object or searches it for a hidden Q/type-role member. Symbol's
+For a Symbol with a type-capable `Q`, it returns the complete immutable type
+snapshot `bind alpha.<Q,V_T[alpha]>`. For an already complete type value `T`, it
+is the identity. Bare `Q` is only the Pattern component, not the complete type.
+It never searches a namespace-role Object for a hidden type member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
 only an already-pure type slot uses `t@`.
 
@@ -2113,10 +2329,15 @@ _See also: Raw AST, Normalization, Normalized AST._
 
 ## Pattern normalization
 
-Desugaring extraction skeletons (canonical skeletons, deduce lists) into
-normalized pattern forms. Pattern normalization is structural simplification
-only; it does not execute universal extraction matching, resolve deduce holes,
-or validate skeleton admissibility.
+The semantic `Norm_P` coordinate of Object normal form. Its soundness contract
+is one-way: equal normal forms imply relational equivalence preserving
+derivation interface and direct structural incidence. It may erase navigation
+formation provenance but never the real child or completed navigation.
+
+Frontend desugaring of extraction skeletons and DeduceLists prepares input for
+this later semantic operation; it does not itself execute matching or resolve
+semantic applicability. Canonical owner: the Pattern authority linked under
+Pattern.
 
 _See also: Normalization, CanonicalSkeleton, DeduceList._
 

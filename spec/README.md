@@ -17,11 +17,14 @@ Documentation areas have distinct roles and authority levels:
 - **`spec/history/`** — Historical route, design discussion, alternatives,
   resolved disputes, and audit trail. History preserves why decisions were made,
   but does not define current behavior unless linked from public docs.
-- **`spec/design/`** — Transitional design-fusion staging area. It temporarily
-  groups forward-looking design material while it is being fused into
+- **`spec/design/`** — Target-semantic design-fusion staging area. It
+  temporarily groups forward-looking design material, including explicitly
+  named canonical target-semantic owners, while it is being fused into
   `spec/public/`, `spec/contracts/`, `spec/planning/`, and `spec/history/`.
-  It is not a long-term authority tier and must not be read as implemented
-  behavior. Entry point: `spec/design/README.md`.
+  It is not a long-term public authority tier and must not be read as
+  implemented behavior. Within target semantics, the per-topic canonical owner
+  named by `spec/design/README.md` controls over satellite design summaries.
+  Entry point: `spec/design/README.md`.
 - **`spec/planning/`** — Roadmap and open questions. Planning documents must not
   substitute for public language behavior.
 
@@ -158,7 +161,7 @@ into contracts, moved into planning, or archived into history. Start at
 |---|---|
 | `spec/design/build-package/` | Package/build layer: manifest records, namespace-graph projection, mount paths, physical-directory contribution authority, export surface, package identity, dependency edges, source roots, cache/fingerprint/provenance. |
 | `spec/design/symbol-world/` | Namespace graph world model: recursive `Object = <Val1?,P,Val2>`, Symbol `<Q?,V>` role/member projections, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility/snapshot, const/mut member overloads, compile-flow projection, companions, automatic require, identities, explicit borrow views (`ref` / `share` / `rebind`), `compile` / `meta`, meta pure-role self-root, construction-lineage Open/frozen state, resolved pattern scopes, `struct -> symbol`, pure `extend`, place-level `inject`, namespace origin/construction ownership, binding/install, and the early-meta bootstrap. |
-| `spec/design/patterns-overload/` | Pattern normalization, occurrence roles, argument/parameter shapes, first-order type-value candidate adaptation, applicability, specificity, the full overload-resolution vision, static pattern spaces, and extraction chains. |
+| `spec/design/patterns-overload/` | Canonical relational Pattern semantics, observation/extraction, structural incidence, binderless Patterns and annotation interaction; candidate adaptation and overload vision; later residual/`Done`/control-pattern consumers. The canonical entry is `pattern-values-relational-semantics-and-extraction.md`. |
 | `spec/design/meta-invocation/` | Policy-governed invocation: heterogeneous value candidates, canonical pair handoff, partial vs strict demand, residualization, and policy-staged pattern matching. |
 | `spec/design/policy-capability/` | Mapping from current flat policy metadata to canonical `Pv:Pp`, contextual P1/P2 elaboration, seal boundaries, and future orthogonal dimensions; no final `P3`. |
 | `spec/design/lifetime/` | Canonical owner of `@`: value-instance `LifetimeFact`, carrier-target `P ref` for pure Pattern slots, and borrow-type-value universe fixed points; also owns escape checking and the boundary placing lifetime rules after completed first-order type/compile overload selection. Target-preserving `ref`/`share` constructor composition is distinct from `@`. Region/origin algebra and checking remain future work. |

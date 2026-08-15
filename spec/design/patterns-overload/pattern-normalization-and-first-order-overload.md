@@ -5,14 +5,18 @@ normalization and first-order overload preparation. v0.8 implements only the
 restricted meta-overload subset described in §0.1; full runtime lookup, type
 checking, and full pattern-space reasoning remain future work.
 
+The base Pattern relation, proof-relevant evidence, structural incidence,
+observation/extraction, binderless Pattern semantics, and `Norm_P` soundness
+are canonical in `pattern-values-relational-semantics-and-extraction.md`.
+
 This document specifies the *pattern/type candidate-preparation layer* that must
 exist before a formal meta object invocation model can select callables. It is a
 future design note. It is not current public language behavior, not an
 implemented pass, and not a parser or normalizer rule.
 
-The document is self-contained for pattern and argument-shape preparation. It
-does not restate final overload ordering, pattern-space algebra, or symbol
-policy; those boundaries remain owned by their canonical documents.
+The document is self-contained for argument-shape preparation. It consumes the
+canonical Pattern relation and does not restate it, final overload ordering,
+pattern-space algebra, or symbol policy.
 
 Canonical `Pv:Pp`, contextual P1 projection, P2 result normalization,
 function-object stage-view derivation, complete derived compile-companion

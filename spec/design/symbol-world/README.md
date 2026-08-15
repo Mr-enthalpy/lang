@@ -4,7 +4,8 @@
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
 construction-lineage Open checking,
-Symbol `<Q?,V>` role/member projections, `PatternValue`, ordinary Symbol-valued meta results
+Symbol `<Q?,V>` role/member projections, complete type snapshots,
+`PatternValue`, ordinary Symbol-valued meta results
 (current transitional carrier: `SymbolConstruction`),
 `ResolvedPatternScope`, `MetaInstanceScopeId`, meta pure-role self-root checking,
 pure `extend`, place-level `inject`, `NamespaceOrigin`, construction-unit ownership,
@@ -42,18 +43,18 @@ The namespace graph world model and symbol-level identity:
 ## Not in scope
 
 Pattern/overload candidate adaptation, meta invocation execution, and the full
-policy checker (referenced from the other blocks). Defining-Symbol recovery for
-a copied/extracted type used as a callee (`HomeSymbol(TypeValue)` or equivalent)
-also remains outside the current closure; it cannot be inferred from carrier
-provenance.
+policy checker (referenced from the other blocks). Type-as-callee is closed by
+the complete immutable type snapshot `bind alpha.<Q,V_T[alpha]>` and
+`CallSpace(T)=V_T`; defining-Symbol, recent-carrier, and `AsType` provenance
+recovery are retired.
 
 ## Documents
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
   direction for Symbol `<Q?,V>` role/member projection, heterogeneous value/call candidates,
   `compile` / `meta`, meta pure-role self-root, resolved pattern scopes,
-  `struct -> symbol`, pure `extend`, place-level `inject`, pattern-layer
-  ordering, uniqueness/replay, and outer
+  `struct -> symbol`, pure `extend`, place-level `inject`, Symbol
+  uniqueness/replay, and outer
   graph installation.
 - `symbol-construction-units-and-namespace-origin.md` — canonical future
   namespace-origin, source/meta construction-unit ownership, physical-directory
