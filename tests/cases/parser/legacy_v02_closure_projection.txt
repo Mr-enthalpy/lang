@@ -21,11 +21,11 @@ let_with_empty_not_inplace|-
 let_value_nav|-
 invalid_missing_colon|-
 pipe_basic|-
-pipe_branch_name_shorthand|E
+pipe_branch_name_shorthand|I
 pipe_branch_name_explicit|I
-pipe_branch_underscore_shorthand|E
+pipe_branch_underscore_shorthand|I
 pipe_branch_underscore_explicit|I
-pipe_branch_name_trailing_segment_material|E
+pipe_branch_name_trailing_segment_material|I
 pipe_explicit_empty_closure|E
 pipe_explicit_param_closure|E
 pipe_explicit_capture_closure|E

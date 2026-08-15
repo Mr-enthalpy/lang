@@ -1,14 +1,15 @@
 use crate::{
-    AtomAst, AtomKind, BinderNameAst, BindingPatternAst, BindingSlotAst, BodyBlockAst, ClosureAst,
-    ClosureBodyAst, ClosurePlacementAst, DeduceListAst, DiagnosticCode, ExprAst, ExprKind,
-    FnHeadPrefixAst, NameAst, OperatorExprAst, OperatorExprKind, ParamClauseAst, PipeExprAst,
-    ProductExtractAst, ProductExtractElementAst, SegmentAst, SegmentElementAst, Span, Symbol,
-    TokenKind,
+    AtomAst, AtomKind, ClosureAst, ClosureBodyAst, ClosurePlacementAst, DiagnosticCode, ExprAst,
+    ExprKind, OperatorExprAst, OperatorExprKind, PipeExprAst, SegmentAst, SegmentElementAst, Span,
+    Symbol, TokenKind,
 };
 
 use super::{
-    closure::parse_body_block, cursor::ParenClassification, form::Parser,
-    operator::parse_operator_expr, product::parse_product_expr,
+    closure::{parse_binderless_pipe_branch_closure, parse_body_block},
+    cursor::ParenClassification,
+    form::Parser,
+    operator::parse_operator_expr,
+    product::parse_product_expr,
 };
 
 pub fn parse_pipe_expr(
@@ -215,6 +216,18 @@ fn try_parse_incoming_product_branch(parser: &mut Parser<'_>) -> Option<Vec<Segm
         return None;
     }
 
+    // `(<> P) { ... }` is a normal headed in-place closure. Let the closure
+    // parser consume it so the branch shorthand and its explicit expansion
+    // share one BindingSlot/Pattern construction. Other parenthesized heads,
+    // including `(_ P)`, remain on the established Product + body path.
+    let (less_index, less) = parser.cursor.peek_at_skip_trivia(start_index + 1);
+    if matches!(less.kind, TokenKind::Symbol(Symbol::Less)) {
+        let (_, greater) = parser.cursor.peek_at_skip_trivia(less_index + 1);
+        if matches!(greater.kind, TokenKind::Symbol(Symbol::Greater)) {
+            return None;
+        }
+    }
+
     let (_, after_idx) = parser.cursor.classify_paren_at_segment_position();
     let after_idx = after_idx?;
     let (_, body_start) = parser.cursor.peek_at_skip_trivia(after_idx);
@@ -237,20 +250,18 @@ fn try_parse_bare_name_pipe_branch_sugar(
         return None;
     }
 
-    let (after_name_index, after_name) = parser.cursor.peek_at_skip_trivia(start_index + 1);
+    let (_, after_name) = parser.cursor.peek_at_skip_trivia(start_index + 1);
     if !matches!(after_name.kind, TokenKind::Symbol(Symbol::LBrace)) {
         return None;
     }
 
     parser.cursor.set_index(start_index);
-    let name = parser.cursor.bump_non_trivia();
-    parser.cursor.set_index(after_name_index);
-    let body = parse_body_block(parser);
-    Some(vec![pipe_branch_headed_closure(
-        name.text.clone(),
-        name.span,
-        body,
-    )])
+    let atom = parse_binderless_pipe_branch_closure(parser);
+    let span = atom.span;
+    Some(vec![SegmentElementAst::OperatorExpr(OperatorExprAst {
+        kind: OperatorExprKind::Atom(atom),
+        span,
+    })])
 }
 
 fn pipe_branch_body(parser: &mut Parser<'_>) -> SegmentElementAst {
@@ -264,65 +275,6 @@ fn pipe_branch_body(parser: &mut Parser<'_>) -> SegmentElementAst {
                 body: ClosureBodyAst::Block(body),
                 span,
             }),
-            span,
-        }),
-        span,
-    })
-}
-
-/// Bare pipe branch-name shorthand `|> name { ... }` desugars to a single
-/// closure element whose head carries a slot-level empty deduce list plus the
-/// binding name — `|> (<> name) { ... }` / `|> (let <> name) { ... }`. The
-/// closure is `Ordinary` so it matches the established explicit param-closure
-/// shape (`pipe_explicit_param_closure`), keeping the v0.2 closure projection
-/// contract intact.
-fn pipe_branch_headed_closure(
-    name_text: String,
-    name_span: Span,
-    body: BodyBlockAst,
-) -> SegmentElementAst {
-    let body_span = body.span;
-    let slot = BindingSlotAst {
-        policy: None,
-        has_let: false,
-        deduce: Some(DeduceListAst {
-            binders: Vec::new(),
-            span: name_span,
-        }),
-        pattern: BindingPatternAst::Binder(BinderNameAst::Text(NameAst {
-            text: name_text,
-            span: name_span,
-        })),
-        annotation: None,
-        with_clause: None,
-        initializer: None,
-        span: name_span,
-    };
-    let head = FnHeadPrefixAst {
-        deduce: None,
-        captures: None,
-        params: Some(ParamClauseAst {
-            extract: ProductExtractAst {
-                elements: vec![ProductExtractElementAst::Slot(slot)],
-                span: name_span,
-            },
-            span: name_span,
-        }),
-        call_policy: None,
-        returns: None,
-        clauses: Vec::new(),
-        span: name_span,
-    };
-    let closure = ClosureAst {
-        placement: ClosurePlacementAst::Ordinary,
-        head: Some(head),
-        body: ClosureBodyAst::Block(body),
-        span: name_span.join(body_span),
-    };
-    let span = closure.span;
-    SegmentElementAst::OperatorExpr(OperatorExprAst {
-        kind: OperatorExprKind::Atom(AtomAst {
-            kind: AtomKind::Closure(closure),
             span,
         }),
         span,

@@ -9,7 +9,7 @@ Program
         Segment has_incoming=true
           OperatorExpr
             Atom
-              Closure Ordinary
+              Closure InPlace
                 FnHeadPrefix
                   params:
                     ParamClause
@@ -20,8 +20,8 @@ Program
                               DeduceList
                                 binders:
                             pattern:
-                              Binder
-                                TextName name
+                              PatternSkeleton
+                                CanonicalName role=NodeName name=name
                             annotation:
                               None
                             with_clause:

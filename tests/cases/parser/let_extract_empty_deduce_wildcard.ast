@@ -7,7 +7,7 @@ Program
             binders:
         pattern:
           PatternSkeleton
-            CanonicalName role=NodeName name=x
+            CanonicalWildcard _
         annotation:
           None
         with_clause:
