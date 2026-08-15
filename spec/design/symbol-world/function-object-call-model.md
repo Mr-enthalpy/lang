@@ -170,9 +170,11 @@ Symbol and reads its values, while an already-held complete type value carries
 its own callspace:
 
 ```text
-T = CanonicalTypeObject(Q, V_T)
-TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
-CallSpace(T) = V_T
+TypeValue(t) = tau = <Q, V_T>
+Core(tau) = Q
+CallSpace(tau) = V_T
+
+Candidates(args |> t) = CallSpace(TypeValue(t)) = V_T
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable

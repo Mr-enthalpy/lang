@@ -1,13 +1,13 @@
 # Type Values, Places, and Borrow Views
 
-**Status: canonical target semantics for object identity, place identity, and
-borrow views. What is current `lang_build` behavior is the identity core up to a
-boundary: the recursive normal form over type-object / `Val2` structure with an
-**opaque `Val1` leaf**, the canonical observation `Addr(Norm)`, and per-carrier
-`Val2` places. The full unified three-component normal form (recursive
-`Norm_Val1?`), the borrow-view operators (`ref`, `share`, `@`, `rebind`), the
-construction-lineage Open judgment, and the type checker remain unimplemented target
-semantics. §10 registers the implementation debt.**
+**Status: canonical target semantics for Object identity, complete type-closure
+identity, place identity, and borrow views. Current `lang_build` implements only
+the first-order identity core: recursive normalization over the present
+type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
+per-carrier places. The complete `tau=<Q,V_T>` snapshot and
+`Norm_type(tau)`, full recursive `Norm_Val1?`, borrow-view operators (`ref`,
+`share`, `@`, `rebind`), construction-lineage Open judgment, and type checker
+remain unimplemented target semantics. §10 registers the implementation debt.**
 
 This document specifies the semantic boundary between *object values*, *symbol
 identity*, *places*, *borrow views*, and *namespace extension targets*. It
@@ -77,26 +77,22 @@ PatternValue identity
 - `SymbolId` is the identity of a symbol object in the name graph.
 - `PlaceId` is the identity of a location that can be bound, updated, injected
   into, or opened for a namespace delta.
-- `TypeValueId` is the stable first-order type root — a registry projection
-  of a type value, not the full type-object semantic identity. The complete
-  identity of a type object at an observation moment is the canonical
-  observation defined in §2.1:
+- `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
+  projection, not the full type-closure identity. The complete identity of a
+  type value is:
 
   ```text
-  TypeObservation(x, p) = Addr(Norm_type(x, p))
+  TypeObservation(tau) = Addr(Norm_type(tau))
   ```
 
-  One `TypeValueId` observed under different `Val2` states is two distinct
-  type observations, so bare `TypeValueId` comparison is legitimate only as a
-  first-order projection check — never as canonical type-value equality, and
-  never as the identity consumed by pattern/overload matching, field
-  signatures, or canonical argument keys.
-- `PatternValue identity` is the canonical identity of any compile-time pattern
-  value, including ordinary compile-time values, type values, and structured
-  pattern values. The type-rank projection consumed when a parameter or
-  expectation has `type` rank is the canonical observation of the evaluated
-  type object (`Addr(Norm_type)`); `TypeValueId` is only its first-order root
-  component.
+  Two closures may have the same `TypeValueId`/core root while carrying
+  different immutable `V_T` snapshots, so bare `TypeValueId` comparison is
+  legitimate only as a first-order projection check — never as canonical
+  type-value equality or a canonical argument key.
+- `PatternValue identity` is ordinary Object identity. A type value participates
+  in Pattern/value/namespace observation through `Core(tau) = Q`; type-rank
+  equality, keying, copying, `extend`, and invocation observe the complete
+  `Norm_type(tau)` instead.
 
 These identities are independent. None implies another:
 
@@ -115,10 +111,9 @@ into one another.
 In the symbol-first model, a path initially resolves to one Symbol and the use
 site then projects its optional `Q` role member or heterogeneous typed `V`
 members. Namespace projection returns `Q`; the type-role judgment over `Q`
-selects the direct TypeMember partition and constructs the complete immutable
-Object `CanonicalTypeObject(Q,V_T)`, whose view is
-`bind alpha.<Q,V_T[alpha]>`. Projection does not collapse these
-identities and is not a cast.
+selects the direct TypeMember partition and forms the complete immutable type
+closure `tau = <Q,V_T>`. Projection does not collapse these identities and is
+not a cast.
 
 ### 2.1 Object identity is the recursive three-component normal form
 
@@ -293,14 +288,14 @@ inserting `a` then `b` and inserting `b` then `a` produce the same Symbol normal
 form exactly when the optional pure role member and every normalized `V[T_c]` set are
 equal.
 
-There is no case split in which one component is ignored. Earlier revisions
+There is no case split in which one Object component is ignored. Earlier revisions
 normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` objects as
 `⟨Val1, P⟩` with `Val2` discarded; that bifurcation is retired. A value-bearing
-object whose `Val2` differs is a different object, and a type object whose
-`Val1?` is `null` still normalizes its `P` and `Val2` fully. `Norm_type(x)` is
-retained only as the name of `Norm(x)` restricted to objects with
-`Val1?(x) = null`, and its two-component spelling is shorthand for the
-three-component form with a `null` first slot.
+Object whose `Val2` differs is a different Object, and a pure core `Q` whose
+`Val1?` is `null` still normalizes its `P` and `Val2` fully. `Norm(Q)` is the
+ordinary three-component Object normal form. `Norm_type(tau)`, defined in §2.2,
+is instead the normal form of the complete `<Q,V_T>` closure and must not be
+collapsed to `Norm(Q)`.
 
 An ordinary object's incidental carrier/residency coordinates never enter its
 normal form. A borrow view is the deliberate exception in kind, not in
@@ -412,24 +407,28 @@ Assignment, `rebind`, ordinary borrow escape checking, and compile-reference
 cache identity all depend on that distinction. Construction-lineage Open does
 not depend on the target coordinate.
 
-For an ordinary by-value object, its `PlaceId` is **not** identity material. A
-place is only the coordinate from which that object's `Val2` is observed:
+For an ordinary by-value Object, its `PlaceId` is **not** identity material. A
+place is only the coordinate from which that Object's current value is read:
 
 ```text
-place(x) ⟼ Val2_x
+place(x) -> Read(place(x))
 ```
 
-so ordinary type-object identity follows the observed content in both
-directions:
+For a type-valued binding that read is the complete immutable `tau` snapshot.
+Type identity therefore follows `Norm_type(tau)`, including both its core and
+callspace:
 
 ```text
-P_x = P_y ∧ Norm_Val2(Val2_x) = Norm_Val2(Val2_y) ⇒ Norm_type(x) = Norm_type(y)
-P_x = P_y ∧ Norm_Val2(Val2_x) ≠ Norm_Val2(Val2_y) ⇒ Norm_type(x) ≠ Norm_type(y)
+Norm(Q_x) = Norm(Q_y) and Norm_V(V_x) = Norm_V(V_y)
+  => Norm_type(tau_x) = Norm_type(tau_y)
+
+Norm(Q_x) != Norm(Q_y) or Norm_V(V_x) != Norm_V(V_y)
+  => Norm_type(tau_x) != Norm_type(tau_y)
 ```
 
-The first line holds even when `place(x) ≠ place(y)`; the second holds even
-when the two observations are of one object through one place at two different
-times. A list of allocated value ids under each name is not a normal form:
+The first line holds even when the closures are stored in different places; the
+second holds even when two snapshots share a first-order root. A list of
+allocated value ids under each name is not a normal form:
 allocation order is not semantic content, so the walk must resolve each name to
 its cluster symbol and normalize that symbol's own members.
 
@@ -452,18 +451,21 @@ let fn = (...): meta -> _ :symbol = {
 };
 ```
 
-the two observations of `t` are different type objects:
+the two observations of `t` are different complete type snapshots:
 
 ```text
-t_1 = ⟨ P_t, {f} ⟩
-t_2 = ⟨ P_t, {f, g} ⟩
+tau_1 = <Q_1, V_T>
+tau_2 = <Q_2, V_T>
+
+Val2(Q_1) contains f
+Val2(Q_2) contains f and g
 ```
 
-so `Norm_type(t_1) ≠ Norm_type(t_2)`. The `compile_fn` calls may consume both
+so `Norm_type(tau_1) ≠ Norm_type(tau_2)`. The `compile_fn` calls may consume both
 meta-local observations because compile creates no `MetaInstanceKey`; an
 ordinary nested meta call on fresh `t` would instead fail `GlobalKeyable`.
-Reading the shared Pattern's canonical object instead of the observing
-carrier's own object would still incorrectly merge the two values.
+Reading only a shared first-order root instead of each carrier's complete
+snapshot would still incorrectly merge the two values.
 
 Memoizing FINISHED cycle-free subtrees is permitted (a shared acyclic diamond
 is DAG reuse, not a cycle), but no `PlaceId` or memo node number may appear in
@@ -498,105 +500,100 @@ acyclic subtree remains valid DAG reuse. `Self_T` does not weaken this rule: it
 is the one bound normal-form reference below, not an Object edge and not a
 general recursive-data constructor.
 
-### 2.2 Complete type values are closed snapshots
+### 2.2 Complete type values are closed snapshots over Object cores
 
-A complete language-level type value is not its pure Pattern/namespace role
-component `Q`. It closes `Q` together with the ordinary value members that
-belong directly to that type:
+The ordinary pure Object `Q` keeps the old type behavior:
 
 ```text
-CanonicalTypeObject(Q, V_T) in Object
-
-TypeClosureView(CanonicalTypeObject(Q, V_T))
-  = bind alpha. <Q, V_T[alpha]>
-
-CompleteType(T; Q, V_T)
-  iff T in Object
-  and Norm(T) = Norm(CanonicalTypeObject(Q, V_T))
-
-CallSpace(T) = V_T
+Q in Object
+Pure(Q)
+TypeRole(Q)
 ```
 
-`bind alpha.<Q,V_T[alpha]>` is a binder-aware **judgmental view of the
-ordinary Object `T`**, not raw carrier syntax and not a second semantic value.
-`CanonicalTypeObject` is the canonical embedding into the existing Object
-domain. It builds only ordinary `Val1?`, `P`, and `Val2` content, using the same
-bare-Product, Sequence, and typed-bucket Object composition used by Symbol
-values in
-[`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
-§4.7. `Q` and `V_T` are then recovered by the judgmental
-`TypeClosureView`; they are not extra stored coordinates. Therefore neither
-the embedding nor its view introduces any of:
+A complete language-level type value is the closure:
 
 ```text
-a parallel semantic TypeSnapshot carrier
-a fourth Object coordinate
-an independently normalized TypeValue record
+tau = <Q, V_T>
+
+Core(tau)      = Q
+CallSpace(tau) = V_T
+
+CompleteType(tau)
+  iff TypeRole(Core(tau))
+  and CallSpace(tau) = TypeMemberSet(Core(tau))
 ```
 
-Canonical type identity remains `Addr(Norm(T))`. The embedding is
-identity-complete on complete types:
+`tau` is not another Object and does not add a fourth Object coordinate. `Q`
+and every ordinary member in `V_T` remain Objects governed by the existing
+`<Val1?,P,Val2>` ontology. The closure only preserves their type-specific
+pairing so a copied or extracted type carries its own callspace. Unless a rule
+explicitly requests the complete type closure, observation is:
 
 ```text
-CompleteType(T_1; Q, V_T)
-and CompleteType(T_2; Q, V_T)
-  => Norm(T_1) = Norm(T_2)
+OrdinaryValue(tau)    = Core(tau) = Q
+PatternView(tau)      = Q
+NamespaceView(tau)    = Q
 ```
 
-Consequently `TypeProjection` cannot choose between distinct Object normal
-forms for one `(Q,V_T)` snapshot. An implementation may materialize a
-snapshot-shaped cache, but that cache is substrate for this Object judgment,
-not another ontology or equality relation.
+Thus ordinary `ref`, Pattern observation, and namespace navigation retain their
+pre-closure behavior over `Q`. `@` retains its distinct carrier-place behavior:
+on a type-valued slot it produces `type ref` to the slot storing the whole
+closure. The complete closure is otherwise observed by type-valued
+copy/equality/keying, type-as-callee, `extend`, and `inject`.
 
-`Q` remains the pure Object on which `TypeRole` and structural Pattern
-judgments are defined. `V_T` contains ordinary typed members; it is not Pattern
-metadata and is not recovered from a defining Symbol when `T` is called.
-
-The canonical Object normal form remains the ordinary three-coordinate form;
-only its type-closure view is binder-aware:
+When members refer to the current type, the closure has the binder-aware normal
+form:
 
 ```text
-Norm(T)
-  = <
-      Norm_Val1?(Val1?(T)),
-      Norm_P(P(T)),
-      Norm_Val2(Val2(T))
-    >
+tau = bind alpha. <Q, V_T[alpha]>
 
-TypeClosureView(Norm(T))
+Norm_type(tau)
   = bind alpha.
       <Norm(Q), Norm_V^alpha(V_T)>
 
-Norm^alpha(Self_T)
+Norm_type^alpha(Self_T)
   = BoundRef(alpha)
 
 BoundRef(alpha) notin Children_owned
 ```
 
-Alpha-renaming of the binder is non-semantic. Removing the authorized binder
-back-references must leave a finite, well-founded owned graph:
+This is the normal form of the type closure, not `Norm(Q)` and not a second
+shape for `Norm(Object)`. Alpha-renaming is non-semantic. Removing the
+authorized binder back-references must leave the owned Object/member graph
+finite and well-founded:
 
 ```text
-EraseBackRefs(OwnedGraph(T)) is finite and acyclic
+EraseBackRefs(OwnedGraph(tau)) is finite and acyclic
 ```
 
-This is a normal-form binder, not a `mu`-type, an equi-recursive type rule, or
-permission for cyclic `Object` content.
+The binder is not a `mu`-type, an equi-recursive type rule, or permission for
+cyclic Object content.
 
-Each completed type value is an immutable snapshot. Pure extension may preserve
-a construction root while producing a different snapshot:
+Each `tau` is an immutable snapshot. Copying a type-valued binding copies the
+whole closure:
 
 ```text
-TypeClosureView(T_old) = bind alpha. <Q_old, V_old[alpha]>
-TypeClosureView(T_new) = bind beta.  <Q_new, V_new[beta]>
+TypeValue(T) = tau = <Q, V_T>
+let U: type = T
+TypeValue(U) = Copy(tau) = <Q, V_T>
+OrdinaryValue(U) = Q
+```
 
-Root(T_old) = Root(T_new)
-  !=> T_old = T_new
+Pure extension may preserve a construction root while producing a different
+snapshot:
+
+```text
+tau_old = <Q_old, V_old>
+tau_new = <Q_new, V_new>
+
+Root(tau_old) = Root(tau_new)
+  !=> tau_old = tau_new
   !=> V_old = V_new
 ```
 
-An old copy retains `V_old`. No `Root(T) -> current mutable Symbol -> current V`
-indirection is part of type identity or call lookup.
+An old copy retains `V_old`. No
+`Root(tau) -> current mutable Symbol -> current V` indirection participates in
+type identity or call lookup.
 
 ## 3. Value judgment versus place judgment
 
@@ -678,19 +675,21 @@ bind(a, v)
 The source carrier `s_b` is not stored as part of `v` after evaluation.
 Provenance may mention it; semantic value identity does not. Consequently no
 ordinary binding path may recover associated operations by mapping
-`TypeValueId` back to an “original defining Symbol”. The forward semantic path
-is `Symbol -> value -> PatternValue -> Pattern owner`.
+`TypeValueId` back to an “original defining Symbol”. A source Symbol projects
+`tau=<Q,V_T>` directly; an already-held type value uses its intrinsic
+`CallSpace(tau)=V_T`. Ordinary Pattern/namespace observation separately follows
+`Core(tau)=Q`.
 
 The same separation applies inside derived semantic material. A struct field,
 callable signature, canonical argument key, or extraction view that denotes a
-type consumes the canonical observation of the evaluated type object
-(`Addr(Norm_type)`; the bare `TypeValueId` is only its first-order root):
+type consumes the canonical observation of the evaluated complete closure
+(`Addr(Norm_type(tau))`; the bare `TypeValueId` is only its first-order root):
 
 ```text
 field source path
   -> carrier Symbol
-  -> read TypeValue v
-  -> record the observation of v as field-type identity
+  -> read TypeValue tau
+  -> record Addr(Norm_type(tau)) as field-type identity
 ```
 
 An implementation may temporarily retain the carrier Symbol for graph
@@ -1004,9 +1003,10 @@ E@           = RefCarrierSlot( CarrierPlace(E) )
 ObjectPlace(value) ≠ CarrierPlace(E)
 ```
 
-`ObjectPlace(value)` is the stable object coordinate of the read object itself —
-for `let t: type = uint8`, `Read(t)` reads the `uint8` type object, so `t ref`
-is a `uint8 ref` whose referent is `uint8`'s own resident/global object place,
+`ObjectPlace(value)` is the stable Object coordinate of the ordinary read
+itself. For `let t: type = uint8`, `TypeValue(t)=tau_uint8` while
+`Read(t)=OrdinaryValue(tau_uint8)=Q_uint8`, so `t ref` is a `uint8 ref` whose
+referent is `Q_uint8`'s resident/global Object place,
 **not** `CarrierPlace(t)`. Keeping the two coordinates distinct is exactly why
 `t ref` (the value's object place) and `t@` (the pure type carrier slot `t`) do
 not merge;
@@ -1029,7 +1029,7 @@ let t = uint8;
 let r = t ref;
 ```
 
-binds `r` to `uint8 ref` — a borrow view of the type object `uint8` — and not to
+binds `r` to `uint8 ref` — a borrow view of the ordinary core `Q_uint8` — and not to
 a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
 `r`. Because `t` is already a pure type slot, the slot itself is reached by
 `t@` (§5.2). A Symbol's type-member slot instead uses `(S ref).type`.
@@ -1075,16 +1075,18 @@ operand or argument position performs no implicit type conversion. An explicit
 
 ```text
 AsType(S : symbol) = TypeProjection(S)
-  = CanonicalTypeObject(Q, V_T)
+  = tau = <Q, V_T>
     when Val1(S) = <Q, V> and TypeRole(Q)
 
-AsType(T) = T
-  when T is already a complete TypeValue
+AsType(tau) = tau
+  when tau is already a complete TypeValue
 ```
 
 The second rule validates an existing complete type value. It does not treat a
-bare pure namespace Object as a complete type, wrap a namespace, or search for a
-hidden type member. Payload presence alone remains irrelevant to type
+bare pure namespace Object as a complete type, wrap a namespace, or search for
+a hidden type member. `TypeRole(Q)` makes `Q` a type-capable pure core; the
+complete result is still `tau = <Q,TypeMemberSet(Q)>`. Payload presence alone
+remains irrelevant to type
 applicability: a Symbol may carry `Val1(Symbol) = <Q?, V>` with no `Q`, or with
 a namespace-only `Q` for which `TypeRole(Q)` is false. A
 language-designated type-expected position may
@@ -1320,13 +1322,13 @@ assignment target. There is no context in which the same spelling means both.
 
 ### 5.5 `type`, `type ref`, and `type share`
 
-A by-value `type` carries no carrier-slot place or borrow capability;
-consuming one can only produce a new value. This does not deny it an
-`ObjectPlace`: `Read` of a bound type still yields the type object's own
-object place, which is what `ref` borrows (§5.1.0). What it lacks is a
-carrier slot for `@`. Construction openness is not a capability carried by the
-type value or by a view; it is the separate `Open_Γ(value)` judgment over the
-value's `ConstructionLineage` (§6 and the symbol-first construction document).
+A by-value `type` closure carries no carrier-slot place or borrow capability;
+consuming one can only produce a new closure value. Ordinary `Read` projects
+`Core(tau)=Q`, whose `ObjectPlace` is what `ref` borrows (§5.1.0). Only a bound
+type expression has a carrier slot that `@` can observe as `type ref`.
+Construction openness is not a capability carried by the closure or by a view;
+it is the separate `Open_Γ(value)` judgment over construction lineage (§6 and
+the symbol-first construction document).
 
 A `type ref` is a borrow view of a slot whose contents conform to `type`. It is
 formed whenever ordinary place, policy, lifetime, and capability rules admit
@@ -1415,8 +1417,8 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` either projects `CanonicalTypeObject(Q,V_T)` from a Symbol whose `Q`
-has `TypeRole`, or validates an already-complete TypeValue as
+`AsType` either projects `tau = <Q,V_T>` from a Symbol whose `Q` has
+`TypeRole`, or validates an already-complete TypeValue as
 specified in §5.1. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 
@@ -1668,8 +1670,8 @@ freshness. `let` is the only operation that changes `None` to `Some(value)`.
 The two forms also differ in what they change about the host:
 
 ```text
-let f::((T ref).type) = expr -> Val2(T.type)[f] := expr (P unchanged)
-extend(T.type, Δ)            -> new type value with widened P/Val2
+let f::((T ref).type) = expr -> carrier-local associated Val2 adds f; P and V_T unchanged
+extend(TypeValue(T), Δ)      -> new tau' = <Q',V_T'> snapshot
 inject((T ref).type, Δ)      -> read + extend + write through the type ref
 ```
 
@@ -1713,7 +1715,7 @@ consumes type values is specified in
 `pattern-normalization-and-first-order-overload.md`; this document defines what
 a type value identity is.) This first-order layer is one of the remaining
 bare-`TypeValueId` comparison consumers scheduled to migrate to full by-value
-comparison (`Addr(Norm_type)`, §2); until that migration it is a first-order
+comparison (`Addr(Norm_type(tau))`, §2); until that migration it is a first-order
 projection check only, never canonical type-value equality.
 
 For example:
@@ -1776,15 +1778,13 @@ different policy is a separate, later design and is **not** defined here.
 
 ## 10. Relation to current implementation
 
-The `lang_build` semantic spine implements the identity core of this
-document up to the `Val1` boundary: the recursive normal form over
-type-object / `Val2` structure with an opaque `Val1` leaf, the canonical
-observation identity consumed by struct residents,
-canonical pattern atoms, and meta instance keys, per-carrier `Val2` places
-for ordinary type bindings (`Pattern(T) = Pattern(U)` coexisting with
-`Place(T) ≠ Place(U)`), and meta return self-root validation. The
-`TypeObject` adapter survives only as a per-TypeValue transport reference
-inside an object place, never as a binding-level policy authority.
+The `lang_build` semantic spine implements the identity core of this document
+only through its existing type-core/`Val2` substrate: opaque-`Val1` Object
+normalization, first-order `TypeValueId`, per-carrier places, and meta return
+self-root validation. It does not yet represent the complete immutable
+`tau=<Q,V_T>` closure or use `Norm_type(tau)` for equality/keying/copying. The
+current `TypeObject` adapter is implementation transport, never the canonical
+complete type model or a binding-level policy authority.
 
 Registered implementation debt — semantics closed here, not yet built:
 

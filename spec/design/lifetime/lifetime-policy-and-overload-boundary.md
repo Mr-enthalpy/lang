@@ -103,9 +103,11 @@ slot's pattern component. This group is available at compile stage as well,
 because a compile-stage computation legitimately needs to reach a pattern slot it
 was given.
 
-This group is the whole reason `@` exists. Reading a `Val1? = null` name through
-the ordinary value judgment preferentially produces the entity's `P x Val2`
-pattern value, and `ref` then borrows *that*:
+This group is the whole reason `@` exists. A type-valued binding stores the
+complete closure `tau = <Q,V_T>`, but its ordinary value observation is
+`Core(tau) = Q`. Because `Q` is pure, `ref` borrows that ordinary Object
+observation while `@` borrows the carrier slot that stores the complete type
+closure:
 
 ```lang
 let t: type = uint8;
@@ -120,16 +122,15 @@ to bridge the gap: `s ref` is never elaborated into `s |> type ref`, because an
 operand position performs no implicit type conversion. `@` bridges it explicitly
 by taking `CarrierPlace(E)` as input.
 
-The selector is the `Val1` dimension of what was read, never type-rank. A
-value-bearing operand needs no place observation to be borrowed: for `s : symbol`
-the payload exists (`Val1(Symbol) = Σ = ⟨Q?, V⟩`), so `s ref` is the ordinary
-"form a borrow of this value" operation, and a type-rank object that carries a
-payload behaves the same way. An explicit `E |> type` is well-formed exactly
-when `E` exposes a unique pure role member `Q` with `TypeRole(Q)`, never
-merely because it carries a `Val1` dimension — the `Val1` payload is present even
-for a Symbol with no `Q` satisfying `TypeRole`, and it selects only
-`ref`-versus-`@`, never
-type-projection applicability. The projection is also never supplied implicitly.
+The selector is the `Val1` dimension of the ordinary Object observation, never
+the fact that a complete type closure also carries `V_T`. A value-bearing
+operand needs no carrier observation to be borrowed: for `s : symbol` the
+payload exists (`Val1(Symbol) = Σ = ⟨Q?, V⟩`), so `s ref` is the ordinary
+"form a borrow of this value" operation. An explicit `E |> type` is
+well-formed exactly when `E` supplies a unique pure role member `Q` with
+`TypeRole(Q)` and therefore the complete `tau = <Q,TypeMemberSet(Q)>`, never
+merely because it carries a `Val1` dimension. The projection is also never
+supplied implicitly.
 The value-side rules and the full classification are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §5.1.1–§5.2.1.

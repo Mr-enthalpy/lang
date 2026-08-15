@@ -613,23 +613,29 @@ children.
 
 ## 15. Boundary to complete type values
 
-The Pattern component of a type is `Q`, but a complete type value is not bare
-`Q`. The canonical type-value authority defines the following judgmental view
-of an ordinary `T in Object`:
+The Pattern/core component of a type is the ordinary pure Object `Q`, but a
+complete type value is not bare `Q`. The canonical type-value authority closes
+that core over its direct TypeMember callspace:
 
 ```text
-CanonicalTypeObject(Q, V_T) in Object
+tau = <Q, V_T>
 
-TypeClosureView(CanonicalTypeObject(Q, V_T))
-  = bind alpha. <Q, V_T[alpha]>
+Core(tau)      = Q
+CallSpace(tau) = V_T
 
-CompleteType(T; Q, V_T)
-  iff T in Object
-  and Norm(T) = Norm(CanonicalTypeObject(Q, V_T))
+CompleteType(tau)
+  iff TypeRole(Core(tau))
+  and CallSpace(tau) = TypeMemberSet(Core(tau))
+
+tau = bind alpha. <Q, V_T[alpha]>
 ```
 
 where `V_T` contains the ordinary val members that belong directly to this type
 snapshot and references to `Self_T` normalize as binder back-references.
+`tau` is not an Object embedding or a fourth Object coordinate. `Q` and every
+member in `V_T` remain ordinary Objects; the closure records the type-specific
+pairing needed by copying, equality/keying, type-as-callee, `extend`, and
+`inject`. Ordinary Pattern and namespace observation uses `Core(tau) = Q`.
 
 The handoff invariants are:
 
@@ -647,7 +653,7 @@ CreateClassifier_Gamma(
 V_T
   = disjoint_union over F where TypeMember_Q(F) of V[F]
 
-Norm^alpha(Self_T) = BoundRef(alpha)
+Norm_type^alpha(Self_T) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
@@ -660,15 +666,12 @@ membership afterward. Descendant ownership is also insufficient.
 After authorized `BoundRef` edges are erased, the owned graph must remain
 finite and well-founded.
 
-This document uses `Q` when discussing structural Pattern relations and `T`
+This document uses `Q` when discussing structural Pattern relations and `tau`
 when discussing a complete type value. `AsType` and type projection produce
-`CanonicalTypeObject(Q,V_T)`, not bare `Q`. `Norm(T)` remains the ordinary
-three-coordinate Object normal form; only `TypeClosureView(Norm(T))` has the
-binder shape. The view adds no parallel semantic carrier, fourth Object
-coordinate, or independently normalized type record. The canonical embedding
-is identity-complete, so one `(Q,V_T)` snapshot determines one Object normal
-form. The TypeMember partition, `Self_T` normal form, Object embedding, and
-callspace identity are owned by
+`tau = <Q,V_T>`, not bare `Q`. Complete type normalization is
+`Norm_type(tau) = bind alpha.<Norm(Q),Norm_V^alpha(V_T)>`; it is not a second
+shape for `Norm(Object)`. The TypeMember partition, `Self_T` normal form, core
+observation, and callspace identity are owned by
 `../symbol-world/type-values-places-and-borrow-views.md` and
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 

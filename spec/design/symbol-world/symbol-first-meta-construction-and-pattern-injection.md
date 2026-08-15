@@ -132,8 +132,8 @@ V_T
 
 V_O = V \\ V_T
 
-TypeProjection(S) = CanonicalTypeObject(Q, V_T)
-  iff Val1(S) = <Q, V>
+TypeProjection(S) = tau = <Q, V_T>
+  iff NamespaceProjection(S) = Q
   and TypeRole(Q)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
@@ -161,24 +161,28 @@ and DirectClassifierHome(G) != TypeMemberScope(Q)
 
 Symbol storage does not own two copies of `V_T`. The raw Symbol value stores
 `V`; `TypeProjection` derives the partition and returns one immutable complete
-type Object snapshot. Its binder notation is a judgmental view of that
-ordinary Object, not a parallel carrier. Its callspace is intrinsic:
+type closure. `Q` and the members in `V_T` are ordinary Objects, while the
+closure preserves their type-specific pairing without becoming another Object
+or another owned copy. Its callspace is intrinsic:
 
 ```text
-T = CanonicalTypeObject(Q, V_T)
-TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
-CallSpace(T) = V_T
+tau = <Q, V_T>
+Core(tau) = Q
+CallSpace(tau) = V_T
+
+tau = bind alpha. <Q, V_T[alpha]>
 ```
 
-Because `CanonicalTypeObject` is a function into `Object`, this projection is
-single-valued. Its identity-completeness theorem is owned by
-`type-values-places-and-borrow-views.md` §2.2; no other Object normal form may
-represent the same complete `(Q,V_T)` snapshot.
+`TypeProjection` is single-valued because `Q` and its direct TypeMember
+partition determine this closure. Complete type identity and keying use
+`Norm_type(tau)`; ordinary Pattern, namespace, and `ref` observations use
+`Core(tau) = Q`. `@` instead observes the carrier slot storing the whole closure
+and yields `type ref`. The closure is not normalized as a fourth kind of Object.
 
 References from members in `V_T` to the current type use the canonical binder:
 
 ```text
-Norm^alpha(Self_T) = BoundRef(alpha)
+Norm_type^alpha(Self_T) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
@@ -270,7 +274,7 @@ there and nowhere else. There is no second disjunction site to look for:
 One symbol may simultaneously provide:
 
 - one optional pure role member `Q` and its namespace projection;
-- the complete `CanonicalTypeObject(Q,V_T)` projection, with binder-aware view
+- the complete `tau = <Q,V_T>` projection, optionally written
   `bind alpha.<Q,V_T[alpha]>`, when `TypeRole(Q)`;
 - an ordinary value;
 - a callable value;
@@ -302,9 +306,9 @@ PlaceId:
   identity of the bindable/openable installation location
 
 TypeValueId:
-  stable first-order type root (registry projection); the full
-  type-object semantic identity at an observation moment is the
-  canonical observation Addr(Norm_type), not the bare TypeValueId
+  stable first-order root of Core(tau) (registry projection); the full
+  type-closure semantic identity is Addr(Norm_type(tau)), not the bare
+  TypeValueId
 
 PatternValue identity:
   canonical identity of an ordinary compile-time value, type value, or
@@ -477,9 +481,10 @@ Symbol(U) != Symbol(T)
 Place(T)  != Place(uint8)
 Place(U)  != Place(T)
 
-value(U) = value(T) = value(uint8)
-TypeValue(U) = TypeValue(T) = TypeValue(uint8)
-PatternValue(U) = PatternValue(T) = PatternValue(uint8)
+TypeValue(uint8) = tau_uint8 = <Q_uint8,V_uint8>
+TypeValue(T) = TypeValue(U) = Copy(tau_uint8)
+OrdinaryValue(T) = OrdinaryValue(U) = Core(tau_uint8) = Q_uint8
+PatternView(T) = PatternView(U) = Q_uint8
 ```
 
 The hole-free annotation `type` is the ordinary result-as transformation
@@ -671,9 +676,9 @@ The classifier is fixed for every ordinary meta callable. `Q`, when present, is
 the unique pure role member and may or may not satisfy `TypeRole`; `V` may
 contain any ordinary sibling values. These are content facts about one Symbol
 Object, not type/val/namespace result categories. Namespace projection selects
-`Q`; when `TypeRole(Q)`, type projection constructs the complete immutable
-Object `CanonicalTypeObject(Q,V_T)`, whose view is
-`bind alpha.<Q,V_T[alpha]>`.
+`Q`; when `TypeRole(Q)`, type projection forms the complete immutable closure
+`tau = <Q,V_T>`, optionally written `bind alpha.<Q,V_T[alpha]>` when its
+members refer to `Self_T`.
 
 Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
@@ -1143,8 +1148,8 @@ Canonical argument identity follows parameter rank:
 
 ```text
 symbol parameter -> SymbolId / symbol-place identity
-type parameter   -> canonical observation of the evaluated type object
-                    = Addr(Norm_type)   (TypeValueId is only the
+type parameter   -> canonical observation of the evaluated type closure
+                    = Addr(Norm_type(tau))   (TypeValueId is only the
                       first-order root, never the argument identity)
 value parameter  -> PatternValue identity
 ```
@@ -2138,10 +2143,12 @@ struct closure = field + access + ref/share observation + assignment/write partn
 Type-as-callee is now closed without any defining-Symbol recovery:
 
 ```text
-CallSpace(T) = V_T
+TypeValue(t) = tau = <Q,V_T>
+CallSpace(tau) = V_T
 ```
 
-A copied or extracted `T` retains the `V_T` of that immutable snapshot. The
+A copied or extracted type value retains the `V_T` of that immutable `tau`
+snapshot. The
 retired `HomeSymbol(TypeValue)`, `RecoverSymbol(TypeValue)`, most-recent carrier,
 source-place, and reverse-`AsType` routes are not deferred alternatives.
 
@@ -2234,10 +2241,10 @@ material, and returns a new complete type snapshot:
 ```text
 extend : type × StructLikeMaterial ⇀ type
 
-TypeClosureView(old) = bind alpha. <Q_old, V_old[alpha]>
+old = bind alpha. <Q_old, V_old[alpha]>
 
 Extend_Gamma(old, Delta)
-  => TypeClosureView(new) = bind beta. <Q_new, V_new[beta]>
+  => new = bind beta. <Q_new, V_new[beta]>
 ```
 
 `extend` establishes no root and preserves the root already carried by its
@@ -3088,8 +3095,9 @@ ContributionExpectation =
 > - `extend` primitive (directly or through `inject`)
 >
 > Ordinary navigated member creation is interpreted under
-> `NamespaceValueMember`, regardless of whether `expr` is `null × P × Val2`
-> (a pure type object) or `Val1 × P × Val2` (a complete value). The
+> `NamespaceValueMember`, regardless of whether `expr` is type-valued
+> (`TypeValue(expr)=tau`, with ordinary observation `Core(tau)=Q`) or an
+> ordinary value-bearing Object. The
 > expectation is never guessed from the RHS shape.
 >
 > ```text
@@ -3119,7 +3127,7 @@ enter or change the owner's
 
 ```text
 resolve source Symbol
-  -> project/read value (including pure type objects)
+  -> project/read value (including a complete type closure when type-demanded)
   -> install as associated Val2 member
   -> does NOT modify target Pattern canonical structure
 ```
@@ -3137,22 +3145,22 @@ It contributes one associated member to the current Pattern owner's
 
 ```text
 target pure-P contribution = none
-injected member             = the complete expr object (Val1 × P × Val2 or null × P × Val2)
+installed contribution      = the complete expr value
 ```
 
 The initializer is not restricted to type/Pattern material or to `Pv=absent`.
 It may contribute any ordinary heterogeneous value entry, including a callable
-function object or a pure type object. Its `P(expr) × Val2(expr)` remains the
-recursive structure of that installed member; it is not spliced into the target
-owner's pure Pattern. The construction stores the complete member as an
-associated value contribution; it does not mutate the namespace graph during
-`struct` evaluation.
+function Object or a type-valued entry. A type-valued entry preserves its whole
+`tau=<Q,V_T>` snapshot in the slot while ordinary Pattern/namespace observation
+sees `Q`; an ordinary Object preserves its own recursive coordinates. Neither
+form is spliced into the target owner's pure Pattern. The construction does not
+mutate the namespace graph during `struct` evaluation.
 
 The four-way classification of installed members:
 
 ```text
 Associated member     : Val2 中存在
-Associated type       : Val2 中存在 null × P × Val2 成员
+Associated type       : Val2 slot 中存在完整 tau，普通观察为 Core(tau)=Q
 Structural child      : Val2 成员已登记到父 P 正规结构
 Bare structural value : 登记到正规结构但局部模式为 ε
 
@@ -3165,13 +3173,13 @@ injection as a possible outcome of associated-member `let`:
 
 ```text
 Privileged structural registration (struct inline / extend ONLY):
-  null × P × Val2
-  -> registers pure Pattern material into target P canonical structure
+  Core(tau) = Q or other admitted pure Pattern material
+  -> registers that material into target P canonical structure
   -> the member becomes a structural child with extraction/construction capability
 
 Ordinary Val2 installation (let f::(type_ref) = expr, always):
-  null × P × Val2  -> installs as associated type (Val2 only)
-  Val1 × P × Val2  -> installs as associated value (Val2 only)
+  TypeValue(expr)=tau -> installs complete tau in the associated slot (Val2 only)
+  ordinary Object     -> installs that Object as associated value (Val2 only)
   Neither modifies the target Pattern canonical structure.
 ```
 
@@ -3210,9 +3218,10 @@ P(C_f) = P(P_x) || P(w_1) || ... || P(w_m)
 the associated type is the member view of `C_f` — the RHS complete pure-P
 view already restricted by the binding's written P1, exactly as on the
 ordinary value path; a type does not get a second P1 discipline for lacking
-a Val1. The `ObjectPlace` entry carries only the TypeObject transport
-reference needed to index a pure type object by value id; that adapter is
-globally reused per TypeValue and is never a binding-Policy carrier.
+a Val1. The current `ObjectPlace` substrate may carry a `TypeObject` transport
+reference for its first-order core. That adapter is not complete `tau`, is not
+canonical identity, and is never a binding-Policy carrier. The target
+type-valued slot preserves its own whole `tau=<Q,V_T>` snapshot.
 
 A pure P is a real object, so the place is per carrier, never per
 PatternValue:
@@ -3221,25 +3230,26 @@ PatternValue:
 let T: type = uint8;
 let U: type = T;
 
-Pattern(T) = Pattern(U) = Pattern(uint8)
+Core(TypeValue(T)) = Core(TypeValue(U)) = Q_uint8
 Place(T)  != Place(U)  != Place(uint8)
 ```
 
 `let f::(T@)` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
-Symbol-to-type projection and is not this operation. Reads fall back from the carrier's own place to
-the Pattern's canonical type object, which is where construction-time and
-toolchain-installed type members live, so inherited type members stay
-visible through every carrier while a per-carrier member installation stays local.
-The carrier that declared the Pattern keeps writing the canonical object,
-because construction-time members were installed there before any
-rebinding carrier existed. There is no second, place-forwarding declaration
-form: every carrier allocates its own place (§2.6), so a per-carrier extension
-is always local to that carrier. Where one place must be reached through
-another name, the value held is a borrow view. Member creation still requires a
-prospective ProjectionSlot plus `let`; later writes require an existing place and
-`Writable(place)`. Neither obtains structural `Open` from the view, as specified
-in `type-values-places-and-borrow-views.md`.
+Symbol-to-type projection and is not this operation. The ordinary associated
+installation updates only `T`'s carrier-local `Val2` observation; it neither
+changes the copied snapshot in `U`, changes `V_T`, nor registers a structural
+child. Complete type observation includes the resulting core observation when
+identity is demanded. Generated
+construction-time TypeMembers are already closed into `V_T`; they are never
+recovered through fallback to a mutable defining Symbol or canonical root.
+There is no second, place-forwarding declaration form: every carrier allocates
+its own place (§2.6), so a per-carrier installation is local to that carrier.
+Where one place must be reached through another name, the value held is a borrow
+view. Member creation still requires a prospective ProjectionSlot plus `let`;
+later writes require an existing place and `Writable(place)`. Neither obtains
+structural `Open` from the view, as specified in
+`type-values-places-and-borrow-views.md`.
 
 Exposure of `t::f` composes `Expose(T_t, φ) ∧ Expose(C_f, φ)` at lookup
 time, and a deeper path `g::f::T` composes the whole chain
@@ -3247,7 +3257,7 @@ time, and a deeper path `g::f::T` composes the whole chain
 or writes `P(x)` back into `P(T_t)`. The conjunction is a phase predicate
 applied per layer, not a stage-set intersection: a `meta` host legitimately
 carries `compile` members, and it is each host's own binding-level view — not
-the shared TypeObject adapter and not the Pattern — that decides that layer's
+the current first-order `TypeObject` adapter and not the Pattern — that decides that layer's
 factor. Explicit navigation therefore carries the resolved host chain (each
 layer's carrier Symbol, its object place, its member view) along with the
 selected `C_f`, so the invocation pipeline applies every host factor before
@@ -3405,10 +3415,10 @@ body is transparent” must not be read as implicit global promotion.
 
 #### 12.1.4 The apparent self-typed intersection
 
-With §12.1.2 in force, the ordinary case that looked like an intersection resolves
-without a special rule. Suppose an RHS is a complete `Val1? x P x Val2` whose own
-`P x Val2` is the very type being extended, and the extension is attempted from an
-ordinary context:
+With §12.1.2 in force, the ordinary case that looked like an intersection
+resolves without a special rule. Suppose an RHS is an ordinary value-bearing
+Object whose Pattern core is the `Q` of the type closure being extended, and the
+extension is attempted from an ordinary context:
 
 ```text
 construct RHS value of target type

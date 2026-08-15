@@ -44,9 +44,9 @@ The namespace graph world model and symbol-level identity:
 
 Pattern/overload candidate adaptation, meta invocation execution, and the full
 policy checker (referenced from the other blocks). Type-as-callee is closed by
-the complete immutable type Object `CanonicalTypeObject(Q,V_T)`, its
-binder-aware view `bind alpha.<Q,V_T[alpha]>`, and
-`CallSpace(T)=V_T`; defining-Symbol, recent-carrier, and `AsType` provenance
+the complete immutable closure `tau = <Q,V_T>`, optionally written
+`bind alpha.<Q,V_T[alpha]>`, and `CallSpace(tau)=V_T`; defining-Symbol,
+recent-carrier, and `AsType` provenance
 recovery are retired.
 
 ## Documents

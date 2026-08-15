@@ -33,7 +33,7 @@ Still open after this correction:
 - Exact representation of the first-order `TypeValueId` root (a registry
   projection, not canonical type-value equality). Canonical type-value
   equality is the recursive object normal form above, consumed as the
-  observation `Addr(Norm_type)`; what remains open is the root representation
+  observation `Addr(Norm_type(tau))`; what remains open is the root representation
   itself and the normal form of value payloads that currently
   keep an identity-stable opaque form.
 - Exact representation of symbol/place identity and
@@ -585,9 +585,10 @@ here so they are not mistaken for design decisions:
   evaluator rejects it with an explicit execution-gap diagnostic rather
   than silently accepting a dead local, so the future pass that defines
   symbol-rank locals is the first to give the form positive semantics.
-- The future `?` operator's rule — strip exactly one Pattern layer while
-  preserving the semantics of the stripped unordered layer — is a
-  registered boundary only; no design or implementation exists.
+- The default one-layer `?` peel semantics is closed:
+  `PatternLayer(c,B,O) -> PatternLayer(NameAbsent,B,O)`. `NameAbsent` is
+  neither wildcard `_` nor binder absence. Custom `?` protocols, residual /
+  derivation IR, implementation, and diagnostic policy remain deferred.
 
 ### Semantic spine: explicit entry conditions for the next stage
 
@@ -608,12 +609,12 @@ them explicitly:
 2. **Full by-value comparison must also audit what an ordinary type
    binding preserves.** Migrating the remaining first-order consumers is
    not just replacing `== TypeValueId` with `== TypeObservation`. Once a
-   carrier-locally extended `T` can legally exist, `let U: type = T` reads
-   the RHS *value* — the complete type object `P × Val2` observed at
-   binding time — and must initialize `U`'s fresh carrier/place with that
-   object; `T`/`U` may then diverge through their own places. Giving `U`
-   an empty fresh place with fallback to the Pattern's canonical object
-   would silently drop `T`'s carrier-local `Val2`. The path is not
+   carrier-locally extended `T` can legally exist, `let U: type = T` copies
+   the complete immutable `tau = <Q,V_T>` snapshot observed at binding time
+   into `U`'s fresh binding/carrier. Its ordinary value observation remains
+   `Core(tau)=Q`, but type-as-callee and future extension retain that exact
+   `V_T`; `T`/`U` may then diverge through later whole-snapshot writes. Copying
+   only `Q` would silently drop `T`'s callspace. The path is not
    executable yet (installed-carrier extension is not wired), but the
    comparison question ("what is equal") and the binding question ("what
    is captured") must be solved together.
@@ -671,7 +672,7 @@ Resolved semantics are indexed rather than restated here:
 | every expression result is consumed; block-final is return, non-final unconsumed is error | `design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §7 | diagnostics and IR plumbing |
 | `Done` isolation and early `self..return(d)` | same document §6–§7 plus `design/symbol-world/function-object-self-and-return-capability.md` | concrete `Done` and lifetime-fact representation |
 | `let` creates, `=` writes, return transfers control; alias event retired | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.5 | remove compatibility return accumulator |
-| `TypeValueId` is only a first-order root projection; canonical equality is `Addr(Norm_type)` | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
+| `TypeValueId` is only a first-order root projection; canonical equality is `Addr(Norm_type(tau))` | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
 | compile returns declared PatternValue; ordinary meta returns Symbol | canonical symbol-first construction document §4 | transitional transport removal |
 
 #### Still open

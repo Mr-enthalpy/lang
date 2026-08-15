@@ -129,14 +129,20 @@ This is not type-system subtyping. It describes role implication:
 
 ```text
 Pure(x)          => x is navigable and has NamespaceRole
-TypeRole(x)      => x is usable as a type (imported judgment)
+TypeRole(Q)      => Q is a type-capable pure role core
 NamespaceRole(x) and not TypeRole(x)
                  => x is navigable but unavailable to AsType
+
+TypeRole(Q) and V_T = TypeMemberSet(Q)
+  => tau = <Q, V_T> is the complete type value
 ```
 
 A type-role Object's Pattern may contain pattern-material leaves. A
 namespace-role-only Object may still contain ordinary navigable `Val2` members,
-but `AsType(x)` is undefined because `TypeRole(x)` does not hold.
+but it cannot form a complete type closure because `TypeRole(x)` does not hold.
+`Q` is the Object core, while `AsType` returns the complete
+`tau = <Q,TypeMemberSet(Q)>`; it does not return bare `Q` as complete type
+identity.
 
 When one construction establishes `TypeRole(x)`, the Object and its navigable
 `Val2` share one owned construction origin. An Object whose namespace role was
@@ -346,8 +352,9 @@ value projection is terminal for the current value lookup
 ```
 
 It does not mean that a Symbol with `V` members cannot also have a pure role
-member `Q` and namespace children. Type projection is the refinement
-`TypeRole(Q)`, not another stored Object.
+member `Q` and namespace children. Type projection derives the direct
+TypeMember partition under `TypeRole(Q)` and forms `tau = <Q,V_T>`; it neither
+stores another copy in the Symbol nor turns the closure into another Object.
 
 ## 9. Ordinary Pure-Role Installation Is Not Sum Extension
 

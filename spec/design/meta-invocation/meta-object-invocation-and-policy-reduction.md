@@ -231,8 +231,8 @@ selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
 RHS value is `ForwardedValue(int)`
 hole-free `: type` applies the ordinary result-as-`type` transformation
 binding materialization installs `X` as a fresh symbol/place carrying the
-complete immutable `int` type Object `CanonicalTypeObject(Q,V_T)`, whose view
-is `bind alpha.<Q,V_T[alpha]>`; `Q`
+complete immutable `int` type closure `tau = <Q,V_T>`, optionally written
+`bind alpha.<Q,V_T[alpha]>`; `Q`
 satisfies `TypeRole(Q)`, and the
 binding is an ordinary fresh symbol and place,
 not a forwarding of `int`'s own symbol or place

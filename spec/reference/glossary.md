@@ -874,16 +874,16 @@ An ordinary value of the ordinary `symbol` type. Its mutable member content is
 structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
 member objects. `Q`, when present, is the unique pure role member. Namespace
 projection selects `Q`. When `TypeRole(Q)`, type projection constructs the
-complete immutable Object `T = CanonicalTypeObject(Q,V_T)`, whose judgmental
-view is `bind alpha.<Q,V_T[alpha]>`; it does not return bare `Q` or recover a
-defining Symbol later. The raw Symbol stores one `V`,
+complete immutable closure `tau = <Q,V_T>`, optionally written
+`bind alpha.<Q,V_T[alpha]>`; it does not return bare `Q` or recover a defining
+Symbol later. The raw Symbol stores one `V`,
 partitioned as `V_T disjoint-union V_O`; projection does not duplicate an owned
-copy of `V_T`. The binder notation is a judgmental view of an ordinary
-`T in Object`, not a parallel TypeSnapshot carrier, fourth Object coordinate,
-or independently normalized record. `Norm(T)` remains the ordinary
-three-coordinate Object normal form; only `TypeClosureView(Norm(T))` is
-binder-aware. The canonical embedding is identity-complete, and canonical
-identity remains `Addr(Norm(T))`.
+copy of `V_T`. `Q` and the members in `V_T` are ordinary Objects; `tau` is their
+type-specific closure, not an Object embedding or fourth Object coordinate.
+Ordinary Pattern/namespace/`ref` observation uses `Core(tau)=Q`; `@` observes
+the carrier slot storing the closure and yields `type ref`. Complete type
+equality/keying and type-as-callee use `Norm_type(tau)` and
+`CallSpace(tau)=V_T`.
 Callable val members project across the typed buckets to the formal `OverloadSet`.
 
 Symbol normalization is an extensional optional pure role member plus map of typed
@@ -907,15 +907,16 @@ _See also: PatternValue container kernel, Overload Candidate, `extend`._
 
 ---
 
-## `CanonicalTypeObject`
+## Complete type closure (`tau`)
 
-The canonical embedding `(Q,V_T) -> Object` for a complete immutable type.
-`Norm(CanonicalTypeObject(Q,V_T))` is the ordinary three-coordinate Object
-normal form. Its binder-aware logical projection is
-`TypeClosureView(T) = bind alpha.<Q,V_T[alpha]>`; the view is not a separate
-carrier or normalization domain. The embedding is identity-complete, so one
-normalized `(Q,V_T)` snapshot determines one Object normal form. Canonical
-owner:
+The immutable type value `tau = <Q,V_T>`, where `Q` is the ordinary pure Object
+core satisfying `TypeRole(Q)` and `V_T = TypeMemberSet(Q)` is its intrinsic
+callspace. `Core(tau)=Q`; `CallSpace(tau)=V_T`. It is not an Object embedding,
+a fourth Object coordinate, or a second owned copy of `V_T`. Ordinary
+Pattern/namespace/`ref` observation sees `Q`; carrier `@`, copying,
+equality/keying, type-as-callee, `extend`, and `inject` preserve or transform
+the whole closure as required by their own judgments.
+Canonical owner:
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
 _See also: Object normal form (`Norm`), TypeMember, `Self_T`._
@@ -951,9 +952,9 @@ _See also: TypeMember, SemanticOwner._
 
 ## `Self_T`
 
-The canonical self reference inside the judgmental view
-`TypeClosureView(T) = bind alpha.<Q,V_T[alpha]>`. During
-normalization it becomes `BoundRef(alpha)`, which is not an owned child. After
+The canonical self reference inside the binder-aware type closure
+`tau = bind alpha.<Q,V_T[alpha]>`. During `Norm_type` it becomes
+`BoundRef(alpha)`, which is not an owned child. After
 authorized back-references are erased, the owned graph must remain finite and
 well-founded; this rule does not admit general recursive Object graphs.
 Canonical owner:
@@ -1153,14 +1154,17 @@ The pure PatternValue transformation for structural extension:
 ```text
 extend : type x StructLikeMaterial ⇀ type
 
-Extend(old, Δ) ⇓ new
-Root(new) = Root(old)
+old = tau_old = <Q_old,V_old>
+Extend(old, Δ) ⇓ new = tau_new = <Q_new,V_new>
+Root(tau_new) = Root(tau_old)
 ```
 
-`extend` accepts a type value, never a `type ref` or `type share`. It checks
+`extend` accepts the whole complete type closure, never a `type ref` or
+`type share`. It checks
 `Open_Γ(old)` from `ConstructionLineage(old)` and the current compile-time stack,
 creates no root, modifies no place, and preserves the input root. Failure is
-total: no partial value, write, or rollback.
+total: no partial value, write, or rollback. Equal roots do not imply equal
+closures or equal callspaces; older copies retain `V_old`.
 
 _See also: `inject`, `Open_Γ`, ConstructionLineage._
 
@@ -1173,8 +1177,8 @@ The place-level convenience operation over an existing `type ref`:
 ```text
 inject : type ref x StructLikeMaterial ⇀ type ref
 
-old = Clone(Read(t_ref))
-new = Extend(old, Δ)
+old = Clone(Read(t_ref))             // complete tau_old snapshot
+new = Extend(old, Δ)                 // complete tau_new snapshot
 Write(t_ref, new)
 return t_ref
 ```
@@ -2189,9 +2193,9 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
 For a Symbol with a type-capable `Q`, it returns the complete immutable type
-Object `CanonicalTypeObject(Q,V_T)`. Its binder-aware view is
-`bind alpha.<Q,V_T[alpha]>`. For an already complete type value `T`, it
-is the identity. Bare `Q` is only the Pattern component, not the complete type.
+closure `tau = <Q,V_T>`, optionally written
+`bind alpha.<Q,V_T[alpha]>`. For an already complete type value `tau`, it is
+the identity. Bare `Q` is the type-capable core, not the complete type.
 It never searches a namespace-role Object for a hidden type member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
 only an already-pure type slot uses `t@`.

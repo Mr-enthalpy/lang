@@ -183,10 +183,11 @@ construction-lineage Open, and the namespace member-creation/write pipeline — 
 
 ## v0.6 Implementation Note
 
-The `lang_build` semantic spine now implements the identity core:
-`TypeValueId` exists as the stable first-order type root, and the full
-type-object identity is the canonical observation `Addr(Norm_type)` over
-per-carrier `Val2` places. Writability checking, borrow-view evaluation, and
+The `lang_build` semantic spine currently implements only the first-order
+substrate: `TypeValueId` exists as the stable core root and current observations
+still travel through per-carrier `Val2` places. The target complete identity is
+`Addr(Norm_type(tau))` over `tau=<Q,V_T>`; preserving `V_T` in copied/extended
+snapshots remains implementation migration. Writability checking, borrow-view evaluation, and
 the field-function / access-tree machinery of this note remain future work;
 the identity model and its implemented/future split are documented in
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
@@ -196,7 +197,7 @@ the identity model and its implemented/future split are documented in
 This note does not implement or specify:
 
 - type-value identity (the first-order `TypeValueId` root and the canonical
-  observation `Addr(Norm_type)` are owned by
+  observation `Addr(Norm_type(tau))` are owned by
   `type-values-places-and-borrow-views.md`);
 - migration of the remaining first-order type comparisons to full by-value
   comparison;
@@ -204,10 +205,10 @@ This note does not implement or specify:
 - writability or extension-place lifetime checking;
 - field access evaluation;
 - access-tree scanning;
-- implementation of complete type Objects
-  `CanonicalTypeObject(Q,V_T)`, their binder-aware views
-  `bind alpha.<Q,V_T[alpha]>`, and direct-home TypeMember classification; target
-  type-as-callee lookup is already `CallSpace(T)=V_T` and never performs
+- implementation of complete type closures `tau = <Q,V_T>`, their optional
+  binder-aware form `bind alpha.<Q,V_T[alpha]>`, and direct-home TypeMember
+  classification; target type-as-callee lookup is already
+  `CallSpace(tau)=V_T` and never performs
   defining-Symbol or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;

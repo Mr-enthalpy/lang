@@ -320,9 +320,10 @@ path/name -> Symbol -> context-directed role/member projection
 
 Namespace projection selects `Q`. When `TypeRole(Q)`, type projection closes it
 with its direct TypeMember partition as the complete immutable snapshot
-`CanonicalTypeObject(Q,V_T)`, whose view is `bind alpha.<Q,V_T[alpha]>`.
+`tau = <Q,V_T>`, optionally written `bind alpha.<Q,V_T[alpha]>`.
 Current namespace/type facet buckets may cache
-those derived views but do not define independent semantic Objects.
+derived views but do not define independent semantic Objects or another copy of
+`V_T`.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint
@@ -785,7 +786,7 @@ let B: type = (int Vec::std)
 means `A == B` by type-value equality while `A` and `B` remain distinct symbols.
 No declaration form can make them the same symbol or the same place. The
 canonical type-value equality relation
-is defined as the recursive observation `Addr(Norm_type)` (bare `TypeValueId`
+is defined as the recursive observation `Addr(Norm_type(tau))` (bare `TypeValueId`
 is only the stable first-order root); carrying that settled relation into all
 remaining semantic comparison sites is future work.
 
