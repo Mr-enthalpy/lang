@@ -320,7 +320,8 @@ path/name -> Symbol -> context-directed role/member projection
 
 Namespace projection selects `Q`. When `TypeRole(Q)`, type projection closes it
 with its direct TypeMember partition as the complete immutable snapshot
-`bind alpha.<Q,V_T[alpha]>`. Current namespace/type facet buckets may cache
+`CanonicalTypeObject(Q,V_T)`, whose view is `bind alpha.<Q,V_T[alpha]>`.
+Current namespace/type facet buckets may cache
 those derived views but do not define independent semantic Objects.
 
 This document does not require an immediate Rust refactor. It does require that

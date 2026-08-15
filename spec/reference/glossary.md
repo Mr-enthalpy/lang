@@ -874,13 +874,16 @@ An ordinary value of the ordinary `symbol` type. Its mutable member content is
 structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
 member objects. `Q`, when present, is the unique pure role member. Namespace
 projection selects `Q`. When `TypeRole(Q)`, type projection constructs the
-complete immutable snapshot `T = bind alpha.<Q,V_T[alpha]>`; it does not return
-bare `Q` or recover a defining Symbol later. The raw Symbol stores one `V`,
+complete immutable Object `T = CanonicalTypeObject(Q,V_T)`, whose judgmental
+view is `bind alpha.<Q,V_T[alpha]>`; it does not return bare `Q` or recover a
+defining Symbol later. The raw Symbol stores one `V`,
 partitioned as `V_T disjoint-union V_O`; projection does not duplicate an owned
 copy of `V_T`. The binder notation is a judgmental view of an ordinary
 `T in Object`, not a parallel TypeSnapshot carrier, fourth Object coordinate,
-or independently normalized record. Canonical identity remains
-`Addr(Norm(T))` under ordinary Object normalization.
+or independently normalized record. `Norm(T)` remains the ordinary
+three-coordinate Object normal form; only `TypeClosureView(Norm(T))` is
+binder-aware. The canonical embedding is identity-complete, and canonical
+identity remains `Addr(Norm(T))`.
 Callable val members project across the typed buckets to the formal `OverloadSet`.
 
 Symbol normalization is an extensional optional pure role member plus map of typed
@@ -901,6 +904,21 @@ generated field/access/assignment/borrow partner families. It is therefore a
 symbol-producing structural generator, not merely a type constructor.
 
 _See also: PatternValue container kernel, Overload Candidate, `extend`._
+
+---
+
+## `CanonicalTypeObject`
+
+The canonical embedding `(Q,V_T) -> Object` for a complete immutable type.
+`Norm(CanonicalTypeObject(Q,V_T))` is the ordinary three-coordinate Object
+normal form. Its binder-aware logical projection is
+`TypeClosureView(T) = bind alpha.<Q,V_T[alpha]>`; the view is not a separate
+carrier or normalization domain. The embedding is identity-complete, so one
+normalized `(Q,V_T)` snapshot determines one Object normal form. Canonical
+owner:
+[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
+
+_See also: Object normal form (`Norm`), TypeMember, `Self_T`._
 
 ---
 
@@ -933,7 +951,8 @@ _See also: TypeMember, SemanticOwner._
 
 ## `Self_T`
 
-The canonical self reference inside `T = bind alpha.<Q,V_T[alpha]>`. During
+The canonical self reference inside the judgmental view
+`TypeClosureView(T) = bind alpha.<Q,V_T[alpha]>`. During
 normalization it becomes `BoundRef(alpha)`, which is not an owned child. After
 authorized back-references are erased, the owned graph must remain finite and
 well-founded; this rule does not admit general recursive Object graphs.
@@ -2170,7 +2189,8 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
 For a Symbol with a type-capable `Q`, it returns the complete immutable type
-snapshot `bind alpha.<Q,V_T[alpha]>`. For an already complete type value `T`, it
+Object `CanonicalTypeObject(Q,V_T)`. Its binder-aware view is
+`bind alpha.<Q,V_T[alpha]>`. For an already complete type value `T`, it
 is the identity. Bare `Q` is only the Pattern component, not the complete type.
 It never searches a namespace-role Object for a hidden type member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;

@@ -132,10 +132,9 @@ V_T
 
 V_O = V \\ V_T
 
-TypeProjection(S) = T
+TypeProjection(S) = CanonicalTypeObject(Q, V_T)
   iff Val1(S) = <Q, V>
   and TypeRole(Q)
-  and CompleteType(T; Q, V_T)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
 ```
@@ -166,9 +165,15 @@ type Object snapshot. Its binder notation is a judgmental view of that
 ordinary Object, not a parallel carrier. Its callspace is intrinsic:
 
 ```text
+T = CanonicalTypeObject(Q, V_T)
 TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
 CallSpace(T) = V_T
 ```
+
+Because `CanonicalTypeObject` is a function into `Object`, this projection is
+single-valued. Its identity-completeness theorem is owned by
+`type-values-places-and-borrow-views.md` §2.2; no other Object normal form may
+represent the same complete `(Q,V_T)` snapshot.
 
 References from members in `V_T` to the current type use the canonical binder:
 
@@ -265,7 +270,8 @@ there and nowhere else. There is no second disjunction site to look for:
 One symbol may simultaneously provide:
 
 - one optional pure role member `Q` and its namespace projection;
-- the complete `bind alpha.<Q,V_T[alpha]>` type projection when `TypeRole(Q)`;
+- the complete `CanonicalTypeObject(Q,V_T)` projection, with binder-aware view
+  `bind alpha.<Q,V_T[alpha]>`, when `TypeRole(Q)`;
 - an ordinary value;
 - a callable value;
 - multiple heterogeneous value entries forming an overload candidate set.
@@ -666,7 +672,8 @@ the unique pure role member and may or may not satisfy `TypeRole`; `V` may
 contain any ordinary sibling values. These are content facts about one Symbol
 Object, not type/val/namespace result categories. Namespace projection selects
 `Q`; when `TypeRole(Q)`, type projection constructs the complete immutable
-snapshot `bind alpha.<Q,V_T[alpha]>`.
+Object `CanonicalTypeObject(Q,V_T)`, whose view is
+`bind alpha.<Q,V_T[alpha]>`.
 
 Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
@@ -2227,10 +2234,10 @@ material, and returns a new complete type snapshot:
 ```text
 extend : type × StructLikeMaterial ⇀ type
 
-old = bind alpha. <Q_old, V_old[alpha]>
+TypeClosureView(old) = bind alpha. <Q_old, V_old[alpha]>
 
 Extend_Gamma(old, Delta)
-  => new = bind beta. <Q_new, V_new[beta]>
+  => TypeClosureView(new) = bind beta. <Q_new, V_new[beta]>
 ```
 
 `extend` establishes no root and preserves the root already carried by its

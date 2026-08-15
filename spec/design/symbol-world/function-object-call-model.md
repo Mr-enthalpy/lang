@@ -170,7 +170,8 @@ Symbol and reads its values, while an already-held complete type value carries
 its own callspace:
 
 ```text
-T = bind alpha. <Q, V_T[alpha]>
+T = CanonicalTypeObject(Q, V_T)
+TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
 CallSpace(T) = V_T
 ```
 

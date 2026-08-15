@@ -1666,7 +1666,7 @@ NormPattern::Nav(...)      pattern-side unresolved navigation material
 NormPattern::HoleRef(target=T_id, spelling="T")
                              exact DeduceList-bound hole
 OperatorTarget("?")        postfix one-layer top-Pattern-view syntax material
-Pattern-side "_"           explicit consumption pattern
+Pattern-side "_"           real wildcard/discard Pattern position
 ```
 
 ## 15. Non-Goals
@@ -1686,7 +1686,11 @@ the compiler can automatically search all related namespaces
 
 This design is also not a traditional keyword-based control-flow system. `if`, `else`, and `match` may exist as ordinary names or library conventions, but the core semantics does not depend on them as privileged keywords.
 
-This design is not an implicit-discard system. `_` is explicit consumption. A missing consumer is a return — the unconsumed value becomes the block's return result. No expression may be silently completed, regardless of its pattern space.
+This design is not an implicit-discard system. A real wildcard/discard position
+`_` explicitly consumes the position it matches; it never stands for a missing
+position. A missing consumer is a return — the unconsumed value becomes the
+block's return result. No expression may be silently completed, regardless of
+its pattern space.
 
 This design also does not include call history in extraction. A call returns a value. Extraction processes the returned value’s static pattern space. The call target itself is not an extraction name.
 
@@ -1704,7 +1708,7 @@ The core of the design is:
 7. Return/result boundaries reduce one Done layer locally, then wrap the returned result in Done again.
 8. match is an identity closing consumer, not built-in matching syntax.
 9. Expression results must never be silently discarded — no void exception. Unconsumed values must be consumed or become the current block return.
-10. `_` is an explicit consumption pattern.
+10. `_` is a real wildcard/discard Pattern position. It denotes an existing Pattern position and never binder absence, name absence, or an artificial empty/padding layer.
 11. `?` erases one peelable top Pattern name while retaining a name-absent Pattern-layer boundary and its ordering; Product fixed points gain no unordered authority. Bool Pattern already carries if | else alternatives.
 12. Closed control-pattern spaces cannot be added to unrelated patterns.
 13. This non-additivity is guaranteed by package-owned operator implementations, non-reopenable namespaces, and absence of unrestricted lookup.

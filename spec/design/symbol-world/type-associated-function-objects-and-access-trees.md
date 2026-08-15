@@ -204,8 +204,9 @@ This note does not implement or specify:
 - writability or extension-place lifetime checking;
 - field access evaluation;
 - access-tree scanning;
-- implementation of complete type snapshots
-  `bind alpha.<Q,V_T[alpha]>` and direct-home TypeMember classification; target
+- implementation of complete type Objects
+  `CanonicalTypeObject(Q,V_T)`, their binder-aware views
+  `bind alpha.<Q,V_T[alpha]>`, and direct-home TypeMember classification; target
   type-as-callee lookup is already `CallSpace(T)=V_T` and never performs
   defining-Symbol or carrier-provenance recovery;
 - borrow/lifetime checking;

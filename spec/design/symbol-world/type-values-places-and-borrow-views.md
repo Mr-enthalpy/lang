@@ -116,7 +116,8 @@ In the symbol-first model, a path initially resolves to one Symbol and the use
 site then projects its optional `Q` role member or heterogeneous typed `V`
 members. Namespace projection returns `Q`; the type-role judgment over `Q`
 selects the direct TypeMember partition and constructs the complete immutable
-snapshot `bind alpha.<Q,V_T[alpha]>`. Projection does not collapse these
+Object `CanonicalTypeObject(Q,V_T)`, whose view is
+`bind alpha.<Q,V_T[alpha]>`. Projection does not collapse these
 identities and is not a cast.
 
 ### 2.1 Object identity is the recursive three-component normal form
@@ -504,20 +505,28 @@ component `Q`. It closes `Q` together with the ordinary value members that
 belong directly to that type:
 
 ```text
+CanonicalTypeObject(Q, V_T) in Object
+
+TypeClosureView(CanonicalTypeObject(Q, V_T))
+  = bind alpha. <Q, V_T[alpha]>
+
 CompleteType(T; Q, V_T)
   iff T in Object
-  and TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
+  and Norm(T) = Norm(CanonicalTypeObject(Q, V_T))
 
 CallSpace(T) = V_T
 ```
 
 `bind alpha.<Q,V_T[alpha]>` is a binder-aware **judgmental view of the
 ordinary Object `T`**, not raw carrier syntax and not a second semantic value.
-`Q` and the typed member buckets `V_T` are projected from `Content(T)` through
-the same bare-Product, Sequence, and typed-bucket Object composition used by
-Symbol values in
+`CanonicalTypeObject` is the canonical embedding into the existing Object
+domain. It builds only ordinary `Val1?`, `P`, and `Val2` content, using the same
+bare-Product, Sequence, and typed-bucket Object composition used by Symbol
+values in
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
-§4.7. Therefore this notation introduces none of:
+§4.7. `Q` and `V_T` are then recovered by the judgmental
+`TypeClosureView`; they are not extra stored coordinates. Therefore neither
+the embedding nor its view introduces any of:
 
 ```text
 a parallel semantic TypeSnapshot carrier
@@ -525,10 +534,17 @@ a fourth Object coordinate
 an independently normalized TypeValue record
 ```
 
-Canonical type identity remains `Addr(Norm(T))`. `Norm(T)` is the ordinary
-Object normal form over `Val1?`, `P`, and `Val2`; the only type-specific step
-is that occurrences of `Self_T` in the projected member content are normalized
-under the binder as described below. An implementation may materialize a
+Canonical type identity remains `Addr(Norm(T))`. The embedding is
+identity-complete on complete types:
+
+```text
+CompleteType(T_1; Q, V_T)
+and CompleteType(T_2; Q, V_T)
+  => Norm(T_1) = Norm(T_2)
+```
+
+Consequently `TypeProjection` cannot choose between distinct Object normal
+forms for one `(Q,V_T)` snapshot. An implementation may materialize a
 snapshot-shaped cache, but that cache is substrate for this Object judgment,
 not another ontology or equality relation.
 
@@ -536,10 +552,18 @@ not another ontology or equality relation.
 judgments are defined. `V_T` contains ordinary typed members; it is not Pattern
 metadata and is not recovered from a defining Symbol when `T` is called.
 
-The canonical Object normal form is binder-aware at this projection:
+The canonical Object normal form remains the ordinary three-coordinate form;
+only its type-closure view is binder-aware:
 
 ```text
 Norm(T)
+  = <
+      Norm_Val1?(Val1?(T)),
+      Norm_P(P(T)),
+      Norm_Val2(Val2(T))
+    >
+
+TypeClosureView(Norm(T))
   = bind alpha.
       <Norm(Q), Norm_V^alpha(V_T)>
 
@@ -563,8 +587,8 @@ Each completed type value is an immutable snapshot. Pure extension may preserve
 a construction root while producing a different snapshot:
 
 ```text
-T_old = bind alpha. <Q_old, V_old[alpha]>
-T_new = bind beta.  <Q_new, V_new[beta]>
+TypeClosureView(T_old) = bind alpha. <Q_old, V_old[alpha]>
+TypeClosureView(T_new) = bind beta.  <Q_new, V_new[beta]>
 
 Root(T_old) = Root(T_new)
   !=> T_old = T_new
@@ -1051,7 +1075,7 @@ operand or argument position performs no implicit type conversion. An explicit
 
 ```text
 AsType(S : symbol) = TypeProjection(S)
-  = bind alpha. <Q, V_T[alpha]>
+  = CanonicalTypeObject(Q, V_T)
     when Val1(S) = <Q, V> and TypeRole(Q)
 
 AsType(T) = T
@@ -1391,8 +1415,8 @@ In a language-designated type-expected position the elaboration is supplied:
 AsType(E)  =  E |> type
 ```
 
-`AsType` either projects a complete `bind alpha.<Q,V_T[alpha]>` snapshot from a
-Symbol whose `Q` has `TypeRole`, or validates an already-complete TypeValue as
+`AsType` either projects `CanonicalTypeObject(Q,V_T)` from a Symbol whose `Q`
+has `TypeRole`, or validates an already-complete TypeValue as
 specified in §5.1. It does not compute the type of
 the expression, wrap a namespace-like Object, or raise universe rank:
 

@@ -618,9 +618,14 @@ The Pattern component of a type is `Q`, but a complete type value is not bare
 of an ordinary `T in Object`:
 
 ```text
+CanonicalTypeObject(Q, V_T) in Object
+
+TypeClosureView(CanonicalTypeObject(Q, V_T))
+  = bind alpha. <Q, V_T[alpha]>
+
 CompleteType(T; Q, V_T)
   iff T in Object
-  and TypeClosureView(T) = bind alpha. <Q, V_T[alpha]>
+  and Norm(T) = Norm(CanonicalTypeObject(Q, V_T))
 ```
 
 where `V_T` contains the ordinary val members that belong directly to this type
@@ -657,10 +662,12 @@ finite and well-founded.
 
 This document uses `Q` when discussing structural Pattern relations and `T`
 when discussing a complete type value. `AsType` and type projection produce
-the complete ordinary Object `T`, not bare `Q`. The notation
-`bind alpha.<Q,V_T[alpha]>` is a logical projection of `T`; it adds no parallel
-semantic carrier, fourth Object coordinate, or independently normalized type
-record. The TypeMember partition, `Self_T` normal form, Object embedding, and
+`CanonicalTypeObject(Q,V_T)`, not bare `Q`. `Norm(T)` remains the ordinary
+three-coordinate Object normal form; only `TypeClosureView(Norm(T))` has the
+binder shape. The view adds no parallel semantic carrier, fourth Object
+coordinate, or independently normalized type record. The canonical embedding
+is identity-complete, so one `(Q,V_T)` snapshot determines one Object normal
+form. The TypeMember partition, `Self_T` normal form, Object embedding, and
 callspace identity are owned by
 `../symbol-world/type-values-places-and-borrow-views.md` and
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
