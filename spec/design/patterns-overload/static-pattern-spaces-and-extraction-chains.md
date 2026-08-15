@@ -128,7 +128,7 @@ this document. It implements only a restricted overload-selection substrate:
 - source-declared overload sets in the namespace graph;
 - policy visibility and body-entry filtering;
 - top-pattern applicability for binders, named discard patterns, and the
-  restricted `_ if | else: type` or-pattern;
+  legacy-substrate restricted `_ if | else: type` or-pattern;
 - the formal extraction-specificity tuple for the supported shapes;
 - selected delete-body diagnostics and simple forwarding-body values.
 
@@ -143,9 +143,9 @@ Not implemented in v0.8:
 
 The `||` in `meta || runtime` is same-stage-dimension policy choice in a
 strong declaration-policy context.
-The `|` in `_ if | else: type` is restricted pattern-side or material in
-parameter-pattern context. Neither use is expression-level operator lookup,
-and neither is implemented by source-declared `+`.
+The `|` in the legacy-substrate `_ if | else: type` is restricted pattern-side
+or material in parameter-pattern context. Neither use is expression-level
+operator lookup, and neither is implemented by source-declared `+`.
 
 The v0.8 ordinary initializer path only needs the unit identity forwarding
 case:

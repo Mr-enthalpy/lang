@@ -97,8 +97,9 @@ two equal maximal candidates, selection reports ambiguity.
 `meta || runtime` is a policy expression in declaration-policy context. Its
 `||` is same-dimension stage choice. It is not Pattern alternative, not
 expression-level operator lookup, and not evidence that the body may execute
-under runtime policy. Pattern-side forms such as `_ if | else: type` are parsed
-and interpreted in parameter-pattern context only.
+under runtime policy. Legacy-substrate pattern-side forms such as
+`_ if | else: type` are parsed and interpreted in parameter-pattern context
+only.
 
 The implementation currently stores three metadata fields:
 

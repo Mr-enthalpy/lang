@@ -2,7 +2,7 @@
 
 **Status: Future design note. No access-tree construction, field access
 evaluation, borrow checking, lifetime checking, full meta execution, or
-canonical type-value equality is implemented.**
+whole-snapshot type-value identity is implemented.**
 
 This note records the v0.6 namespace-graph implications for field-access and
 access-tree work. The canonical type-value / place / borrow-view /
@@ -156,7 +156,7 @@ The consequences that field/access-tree work must preserve:
   place whose type value equals `uint8`'s. `value(t) == value(uint8)`, but
   `place(t) != place(uint8)`. It is not a fresh nominal type and not a symbol
   alias.
-- `let f::(t@) = ...` explicitly creates the prospective child under
+- `let f::(t |> type ref) = ...` explicitly creates the prospective child under
   `place(t)`, never `place(uint8)`, because `t` is already a pure type slot. For
   a Symbol `S`, the corresponding place form is `let f::((S ref).type) = ...`.
   `AsType(S)` never recovers a place. Type-value
@@ -164,7 +164,7 @@ The consequences that field/access-tree work must preserve:
   own a companion namespace place distinct from the type value it stores.
 - There is no place-forwarding declaration form. Every binding allocates its own
   place, so no second name reaches `place(uint8)`. Where shared observation is
-  wanted, the value held is a borrow view (`ref` / `share` / `@`), and its
+  wanted, the value held is a borrow view (`ref` / `share`), and its
   capability never exceeds the underlying place's own. A missing final child
   still has stable `ProjectionSlot(parent, selector)` identity: `let` may instantiate
   it, while bare `=` may only write `Some(existing)`.
@@ -185,8 +185,13 @@ construction-lineage Open, and the namespace member-creation/write pipeline — 
 
 The `lang_build` semantic spine currently implements only the first-order
 substrate: `TypeValueId` exists as the stable core root and current observations
-still travel through per-carrier `Val2` places. The target complete identity is
-`Addr(Norm_type(tau))` over `tau=<Q,V_T>`; preserving `V_T` in copied/extended
+still travel through per-carrier `Val2` places. The target complete snapshot identity is
+`Addr(Norm_type(tau))` over `tau=<Q,V_T>`; under the minimal-change rule
+(`type-values-places-and-borrow-views.md` §2.2) ordinary type equality/keying
+keeps observing `Core(tau)=Q` by default, while `Addr(Norm_type(tau))` is used
+to tell shared-root snapshots apart in transport and in positions the language
+has independently frozen to whole-snapshot semantics. Preserving `V_T` in
+copied/extended
 snapshots remains implementation migration. Writability checking, borrow-view evaluation, and
 the field-function / access-tree machinery of this note remain future work;
 the identity model and its implemented/future split are documented in
@@ -196,8 +201,8 @@ the identity model and its implemented/future split are documented in
 
 This note does not implement or specify:
 
-- type-value identity (the first-order `TypeValueId` root and the canonical
-  observation `Addr(Norm_type(tau))` are owned by
+- type-value identity (the first-order `TypeValueId` root and the snapshot
+  identity `Addr(Norm_type(tau))` are owned by
   `type-values-places-and-borrow-views.md`);
 - migration of the remaining first-order type comparisons to full by-value
   comparison;

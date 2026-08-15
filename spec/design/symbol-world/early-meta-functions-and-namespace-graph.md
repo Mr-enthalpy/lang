@@ -753,8 +753,8 @@ let b = 1
 `a` and `b` are distinct symbols, while their values are equal.
 
 Member creation is not pure type-value evaluation.
-Because this `T` is already a pure type slot, `let f::(T@) = ...` explicitly
-targets `place(T)`, not `place(uint8)`. Type-value equality must not
+Because this `T` is already a pure type slot, `let f::(T |> type ref) = ...`
+explicitly targets `place(T)`, not `place(uint8)`. Type-value equality must not
 canonicalize injection targets.
 
 `let` and the frozen `===` surface form are not interchangeable, and only `let`
@@ -762,7 +762,7 @@ has target semantics:
 
 | Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T@)` may create under `place(T)` when separately authorized |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> type ref)` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
 | `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with `Q_struct` satisfying `TypeRole` | `let f::((T ref).type)` may create under that explicit type-member place |
 
@@ -783,11 +783,12 @@ let A: type = (int Vec::std)
 let B: type = (int Vec::std)
 ```
 
-means `A == B` by type-value equality while `A` and `B` remain distinct symbols.
+means `A == B` by ordinary type-value equality (default `Core(tau)=Q`,
+first-order `TypeValueId`) while `A` and `B` remain distinct symbols.
 No declaration form can make them the same symbol or the same place. The
-canonical type-value equality relation
-is defined as the recursive observation `Addr(Norm_type(tau))` (bare `TypeValueId`
-is only the stable first-order root); carrying that settled relation into all
+whole-snapshot identity is `Addr(Norm_type(tau))`, used to tell shared-root
+snapshots apart in transport and in positions the language has independently
+frozen to whole-snapshot semantics; carrying that settled relation into all
 remaining semantic comparison sites is future work.
 
 See `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md` for the

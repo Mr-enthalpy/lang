@@ -31,11 +31,13 @@ construction direction index moved to
 Still open after this correction:
 
 - Exact representation of the first-order `TypeValueId` root (a registry
-  projection, not canonical type-value equality). Canonical type-value
-  equality is the recursive object normal form above, consumed as the
-  observation `Addr(Norm_type(tau))`; what remains open is the root representation
-  itself and the normal form of value payloads that currently
-  keep an identity-stable opaque form.
+  projection, not the whole-snapshot identity). Per the minimal-change rule,
+  ordinary type equality/keying observes `Core(tau)=Q` by default;
+  `Addr(Norm_type(tau))` is the whole-snapshot identity used in transport and
+  in positions the language has independently frozen to whole-snapshot
+  semantics; what remains open is the root representation itself and the
+  normal form of value payloads that currently keep an identity-stable opaque
+  form.
 - Exact representation of symbol/place identity and
   `StableTargetIdentity(q)`. The representation is open; the semantic
   requirement that distinct borrow targets normalize distinctly is closed.
@@ -45,7 +47,7 @@ Still open after this correction:
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
   construction-lineage Open checking.
-- Implementation of source-level `let f::(U@)` against an already
+- Implementation of source-level `let f::(U |> type ref)` against an already
   installed type carrier/place: the associated-extension entry point currently
   requires a still-open construction and resolves the target object from the
   constructed Pattern. Bare `let f::U` is not the target place form.
@@ -620,12 +622,12 @@ them explicitly:
    is captured") must be solved together.
 
 3. **Installed-carrier member creation / `type ref` targets / writability
-   need explicit owners.** Source-level `let f::(U@)` against an already
+   need explicit owners.** Source-level `let f::(U |> type ref)` against an already
    installed type carrier/place, place-level `inject`, and
    writability / construction-open checking exist today only as substrate
    (also listed in the general future-work pool above). The next stage must
    assign them explicit scope rather than leaving them pooled. Canonical source
-   spells the host place explicitly as `let f::(U@) = expr`. Navigation
+   spells the host place explicitly as `let f::(U |> type ref) = expr`. Navigation
    to a missing child yields a prospective ProjectionSlot whose contents are `None`;
    `let` may instantiate it, while bare `=` may not.
 
@@ -672,7 +674,7 @@ Resolved semantics are indexed rather than restated here:
 | every expression result is consumed; block-final is return, non-final unconsumed is error | `design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §7 | diagnostics and IR plumbing |
 | `Done` isolation and early `self..return(d)` | same document §6–§7 plus `design/symbol-world/function-object-self-and-return-capability.md` | concrete `Done` and lifetime-fact representation |
 | `let` creates, `=` writes, return transfers control; alias event retired | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.5 | remove compatibility return accumulator |
-| `TypeValueId` is only a first-order root projection; canonical equality is `Addr(Norm_type(tau))` | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
+| `TypeValueId` is only a first-order root projection; ordinary type equality/keying observes `Core(tau)=Q` by default, while `Addr(Norm_type(tau))` is the whole-snapshot identity for frozen whole-snapshot positions | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
 | compile returns declared PatternValue; ordinary meta returns Symbol | canonical symbol-first construction document §4 | transitional transport removal |
 
 #### Still open

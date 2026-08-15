@@ -227,7 +227,8 @@ The v0.8 success path for `let X: type = int + unit;` is:
 source declarations install real `+` overload symbols
 ordinary initializer sees normalized `int + unit`
 MetaPartial invokes restricted overload selection under MetaAction lookup
-selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
+selected `(self, t: type, _ unit: type): meta -> ...` body (legacy substrate
+shape) forwards `t`
 RHS value is `ForwardedValue(int)`
 hole-free `: type` applies the ordinary result-as-`type` transformation
 binding materialization installs `X` as a fresh symbol/place carrying the

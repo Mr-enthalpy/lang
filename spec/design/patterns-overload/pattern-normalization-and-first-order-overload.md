@@ -30,7 +30,8 @@ define a competing body-entry or return-policy model.
 The implemented v0.8 subset object-izes only enough parameter-pattern and
 argument-shape material to select source-declared meta overloads.
 
-Supported parameter patterns:
+Supported parameter patterns (legacy v0.8 substrate shapes, not target
+pattern syntax):
 
 ```text
 t: type
@@ -45,12 +46,17 @@ The restricted semantics are:
 
 - `t: type` and `u: type` are binders that match any supported type-pattern
   argument and bind the matched argument value for a selected body;
-- `_ unit: type`, `_ if: type`, and `_ else: type` are discard plus named
-  type-pattern matches against the argument top pattern name;
-- `_ if | else: type` is a restricted pattern-side or-pattern that matches
-  `if` or `else` and does not match `unit`;
+- `_ unit: type`, `_ if: type`, and `_ else: type` are legacy substrate
+  discard-plus-named type-pattern matches against the argument top pattern
+  name;
+- `_ if | else: type` is a legacy substrate restricted pattern-side or-pattern
+  that matches `if` or `else` and does not match `unit`;
 - the `|` in `_ if | else` is pattern-context material, not policy union and
   not expression-level operator lookup.
+
+These `_ unit` / `_ if` / `_ else` / `_ if | else` shapes are transitional
+implementation substrate, not target pattern-language surface; the canonical
+pattern-space model is owned by the patterns-overload design documents.
 
 Supported argument shapes are produced from normalized/product-derived material,
 not raw source text. The intended bridge remains:
@@ -72,7 +78,8 @@ does not trigger special reduction inside overload selection.
 The ordinary-initializer path now consumes this restricted candidate model under
 the default `MetaPartial` strategy. `let X: type = int + unit;` succeeds because
 the argument shape for `int + unit` selects the source-declared identity
-overload `(self, t: type, _ unit: type): meta -> ...`, and the selected body
+overload `(self, t: type, _ unit: type): meta -> ...` (legacy substrate
+shape), and the selected body
 forwards `t`. The left-hand `: type` annotation is only checked after this RHS
 result exists; it does not cause the RHS meta evaluation.
 
@@ -108,9 +115,9 @@ specificity(P, E) =
 ```
 
 Comparison is lexicographic. Declaration order is not part of this tuple and
-is not a semantic priority. For or-patterns, v0.8 uses the selected alternative
-for specificity so `_ if | else` does not outrank `_ if` merely because it
-mentions more alternatives.
+is not a semantic priority. For the legacy `_ if | else` or-pattern, v0.8 uses
+the selected alternative for specificity so `_ if | else` does not outrank
+`_ if` merely because it mentions more alternatives.
 
 ## 1. Purpose
 
@@ -408,9 +415,12 @@ not a lowering target.
 
 The `pass expectation` on a `ParameterShape` and the `explicit pass mode` /
 `is value?` facts on a `RawArgShape` are consumed by the mechanical
-argument-passing layer, which inserts a concrete pass action (move/ref/share/copy)
-after or within candidate adaptation. Pass matching is separate from type
-matching: pass mode is not part of `TypeValueId`. See
+argument-passing layer, which inserts a concrete default pass action
+(move/copy) after or within candidate adaptation; under
+`NoImplicitBorrowFormation`, automatic insertion never inserts `ref`, `share`,
+or `@` — an actual must already contain an explicit `ref` or `share` result.
+Pass matching is separate from type matching: pass mode is not part of
+`TypeValueId`. See
 `spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
 ## 7. Applicability judgment
