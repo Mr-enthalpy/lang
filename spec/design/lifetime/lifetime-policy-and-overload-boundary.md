@@ -1,8 +1,10 @@
 # Lifetime Policy, `@`, and the Overload Boundary
 
 Status: canonical target semantics for the `@` operation and the lifetime/
-ordinary-overload boundary. The `@` overload groups and the escape check defined
-here are unimplemented target semantics; §6 registers the implementation debt.
+ordinary-overload boundary. The `@` place-observation and the escape check
+defined here are unimplemented target semantics; §6 registers the implementation
+debt. The full lifetime algebra of `@` (region representation, `LifetimeVal`
+shape, ordering) is deliberately left unfrozen.
 
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by
@@ -10,190 +12,141 @@ split, and the `ref` / `share` / `rebind` operations are owned by
 construction-lineage `Open_Γ(value)` is owned by
 [`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-## 1. `@` is an ordinary place-sensitive operation
+## 1. `@` is a privileged place-observation operation
 
 `@` is a normal overloaded operation. It is not a syntax-only marker, not a
 reserved lexical territory without semantics, and not exempt from overload
 resolution:
 
 ```text
-E@ = ObservePlace_policy( CarrierPlace(E), Value(E) )
+Apply(@, E):
+  p := privileged-place-of-actual(E)
+  return LifetimeVal(p)
 ```
 
-`CarrierPlace(E)` is the carrier slot through which `E` was read. This place
-sensitivity is what distinguishes `@` from `ref` and `share`, which consume only
-`Read(E)` — the complete object read out of the slot, never the slot itself. An
-expression with no carrier place — a freshly computed temporary — supplies none,
-so no *place-observing* `@` candidate applies to it. The borrow-type-value fixed
-points of §2.3 do not consult `CarrierPlace`; they stabilize the classifier
-universe and are not an existing-borrow-value overlap or retargeting rule.
+`@` still applies to an expression syntactically, but obtaining the place is an
+implicit privilege of the builtin application itself: there is no user-callable
+`PlaceOf(E)`, and an ordinary user function cannot obtain the same place merely
+by writing a matching parameter Pattern. The produced lifetime value depends on
+the abstract place `p`; this is not a Rust-style "borrow a generic lifetime
+parameter" operation.
 
-`@` is **not** a general `PlaceOf(E)` defined on every expression. Its candidate
-set is nevertheless closed: the two instance groups of §2, dispatched by the
-`Val1` dimension, plus the borrow-type-value fixed point of §2.3. There is no
-third, generic
-"address of this expression" meaning to fall back on.
+`@` is **not** a borrow constructor. It yields a lifetime value, never a borrow
+view. Borrow formation belongs to `ref` and `share`, which share the same
+privileged place acquisition when the builtin family needs the actual's place
+(§2). An expression with no abstract place — a freshly computed temporary —
+supplies none, so no `@` candidate applies to it.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
 policy is not a fifth stage in that dimension. `@` is evaluated at a stage; it
 does not name one.
 
-## 2. The two base overload groups of `@`
+## 2. Privileged place acquisition: `@`, `ref`, and `share`
 
-`@` has two positively defined **instance** overload groups, selected by whether
-the observed object carries an internal `Val1` payload. A borrow **type value**
-is matched first by the universe fixed point of §2.3; an ordinary value instance
-whose Pattern happens to be a borrow type still follows the `Val1` dispatch.
-Neither instance group is a general
-"take a borrow" facility: for a value-bearing operand that job already belongs to
-`ref`. The whole dispatch is:
+`@`, `ref`, and `share` belong to one privileged builtin callable family: each
+is a builtin application that may obtain the place of its actual argument.
 
 ```text
-E is a borrow type value       ->  §2.3
-else Val1?( Value(E) ) ≠ null  ->  §2.1
-else Val1?( Value(E) ) = null  ->  §2.2
+builtin application may obtain place from actual argument
 ```
 
-### 2.1 Value-bearing objects: lifetime facts
+This permission attaches to the builtin callable-family identity, not to
+ordinary function parameters. An ordinary user function that spells the same
+formal head still cannot obtain the actual's place.
+
+The three members produce different results:
 
 ```text
-Val1?(x) ≠ null
-policy   = lifetime policy stage
---------------------------------------------
-CarrierPlace(E) × Value(E)  ->  LifetimeFact
+@      -> LifetimeVal(p)
+ref    -> ref borrow formation over the value / place
+share  -> share borrow formation over the value / place
 ```
 
-A `LifetimeFact` is the observation of the origin's region/provenance relation.
-It is produced at the lifetime policy stage, which runs after ordinary overload
-selection has already completed (§4). Spellings such as `val@`, `val@.region`,
-and `val@.origin` project components of that fact.
-
-This is the established meaning of `@` on a complete object shape
-`⟨ Val1, P, Val2 ⟩`: **taking its lifetime**. Narrowing the borrow-producing
-group to pure pattern slots (§2.2) does not disturb it. The two groups have
-disjoint premises (`Val1?(x) ≠ null` versus `Val1?(x) = null`) and different
-results, so neither competes with the other and neither is a fallback for the
-other.
-
-This group yields a fact, not a borrow. There is deliberately **no** compile-stage
-borrow-producing candidate for a value-bearing operand:
-
-```lang
-s ref   // borrows Read(s), the complete symbol value — the ordinary way to borrow
-s@      // lifetime observation of s; not a way to obtain a borrow
-```
-
-Removing a borrow meaning from `s@` therefore removes nothing from `@`: the
-lifetime observation was always what `@` meant on a value-bearing operand.
-
-### 2.2 Pure pattern slots: `P ref`
-
-```text
-Val1?( Value(E) ) = null
-CarrierPlace(E) = q
-policy ∈ { compile, lifetime policy }
-CanBorrowRef_Γ(q)
---------------------------------------------
-E@ : P ref
-Target(E@) = q
-```
-
-Observing the carrier slot of a pure pattern value yields a reference to that
-slot's pattern component. This group is available at compile stage as well,
-because a compile-stage computation legitimately needs to reach a pattern slot it
-was given.
-
-This group is the whole reason `@` exists. A type-valued binding stores the
-complete closure `tau = <Q,V_T>`, but its ordinary value observation is
-`Core(tau) = Q`. Because `Q` is pure, `ref` borrows that ordinary Object
-observation while `@` borrows the carrier slot that stores the complete type
-closure:
-
-```lang
-let t: type = uint8;
-
-t ref   // uint8 ref — a correct borrow of the value that was read
-t@      // type ref — the pure type carrier slot
-```
-
-`t ref` is not an error to be repaired. A value-directed operation has no basis
-for guessing that the writer meant the slot underneath, and nothing is inserted
-to bridge the gap: `s ref` is never elaborated into `s |> type ref`, because an
-operand position performs no implicit type conversion. `@` bridges it explicitly
-by taking `CarrierPlace(E)` as input.
-
-The selector is the `Val1` dimension of the ordinary Object observation, never
-the fact that a complete type closure also carries `V_T`. A value-bearing
-operand needs no carrier observation to be borrowed: for `s : symbol` the
-payload exists (`Val1(Symbol) = Σ = ⟨Q?, V⟩`), so `s ref` is the ordinary
-"form a borrow of this value" operation. An explicit `E |> type` is
-well-formed exactly when `E` supplies a unique pure role member `Q` with
-`TypeRole(Q)` and therefore the complete `tau = <Q,TypeMemberSet(Q)>`, never
-merely because it carries a `Val1` dimension. The projection is also never
-supplied implicitly.
-The value-side rules and the full classification are owned by
+`ref` and `share` keep their ordinary value semantics: `E ref = Ref(Read(E))`
+and `E share = Share(Read(E))` (canonical owner
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5.1.1–§5.2.1.
+§5). For `let t: type = uint8`, `t ref` remains `uint8 ref` — a correct borrow
+of the value that was read. When the source surface must reach a higher-level
+place explicitly, it selects the higher-level `ref` / `share` candidate:
 
-This explicitness is also an overload boundary. Candidate adaptation, policy
-migration, and automatic argument passing never form a borrow merely because a
-formal requires `T ref` or `T share`:
+```lang
+t |> type ref    // explicit higher-level ref formation
+t |> type share  // explicit higher-level share formation
+```
+
+`type ref` is the ordinary type construction `type |> ref`, and `type share` is
+`type |> share`; they are not special tokens and not produced by `@`. A
+`type ref` is a type value; an instance `r : type ref` carries the borrow
+content (target place, capability, lifetime relation) as a borrow instance, not
+as the type value itself.
+
+The source formal head of the builtin `ref` / `share` members is not ordinary
+move-in parameter semantics:
+
+```lang
+mut let ref =
+    (self, mut let object: t):
+    runtime||compile -> _: t ref
+    => default;
+```
+
+The head's `object : t` displays the candidate head, Pattern, and policy so the
+member participates in ordinary overload resolution. It must not be read as
+`Read(actual) -> move/copy -> fresh ordinary parameter object`: at application
+the builtin member may obtain the corresponding place from the actual. This is
+the explicit formalization of the privileged actual-place semantics that the
+generated/builtin `ref` / `share` callables already had, not a new arbitrary
+place-reflection facility.
+
+### 2.1 `@` yields a lifetime value, uniformly
+
+The former dispatch by the `Val1` dimension is retired. There is no second,
+borrow-producing group and no pure-pattern-slot special case:
+
+```text
+E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)
+```
+
+The retired forms do not return:
+
+```text
+Val1?(x) ≠ null  ->  LifetimeFact        (retired as a separate @ group)
+Val1?(x) = null  ->  P ref               (retired: @ is not a borrow constructor)
+t@ : type ref                            (retired)
+type ref@ = type ref                     (retired)
+type share@ = type share                 (retired)
+```
+
+`@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
+binding's ordinary value observation is `Core(tau)=Q`; reaching the type-level
+place is done explicitly with `t |> type ref` (or `(S ref).type` for a Symbol),
+never by `@`. `AsType(S) = S |> type` remains by-value and is never followed by
+`@` to recover a place.
+
+The complete lifetime algebra of `@` is deliberately **not frozen** here: the
+concrete representation and granularity of a region, the shape of `LifetimeVal`
+and its region/origin projections, and whether it is a first-class storable
+value are open questions (§6). This section freezes only the responsibility
+boundary — privileged place observation producing a lifetime value — and the
+fact that `@` is not a borrow constructor.
+
+### 2.2 No implicit borrow formation
+
+The overload boundary stays:
 
 ```text
 NoImplicitBorrowFormation
 ```
 
-The actual must already contain the explicit `ref`, `share`, or `@` result.
-Fixed points and legal weakening of an existing borrow do not form a new target.
+Candidate adaptation, policy migration, and automatic argument passing never
+form a borrow merely because a formal requires `T ref` or `T share`. The actual
+must already contain the explicit `ref` or `share` result; a `@` result is a
+lifetime value, not a borrow. Fixed points and legal weakening of an existing
+borrow do not form a new target.
 
-`Val1?(Value(E))` selects the overload group; it does not decide construction
-openness. Because the result refers to `q = CarrierPlace(E)`, ordinary borrow
-formation checks `q`'s addressability, policy, lifetime, and requested
-capability. It does **not** ask whether the current contents are Open. For
-`let t: type = uint8`, a frozen but live and borrowable `CarrierPlace(t)` may
-therefore still yield `type ref`.
-
-Consequently the two judgments remain independent:
-
-```text
-Γ ⊢ t@ : type ref  does not imply Open_Γ(Read(t@))
-Open_Γ(Value(q))   does not imply CanBorrowRef_Γ(q)
-```
-
-For a Symbol `S`, the distinct ordinary field path is `(S ref).type : type ref`;
-`AsType(S)` remains by-value and is never followed by `@` to recover a place.
-
-### 2.3 Borrow type values are fixed points; borrow instances are not
-
-Universe overlap is selected only when the operand denotes the borrow **type
-value** itself:
-
-```text
-type ref@    = type ref
-type share@  = type share
-
-rank(type ref)               = rank(type)
-rank(type share)             = rank(type)
-rank(type ref/share rebind)  = rank(type)
-```
-
-These equations prevent a borrow classifier from manufacturing an ever-higher
-classifier. They are not an identity overload for every value whose Pattern is
-a borrow type.
-
-Once an expression evaluates to a borrow **value instance**, that value carries
-`Val1` and §2.1 applies:
-
-```lang
-let t: type ref = ...;
-t@;                         // LifetimeFact(t)
-```
-
-The lifetime observed is the lifetime of the instance `t`, not a second borrow
-of its referent and not the borrow type value. The former blanket rule
-`E : BorrowView => E@ = E` is retired.
-
-The independent borrow-constructor overlap remains:
+Borrow-constructor composition remains a `ref` / `share` fact, owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§5.3:
 
 ```text
 Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))
@@ -208,11 +161,6 @@ fixed points:
 type ref rebind rebind   = type ref rebind
 type share rebind rebind = type share rebind
 ```
-
-None of these constructor equations changes the value-instance meaning of `@`.
-The full table is owned by
-[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5.3.
 
 Prospective navigation identity and formed-borrow identity are also distinct:
 
@@ -316,13 +264,14 @@ strictly ordered, and each one is finished before the next begins:
 
 ```text
 1. ordinary selection inside the operand   -> the operand value and its carrier place
-2. ordinary selection of `@` itself        -> one candidate, from the groups visible
-                                              in the operand's policy stage (§2)
+2. ordinary selection of `@` itself        -> one candidate: the privileged
+                                              place-observation visible in the
+                                              operand's policy stage (§2)
 3. lifetime validation                     -> accept or reject steps 1 and 2
 ```
 
 Step 2 uses the ordinary selector, not a lifetime-specific one; the policy stage
-only bounds which candidate groups are visible. Step 3 never reselects steps 1 or
+only bounds which candidate is visible. Step 3 never reselects steps 1 or
 2 — that is the whole content of this section. So "the lifetime stage runs after
 ordinary selection has completed" and "`@` is itself resolved by ordinary
 selection" describe steps 3 and 2 respectively, and neither feeds back into the
@@ -354,8 +303,7 @@ consumes.
 Semantics closed here, not yet built:
 
 ```text
-the `@` operation, both instance groups, and borrow-type fixed point of §2
-LifetimeFact and its region/origin projections
+the privileged `@` place-observation (builtin callable family) and `LifetimeVal`
 the escape check of §3 at all four destination classes
 the lifetime policy stage as an evaluation stage
 CheckableCaptureForm construction at closure materialization
@@ -363,10 +311,10 @@ CheckableCaptureForm construction at closure materialization
 
 Still genuinely open engineering questions, not closed by this document:
 
-- the concrete representation and granularity of a region (lexical block,
-  construction anchor, or a finer relation);
-- whether `LifetimeFact` is a first-class value that user code may store, or an
-  observation consumed only by checking;
+- the full `@` lifetime algebra: concrete representation and granularity of a
+  region (lexical block, construction anchor, or a finer relation), the shape of
+  `LifetimeVal`, and whether it is a first-class value that user code may store
+  or an observation consumed only by checking — deliberately not frozen (§2.1);
 - diagnostics and caching identity for lifetime validation;
 - borrow/move/copy defaults, closure ABI, and environment layout, which remain
   the mechanical-lowering design's territory.
@@ -374,7 +322,10 @@ Still genuinely open engineering questions, not closed by this document:
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff
 objects, ABI equivalence classes used for selection, refinement ordering or a
-refinement phase, or Horae semantics.
+refinement phase, or Horae semantics. The retired `@` forms — the two instance
+groups (`Val1?(x) ≠ null -> LifetimeFact`, `Val1?(x) = null -> P ref`),
+`t@ : type ref`, and the borrow-type fixed points `type ref@ = type ref` /
+`type share@ = type share` — do not return.
 
 Related canonical contracts:
 

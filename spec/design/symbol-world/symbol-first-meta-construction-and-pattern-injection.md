@@ -174,10 +174,19 @@ tau = bind alpha. <Q, V_T[alpha]>
 ```
 
 `TypeProjection` is single-valued because `Q` and its direct TypeMember
-partition determine this closure. Complete type identity and keying use
-`Norm_type(tau)`; ordinary Pattern, namespace, and `ref` observations use
-`Core(tau) = Q`. `@` instead observes the carrier slot storing the whole closure
-and yields `type ref`. The closure is not normalized as a fourth kind of Object.
+partition determine this closure. Per the minimal-change rule
+(`type-values-places-and-borrow-views.md` §2.2), ordinary type-rank equality,
+keying, and type-argument identity keep observing `Core(tau) = Q` exactly as
+under the former `type = Q` rules; `Addr(Norm_type(tau))` is the snapshot
+identity, used to tell shared-root snapshots apart in transport and in
+positions the language has independently frozen to whole-snapshot semantics.
+Ordinary Pattern, namespace, and `ref` observations also use `Core(tau) = Q`;
+type-as-callee candidate acquisition uses `CallSpace(tau) = V_T`. `@` is the
+privileged place-observation operation that yields a lifetime value and never
+a `type ref` (canonical owner
+`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2); reaching the
+type-level place explicitly uses `t |> type ref` or `(S ref).type`. The closure
+is not normalized as a fourth kind of Object.
 
 References from members in `V_T` to the current type use the canonical binder:
 
@@ -186,10 +195,11 @@ Norm_type^alpha(Self_T) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
-After those authorized references are erased, the owned graph must remain
-finite and acyclic. This is not a general recursive-Object rule; the complete
-normalization contract is owned by
-`type-values-places-and-borrow-views.md` §2.2.
+After those authorized references are erased, the owned graph must satisfy
+`WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite
+under meta/static generation and acyclic once materialized at runtime. This is
+not a general recursive-Object rule; the complete normalization contract is
+owned by `type-values-places-and-borrow-views.md` §2.1–§2.2.
 
 An implementation may cache role projections in separate buckets, but those
 caches are transitional substrate, not two semantic Objects. This is not a
@@ -223,12 +233,14 @@ AsType(E) != TypeOf(E)
 ```
 
 `AsType` neither raises universe rank nor manufactures a carrier place. Only
-explicit type-of extraction may obtain the next classifier. `@` never supplies
-`AsType` implicitly. A Symbol's `.type` family is applicable exactly when its
-unique `Q` satisfies `TypeRole`: `S.type` reads the complete type snapshot by
-value, `(S ref).type` projects `type ref`, and
-`(S share).type` projects `type share`. Only an already-pure type slot uses
-direct `t@`.
+explicit type-of extraction may obtain the next classifier. `@` is the
+privileged place-observation operation and yields a lifetime value; it never
+supplies `AsType` implicitly and never forms a borrow. A Symbol's `.type`
+family is applicable exactly when its unique `Q` satisfies `TypeRole`:
+`S.type` reads the complete type snapshot by value, `(S ref).type` projects
+`type ref`, and `(S share).type` projects `type share`. Reaching the
+type-level place of an already-pure type slot uses `t |> type ref`, not `@`
+(the retired carrier-slot form `t@` does not return).
 
 Each cluster member carries its own complete Policy view; the cluster itself
 stores no flat Symbol-level Policy. The cluster-level Policy exists only as a
@@ -306,9 +318,11 @@ PlaceId:
   identity of the bindable/openable installation location
 
 TypeValueId:
-  stable first-order root of Core(tau) (registry projection); the full
-  type-closure semantic identity is Addr(Norm_type(tau)), not the bare
-  TypeValueId
+  stable first-order root of Core(tau) (registry projection); it is the
+  default observation of ordinary type equality and keying under the
+  minimal-change rule. Addr(Norm_type(tau)) is the whole-snapshot identity,
+  used to tell shared-root snapshots apart in transport and in positions the
+  language has independently frozen to whole-snapshot semantics
 
 PatternValue identity:
   canonical identity of an ordinary compile-time value, type value, or
@@ -1148,9 +1162,10 @@ Canonical argument identity follows parameter rank:
 
 ```text
 symbol parameter -> SymbolId / symbol-place identity
-type parameter   -> canonical observation of the evaluated type closure
-                    = Addr(Norm_type(tau))   (TypeValueId is only the
-                      first-order root, never the argument identity)
+type parameter   -> default Core(tau) = Q observation (first-order
+                    TypeValueId), exactly as the old `type = Q` rules did;
+                    whole-snapshot Addr(Norm_type(tau)) identity applies only
+                    where the language has independently frozen it
 value parameter  -> PatternValue identity
 ```
 
@@ -1358,7 +1373,7 @@ write still applies. A write `lhs = rhs` is checked in four independent layers:
      -- a type share is not a write target; bare = never creates None
 
 3. result-object invariants
-     WellFounded(v)
+     WellFounded_kappa(v)
      Canonicalizable(v)
      NoForbiddenCycle(v)
      -- a write forming a non-normalizable Val2 cycle fails, even when it comes
@@ -1387,10 +1402,10 @@ does **not** exempt the result from layers 2–4 — the write result must still
 satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
-This distinction does not cancel `let f::(t@) = expr` for an already-pure type
-slot, or `let f::((S ref).type) = expr` for a Symbol whose `Q` satisfies `TypeRole`
-(ordinary `Val2` member creation at an explicit type place), and does not change the `r;`
-terminal semantics. The current
+This distinction does not cancel `let f::(t |> type ref) = expr` for an
+already-pure type slot, or `let f::((S ref).type) = expr` for a Symbol whose
+`Q` satisfies `TypeRole` (ordinary `Val2` member creation at an explicit type
+place), and does not change the `r;` terminal semantics. The current
 `let r =` binding-to-return-value with no-shadow is a transitional encoding, not
 the target rule.
 
@@ -3234,7 +3249,7 @@ Core(TypeValue(T)) = Core(TypeValue(U)) = Q_uint8
 Place(T)  != Place(U)  != Place(uint8)
 ```
 
-`let f::(T@)` therefore creates beneath `T`'s own pure-type place, and
+`let f::(T |> type ref)` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
 Symbol-to-type projection and is not this operation. The ordinary associated
 installation updates only `T`'s carrier-local `Val2` observation; it neither
@@ -3286,10 +3301,10 @@ own member views, and the layered exposure conjunction on explicitly
 navigated targets are implemented in `crates/lang_build`. Still open debt:
 the associated-extension entry point is reached only through a still-open
 construction, so it resolves the target object from the constructed
-Pattern; source-level `let f::(U@)` against an already installed pure-type
-rebinding carrier, navigation through that explicit `type ref` view, and
-writability checking of the selected place remain future implementation work.
-Bare `let f::U` is not shorthand for obtaining the carrier place.
+Pattern; source-level `let f::(U |> type ref)` against an already installed
+pure-type rebinding carrier, navigation through that explicit `type ref` view,
+and writability checking of the selected place remain future implementation
+work. Bare `let f::U` is not shorthand for obtaining the type-level place.
 
 The two operations may target the same still-open construction, but one source
 value is not simultaneously interpreted under both judgments.

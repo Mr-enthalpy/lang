@@ -86,13 +86,18 @@ PatternValue identity
   ```
 
   Two closures may have the same `TypeValueId`/core root while carrying
-  different immutable `V_T` snapshots, so bare `TypeValueId` comparison is
-  legitimate only as a first-order projection check — never as canonical
-  type-value equality or a canonical argument key.
+  different immutable `V_T` snapshots. Bare `TypeValueId` comparison remains the
+  default observation of ordinary type equality, keying, and type-argument
+  identity, exactly as under the former `type = Q` rules (minimal-change rule,
+  §2.2); `Addr(Norm_type(tau))` is the snapshot identity, used to tell
+  shared-root snapshots apart in transport and in positions the language has
+  independently frozen to whole-snapshot semantics.
 - `PatternValue identity` is ordinary Object identity. A type value participates
-  in Pattern/value/namespace observation through `Core(tau) = Q`; type-rank
-  equality, keying, copying, `extend`, and invocation observe the complete
-  `Norm_type(tau)` instead.
+  in Pattern/value/namespace observation through `Core(tau) = Q`. Per the
+  minimal-change rule, ordinary type-rank equality, keying, and type-argument
+  identity keep observing that core by default; `CallSpace(tau)=V_T` supplies
+  type-as-callee candidates; and copying, `extend`, and `inject` transport or
+  transform the whole snapshot including `V_T`.
 
 These identities are independent. None implies another:
 
@@ -415,8 +420,9 @@ place(x) -> Read(place(x))
 ```
 
 For a type-valued binding that read is the complete immutable `tau` snapshot.
-Type identity therefore follows `Norm_type(tau)`, including both its core and
-callspace:
+Snapshot identity follows `Norm_type(tau)`, including both its core and
+callspace; ordinary type equality/keying defaults to the core observation
+`Core(tau)=Q` (minimal-change rule, §2.2):
 
 ```text
 Norm(Q_x) = Norm(Q_y) and Norm_V(V_x) = Norm_V(V_y)
@@ -427,7 +433,10 @@ Norm(Q_x) != Norm(Q_y) or Norm_V(V_x) != Norm_V(V_y)
 ```
 
 The first line holds even when the closures are stored in different places; the
-second holds even when two snapshots share a first-order root. A list of
+second holds even when two snapshots share a first-order root. These equations
+state when two snapshots are the same snapshot; they do not by themselves decide
+which observation a particular old rule must use (see the classification in
+§2.2). A list of
 allocated value ids under each name is not a normal form:
 allocation order is not semantic content, so the walk must resolve each name to
 its cluster symbol and normalize that symbol's own members.
@@ -483,22 +492,35 @@ override a defined Pattern-specific quotient such as `P_symbol` above.
 
 Complete type values contain one tightly scoped normal-form binder
 back-reference, defined below. Such a `BoundRef(alpha)` is not an owned child
-edge. After erasing those authorized back-references, re-entering any object
-still on the active recursion stack through any positive owned path proves a
-well-foundedness violation:
+edge. Well-foundedness is stage/policy-sensitive:
+
+```text
+WellFounded_kappa(x)
+
+meta/static (kappa = meta):
+  terminating finite generation; restricted P*Val2 back-references admitted
+  as finite-graph compression (BoundRef(alpha) is the canonical instance)
+
+runtime (kappa = runtime):
+  the materialized owned graph must remain acyclic; a back-reference cannot
+  be reified into a real ownership cycle
+```
+
+Re-entering any object still on the active recursion stack through any positive
+owned path proves a violation at the stage where the cycle is materialized:
 
 ```text
 x ∈ ActiveStack
 ∧ x ∈ Children_owned+(x)
 --------------------------------
-NoNormalForm(x)
+NoNormalForm_kappa(x)
 ```
 
 Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
-`Val2` such as `let loop::t = t;` all have **no normal form**. A finished shared
-acyclic subtree remains valid DAG reuse. `Self_T` does not weaken this rule: it
-is the one bound normal-form reference below, not an Object edge and not a
-general recursive-data constructor.
+`Val2` such as `let loop::t = t;` all have **no normal form** at the stage where
+they are materialized. A finished shared acyclic subtree remains valid DAG
+reuse. `Self_T` is one restricted static back-reference instance, not the one
+exceptional cycle, and not a general recursive-data constructor.
 
 ### 2.2 Complete type values are closed snapshots over Object cores
 
@@ -536,10 +558,23 @@ NamespaceView(tau)    = Q
 ```
 
 Thus ordinary `ref`, Pattern observation, and namespace navigation retain their
-pre-closure behavior over `Q`. `@` retains its distinct carrier-place behavior:
-on a type-valued slot it produces `type ref` to the slot storing the whole
-closure. The complete closure is otherwise observed by type-valued
-copy/equality/keying, type-as-callee, `extend`, and `inject`.
+pre-closure behavior over `Q`. Observation is classified by the minimal-change
+rule:
+
+```text
+old rule observed type = Q
+  -> keep observing Core(tau) = Q        (equality, keying, type-argument
+                                          identity, ordinary compatibility)
+type-as-callee candidate acquisition
+  -> CallSpace(tau) = V_T
+snapshot transport / copy / extend / inject
+  -> the whole tau snapshot, including V_T
+```
+
+`@` is not part of this classification: it is the privileged place-observation
+operation that yields a lifetime value (canonical owner
+`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2) and never a
+borrow or a `type ref`.
 
 When members refer to the current type, the closure has the binder-aware normal
 form:
@@ -560,10 +595,15 @@ BoundRef(alpha) notin Children_owned
 This is the normal form of the type closure, not `Norm(Q)` and not a second
 shape for `Norm(Object)`. Alpha-renaming is non-semantic. Removing the
 authorized binder back-references must leave the owned Object/member graph
-finite and well-founded:
+finite for meta/static generation and, once materialized at runtime, acyclic
+(`WellFounded_kappa`, §2.1):
 
 ```text
-EraseBackRefs(OwnedGraph(tau)) is finite and acyclic
+WellFounded_meta(tau):
+  EraseBackRefs(OwnedGraph(tau)) is finite
+
+WellFounded_runtime(tau):
+  the materialized owned graph is acyclic
 ```
 
 The binder is not a `mu`-type, an equi-recursive type rule, or permission for
@@ -617,11 +657,11 @@ Place resolution:
 means a declaration extension / namespace injection / assignment-like operation
 resolves `x` to a writable place `p`.
 
-These are not interchangeable. Canonical creation beneath a pure type slot uses
-`@` directly on that slot:
+These are not interchangeable. Canonical creation beneath a pure type slot
+selects the explicit higher-level ref of that slot:
 
 ```lang
-let f::(t@) = ...;
+let f::(t |> type ref) = ...;
 ```
 
 When the source is instead a Symbol `S`, the Symbol must first be borrowed and
@@ -682,14 +722,16 @@ ordinary binding path may recover associated operations by mapping
 
 The same separation applies inside derived semantic material. A struct field,
 callable signature, canonical argument key, or extraction view that denotes a
-type consumes the canonical observation of the evaluated complete closure
-(`Addr(Norm_type(tau))`; the bare `TypeValueId` is only its first-order root):
+type observes the default `Core(tau)=Q` (first-order `TypeValueId`), exactly as
+the old `type = Q` rules did; `Addr(Norm_type(tau))` remains available where the
+language has independently frozen whole-snapshot identity (transport,
+distinguishing shared-root snapshots):
 
 ```text
 field source path
   -> carrier Symbol
   -> read TypeValue tau
-  -> record Addr(Norm_type(tau)) as field-type identity
+  -> record Core(tau) = Q as field-type identity
 ```
 
 An implementation may temporarily retain the carrier Symbol for graph
@@ -888,7 +930,7 @@ type construction is rejected.
 Consequently, associated-member creation through `T`:
 
 ```text
-let f::(T@) = ...
+let f::(T |> type ref) = ...
 ```
 
 executes:
@@ -932,7 +974,7 @@ not itself a `TypeValueId`.
 A concrete numeric key selects a type object such as `uint16` or `float32`.
 Current Rust code carries the first-order `TypeValueId` projection derived from
 the installed canonical core Type symbol. That projection is transitional
-material and does not claim final canonical type-value equality:
+material and does not claim final whole-snapshot type-value identity:
 
 ```text
 literal spelling
@@ -990,15 +1032,12 @@ on.
 
 #### 5.1.0 The referent of `ref` is the object's own place, never the carrier slot
 
-`ref` and `@` observe two different places, and the reason they cannot collapse
-is that they take different coordinates as input. A read yields both a value and
-the coordinate of the object that value is (its `ObjectPlace`), and that
-coordinate is what `ref` borrows:
+`ref` borrows the ordinary object place of the value it reads, not the carrier
+slot that the binding occupies:
 
 ```text
 Read(E)      = ⟨ value, ObjectPlace(value) ⟩
 E ref        = Ref( value, ObjectPlace(value) )
-E@           = RefCarrierSlot( CarrierPlace(E) )
 
 ObjectPlace(value) ≠ CarrierPlace(E)
 ```
@@ -1007,11 +1046,10 @@ ObjectPlace(value) ≠ CarrierPlace(E)
 itself. For `let t: type = uint8`, `TypeValue(t)=tau_uint8` while
 `Read(t)=OrdinaryValue(tau_uint8)=Q_uint8`, so `t ref` is a `uint8 ref` whose
 referent is `Q_uint8`'s resident/global Object place,
-**not** `CarrierPlace(t)`. Keeping the two coordinates distinct is exactly why
-`t ref` (the value's object place) and `t@` (the pure type carrier slot `t`) do
-not merge;
-letting `ref` fall back to `CarrierPlace(E)` would erase the whole point of `@`
-(§5.2).
+**not** `CarrierPlace(t)`. Reaching the carrier slot of a type-valued binding
+explicitly uses `t |> type ref`, which forms a borrow view over the type-level
+place; `ref` never falls back to `CarrierPlace(E)` and never elaborates a
+higher-level `type ref` implicitly (§5.2).
 
 A value with no stable object place — a freshly computed temporary that resides
 nowhere and carries no borrowable object identity — supplies no
@@ -1020,9 +1058,9 @@ materializes storage on the writer's behalf and never silently retargets to the
 carrier slot; a temporary must first be bound to a named place (giving it an
 object place) before it can be borrowed.
 
-Both are ordinary meta-function calls on that result. Neither asks which symbol
-slot the value came out of, and neither consults, captures, or exports it.
-Therefore:
+`ref` is an ordinary meta-function call on the read result. It does not ask
+which symbol slot the value came out of, and does not consult, capture, or
+export it. Therefore:
 
 ```lang
 let t = uint8;
@@ -1031,8 +1069,8 @@ let r = t ref;
 
 binds `r` to `uint8 ref` — a borrow view of the ordinary core `Q_uint8` — and not to
 a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
-`r`. Because `t` is already a pure type slot, the slot itself is reached by
-`t@` (§5.2). A Symbol's type-member slot instead uses `(S ref).type`.
+`r`. Reaching the type-level carrier slot of a pure type binding uses
+`t |> type ref` (§5.2). A Symbol's type-member slot instead uses `(S ref).type`.
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
 uses: a `share` view admits reading and passing but is not an assignable place
@@ -1112,84 +1150,77 @@ fixed points and weakening on an **existing** borrow (`ref ref`, `share share`,
 and `ref share`) remain valid (§5.3), as does the separately specified implicit
 `self` capability of a callable frame; neither is ordinary argument repair.
 
-### 5.2 `@` is the carrier-slot operation
+### 5.2 Reaching the type-level place: `t |> type ref`
 
-`@` is the only borrow operator that consults where its operand came from. In its
-borrow-producing group that is:
-
-```text
-E@ = RefCarrierSlot( CarrierPlace(E) )
-```
-
-`@` is an ordinary overloaded operation, not a syntax-only marker and not
-excluded from overload resolution. Its overload groups are specified in
-`../lifetime/lifetime-policy-and-overload-boundary.md`, which is the canonical
-owner of `@`. This document states only the facts that belong to the place/value
-model:
+The ordinary `ref` operator borrows the value that was read (`Core(tau)=Q`),
+not the carrier slot that stores the complete closure. Reaching that
+type-level place is an explicit higher-level construction, not an implicit
+fallback of `ref`:
 
 ```text
-CarrierPlace(E) is required input to @ and is not required input to ref / share
-E@ is undefined when E has no carrier place (a freshly computed temporary)
-@ is not a general PlaceOf(E) available on every expression
+t |> type ref     -- explicit higher-level ref formation over the type-level place
+t |> type share   -- explicit higher-level share formation
 ```
 
-The last line is a domain restriction, not a style rule: the borrow-producing
-group of `@` exists for pure pattern slots (§5.2.1), and a value-bearing operand
-has no borrow-producing `@` candidate at all, because `ref` already expresses
-that borrow. On a complete `⟨ Val1, P, Val2 ⟩` object, `@` is the lifetime
-observation — a different operation with a different result, and one this
-document does not narrow.
+`type ref` is the ordinary type construction `type |> ref`, and `type share` is
+`type |> share`; they are not special tokens and not produced by `@`. The
+builtin `ref` / `share` callables belong to the privileged builtin family that
+may obtain the actual's place (canonical owner
+`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2); an ordinary user
+function spelling the same formal head cannot.
 
-#### 5.2.1 `@` exists because a pure pattern read hides the carrier slot
+The domain restriction remains:
 
-`@` is not a stylistic alternative to `ref`, and it is not the borrow operator
-of types. It fills exactly one gap: when `Val1(Σ) = ⊥`, the ordinary read has
-already selected the pure pattern facet, so the carrier slot is no longer
+```text
+E |> type ref is undefined when E has no carrier place (a freshly computed temporary)
+t |> type ref is not a general PlaceOf(E) available on every expression
+```
+
+The former carrier-borrow `@` group that yielded `type ref` is retired: `@` is
+a privileged place-observation operation that yields a lifetime value, never a
+borrow view and never a `type ref`
+(`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
+carrier slot explicitly uses `t |> type ref` or `(S ref).type`.
+
+#### 5.2.1 The type-level place is hidden by an ordinary read
+
+When `Val1(Σ) = ⊥` (a pure type slot), the ordinary read has already selected
+the pure pattern facet `Core(tau)=Q`, so the carrier slot is no longer
 reachable from the value:
 
 ```lang
 let t: type = uint8;
 
-t ref   // Ref(Read(t))            = uint8 ref
-t@       // RefCarrierSlot(t)      = type ref, pointing at the slot t
+t ref            // Ref(Read(t))            = uint8 ref
+t |> type ref    // type ref, pointing at the slot storing the whole closure
 ```
 
 `t ref` is not a mistake to be corrected; it is the correct borrow of the value
 that was read. A value-directed meta-function has no business guessing that the
-writer actually meant the slot underneath. `@` is the explicit divider between
-the two readings.
+writer actually meant the slot underneath. `t |> type ref` is the explicit
+construction that reaches the type-level place.
 
-So the operator choice is decided by the `Val1` dimension of what is read, never
-by type-rank:
+The operator choice is decided by what the surface means, never by type-rank:
 
-| what the expression reads | `E ref` | `@` needed |
+| what the expression reads | `E ref` | `E |> type ref` needed |
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
 | symbol value with `Val1` | `symbol ref` | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |
 | pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
-| pure `type` slot | `ref` of the concrete type | `E@` is what yields `type ref` |
+| pure `type` slot | `ref` of the concrete type | `t |> type ref` is what yields `type ref` |
 
 The `Val1` column decides only *which path applies* — `ref` on the value versus
-carrier-slot `@`. It never means that the result of `ref` descends to the `Val1`
-sub-object: in every row above the view's referent is the complete object that
-`Read` produced (§5.1).
+the explicit `type ref` construction. It never means that the result of `ref`
+descends to the `Val1` sub-object: in every row above the view's referent is the
+complete object that `Read` produced (§5.1).
 
-Consequently the compile stage offers no borrow-meaning `@` candidate for an
-operand that has a `Val1` payload:
+Consequently the compile stage offers no implicit borrow formation for an
+operand that has a `Val1` payload — `s ref` already does that job. The retired
+`@` carrier-borrow group is not a fallback for `ref`, and `@` is not a borrow
+constructor at all (`NoImplicitBorrowFormation`).
 
-```lang
-s ref   // borrows the complete symbol value carried by s
-s@      // not an ordinary way to obtain a borrow
-```
-
-`@` on such an operand still carries its established meaning: on a complete
-object shape `⟨ Val1, P, Val2 ⟩`, `@` takes that object's lifetime. That group is
-separate from the compile-stage pure-pattern-slot group and is not a way to
-obtain a borrow, and the narrowing above does not weaken it — the two groups have
-disjoint premises and neither is a fallback for the other.
-
-### 5.3 Borrow constructors have fixed points; `@` still observes value instances
+### 5.3 Borrow constructors have fixed points
 
 Applying a borrow operator to something that is already a borrow view is
 **well-formed**. There is a candidate for it, and that candidate is what makes
@@ -1215,37 +1246,23 @@ capability index changes, so the borrow-type family collapses to one layer:
 | `type ref rebind rebind` | `type ref rebind` | retargeting type-value fixed point |
 | `type share rebind rebind` | `type share rebind` | retargeting type-value fixed point |
 
-`@` needs a sharper distinction. When its operand is itself a **borrow type
-value**, universe overlap is a fixed point:
+Borrow-type universe fixed points prevent borrow classifiers from climbing the
+type universe:
 
 ```text
-type ref@    = type ref
-type share@  = type share
-
 rank(type ref)                 = rank(type)
 rank(type share)               = rank(type)
 rank(type ref/share rebind)    = rank(type)
 ```
 
-This prevents borrow classifiers from climbing the type universe. It does not
-apply to a runtime/compile-time **value instance** whose Pattern is a borrow
-type. Such an instance has a `Val1` payload and follows the ordinary
-value-bearing `@` group:
+The former `@` fixed points (`type ref@ = type ref`, `type share@ = type share`)
+and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is a
+privileged place-observation operation that yields a lifetime value uniformly
+and is never a borrow constructor
+(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). The old blanket
+equation “`@@` is identity on every borrow view” does not return.
 
-```lang
-let t: type ref = ...;
-t@;                         // lifetime(t), not `t`
-```
-
-Therefore the old blanket equation “`@@` is identity on every borrow view” is
-retired. Type-value fixed points are selected before instance evaluation; after
-an expression has evaluated to a borrow value instance, `@` observes that
-instance's lifetime. The canonical groups are stated in
-[`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
-§2.3.
-
-So the two statements that used to sit next to each other are now one statement.
-Idempotence is the *consequence* of providing the equal-capability overload, not a
+Idempotence is the consequence of providing the equal-capability overload, not a
 rule that contradicts it:
 
 ```text
@@ -1257,7 +1274,7 @@ share -> ref   is a capability strengthening   no candidate
 Capability weakening remains well-formed:
 
 ```lang
-let r = t@;                 // r : type ref
+let r = t |> type ref;        // r : type ref
 let s = r share;            // ref share: s : type share, same target
 ```
 
@@ -1324,8 +1341,10 @@ assignment target. There is no context in which the same spelling means both.
 
 A by-value `type` closure carries no carrier-slot place or borrow capability;
 consuming one can only produce a new closure value. Ordinary `Read` projects
-`Core(tau)=Q`, whose `ObjectPlace` is what `ref` borrows (§5.1.0). Only a bound
-type expression has a carrier slot that `@` can observe as `type ref`.
+`Core(tau)=Q`, whose `ObjectPlace` is what `ref` borrows (§5.1.0). A bound
+type expression has a carrier slot that `t |> type ref` reaches explicitly as
+`type ref`; `@` yields a lifetime value and never forms a `type ref`
+(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1).
 Construction openness is not a capability carried by the closure or by a view;
 it is the separate `Open_Γ(value)` judgment over construction lineage (§6 and
 the symbol-first construction document).
@@ -1334,16 +1353,16 @@ A `type ref` is a borrow view of a slot whose contents conform to `type`. It is
 formed whenever ordinary place, policy, lifetime, and capability rules admit
 that view:
 
-```text
-Carrier(t) = q      CanBorrowRef_Γ(q)
--------------------------------------
-Γ ⊢ t@ : type ref
+```lang
+let t: type = uint8
+let r : type ref = t |> type ref
 ```
 
-A canonical `type ref` therefore contains only the ordinary borrow coordinates:
+A `type ref` is a type value; the borrow instance it carries holds only the
+ordinary borrow coordinates:
 
 ```text
-type ref = ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
+⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
 A frozen type-valued slot may still be observed through `type ref`. If the view
@@ -1463,8 +1482,9 @@ projection would make the program check.
 
 `@` is always an operand operation, so it never performs this implicit
 projection. `AsType` therefore cannot be followed by `@` to recover the source
-Symbol's type-member slot. Symbol provides an ordinary same-name field/accessor
-family instead:
+Symbol's type-member slot. `@` yields a lifetime value, not a borrow
+(`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). Symbol provides
+an ordinary same-name field/accessor family instead:
 
 ```lang
 S.type         : type
@@ -1476,8 +1496,9 @@ S.type         : type
 satisfies `TypeRole`, and agrees in value with `AsType(S)`. The ref/share cases
 preserve their borrow observation through
 ordinary field projection; they do not reverse-map a type value to an origin.
-When `t` itself is already a pure `type` slot, `t@` remains the direct carrier
-borrow. No `S@` or `(S |> type)@` shorthand is defined.
+When `t` itself is already a pure `type` slot, `t |> type ref` is the explicit
+construction that reaches the type-level place. No `S@` or `(S |> type)@`
+shorthand is defined.
 
 ## 6. Writability, member creation, and construction openness
 
@@ -1713,10 +1734,11 @@ First-order type matching for overload and pattern compatibility uses
 `TypeValueId`, not source symbol names. (The candidate-preparation layer that
 consumes type values is specified in
 `pattern-normalization-and-first-order-overload.md`; this document defines what
-a type value identity is.) This first-order layer is one of the remaining
-bare-`TypeValueId` comparison consumers scheduled to migrate to full by-value
-comparison (`Addr(Norm_type(tau))`, §2); until that migration it is a first-order
-projection check only, never canonical type-value equality.
+a type value identity is.) Under the minimal-change rule (§2.2), this first-order observation is the
+default for ordinary type matching, not a provisional stand-in; whole-snapshot
+identity `Addr(Norm_type(tau))` is used only where the language has
+independently frozen whole-snapshot semantics, and ordinary matching remains a
+first-order projection check.
 
 For example:
 

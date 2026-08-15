@@ -634,8 +634,13 @@ where `V_T` contains the ordinary val members that belong directly to this type
 snapshot and references to `Self_T` normalize as binder back-references.
 `tau` is not an Object embedding or a fourth Object coordinate. `Q` and every
 member in `V_T` remain ordinary Objects; the closure records the type-specific
-pairing needed by copying, equality/keying, type-as-callee, `extend`, and
-`inject`. Ordinary Pattern and namespace observation uses `Core(tau) = Q`.
+pairing needed by type-as-callee, copying, `extend`, and `inject`. Per the
+minimal-change rule (`../symbol-world/type-values-places-and-borrow-views.md`
+§2.2), ordinary type-rank equality and keying keep observing
+`Core(tau) = Q` by default; `Addr(Norm_type(tau))` is the snapshot identity,
+used in transport and in positions the language has independently frozen to
+whole-snapshot semantics. Ordinary Pattern and namespace observation also uses
+`Core(tau) = Q`.
 
 The handoff invariants are:
 
@@ -663,8 +668,10 @@ itself privileged: only a process holding current construction authority for
 callable creation, navigated `let`, copying, writing, rebinding, or namespace
 installation cannot forge the home at formation and cannot establish
 membership afterward. Descendant ownership is also insufficient.
-After authorized `BoundRef` edges are erased, the owned graph must remain
-finite and well-founded.
+After authorized `BoundRef` edges are erased, the owned graph must satisfy
+`WellFounded_kappa` (`../symbol-world/type-values-places-and-borrow-views.md`
+§2.1): finite under meta/static generation and acyclic once materialized at
+runtime.
 
 This document uses `Q` when discussing structural Pattern relations and `tau`
 when discussing a complete type value. `AsType` and type projection produce
@@ -724,7 +731,10 @@ The following directions are retired in current target semantics:
 - `HomeSymbol(TypeValue)` or carrier/provenance recovery of a defining Symbol;
 - descendant classifier ownership implying TypeMember membership;
 - shared root identity implying one mutable current type/callspace;
-- general recursive Object graphs justified by `Self_T`.
+- general recursive Object graphs justified by `Self_T` (replaced by
+  stage-sensitive `WellFounded_kappa`: finite static generation, acyclic
+  runtime materialization; `Self_T` is one restricted static back-reference
+  instance, not an exceptional cycle).
 
 ## 18. Remaining deferred work
 
