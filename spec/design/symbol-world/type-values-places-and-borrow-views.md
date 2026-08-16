@@ -5,8 +5,9 @@ identity, place identity, and borrow views. Current `lang_build` implements only
 the first-order identity core: recursive normalization over the present
 type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
 per-carrier places. The complete `tau=<Q,V_T>` snapshot and
-`Norm_type(tau)`, full recursive `Norm_Val1?`, borrow-view operators (`ref`,
-`share`, `@`, `rebind`), construction-lineage Open judgment, and type checker
+`Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
+`share`, `rebind`), the place-sensitive lifetime observation (`@`),
+construction-lineage Open judgment, and type checker
 remain unimplemented target semantics. §10 registers the implementation debt.**
 
 This document specifies the semantic boundary between *object values*, *symbol
@@ -497,9 +498,11 @@ edge. Well-foundedness is stage/policy-sensitive:
 ```text
 WellFounded_kappa(x)
 
-meta/static (kappa = meta):
+static-eval (kappa = static-eval):
   terminating finite generation; restricted P*Val2 back-references admitted
   as finite-graph compression (BoundRef(alpha) is the canonical instance)
+  -- compile and meta both instantiate this regime; the label does not
+     identify compile policy with meta policy semantics
 
 runtime (kappa = runtime):
   the materialized owned graph must remain acyclic; a back-reference cannot
@@ -542,8 +545,23 @@ CallSpace(tau) = V_T
 
 CompleteType(tau)
   iff TypeRole(Core(tau))
-  and CallSpace(tau) = TypeMemberSet(Core(tau))
+  and exists a formation witness w:
+      FormsCompleteType(w, Core(tau), CallSpace(tau))
+
+FormsCompleteType(w, Q, V_T)
+  iff TypeRole(Q)
+  and w is a formation event for Q
+  and V_T = SelectTypeMembers(Q, V_w)
 ```
+
+`V_T = CallSpace(tau)` is the callspace captured when the type value was
+formed: the direct TypeMember partition of the forming Symbol's `V`
+(`SelectTypeMembers`, see the `AsType` rule below). The witness `w` pins the
+snapshot to one formation event: `V_w` is the forming Symbol's `V` at that
+event, so `CompleteType` is not a global function of the bare core `Q`.
+Members created under the same `Q` after formation never retroactively enter
+an existing snapshot, and a copied or extracted `tau` keeps its captured
+`V_T`.
 
 `tau` is not another Object and does not add a fourth Object coordinate. `Q`
 and every ordinary member in `V_T` remain Objects governed by the existing
@@ -595,11 +613,11 @@ BoundRef(alpha) notin Children_owned
 This is the normal form of the type closure, not `Norm(Q)` and not a second
 shape for `Norm(Object)`. Alpha-renaming is non-semantic. Removing the
 authorized binder back-references must leave the owned Object/member graph
-finite for meta/static generation and, once materialized at runtime, acyclic
+finite for static-eval generation and, once materialized at runtime, acyclic
 (`WellFounded_kappa`, §2.1):
 
 ```text
-WellFounded_meta(tau):
+WellFounded_static(tau):
   EraseBackRefs(OwnedGraph(tau)) is finite
 
 WellFounded_runtime(tau):
@@ -1006,8 +1024,9 @@ accept an arbitrary numeric identifier as an implemented core `str` carrier.
 ## 5. Borrow views
 
 There is no declaration form that makes two symbols share one symbol identity
-or one place. Shared observation is expressed by three operators with distinct
-input judgments.
+or one place. Shared observation is expressed by the borrow constructors `ref`
+and `share`; the privileged place-observation `@` yields a lifetime value
+(`LifetimeVal`) and is not a borrow representation.
 
 ### 5.1 `ref` and `share` are value operations
 
@@ -1123,7 +1142,11 @@ AsType(tau) = tau
 The second rule validates an existing complete type value. It does not treat a
 bare pure namespace Object as a complete type, wrap a namespace, or search for
 a hidden type member. `TypeRole(Q)` makes `Q` a type-capable pure core; the
-complete result is still `tau = <Q,TypeMemberSet(Q)>`. Payload presence alone
+complete result is still `tau = <Q, V_T>`, where `V_T = SelectTypeMembers(Q, V)`
+selects, at formation time, those members of the forming Symbol's `V` that
+satisfy `TypeMember_Q` (the direct-home partition of symbol-first §2). A copied
+or extracted `tau` keeps its captured `V_T`; members created under the same `Q`
+later never enter an existing snapshot. Payload presence alone
 remains irrelevant to type
 applicability: a Symbol may carry `Val1(Symbol) = <Q?, V>` with no `Q`, or with
 a namespace-only `Q` for which `TypeRole(Q)` is false. A
@@ -1164,10 +1187,13 @@ t |> type share   -- explicit higher-level share formation
 
 `type ref` is the ordinary type construction `type |> ref`, and `type share` is
 `type |> share`; they are not special tokens and not produced by `@`. The
-builtin `ref` / `share` callables belong to the privileged builtin family that
-may obtain the actual's place (canonical owner
+builtin `ref` / `share` callables are privileged actual-place builtins
+(`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`)
+that may obtain the actual's place (canonical owner
 `../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2); an ordinary user
-function spelling the same formal head cannot.
+function spelling the same formal head cannot. Each operator has a
+type-forming overload (producing `type ref` / `type share` as type values) and
+a borrow-forming overload (producing `t ref` / `t share` as borrow instances).
 
 The domain restriction remains:
 
@@ -1349,9 +1375,10 @@ Construction openness is not a capability carried by the closure or by a view;
 it is the separate `Open_Γ(value)` judgment over construction lineage (§6 and
 the symbol-first construction document).
 
-A `type ref` is a borrow view of a slot whose contents conform to `type`. It is
-formed whenever ordinary place, policy, lifetime, and capability rules admit
-that view:
+`type ref` is the borrow-reference type produced by `type |> ref`; a value
+`r : type ref` is a borrow view of a slot whose contents conform to `type`.
+Such a view is formed whenever ordinary place, policy, lifetime, and
+capability rules admit it:
 
 ```lang
 let t: type = uint8
@@ -1817,10 +1844,14 @@ ref / share / @ / rebind operations and their overloads
 type ref and type share values, and ValidContext for them
 the independent writability and construction-lineage Open judgments of §6
 the = assignment operator and its four-layer check (§4.5.1 there)
-migration of remaining first-order TypeValueId comparison consumers
-  to full by-value comparison
 construction-unit ownership enforcement
 ```
+
+Whole-snapshot comparison is required only at independently specified
+snapshot-sensitive positions; ordinary type equality/keying keeps observing
+`Core(tau) = Q` by default (minimal-change rule, §2.2). Migrating the remaining
+first-order comparison consumers is therefore not outstanding implementation
+debt.
 
 The retired alias-forwarding model (`AliasChain`, symbol/place forwarding, and
 alias-forwarded extension places) is not
@@ -1852,8 +1883,9 @@ meaning.
   binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
   `TypeValueId` and place judgments.
 - `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of
-  `@`, its overload groups, and escape checking. This document supplies only the
-  `Origin`/`Value` split that `@` consumes.
+  `@` (privileged place observation yielding a lifetime value) and of
+  `ref` / `share` borrow formation, plus escape checking. This document
+  supplies only the `Origin`/`Value` split that `@` consumes.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   same-name receiver overloads and access-tree work. It references
   this document for the canonical value / place / borrow-view distinction rather

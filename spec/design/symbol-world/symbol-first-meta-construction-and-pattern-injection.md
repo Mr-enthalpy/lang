@@ -13,7 +13,8 @@ final owner-resolution rule.
 This document builds on, without replacing:
 
 - `spec/design/symbol-world/type-values-places-and-borrow-views.md` for
-  `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` / `@`,
+  `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` and
+  the place-sensitive lifetime observation `@`,
   and independent writability / construction-lineage Open judgments;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
   positive overloads of `@`, escape checking, and the lifetime-rule boundary;
@@ -127,8 +128,10 @@ CreateClassifier_Gamma(
 )
   => CurrentConstructionAuthority_Gamma(Q)
 
-V_T
+SelectTypeMembers(Q, V)
   = disjoint_union over F where TypeMember_Q(F) of V[F]
+
+V_T = SelectTypeMembers(Q, V)
 
 V_O = V \\ V_T
 
@@ -197,7 +200,8 @@ BoundRef(alpha) notin Children_owned
 
 After those authorized references are erased, the owned graph must satisfy
 `WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite
-under meta/static generation and acyclic once materialized at runtime. This is
+under static-eval generation (covering both compile and meta) and acyclic once
+materialized at runtime. This is
 not a general recursive-Object rule; the complete normalization contract is
 owned by `type-values-places-and-borrow-views.md` §2.1–§2.2.
 
@@ -554,8 +558,8 @@ The language defines **no** ordinary symbol-alias or place-forwarding
 declaration. There is no form that makes a second name resolve to another
 symbol's place, inherit its writability, or serve as a second entry point for
 namespace extension. Shared observation of another object is expressed only by
-the borrow views `ref`, `share`, and `@`, specified in
-`type-values-places-and-borrow-views.md`.
+the borrow views `ref` and `share` and the place-sensitive lifetime observation
+`@`, specified in `type-values-places-and-borrow-views.md`.
 
 The canonical conclusion is:
 

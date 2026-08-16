@@ -51,8 +51,10 @@ Still open after this correction:
   installed type carrier/place: the associated-extension entry point currently
   requires a still-open construction and resolves the target object from the
   constructed Pattern. Bare `let f::U` is not the target place form.
-- Exact future implementation of borrow-view evaluation (`ref` / `share` / `@` /
-  `rebind`), of the capability coercion `Coerce_{j->k}` behind borrow-operator
+- Exact future implementation of borrow-view evaluation (`ref` / `share` /
+  `rebind`) and of the privileged place-observation `@` (yields
+  `LifetimeVal`), of the capability coercion `Coerce_{j->k}` behind
+  borrow-operator
   overlap, and of the escape check
   `Escapes(view, destination) = Region(destination) ⊄ ValidRegion(view)`.
 - Exact Rust/IR representation of the transitional `SymbolConstruction` carrier's
@@ -290,10 +292,11 @@ Not implemented after this correction:
 - Result Pattern delivery/D-reduction; the current return-target substrate only
   retains the complete return binding slot and selects a restricted active
   frame.
-- Any positive lifetime/Horae design beyond the `@` overload groups and the
+- Any positive lifetime/Horae design beyond the `@` place-observation and the
   escape check.
-- Borrow-view evaluation (`ref` / `share` / `@` / `rebind`) under policy
-  projection, type checking, and runtime IR.
+- Borrow-view evaluation (`ref` / `share` / `rebind`) and the privileged
+  place-observation `@` (yields `LifetimeVal`) under policy projection, type
+  checking, and runtime IR.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:
@@ -608,9 +611,13 @@ them explicitly:
    remove(no-shadow) ⇒ implement(binder identity: PatternRoot + root-local binder)
    ```
 
-2. **Full by-value comparison must also audit what an ordinary type
-   binding preserves.** Migrating the remaining first-order consumers is
-   not just replacing `== TypeValueId` with `== TypeObservation`. Once a
+2. **Type-binding preservation must be audited together with comparison.**
+   Per the minimal-change rule, `Core(tau)=Q` is the final semantics for
+   ordinary type equality/keying, not a temporary approximation awaiting
+   migration; whole-snapshot comparison is required only at independently
+   specified snapshot-sensitive positions. The audit is therefore not
+   "migrate the remaining consumers to full by-value comparison"; it is:
+   once a
    carrier-locally extended `T` can legally exist, `let U: type = T` copies
    the complete immutable `tau = <Q,V_T>` snapshot observed at binding time
    into `U`'s fresh binding/carrier. Its ordinary value observation remains

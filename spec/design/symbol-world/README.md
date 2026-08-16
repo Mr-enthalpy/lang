@@ -35,7 +35,8 @@ The namespace graph world model and symbol-level identity:
 - meta-return pure-role self-root identity and complete meta-instance navigation atoms
 - pure-role namespace origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
-- the borrow views `ref` / `share` / `@`, writability, and construction-lineage Open
+- the borrow views `ref` / `share` and the place-sensitive lifetime
+  observation `@`, writability, and construction-lineage Open
 - field functions and same-name value/ref/share receiver overload families
 - type-associated function objects and namespace extension targets
 - the early-meta / namespace-graph bootstrap (broad bootstrap document)
@@ -71,8 +72,8 @@ recovery are retired.
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.
 - `type-values-places-and-borrow-views.md` — canonical `TypeValueId` /
-  `PlaceId` / `SymbolId` distinction, object normal form, and the borrow views
-  `ref` / `share` / `@`.
+  `PlaceId` / `SymbolId` distinction, object normal form, the borrow views
+  `ref` / `share`, and the place-sensitive lifetime observation `@`.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   same-name receiver overload families, and access-tree implications.
 - `entity-ref-design.md` — general `EntityRef` design (alias-RHS subset

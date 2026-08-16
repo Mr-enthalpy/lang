@@ -778,8 +778,9 @@ a borrow view and never a `type ref`; its former two instance groups
 (`LifetimeFact` for value instances and `P ref` for borrowable pure pattern
 slots), `t@ : type ref`, and the borrow-type fixed points `type ref@ = type
 ref` / `type share@ = type share` are retired. `ref` and `share` are the borrow
-constructors (same privileged builtin family); explicit higher-level selection
-uses `t |> type ref` / `t |> type share`. Borrow-constructor composition
+constructors (`PrivilegedActualPlace(ref-family)` /
+`PrivilegedActualPlace(share-family)`); explicit higher-level selection uses
+`t |> type ref` / `t |> type share`. Borrow-constructor composition
 preserves its resident target, but that is not a `@` overlap. What remains
 undefined is the full `@` lifetime algebra (region representation,
 `LifetimeVal` shape, ordering), checking order, refinement phase, and handoff
@@ -917,8 +918,12 @@ _See also: PatternValue container kernel, Overload Candidate, `extend`._
 ## Complete type closure (`tau`)
 
 The immutable type value `tau = <Q,V_T>`, where `Q` is the ordinary pure Object
-core satisfying `TypeRole(Q)` and `V_T = TypeMemberSet(Q)` is its intrinsic
-callspace. `Core(tau)=Q`; `CallSpace(tau)=V_T`. It is not an Object embedding,
+core satisfying `TypeRole(Q)` and `V_T` is the callspace captured at type-value
+formation: the direct TypeMember partition of the forming Symbol's `V`
+(`SelectTypeMembers(Q, V)`), not a global function of the bare core `Q`.
+`Core(tau)=Q`; `CallSpace(tau)=V_T`. Members created under the same `Q` after
+formation never retroactively enter an existing snapshot, and a copied or
+extracted `tau` keeps its captured `V_T`. It is not an Object embedding,
 a fourth Object coordinate, or a second owned copy of `V_T`. Ordinary
 Pattern/namespace/`ref` observation sees `Q`; per the minimal-change rule,
 ordinary type-rank equality/keying also sees `Core(tau)=Q` by default. Type-as-
@@ -967,7 +972,8 @@ The canonical self reference inside the binder-aware type closure
 `BoundRef(alpha)`, which is not an owned child. After
 authorized back-references are erased, the owned graph must satisfy
 `WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite
-under meta/static generation and acyclic once materialized at runtime.
+under static-eval generation (covering both compile and meta) and acyclic once
+materialized at runtime.
 `Self_T` is one restricted static back-reference instance, not an exceptional
 cycle and not a general recursive-Object constructor.
 Canonical owner:
@@ -1002,9 +1008,11 @@ E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)
 ```
 
 `@` is not a borrow constructor and never yields a borrow view or a `type ref`.
-`ref` and `share` are the borrow constructors and belong to the same privileged
-builtin callable family: each may obtain the place of its actual argument,
-while an ordinary user function cannot. An expression with no abstract place —
+`ref` and `share` are the borrow constructors; each is a privileged
+actual-place builtin (`PrivilegedActualPlace(ref-family)` /
+`PrivilegedActualPlace(share-family)`) that may obtain the place of its actual
+argument, while an ordinary user function cannot. An expression with no abstract
+place —
 a freshly computed temporary — supplies none, so no `@` candidate applies to it.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. The former
@@ -1108,9 +1116,10 @@ The negative invariant that candidate adaptation, structural repair, Policy
 migration, and automatic argument passing cannot turn an ordinary
 Object/Symbol/type actual into `ref` or `share` merely to make a candidate
 applicable. The source or normalized expression must explicitly form the view
-with `ref`, `share`, or `@`. Fixed points and legal weakening of an already
-formed borrow preserve its target and are not implicit formation; callable-frame
-implicit `self` is a separate narrow capability rule.
+with `ref` or `share`; the privileged place-observation `@` yields a lifetime
+value and never forms a borrow view. Fixed points and legal weakening of an
+already formed borrow preserve its target and are not implicit formation;
+callable-frame implicit `self` is a separate narrow capability rule.
 
 Canonical owner:
 `spec/design/symbol-world/type-values-places-and-borrow-views.md` §5.1.2.
@@ -1205,10 +1214,14 @@ _See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
 
 ## `type ref`
 
-A borrow view of a type-valued carrier slot. Reaching the type-level place of a
-pure type slot uses `t |> type ref`; a Symbol uses `(S ref).type` when its
-unique `Q` satisfies `TypeRole`. Ordinary borrow lifetime and policy rules
-determine formation, validity, and writability.
+`type ref` is the borrow-reference type produced by `type |> ref`. A value
+`r : type ref` is a borrow view of a type-valued place. Reaching the
+type-level place of a pure type slot uses `t |> type ref`; a Symbol uses
+`(S ref).type` when its unique `Q` satisfies `TypeRole`. Ordinary borrow
+lifetime and policy rules determine formation, validity, and writability.
+
+`type share` is the borrow-reference type produced by `type |> share`; a value
+`s : type share` is a share view of a type-valued place.
 
 ```text
 let t: type = uint8
@@ -1381,7 +1394,9 @@ performed.
 > forwards a Symbol or a place. `let a = b` creates a fresh symbol in a fresh
 > place carrying `b`'s value (`SymbolId(a) ≠ SymbolId(b)`,
 > `PlaceId(a) ≠ PlaceId(b)`, `Value(a) = Value(b)`). Shared observation of another
-> object is expressed only by a borrow view (`ref` / `share` / `@`). No
+> object is expressed only by a borrow view (`ref` / `share`); to observe its
+> place-level lifetime, apply the privileged place-observation `@` (yields
+> `LifetimeVal`). No
 > operator-name exception survives: operator environments are ordinary values
 > under the global `operator` type, with lexical copy/shadow and Symbol algebra.
 > See
@@ -1778,7 +1793,8 @@ If RHS is a path, the path first resolves a Symbol and reads `v`; the RHS
 carrier Symbol is not part of `v` after that read. `let T: type = uint8`
 therefore binds the existing type value under a fresh carrier. No declaration
 form forwards a Symbol or a place; to observe another object's place, bind a
-borrow view (`uint8 ref`, `uint8 share`, `p@`).
+borrow view (`uint8 ref`, `uint8 share`); to observe its place-level lifetime,
+apply the privileged place-observation `@` (yields `LifetimeVal`).
 
 At the semantic layer this is also the only missing-member creation operation.
 Navigation may yield a prospective ProjectionSlot containing `None`; `let` may

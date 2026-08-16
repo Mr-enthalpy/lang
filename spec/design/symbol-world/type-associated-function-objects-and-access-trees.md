@@ -204,8 +204,8 @@ This note does not implement or specify:
 - type-value identity (the first-order `TypeValueId` root and the snapshot
   identity `Addr(Norm_type(tau))` are owned by
   `type-values-places-and-borrow-views.md`);
-- migration of the remaining first-order type comparisons to full by-value
-  comparison;
+- whole-snapshot comparison is required only at independently specified
+  snapshot-sensitive positions;
 - full borrow-view evaluation;
 - writability or extension-place lifetime checking;
 - field access evaluation;

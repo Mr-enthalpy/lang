@@ -375,11 +375,19 @@ defined in `spec/design/symbol-world/type-values-places-and-borrow-views.md`. He
 enough to state the comparison rule: candidate matching uses type value, not
 source name.
 
-Pass mode is explicitly **not** part of `TypeValueId`. A construct such as
-`T move` does not introduce a new type, and `move` / `copy` / `ref` / `share`
-must not change type-value comparison. Type-value equality is invariant under
-pass mode. Pass mode is a separate dimension handled elsewhere and must never be
-folded into the type value used for candidate matching.
+Pass mode is explicitly **not** part of `TypeValueId`, but only the
+mechanical pass actions `move` / `copy` preserve the already-established type
+value: `T move` does not introduce a new type, and type-value equality is
+invariant under `move` / `copy`.
+
+`ref` and `share` are not pass modes: they are explicit borrow/type-formation
+operations and may produce `T ref` / `T share` as distinct type values. They
+are never inserted merely to satisfy a formal (`NoImplicitBorrowFormation`).
+Moving an already-formed borrow handle `r : T ref` does not change its type;
+forming `T ref` itself does.
+
+The mechanical pass dimension is handled elsewhere and must never be folded
+into the type value used for candidate matching.
 
 ## 6. RawArgShape and ParameterShape
 

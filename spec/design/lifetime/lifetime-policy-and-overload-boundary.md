@@ -32,9 +32,10 @@ the abstract place `p`; this is not a Rust-style "borrow a generic lifetime
 parameter" operation.
 
 `@` is **not** a borrow constructor. It yields a lifetime value, never a borrow
-view. Borrow formation belongs to `ref` and `share`, which share the same
-privileged place acquisition when the builtin family needs the actual's place
-(§2). An expression with no abstract place — a freshly computed temporary —
+view. Borrow formation belongs to `ref` and `share`, which may be privileged
+actual-place builtins (`PrivilegedActualPlace(ref-family)`,
+`PrivilegedActualPlace(share-family)`) when the overload needs the actual's
+place (§2). An expression with no abstract place — a freshly computed temporary —
 supplies none, so no `@` candidate applies to it.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
@@ -43,23 +44,30 @@ does not name one.
 
 ## 2. Privileged place acquisition: `@`, `ref`, and `share`
 
-`@`, `ref`, and `share` belong to one privileged builtin callable family: each
-is a builtin application that may obtain the place of its actual argument.
+`@`, `ref`, and `share` are builtin applications that may, for some overloads,
+be granted privileged access to the place of their actual argument:
 
 ```text
-builtin application may obtain place from actual argument
+PrivilegedActualPlace(@-family)
+PrivilegedActualPlace(ref-family)
+PrivilegedActualPlace(share-family)
 ```
 
-This permission attaches to the builtin callable-family identity, not to
-ordinary function parameters. An ordinary user function that spells the same
-formal head still cannot obtain the actual's place.
+This does not make them one callable family. Each operator keeps its own
+family identity and overload set: `@` remains a normal overloaded operator,
+and `ref` / `share` each have a type-forming overload (producing `type ref` /
+`type share` as type values) and a borrow-forming overload (producing `t ref` /
+`t share` as borrow instances). The permission attaches to each operator's
+builtin family identity, not to ordinary function parameters. An ordinary
+user function that spells the same formal head still cannot obtain the
+actual's place.
 
-The three members produce different results:
+The three operators produce different results:
 
 ```text
 @      -> LifetimeVal(p)
-ref    -> ref borrow formation over the value / place
-share  -> share borrow formation over the value / place
+ref    -> ref borrow / type formation over the value / place
+share  -> share borrow / type formation over the value / place
 ```
 
 `ref` and `share` keep their ordinary value semantics: `E ref = Ref(Read(E))`
@@ -80,8 +88,25 @@ t |> type share  // explicit higher-level share formation
 content (target place, capability, lifetime relation) as a borrow instance, not
 as the type value itself.
 
-The source formal head of the builtin `ref` / `share` members is not ordinary
-move-in parameter semantics:
+The builtin `ref` / `share` callables have two overload roles. The
+type-forming member makes `type |> ref` / `type |> share` a well-formed
+ordinary type construction through the ordinary type-as-callee / overload
+machinery; no `RefType` primitive is introduced:
+
+```lang
+let ref =
+    (self, t: type_1):
+    meta
+    => default;
+```
+
+It produces the type value `type ref`; `share` has the same type-forming role,
+producing `type share`. This member needs no privileged actual-place access.
+Policy details remain schematic; generalization to higher `type_n` is future
+work.
+
+The borrow-forming member's source formal head is not ordinary move-in
+parameter semantics:
 
 ```lang
 mut let ref =
@@ -303,7 +328,8 @@ consumes.
 Semantics closed here, not yet built:
 
 ```text
-the privileged `@` place-observation (builtin callable family) and `LifetimeVal`
+the privileged `@` place-observation (`PrivilegedActualPlace(@-family)`) and
+`LifetimeVal`
 the escape check of §3 at all four destination classes
 the lifetime policy stage as an evaluation stage
 CheckableCaptureForm construction at closure materialization
