@@ -66,8 +66,8 @@ The three operators produce different results:
 
 ```text
 @      -> LifetimeVal(p)
-ref    -> ref borrow / type formation over the value / place
-share  -> share borrow / type formation over the value / place
+ref    -> borrow instance | TypeValue (type formation)
+share  -> borrow instance | TypeValue (type formation)
 ```
 
 `ref` and `share` are privileged actual-place builtins
@@ -75,13 +75,14 @@ share  -> share borrow / type formation over the value / place
 There is no global `E ref = Ref(Read(E))` law: the selected overload determines
 the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
 (canonical owner [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5.1). For `let t: type = uint8`, `t ref` is a `uint8 ref` — a correct borrow
-of the value that was read. When the source surface must reach a higher-level
-place explicitly, it selects the higher-level `ref` / `share` candidate:
+§5.1). For `let t: type = uint8`, `t ref` is the **type-forming** overload: it
+yields the TypeValue `uint8 ref` (the borrow type of `t`), not a borrow
+instance. The borrow instance over the type-level place is produced by invoking
+that borrow type:
 
 ```lang
-t |> (type ref)    // explicit higher-level ref formation
-t |> (type share)  // explicit higher-level share formation
+t |> (type ref)    // invocation: borrow instance r : type ref, Target(r) = place(t)
+t |> (type share)  // invocation: share instance over the type-level place
 ```
 
 `type ref` is the ordinary type construction `type |> ref`, and `type share` is
@@ -97,15 +98,40 @@ machinery; no `RefType` primitive is introduced:
 
 ```lang
 let ref =
-    (self, t: type_1):
+    <n>(self, t: n type):
+    meta
+    => default;
+
+let share =
+    <n>(self, t: n type):
     meta
     => default;
 ```
 
-It produces the type value `type ref`; `share` has the same type-forming role,
-producing `type share`. This member needs no privileged actual-place access.
-Policy details remain schematic; generalization to higher `type_n` is future
-work.
+For each universe level `n`, the type-forming members accept an `n type`
+operand and produce the borrow-type values `n type ref` / `n type share`. The
+universe-uniform routing — `type : type_1` being the instance that makes
+`<n>(n type) -> n type ref/share` well-formed at every level — is frozen, not
+future work:
+
+```text
+rank(t ref)   = rank(t)
+rank(t share) = rank(t)
+
+CallSpace(n type ref)
+  contains
+    (n-1) type -> (n-1) type ref
+
+CallSpace(n type share)
+  contains
+    (n-1) type -> (n-1) type share
+```
+
+The type-forming members need no privileged actual-place access. Only the
+selected borrow-forming defaults inside these borrow-type callspaces — the
+`(n-1) type -> (n-1) type ref` / `(n-1) type -> (n-1) type share` members —
+possess actual-place privilege (`PrivilegedActualPlace(ref-family)`,
+`PrivilegedActualPlace(share-family)`). Policy details remain schematic.
 
 The borrow-forming member's source formal head is not ordinary move-in
 parameter semantics:
@@ -145,7 +171,7 @@ type share@ = type share                 (retired)
 ```
 
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
-binding's ordinary value observation is `Core(tau)=Q`; reaching the type-level
+binding evaluates to the complete closure `tau`; an ordinary/namespace consumer observes the projection `Core(tau)=Q`. Reaching the type-level
 place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a Symbol),
 never by `@`. `AsType(S) = S |> type` remains by-value and is never followed by
 `@` to recover a place.

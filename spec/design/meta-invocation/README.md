@@ -34,7 +34,7 @@ built.
 
 Read
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` for
-the canonical Symbol `<Q?,V>` role/member model, `compile` / `meta`, result-rank, pattern-owner,
+the canonical Symbol `<tau?,V_S?>` role/member model, `compile` / `meta`, result-rank, pattern-owner,
 `struct -> symbol`, pure `extend`, place-level `inject`, and meta pure-role self-root
 boundary. Read
 `../symbol-world/symbol-construction-units-and-namespace-origin.md` for the

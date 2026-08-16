@@ -256,7 +256,7 @@ content axis into `P`:
 ```text
 Norm(x)
   = <
-      Norm_Val1?(Val1?(x)),
+      Norm_Val1?^(P(x))(Val1?(x)),
       Norm_P(P(x)),
       Norm_Val2(Val2(x))
     >

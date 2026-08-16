@@ -895,11 +895,12 @@ Callable val members project across the typed buckets of `V_S` to the formal
 `OverloadSet`; when `tau` is present, `CallableProjection(S) = V_S ∪ V_T`
 forms one candidate set with no priority or fallback.
 
-Symbol normalization is an extensional optional pure role member plus map of typed
-member sets. Stable member and candidate identities, callable-body identity, and
-selection-relevant declaration annotations live in the ordinary member objects
-and survive normalization. Only order and repeated contribution of the same
-member are quotiented away; conflicting declarations remain diagnostics.
+Symbol normalization is an extensional optional complete type closure plus map
+of typed member sets. Stable member and candidate identities, callable-body
+identity, and selection-relevant declaration annotations live in the ordinary
+member objects and survive normalization. Only order and repeated contribution
+of the same member are quotiented away; conflicting declarations remain
+diagnostics.
 
 `Σ` is not a private record carrier. Its optional member is represented by an
 empty/singleton bare Product, each typed bucket is an ordinary `T_c*omega`
@@ -1092,8 +1093,9 @@ regained. No composition nests, and no provenance or cycle detection is required
 `r_ref = v` writes the referent. `r_ref rebind = E` retargets the view, and it is
 a place operation rather than a value borrow: it takes `Target(E)` when `E` is
 already a view, or `CarrierPlace(E)` when `E` supplies one, and has no candidate
-otherwise. It is deliberately not `Ref(Read(E))`, which for a pure `type` slot
-would yield `uint8 ref` instead of a reference to the slot.
+otherwise. It is deliberately not `E ref`, because for a pure `type` slot `t`
+the expression `t ref` is the type-forming overload and yields the TypeValue
+`uint8 ref`, not a borrow instance over the slot.
 `OwnedClosure(x)` excludes every `ref` / `share` edge.
 
 Borrow views replace the retired alias-forwarding model. Canonical owner:

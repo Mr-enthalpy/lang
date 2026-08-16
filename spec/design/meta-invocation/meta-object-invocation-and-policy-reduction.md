@@ -581,15 +581,15 @@ Two names keep classifier and content shape distinct:
 
 ```text
 ReturnClassifier(ordinary meta) = symbol
-ReturnShapeWithinSymbol         = Σ = ⟨ Q?, V ⟩, with |Q| <= 1 and Pure(Q)
+ReturnShapeWithinSymbol         = Σ = ⟨ tau?, V_S ⟩, with at most one tau
 ```
 
-`Q` may be present or absent and `V` may contain any ordinary sibling values.
-Those are content facts within one returned Symbol Object, not type/val/namespace
-return categories. `Q` is the one optional pure role member: namespace
-projection selects it directly, while type projection additionally requires
-`TypeRole(Q)`. “Meta returns type” is only shorthand for a `symbol` result whose
-content is `⟨Q, empty⟩` and whose `Q` satisfies `TypeRole`.
+`tau` may be present or absent and `V_S` may contain any ordinary sibling
+values. Those are content facts within one returned Symbol Object, not
+type/val/namespace return categories. `tau` is the optional stored complete
+type closure: type projection returns it directly, while namespace projection
+returns `Core(tau)`. “Meta returns type” is only shorthand for a `symbol` result
+whose content is `⟨tau, empty⟩` and whose `Core(tau)` satisfies `TypeRole`.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
 slot relation, rank-directed identity, pure-role self-root validation, and complete

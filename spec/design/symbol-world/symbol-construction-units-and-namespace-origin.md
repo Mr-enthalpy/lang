@@ -308,9 +308,10 @@ uninstalled construction value according to explicit composition rules. It may
 not directly mutate an already installed subtree owned by the helper instance.
 
 The ordinary-meta return Symbol's pure-role self-root invariant follows from
-this ownership: its optional `Q` is rooted at the invocation's
-`MetaInstanceScope`, whether or not `TypeRole(Q)` holds. An external Object may
-be a member under that root but cannot replace it. Compiler-defined privileged
+this ownership: its optional distinguished pure member `Q` is rooted at the
+invocation's `MetaInstanceScope` whenever it exists. The condition is the
+member's presence, independent of `TypeRole(Q)`. An external Object may be a
+member under that root but cannot replace it. Compiler-defined privileged
 AST operations `struct`, `extend`, and
 `inject` use their separately specified scope/owner rule and do not acquire an
 ordinary externally navigable instance root merely by being called.
@@ -354,10 +355,10 @@ is a leaf” means only:
 value projection is terminal for the current value lookup
 ```
 
-It does not mean that a Symbol with `V` members cannot also have a pure role
-member `Q` and namespace children. Type projection derives the direct
-TypeMember partition under `TypeRole(Q)` and forms `tau = <Q,V_T>`; it neither
-stores another copy in the Symbol nor turns the closure into another Object.
+It does not mean that a Symbol with `V` members cannot also carry a complete
+type closure `tau`. Type projection returns the `tau` that was formed and
+stored at installation; it neither forms a fresh closure at projection time
+nor turns the closure into another Object.
 
 ## 9. Ordinary Pure-Role Installation Is Not Sum Extension
 

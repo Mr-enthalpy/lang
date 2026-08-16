@@ -4,7 +4,7 @@
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
 construction-lineage Open checking,
-Symbol `<Q?,V>` role/member projections, complete type snapshots,
+Symbol `<tau?,V_S?>` role/member projections, complete type snapshots,
 `PatternValue`, ordinary Symbol-valued meta results
 (current transitional carrier: `SymbolConstruction`),
 `ResolvedPatternScope`, `MetaInstanceScopeId`, meta pure-role self-root checking,
@@ -20,7 +20,7 @@ evaluation are also not implemented.**
 The namespace graph world model and symbol-level identity:
 
 - `SymbolObject` and the namespace graph world model
-- symbol-first `<Q?,V>` role/member projections and context-directed projection
+- symbol-first `<tau?,V_S?>` role/member projections and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
 - `Val1? x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
@@ -53,7 +53,7 @@ recovery are retired.
 ## Documents
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
-  direction for Symbol `<Q?,V>` role/member projection, heterogeneous value/call candidates,
+  direction for Symbol `<tau?,V_S?>` role/member projection, heterogeneous value/call candidates,
   `compile` / `meta`, meta pure-role self-root, resolved pattern scopes,
   `struct -> symbol`, pure `extend`, place-level `inject`, Symbol
   uniqueness/replay, and outer

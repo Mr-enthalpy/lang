@@ -123,6 +123,24 @@ A Symbol with `<None, None>` has nothing to project; it remains a valid
 name/candidate-bearing node. The Symbol never forms a type from its own
 contents: `tau` is formed before installation and carried as a whole value.
 
+The canonical namespace object of a Symbol is its **distinguished pure member**:
+
+```text
+DistinguishedPureMember(S) =
+    Some(Core(tau))   if tau is present
+    Some(d)           if tau is absent and V_S contains exactly one pure member d
+    None              otherwise
+
+NamespaceProjection(S) = DistinguishedPureMember(S)
+TypeProjection(S)      = tau  when tau is present   (undefined otherwise)
+```
+
+When `tau` is present, `NamespaceProjection(S) = Core(tau) = Q`; when `tau` is
+absent, a namespace-only distinguished pure member is an ordinary pure member
+of `V_S`. Type projection, when it exists, requires `TypeRole(Core(tau))` by
+definition of `CompleteType(tau)`; namespace-projection existence is
+independent of that type-role refinement.
+
 The complete type value is the closure:
 
 ```text
@@ -174,10 +192,12 @@ and DirectClassifierHome(G) != TypeMemberScope(Q)
 Projections over the Symbol value are:
 
 ```text
-NamespaceProjection(S) = Core(tau_S)   when tau_S present
+NamespaceProjection(S) = DistinguishedPureMember(S)   (§2.1)
 TypeProjection(S)       = tau_S         when tau_S present
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
+(the converse does not hold: a namespace-only Symbol has a
+DistinguishedPureMember but no tau_S)
 
 CallableProjection(S)
   = SiblingSpace(S) ∪ OptionalMap(CallSpace, TypeSlot(S))
@@ -302,9 +322,9 @@ there and nowhere else. There is no second disjunction site to look for:
 
 One symbol may simultaneously provide:
 
-- one optional pure role member `Q` and its namespace projection;
-- the complete `tau = <Q,V_T>` projection, optionally written
-  `bind alpha.<Q,V_T[alpha]>`, when `TypeRole(Q)`;
+- the complete immutable type closure `tau = <Q,V_T>`, optionally written
+  `bind alpha.<Q,V_T[alpha]>`, stored at installation and returned by type
+  projection; its pure core `Q = Core(tau)` also serves namespace projection;
 - an ordinary value;
 - a callable value;
 - multiple heterogeneous value entries forming an overload candidate set.
@@ -514,8 +534,10 @@ Place(U)  != Place(T)
 
 TypeValue(uint8) = tau_uint8 = <Q_uint8,V_uint8>
 TypeValue(T) = TypeValue(U) = Copy(tau_uint8)
-OrdinaryValue(T) = OrdinaryValue(U) = Core(tau_uint8) = Q_uint8
+Eval(T) = Eval(U) = tau_uint8
+CoreView(tau_uint8) = Q_uint8
 PatternView(T) = PatternView(U) = Q_uint8
+CallSpace(tau_uint8) = V_uint8
 ```
 
 The hole-free annotation `type` is the ordinary result-as transformation
@@ -700,16 +722,16 @@ Equivalently, and without overloading “return shape”:
 
 ```text
 ReturnClassifier(F) = symbol
-ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ Q?, V ⟩
+ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ τ?, V_S ⟩
 ```
 
-The classifier is fixed for every ordinary meta callable. `Q`, when present, is
-the unique pure role member and may or may not satisfy `TypeRole`; `V` may
-contain any ordinary sibling values. These are content facts about one Symbol
-Object, not type/val/namespace result categories. Namespace projection selects
-`Q`; when `TypeRole(Q)`, type projection forms the complete immutable closure
-`tau = <Q,V_T>`, optionally written `bind alpha.<Q,V_T[alpha]>` when its
-members refer to `Self_T`.
+The classifier is fixed for every ordinary meta callable. `τ`, when present, is
+the stored complete type closure; `V_S` may contain any ordinary sibling
+values. These are content facts about one Symbol Object, not type/val/namespace
+result categories. Namespace projection selects `Core(tau)=Q` when `tau` is
+present; type projection returns the stored `tau` — it never re-partitions
+members to form `tau` post-hoc. The optional binder-aware form of `tau` is
+`bind alpha.<Q,V_T[alpha]>` when its members refer to `Self_T`.
 
 Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
@@ -1035,12 +1057,12 @@ closure type itself has a stable site name.
 
 The only construction-closing event of a meta invocation is its final return
 stage, and it runs in a fixed order. The returned symbol has the ordinary Symbol
-shape — at most one pure role member, any number of val members:
+shape — at most one distinguished pure member, any number of val members:
 
 ```text
-Σ = ⟨ Q?, V ⟩
+Σ = ⟨ τ?, V_S ⟩
 
-1. validate that there is at most one pure role member and that Q is Pure
+1. validate that there is at most one distinguished pure member `Q` and that Q is Pure
 2. if Q exists, promote OwnedClosure(Q) into M and call it P_Q
 3. validate the escape dependencies of the entire returned Symbol Object
 4. seal M
@@ -1048,8 +1070,9 @@ shape — at most one pure role member, any number of val members:
 
 Step 1 is a cardinality bound, **not** a requirement that a role member be
 present. Nothing in the Symbol ontology or in the self-root constraint promotes
-`|Q| <= 1` to `|Q| = 1`: the self-root rule says that *if* `Q` exists it must be
-rooted at `M`, which is vacuous when there is none. A namespace-only `Q` is
+`|Q| <= 1` to `|Q| = 1`: the self-root rule says that *if* a distinguished
+pure member `Q` exists it must be rooted at `M`, which is vacuous when there is
+none. A namespace-only `Q` is
 therefore a valid promotion anchor even when `TypeRole(Q)` is false; type-role
 requirements are refinements, not generic Symbol constraints. Step 2 is simply
 skipped when `Q` is absent:
@@ -1154,8 +1177,7 @@ the diagnostic navigation projection of `M` is:
 ```
 
 This is not merely a folder analogy. `M` is a symbol/namespace layer that
-participates in default pattern navigation and name shadowing, may carry the
-optional pure role member and ordinary value members, anchors cache/incremental identity, and owns
+participates in default pattern navigation and name shadowing, may carry a stored complete type closure and typed value members, anchors cache/incremental identity, and owns
 the return construction transaction. An ordinary meta invocation must therefore
 establish its own symbol layer rather than act as a value-level forwarding
 function.
@@ -1192,11 +1214,11 @@ replace symbol identity with type-value equality.
 
 ### 4.4 Ordinary meta return pure-role self-root invariant
 
-If the return symbol of an ordinary canonical meta invocation has a pure role
-member `Q`, its outermost pattern root must be the invocation's own `M`:
+If the return symbol of an ordinary canonical meta invocation has a distinguished
+pure member `Q`, its outermost pattern root must be the invocation's own `M`:
 
 ```text
-RoleMember(r) = Q
+DistinguishedPureMember(r) = Q
   => Pure(Q)
    and root_pattern_scope(Q) = M
 ```
@@ -1263,12 +1285,13 @@ let fn = (self, t: type): meta -> r: symbol => {
 
 keeps `(t fn)` as the return symbol's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
-`RoleMember(r) = bool::`.
+`DistinguishedPureMember(r) = bool::`.
 
-The self-root check is conditional on `Q`, not on `TypeRole(Q)`. A namespace-only
-`Q` is self-rooted and may own fresh invocation-local material. A return Symbol
-with no `Q` does not acquire a synthetic role member merely to satisfy this
-rule. When `TypeRole(Q)` does hold, it is the additional type
+The self-root check is conditional on the distinguished pure member `Q`, not on
+`TypeRole(Q)`. A namespace-only `Q` is self-rooted and may own fresh
+invocation-local material. A return Symbol with no distinguished pure member
+does not acquire a synthetic role member merely to satisfy this rule. When
+`TypeRole(Q)` does hold, it is the additional type
 refinement (imported judgment); namespace-only `Q` is not required to define Val1.
 
 ### 4.5 Formal return material
@@ -1481,7 +1504,11 @@ specification-private record carrier. Using the constructor lemmas in
 
 ```text
 TypeOption(absent) = BareProduct()
-TypeOption(tau)    = BareProduct(tau) where CompleteType(tau)
+TypeOption(tau)    = BareProduct(EncodeTypeClosure(tau))
+                     where CompleteType(tau)
+
+EncodeTypeClosure : CompleteType -> Object
+DecodeTypeClosure(EncodeTypeClosure(tau)) = tau
 
 BucketEntry(T_c)     = ProductValue(T_c, V_S[T_c]) : product
 BucketCarrier(V_S)   = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
@@ -1491,13 +1518,15 @@ Val1(Symbol)         = Σ_Object(tau?, V_S)
 ```
 
 The notation `⟨tau?, V_S⟩` merely projects the two ordinal positions of this bare
-Product Object. Every `V_S[T_c]` is itself the ordinary `T_c * omega` Sequence
+Product Object. `tau` itself is a semantic package, not an Object; the Symbol's
+Val1 stores its canonical Object encoding via `EncodeTypeClosure`. Every
+`V_S[T_c]` is itself the ordinary `T_c * omega` Sequence
 Object, and every bucket entry is classified by the global `product` type so
 the bucket carrier remains genuinely homogeneous. Symbol normalization applies
 its unordered quotient to this ordinary carrier; neither `Σ` nor its buckets
 introduce a compiler-private semantic collection.
 
-Each `V[T_c]` contains ordinary member/candidate objects of their actual type
+Each `V_S[T_c]` contains ordinary member/candidate objects of their actual type
 `T_c`. Those objects preserve stable declaration/candidate identity, their
 complete value or callable body, and every annotation that affects semantics
 through their own ordinary recursive identity. Symbol is not a set of erased
@@ -1586,11 +1615,11 @@ or a type witness and remains deferred. The four ordered-container cases are:
 The Symbol Pattern applies an unordered identity quotient to each typed bucket:
 
 ```text
-DecodeSymbolPayload(Σ_Object) = ⟨ Q?, V ⟩
+DecodeSymbolPayload(Σ_Object) = ⟨ τ?, V_S ⟩
 
 Norm_Val1?^P_symbol(Σ_Object)
-  = ⟨ Norm(Q)? ,
-      { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V[T_c] } } ⟩
+  = ⟨ Norm_type(τ)? ,
+      { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V_S[T_c] } } ⟩
 ```
 
 If distinct `T_c` keys normalize equally, their buckets are combined under that
@@ -1601,13 +1630,13 @@ conflicts are diagnosed in construction/well-formedness before normalization;
 they are not remembered as value multiplicity. Distinct stable member objects
 remain distinct even when their callable bodies normalize alike. In particular,
 `s += a; s += b;` and `s += b; s += a;` normalize equally exactly when their
-optional pure role member and every typed member set are equal.
+stored `tau` (if any) and every typed member set are equal.
 
 Callable val members project the formal overload set directly from this value:
 
 ```text
 OverloadSet(Σ, q)
-  = ⨄_{T_c} { v ∈ V[T_c] | Callable(v) ∧ q(v) }
+  = ⨄_{T_c} { v ∈ V_S[T_c] | Callable(v) ∧ q(v) }
 ```
 
 This is an ordinary projection from the typed Symbol buckets, not a
@@ -3268,10 +3297,11 @@ Place(T)  != Place(U)  != Place(uint8)
 
 `let f::(T |> (type ref))` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
-Symbol-to-type projection and is not this operation. The ordinary associated
-installation updates only `T`'s carrier-local `Val2` observation; it neither
-changes the copied snapshot in `U`, changes `V_T`, nor registers a structural
-child. Complete type observation includes the resulting core observation when
+Symbol-to-type projection and is not this operation. The ordinary associated installation is the non-structural `Associate`
+operation (type-values §2.2, §7.1): it derives a fresh snapshot
+`tau' = <Q', V_T>` from the carrier's current `tau` and updates only `T`'s
+carrier-local `Val2` observation; it neither changes the copied snapshot in
+`U`, changes `V_T`, nor registers a structural child. Complete type observation includes the resulting core observation when
 identity is demanded. Generated
 construction-time TypeMembers are already closed into `V_T`; they are never
 recovered through fallback to a mutable defining Symbol or canonical root.
