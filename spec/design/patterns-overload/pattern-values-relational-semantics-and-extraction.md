@@ -632,12 +632,11 @@ tau = bind alpha. <Q, V_T[alpha]>
 ```
 
 `V_T = CallSpace(tau)` is the callspace captured when the type value was
-formed: the direct TypeMember partition of the forming Symbol's `V`
-(`SelectTypeMembers`, the direct-home partition of symbol-first §2;
-`TypeMember_Q` handoff invariants below), not a global function of the bare
-core `Q`. Members created under the same `Q` after formation never
-retroactively enter an existing snapshot, and a copied or extracted `tau`
-keeps its captured `V_T`.
+formed: the direct TypeMember members placed into `tau` at that formation
+event (`TypeMember_Q` handoff invariants below), not a global function of
+the bare core `Q` and not a post-hoc partition of a shared Symbol space.
+Members created under the same `Q` after formation never retroactively enter
+an existing snapshot, and a copied or extracted `tau` keeps its captured `V_T`.
 
 where `V_T` contains the ordinary val members that belong directly to this type
 snapshot and references to `Self_T` normalize as binder back-references.
@@ -664,7 +663,7 @@ CreateClassifier_Gamma(
 )
   => CurrentConstructionAuthority_Gamma(Q)
 
-V_T = SelectTypeMembers(Q, V)
+V_T = CallSpace(tau)   -- fixed at formation, not a post-hoc partition
 
 Norm_type^alpha(Self_T) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
@@ -678,7 +677,8 @@ installation cannot forge the home at formation and cannot establish
 membership afterward. Descendant ownership is also insufficient.
 After authorized `BoundRef` edges are erased, the owned graph must satisfy
 `WellFounded_kappa` (`../symbol-world/type-values-places-and-borrow-views.md`
-§2.1): finite under static-eval generation (covering both compile and meta)
+§2.1): finite, acyclic, fully bound, and restricted to authorized static
+edge kinds under static-eval generation (covering both compile and meta)
 and acyclic once materialized at runtime.
 
 This document uses `Q` when discussing structural Pattern relations and `tau`

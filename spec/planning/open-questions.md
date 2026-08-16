@@ -47,7 +47,7 @@ Still open after this correction:
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
   construction-lineage Open checking.
-- Implementation of source-level `let f::(U |> type ref)` against an already
+- Implementation of source-level `let f::(U |> (type ref))` against an already
   installed type carrier/place: the associated-extension entry point currently
   requires a still-open construction and resolves the target object from the
   constructed Pattern. Bare `let f::U` is not the target place form.
@@ -629,12 +629,12 @@ them explicitly:
    is captured") must be solved together.
 
 3. **Installed-carrier member creation / `type ref` targets / writability
-   need explicit owners.** Source-level `let f::(U |> type ref)` against an already
+   need explicit owners.** Source-level `let f::(U |> (type ref))` against an already
    installed type carrier/place, place-level `inject`, and
    writability / construction-open checking exist today only as substrate
    (also listed in the general future-work pool above). The next stage must
    assign them explicit scope rather than leaving them pooled. Canonical source
-   spells the host place explicitly as `let f::(U |> type ref) = expr`. Navigation
+   spells the host place explicitly as `let f::(U |> (type ref)) = expr`. Navigation
    to a missing child yields a prospective ProjectionSlot whose contents are `None`;
    `let` may instantiate it, while bare `=` may not.
 

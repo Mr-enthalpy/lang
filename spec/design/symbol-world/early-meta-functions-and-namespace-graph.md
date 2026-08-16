@@ -753,7 +753,7 @@ let b = 1
 `a` and `b` are distinct symbols, while their values are equal.
 
 Member creation is not pure type-value evaluation.
-Because this `T` is already a pure type slot, `let f::(T |> type ref) = ...`
+Because this `T` is already a pure type slot, `let f::(T |> (type ref)) = ...`
 explicitly targets `place(T)`, not `place(uint8)`. Type-value equality must not
 canonicalize injection targets.
 
@@ -762,7 +762,7 @@ has target semantics:
 
 | Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> type ref)` may create under `place(T)` when separately authorized |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> (type ref))` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
 | `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with `Q_struct` satisfying `TypeRole` | `let f::((T ref).type)` may create under that explicit type-member place |
 

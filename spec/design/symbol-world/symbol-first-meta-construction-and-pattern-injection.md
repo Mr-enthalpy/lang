@@ -104,20 +104,43 @@ SymbolValue {
     SymbolId
     PlaceId
 
-    Q: zero or one pure Object role member
-    V: zero or more heterogeneous value members in typed buckets
+    tau: zero or one complete type value
+    V_S: zero or more ordinary sibling value members in typed buckets
 }
 ```
 
-The target ontology stores neither an independent namespace facet nor an
-independent type facet. `Q`, when present, is pure. Namespace projection is a
-judgment over `Q`; complete type projection closes that same `Q` with the
-ordinary value members that belong directly to it:
+A Symbol carries an optional complete type value `tau` and an optional sibling
+space `V_S`. All four shapes are well-formed:
 
 ```text
-NamespaceProjection(S) = Q
-  iff Val1(S) = <Q, V>
+WellFormedSymbol(<None, None>)
+WellFormedSymbol(<tau,  None>)
+WellFormedSymbol(<None, V_S>)
+WellFormedSymbol(<tau,  V_S>)
+```
 
+A Symbol with `<None, None>` has nothing to project; it remains a valid
+name/candidate-bearing node. The Symbol never forms a type from its own
+contents: `tau` is formed before installation and carried as a whole value.
+
+The complete type value is the closure:
+
+```text
+tau = bind alpha. <Q, V_T[alpha]>
+
+Core(tau)      = Q
+CallSpace(tau) = V_T
+```
+
+`Q` is the ordinary pure Object core. `V_T` is the callspace captured when
+`tau` was formed — the direct TypeMember members that belong to this type
+snapshot. `V_S` is the Symbol's own ordinary sibling candidate space,
+independent of `V_T`.
+
+TypeMember membership is decided when a member is created, by its direct
+classifier home; it is never a post-hoc partition of a shared Symbol space:
+
+```text
 TypeMember_Q(F)
   iff Anonymous(F)
   and DirectClassifierHome(F) = TypeMemberScope(Q)
@@ -127,31 +150,17 @@ CreateClassifier_Gamma(
   DirectClassifierHome = TypeMemberScope(Q)
 )
   => CurrentConstructionAuthority_Gamma(Q)
-
-SelectTypeMembers(Q, V)
-  = disjoint_union over F where TypeMember_Q(F) of V[F]
-
-V_T = SelectTypeMembers(Q, V)
-
-V_O = V \\ V_T
-
-TypeProjection(S) = tau = <Q, V_T>
-  iff NamespaceProjection(S) = Q
-  and TypeRole(Q)
-
-TypeProjection(S) defined => NamespaceProjection(S) defined
 ```
 
-The partition is derived from each callable/member classifier's canonical
-formation identity. `DirectClassifierHome` is fixed when the classifier is
-created, but formation itself is privileged: only a process holding current
-construction authority for `Q` may create an anonymous classifier directly in
-`TypeMemberScope(Q)`. Type/`struct` construction and `extend` over the current
-snapshot may hold that authority; `inject` reaches it only by invoking
-`extend`. Ordinary callable creation, navigated `let`, copying, rebinding,
-writing, and namespace installation may neither nominate this direct home at
-creation nor change it afterward. An anonymous classifier nested inside a
-direct TypeMember classifier is a descendant, not a direct member:
+`DirectClassifierHome` is fixed when the classifier is created, but formation
+itself is privileged: only a process holding current construction authority
+for `Q` may create an anonymous classifier directly in `TypeMemberScope(Q)`.
+Type/`struct` construction and `extend` over the current snapshot may hold that
+authority; `inject` reaches it only by invoking `extend`. Ordinary callable
+creation, navigated `let`, copying, rebinding, writing, and namespace
+installation may neither nominate this direct home at creation nor change it
+afterward. An anonymous classifier nested inside a direct TypeMember
+classifier is a descendant, not a direct member:
 
 ```text
 DirectClassifierHome(F) = TypeMemberScope(Q)
@@ -162,34 +171,38 @@ and DirectClassifierHome(G) != TypeMemberScope(Q)
   => not TypeMember_Q(G)
 ```
 
-Symbol storage does not own two copies of `V_T`. The raw Symbol value stores
-`V`; `TypeProjection` derives the partition and returns one immutable complete
-type closure. `Q` and the members in `V_T` are ordinary Objects, while the
-closure preserves their type-specific pairing without becoming another Object
-or another owned copy. Its callspace is intrinsic:
+Projections over the Symbol value are:
 
 ```text
-tau = <Q, V_T>
-Core(tau) = Q
-CallSpace(tau) = V_T
+NamespaceProjection(S) = Core(tau_S)   when tau_S present
+TypeProjection(S)       = tau_S         when tau_S present
 
-tau = bind alpha. <Q, V_T[alpha]>
+TypeProjection(S) defined => NamespaceProjection(S) defined
+
+CallableProjection(S)
+  = SiblingSpace(S) ∪ OptionalMap(CallSpace, TypeSlot(S))
+  = V_S ∪ V_T         when both present
+  = V_S               when tau_S absent
+  = V_T               when V_S absent
+  = ∅                 when <None, None>
 ```
 
-`TypeProjection` is single-valued because `Q` and its direct TypeMember
-partition determine this closure. Per the minimal-change rule
-(`type-values-places-and-borrow-views.md` §2.2), ordinary type-rank equality,
-keying, and type-argument identity keep observing `Core(tau) = Q` exactly as
-under the former `type = Q` rules; `Addr(Norm_type(tau))` is the snapshot
-identity, used to tell shared-root snapshots apart in transport and in
-positions the language has independently frozen to whole-snapshot semantics.
-Ordinary Pattern, namespace, and `ref` observations also use `Core(tau) = Q`;
-type-as-callee candidate acquisition uses `CallSpace(tau) = V_T`. `@` is the
+`CallableProjection` forms the candidate set in one step: there is no priority,
+fallback, or reopening between `V_S` and `V_T`. The same candidate reachable
+through both paths is deduplicated; two different callables with identical
+signatures remain two candidates. After the set is formed, the ordinary
+overload pipeline runs once (hard admissibility → policy preference → unique
+selection); failure does not reopen lookup.
+
+`tau` is not another Object and does not add a fourth Object coordinate. `Q`
+and every ordinary member in `V_T` remain ordinary Objects governed by the
+existing `<Val1?,P,Val2>` ontology. The closure preserves their type-specific
+pairing so a copied or extracted type carries its own callspace. `@` is the
 privileged place-observation operation that yields a lifetime value and never
 a `type ref` (canonical owner
 `../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2); reaching the
-type-level place explicitly uses `t |> type ref` or `(S ref).type`. The closure
-is not normalized as a fourth kind of Object.
+type-level place explicitly uses `t |> (type ref)` or `(S ref).type`. The
+closure is not normalized as a fourth kind of Object.
 
 References from members in `V_T` to the current type use the canonical binder:
 
@@ -243,7 +256,7 @@ supplies `AsType` implicitly and never forms a borrow. A Symbol's `.type`
 family is applicable exactly when its unique `Q` satisfies `TypeRole`:
 `S.type` reads the complete type snapshot by value, `(S ref).type` projects
 `type ref`, and `(S share).type` projects `type share`. Reaching the
-type-level place of an already-pure type slot uses `t |> type ref`, not `@`
+type-level place of an already-pure type slot uses `t |> (type ref)`, not `@`
 (the retired carrier-slot form `t@` does not return).
 
 Each cluster member carries its own complete Policy view; the cluster itself
@@ -1406,7 +1419,7 @@ does **not** exempt the result from layers 2–4 — the write result must still
 satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
-This distinction does not cancel `let f::(t |> type ref) = expr` for an
+This distinction does not cancel `let f::(t |> (type ref)) = expr` for an
 already-pure type slot, or `let f::((S ref).type) = expr` for a Symbol whose
 `Q` satisfies `TypeRole` (ordinary `Val2` member creation at an explicit type
 place), and does not change the `r;` terminal semantics. The current
@@ -3253,7 +3266,7 @@ Core(TypeValue(T)) = Core(TypeValue(U)) = Q_uint8
 Place(T)  != Place(U)  != Place(uint8)
 ```
 
-`let f::(T |> type ref)` therefore creates beneath `T`'s own pure-type place, and
+`let f::(T |> (type ref))` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
 Symbol-to-type projection and is not this operation. The ordinary associated
 installation updates only `T`'s carrier-local `Val2` observation; it neither
@@ -3305,7 +3318,7 @@ own member views, and the layered exposure conjunction on explicitly
 navigated targets are implemented in `crates/lang_build`. Still open debt:
 the associated-extension entry point is reached only through a still-open
 construction, so it resolves the target object from the constructed
-Pattern; source-level `let f::(U |> type ref)` against an already installed
+Pattern; source-level `let f::(U |> (type ref))` against an already installed
 pure-type rebinding carrier, navigation through that explicit `type ref` view,
 and writability checking of the selected place remain future implementation
 work. Bare `let f::U` is not shorthand for obtaining the type-level place.

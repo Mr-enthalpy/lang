@@ -70,16 +70,18 @@ ref    -> ref borrow / type formation over the value / place
 share  -> share borrow / type formation over the value / place
 ```
 
-`ref` and `share` keep their ordinary value semantics: `E ref = Ref(Read(E))`
-and `E share = Share(Read(E))` (canonical owner
-[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5). For `let t: type = uint8`, `t ref` remains `uint8 ref` — a correct borrow
+`ref` and `share` are privileged actual-place builtins
+(`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`).
+There is no global `E ref = Ref(Read(E))` law: the selected overload determines
+the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
+(canonical owner [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§5.1). For `let t: type = uint8`, `t ref` is a `uint8 ref` — a correct borrow
 of the value that was read. When the source surface must reach a higher-level
 place explicitly, it selects the higher-level `ref` / `share` candidate:
 
 ```lang
-t |> type ref    // explicit higher-level ref formation
-t |> type share  // explicit higher-level share formation
+t |> (type ref)    // explicit higher-level ref formation
+t |> (type share)  // explicit higher-level share formation
 ```
 
 `type ref` is the ordinary type construction `type |> ref`, and `type share` is
@@ -144,7 +146,7 @@ type share@ = type share                 (retired)
 
 `@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
 binding's ordinary value observation is `Core(tau)=Q`; reaching the type-level
-place is done explicitly with `t |> type ref` (or `(S ref).type` for a Symbol),
+place is done explicitly with `t |> (type ref)` (or `(S ref).type` for a Symbol),
 never by `@`. `AsType(S) = S |> type` remains by-value and is never followed by
 `@` to recover a place.
 

@@ -133,10 +133,10 @@ TypeRole(Q)      => Q is a type-capable pure role core
 NamespaceRole(x) and not TypeRole(x)
                  => x is navigable but unavailable to AsType
 
-TypeRole(Q) and V_T = SelectTypeMembers(Q, V)
+TypeRole(Q) and V_T = CallSpace(tau)   -- captured at formation
   => tau = <Q, V_T> is the complete type value,
      where V_T is the callspace captured at type-value formation:
-     the direct TypeMember partition of the forming Symbol's V
+     the direct TypeMember members placed into tau at that event
      (TypeMember_Q at formation), not a global function of bare Q
 ```
 
@@ -144,8 +144,8 @@ A type-role Object's Pattern may contain pattern-material leaves. A
 namespace-role-only Object may still contain ordinary navigable `Val2` members,
 but it cannot form a complete type closure because `TypeRole(x)` does not hold.
 `Q` is the Object core, while `AsType` returns the complete formation snapshot
-`tau = <Q, V_T>` (`V_T = SelectTypeMembers(Q, V)`); it does not return bare `Q`
-as complete type identity.
+`tau = <Q, V_T>` (where `V_T = CallSpace(tau)` is fixed at formation); it does
+not return bare `Q` as complete type identity.
 
 When one construction establishes `TypeRole(x)`, the Object and its navigable
 `Val2` share one owned construction origin. An Object whose namespace role was

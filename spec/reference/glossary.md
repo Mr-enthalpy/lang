@@ -780,7 +780,7 @@ slots), `t@ : type ref`, and the borrow-type fixed points `type ref@ = type
 ref` / `type share@ = type share` are retired. `ref` and `share` are the borrow
 constructors (`PrivilegedActualPlace(ref-family)` /
 `PrivilegedActualPlace(share-family)`); explicit higher-level selection uses
-`t |> type ref` / `t |> type share`. Borrow-constructor composition
+`t |> (type ref)` / `t |> (type share)`. Borrow-constructor composition
 preserves its resident target, but that is not a `@` overlap. What remains
 undefined is the full `@` lifetime algebra (region representation,
 `LifetimeVal` shape, ordering), checking order, refinement phase, and handoff
@@ -874,25 +874,26 @@ _See also: ProductForm, Object normal form (`Norm`), Symbol value._
 ## Symbol value
 
 An ordinary value of the ordinary `symbol` type. Its mutable member content is
-`Val1(Symbol) = Σ = ⟨Q?, ⨄_{T_c}V[T_c]⟩`, never a mutable `P x Val2` side
-structure. Each `V[T_c] : T_c * omega` is a homogeneous bucket of ordinary
-member objects. `Q`, when present, is the unique pure role member. Namespace
-projection selects `Q`. When `TypeRole(Q)`, type projection constructs the
-complete immutable closure `tau = <Q,V_T>`, optionally written
-`bind alpha.<Q,V_T[alpha]>`; it does not return bare `Q` or recover a defining
-Symbol later. The raw Symbol stores one `V`,
-partitioned as `V_T disjoint-union V_O`; projection does not duplicate an owned
-copy of `V_T`. `Q` and the members in `V_T` are ordinary Objects; `tau` is their
-type-specific closure, not an Object embedding or fourth Object coordinate.
-Ordinary Pattern/namespace/`ref` observation uses `Core(tau)=Q`. Per the
-minimal-change rule (`type-values-places-and-borrow-views.md` §2.2), ordinary
-type-rank equality/keying keeps observing `Core(tau)=Q` by default;
-type-as-callee uses `CallSpace(tau)=V_T`; copying, `extend`, and `inject`
-preserve or transform the whole closure. `@` is the privileged
+`Val1(Symbol) = Σ = <tau?, V_S?>`, never a mutable `P x Val2` side
+structure. `tau`, when present, is the complete type value
+`tau = bind alpha.<Q,V_T[alpha]>`; `V_S` is the Symbol's own sibling candidate
+space, independent of `V_T = CallSpace(tau)`. Namespace projection selects
+`Core(tau) = Q` when `tau` is present; type projection returns the whole `tau`.
+All four shapes `<None,None>`, `<tau,None>`, `<None,V_S>`, `<tau,V_S>` are
+well-formed. The Symbol never forms a type from its own contents: `tau` is
+formed before installation and carried as a whole value; it does not return
+bare `Q` or recover a defining Symbol later. `Q` and the members in `V_T` are
+ordinary Objects; `tau` is their type-specific closure, not an Object
+embedding or fourth Object coordinate. Consumers project `tau` as needed:
+ordinary Pattern/namespace observation and type-rank equality/keying use
+`Core(tau)=Q`; type-as-callee uses `CallSpace(tau)=V_T`; copying, `extend`,
+and `inject` preserve or transform the whole closure. `@` is the privileged
 place-observation operation that yields a lifetime value and never a
 `type ref` (canonical owner
 `../design/lifetime/lifetime-policy-and-overload-boundary.md` §1–§2).
-Callable val members project across the typed buckets to the formal `OverloadSet`.
+Callable val members project across the typed buckets of `V_S` to the formal
+`OverloadSet`; when `tau` is present, `CallableProjection(S) = V_S ∪ V_T`
+forms one candidate set with no priority or fallback.
 
 Symbol normalization is an extensional optional pure role member plus map of typed
 member sets. Stable member and candidate identities, callable-body identity, and
@@ -904,7 +905,7 @@ member are quotiented away; conflicting declarations remain diagnostics.
 empty/singleton bare Product, each typed bucket is an ordinary `T_c*omega`
 Sequence, each `(T_c, bucket)` entry is classified by `product`, and those
 homogeneous entries form a `product*omega` carrier. The logical
-`⟨Q?, V⟩` notation projects this ordinary Object composition.
+`<tau?, V_S?>` notation projects this ordinary Object composition.
 
 The privileged `struct` operation returns such a Symbol: it creates the unique
 pure-role member `Q_struct` satisfying `TypeRole(Q_struct)` and mechanically
@@ -917,18 +918,19 @@ _See also: PatternValue container kernel, Overload Candidate, `extend`._
 
 ## Complete type closure (`tau`)
 
-The immutable type value `tau = <Q,V_T>`, where `Q` is the ordinary pure Object
-core satisfying `TypeRole(Q)` and `V_T` is the callspace captured at type-value
-formation: the direct TypeMember partition of the forming Symbol's `V`
-(`SelectTypeMembers(Q, V)`), not a global function of the bare core `Q`.
+The immutable type value `tau = bind alpha.<Q,V_T[alpha]>`, where `Q` is the
+ordinary pure Object core satisfying `TypeRole(Q)` and `V_T = CallSpace(tau)`
+is the callspace fixed at type-value formation: the direct TypeMember members
+placed into `tau` at that event, not a post-hoc partition of a shared Symbol
+space and not a global function of the bare core `Q`.
 `Core(tau)=Q`; `CallSpace(tau)=V_T`. Members created under the same `Q` after
 formation never retroactively enter an existing snapshot, and a copied or
 extracted `tau` keeps its captured `V_T`. It is not an Object embedding,
-a fourth Object coordinate, or a second owned copy of `V_T`. Ordinary
-Pattern/namespace/`ref` observation sees `Q`; per the minimal-change rule,
-ordinary type-rank equality/keying also sees `Core(tau)=Q` by default. Type-as-
-callee uses `CallSpace(tau)=V_T`; copying, `extend`, and `inject` preserve or
-transform the whole closure as required by their own judgments. `@` is a
+a fourth Object coordinate, or a second owned copy of `V_T`. Consumers
+project `tau` as needed: ordinary Pattern/namespace observation and
+type-rank equality/keying use `Core(tau)=Q`; type-as-callee uses
+`CallSpace(tau)=V_T`; copying, `extend`, and `inject` preserve or transform
+the whole closure as required by their own judgments. `@` is a
 privileged place-observation operation that yields a lifetime value, not a
 borrow and not part of the complete-type observation classification.
 Canonical owner:
@@ -1020,7 +1022,7 @@ two instance groups (`Val1?(x) ≠ null -> LifetimeFact`,
 `Val1?(x) = null -> P ref`), the carrier-slot form `t@ : type ref`, and the
 borrow-type fixed points (`type ref@ = type ref`, `type share@ = type share`)
 are retired and do not return. Reaching the type-level place of a type-valued
-binding explicitly uses `t |> type ref` or `(S ref).type`, not `@`.
+binding explicitly uses `t |> (type ref)` or `(S ref).type`, not `@`.
 
 `@` never projects a Symbol to its type member. Symbol supplies the ordinary
 same-name family `S.type : type`, `(S ref).type : type ref`, and
@@ -1044,29 +1046,19 @@ _See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref
 
 ## Borrow view
 
-An ordinary value that observes another object without owning it. What `ref` and
-`share` observe is the value the expression read, and a read always yields a
-complete three-component object:
-
-```text
-Read(Σ) = ⟨ Val1(Σ), P(Σ), Val2(Σ) ⟩    when Val1(Σ) ≠ ⊥
-Read(Σ) = ⟨ ⊥,       P(Σ), Val2(Σ) ⟩    when Val1(Σ) = ⊥
-
-E ref    = Ref( Read(E) )
-E share  = Share( Read(E) )
-```
-
-`Val1` is the object's internal payload, not the read result: `Read` never
-projects an object down to its payload. So for `s : symbol`, `Read(s)` is the
-symbol value — not the member array inside it — and `s ref : symbol ref`.
-
-For `let t: type = uint8`, `t ref` is `uint8 ref` — a correct borrow of the
-value that was read. Reaching the type-level place of the type-valued binding
-uses `t |> type ref`, not `@` (`@` yields a lifetime value, not a borrow).
-Whether `ref` or `t |> type ref` is the right operation is decided by what the
-surface means, never by type-rank: for `s : symbol` the payload exists, so
-`s ref : symbol ref` borrows the symbol value `s` carries — not the binding slot
-that carries `s` — and a type-rank object with a payload behaves the same way.
+`ref` and `share` are privileged actual-place builtins
+(`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`).
+There is no global `E ref = Ref(Read(E))` law: the selected overload determines
+the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
+(canonical owner `../design/symbol-world/type-values-places-and-borrow-views.md`
+§5.1). For `let t: type = uint8`, `t ref` is `uint8 ref` — a correct borrow of
+the value that was read. Reaching the type-level place of the type-valued
+binding uses `t |> (type ref)`, not `@` (`@` yields a lifetime value, not a
+borrow). Whether `ref` or `t |> (type ref)` is the right operation is decided
+by what the surface means, never by type-rank: for `s : symbol` the payload
+exists, so `s ref : symbol ref` borrows the symbol value `s` carries — not the
+binding slot that carries `s` — and a type-rank object with a payload behaves
+the same way.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
 `SymbolId`, and its member set is not silently that of its target. It does carry
@@ -1216,7 +1208,7 @@ _See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
 
 `type ref` is the borrow-reference type produced by `type |> ref`. A value
 `r : type ref` is a borrow view of a type-valued place. Reaching the
-type-level place of a pure type slot uses `t |> type ref`; a Symbol uses
+type-level place of a pure type slot uses `t |> (type ref)`; a Symbol uses
 `(S ref).type` when its unique `Q` satisfies `TypeRole`. Ordinary borrow
 lifetime and policy rules determine formation, validity, and writability.
 
@@ -1225,7 +1217,7 @@ lifetime and policy rules determine formation, validity, and writability.
 
 ```text
 let t: type = uint8
-let r : type ref = t |> type ref
+let r : type ref = t |> (type ref)
 ```
 
 A `type ref` is a type value; the borrow instance it carries holds only
@@ -2215,22 +2207,22 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 ## AsType and TypeOf
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
-For a Symbol with a type-capable `Q`, it returns the complete immutable type
-closure `tau = <Q,V_T>`, optionally written
-`bind alpha.<Q,V_T[alpha]>`. For an already complete type value `tau`, it is
-the identity. Bare `Q` is the type-capable core, not the complete type.
+For a Symbol carrying a type value `tau`, it returns the complete immutable type
+closure `tau = bind alpha.<Q,V_T[alpha]>`. For an already complete type value
+`tau`, it is the identity. Bare `Q` is the type-capable core, not the complete type.
 It never searches a namespace-role Object for a hidden type member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;
-reaching the type-level place of a pure type slot uses `t |> type ref` (not the
+reaching the type-level place of a pure type slot uses `t |> (type ref)` (not the
 retired `t@`).
 
 `TypeOf(E)` is classifier extraction and may move to the next universe. Its
 explicit source family is `let <typeof> x : typeof = RHS`, not ordinary
-type-expected elaboration. The global `type` object is first a Symbol:
+type-expected elaboration. The global `type` object is itself a value of
+`type_1`:
 
 ```text
-typeof(type) = symbol
-typeof(type |> type) = type_1
+TypeOf(type)   = type_1
+TypeOf(symbol) = type
 rank(type ref/share) = rank(type)
 rank(T*N) = rank(T*omega) = rank(T)
 ```
