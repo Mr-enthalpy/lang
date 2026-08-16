@@ -277,9 +277,10 @@ compiler-container identities beside it.
 The `P_symbol` clause first decodes the two ordinal positions of the ordinary
 `Σ_Object` composition specified in `symbol-first-meta-construction-and-pattern-injection.md`,
 then applies a Pattern-specific quotient to the logical view
-`Σ = ⟨Q?, V⟩`, where `Q`, when present, is the unique pure role member,
-`V = ⨄_{T_c} V[T_c]`, and every homogeneous bucket
-`V[T_c] : T_c * omega`. The member objects inside a bucket retain their own
+`Σ = ⟨tau?, V_S⟩`, where `tau`, when present, is the complete type value
+carried by the Symbol,
+`V_S = ⨄_{T_c} V_S[T_c]`, and every homogeneous bucket
+`V_S[T_c] : T_c * omega`. The member objects inside a bucket retain their own
 ordinary recursive identity, including stable declaration/candidate identity,
 callable body, and every annotation that affects semantic selection. There is no
 universal `SemanticMember` wrapper type and no exception to the homogeneity of

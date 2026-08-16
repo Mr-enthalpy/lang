@@ -1457,22 +1457,22 @@ three components as every other object:
 ```text
 SymbolValue = ⟨ Σ, P_symbol, Val2_symbol ⟩
 
-Σ = ⟨ Q?, V ⟩
-V = ⨄_{T_c} V[T_c]
-V[T_c] : T_c * omega
+Σ = ⟨ tau?, V_S ⟩
+V_S = ⨄_{T_c} V_S[T_c]
+V_S[T_c] : T_c * omega
 ```
 
 Its member content is ordinary object content:
 
 ```text
-at most one pure role member Q
-any number of val members
+optional complete type value tau
+any number of ordinary sibling val members
 ```
 
 Because the member content is the mutable part, it lives in `Val1`:
 
 ```text
-Val1(Symbol) = Σ = ⟨ Q?, ⨄_{T_c} V[T_c] ⟩
+Val1(Symbol) = Σ = ⟨ tau?, ⨄_{T_c} V_S[T_c] ⟩
 ```
 
 `Σ` is a logical view over ordinary Object containers, not a
@@ -1480,18 +1480,18 @@ specification-private record carrier. Using the constructor lemmas in
 `type-values-places-and-borrow-views.md`:
 
 ```text
-RoleOption(absent) = BareProduct()
-RoleOption(Q)      = BareProduct(Q) where Pure(Q)
+TypeOption(absent) = BareProduct()
+TypeOption(tau)    = BareProduct(tau) where CompleteType(tau)
 
-BucketEntry(T_c)  = ProductValue(T_c, V[T_c]) : product
-BucketCarrier(V)  = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
+BucketEntry(T_c)     = ProductValue(T_c, V_S[T_c]) : product
+BucketCarrier(V_S)   = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
 
-Σ_Object(Q?, V)   = BareProduct(RoleOption(Q?), BucketCarrier(V)) ∈ Object
-Val1(Symbol)       = Σ_Object(Q?, V)
+Σ_Object(tau?, V_S)  = BareProduct(TypeOption(tau?), BucketCarrier(V_S)) ∈ Object
+Val1(Symbol)         = Σ_Object(tau?, V_S)
 ```
 
-The notation `⟨Q?, V⟩` merely projects the two ordinal positions of this bare
-Product Object. Every `V[T_c]` is itself the ordinary `T_c * omega` Sequence
+The notation `⟨tau?, V_S⟩` merely projects the two ordinal positions of this bare
+Product Object. Every `V_S[T_c]` is itself the ordinary `T_c * omega` Sequence
 Object, and every bucket entry is classified by the global `product` type so
 the bucket carrier remains genuinely homogeneous. Symbol normalization applies
 its unordered quotient to this ordinary carrier; neither `Σ` nor its buckets

@@ -958,8 +958,8 @@ _See also: TypeMemberScope, `Self_T`, Symbol value._
 ## TypeMemberScope
 
 The direct classifier-home scope associated with the pure role `Q` of a type.
-Creation under this scope is the membership proof used to partition Symbol
-members into `V_T` and `V_O`; arbitrary descendants do not qualify. Selecting
+Creation under this scope is the membership proof that places a member into
+`V_T` at type-value formation; arbitrary descendants do not qualify. Selecting
 this home at classifier creation requires current construction authority for
 `Q`, so ordinary namespace installation cannot manufacture membership.
 
@@ -973,9 +973,10 @@ The canonical self reference inside the binder-aware type closure
 `tau = bind alpha.<Q,V_T[alpha]>`. During `Norm_type` it becomes
 `BoundRef(alpha)`, which is not an owned child. After
 authorized back-references are erased, the owned graph must satisfy
-`WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite
-under static-eval generation (covering both compile and meta) and acyclic once
-materialized at runtime.
+`WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite,
+acyclic after back-ref erasure, all back-refs bound, and restricted to
+authorized static edge kinds under static-eval generation (covering both
+compile and meta) and acyclic once materialized at runtime.
 `Self_T` is one restricted static back-reference instance, not an exceptional
 cycle and not a general recursive-Object constructor.
 Canonical owner:
