@@ -4,7 +4,7 @@
 identity, place identity, and borrow views. Current `lang_build` implements only
 the first-order identity core: recursive normalization over the present
 type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
-per-carrier places. The complete `tau=<Q,V_T>` snapshot and
+per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
 `Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
 `share`, `rebind`), the place-sensitive lifetime observation (`@`),
 construction-lineage Open judgment, and type checker
@@ -87,7 +87,7 @@ PatternValue identity
   ```
 
   Two closures may have the same `TypeValueId`/core root while carrying
-  different immutable `V_T` snapshots. Bare `TypeValueId` comparison remains the
+  different immutable `V_τ` snapshots. Bare `TypeValueId` comparison remains the
   default observation of ordinary type equality, keying, and type-argument
   identity, exactly as under the former `type = Q` rules (minimal-change rule,
   §2.2); `Addr(Norm_type(tau))` is the snapshot identity, used to tell
@@ -96,9 +96,9 @@ PatternValue identity
 - `PatternValue identity` is ordinary Object identity. A type value participates
   in Pattern/value/namespace observation through `Core(tau) = Q`. Per the
   minimal-change rule, ordinary type-rank equality, keying, and type-argument
-  identity keep observing that core by default; `CallSpace(tau)=V_T` supplies
+  identity keep observing that core by default; `CallSpace(tau)=V_τ` supplies
   type-as-callee candidates; and copying, `extend`, and `inject` transport or
-  transform the whole snapshot including `V_T`.
+  transform the whole snapshot including `V_τ`.
 
 These identities are independent. None implies another:
 
@@ -301,7 +301,7 @@ normalized `Val1? = null` objects as `⟨P, Val2⟩` and `Val1? ≠ null` object
 Object whose `Val2` differs is a different Object, and a pure core `Q` whose
 `Val1?` is `null` still normalizes its `P` and `Val2` fully. `Norm(Q)` is the
 ordinary three-component Object normal form. `Norm_type(tau)`, defined in §2.2,
-is instead the normal form of the complete `<Q,V_T>` closure and must not be
+is instead the normal form of the complete `<Q,V_τ>` closure and must not be
 collapsed to `Norm(Q)`.
 
 An ordinary object's incidental carrier/residency coordinates never enter its
@@ -465,8 +465,8 @@ let fn = (...): meta -> _ :symbol = {
 the two observations of `t` are different complete type snapshots:
 
 ```text
-tau_1 = <Q_1, V_T>
-tau_2 = <Q_2, V_T>
+tau_1 = <Q_1, V_τ>
+tau_2 = <Q_2, V_τ>
 
 Val2(Q_1) contains f
 Val2(Q_2) contains f and g
@@ -523,7 +523,7 @@ NoNormalForm_kappa(x)
 Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cyclic
 `Val2` such as `let loop::t = t;` all have **no normal form** at the stage where
 they are materialized. A finished shared acyclic subtree remains valid DAG
-reuse. `Self_T` is one restricted static back-reference instance, not the one
+reuse. `Self_τ` is one restricted static back-reference instance, not the one
 exceptional cycle, and not a general recursive-data constructor.
 
 ### 2.2 Complete type values are closed snapshots over Object cores
@@ -539,40 +539,50 @@ TypeRole(Q)
 A complete language-level type value is the closure:
 
 ```text
-tau = <Q, V_T>
+tau = <Q, V_τ>
 
 Core(tau)      = Q
-CallSpace(tau) = V_T
+CallSpace(tau) = V_τ
 
 CompleteType(tau)
-  iff TypeRole(Core(tau))
-  and exists a formation witness w:
-      FormsCompleteType(w, Core(tau), CallSpace(tau))
-
-FormsCompleteType(w, Q, V_T)
   iff TypeRole(Q)
-  and w is a formation event for Q
-  and V_T is the TypeMember set placed into tau at w
-      (each F in V_T satisfies TypeMember_Q(F) at formation;
-       members created later under the same Q never enter V_T)
+  and exists a formation witness w:
+      FormationLine(w, Q_0, V_τ)
+      and CoreOnFormationLine(w, Q)
+
+FormationLine(w, Q_0, V_τ)
+  // w is the formation event that created Q_0 and fixed V_τ
+  iff w is a formation event for Q_0
+  and V_τ is the TypeMember set placed into tau at w
+      (each F in V_τ satisfies TypeMember_{Q_0}(F) at formation;
+       members created later under the same Q_0 never enter V_τ)
+
+CoreOnFormationLine(w, Q)
+  // Q is Q_0 itself, or a core derived from Q_0 by zero or more
+  // permitted Associate* operations on the same formation line
+  iff Q = Q_0
+  or exists Q_prev: CoreOnFormationLine(w, Q_prev)
+      and Q = AssociateCore(Q_prev, selector, value)
 ```
 
 A derived snapshot `tau' = Associate(tau, f, v)` is a valid complete type value
-on the same formation line: it keeps the witness `w` and the same `V_T`, and is
-not a new formation event. Only structural transformations (`extend`) form a
-new `V_T` and a new witness.
+on the same formation line: `CoreOnFormationLine(w, Q')` holds because `Q'` is
+obtained from `Q_0` by permitted `Associate*`, while `FormationLine(w, Q_0,
+V_τ)` and `V_τ` are unchanged. `Associate` is not a new formation event. Only
+structural transformations (`extend`) form a new `V_τ` and establish a new
+`FormationLine` with a fresh witness `w'`.
 
-`V_T = CallSpace(tau)` is the callspace captured when the type value was
+`V_τ = CallSpace(tau)` is the callspace captured when the type value was
 formed: the direct TypeMember members placed into `tau` at that event
 (`TypeMember_Q`, symbol-first §2.1), not a later partition of a shared Symbol
 space and not a global function of the bare core `Q`. The witness `w` pins the
 snapshot to one formation event, so `CompleteType` is not a global function of
 the bare core `Q`. Members created under the same `Q` after formation never
 retroactively enter an existing snapshot, and a copied or extracted `tau`
-keeps its captured `V_T`.
+keeps its captured `V_τ`.
 
 `tau` is not another Object and does not add a fourth Object coordinate. `Q`
-and every ordinary member in `V_T` remain Objects governed by the existing
+and every ordinary member in `V_τ` remain Objects governed by the existing
 `<Val1?,P,Val2>` ontology. The closure only preserves their type-specific
 pairing so a copied or extracted type carries its own callspace. Because `tau`
 is not an Object, any Object-position representation — including the
@@ -591,9 +601,9 @@ old Q-consuming rule observed type = Q
                                    ordinary compatibility, ordinary Pattern
                                    and namespace observation)
 type-as-callee candidate acquisition
-  -> CallSpace(tau) = V_T
+  -> CallSpace(tau) = V_τ
 snapshot transport / copy / extend / inject
-  -> the whole tau snapshot, including V_T
+  -> the whole tau snapshot, including V_τ
 ```
 
 (`ref`/`share` over a type value are governed by §5: borrow constructors are
@@ -608,13 +618,13 @@ When members refer to the current type, the closure has the binder-aware normal
 form:
 
 ```text
-tau = bind alpha. <Q, V_T[alpha]>
+tau = bind alpha. <Q, V_τ[alpha]>
 
 Norm_type(tau)
   = bind alpha.
-      <Norm(Q), Norm_V^alpha(V_T)>
+      <Norm(Q), Norm_V^alpha(V_τ)>
 
-Norm_type^alpha(Self_T)
+Norm_type^alpha(Self_τ)
   = BoundRef(alpha)
 
 BoundRef(alpha) notin Children_owned
@@ -645,19 +655,19 @@ cyclic Object content.
 
 Each `tau` is an immutable snapshot; no operation mutates an existing closure.
 The non-structural `Associate` operation (defined below; place operation §7.1)
-replaces a carrier's stored snapshot with a derived `tau' = <Q', V_T>` without
-changing `V_T` or adding structural incidence; `extend` remains the structural
+replaces a carrier's stored snapshot with a derived `tau' = <Q', V_τ>` without
+changing `V_τ` or adding structural incidence; `extend` remains the structural
 transformation. Copying a type-valued binding copies the
 whole closure:
 
 ```text
-TypeValue(T) = tau = <Q, V_T>
+TypeValue(T) = tau = <Q, V_τ>
 let U: type = T
-TypeValue(U) = Copy(tau) = <Q, V_T>
+TypeValue(U) = Copy(tau) = <Q, V_τ>
 Eval(T) = Eval(U) = tau
 CoreView(tau) = Q
 PatternView(tau) = Q
-CallSpace(tau) = V_T
+CallSpace(tau) = V_τ
 ```
 
 Ordinary associated-member installation is a **non-structural snapshot
@@ -665,22 +675,26 @@ update**, not `extend`:
 
 ```text
 Associate(
-    tau = <Q, V_T>,
+    tau = <Q, V_τ>,
     selector,
     value
 )
-  = tau' = <Q', V_T>
+  = tau' = <Q', V_τ>
 
 P(Q')    = P(Q)
 Val2(Q') = Val2(Q)[selector := value]
 
-V_T unchanged
+V_τ unchanged
 no DirectPatternChild added
+CoreOnFormationLine(w, Q') holds
+  (same FormationLine(w, Q_0, V_τ); Q' is on the line)
 ```
 
 The place-level operation is `old := Read(type_place); new := Associate(old, f,
 expr); Write(type_place, new)` (§7.1). The old `tau` copy is never mutated; the
-carrier receives a fresh snapshot that shares the same `V_T`.
+carrier receives a fresh snapshot that shares the same `V_τ` and the same
+formation line. Only `extend` establishes a new `FormationLine` with a fresh
+witness `w'` and a new `V_τ'`.
 
 Pure extension may preserve a construction root while producing a different
 snapshot:
@@ -779,8 +793,8 @@ The source carrier `s_b` is not stored as part of `v` after evaluation.
 Provenance may mention it; semantic value identity does not. Consequently no
 ordinary binding path may recover associated operations by mapping
 `TypeValueId` back to an “original defining Symbol”. A source Symbol projects
-`tau=<Q,V_T>` directly; an already-held type value uses its intrinsic
-`CallSpace(tau)=V_T`. Ordinary Pattern/namespace observation separately follows
+`tau=<Q,V_τ>` directly; an already-held type value uses its intrinsic
+`CallSpace(tau)=V_τ`. Ordinary Pattern/namespace observation separately follows
 `Core(tau)=Q`.
 
 The same separation applies inside derived semantic material. A struct field,
@@ -1101,60 +1115,63 @@ prepare actual value
 -> execute default
 ```
 
-For an ordinary `Val1`-bearing value, the selected borrow-forming `ref` overload
-borrows the object place of the value it reads — not the carrier slot the
-binding occupies. The category split matters for type-valued bindings: for
-`t : type`, `t ref` selects the **type-forming** overload and yields the
-TypeValue `tau_(t ref)` (the borrow type of `t`), never a borrow instance; the
-borrow instance over the type-level place is produced only by invoking that
-borrow type explicitly with `t |> (type ref)` (§5.2).
+For a type-valued binding `t : type`, `t ref` selects the **type-forming**
+overload and yields the TypeValue `tau_(t ref)` (the borrow type of `t`), never
+a borrow instance; the borrow instance over the type-level place is produced
+only by invoking that borrow type explicitly with `t |> (type ref)` (§5.2).
+For an ordinary `Val1`-bearing value, the selected borrow-forming default
+obtains the actual's place via its privilege (§5.1.0).
 
-#### 5.1.0 The referent of a selected borrow-forming `ref` overload is the value's object place
+#### 5.1.0 The selected borrow-forming default obtains a privileged actual place
 
-The borrow-forming `ref` overload borrows the ordinary object place of the
-value it reads, not the carrier slot that the binding occupies. For an
-ordinary `Val1`-bearing value:
+The selected borrow-forming default of `ref` (or `share`) obtains the place of
+the actual — not a second place source derived from `Read(E)`. The old
+`ObjectPlace(value) ≠ CarrierPlace(E)` binary is retired: it existed only
+because `ref` was assumed unable to observe the actual place while `@` could,
+and that assumption no longer holds now that `ref` and `share` carry
+`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`.
 
 ```text
-Read(E) = ⟨ value, ObjectPlace(value) ⟩
-selected ref overload = Ref( value, ObjectPlace(value) )
+ordinary candidate preparation:
+    evaluate actual for Pattern / Policy / overload matching
 
-ObjectPlace(value) ≠ CarrierPlace(E)
+selected privileged borrow default:
+    p := PrivilegedActualPlace(actual)
+    return Ref(p) / Share(p)
 ```
 
-This is the behavior of the selected borrow-forming overload, not a global
-`E ref = Ref(Read(E))` law: overload selection runs first (privileged
-actual-place builtins, §5.1), and a different selected overload may behave
-differently.
+There is no global `E ref = Ref(Read(E))` law: overload selection runs first
+(§5.1), and only the selected builtin default exercises its place privilege.
+An ordinary user function that spells the same formal head cannot obtain the
+same place. The place `p` is the actual's place under the selected overload;
+how `p` is formed for a given expression category is a place-judgment matter,
+not a second `Read(E)`-derived place source.
 
-`ObjectPlace(value)` is the stable Object coordinate of the ordinary read
-itself. A type-valued operand does **not** reach this path: for `t : type`,
-`t ref` is type formation (§5.2) and yields the TypeValue `tau_(t ref)`, never
-a borrow of `Core(tau)`. Reaching the type-level carrier place of a type-valued
-binding explicitly invokes `t |> (type ref)`, whose borrow-forming member
-obtains `place(t)` and yields the borrow instance; `ref` never falls back to
-`CarrierPlace(E)` and never elaborates a higher-level `(type ref)` implicitly
-(§5.2).
+A type-valued operand does **not** reach the borrow-forming path: for
+`t : type`, `t ref` is type formation (§5.2) and yields the TypeValue
+`tau_(t ref)`, never a borrow of `Core(tau)`. Reaching the type-level carrier
+place explicitly invokes `t |> (type ref)`, whose borrow-forming member obtains
+`place(t)` and yields the borrow instance; `ref` never falls back to a carrier
+slot and never elaborates a higher-level `(type ref)` implicitly (§5.2).
 
-A value with no stable object place — a freshly computed temporary that resides
-nowhere and carries no borrowable object identity — supplies no
-`ObjectPlace`, so `ref` has **no applicable candidate** on it. `ref` never
-materializes storage on the writer's behalf and never silently retargets to the
-carrier slot; a temporary must first be bound to a named place (giving it an
-object place) before it can be borrowed.
+A value with no stable place — a freshly computed temporary that resides
+nowhere and carries no borrowable identity — supplies no place, so `ref` has
+**no applicable candidate** on it. `ref` never materializes storage on the
+writer's behalf and never silently retargets to a carrier slot; a temporary
+must first be bound to a named place before it can be borrowed.
 
-`ref` is an ordinary meta-function call on the read result. It does not ask
-which symbol slot the value came out of, and does not consult, capture, or
-export it. Therefore:
+`ref` is an ordinary meta-function call. It does not ask which symbol slot the
+value came out of, and does not consult, capture, or export it. Therefore:
 
 ```lang
 let t = uint8;
 let r = t ref;
 ```
 
-binds `r` to `uint8 ref` — a borrow view of the ordinary core `Q_uint8` — and not to
-a reference to the symbol slot `t`. Rebinding `t` afterwards does not change
-`r`. Reaching the type-level carrier slot of a pure type binding uses
+Here `uint8` evaluates to the complete type value `tau_uint8`, so `t` is
+type-valued. `t ref` selects the type-forming overload and yields the TypeValue
+`tau_(uint8 ref)` — not a borrow instance, and not a borrow of `Core(tau)`.
+Reaching the type-level carrier slot of a pure type binding uses
 `t |> (type ref)` (§5.2). A Symbol's type-member slot instead uses `(S ref).type`.
 
 `share` differs from `ref` in the capability it grants, not in the judgment it
@@ -1177,6 +1194,12 @@ this value" operation. Because `Read` does not descend into `Val1`, `r` is a
 `symbol ref` and **not** a reference to the member array held inside the
 symbol. What `r` borrows is the symbol value that `s` holds, not the binding
 slot that holds `s`, and not the payload inside that value.
+
+When the intent is to form a borrow of the symbol's **type** rather than the
+symbol value itself — i.e. `(s |> type) ref` — the ergonomic path is the
+explicit `symbol` ref/share forwarding bridge
+([`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
+§2.0.1), not an implicit `AsType` during candidate matching.
 
 The rule is about the presence of the `Val1` dimension, not about type-rank. An
 object that happens to sit at type rank and still carries a payload takes the
@@ -1208,9 +1231,9 @@ AsType(tau) = tau
 The second rule validates an existing complete type value. It does not treat a
 bare pure namespace Object as a complete type, wrap a namespace, or search for
 a hidden type member. `TypeRole(Core(tau))` holds for every carried `tau`; the
-complete result is the whole `tau = <Q, V_T>`, whose callspace `V_T` was fixed
+complete result is the whole `tau = <Q, V_τ>`, whose callspace `V_τ` was fixed
 at formation (the direct TypeMember members of symbol-first §2.1). A copied
-or extracted `tau` keeps its captured `V_T`; members created under the same `Q`
+or extracted `tau` keeps its captured `V_τ`; members created under the same `Q`
 later never enter an existing snapshot. Payload presence alone
 remains irrelevant to type
 applicability: a Symbol may carry no `tau` (no type projection), or carry a
@@ -1241,7 +1264,7 @@ and `ref share`) remain valid (§5.3), as does the separately specified implicit
 ### 5.2 Reaching the type-level place: `t |> (type ref)`
 
 The type-forming `ref` overload over a type value forms the borrow **type**
-value; it never borrows the ordinary object place of `Core(tau) = Q`. Reaching
+value; it never borrows `Core(tau) = Q`. Reaching
 the type-level carrier place is an explicit invocation of the formed borrow
 type value itself — `t |> (type ref)` — never an implicit fallback of `ref`:
 
@@ -1441,7 +1464,8 @@ assignment target. There is no context in which the same spelling means both.
 
 A by-value `type` closure carries no carrier-slot place or borrow capability;
 consuming one can only produce a new closure value. Ordinary `Read` projects
-`Core(tau)=Q`, whose `ObjectPlace` is what `ref` borrows (§5.1.0). A bound
+`Core(tau)=Q`; `ref` over a type-valued operand forms the borrow type value
+`tau_(t ref)` (§5.2), not a borrow of `Core(tau)`. A bound
 type expression has a carrier slot that `t |> (type ref)` reaches explicitly as
 `type ref`; `@` yields a lifetime value and never forms a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1).
@@ -1569,7 +1593,7 @@ TypeOf(symbol) = type
 
 The old `typeof(type) = symbol` / `typeof(type |> type) = type_1` path is
 retired: `type` is no longer a `symbol` whose callable members must be reached
-through the Symbol's shared `V`. With `tau = <Q, V_T>`, `type` carries its own
+through the Symbol's shared `V`. With `tau = <Q, V_τ>`, `type` carries its own
 callspace, so `TypeOf(type) = type_1` directly.
 
 The designated positions are:
@@ -1808,8 +1832,8 @@ freshness. `let` is the only operation that changes `None` to `Some(value)`.
 The two forms also differ in what they change about the host:
 
 ```text
-let f::((T ref).type) = expr -> Associate(tau, f, expr) = <Q',V_T>; P and V_T unchanged (§2.2)
-extend(TypeValue(T), Δ)      -> new tau' = <Q',V_T'> snapshot
+let f::((T ref).type) = expr -> Associate(tau, f, expr) = <Q',V_τ>; P and V_τ unchanged (§2.2)
+extend(TypeValue(T), Δ)      -> new tau' = <Q',V_τ'> snapshot
 inject((T ref).type, Δ)      -> read + extend + write through the type ref
 ```
 
@@ -1921,7 +1945,7 @@ The `lang_build` semantic spine implements the identity core of this document
 only through its existing type-core/`Val2` substrate: opaque-`Val1` Object
 normalization, first-order `TypeValueId`, per-carrier places, and meta return
 self-root validation. It does not yet represent the complete immutable
-`tau=<Q,V_T>` closure or use `Norm_type(tau)` for equality/keying/copying. The
+`tau=<Q,V_τ>` closure or use `Norm_type(tau)` for equality/keying/copying. The
 current `TypeObject` adapter is implementation transport, never the canonical
 complete type model or a binding-level policy authority.
 

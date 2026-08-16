@@ -876,23 +876,23 @@ _See also: ProductForm, Object normal form (`Norm`), Symbol value._
 An ordinary value of the ordinary `symbol` type. Its mutable member content is
 `Val1(Symbol) = Σ = <tau?, V_S?>`, never a mutable `P x Val2` side
 structure. `tau`, when present, is the complete type value
-`tau = bind alpha.<Q,V_T[alpha]>`; `V_S` is the Symbol's own sibling candidate
-space, independent of `V_T = CallSpace(tau)`. Namespace projection selects
+`tau = bind alpha.<Q,V_τ[alpha]>`; `V_S` is the Symbol's own sibling candidate
+space, independent of `V_τ = CallSpace(tau)`. Namespace projection selects
 `Core(tau) = Q` when `tau` is present; type projection returns the whole `tau`.
 All four shapes `<None,None>`, `<tau,None>`, `<None,V_S>`, `<tau,V_S>` are
 well-formed. The Symbol never forms a type from its own contents: `tau` is
 formed before installation and carried as a whole value; it does not return
-bare `Q` or recover a defining Symbol later. `Q` and the members in `V_T` are
+bare `Q` or recover a defining Symbol later. `Q` and the members in `V_τ` are
 ordinary Objects; `tau` is their type-specific closure, not an Object
 embedding or fourth Object coordinate. Consumers project `tau` as needed:
 ordinary Pattern/namespace observation and type-rank equality/keying use
-`Core(tau)=Q`; type-as-callee uses `CallSpace(tau)=V_T`; copying, `extend`,
+`Core(tau)=Q`; type-as-callee uses `CallSpace(tau)=V_τ`; copying, `extend`,
 and `inject` preserve or transform the whole closure. `@` is the privileged
 place-observation operation that yields a lifetime value and never a
 `type ref` (canonical owner
 `../design/lifetime/lifetime-policy-and-overload-boundary.md` §1–§2).
 Callable val members project across the typed buckets of `V_S` to the formal
-`OverloadSet`; when `tau` is present, `CallableProjection(S) = V_S ∪ V_T`
+`OverloadSet`; when `tau` is present, `CallableProjection(S) = V_S ∪ V_τ`
 forms one candidate set with no priority or fallback.
 
 Symbol normalization is an extensional optional complete type closure plus map
@@ -919,25 +919,25 @@ _See also: PatternValue container kernel, Overload Candidate, `extend`._
 
 ## Complete type closure (`tau`)
 
-The immutable type value `tau = bind alpha.<Q,V_T[alpha]>`, where `Q` is the
-ordinary pure Object core satisfying `TypeRole(Q)` and `V_T = CallSpace(tau)`
+The immutable type value `tau = bind alpha.<Q,V_τ[alpha]>`, where `Q` is the
+ordinary pure Object core satisfying `TypeRole(Q)` and `V_τ = CallSpace(tau)`
 is the callspace fixed at type-value formation: the direct TypeMember members
 placed into `tau` at that event, not a post-hoc partition of a shared Symbol
 space and not a global function of the bare core `Q`.
-`Core(tau)=Q`; `CallSpace(tau)=V_T`. Members created under the same `Q` after
+`Core(tau)=Q`; `CallSpace(tau)=V_τ`. Members created under the same `Q` after
 formation never retroactively enter an existing snapshot, and a copied or
-extracted `tau` keeps its captured `V_T`. It is not an Object embedding,
-a fourth Object coordinate, or a second owned copy of `V_T`. Consumers
+extracted `tau` keeps its captured `V_τ`. It is not an Object embedding,
+a fourth Object coordinate, or a second owned copy of `V_τ`. Consumers
 project `tau` as needed: ordinary Pattern/namespace observation and
 type-rank equality/keying use `Core(tau)=Q`; type-as-callee uses
-`CallSpace(tau)=V_T`; copying, `extend`, and `inject` preserve or transform
+`CallSpace(tau)=V_τ`; copying, `extend`, and `inject` preserve or transform
 the whole closure as required by their own judgments. `@` is a
 privileged place-observation operation that yields a lifetime value, not a
 borrow and not part of the complete-type observation classification.
 Canonical owner:
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
-_See also: Object normal form (`Norm`), TypeMember, `Self_T`._
+_See also: Object normal form (`Norm`), TypeMember, `Self_τ`._
 
 ---
 
@@ -952,7 +952,7 @@ navigated `let` cannot nominate the scope and thereby forge membership.
 Canonical owner:
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-_See also: TypeMemberScope, `Self_T`, Symbol value._
+_See also: TypeMemberScope, `Self_τ`, Symbol value._
 
 ---
 
@@ -960,7 +960,7 @@ _See also: TypeMemberScope, `Self_T`, Symbol value._
 
 The direct classifier-home scope associated with the pure role `Q` of a type.
 Creation under this scope is the membership proof that places a member into
-`V_T` at type-value formation; arbitrary descendants do not qualify. Selecting
+`V_τ` at type-value formation; arbitrary descendants do not qualify. Selecting
 this home at classifier creation requires current construction authority for
 `Q`, so ordinary namespace installation cannot manufacture membership.
 
@@ -968,17 +968,17 @@ _See also: TypeMember, SemanticOwner._
 
 ---
 
-## `Self_T`
+## `Self_τ`
 
 The canonical self reference inside the binder-aware type closure
-`tau = bind alpha.<Q,V_T[alpha]>`. During `Norm_type` it becomes
+`tau = bind alpha.<Q,V_τ[alpha]>`. During `Norm_type` it becomes
 `BoundRef(alpha)`, which is not an owned child. After
 authorized back-references are erased, the owned graph must satisfy
 `WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite,
 acyclic after back-ref erasure, all back-refs bound, and restricted to
 authorized static edge kinds under static-eval generation (covering both
 compile and meta) and acyclic once materialized at runtime.
-`Self_T` is one restricted static back-reference instance, not an exceptional
+`Self_τ` is one restricted static back-reference instance, not an exceptional
 cycle and not a general recursive-Object constructor.
 Canonical owner:
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
@@ -2211,7 +2211,7 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
 For a Symbol carrying a type value `tau`, it returns the complete immutable type
-closure `tau = bind alpha.<Q,V_T[alpha]>`. For an already complete type value
+closure `tau = bind alpha.<Q,V_τ[alpha]>`. For an already complete type value
 `tau`, it is the identity. Bare `Q` is the type-capable core, not the complete type.
 It never searches a namespace-role Object for a hidden type member. Symbol's
 ordinary `type` field supplies `S.type`, `(S ref).type`, and `(S share).type`;

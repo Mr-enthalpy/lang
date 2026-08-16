@@ -170,15 +170,15 @@ Symbol and reads its values, while an already-held complete type value carries
 its own callspace:
 
 ```text
-TypeValue(t) = tau = <Q, V_T>
+TypeValue(t) = tau = <Q, V_τ>
 Core(tau) = Q
-CallSpace(tau) = V_T
+CallSpace(tau) = V_τ
 
-Candidates(args |> t) = CallSpace(TypeValue(t)) = V_T
+Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
 ```
 
 Copied/extracted type-as-callee lookup selects candidates from that immutable
-`V_T` snapshot. `HomeSymbol(TypeValue)`, defining-Symbol recovery, most-recent
+`V_τ` snapshot. `HomeSymbol(TypeValue)`, defining-Symbol recovery, most-recent
 carrier provenance, and reverse `AsType` provenance are retired designs, not
 deferred candidate entrances.
 
@@ -189,7 +189,7 @@ let T: type = uint8;
 ```
 
 then a target selected through `T` resolves `Symbol(T)` and reads the complete
-type snapshot. Type-as-callee candidates come from its `V_T`; an ordinary
+type snapshot. Type-as-callee candidates come from its `V_τ`; an ordinary
 navigated member may additionally be selected through `Q`/`Val2` under the
 normal navigation rules. Neither path inspects provenance or searches for
 `Symbol(uint8)`.

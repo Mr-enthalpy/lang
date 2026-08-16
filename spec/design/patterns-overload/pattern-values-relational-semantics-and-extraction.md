@@ -618,30 +618,32 @@ complete type value is not bare `Q`. The canonical type-value authority closes
 that core over its direct TypeMember callspace:
 
 ```text
-tau = <Q, V_T>
+tau = <Q, V_τ>
 
 Core(tau)      = Q
-CallSpace(tau) = V_T
+CallSpace(tau) = V_τ
 
 CompleteType(tau)
-  iff TypeRole(Core(tau))
+  iff TypeRole(Q)
   and exists a formation witness w:
-      FormsCompleteType(w, Core(tau), CallSpace(tau))
+      FormationLine(w, Q_0, V_τ)
+      and CoreOnFormationLine(w, Q)
+      (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
-tau = bind alpha. <Q, V_T[alpha]>
+tau = bind alpha. <Q, V_τ[alpha]>
 ```
 
-`V_T = CallSpace(tau)` is the callspace captured when the type value was
+`V_τ = CallSpace(tau)` is the callspace captured when the type value was
 formed: the direct TypeMember members placed into `tau` at that formation
 event (`TypeMember_Q` handoff invariants below), not a global function of
 the bare core `Q` and not a post-hoc partition of a shared Symbol space.
 Members created under the same `Q` after formation never retroactively enter
-an existing snapshot, and a copied or extracted `tau` keeps its captured `V_T`.
+an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
 
-where `V_T` contains the ordinary val members that belong directly to this type
-snapshot and references to `Self_T` normalize as binder back-references.
+where `V_τ` contains the ordinary val members that belong directly to this type
+snapshot and references to `Self_τ` normalize as binder back-references.
 `tau` is not an Object embedding or a fourth Object coordinate. `Q` and every
-member in `V_T` remain ordinary Objects; the closure records the type-specific
+member in `V_τ` remain ordinary Objects; the closure records the type-specific
 pairing needed by type-as-callee, copying, `extend`, and `inject`. Per the
 minimal-change rule (`../symbol-world/type-values-places-and-borrow-views.md`
 §2.2), ordinary type-rank equality and keying keep observing
@@ -663,9 +665,9 @@ CreateClassifier_Gamma(
 )
   => CurrentConstructionAuthority_Gamma(Q)
 
-V_T = CallSpace(tau)   -- fixed at formation, not a post-hoc partition
+V_τ = CallSpace(tau)   -- fixed at formation, not a post-hoc partition
 
-Norm_type^alpha(Self_T) = BoundRef(alpha)
+Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
@@ -683,9 +685,9 @@ and acyclic once materialized at runtime.
 
 This document uses `Q` when discussing structural Pattern relations and `tau`
 when discussing a complete type value. `AsType` and type projection produce
-`tau = <Q,V_T>`, not bare `Q`. Complete type normalization is
-`Norm_type(tau) = bind alpha.<Norm(Q),Norm_V^alpha(V_T)>`; it is not a second
-shape for `Norm(Object)`. The TypeMember partition, `Self_T` normal form, core
+`tau = <Q,V_τ>`, not bare `Q`. Complete type normalization is
+`Norm_type(tau) = bind alpha.<Norm(Q),Norm_V^alpha(V_τ)>`; it is not a second
+shape for `Norm(Object)`. The TypeMember partition, `Self_τ` normal form, core
 observation, and callspace identity are owned by
 `../symbol-world/type-values-places-and-borrow-views.md` and
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
@@ -695,7 +697,7 @@ observation, and callspace identity are owned by
 `extend` transforms one complete immutable type snapshot:
 
 ```text
-extend : <Q, V_T> x Delta -> <Q', V_T'>
+extend : <Q, V_τ> x Delta -> <Q', V_τ'>
 ```
 
 It is the privileged operation that may add direct structural children and
@@ -739,9 +741,9 @@ The following directions are retired in current target semantics:
 - `HomeSymbol(TypeValue)` or carrier/provenance recovery of a defining Symbol;
 - descendant classifier ownership implying TypeMember membership;
 - shared root identity implying one mutable current type/callspace;
-- general recursive Object graphs justified by `Self_T` (replaced by
+- general recursive Object graphs justified by `Self_τ` (replaced by
   stage-sensitive `WellFounded_kappa`: finite static generation, acyclic
-  runtime materialization; `Self_T` is one restricted static back-reference
+  runtime materialization; `Self_τ` is one restricted static back-reference
   instance, not an exceptional cycle).
 
 ## 18. Remaining deferred work

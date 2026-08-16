@@ -108,10 +108,10 @@ let share =
     => default;
 ```
 
-For each universe level `n`, the type-forming members accept an `n type`
+For each universe level `n ≥ 1`, the type-forming members accept an `n type`
 operand and produce the borrow-type values `n type ref` / `n type share`. The
 universe-uniform routing — `type : type_1` being the instance that makes
-`<n>(n type) -> n type ref/share` well-formed at every level — is frozen, not
+`<n>(n type) -> n type ref/share` well-formed at every level `n ≥ 1` — is frozen, not
 future work:
 
 ```text
@@ -127,9 +127,10 @@ CallSpace(n type share)
     (n-1) type -> (n-1) type share
 ```
 
+For `n = 1`, the `(n-1) = 0` universe has no type members; the callspace is
+empty. The `n ≥ 1` domain ensures the `(n-1)` recursion is well-founded.
+
 The type-forming members need no privileged actual-place access. Only the
-selected borrow-forming defaults inside these borrow-type callspaces — the
-`(n-1) type -> (n-1) type ref` / `(n-1) type -> (n-1) type share` members —
 possess actual-place privilege (`PrivilegedActualPlace(ref-family)`,
 `PrivilegedActualPlace(share-family)`). Policy details remain schematic.
 
@@ -151,10 +152,45 @@ the explicit formalization of the privileged actual-place semantics that the
 generated/builtin `ref` / `share` callables already had, not a new arbitrary
 place-reflection facility.
 
-### 2.1 `@` yields a lifetime value, uniformly
+#### 2.0.1 `symbol` ergonomic ref / share forwarding bridge
 
-The former dispatch by the `Val1` dimension is retired. There is no second,
-borrow-producing group and no pure-pattern-slot special case:
+A `symbol`-valued operand is not a `type` operand, so the type-forming
+overload `<n>(n type)` does not directly apply. Overload candidate matching is
+never repaired by implicit `AsType` (§4 NoImplicitBorrowFormation,
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§5.1.2): `symbol =/=> symbol |> type` during matching. The ergonomic path from
+a symbol to a borrow type is provided by an explicit bridge overload whose
+formal head matches `symbol` directly, then performs `AsType` inside the
+selected candidate body:
+
+```lang
+let ref =
+    (self, s: symbol):
+    compile => {
+        (s |> type) ref
+    };
+
+let share =
+    (self, s: symbol):
+    compile => {
+        (s |> type) share
+    };
+```
+
+The bridge is symmetric for `ref` and `share`. Formal matching selects the
+candidate on `s : symbol` alone — no implicit `AsType` is attempted at
+matching time. Inside the body, `s |> type` is an explicit `AsType` in a
+type-expected position (§5.6 of type-values), which is permitted; the resulting
+`tau_S` then enters the ordinary type-forming `ref` / `share` overload. This is
+explicit user-authored forwarding, not candidate adaptation and not a reopening
+of the overload boundary.
+
+If `TypeSlot(S) = None` (the symbol carries no type value), the body's
+`AsType(S)` yields no complete `tau`, and the bridge overload has no valid
+type-forming result — an ordinary applicability failure, not an implicit
+conversion.
+
+### 2.1 `@` yields a lifetime value, uniformly
 
 ```text
 E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)

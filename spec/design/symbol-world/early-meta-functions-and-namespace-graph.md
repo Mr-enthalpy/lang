@@ -320,10 +320,10 @@ path/name -> Symbol -> context-directed role/member projection
 
 Namespace projection selects `Q`. When `TypeRole(Q)`, type projection closes it
 with its direct TypeMember partition as the complete immutable snapshot
-`tau = <Q,V_T>`, optionally written `bind alpha.<Q,V_T[alpha]>`.
+`tau = <Q,V_τ>`, optionally written `bind alpha.<Q,V_τ[alpha]>`.
 Current namespace/type facet buckets may cache
 derived views but do not define independent semantic Objects or another copy of
-`V_T`.
+`V_τ`.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint

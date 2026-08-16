@@ -619,10 +619,10 @@ them explicitly:
    "migrate the remaining consumers to full by-value comparison"; it is:
    once a
    carrier-locally extended `T` can legally exist, `let U: type = T` copies
-   the complete immutable `tau = <Q,V_T>` snapshot observed at binding time
+   the complete immutable `tau = <Q,V_τ>` snapshot observed at binding time
    into `U`'s fresh binding/carrier. Its ordinary value observation remains
    `Core(tau)=Q`, but type-as-callee and future extension retain that exact
-   `V_T`; `T`/`U` may then diverge through later whole-snapshot writes. Copying
+   `V_τ`; `T`/`U` may then diverge through later whole-snapshot writes. Copying
    only `Q` would silently drop `T`'s callspace. The path is not
    executable yet (installed-carrier extension is not wired), but the
    comparison question ("what is equal") and the binding question ("what

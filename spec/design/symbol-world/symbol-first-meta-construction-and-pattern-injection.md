@@ -144,16 +144,16 @@ independent of that type-role refinement.
 The complete type value is the closure:
 
 ```text
-tau = bind alpha. <Q, V_T[alpha]>
+tau = bind alpha. <Q, V_τ[alpha]>
 
 Core(tau)      = Q
-CallSpace(tau) = V_T
+CallSpace(tau) = V_τ
 ```
 
-`Q` is the ordinary pure Object core. `V_T` is the callspace captured when
+`Q` is the ordinary pure Object core. `V_τ` is the callspace captured when
 `tau` was formed — the direct TypeMember members that belong to this type
 snapshot. `V_S` is the Symbol's own ordinary sibling candidate space,
-independent of `V_T`.
+independent of `V_τ`.
 
 TypeMember membership is decided when a member is created, by its direct
 classifier home; it is never a post-hoc partition of a shared Symbol space:
@@ -201,21 +201,21 @@ DistinguishedPureMember but no tau_S)
 
 CallableProjection(S)
   = SiblingSpace(S) ∪ OptionalMap(CallSpace, TypeSlot(S))
-  = V_S ∪ V_T         when both present
+  = V_S ∪ V_τ         when both present
   = V_S               when tau_S absent
-  = V_T               when V_S absent
+  = V_τ               when V_S absent
   = ∅                 when <None, None>
 ```
 
 `CallableProjection` forms the candidate set in one step: there is no priority,
-fallback, or reopening between `V_S` and `V_T`. The same candidate reachable
+fallback, or reopening between `V_S` and `V_τ`. The same candidate reachable
 through both paths is deduplicated; two different callables with identical
 signatures remain two candidates. After the set is formed, the ordinary
 overload pipeline runs once (hard admissibility → policy preference → unique
 selection); failure does not reopen lookup.
 
 `tau` is not another Object and does not add a fourth Object coordinate. `Q`
-and every ordinary member in `V_T` remain ordinary Objects governed by the
+and every ordinary member in `V_τ` remain ordinary Objects governed by the
 existing `<Val1?,P,Val2>` ontology. The closure preserves their type-specific
 pairing so a copied or extracted type carries its own callspace. `@` is the
 privileged place-observation operation that yields a lifetime value and never
@@ -224,10 +224,10 @@ a `type ref` (canonical owner
 type-level place explicitly uses `t |> (type ref)` or `(S ref).type`. The
 closure is not normalized as a fourth kind of Object.
 
-References from members in `V_T` to the current type use the canonical binder:
+References from members in `V_τ` to the current type use the canonical binder:
 
 ```text
-Norm_type^alpha(Self_T) = BoundRef(alpha)
+Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
 
@@ -322,8 +322,8 @@ there and nowhere else. There is no second disjunction site to look for:
 
 One symbol may simultaneously provide:
 
-- the complete immutable type closure `tau = <Q,V_T>`, optionally written
-  `bind alpha.<Q,V_T[alpha]>`, stored at installation and returned by type
+- the complete immutable type closure `tau = <Q,V_τ>`, optionally written
+  `bind alpha.<Q,V_τ[alpha]>`, stored at installation and returned by type
   projection; its pure core `Q = Core(tau)` also serves namespace projection;
 - an ordinary value;
 - a callable value;
@@ -731,7 +731,7 @@ values. These are content facts about one Symbol Object, not type/val/namespace
 result categories. Namespace projection selects `Core(tau)=Q` when `tau` is
 present; type projection returns the stored `tau` — it never re-partitions
 members to form `tau` post-hoc. The optional binder-aware form of `tau` is
-`bind alpha.<Q,V_T[alpha]>` when its members refer to `Self_T`.
+`bind alpha.<Q,V_τ[alpha]>` when its members refer to `Self_τ`.
 
 Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
@@ -1977,7 +1977,7 @@ sibling values explicitly contributed by the construction. Section 7.5 closes
 the mechanically generated field/access/ref/share/assignment partners in
 the complete type snapshot and exposes corresponding associated views. Other
 direct-home TypeMembers, when present, are likewise part of that snapshot's
-`V_T`; type-as-callee never recovers a defining Symbol. This bounded capability
+`V_τ`; type-as-callee never recovers a defining Symbol. This bounded capability
 does not expose a general macro system.
 
 In the general Symbol notation this producer-specific guarantee is:
@@ -2131,7 +2131,7 @@ f : (object: T share) -> A share
 
 `ref` and `share` are not generated navigation subspaces. The same-name family
 is stored once as ordinary callable/member Objects. Its direct anonymous
-classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_T`; `const
+classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_τ`; `const
 let` / `let` / `mut let` policy and the formal object type determine its
 candidates.
 Their selection uses the ordinary context-indexed preference relations. In a
@@ -2186,7 +2186,7 @@ Sequence-specific stage rule exists.
 
 The generated partner candidates are ordinary members of the returned Symbol's
 typed buckets whose classifiers satisfy `TypeMember_Q_struct`; therefore
-`TypeProjection(S_struct)` closes them into `V_T`. Any navigable associated
+`TypeProjection(S_struct)` closes them into `V_τ`. Any navigable associated
 view is a projection of those same members, not a second owned copy in
 `Q_struct` or its `Val2`. The partners are ordinary typed member objects: user
 construction may remove them, replace them, or add a more specific declaration
@@ -2204,11 +2204,11 @@ struct closure = field + access + ref/share observation + assignment/write partn
 Type-as-callee is now closed without any defining-Symbol recovery:
 
 ```text
-TypeValue(t) = tau = <Q,V_T>
-CallSpace(tau) = V_T
+TypeValue(t) = tau = <Q,V_τ>
+CallSpace(tau) = V_τ
 ```
 
-A copied or extracted type value retains the `V_T` of that immutable `tau`
+A copied or extracted type value retains the `V_τ` of that immutable `tau`
 snapshot. The
 retired `HomeSymbol(TypeValue)`, `RecoverSymbol(TypeValue)`, most-recent carrier,
 source-place, and reverse-`AsType` routes are not deferred alternatives.
@@ -3212,7 +3212,7 @@ installed contribution      = the complete expr value
 The initializer is not restricted to type/Pattern material or to `Pv=absent`.
 It may contribute any ordinary heterogeneous value entry, including a callable
 function Object or a type-valued entry. A type-valued entry preserves its whole
-`tau=<Q,V_T>` snapshot in the slot while ordinary Pattern/namespace observation
+`tau=<Q,V_τ>` snapshot in the slot while ordinary Pattern/namespace observation
 sees `Q`; an ordinary Object preserves its own recursive coordinates. Neither
 form is spliced into the target owner's pure Pattern. The construction does not
 mutate the namespace graph during `struct` evaluation.
@@ -3282,7 +3282,7 @@ ordinary value path; a type does not get a second P1 discipline for lacking
 a Val1. The current `ObjectPlace` substrate may carry a `TypeObject` transport
 reference for its first-order core. That adapter is not complete `tau`, is not
 canonical identity, and is never a binding-Policy carrier. The target
-type-valued slot preserves its own whole `tau=<Q,V_T>` snapshot.
+type-valued slot preserves its own whole `tau=<Q,V_τ>` snapshot.
 
 A pure P is a real object, so the place is per carrier, never per
 PatternValue:
@@ -3299,11 +3299,13 @@ Place(T)  != Place(U)  != Place(uint8)
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
 Symbol-to-type projection and is not this operation. The ordinary associated installation is the non-structural `Associate`
 operation (type-values §2.2, §7.1): it derives a fresh snapshot
-`tau' = <Q', V_T>` from the carrier's current `tau` and updates only `T`'s
+`tau' = <Q', V_τ>` from the carrier's current `tau` and updates only `T`'s
 carrier-local `Val2` observation; it neither changes the copied snapshot in
-`U`, changes `V_T`, nor registers a structural child. Complete type observation includes the resulting core observation when
+`U`, changes `V_τ`, nor registers a structural child. `CoreOnFormationLine(w,
+Q')` holds: `Q'` is on the same `FormationLine(w, Q_0, V_τ)` as the original
+`Q`, so `CompleteType(tau')` is derivable without a new formation event. Complete type observation includes the resulting core observation when
 identity is demanded. Generated
-construction-time TypeMembers are already closed into `V_T`; they are never
+construction-time TypeMembers are already closed into `V_τ`; they are never
 recovered through fallback to a mutable defining Symbol or canonical root.
 There is no second, place-forwarding declaration form: every carrier allocates
 its own place (§2.6), so a per-carrier installation is local to that carrier.

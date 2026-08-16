@@ -45,8 +45,8 @@ The namespace graph world model and symbol-level identity:
 
 Pattern/overload candidate adaptation, meta invocation execution, and the full
 policy checker (referenced from the other blocks). Type-as-callee is closed by
-the complete immutable closure `tau = <Q,V_T>`, optionally written
-`bind alpha.<Q,V_T[alpha]>`, and `CallSpace(tau)=V_T`; defining-Symbol,
+the complete immutable closure `tau = <Q,V_τ>`, optionally written
+`bind alpha.<Q,V_τ[alpha]>`, and `CallSpace(tau)=V_τ`; defining-Symbol,
 recent-carrier, and `AsType` provenance
 recovery are retired.
 

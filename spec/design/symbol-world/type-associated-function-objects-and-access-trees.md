@@ -186,11 +186,11 @@ construction-lineage Open, and the namespace member-creation/write pipeline — 
 The `lang_build` semantic spine currently implements only the first-order
 substrate: `TypeValueId` exists as the stable core root and current observations
 still travel through per-carrier `Val2` places. The target complete snapshot identity is
-`Addr(Norm_type(tau))` over `tau=<Q,V_T>`; under the minimal-change rule
+`Addr(Norm_type(tau))` over `tau=<Q,V_τ>`; under the minimal-change rule
 (`type-values-places-and-borrow-views.md` §2.2) ordinary type equality/keying
 keeps observing `Core(tau)=Q` by default, while `Addr(Norm_type(tau))` is used
 to tell shared-root snapshots apart in transport and in positions the language
-has independently frozen to whole-snapshot semantics. Preserving `V_T` in
+has independently frozen to whole-snapshot semantics. Preserving `V_τ` in
 copied/extended
 snapshots remains implementation migration. Writability checking, borrow-view evaluation, and
 the field-function / access-tree machinery of this note remain future work;
@@ -210,10 +210,10 @@ This note does not implement or specify:
 - writability or extension-place lifetime checking;
 - field access evaluation;
 - access-tree scanning;
-- implementation of complete type closures `tau = <Q,V_T>`, their optional
-  binder-aware form `bind alpha.<Q,V_T[alpha]>`, and direct-home TypeMember
+- implementation of complete type closures `tau = <Q,V_τ>`, their optional
+  binder-aware form `bind alpha.<Q,V_τ[alpha]>`, and direct-home TypeMember
   classification; target type-as-callee lookup is already
-  `CallSpace(tau)=V_T` and never performs
+  `CallSpace(tau)=V_τ` and never performs
   defining-Symbol or carrier-provenance recovery;
 - borrow/lifetime checking;
 - `ref` / `share` type normalization;
