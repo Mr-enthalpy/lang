@@ -623,12 +623,15 @@ tau = <Q, V_τ>
 Core(tau)      = Q
 CallSpace(tau) = V_τ
 
-CompleteType(tau)
-  iff TypeRole(Q)
-  and exists a formation witness w:
+WellFormedTau(tau)
+  iff exists a formation witness w:
       FormationLine(w, Q_0, V_τ)
       and CoreOnFormationLine(w, Q)
       (canonical definition: type-values-places-and-borrow-views.md §2.2)
+
+CompleteType(tau)  iff WellFormedTau(tau) and TypeRole(Q)   -- TypeValueRole
+NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceRole(Q)
+      and not TypeRole(Q)
 
 tau = bind alpha. <Q, V_τ[alpha]>
 ```

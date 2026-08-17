@@ -104,13 +104,13 @@ SymbolValue {
     SymbolId
     PlaceId
 
-    tau: zero or one complete type value
+    tau: zero or one well-formed type value (WellFormedTau, type-values §2.2)
     V_S: zero or more ordinary sibling value members in typed buckets
 }
 ```
 
-A Symbol carries an optional complete type value `tau` and an optional sibling
-space `V_S`. All four shapes are well-formed:
+A Symbol carries an optional well-formed type value `tau` and an optional
+sibling space `V_S`. All four shapes are well-formed:
 
 ```text
 WellFormedSymbol(<None, None>)
@@ -128,18 +128,21 @@ The canonical namespace object of a Symbol is its **distinguished pure member**:
 ```text
 DistinguishedPureMember(S) =
     Some(Core(tau))   if tau is present
-    Some(d)           if tau is absent and V_S contains exactly one pure member d
     None              otherwise
 
 NamespaceProjection(S) = DistinguishedPureMember(S)
-TypeProjection(S)      = tau  when tau is present   (undefined otherwise)
+TypeProjection(S)      = tau  iff tau present and TypeValueRole(tau)
+                               (undefined otherwise)
 ```
 
-When `tau` is present, `NamespaceProjection(S) = Core(tau) = Q`; when `tau` is
-absent, a namespace-only distinguished pure member is an ordinary pure member
-of `V_S`. Type projection, when it exists, requires `TypeRole(Core(tau))` by
-definition of `CompleteType(tau)`; namespace-projection existence is
-independent of that type-role refinement.
+When `tau` is present, `NamespaceProjection(S) = Core(tau) = Q` whether or not
+`TypeRole(Q)` holds: namespace projection exists whenever the Symbol carries a
+well-formed `tau` (type-values §2.2). Type projection requires the type-role
+refinement: `TypeProjection(S) = tau` iff `TypeValueRole(tau)` (equivalently
+`CompleteType(tau)`), i.e. `TypeRole(Core(tau))`. A Symbol with `<None, V_S>`
+has no distinguished pure member: ordinary sibling members never become one by
+count — `NamespaceOnly(tau)` is a relational property of `Q`'s Pattern
+(type-values §2.2), never `count(pure members in V_S)`.
 
 The complete type value is the closure:
 
@@ -193,11 +196,11 @@ Projections over the Symbol value are:
 
 ```text
 NamespaceProjection(S) = DistinguishedPureMember(S)   (§2.1)
-TypeProjection(S)       = tau_S         when tau_S present
+TypeProjection(S)       = tau_S   iff tau_S present and TypeValueRole(tau_S)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
-(the converse does not hold: a namespace-only Symbol has a
-DistinguishedPureMember but no tau_S)
+(the converse does not hold: a Symbol may carry a namespace-only tau with
+NamespaceRole(Core(tau)) and no TypeProjection)
 
 CallableProjection(S)
   = SiblingSpace(S) ∪ OptionalMap(CallSpace, TypeSlot(S))
@@ -355,11 +358,12 @@ PlaceId:
   identity of the bindable/openable installation location
 
 TypeValueId:
-  stable first-order root of Core(tau) (registry projection); it is the
-  default observation of ordinary type equality and keying under the
-  minimal-change rule. Addr(Norm_type(tau)) is the whole-snapshot identity,
-  used to tell shared-root snapshots apart in transport and in positions the
-  language has independently frozen to whole-snapshot semantics
+  stable first-order root projection of Core(tau); implementation/index
+  key only, not semantic equality. Ordinary type equality and keying
+  observe Core(tau) = Q by default (minimal-change rule, type-values §2).
+  Addr(Norm_type(tau)) is the whole-snapshot identity, used to tell
+  shared-root snapshots apart in transport and in positions the language
+  has independently frozen to whole-snapshot semantics
 
 PatternValue identity:
   canonical identity of an ordinary compile-time value, type value, or
@@ -1201,8 +1205,9 @@ Canonical argument identity follows parameter rank:
 
 ```text
 symbol parameter -> SymbolId / symbol-place identity
-type parameter   -> default Core(tau) = Q observation (first-order
-                    TypeValueId), exactly as the old `type = Q` rules did;
+type parameter   -> default Core(tau) = Q observation, exactly as the old
+                    `type = Q` rules did; `TypeValueId` is only the
+                    implementation/index projection, not semantic equality;
                     whole-snapshot Addr(Norm_type(tau)) identity applies only
                     where the language has independently frozen it
 value parameter  -> PatternValue identity
@@ -1505,9 +1510,9 @@ specification-private record carrier. Using the constructor lemmas in
 ```text
 TypeOption(absent) = BareProduct()
 TypeOption(tau)    = BareProduct(EncodeTypeClosure(tau))
-                     where CompleteType(tau)
+                     where WellFormedTau(tau)
 
-EncodeTypeClosure : CompleteType -> Object
+EncodeTypeClosure : WellFormedTau -> Object
 DecodeTypeClosure(EncodeTypeClosure(tau)) = tau
 
 BucketEntry(T_c)     = ProductValue(T_c, V_S[T_c]) : product
@@ -1652,7 +1657,7 @@ type : (object: symbol)       -> type
 type : (object: symbol ref)   -> type ref
 type : (object: symbol share) -> type share
 
-Applicable(type candidate, Σ) <=> TypeSlot(Σ) = Some(τ) and CompleteType(τ) and TypeRole(Core(τ))
+Applicable(type candidate, Σ) <=> TypeSlot(Σ) = Some(τ) and TypeValueRole(τ)
 ```
 
 Thus `S.type` agrees by value with `AsType(S)` and returns the complete stored

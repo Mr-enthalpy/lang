@@ -293,8 +293,8 @@ how already-fully-admissible candidates participate — for example fallback
 suppression or must-select consistency. They never generate a candidate or make
 an inadmissible candidate viable.
 
-- `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
-  callee symbol.
+- `C0`: `CallableProjection(Symbol) = V_S ∪ V_τ` — heterogeneous value/`Val2`
+  objects (symbol-first §2.1; never a `V_S`-only projection).
 - `C1`: filtered by object-level visibility view (internal or external).
 - `C2`: filtered independently by each object's available policy-pair view.
 - `C3`: objects whose type-associated `()` entry exists and is structurally
@@ -818,10 +818,11 @@ filter, but filters are not assumed to commute.
 
 ### 5.3 C0: heterogeneous value objects
 
-After path resolution has produced the callee `Symbol`, `C0` enumerates its
-heterogeneous value/`Val2` objects. These objects may have unrelated types and
-different available `Pv:Pp` views. The final model does not treat same-name namespace
-children as already-formed callable overloads.
+After path resolution has produced the callee `Symbol` `S`, `C0` is formed in
+one step as `CallableProjection(S) = V_S ∪ V_τ` (symbol-first §2.1) and
+enumerates its heterogeneous value/`Val2` objects. These objects may have
+unrelated types and different available `Pv:Pp` views. The final model does not
+treat same-name namespace children as already-formed callable overloads.
 
 The current implementation's restricted same-name child bucket may still
 pre-filter by:

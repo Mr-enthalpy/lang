@@ -178,7 +178,8 @@ lookup callee name
 It must be at least:
 
 ```text
-resolve callee Symbol and project heterogeneous value entries
+resolve callee Symbol S; C0 := CallableProjection(S) = V_S ∪ V_τ
+     (symbol-first §2.1; never a V_S-only projection)
 prepare type-associated `()` entries, including entries of derived companion objects
 normalize argument shapes
 match candidate parameter patterns
@@ -350,8 +351,15 @@ is **not** a symbol name. It is a canonical type value.
 The conceptual identity used here is:
 
 ```text
-TypeValueId
+OrdinaryTypeObservation(τ) = Core(τ) = Q
+
+τ₁ ≈type τ₂  iff  Norm(Core(τ₁)) = Norm(Core(τ₂))
 ```
+
+`TypeValueId` is only the implementation/index root projection of `Core(τ)`
+(canonical owner `spec/design/symbol-world/type-values-places-and-borrow-views.md`
+§2, §8); it is not semantic equality and does not participate in overload or
+pattern compatibility.
 
 For example:
 
@@ -370,13 +378,13 @@ identity. Two bindings can share a type value even though their binding symbols
 differ.
 
 This document does **not** fully specify symbol identity, places, or injection
-targets; the canonical `TypeValueId` / `PlaceId` / `SymbolId` distinction is
+targets; the canonical `Core(τ) / PlaceId / SymbolId` distinction is
 defined in `spec/design/symbol-world/type-values-places-and-borrow-views.md`. Here it is
-enough to state the comparison rule: candidate matching uses type value, not
-source name.
+enough to state the comparison rule: candidate matching uses the canonical type
+value (`Core(τ) = Q`), not source name.
 
-Pass mode is explicitly **not** part of `TypeValueId`, but only the
-mechanical pass actions `move` / `copy` preserve the already-established type
+Pass mode is explicitly **not** part of ordinary type-value observation, but
+only the mechanical pass actions `move` / `copy` preserve the already-established type
 value: `T move` does not introduce a new type, and type-value equality is
 invariant under `move` / `copy`.
 
@@ -485,7 +493,7 @@ formal meta object invocation engine. The end-to-end pipeline is:
 
 ```text
 normalized call
-  -> callee Symbol / heterogeneous value projection
+  -> callee Symbol S / C0 := CallableProjection(S) = V_S ∪ V_τ
   -> type-associated `()` candidate preparation
   -> argument shape formation
   -> parameter pattern normalization
@@ -549,10 +557,10 @@ them for its definitions.
   pattern-space / extraction-chain semantics. The pattern normalization layer
   here is an earlier candidate-shape layer and is a different layer from that
   pattern-space design.
-- `type-values-places-and-borrow-views.md` — the canonical `TypeValueId` /
-  `PlaceId` / `SymbolId` distinction that first-order type matching here relies
-  on. First-order type matching uses `TypeValueId`; that document defines what
-  type-value, place, and symbol identity mean.
+- `type-values-places-and-borrow-views.md` — the canonical `Core(τ) / PlaceId /
+  SymbolId` distinction that first-order type matching here relies on. Ordinary
+  type matching observes `Core(τ) = Q`; that document defines what type-value,
+  place, and symbol identity mean.
 - `type-associated-function-objects-and-access-trees.md` — background for
   type-associated function objects, field functions, and access-tree work.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the mechanical

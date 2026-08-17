@@ -156,16 +156,26 @@ the explicit formalization of the privileged actual-place semantics that the
 generated/builtin `ref` / `share` callables already had, not a new arbitrary
 place-reflection facility.
 
-#### 2.0.1 `symbol` ergonomic ref / share forwarding bridge
+#### 2.0.1 `symbol` ref / share: no global forwarding bridge
 
-A `symbol`-valued operand is not a `type` operand, so the type-forming
-overload `<n>(n type)` does not directly apply. Overload candidate matching is
-never repaired by implicit `AsType` (§4 NoImplicitBorrowFormation,
+A `symbol`-valued operand is an ordinary value with a `Val1` payload, so the
+ordinary borrow-forming `ref` / `share` defaults apply directly: `s ref` is
+`symbol ref` (a borrow of the symbol value; `Target(s ref) =
+PrivilegedActualPlace(s)`). There is **no global** `symbol` ref/share
+forwarding bridge to type formation, and no implicit `AsType` during matching
+(§4 NoImplicitBorrowFormation,
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
-§5.1.2): `symbol =/=> symbol |> type` during matching. The ergonomic path from
-a symbol to a borrow type is provided by an explicit bridge overload whose
-formal head matches `symbol` directly, then performs `AsType` inside the
-selected candidate body:
+§5.1.2): `symbol =/=> symbol |> type` during matching. The language default is:
+
+```text
+s : symbol   ->  s ref : symbol ref      (ordinary borrow of the symbol value)
+t : type     ->  t ref  : type formation (TypeValue t ref; the type-forming
+                                           overload, reached directly because
+                                           `type : type_1`)
+```
+
+A user may still author a local `ref` Symbol whose overload matches `symbol`
+and whose body performs `AsType` inside the selected candidate:
 
 ```lang
 let ref =
@@ -173,27 +183,21 @@ let ref =
     compile => {
         (s |> type) ref
     };
-
-let share =
-    (self, s: symbol):
-    compile => {
-        (s |> type) share
-    };
 ```
 
-The bridge is symmetric for `ref` and `share`. Formal matching selects the
-candidate on `s : symbol` alone — no implicit `AsType` is attempted at
-matching time. Inside the body, `s |> type` is an explicit `AsType` in a
-type-expected position (§5.6 of type-values), which is permitted; the resulting
-`tau_S` then enters the ordinary type-forming `ref` / `share` overload. This is
-explicit user-authored forwarding, not candidate adaptation and not a reopening
-of the overload boundary.
+That is local Symbol algebra, not a language default and not part of the
+global builtin algebra. No implicit `AsType` is attempted at matching time;
+inside the body, `s |> type` is an explicit `AsType` in a type-expected
+position (§5.6 of type-values), which is permitted; the resulting `tau_S` then
+enters the ordinary type-forming `ref` / `share` overload. This is explicit
+user-authored forwarding, not candidate adaptation and not a reopening of the
+overload boundary.
 
 If `TypeSlot(S) = None` (the symbol carries no type value), that is **not** an
 applicability failure and not a reason for the resolver to revisit other
-candidates. Applicability of the bridge candidate is decided entirely by the
-ordinary `s : symbol` formal match and policy admissibility, before body
-evaluation:
+candidates. Applicability of a user-authored bridge candidate is decided
+entirely by the ordinary `s : symbol` formal match and policy admissibility,
+before body evaluation:
 
 ```text
 CandidateApplicable(bridge, S)      // s : symbol formal + ordinary admissibility

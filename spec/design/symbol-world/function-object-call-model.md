@@ -136,10 +136,10 @@ The migration adapter selects views around an ordinary call; it does not
 rewrite the callable's complete P2 into a migration edge.
 
 Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
-match, or search an arbitrary operation graph. `ref`, `share`, and `alias`
-remain independently selected ordinary mechanical operations. When one of
-those operations is explicitly required, its ordinary result may change Type
-and Pattern; that is not Policy-demand repair.
+match, or search an arbitrary operation graph. `ref` and `share` remain
+independently selected ordinary mechanical operations. When one of those
+operations is explicitly required, its ordinary result may change Type and
+Pattern; that is not Policy-demand repair.
 
 Any successful existing-view satisfaction terminates before migration
 candidate enumeration. In the currently implemented binding case, a non-empty

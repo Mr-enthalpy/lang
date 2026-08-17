@@ -969,7 +969,7 @@ For v0.8-adjacent compile/meta construction, argument shape means the
 contract-shaped route through `ProductObject` / `ArgProductShape`, not
 callee-specific parsing of raw normalized product material. Canonical meta
 instance keys must be computed only after product canonicalization and
-first-order `TypeValueId` argument compatibility are established. The detailed
+first-order `Core(tau) = Q` argument compatibility are established. The detailed
 construction guardrails live in
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`.
 

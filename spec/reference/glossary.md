@@ -1072,8 +1072,10 @@ t |> (type ref)  = borrow formation = value r : type ref
 Neither uses `@` (`@` yields a lifetime value, not a borrow). Whether `ref` or
 `t |> (type ref)` is the right operation is decided by what the surface means,
 never by type-rank: for `s : symbol` the payload exists, so `s ref : symbol ref`
-borrows the symbol value `s` carries — not the binding slot that carries `s` —
-and a type-rank object with a payload behaves the same way.
+borrows the symbol value `s` carries: `Target(s ref) = PrivilegedActualPlace(s)`
+— there is exactly one place source, and no separate carrier/binding-slot place
+exists for the view to miss. A type-rank object with a payload behaves the same
+way.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
 `SymbolId`, and its member set is not silently that of its target. It does carry
