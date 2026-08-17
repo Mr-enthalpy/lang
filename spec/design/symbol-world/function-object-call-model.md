@@ -5,7 +5,9 @@ Design consolidation note. Not a user-visible syntax document.
 The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
-resolves to a Symbol and heterogeneous typed `V` members.
+resolves to a Symbol and forms the callable candidate set
+`CallableProjection(S) = V_S ∪ V_τ` (canonical owner
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1).
 Policy pairs, binding P1, result P2, compile companions, and must-select consistency
 are canonical in `symbol-policy-and-compile-flow-projection.md`.
 
@@ -20,8 +22,14 @@ let f = (self) => {};
 `f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
 
 The converse is not true: a value entry need not be a function. A symbol's
-typed `V` members may contain ordinary uncallable values and multiple heterogeneous
-values of unrelated types. Callability is tested only in a call position by
+callable candidate set `CallableProjection(S) = V_S ∪ V_τ` (canonical owner
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1) may contain
+ordinary uncallable values and multiple heterogeneous values of unrelated
+types. The Symbol's own value-member bucket `V_S` is unioned with the
+`CallSpace` of any stored `τ` in one step: there is no priority, fallback, or
+reopening between `V_S` and `V_τ`; the same candidate reachable through both
+paths is deduplicated, and two different callables with identical signatures
+remain two candidates. Callability is tested only in a call position by
 resolving each value's type-associated `()` entry.
 
 Under the associated namespace of `F` there is a call entry `() :: F`. This `()` is the call method of the function object.
@@ -44,11 +52,14 @@ Product |> Expr
 
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
-When `Expr` is a name/path, resolution first produces a symbol and projects its
-heterogeneous typed `V` members. Candidate preparation observes each enumerated
-object's `Pv:Pp` view for the current lookup domain before type-associated call
-lookup. The remaining steps run independently for each surviving value entry;
-entries without an applicable `()` call entry are discarded.
+When `Expr` is a name/path, resolution first produces a Symbol `S` and forms
+the candidate set `C0 := CallableProjection(S) = V_S ∪ V_τ` in one step — no
+priority, no fallback, no reopening (symbol-first §2.1); the same candidate
+reachable through both `V_S` and `V_τ` is deduplicated. Candidate preparation
+observes each enumerated object's `Pv:Pp` view for the current lookup domain
+before type-associated call lookup. The remaining steps run independently for
+each surviving value entry; entries without an applicable `()` call entry are
+discarded.
 
 ### 2.1 Compiler-inserted atomic runtime migration call
 
@@ -572,7 +583,9 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol and project/enumerate its heterogeneous typed V members
+2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = V_S ∪ V_τ`
+   and enumerate that candidate set (one step, no priority, no fallback, no
+   reopening; the same candidate reachable through both paths is deduplicated)
 3. Expose each Val2 object's policy-pair view for the current `Phase`
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`

@@ -127,11 +127,15 @@ CallSpace(n type share)
     (n-1) type -> (n-1) type share
 ```
 
-For `n = 1`, the `(n-1) = 0` universe has no type members; the callspace is
-empty. The `n ≥ 1` domain ensures the `(n-1)` recursion is well-founded.
+For `n = 1`, the `(n-1) = 0` universe is the base `type_0` universe. Its
+callspace contains exactly the member `type_0 -> type_0 ref` /
+`type_0 -> type_0 share` (i.e. `type -> type ref` / `type -> type share`),
+which is the instance needed for `t |> (type ref)` / `t |> (type share)`.
+The `(n-1)` recursion terminates here: there is no `type_{-1}`.
 
 The type-forming members need no privileged actual-place access. Only the
-possess actual-place privilege (`PrivilegedActualPlace(ref-family)`,
+selected borrow-forming defaults inside these borrow-type callspaces possess
+actual-place privilege (`PrivilegedActualPlace(ref-family)`,
 `PrivilegedActualPlace(share-family)`). Policy details remain schematic.
 
 The borrow-forming member's source formal head is not ordinary move-in
@@ -185,10 +189,25 @@ type-expected position (§5.6 of type-values), which is permitted; the resulting
 explicit user-authored forwarding, not candidate adaptation and not a reopening
 of the overload boundary.
 
-If `TypeSlot(S) = None` (the symbol carries no type value), the body's
-`AsType(S)` yields no complete `tau`, and the bridge overload has no valid
-type-forming result — an ordinary applicability failure, not an implicit
-conversion.
+If `TypeSlot(S) = None` (the symbol carries no type value), that is **not** an
+applicability failure and not a reason for the resolver to revisit other
+candidates. Applicability of the bridge candidate is decided entirely by the
+ordinary `s : symbol` formal match and policy admissibility, before body
+evaluation:
+
+```text
+CandidateApplicable(bridge, S)      // s : symbol formal + ordinary admissibility
+    -> unique bridge selected
+    -> evaluate body
+    -> AsType(S)
+    -> may fail here
+```
+
+The failure of `AsType(S)` inside the already-selected candidate's body is a
+selected-invocation / body / result-transformation failure, not an implicit
+conversion, and it does not reopen the candidate space: the overload phase
+stays closed exactly as for any other uniquely selected candidate whose body
+fails.
 
 ### 2.1 `@` yields a lifetime value, uniformly
 

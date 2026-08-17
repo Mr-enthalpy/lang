@@ -242,7 +242,8 @@ Visible(C, External)
 
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
-candidate construction proceeds from that Symbol's typed `V` members.
+candidate construction proceeds from that Symbol's callable projection
+`CallableProjection(Σ) = V_S ∪ V_τ`.
 
 Candidate construction is closed over the namespace-graph view selected for the
 query: it performs no ADL-like expansion and no external scope search, external
@@ -258,7 +259,7 @@ The final candidate source is symbol-first:
 ResolveSymbol(callee path)
   -> Symbol Σ
   -> apply call-site candidate-family filter to Σ
-  -> project heterogeneous typed V members
+  -> form CallableProjection(Σ) = V_S ∪ V_τ
   -> enumerate heterogeneous Val2 objects
   -> observe each object's policy-projected view for the lookup stage
   -> obtain each value's type

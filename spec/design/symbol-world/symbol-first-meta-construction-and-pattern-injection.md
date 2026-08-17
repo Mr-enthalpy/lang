@@ -1652,12 +1652,12 @@ type : (object: symbol)       -> type
 type : (object: symbol ref)   -> type ref
 type : (object: symbol share) -> type share
 
-Applicable(type candidate, Σ) <=> Σ = <Q, V> and TypeRole(Q)
+Applicable(type candidate, Σ) <=> TypeSlot(Σ) = Some(τ) and CompleteType(τ) and TypeRole(Core(τ))
 ```
 
-Thus `S.type` agrees by value with `AsType(S)`, while `(S ref).type` and
-`(S share).type` preserve the borrow observation of the `Q` slot when
-`TypeRole(Q)`.
+Thus `S.type` agrees by value with `AsType(S)` and returns the complete stored
+`τ`, while `(S ref).type` and `(S share).type` return a borrow observation of
+the type-valued slot when `TypeSlot(S) = Some(τ)`.
 This is ordinary field/candidate selection, not a resolver primitive that
 projects a value and then recovers its provenance.
 

@@ -1053,14 +1053,27 @@ _See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref
 There is no global `E ref = Ref(Read(E))` law: the selected overload determines
 the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
 (canonical owner `../design/symbol-world/type-values-places-and-borrow-views.md`
-§5.1). For `let t: type = uint8`, `t ref` is `uint8 ref` — a correct borrow of
-the value that was read. Reaching the type-level place of the type-valued
-binding uses `t |> (type ref)`, not `@` (`@` yields a lifetime value, not a
-borrow). Whether `ref` or `t |> (type ref)` is the right operation is decided
-by what the surface means, never by type-rank: for `s : symbol` the payload
-exists, so `s ref : symbol ref` borrows the symbol value `s` carries — not the
-binding slot that carries `s` — and a type-rank object with a payload behaves
-the same way.
+§5.1). For `let t: type = uint8`, the expression `t ref` selects the
+type-forming overload and yields the TypeValue `uint8 ref` — a borrow-type
+formation, not a borrow instance and not a borrow of the binding slot.
+Reaching the type-level place of the type-valued binding uses
+`t |> (type ref)`, which is borrow formation and yields a value `r : type ref`
+with `Target = place(t)`. Both expressions produce the string `uint8 ref`, but
+their semantic category differs:
+
+```text
+t ref            = borrow-type formation = TypeValue(uint8 ref)
+                   // type-forming overload, not a borrow instance
+
+t |> (type ref)  = borrow formation = value r : type ref
+                   // Target = place(t)
+```
+
+Neither uses `@` (`@` yields a lifetime value, not a borrow). Whether `ref` or
+`t |> (type ref)` is the right operation is decided by what the surface means,
+never by type-rank: for `s : symbol` the payload exists, so `s ref : symbol ref`
+borrows the symbol value `s` carries — not the binding slot that carries `s` —
+and a type-rank object with a payload behaves the same way.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
 `SymbolId`, and its member set is not silently that of its target. It does carry

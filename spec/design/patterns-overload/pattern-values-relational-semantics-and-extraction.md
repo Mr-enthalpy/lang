@@ -716,7 +716,7 @@ construction roots do not imply equal snapshots or equal callspaces:
 ```text
 Root(T_old) = Root(T_new)
   !=> T_old = T_new
-  !=> V_T_old = V_T_new
+  !=> V_τ_old = V_τ_new
 ```
 
 Ordinary navigated `let` remains Val2-only and cannot approximate either

@@ -311,19 +311,31 @@ objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
 
 `SymbolObject` is the current implementation substrate. The final conceptual
-model is one Symbol with one `SymbolId`, one `PlaceId`, an optional pure role
-member `Q`, and heterogeneous typed value-member buckets:
+model is one Symbol with one `SymbolId`, one `PlaceId`, and the shape
+`S = <τ?, V_S?>` (canonical owner
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1):
 
 ```text
 path/name -> Symbol -> context-directed role/member projection
+
+S = <τ?, V_S?>
+TypeSlot(S) = Some(τ)     when the Symbol carries a type value
+TypeProjection(S) = stored τ
+Core(τ) = Q
+CallSpace(τ) = V_τ
 ```
 
-Namespace projection selects `Q`. When `TypeRole(Q)`, type projection closes it
-with its direct TypeMember partition as the complete immutable snapshot
-`tau = <Q,V_τ>`, optionally written `bind alpha.<Q,V_τ[alpha]>`.
-Current namespace/type facet buckets may cache
-derived views but do not define independent semantic Objects or another copy of
-`V_τ`.
+A type value `τ = <Q, V_τ>` is formed **before installation** and stored as an
+immutable snapshot — projection does not post-hoc close `Q` against a later
+member environment and never recomputes `V_τ`. When `TypeSlot(S) = Some(τ)`
+and `TypeRole(Core(τ))`, `TypeProjection(S)` returns the already-formed `τ`;
+`.type` returns the complete `τ` by value, and a borrowed `.type`
+(`(S ref).type` / `(S share).type`) returns a borrow observation of the
+type-valued slot. Namespace projection selects the distinguished pure member,
+which for a type-valued Symbol observes `Core(τ) = Q` — the first-order
+observation of the stored `τ`, not raw material from which `τ` is
+reconstructed. Current namespace/type facet buckets may cache derived views but
+do not define independent semantic Objects or another copy of `V_τ`.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint

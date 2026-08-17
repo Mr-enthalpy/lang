@@ -79,20 +79,35 @@ PatternValue identity
 - `PlaceId` is the identity of a location that can be bound, updated, injected
   into, or opened for a namespace delta.
 - `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
-  projection, not the full type-closure identity. The complete identity of a
-  type value is:
+  projection used by the current substrate (cache, lookup key, or first-order
+  root), not the full type-closure identity and not the default semantic
+  equality of types. The complete identity of a type value is:
 
   ```text
   TypeObservation(tau) = Addr(Norm_type(tau))
   ```
 
+  Three identity layers apply to a type value:
+
+  ```text
+  TypeValueId = stable first-order root projection of Core(tau)
+                -- implementation/index key, not semantic equality
+
+  Core(tau) = Q -- default observation for ordinary type-rank equality,
+                    keying, and type-argument identity, exactly as under the
+                    former `type = Q` rules (minimal-change rule, §2.2)
+
+  Addr(Norm_type(tau)) = bind alpha.<Norm(Q), Norm_V^alpha(V_τ)>
+                -- whole-snapshot identity; used to tell shared-root snapshots
+                   apart in transport and in positions the language has
+                   independently frozen to whole-snapshot semantics
+  ```
+
   Two closures may have the same `TypeValueId`/core root while carrying
-  different immutable `V_τ` snapshots. Bare `TypeValueId` comparison remains the
-  default observation of ordinary type equality, keying, and type-argument
-  identity, exactly as under the former `type = Q` rules (minimal-change rule,
-  §2.2); `Addr(Norm_type(tau))` is the snapshot identity, used to tell
-  shared-root snapshots apart in transport and in positions the language has
-  independently frozen to whole-snapshot semantics.
+  different immutable `V_τ` snapshots. Bare `TypeValueId` comparison is therefore
+  not upgraded into the default observation of ordinary type equality: the
+  ordinary default remains `Core(tau)=Q` (the canonical Object/Pattern equality
+  on the core), while whole-snapshot positions use `Addr(Norm_type(tau))`.
 - `PatternValue identity` is ordinary Object identity. A type value participates
   in Pattern/value/namespace observation through `Core(tau) = Q`. Per the
   minimal-change rule, ordinary type-rank equality, keying, and type-argument
@@ -799,10 +814,10 @@ ordinary binding path may recover associated operations by mapping
 
 The same separation applies inside derived semantic material. A struct field,
 callable signature, canonical argument key, or extraction view that denotes a
-type observes the default `Core(tau)=Q` (first-order `TypeValueId`), exactly as
-the old `type = Q` rules did; `Addr(Norm_type(tau))` remains available where the
-language has independently frozen whole-snapshot identity (transport,
-distinguishing shared-root snapshots):
+type observes the default `Core(tau)=Q`, exactly as the old `type = Q` rules
+did; `Addr(Norm_type(tau))` remains available where the language has
+independently frozen whole-snapshot identity (transport, distinguishing
+shared-root snapshots):
 
 ```text
 field source path
