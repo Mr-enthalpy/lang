@@ -121,9 +121,11 @@ NamespaceRole not-subset TypeRole
 ```
 
 `TypeRole` is an imported judgment; see
-`type-values-places-and-borrow-views.md` §2.1. Its derivation belongs to the
-subsequent P–Val1–Val2 relational-semantics design. This layer only consumes
-it as an opaque predicate.
+`type-values-places-and-borrow-views.md` §2.1. Its formal criterion is defined
+normatively in
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+§13 (`HasRegisteredSelfConstruction(Q)`, witnessed by `Val2(Q)[s] = K`). This
+layer only consumes it as an opaque predicate.
 
 This is not type-system subtyping. It describes role implication:
 

@@ -937,7 +937,7 @@ has this OpenStatic behavior:
 symbol/path resolves
 runtime value is unreadable
 compile Pattern/type is readable
-derived compile companion may join static overload resolution
+derived compile companion (CompilePartner(F) = C(F)) may join static overload resolution
 original runtime computation remains in RuntimeResidualFlow
 ```
 
@@ -1227,15 +1227,18 @@ in authority, not in value rank:
 ```text
 ordinary meta
         -> establishes and seals one navigable MetaInstanceRoot; returns symbol
-compile -> any declared ordinary PatternValue; root-conserving, with no root authority
+compile -> any declared ordinary PatternValue or complete type value tau;
+           root-conserving, with no root authority
 privileged builtin
         -> follows its member-declared result and owner rules
 ```
 
 An ordinary meta callable's result Pattern is exactly `symbol`; it does not use a
-generic “any PatternValue” return rule. `compile` may return a type value, Symbol
+generic “any PatternValue” return rule. `compile` may return a complete type
+value `tau` (participating in Pattern observation through `Core(tau)`, not
+itself an ordinary PatternValue/Object), a Symbol
 value, `type ref`, or any other declared ordinary PatternValue. Privileged
-builtins are member-specific: in this closure `struct -> symbol`,
+builtins are member-specific: in this closure `struct -> tau`,
 `extend -> type`, and `inject -> type ref`. The root conditions are owned by
 `symbol-first-meta-construction-and-pattern-injection.md`.
 
@@ -1282,7 +1285,7 @@ replaces the real runtime call.
 All ordinary bindings and call targets use one selection trunk:
 
 ```text
-C0 = EnumerateValueEntries(ResolveSymbol(path))
+C0 = CallableProjection(ResolveSymbol(path))
 C1 = ExposePhaseViews(C0, Phase)
 C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
 A  = FullyAdmissible(C2, argument_frame, expected_result)

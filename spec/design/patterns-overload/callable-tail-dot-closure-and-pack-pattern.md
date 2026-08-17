@@ -190,7 +190,7 @@ It is applied only after the fully admissible set `A` exists:
 
 ```text
 ResolveSymbol
-  -> EnumerateValueObjects
+  -> CallableProjection
   -> ExposePhaseViews
   -> ProjectExpectedPolicy
   -> FullyAdmissible

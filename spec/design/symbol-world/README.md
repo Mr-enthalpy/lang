@@ -30,7 +30,7 @@ The namespace graph world model and symbol-level identity:
   shared compile evaluation
 - Object-closed bare Product, `T*N`, `T*omega`, `product`, and Symbol carriers;
   their normalization uses only ordinary `Val1`/`Val2` recursion
-- resolved pattern scopes, `struct -> symbol`, pure child-only `extend`,
+- resolved pattern scopes, `struct` forming complete type values, pure child-only `extend`,
   place-level `inject`, and binding/install separation
 - meta-return pure-role self-root identity and complete meta-instance navigation atoms
 - pure-role namespace origin, source/meta construction-unit ownership, physical
@@ -55,7 +55,7 @@ recovery are retired.
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
   direction for Symbol `<tau?,V_S?>` role/member projection, heterogeneous value/call candidates,
   `compile` / `meta`, meta pure-role self-root, resolved pattern scopes,
-  `struct -> symbol`, pure `extend`, place-level `inject`, Symbol
+  `struct` forming complete type values, pure `extend`, place-level `inject`, Symbol
   uniqueness/replay, and outer
   graph installation.
 - `symbol-construction-units-and-namespace-origin.md` — canonical future

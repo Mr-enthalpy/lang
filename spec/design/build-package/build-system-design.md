@@ -452,7 +452,9 @@ assembled transactionally; the files may not reopen one another's child
 subtrees.
 
 The future `extend` primitive is the pure transformation that returns an
-uninstalled ordinary PatternValue. Formal `struct` and `extend` do not install
+uninstalled complete type value `tau` (participating in Pattern observation
+through `Core(tau)`, not an ordinary PatternValue). Formal `struct` and
+`extend` do not install
 the graph. Place-level `inject` reads, extends, and writes one already existing
 type slot but creates no graph member/root; the outer namespace assembler or
 `let` binding performs creation. See

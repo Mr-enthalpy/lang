@@ -562,17 +562,37 @@ construction role, never of any later Symbol sibling count. Formally:
 
 ```text
 HasRegisteredSelfConstruction(Q)
-  iff exists Pattern P of Q, exists C, exists K:
-      ConstructEdge_P_Q(C, Q, K)
+  iff exists Pattern P of Q, exists s, exists C, exists K:
+      Val2(Q)[s] = K
+      and ConstructEdge_P_Q(C, Q, K)
       -- P is the Pattern of Q, C is a structural input pattern, K is the
          ordinary callable/interface registered for that construction path
          (same registration family and parameter order as ConstructEdge_P_T
-         above)
+         above), and K must be the member actually registered in Val2(Q)
+         under some selector s.
+```
+
+The witness `K` is an actual ordinary callable/interface member registered in
+`Val2(Q)`, never a hypothetical edge. This gives three explicit levels:
+
+```text
+1. Val2 presence          Val2(Q)[s] = K
+                          -- ordinary membership: K is a member of Val2(Q)
+
+2. ConstructEdge          ConstructEdge_P_Q(C, Q, K)
+                          -- structural role: K plays the construction role
+                             registered on Q's Pattern
+
+3. Registered construction witness
+                          Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
+                          -- the Val2 member and the ConstructEdge agree on the
+                             same K; HasRegisteredSelfConstruction(Q) requires
+                             this joint witness, not either half alone
 ```
 
 `HasRegisteredSelfConstruction(Q)` is the existence of a structural
-construction role registered on `Q`'s Pattern. It is the formal criterion for
-the type-value role:
+construction role registered on `Q`'s Pattern, witnessed by an actual `Val2`
+member. It is the formal criterion for the type-value role:
 
 ```text
 TypeRole(Q)
@@ -637,6 +657,9 @@ No primitive `BorrowLiftable` Pattern flag exists. `struct` generates the
 ordinary value/ref/share callable objects required by its interface. Built-in
 borrow operations associate those already existing callables with their
 ProjectionSlots; they do not synthesize transformed callable objects.
+This borrowed-extraction law is a theorem of the rank-preservation and
+typing-naturality section
+(`../symbol-world/type-values-places-and-borrow-views.md` §2.3).
 
 Borrow observations are horizontal edges and do not become owned Pattern
 children.
@@ -675,7 +698,9 @@ Members created under the same `Q` after formation never retroactively enter
 an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
 
 where `V_τ` contains the ordinary val members that belong directly to this type
-snapshot and references to `Self_τ` normalize as binder back-references.
+snapshot and references to `Self_τ` normalize as binder back-references
+(`SymbolicReferenceEdge`, not an evaluation reentry;
+`../symbol-world/type-values-places-and-borrow-views.md` §2.1.1).
 `tau` is not an Object embedding or a fourth Object coordinate. `Q` and every
 member in `V_τ` remain ordinary Objects; the closure records the type-specific
 pairing needed by type-as-callee, copying, `extend`, and `inject`. Per the
@@ -778,7 +803,9 @@ The following directions are retired in current target semantics:
 - general recursive Object graphs justified by `Self_τ` (replaced by
   stage-sensitive `WellFounded_kappa`: finite static generation, acyclic
   runtime materialization; `Self_τ` is one restricted static back-reference
-  instance, not an exceptional cycle).
+  instance — a `SymbolicReferenceEdge`, not an evaluation reentry,
+  not an exceptional cycle;
+  `../symbol-world/type-values-places-and-borrow-views.md` §2.1.1).
 
 ## 18. Remaining deferred work
 

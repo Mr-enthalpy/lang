@@ -178,7 +178,7 @@ lookup callee name
 It must be at least:
 
 ```text
-resolve callee Symbol S; C0 := CallableProjection(S) = V_S ∪ V_τ
+resolve callee Symbol S; C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
      (symbol-first §2.1; never a V_S-only projection)
 prepare type-associated `()` entries, including entries of derived companion objects
 normalize argument shapes
@@ -493,7 +493,7 @@ formal meta object invocation engine. The end-to-end pipeline is:
 
 ```text
 normalized call
-  -> callee Symbol S / C0 := CallableProjection(S) = V_S ∪ V_τ
+  -> callee Symbol S / C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
   -> type-associated `()` candidate preparation
   -> argument shape formation
   -> parameter pattern normalization

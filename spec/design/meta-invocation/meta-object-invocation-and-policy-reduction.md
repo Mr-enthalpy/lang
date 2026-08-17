@@ -345,7 +345,7 @@ The judgments are:
 
 ```text
 Gamma |- ResolveSymbol(path) => Symbol
-Gamma; Phase |- ExposePolicySlice(typed_val_members(Symbol)) => Val2View*
+Gamma; Phase |- ExposePolicySlice(CallableProjection(Symbol)) => Val2View*
 
 Gamma |- invoke(selected object, InvocationFrame)
       => result(P2v:P2p)
@@ -488,7 +488,7 @@ A formal sketch of the intended end-to-end frame:
 
 ```text
 Gamma |- ResolveSymbol(callee_path) => Symbol
-Gamma; Phase |- typed_val_members(Symbol) => V*
+Gamma; Phase |- CallableProjection(Symbol) => V*
 Gamma; Phase |- ExposePolicySlice(V*) => V_phase*
 Gamma; Phase |- type(V_phase*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
@@ -735,6 +735,59 @@ Any implementation, test, or document that uses `IdentityType` as evidence that
 ordinary `PatternValue` / meta-construction semantics have been
 implemented is incorrect.
 
+### 4.4 Generic symbolic anchoring: MetaPartner and GeneratedClosure
+
+Generic construction is anchored to its callee through one symbolic relation,
+not through ordinary invocation arguments. The canonical relational objects
+are:
+
+```text
+MetaPartner(F)
+  := the meta-level partner bound to callable F by its declared generic
+     signature; it exists as a fact about F, not as a runtime value.
+
+MetaInstance(MetaPartner(F), Norm(GenericArgs))
+  := the meta instance keyed by the partner and the normalized generic
+     arguments; this is the scope that roots the generated construction.
+
+GeneratedClosure(F, GenericArgs)
+  := the callable closure produced by evaluating the anchored instance;
+     written C_F,A... for the closure rooted at MetaInstance(MetaPartner(F),
+     Norm(A...)).
+
+ClassifierRoot(TypeOf(C_F,A...)) = M
+  := the classifier root of the generated closure's type is the MetaInstance
+     scope M above.
+```
+
+Generic arguments are identity arguments of the **anchoring relation**, not
+ordinary invocation arguments of `F`:
+
+```text
+GenericArgs   -- key MetaInstance(MetaPartner(F), Norm(GenericArgs));
+              -- they participate in generic meta-instance identity.
+
+InvocationArgs -- the ordinary call arguments consumed by F's selected `()`;
+              -- they do not participate in generic meta-instance identity.
+```
+
+One callable therefore admits three realization/partner classifications, by
+stage:
+
+| callee stage | runtime realization | compile partner | meta partner |
+|---|---|---|---|
+| runtime generic `F` | `F` itself | `C(F)` = `CompilePartner(F)` | `MetaPartner(F)` = `M(F)` |
+| compile generic `F` | compile realization `F` | — | `MetaPartner(F)` = `M(F)` |
+| meta `F` | `F` itself | — | — |
+
+**GeneratedMetaPartner ≠ OrdinaryMetaFunction.** A generated meta partner
+returns a callable closure (a `GeneratedClosure`), so it does not fall under
+the ordinary-meta rule that a successful ordinary meta invocation returns a
+`symbol` value whose result classifier is exactly `symbol`. The two callable
+kinds therefore never share that conclusion, and the ordinary-meta
+`ReturnClassifier = symbol` rule is not violated by generated closures; the
+generated closure's own type is rooted at its `MetaInstance` scope instead.
+
 ## 5. Match and If Share One Pattern Mechanism
 
 The language has no semantic split among:
@@ -904,7 +957,8 @@ Current state:
   graph.
 - `struct` is a core `BuiltinPrivilegedAstMetaFunction` symbol resolved through
   the namespace graph, not a parser keyword or an ordinary user-definable meta
-  function.
+  function. Its result contract is a complete type value `tau`, not a Symbol;
+  the Symbol appears only at a subsequent binding/install (symbol-first §7.1).
 - `verify` is a core meta-visible verification namespace/object, with
   verification operations installed below it as core symbols.
 - Source-declared callable/meta-function overloads can be harvested into graph

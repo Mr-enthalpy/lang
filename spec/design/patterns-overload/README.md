@@ -29,7 +29,7 @@ The base Pattern relation, binderless Pattern semantics, direct structural
 incidence, annotation split, constructor/extractor family contracts, and the
 named-versus-positional normalization boundary are owned by
 `pattern-values-relational-semantics-and-extraction.md`. Symbol construction,
-`struct -> symbol`, pure `extend`, and place-level `inject` are owned by
+`struct` forming complete type values, pure `extend`, and place-level `inject` are owned by
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` and
 must satisfy that Pattern authority.
 Canonical policy pairs, seal visibility, const/mut product order, compile-flow

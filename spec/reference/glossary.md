@@ -596,8 +596,12 @@ Symbol, projects its heterogeneous typed `V` members for the current policy view
 enumerates `Val2` objects, obtains each surviving value's type, and resolves
 that type's associated `()` entry. Non-callable values are discarded. A derived
 compile companion is itself a complete `Val2` function object with stable
-object identity, origin runtime object, its own function-object type, and its
-own associated compile `()`; it enters candidate preparation through the same
+object identity, its own function-object type, and its
+own associated compile `()`; its existence is derived from the callable under
+the compile transform (`CompilePartner(F) = C(F)`, canonical in
+`function-object-call-model.md` §8), not from Symbol injection — the symbol-facet
+entry used at lowering is implementation substrate. It enters candidate
+preparation through the same
 path. Compile projection leaves the projected invocation as an ordinary call
 until normal compile lookup and overload resolution. A same-name namespace
 bucket is only current transitional substrate, not the final candidate
@@ -649,7 +653,7 @@ same-name overloads. Source strategy metadata uses `=> name { ... }`, with
 `[[name]] { ... }` as the no-`=>` disambiguation form; `@` remains lifetime
 syntax.
 
-_See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject._
+_See also: FullyAdmissibleCandidate, DerivedCompileCompanionObject, CompilePartner._
 
 ---
 
@@ -792,9 +796,18 @@ _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload
 
 ## Object normal form (`Norm`)
 
-The structural identity of an object. Every language-visible semantic carrier
-has `Object = <Val1?, P, Val2>` and normalizes recursively through `Val1` and
-`Val2`. Bare Product, Sequence, `product`, and Symbol are constructor instances,
+The structural identity of an object. The governing principle has three parts:
+
+1. Ordinary structural content is governed by `Object = <Val1?, P, Val2>` and
+   normalizes recursively through `Val1` and `Val2`.
+2. Complete types are rank-indexed closures `tau = <Q, V_τ>` over that Object
+   material; `tau` participates in Pattern observation through `Core(tau) = Q`
+   and is not itself an ordinary Object.
+3. Ordinary computation preserves the declared semantic rank; place projection,
+   borrow lifting, and type formation compose by the ordinary typing/naturality
+   laws (`OrdinaryRankPreservation`, §2.3 of the canonical owner below).
+
+Bare Product, Sequence, `product`, and Symbol are constructor instances,
 not parallel aggregates. Borrow targets are horizontal identity-bearing leaves.
 The complete equations and well-foundedness rules belong to
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
@@ -818,6 +831,13 @@ identity nor part of `Norm(value)`.
 ```text
 Open_Γ(v) = Open(ConstructionLineage(v), CompileTimeStack_Γ)
 ```
+
+Openness is a static value property: `Open_Γ(v)` alone does not mean the
+current computation flow re-traverses `v`. Live reentry additionally requires
+an active evaluation edge — `OpenEvalReentry_κ(v)` — whose criteria are
+canonical in
+[`../design/symbol-world/type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md)
+§2.1.1.
 
 An ordinary meta invocation forms a new boundary. Non-meta construction follows
 its stable lexical-owner interval and freezes on the specified semantic-use,
@@ -894,7 +914,7 @@ place-observation operation that yields a lifetime value and never a
 `type ref` (canonical owner
 `../design/lifetime/lifetime-policy-and-overload-boundary.md` §1–§2).
 Callable val members project across the typed buckets of `V_S` to the formal
-`OverloadSet`; when `tau` is present, `CallableProjection(S) = V_S ∪ V_τ`
+`OverloadSet`; when `tau` is present, `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
 forms one candidate set with no priority or fallback.
 
 Symbol normalization is an extensional optional complete type closure plus map
@@ -910,10 +930,13 @@ Sequence, each `(T_c, bucket)` entry is classified by `product`, and those
 homogeneous entries form a `product*omega` carrier. The logical
 `<tau?, V_S?>` notation projects this ordinary Object composition.
 
-The privileged `struct` operation returns such a Symbol: it creates the unique
-pure-role member `Q_struct` satisfying `TypeRole(Q_struct)` and mechanically
-generated field/access/assignment/borrow partner families. It is therefore a
-symbol-producing structural generator, not merely a type constructor.
+The privileged `struct` operation forms a complete type value directly: it
+creates the unique pure-role core `Q_struct = Core(tau_struct)` satisfying
+`TypeRole(Q_struct)` with mechanically generated
+field/access/assignment/borrow partner families entering `V_τ` at the formation
+event. The Symbol carrying the formed value appears only at a subsequent
+binding/install. It is therefore a complete-type-forming structural generator,
+not merely a type constructor.
 
 _See also: PatternValue container kernel, Overload Candidate, `extend`._
 
@@ -995,18 +1018,28 @@ _See also: TypeMember, SemanticOwner._
 
 The canonical self reference inside the binder-aware type closure
 `tau = bind alpha.<Q,V_τ[alpha]>`. During `Norm_type` it becomes
-`BoundRef(alpha)`, which is not an owned child. After
+`BoundRef(alpha)`, which is not an owned child. It establishes a
+`SymbolicReferenceEdge` (symbolic anchoring), never an `EvaluationEdge_κ`, so
+the presence of `Self_τ` at the same stage does not mean the current
+computation flow re-enters the value: `OpenEvalReentry_κ` requires an active
+evaluation edge, not merely a stored reference. The normalizer's active stack
+is the **normalization/owned-recursion stack**, a distinct object from the
+evaluation-active flow. After
 authorized back-references are erased, the owned graph must satisfy
 `WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite,
 acyclic after back-ref erasure, all back-refs bound, and restricted to
 authorized static edge kinds under static-eval generation (covering both
 compile and meta) and acyclic once materialized at runtime.
 `Self_τ` is one restricted static back-reference instance, not an exceptional
-cycle and not a general recursive-Object constructor.
+cycle and not a general recursive-Object constructor. Meta and nonmeta closures
+share the same `bind alpha` / `Self_τ` representation; the difference lives in
+the symbolic anchoring relation `SelfResolve` (meta: root-relative/deferred;
+nonmeta: finite same-stratum static backreference).
 Canonical owner:
-[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
+[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md)
+§2.1–§2.1.1.
 
-_See also: TypeMember, Object normal form (`Norm`)._
+_See also: TypeMember, Object normal form (`Norm`), SymbolicReferenceEdge._
 
 ---
 
@@ -1038,7 +1071,11 @@ E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)
 `ref` and `share` are the borrow constructors; each is a privileged
 actual-place builtin (`PrivilegedActualPlace(ref-family)` /
 `PrivilegedActualPlace(share-family)`) that may obtain the place of its actual
-argument, while an ordinary user function cannot. An expression with no abstract\nplace —\na freshly computed temporary — supplies none: `@` selection still runs, and the\nplace acquisition is a post-selection invocation precondition — absence yields\n`InvocationFailure(NoBorrowableActualPlace)`, not candidate removal or overload\nreopening.
+argument, while an ordinary user function cannot. An expression with no abstract
+place — a freshly computed temporary — supplies none: `@` selection still runs,
+and the place acquisition is a post-selection invocation precondition — absence
+yields `InvocationFailure(NoCarrierPlace(actual))`, not candidate removal or
+overload reopening.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. The former
 two instance groups (`Val1?(x) ≠ null -> LifetimeFact`,
@@ -1098,8 +1135,8 @@ Neither uses `@` (`@` yields a lifetime value, not a borrow). Whether `ref` or
 `t |> (type ref)` is the right operation is decided by what the surface means,
 never by type-rank: for `s : symbol` the payload exists, so `s ref : symbol ref`
 borrows the symbol value `s` carries: `Target(s ref) = PrivilegedActualPlace(s)`
-— there is exactly one place source, and no separate carrier/binding-slot place
-exists for the view to miss. A type-rank object with a payload behaves the same
+— the borrow target has one source: `CarrierPlace(actual)`; there is no second
+`ObjectPlace(Read(actual))`. A type-rank object with a payload behaves the same
 way.
 
 A borrow view is a value, not a second name for a symbol: it does not forward
@@ -1765,6 +1802,31 @@ _See also: ClosureAST, ClosureObject._
 
 ---
 
+## MetaInstance / MetaPartner / GeneratedClosure
+
+The virtual construction scope established by a canonical meta invocation is
+`M = MetaInstanceScope(callee_symbol, canonical_arguments)`. Generic
+construction anchors through the callee's declared meta partner:
+
+```text
+MetaInstance(MetaPartner(F), Norm(GenericArgs))
+```
+
+Generic arguments key this scope; ordinary invocation arguments do not
+participate in generic meta-instance identity. Evaluating the anchored
+instance yields `GeneratedClosure(F, GenericArgs)` (written `C_F,A...`), whose
+type is rooted at that scope: `ClassifierRoot(TypeOf(C_F,A...)) = M`. A
+generated meta partner returns a callable closure, so
+`GeneratedMetaPartner ≠ OrdinaryMetaFunction`: the ordinary-meta
+`ReturnClassifier = symbol` rule does not apply to generated closures.
+Canonical owner:
+[`meta-object-invocation-and-policy-reduction.md`](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md)
+§4.4.
+
+_See also: Meta-function, CompilePartner._
+
+---
+
 ## Meta-function
 
 A callable whose entry executes under meta construction capability. Callable
@@ -1777,16 +1839,22 @@ external installation. The canonical judgments and seal algorithm belong to
 At seal only the returned unique pure role member `Q`'s owned closure may be
 promoted. `Q` may be namespace-only (`NamespaceRole(Q)` and not
 `HasRegisteredSelfConstruction(Q)`; `../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` §13); type capability is
-the additional `TypeRole(Q)` refinement.
+the additional `TypeRole(Q)` refinement. The registered-self-construction
+witness requires an actual `Val2` member: `Val2(Q)[s] = K` together with
+`ConstructEdge_P_Q(C, Q, K)` for the same `K`.
 `EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
 horizontal borrow targets; it is not a val-sibling-only check.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
 subclass. A member such as `struct`, `extend`, or `inject` may accept one
 specifically bounded Normalized-AST/pattern carrier and use a member-specific
-scope/owner rule. `struct` produces a Symbol and establishes or selects its
-`Q_struct` type-role member's stable lexical root from input navigation plus ambient
-scope. `extend` establishes no root and preserves the input root; `inject` is
+scope/owner rule. `struct` forms a complete type value `tau` directly
+(`struct: StructLikePattern -> tau`; the core `Q_struct = Core(tau_struct)`
+is produced during the formation event) and establishes or selects its
+`Q_struct` type-role member's stable lexical root from input navigation plus
+ambient scope; the Symbol carrying the formed value appears only at a
+subsequent binding/install. `extend` establishes no root and preserves the
+input root; `inject` is
 its place-level read–extend–write wrapper. Any later privileged member must declare its own owner rule. Users
 may call these objects but cannot define new privileged members; the privilege
 does not imply text substitution, parser re-entry, or a general macro system.

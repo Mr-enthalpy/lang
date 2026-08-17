@@ -443,7 +443,8 @@ Still open for later design:
   restriction are compatibility encoding, not final surface rules.
   Still open is the cluster write algebra itself (which facets an existing member
   exposes for later structural writes, and how a write interacts with overwrite);
-- how source code references a derived compile companion and associates an
+- how source code references a derived compile companion (`CompilePartner(F) = C(F)`,
+  function-object-call-model §8) and associates an
   explicit replacement;
 - whether default companion suppression is permitted and which equivalent
   compile Pattern/contract interface would be mandatory;

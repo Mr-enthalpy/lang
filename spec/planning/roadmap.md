@@ -253,7 +253,7 @@ package/manifest identity
   -> Object-closed container PatternValues: bare Product / T*N / T*omega /
      product / Symbol (no compiler-private collection identity)
   -> meta Symbol-valued construction (current SymbolConstruction is substrate)
-  -> ResolvedPatternScope / struct -> symbol / pure extend / place inject
+  -> ResolvedPatternScope / struct forming complete type values / pure extend / place inject
   -> let-only creation + existing-place writes + NamespaceDelta install
   -> formal invocation demand/policy integration
   -> mechanical lowering family
@@ -450,8 +450,9 @@ Must cover:
 - closed `SyntaxObject` passing
 - `assert` as a compile-time hard-check primitive
 - `struct` as the first real globally visible
-  `BuiltinPrivilegedAstMetaFunction` object from the core namespace, producing
-  a Symbol with one `Q_struct` satisfying `TypeRole` plus generated partner families
+  `BuiltinPrivilegedAstMetaFunction` object from the core namespace, forming a
+  complete type value whose core `Q_struct` satisfies `TypeRole` plus generated
+  partner families entering `V_τ` at formation
 - current meta call replacement adapter
 - current `MetaExpansionResult` transport (replacement object / namespace delta /
   diagnostics / provenance); final formal invocation returns an uninstalled

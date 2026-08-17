@@ -50,7 +50,7 @@ ordinary value binding:
     -> resolve source Symbol -> read value -> bind destination Symbol/Place
 
 compile-time value computation:
-  compile -> any ordinary PatternValue
+  compile -> any ordinary PatternValue or complete type value tau
     subject to the root-conservation law of §4.2
 
 ordinary meta symbol construction:
@@ -84,12 +84,14 @@ Consequences:
    root. It returns the ordinary Symbol value of that instance; the return stage
    promotes only the unique pure-role-member-owned closure and seals the instance
    (§4.1, §4.3). Privileged built-ins retain member-specific owner rules (§4.8).
-5. In target semantics, `struct` is a symbol-producing structural generator and
+5. In target semantics, `struct` forms a complete type value `tau` directly and
    `extend` is the primitive referentially pure value transformation. `inject`
    is the explicit read--extend--write wrapper over an existing `type ref`.
    None installs a new global root; only `inject` mutates an existing slot. A
-   current registry allocation used to represent a result is non-semantic
-   substrate bookkeeping, not an observable effect.
+   `let` binding or installation path that later carries `struct`'s result is
+   what creates a Symbol; it does not retroactively make `struct` a
+   symbol-producing generator. A current registry allocation used to represent
+   a result is non-semantic substrate bookkeeping, not an observable effect.
 6. A `let` binding or installation path chooses the installation place. It does
    not retroactively choose or reroot the pattern owner carried by the value.
 
@@ -204,25 +206,46 @@ TypeProjection(S) defined => NamespaceProjection(S) defined
 NamespaceRole(Core(tau)) and no TypeProjection)
 
 CallableProjection(S)
-  = SiblingSpace(S) ∪ OptionalMap(CallSpace, TypeSlot(S))
-  = V_S ∪ V_τ         when both present
-  = V_S               when tau_S absent
-  = V_τ               when V_S absent
-  = ∅                 when <None, None>
+  = DedupCandidateIdentity(V_S ⊎ V_τ)
+
+V_S ⊎ V_τ
+  -- source-annotated union: every candidate carries its source path
+     (Symbol sibling space vs embedded closure callspace); the same
+     object reachable through both paths appears here once per source
+
+DedupCandidateIdentity(X)
+  -- folds X by candidate/declaration identity: entries that are the
+     same candidate (same declaration identity) collapse to one
+     candidate; two different callables with identical signatures
+     remain two candidates
+
+Case analysis (a missing source contributes nothing to ⊎):
+  = DedupCandidateIdentity(V_S ⊎ V_τ)   when both present
+  = V_S                                 when tau_S absent
+  = V_τ                                 when V_S absent
+  = ∅                                   when <None, None>
 ```
+
+Definition levels: `⊎` records provenance, `DedupCandidateIdentity` is the
+candidate-identity quotient. Once duplicates are folded, the result is the
+ordinary set union of the two sources — documents may write
+`CallableProjection(S) = V_S ∪ V_τ` as shorthand for that quotient, but the
+normative form is `DedupCandidateIdentity(V_S ⊎ V_τ)` and there is exactly one
+canonical formula.
 
 `CallableProjection` forms the candidate set in one step: there is no priority,
 fallback, or reopening between `V_S` and `V_τ`. The same candidate reachable
-through both paths is deduplicated; two different callables with identical
-signatures remain two candidates. After the set is formed, the ordinary
-overload pipeline runs once (hard admissibility → policy preference → unique
-selection); failure does not reopen lookup.
+through both paths is deduplicated by `DedupCandidateIdentity`; two different
+callables with identical signatures remain two candidates. After the set is
+formed, the ordinary overload pipeline runs once (hard admissibility → policy
+preference → unique selection); failure does not reopen lookup.
 
 `V_τ` is an intrinsic property of the embedded closure `τ`, not a function
-of the Symbol `S`; `CallableProjection(S) = V_S ∪ V_τ` is the Symbol call
-interface exposing the embedded closure callspace in one step, and does not
-break the closure's independence. Ordinary sibling operations only modify
-`V_S`; they cannot reach into the `V_τ` already encapsulated in `τ`.
+of the Symbol `S`; `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
+is the Symbol call interface exposing the embedded closure callspace in one
+step, and does not break the closure's independence. Ordinary sibling
+operations only modify `V_S`; they cannot reach into the `V_τ` already
+encapsulated in `τ`.
 
 `tau` is not another Object and does not add a fourth Object coordinate. `Q`
 and every ordinary member in `V_τ` remain ordinary Objects governed by the
@@ -240,6 +263,15 @@ References from members in `V_τ` to the current type use the canonical binder:
 Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
+
+`Self_τ` establishes a `SymbolicReferenceEdge` to the enclosing closure —
+symbolic anchoring, not an ownership edge and not an evaluation-flow edge, so
+it never establishes an `ActiveEvaluation` or `OpenEvalReentry_κ`. Meta and
+nonmeta closures share the same `bind alpha` / `Self_τ` representation; the
+difference lives in the symbolic anchoring relation `SelfResolve`
+(meta: root-relative/deferred; nonmeta: finite same-stratum static
+backreference). The edge taxonomy and reentry criteria are canonical in
+`type-values-places-and-borrow-views.md` §2.1.1.
 
 After those authorized references are erased, the owned graph must satisfy
 `WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite
@@ -670,7 +702,9 @@ invalid and does not turn it into a function overload.
 Candidate identity and applicability belong to the candidate/invocation model;
 symbol-first resolution only establishes where the heterogeneous values come
 from. Derived compile companions are complete first-class `Val2` function
-objects, not post-failure fallback entries; their policy and overload
+objects whose existence is derived under the compile transform
+(`CompilePartner(F) = C(F)`, function-object-call-model §8), not post-failure
+fallback entries; their policy and overload
 obligations are defined in
 `symbol-policy-and-compile-flow-projection.md`.
 
@@ -709,7 +743,10 @@ CallableSemantics
 Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
-`compile` may return any declared ordinary PatternValue, including a Symbol.
+`compile` may return any declared ordinary PatternValue (including a Symbol) or
+a complete type value `tau`; a returned `tau` participates in Pattern
+observation through `Core(tau)` and is not itself an ordinary
+PatternValue/Object.
 Ordinary-meta callable kind, call legality, and successful-call effects are
 separate judgments inside the ordinary value/policy model:
 
@@ -784,15 +821,16 @@ creating a symbol-construction root:
 
 ```text
 compile:
-  input  ordinary PatternValue
-  -> output ordinary PatternValue
+  input  ordinary PatternValue or complete type value tau
+  -> output ordinary PatternValue or complete type value tau
 ```
 
-`PatternValue` includes:
+`compile` may pass and return:
 
-- ordinary compile-time values;
-- type values;
-- symbol values;
+- ordinary compile-time values (ordinary PatternValues);
+- complete type values `tau` — they participate in Pattern observation through
+  `Core(tau)` and are not ordinary PatternValues/Objects;
+- symbol values (ordinary PatternValues);
 - `type ref` and `type share` views;
 - structured pattern values.
 
@@ -1738,7 +1776,7 @@ have function-object, type, and associated () identity;
 use the ordinary invocation frame, including implicit self;
 may accept a bounded Normalized-AST or pattern carrier;
 establish no ordinary MetaInstance root;
-return ordinary PatternValues rather than a construction rank;
+return ordinary PatternValues or complete type values rather than a construction rank;
 declare explicitly whether they are pure or write an existing place.
 ```
 
@@ -1749,7 +1787,7 @@ third result rank (§4.1):
 ```text
 extend  : type × StructLikeMaterial -> type
 inject  : type ref × StructLikeMaterial -> type ref
-struct  : StructLikePattern -> symbol
+struct  : StructLikePattern -> tau
 *       : type × (CompileNatural | omega) -> type
 ```
 
@@ -1995,30 +2033,46 @@ The public semantic boundary is:
 ```text
 struct:
   StructLikePattern
-  -> symbol
+  -> tau
 ```
 
 An implementation may carry AST or Normalized AST as a private structured
-carrier. The public result is an ordinary Symbol PatternValue, not AST and not a
-separate construction rank (§4.1, §4.7–§4.8). Its `Val1` contains exactly one
-pure-role member `Q_struct` satisfying `TypeRole(Q_struct)`, plus any ordinary
-sibling values explicitly contributed by the construction. Section 7.5 closes
-the mechanically generated field/access/ref/share/assignment partners in
-the complete type snapshot and exposes corresponding associated views. Other
-direct-home TypeMembers, when present, are likewise part of that snapshot's
-`V_τ`; type-as-callee never recovers a defining Symbol. This bounded capability
-does not expose a general macro system.
-
-In the general Symbol notation this producer-specific guarantee is:
+carrier. The public result is a complete type value `tau`, not AST, not an
+ordinary Symbol PatternValue, and not a separate construction rank (§4.1,
+§4.7–§4.8). The formation event is:
 
 ```text
-Val1(struct(material)) = <Q_struct, V>
+struct(P)
+  = tau_P
+  = bind alpha.<Q_P[alpha], V_τ[alpha]>
+```
+
+where the core `Q_struct = Core(tau_struct)` is the pure-role member produced
+during the formation event, satisfying `TypeRole(Q_struct)`, and the
+direct TypeMembers generated during that formation event enter `V_τ`
+immediately; there is no intermediate Symbol from which `Q_struct` or `V_τ`
+is later projected. Section 7.5 closes the mechanically generated
+field/access/ref/share/assignment partners in that complete type snapshot and
+exposes corresponding associated views. Other direct-home TypeMembers, when
+present, are likewise part of that snapshot's `V_τ`; type-as-callee never
+recovers a defining Symbol. This bounded capability does not expose a general
+macro system.
+
+In the complete-type notation this producer-specific guarantee is:
+
+```text
+Core(struct(material)) = Q_struct
 Pure(Q_struct)
 TypeRole(Q_struct)
+CallSpace(tau_struct) = V_τ
 ```
 
 Thus general Symbol and ordinary-meta ontology use optional pure `Q`; `struct`
-specifically guarantees that its `Q_struct` exists and is type-capable.
+specifically guarantees that its core `Q_struct` exists and is type-capable.
+The two-step reading is preserved: `struct(P) -> tau_P` is a formation event,
+while a subsequent `let t = P |> struct` is the binding that creates the Symbol
+`S_t = <tau_P, V_St?>` (§6). These are consecutive but distinct semantic steps;
+the type closure is formed by `struct` alone, before any Symbol is installed.
 
 ### 7.2 Owner resolution
 
@@ -2096,7 +2150,7 @@ binding-free
 referentially pure
 ```
 
-Purity means that `struct` does not install the returned Symbol or mutate an
+Purity means that `struct` does not install a Symbol or mutate an
 input place. It may establish the result type's declared `StructLexicalRoot`
 under its privileged owner rule, but outer `let` remains the only operation that
 creates the destination Symbol/member in the surrounding graph.
@@ -2145,11 +2199,12 @@ meaning to an anonymous bare `() |> struct`; that is a separate boundary.
 
 ### 7.5 Generated field and companion members
 
-For a structural field `f : A` produced in returned Symbol `S_struct`, let
-`Q_struct = NamespaceProjection(S_struct)` and
-`T = TypeProjection(S_struct)`. `struct`
-uses one general field rule. It does not introduce a separate semantic category
-for “type fields”. All observations are candidates of one same-name associated
+For a structural field `f : A` produced during the `struct` formation event, let
+`tau_struct = struct(material)` and
+`T = tau_struct`. The core `Q_struct = Core(tau_struct)` is produced during that
+formation event; there is no intermediate `S_struct` from which it is projected.
+`struct` uses one general field rule. It does not introduce a separate semantic
+category for “type fields”. All observations are candidates of one same-name associated
 Symbol `f`; receiver and result observation kinds distinguish the overloads:
 
 ```text
@@ -2213,9 +2268,10 @@ Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
 `RuntimeField(selected element)` is one local condition inside that meet. No
 Sequence-specific stage rule exists.
 
-The generated partner candidates are ordinary members of the returned Symbol's
-typed buckets whose classifiers satisfy `TypeMember_Q_struct`; therefore
-`TypeProjection(S_struct)` closes them into `V_τ`. Any navigable associated
+The generated partner candidates are ordinary members whose classifiers
+satisfy `TypeMember_Q_struct`; they enter `V_τ` during the `struct` formation
+event, and `Core(tau_struct) = Q_struct` exposes them as its associated members.
+Any navigable associated
 view is a projection of those same members, not a second owned copy in
 `Q_struct` or its `Val2`. The partners are ordinary typed member objects: user
 construction may remove them, replace them, or add a more specific declaration
@@ -2278,9 +2334,9 @@ let t_ref = (s ref).type;
 (t_ref, bool inner) |> inject;
 ```
 
-produce Symbols whose `Q_struct` members both satisfy `TypeRole` and have the
-same normalized PatternValue, provided the read value is Open and the destination slot is
-writable:
+produce type values whose core `Q_struct` members both satisfy `TypeRole` and
+have the same normalized PatternValue, provided the read value is Open and the
+destination slot is writable:
 
 ```text
 NamedPattern(
@@ -3641,7 +3697,7 @@ The installation flow is:
 
 ```text
 compile/meta invocation
-  -> compile: an ordinary PatternValue of its declared result Pattern
+  -> compile: an ordinary PatternValue or complete type value of its declared result Pattern
   -> meta: an ordinary symbol PatternValue
   -> for a source path: resolve Symbol -> read its value/facets
   -> let creates a destination or ordinary =/inject writes an existing place

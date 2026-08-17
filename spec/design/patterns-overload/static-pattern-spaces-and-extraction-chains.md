@@ -1485,7 +1485,9 @@ By default, binding extraction is total consumption of the current static patter
 > extraction-pattern specificity rule, the `C0 -> A -> Bn`
 > pipeline, and the must-select postcondition. Symbol policy and
 > compile companion semantics are canonical in
-> `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`.
+> `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md`;
+> companion derivation is defined in
+> `spec/design/symbol-world/function-object-call-model.md` §8.
 
 Extraction participates in overload candidate filtering and resolution. A candidate may carry an extraction pattern. If that pattern is not applicable to the current call pattern space, the candidate is skipped.
 
@@ -1503,9 +1505,12 @@ views are derived from `P2`. Candidate hard legality checks the actual
 parameter, receiver, target-result, stage, concept, and require constraints; it
 does not reconstruct one scalar total policy or apply `external(P2) subset P1`.
 
-Derived compile companions enter the Symbol's typed `V` members as complete first-class
+Derived compile companions are derived from the callable under the compile
+transform (`CompilePartner(F) = C(F)`, canonical in `function-object-call-model.md`
+§8) as complete first-class
 `Val2` function objects with their own types and associated compile `()`
-entries. They are not added after overload failure. `export` remains an
+entries; their symbol-facet records are lowering/implementation substrate, not
+the semantic cause. They are not added after overload failure. `export` remains an
 independent cross-package visibility filter.
 
 All candidate filtering operations must be:

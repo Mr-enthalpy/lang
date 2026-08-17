@@ -6,7 +6,7 @@ The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
 resolves to a Symbol and forms the callable candidate set
-`CallableProjection(S) = V_S ∪ V_τ` (canonical owner
+`CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (canonical owner
 `symbol-first-meta-construction-and-pattern-injection.md` §2.1).
 Policy pairs, binding P1, result P2, compile companions, and must-select consistency
 are canonical in `symbol-policy-and-compile-flow-projection.md`.
@@ -22,7 +22,7 @@ let f = (self) => {};
 `f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
 
 The converse is not true: a value entry need not be a function. A symbol's
-callable candidate set `CallableProjection(S) = V_S ∪ V_τ` (canonical owner
+callable candidate set `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (canonical owner
 `symbol-first-meta-construction-and-pattern-injection.md` §2.1) may contain
 ordinary uncallable values and multiple heterogeneous values of unrelated
 types. The Symbol's own value-member bucket `V_S` is unioned with the
@@ -53,7 +53,7 @@ Product |> Expr
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
 When `Expr` is a name/path, resolution first produces a Symbol `S` and forms
-the candidate set `C0 := CallableProjection(S) = V_S ∪ V_τ` in one step — no
+the candidate set `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` in one step — no
 priority, no fallback, no reopening (symbol-first §2.1); the same candidate
 reachable through both `V_S` and `V_τ` is deduplicated. Candidate preparation
 observes each enumerated object's `Pv:Pp` view for the current lookup domain
@@ -583,7 +583,7 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = V_S ∪ V_τ`
+2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
    and enumerate that candidate set (one step, no priority, no fallback, no
    reopening; the same candidate reachable through both paths is deduplicated)
 3. Expose each Val2 object's policy-pair view for the current `Phase`
@@ -612,6 +612,29 @@ lookup-failure fallback. If its prepared candidate enters fully admissible set
 `A`, its must-select strategy requires it to be the final unique candidate.
 Compile projection preserves an ordinary projected call; normal compile
 evaluation later enumerates and selects objects.
+
+The semantic source of a compile companion is derivation, not Symbol
+injection. For any callable `F`, its compile partner is the complete function
+object produced by the compile transform:
+
+```text
+CompilePartner(F) = C(F)
+
+C(n) = n  with produced-runtime-Val1 := absent
+         if ManufacturesRuntimeVal1(n)
+C(n) = n  otherwise
+C(F) = Resolve(CompileTransform(body(F)))
+```
+
+`CompileTransform(body(F))` rewrites the callable body's result
+classification so that a runtime-value-producing body instead produces its
+static result (absent runtime `Val1`), leaving the callable structure,
+receiver, and associated static `()` intact. The compile companion's existence
+is a fact about `F` under the compile transform. A host Symbol's symbol-facet
+entry for the companion (overload-resolution §3.3) is a lowering/implementation
+cache, not the semantic cause: removing the cache entry does not remove
+`CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
+entry alone.
 
 ## 9. Relation to v0.8 substrate
 

@@ -776,9 +776,9 @@ has target semantics:
 | --- | --- | --- | --- |
 | `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> (type ref))` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
-| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with `Q_struct` satisfying `TypeRole` | `let f::((T ref).type)` may create under that explicit type-member place |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is the formed complete type value whose core `Q_struct = Core(value(T))` satisfies `TypeRole`; the Symbol is created by this binding, not by `struct` | `let f::((T ref).type)` may create under that explicit type-member place |
 
-Fresh generated Symbols own/provide their `Q_struct` type-role member's associated
+Fresh formed type values provide their `Q_struct` core's associated
 namespace, so `let T = (uint8 a, uint8 b) |> struct` creates one associated
 Symbol for `a` and one for `b`; each contains value/ref/share receiver candidates.
 
@@ -881,8 +881,9 @@ special case.
   arbitrary rewrite of parent / sibling / global namespace.
 
 The future public boundary is
-`struct: StructLikePattern -> symbol`; AST remains an internal carrier, and
-graph installation remains in the outer binding layer.
+`struct: StructLikePattern -> tau`; AST remains an internal carrier, graph
+installation remains in the outer binding layer, and the Symbol appears only at
+that binding/install.
 
 ## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 

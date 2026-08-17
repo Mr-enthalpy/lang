@@ -38,7 +38,7 @@ actual-place builtins (`PrivilegedActualPlace(ref-family)`,
 place (§2). An expression with no abstract place — a freshly computed temporary —
 supplies none: `@` selection still runs, and only after the unique `@` builtin
 is selected does place acquisition run; absence of a place is a post-selection
-invocation precondition failure (`InvocationFailure(NoBorrowableActualPlace)`),
+invocation precondition failure (`InvocationFailure(NoCarrierPlace(actual))`),
 not candidate removal or overload reopening.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
@@ -83,7 +83,7 @@ ordinary candidate preparation
 -> if SelectedBuiltinRequiresActualPlace:
        p := PrivilegedActualPlace(actual)
        if p absent:
-           InvocationFailure(NoBorrowableActualPlace)
+           InvocationFailure(NoCarrierPlace(actual))
            -- post-selection precondition failure, not candidate
               removal / overload reopening / fallback
 -> execute default
@@ -372,7 +372,15 @@ The positive separation is:
 ```text
 Γ ⊢ r : type ref  does not imply Open_Γ(Read(r))
 Open_Γ(v)          does not imply that v has a writable carrier
+Open_Γ(v)          does not imply the current computation flow re-enters v
 ```
+
+The third line separates static openness from live evaluation flow: reentry is
+`OpenEvalReentry_κ(v)`, which additionally requires an active evaluation edge
+into `v` — a stored `SymbolicReferenceEdge` (including `Self_τ`) alone never
+establishes it. The reentry criteria are canonical in
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§2.1.1.
 
 A consumer that performs `extend` must query `Open_Γ(old_value)` even when the
 value was read through `type ref`. The place-level `inject` wrapper in

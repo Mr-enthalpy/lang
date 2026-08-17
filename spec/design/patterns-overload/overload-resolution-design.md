@@ -243,7 +243,7 @@ Visible(C, External)
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
 candidate construction proceeds from that Symbol's callable projection
-`CallableProjection(Σ) = V_S ∪ V_τ`, where `V_τ = CallSpace(τ)` is the intrinsic
+`CallableProjection(Σ) = DedupCandidateIdentity(V_S ⊎ V_τ)`, where `V_τ = CallSpace(τ)` is the intrinsic
 callspace of the embedded closure and `V_S` is the Symbol's own sibling
 candidate space.
 
@@ -260,8 +260,8 @@ The final candidate source is symbol-first:
 ```text
 ResolveSymbol(callee path)
   -> Symbol Σ
-  -> apply call-site candidate-family filter to Σ
-  -> form CallableProjection(Σ) = V_S ∪ V_τ
+  -> form CallableProjection(Σ) = DedupCandidateIdentity(V_S ⊎ V_τ)   (unified entrance)
+  -> apply call-site candidate-family filter to the projection
   -> enumerate heterogeneous Val2 objects
   -> observe each object's policy-projected view for the lookup stage
   -> obtain each value's type
@@ -271,11 +271,14 @@ ResolveSymbol(callee path)
 
 The current same-name namespace bucket is only a restricted precursor to this
 flow. A derived compile companion is a complete `Val2` function object with its
-own type and associated compile `()`. It is inserted into the symbol value
-facet before ordinary candidate preparation, not after overload failure.
+own type and associated compile `()`. It is derived from the callable under
+the compile transform (`CompilePartner(F) = C(F)`, canonical in
+`function-object-call-model.md` §8); the symbol-facet entry used at lowering is
+an implementation cache, not the semantic cause, and the companion never
+appears by that entry alone.
 
 ```text
-C0 = EnumerateValueObjects(CallSiteFamilyView(Symbol, call_site_annotation))
+C0 = CallSiteFamilyView(CallableProjection(Σ), call_site_annotation)
 C1 = VisibleObjects(C0, V)
 C2 = ExposePhaseViews(C1, Phase)
 C3 = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -295,7 +298,7 @@ how already-fully-admissible candidates participate — for example fallback
 suppression or must-select consistency. They never generate a candidate or make
 an inadmissible candidate viable.
 
-- `C0`: `CallableProjection(Symbol) = V_S ∪ V_τ` — heterogeneous value/`Val2`
+- `C0`: `CallableProjection(Symbol) = DedupCandidateIdentity(V_S ⊎ V_τ)` — heterogeneous value/`Val2`
   objects (symbol-first §2.1; never a `V_S`-only projection); `V_τ` is the
   intrinsic callspace of the carried closure, not recovered from the Symbol.
 - `C1`: filtered by object-level visibility view (internal or external).
@@ -418,14 +421,22 @@ A mechanically derived compile companion is a complete Val2 function object:
 ```text
 DerivedCompileCompanionObject {
   object_id,
-  origin_runtime_object_id,
+  origin_runtime_object_id,   -- implementation-transport field only
   function_object_type,
   associated_namespace,
   associated_call_entry,
   overload_strategy = must_select_if_qualified,
-  provenance,
+  provenance,                 -- implementation-transport field only
 }
 ```
+
+`object_id`/`origin_runtime_object_id`/`provenance` are
+implementation-transport fields: they describe the lowering record, not the
+semantic source. The companion's existence is `CompilePartner(F) = C(F)`
+(function-object-call-model §8); type-as-callee never recovers a defining
+Symbol from these fields, and the carrier-independence rule
+(function-object-call-model §8) keeps copied/extracted type-as-callee lookup
+on the immutable `V_τ` snapshot.
 
 For origin P2 `runtime:Qstatic`, its static result pair is
 `Qstatic:Qstatic`. It participates
@@ -753,8 +764,7 @@ cannot reopen its discarded candidate set.
 
 ```text
 Σ   = ResolveSymbol(callee_path)
-F   = CallSiteCandidateFilter(Σ, call_site_annotation)
-C0  = EnumerateValueObjects(F)                -- candidate generation begins
+C0  = CallSiteFamilyView(CallableProjection(Σ), call_site_annotation) -- candidate generation begins
 C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -822,7 +832,7 @@ filter, but filters are not assumed to commute.
 ### 5.3 C0: heterogeneous value objects
 
 After path resolution has produced the callee `Symbol` `S`, `C0` is formed in
-one step as `CallableProjection(S) = V_S ∪ V_τ` (symbol-first §2.1) and
+one step as `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (symbol-first §2.1) and
 enumerates its heterogeneous value/`Val2` objects. These objects may have
 unrelated types and different available `Pv:Pp` views. The final model does not
 treat same-name namespace children as already-formed callable overloads.
@@ -1035,8 +1045,7 @@ Derivation:
 
 ```text
 CalleeSymbol = ResolveSymbol(Γ, name)
-F   = CallSiteCandidateFilter(CalleeSymbol, call_site_annotation)
-C0  = EnumerateValueObjects(F)
+C0  = CallSiteFamilyView(CallableProjection(CalleeSymbol), call_site_annotation)
 C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)

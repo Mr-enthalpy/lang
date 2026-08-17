@@ -223,10 +223,11 @@ NamespaceRole not-subset TypeRole
 ```
 
 `TypeRole(x)` is an imported relational judgment over the Pattern/Object
-relation. Its derivation belongs to the subsequent P–Val1–Val2
-relational-semantics design, which will define how `P` simultaneously
-constrains, observes, and extracts both `Val1` and `Val2`. This layer only
-consumes `TypeRole` as an opaque predicate.
+relation. Its formal criterion is defined normatively in
+`../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+§13 (`TypeRole(Q) iff NamespaceRole(Q) and HasRegisteredSelfConstruction(Q)`,
+witnessed by an actual `Val2(Q)[s] = K` member), consumed here via §2.2. This
+layer only consumes `TypeRole` as an opaque predicate.
 
 `Navigable(V)` means selector lookup yields the resident-specific
 `ProjectionSlot` defined in §7; a missing final selector still yields a slot
@@ -525,11 +526,12 @@ runtime (kappa = runtime):
   be reified into a real ownership cycle
 ```
 
-Re-entering any object still on the active recursion stack through any positive
-owned path proves a violation at the stage where the cycle is materialized:
+Re-entering any object still on the normalization/owned-recursion stack through
+any positive owned path proves a violation at the stage where the cycle is
+materialized:
 
 ```text
-x ∈ ActiveStack
+x ∈ OwnedRecursionStack
 ∧ x ∈ Children_owned+(x)
 --------------------------------
 NoNormalForm_kappa(x)
@@ -540,6 +542,59 @@ Thus `Val1(x) = x`, `Val1(x) = y ∧ Val1(y) = x`, a cyclic product, and a cycli
 they are materialized. A finished shared acyclic subtree remains valid DAG
 reuse. `Self_τ` is one restricted static back-reference instance, not the one
 exceptional cycle, and not a general recursive-data constructor.
+
+#### 2.1.1 Symbolic reference edges and evaluation edges
+
+The model separates two edge kinds connecting objects, because legality of a
+stored reference and legality of a live reentry are different questions:
+
+```text
+SymbolicReferenceEdge(x, y)
+  -- x refers to y by binder/symbolic means, with no ownership edge.
+  -- Self_τ inside V_τ establishes
+       SymbolicReferenceEdge(member, tau)
+     for a member referring to the enclosing closure.
+  -- Norm_type^alpha(Self_τ) = BoundRef(alpha)
+  -- BoundRef(alpha) notin Children_owned
+
+EvaluationEdge_kappa(x, y)
+  -- the stage-kappa evaluation flow proceeds from x into y.
+
+ActiveEvaluation_kappa(x)
+  := x lies on the currently running stage-kappa evaluation flow.
+
+OpenEvalReentry_kappa(x)
+  iff Open_Gamma(x)
+  and ActiveEvaluation_kappa(x)
+  and NextEvaluationStep_kappa enters x
+```
+
+A symbolic reference never establishes an `ActiveEvaluation`: the existence of
+a `SymbolicReferenceEdge` to a value at the same stage does not mean the
+current computation flow re-traverses that value. Openness plus a stored
+reference is not reentry; only an `EvaluationEdge_κ` on the live flow can
+reenter. Therefore `Self_τ` inside a stored `V_τ` is legal under static-eval:
+it is a binder back-reference (symbolic anchoring), not an evaluation cycle,
+and it does not trigger `OpenEvalReentry_κ`.
+
+The normalizer's active recursion stack is the **normalization/owned-recursion
+stack**: it records owned-child traversal during `Norm` / `WellFounded_kappa`
+checking and is a distinct object from the evaluation-active flow above.
+Re-entering an object on the normalization/owned-recursion stack through a
+positive owned path proves `NoNormalForm_kappa`; following a `BoundRef` is a
+bounded binder jump, not a stack push and not an evaluation reentry.
+
+Meta and nonmeta type closures share one `bind alpha` / `Self_τ`
+representation. Their difference belongs to the symbolic anchoring relation,
+not to the graph-shape rule:
+
+```text
+SelfResolve(meta)    = root-relative/deferred symbolic resolution
+SelfResolve(nonmeta) = finite same-stratum static backreference
+```
+
+Both resolve through the same binder; `SelfResolve` records which regime
+applies.
 
 ### 2.2 Complete type values are closed snapshots over Object cores
 
@@ -624,24 +679,30 @@ Changing `V_τ` requires a semantic operation that produces a new type value
 When a Symbol carries both `V_S` and `τ`,
 
 ```text
-CallableProjection(S) = V_S ∪ V_τ
+CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
 ```
 
-is the Symbol's call-interface exposing, in one step, the disjoint union of the
-Symbol's own sibling candidates and the callspace carried by its embedded
-closure. This does not make `V_τ` a function of `S`; `V_τ` remains an intrinsic
-snapshot of `τ`, and the formula is only the exposure of that embedded closure
-callspace through the Symbol call interface.
+is the Symbol's call-interface exposing, in one step, the candidate-identity
+quotient of the Symbol's own sibling candidates and the callspace carried by
+its embedded closure (normative form defined in
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1; written
+`V_S ∪ V_τ` only as shorthand after deduplication). This does not make `V_τ` a
+function of `S`; `V_τ` remains an intrinsic snapshot of `τ`, and the formula is
+only the exposure of that embedded closure callspace through the Symbol call
+interface.
 
 Whether `tau` has the type-value role or is namespace-only is decided by
 `Q`'s Pattern relations, never by the sibling count of a Symbol space. The
 formal judgments are defined via registered self-construction in
-`pattern-values-relational-semantics-and-extraction.md` §13:
+`pattern-values-relational-semantics-and-extraction.md` §13; the witness is a
+member actually registered in `Q`'s `Val2`:
 
 ```text
 TypeRole(Q)
   iff NamespaceRole(Q)
   and HasRegisteredSelfConstruction(Q)
+      -- iff exists Pattern P of Q, exists s, exists C, exists K:
+            Val2(Q)[s] = K and ConstructEdge_P_Q(C, Q, K)
 
 NamespaceOnly(Q)
   iff NamespaceRole(Q)
@@ -808,6 +869,77 @@ Root(tau_old) = Root(tau_new)
 An old copy retains `V_old`. No
 `Root(tau) -> current mutable Symbol -> current V` indirection participates in
 type identity or call lookup.
+
+### 2.3 Ordinary rank preservation and typing naturality
+
+The semantic layers compose as one principle:
+
+```text
+Object structural core:    ordinary structural content is governed by
+                           Object = <Val1?, P, Val2>
+Rank-indexed closure:      complete types are rank-indexed closures
+                           tau = <Q, V_τ> over that Object material
+Rank-preserving computation: ordinary computation preserves the declared
+                           semantic rank; place projection, borrow lifting,
+                           and type formation compose by the ordinary
+                           typing/naturality laws below
+```
+
+**OrdinaryRankPreservation.** Ordinary value computation never changes the
+declared semantic rank of what it transports: an ordinary Object stays an
+ordinary Object, a complete type value stays a complete type value, and a
+borrow view stays a borrow view. No ordinary operation silently promotes a
+value across ranks or demotes a rank-indexed closure back to bare Object
+material.
+
+Borrow lifting and type observation commute (naturality of `TypeOf` with
+borrow formation):
+
+```text
+TypeOf(Ref(p))   = RefTy(TypeOf(Read(p)))
+TypeOf(Share(p)) = ShareTy(TypeOf(Read(p)))
+
+rank(RefTy(T))   = rank(T)
+rank(ShareTy(T)) = rank(T)
+```
+
+`RefTy(U_n)` / `ShareTy(U_n)` are defined in
+`../lifetime/lifetime-policy-and-overload-boundary.md` §2; the rank equations
+state that borrow-type formation preserves the semantic rank of its pointee.
+
+The borrowed-extraction law of
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+§14 is a theorem of this section:
+
+```text
+E_ref(Ref(p)) = Ref(ProjectionSlot_E(p))
+
+where ProjectionSlot_E(p) = ProjectionSlot(Target(Ref(p)), pi_E)
+```
+
+Field functions follow the same rank-preserving family:
+
+```text
+inner : T        -> A
+inner : T ref    -> A ref
+inner : T share  -> A share
+```
+
+When `A` is itself a type position, the same family reads at the type rank:
+
+```text
+inner : T ref -> type ref
+  = borrow of ProjectionSlot(place(object), inner)
+
+(object.inner) ref : type = RefTy(value(object.inner))
+```
+
+Finally, type formation and borrow formation are distinct operations and stay
+separate under rank preservation: `t ref` is type formation (a type-forming
+overload yielding the borrow TypeValue), while `t |> (type ref)` is borrow
+formation (yielding a value `r : type ref`). The member-phase split and the
+no-implicit-borrow rule are canonical in
+`../lifetime/lifetime-policy-and-overload-boundary.md` §2 and §5.1 below.
 
 ## 3. Value judgment versus place judgment
 
@@ -1231,7 +1363,7 @@ ordinary overload selection
 if SelectedBuiltinRequiresActualPlace:
     p := PrivilegedActualPlace(actual)
     if no stable place available:
-        InvocationFailure(NoBorrowableActualPlace)
+        InvocationFailure(NoCarrierPlace(actual))
         -- a precondition failure AFTER selection: not candidate-space
            repair, not candidate removal, not overload reopening,
            not fallback
@@ -1286,7 +1418,7 @@ nowhere and carries no borrowable identity — supplies no place. Overload
 selection still runs: the temporary's type participates in ordinary
 Pattern/type/Policy matching. Only after the unique borrow-forming builtin is
 selected does place acquisition run; with no place available the invocation
-fails as a precondition failure — `InvocationFailure(NoBorrowableActualPlace)`
+fails as a precondition failure — `InvocationFailure(NoCarrierPlace(actual))`
 — never as candidate removal, overload reopening, or fallback. `ref` never
 materializes storage on the writer's behalf and never silently retargets to a
 carrier slot; a temporary must first be bound to a named place before it can
@@ -1326,8 +1458,8 @@ A symbol value is value-bearing, so `s ref` is the ordinary "form a borrow of
 this value" operation. Because `Read` does not descend into `Val1`, `r` is a
 `symbol ref` and **not** a reference to the member array held inside the
 symbol. The referent is the value that `s` holds: `Target(s ref) =
-PrivilegedActualPlace(s)` (§5.1.0) — there is exactly one place source, and no
-separate carrier/binding-slot place exists for the view to miss.
+PrivilegedActualPlace(s)` (§5.1.0) — the borrow target has one source:
+`CarrierPlace(actual)`; there is no second `ObjectPlace(Read(actual))`.
 
 When the intent is to form a borrow of the symbol's **type** rather than the
 symbol value itself — i.e. `(s |> type) ref` — an explicit `AsType` in a
