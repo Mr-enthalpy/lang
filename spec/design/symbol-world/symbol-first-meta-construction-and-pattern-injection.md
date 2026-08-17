@@ -141,8 +141,9 @@ well-formed `tau` (type-values §2.2). Type projection requires the type-role
 refinement: `TypeProjection(S) = tau` iff `TypeValueRole(tau)` (equivalently
 `CompleteType(tau)`), i.e. `TypeRole(Core(tau))`. A Symbol with `<None, V_S>`
 has no distinguished pure member: ordinary sibling members never become one by
-count — `NamespaceOnly(tau)` is a relational property of `Q`'s Pattern
-(type-values §2.2), never `count(pure members in V_S)`.
+count — `NamespaceOnly(tau)` binds to the formal `NamespaceOnly(Q)` judgment
+(`NamespaceRole(Q)` and not `HasRegisteredSelfConstruction(Q)`; type-values
+§2.2, pattern-values §13), never `count(pure members in V_S)`.
 
 The complete type value is the closure:
 
@@ -216,6 +217,12 @@ through both paths is deduplicated; two different callables with identical
 signatures remain two candidates. After the set is formed, the ordinary
 overload pipeline runs once (hard admissibility → policy preference → unique
 selection); failure does not reopen lookup.
+
+`V_τ` is an intrinsic property of the embedded closure `τ`, not a function
+of the Symbol `S`; `CallableProjection(S) = V_S ∪ V_τ` is the Symbol call
+interface exposing the embedded closure callspace in one step, and does not
+break the closure's independence. Ordinary sibling operations only modify
+`V_S`; they cannot reach into the `V_τ` already encapsulated in `τ`.
 
 `tau` is not another Object and does not add a fourth Object coordinate. `Q`
 and every ordinary member in `V_τ` remain ordinary Objects governed by the
@@ -1076,7 +1083,8 @@ Step 1 is a cardinality bound, **not** a requirement that a role member be
 present. Nothing in the Symbol ontology or in the self-root constraint promotes
 `|Q| <= 1` to `|Q| = 1`: the self-root rule says that *if* a distinguished
 pure member `Q` exists it must be rooted at `M`, which is vacuous when there is
-none. A namespace-only `Q` is
+none. A namespace-only `Q` — `NamespaceRole(Q)` and
+`not HasRegisteredSelfConstruction(Q)` — is
 therefore a valid promotion anchor even when `TypeRole(Q)` is false; type-role
 requirements are refinements, not generic Symbol constraints. Step 2 is simply
 skipped when `Q` is absent:
@@ -1293,7 +1301,8 @@ keeps `(t fn)` as the return symbol's root and includes the externally owned
 `DistinguishedPureMember(r) = bool::`.
 
 The self-root check is conditional on the distinguished pure member `Q`, not on
-`TypeRole(Q)`. A namespace-only `Q` is self-rooted and may own fresh
+`TypeRole(Q)`. A namespace-only `Q` — `NamespaceRole(Q)` and
+`not HasRegisteredSelfConstruction(Q)` — is self-rooted and may own fresh
 invocation-local material. A return Symbol with no distinguished pure member
 does not acquire a synthetic role member merely to satisfy this rule. When
 `TypeRole(Q)` does hold, it is the additional type
@@ -1515,6 +1524,15 @@ TypeOption(tau)    = BareProduct(EncodeTypeClosure(tau))
 EncodeTypeClosure : WellFormedTau -> Object
 DecodeTypeClosure(EncodeTypeClosure(tau)) = tau
 
+Fidelity (representation faithfulness):
+  Norm(EncodeTypeClosure(tau_1)) = Norm(EncodeTypeClosure(tau_2))
+    iff Norm_type(tau_1) = Norm_type(tau_2)
+  -- EncodeTypeClosure is injective up to Norm_type: two closures encode to
+     the same normalized Object exactly when their normalized type values
+     are equal (Norm_type as defined in
+     type-values-places-and-borrow-views.md §2.1); the encoding introduces
+     no extra observable distinction beyond the tau API
+
 BucketEntry(T_c)     = ProductValue(T_c, V_S[T_c]) : product
 BucketCarrier(V_S)   = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
 
@@ -1530,6 +1548,12 @@ Object, and every bucket entry is classified by the global `product` type so
 the bucket carrier remains genuinely homogeneous. Symbol normalization applies
 its unordered quotient to this ordinary carrier; neither `Σ` nor its buckets
 introduce a compiler-private semantic collection.
+
+The encoding is representation-opaque: ordinary Pattern, Object navigation,
+and Val1/Val2 inspection semantics must not observe any extra distinction
+beyond what the `tau` API defines through `EncodeTypeClosure`. The encoding is
+the single canonical representation inside the Object ontology; it does not
+form a second observable identity system.
 
 Each `V_S[T_c]` contains ordinary member/candidate objects of their actual type
 `T_c`. Those objects preserve stable declaration/candidate identity, their

@@ -26,11 +26,11 @@ callable candidate set `CallableProjection(S) = V_S ∪ V_τ` (canonical owner
 `symbol-first-meta-construction-and-pattern-injection.md` §2.1) may contain
 ordinary uncallable values and multiple heterogeneous values of unrelated
 types. The Symbol's own value-member bucket `V_S` is unioned with the
-`CallSpace` of any stored `τ` in one step: there is no priority, fallback, or
-reopening between `V_S` and `V_τ`; the same candidate reachable through both
-paths is deduplicated, and two different callables with identical signatures
-remain two candidates. Callability is tested only in a call position by
-resolving each value's type-associated `()` entry.
+intrinsic `CallSpace(τ) = V_τ` of any stored `τ` in one step: there is no
+priority, fallback, or reopening between `V_S` and `V_τ`; the same candidate
+reachable through both paths is deduplicated, and two different callables with
+identical signatures remain two candidates. Callability is tested only in a call
+position by resolving each value's type-associated `()` entry.
 
 Under the associated namespace of `F` there is a call entry `() :: F`. This `()` is the call method of the function object.
 

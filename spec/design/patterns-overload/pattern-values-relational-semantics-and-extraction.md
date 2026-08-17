@@ -557,10 +557,40 @@ FieldView_P_T(T, inner, A, F)
 `Val2` / type-member value universe. `P_T` does not own a second copy. It only
 registers the structural or interface role played by that callable.
 
+The namespace/type distinction of a core `Q` is a property of `Q`'s registered
+construction role, never of any later Symbol sibling count. Formally:
+
+```text
+HasRegisteredSelfConstruction(Q)
+  iff exists Pattern P of Q, exists C, exists K:
+      ConstructEdge_P_Q(C, Q, K)
+      -- P is the Pattern of Q, C is a structural input pattern, K is the
+         ordinary callable/interface registered for that construction path
+         (same registration family and parameter order as ConstructEdge_P_T
+         above)
+```
+
+`HasRegisteredSelfConstruction(Q)` is the existence of a structural
+construction role registered on `Q`'s Pattern. It is the formal criterion for
+the type-value role:
+
+```text
+TypeRole(Q)
+  iff NamespaceRole(Q)
+  and HasRegisteredSelfConstruction(Q)
+
+NamespaceOnly(Q)
+  iff NamespaceRole(Q)
+  and not TypeRole(Q)
+      -- equivalently: NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
+```
+
 Therefore:
 
 ```text
 Pattern identity != callable availability
+TypeRole(Q)      <=> NamespaceRole(Q) and HasRegisteredSelfConstruction(Q)
+NamespaceOnly(Q) <=> NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
 ```
 
 Copying or installing an ordinary callable does not grant it structural role.
@@ -630,8 +660,9 @@ WellFormedTau(tau)
       (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
 CompleteType(tau)  iff WellFormedTau(tau) and TypeRole(Q)   -- TypeValueRole
-NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceRole(Q)
-      and not TypeRole(Q)
+NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceOnly(Q)
+      -- NamespaceOnly(Q) formalized in §13 above: NamespaceRole(Q)
+         and not HasRegisteredSelfConstruction(Q)
 
 tau = bind alpha. <Q, V_τ[alpha]>
 ```

@@ -243,7 +243,9 @@ Visible(C, External)
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
 candidate construction proceeds from that Symbol's callable projection
-`CallableProjection(Σ) = V_S ∪ V_τ`.
+`CallableProjection(Σ) = V_S ∪ V_τ`, where `V_τ = CallSpace(τ)` is the intrinsic
+callspace of the embedded closure and `V_S` is the Symbol's own sibling
+candidate space.
 
 Candidate construction is closed over the namespace-graph view selected for the
 query: it performs no ADL-like expansion and no external scope search, external
@@ -294,7 +296,8 @@ suppression or must-select consistency. They never generate a candidate or make
 an inadmissible candidate viable.
 
 - `C0`: `CallableProjection(Symbol) = V_S ∪ V_τ` — heterogeneous value/`Val2`
-  objects (symbol-first §2.1; never a `V_S`-only projection).
+  objects (symbol-first §2.1; never a `V_S`-only projection); `V_τ` is the
+  intrinsic callspace of the carried closure, not recovered from the Symbol.
 - `C1`: filtered by object-level visibility view (internal or external).
 - `C2`: filtered independently by each object's available policy-pair view.
 - `C3`: objects whose type-associated `()` entry exists and is structurally

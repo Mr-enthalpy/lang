@@ -36,7 +36,10 @@ view. Borrow formation belongs to `ref` and `share`, which may be privileged
 actual-place builtins (`PrivilegedActualPlace(ref-family)`,
 `PrivilegedActualPlace(share-family)`) when the overload needs the actual's
 place (§2). An expression with no abstract place — a freshly computed temporary —
-supplies none, so no `@` candidate applies to it.
+supplies none: `@` selection still runs, and only after the unique `@` builtin
+is selected does place acquisition run; absence of a place is a post-selection
+invocation precondition failure (`InvocationFailure(NoBorrowableActualPlace)`),
+not candidate removal or overload reopening.
 
 `@` is not an ordinary meta/compile/seal/runtime policy atom, and lifetime
 policy is not a fifth stage in that dimension. `@` is evaluated at a stage; it
@@ -70,6 +73,22 @@ ref    -> borrow instance | TypeValue (type formation)
 share  -> borrow instance | TypeValue (type formation)
 ```
 
+Phase order (same for `@`, `ref`, `share`):
+
+```text
+ordinary candidate preparation
+  (Pattern / type / Policy matching on the actual value)
+-> ordinary overload selection
+-> unique selected builtin/default
+-> if SelectedBuiltinRequiresActualPlace:
+       p := PrivilegedActualPlace(actual)
+       if p absent:
+           InvocationFailure(NoBorrowableActualPlace)
+           -- post-selection precondition failure, not candidate
+              removal / overload reopening / fallback
+-> execute default
+```
+
 `ref` and `share` are privileged actual-place builtins
 (`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`).
 There is no global `E ref = Ref(Read(E))` law: the selected overload determines
@@ -96,6 +115,15 @@ type-forming member makes `type |> ref` / `type |> share` a well-formed
 ordinary type construction through the ordinary type-as-callee / overload
 machinery; no `RefType` primitive is introduced:
 
+The `ref`/`share` family is not a single meta stage: the **type-forming**
+member is a **meta** member (`T : U_n ⊢ T |> ref = RefTy(U_n)`, producing the
+borrow TypeValue), while the **borrow-forming** member inside the formed
+borrow type's callspace is a **runtime || compile** builtin/default member and
+is the only family member that may obtain `PrivilegedActualPlace`. The
+declarations below are the type-forming members; the borrow-forming members
+live inside each formed borrow type's callspace (canonical owner
+`../symbol-world/type-values-places-and-borrow-views.md` §5.1).
+
 ```lang
 let ref =
     <n>(self, t: n type):
@@ -108,28 +136,39 @@ let share =
     => default;
 ```
 
-For each universe level `n ≥ 1`, the type-forming members accept an `n type`
-operand and produce the borrow-type values `n type ref` / `n type share`. The
+For each universe level `n ≥ 1`, the type-forming members accept a `U_n`
+operand and produce the borrow-type values `RefTy(U_n)` / `ShareTy(U_n)`:
+
+```text
+U_0          = type
+U_1          = type_1
+RefTy(U_n)   = U_n |> ref        (n ≥ 0)
+ShareTy(U_n) = U_n |> share      (n ≥ 0)
+```
+
+(`n type ref` / `n type share` are pure mathematical metavariable notation
+for `RefTy(U_n)` / `ShareTy(U_n)`; they are **not** a legal source LHS and
+**not** a source-parser `n type ref` / `n type share` expression.) The
 universe-uniform routing — `type : type_1` being the instance that makes
-`<n>(n type) -> n type ref/share` well-formed at every level `n ≥ 1` — is frozen, not
+`U_n |> ref/share` well-formed at every level `n ≥ 1` — is frozen, not
 future work:
 
 ```text
 rank(t ref)   = rank(t)
 rank(t share) = rank(t)
 
-CallSpace(n type ref)
+CallSpace(RefTy(U_n))
   contains
-    (n-1) type -> (n-1) type ref
+    U_{n-1} -> RefTy(U_{n-1})      (n ≥ 1)
 
-CallSpace(n type share)
+CallSpace(ShareTy(U_n))
   contains
-    (n-1) type -> (n-1) type share
+    U_{n-1} -> ShareTy(U_{n-1})    (n ≥ 1)
 ```
 
-For `n = 1`, the `(n-1) = 0` universe is the base `type_0` universe. Its
-callspace contains exactly the member `type_0 -> type_0 ref` /
-`type_0 -> type_0 share` (i.e. `type -> type ref` / `type -> type share`),
+For `n = 1`, `U_0` is the base `type` universe. Its
+callspace contains exactly the member `U_0 -> U_0 ref` /
+`U_0 -> U_0 share` (i.e. `type -> type ref` / `type -> type share`),
 which is the instance needed for `t |> (type ref)` / `t |> (type share)`.
 The `(n-1)` recursion terminates here: there is no `type_{-1}`.
 

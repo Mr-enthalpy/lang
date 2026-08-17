@@ -571,10 +571,22 @@ TypeValueRole(tau)
   and TypeRole(Q)
       -- the type-value role; equivalently CompleteType(tau)
 
-NamespaceOnly(tau)
+NamespaceClosure(tau)
   iff WellFormedTau(tau)
-  and NamespaceRole(Q)
-  and not TypeRole(Q)
+  and NamespaceRole(Core(tau))
+      -- any well-formed closure over a namespace-role core
+
+TypeClosure(tau)
+  iff WellFormedTau(tau)
+  and TypeRole(Core(tau))
+      -- a closure whose core has registered self-construction
+
+TypeClosure(tau) => NamespaceClosure(tau)
+      -- TypeClosure(tau) ⊂ NamespaceClosure(tau): the type closure is a
+         proper sub-judgment of the namespace closure
+
+NamespaceOnly(tau)  iff NamespaceClosure(tau) and not TypeClosure(tau)
+      -- equivalently: NamespaceRole(Q) and not TypeRole(Q)
 
 FormationLine(w, Q_0, V_τ)
   // w is the formation event that created Q_0 and fixed V_τ
@@ -589,24 +601,56 @@ CoreOnFormationLine(w, Q)
   iff Q = Q_0
   or exists Q_prev: CoreOnFormationLine(w, Q_prev)
       and Q = AssociateCore(Q_prev, selector, value)
+
+CallSpace(tau) = V_τ
+  // Intrinsic property of the closure, fixed at formation.
+  // It does not depend on the current host Symbol, source binding,
+  // carrier Symbol, HomeSymbol, or any other provenance recovery.
 ```
 
-Whether `tau` has the type-value role or is namespace-only is decided by
-`Q`'s Pattern relations, never by the sibling count of a Symbol space. A
-namespace-only `Q` has the form:
+The closure value is first-class: `copy(τ)`, `extract(τ)`, and ordinary
+parameter-passing of `τ` preserve `CallSpace(τ)` unchanged. Ordinary Symbol
+sibling operations only modify `V_S`:
 
 ```text
-Q = <absent, P, Val2>
-
-no Val2 child is used by P as a sub-pattern describing a Val1
-  => NamespaceOnly(tau)
-     -- P at most describes its own Pattern structure; no Val2
-        sub-pattern participates in describing a Val1
+RemoveSibling(<tau, V_S>, F) = <tau, V_S \ {F}>
 ```
 
-The namespace-only judgment is a relational property of `Q`'s Pattern `P`
-(imported from the Pattern relational semantics); it is **never**
-`count(pure members in V_S)`.
+They do not modify the `V_τ` already encapsulated in `τ`; `-=`, sibling
+removal, or any ordinary mutation of `V_S` cannot reach into the closure.
+Changing `V_τ` requires a semantic operation that produces a new type value
+(principally `extend`, which establishes a new `FormationLine`).
+
+When a Symbol carries both `V_S` and `τ`,
+
+```text
+CallableProjection(S) = V_S ∪ V_τ
+```
+
+is the Symbol's call-interface exposing, in one step, the disjoint union of the
+Symbol's own sibling candidates and the callspace carried by its embedded
+closure. This does not make `V_τ` a function of `S`; `V_τ` remains an intrinsic
+snapshot of `τ`, and the formula is only the exposure of that embedded closure
+callspace through the Symbol call interface.
+
+Whether `tau` has the type-value role or is namespace-only is decided by
+`Q`'s Pattern relations, never by the sibling count of a Symbol space. The
+formal judgments are defined via registered self-construction in
+`pattern-values-relational-semantics-and-extraction.md` §13:
+
+```text
+TypeRole(Q)
+  iff NamespaceRole(Q)
+  and HasRegisteredSelfConstruction(Q)
+
+NamespaceOnly(Q)
+  iff NamespaceRole(Q)
+  and not HasRegisteredSelfConstruction(Q)
+```
+
+The distinction is a judgment over `Q`'s Pattern `P` (imported from the
+Pattern relational semantics), **never** `count(pure members in V_S)`. The
+`NamespaceClosure`/`TypeClosure` split above follows the same core judgment.
 
 A derived snapshot `tau' = Associate(tau, f, v)` is a well-formed type value
 on the same formation line: `WellFormedTau(tau')` holds because
@@ -633,7 +677,13 @@ pairing so a copied or extracted type carries its own callspace. Because `tau`
 is not an Object, any Object-position representation — including the
 `BareProduct` element inside `Σ_Object` — stores the canonical encoding
 `EncodeTypeClosure(tau) ∈ Object`, not `tau` itself. The representation
-boundary `EncodeTypeClosure` is defined in symbol-first §4.7.
+boundary `EncodeTypeClosure` is defined in symbol-first §4.7, which states the
+fidelity theorem `Norm(EncodeTypeClosure(τ₁)) = Norm(EncodeTypeClosure(τ₂))`
+iff `Norm_type(τ₁) = Norm_type(τ₂)`. The encoding is representation-opaque:
+ordinary Pattern, Object navigation, and Val1/Val2 inspection cannot observe
+any distinction beyond the `tau` API; the encoding is the single canonical
+representation inside the Object ontology and does not form a second
+observable identity system.
 
 Evaluation of a type-valued binding yields the complete closure; it never
 degrades into `Core(tau)` on its own. Observation is consumer-specific
@@ -1137,12 +1187,29 @@ and `share`; the privileged place-observation `@` yields a lifetime value
 
 ### 5.1 `ref` and `share` are privileged actual-place builtins
 
-`ref` and `share` are ordinary meta-function calls on their operand. Each
+`ref` and `share` are ordinary overloaded callable/operator families on their
+operand — not a single meta-stage operation. Each
 operator has two overload roles (canonical owner
 `../lifetime/lifetime-policy-and-overload-boundary.md` §2): a **type-forming**
-overload, selected for a type operand, that forms the borrow **type** value
-(`t ref` / `t share` as TypeValues), and a **borrow-forming** overload inside
-the formed borrow type's callspace that produces the borrow **instance**. Only
+member, selected for a type operand, that forms the borrow **type** value
+(`t ref` / `t share` as TypeValues), and a **borrow-forming** member inside
+the formed borrow type's callspace that produces the borrow **instance**. The
+member phases are distinct:
+
+```text
+type-forming member:    meta
+  T : U_n ⊢ T |> ref = RefTy(U_n)
+      -- produces the borrow TypeValue U_n ref; the borrow-type constructor
+         RefTy(U_n) is defined in lifetime-policy-and-overload-boundary.md §2
+
+borrow-forming member:  runtime || compile
+  E |> RefTy(T)
+      -- forms the actual borrow instance; the runtime || compile
+         builtin/default member, and the only family member that may
+         obtain PrivilegedActualPlace
+```
+
+Only
 the selected borrow-forming defaults of `ref` / `share`, and the single `@`
 operation, may obtain the actual's place
 (`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`,
@@ -1155,12 +1222,25 @@ selected overload and on whether that overload's default implementation
 exercises its place privilege:
 
 ```text
-prepare actual value
--> select unique ref overload
--> if selected builtin requires place:
-       acquire PrivilegedActualPlace(actual)
+ordinary candidate preparation
+    (Pattern / type / Policy matching on the actual value)
+
+ordinary overload selection
+    -> unique selected builtin/default
+
+if SelectedBuiltinRequiresActualPlace:
+    p := PrivilegedActualPlace(actual)
+    if no stable place available:
+        InvocationFailure(NoBorrowableActualPlace)
+        -- a precondition failure AFTER selection: not candidate-space
+           repair, not candidate removal, not overload reopening,
+           not fallback
 -> execute default
 ```
+
+The type-forming `ref` / `share` members do not require a carrier place, so a
+stable-place-less temporary TypeValue still participates in type-forming
+overload selection.
 
 For a type-valued binding `t : type`, `t ref` selects the **type-forming**
 overload and yields the TypeValue `tau_(t ref)` (the borrow type of `t`), never
@@ -1202,13 +1282,19 @@ place explicitly invokes `t |> (type ref)`, whose borrow-forming member obtains
 slot and never elaborates a higher-level `(type ref)` implicitly (§5.2).
 
 A value with no stable place — a freshly computed temporary that resides
-nowhere and carries no borrowable identity — supplies no place, so `ref` has
-**no applicable candidate** on it. `ref` never materializes storage on the
-writer's behalf and never silently retargets to a carrier slot; a temporary
-must first be bound to a named place before it can be borrowed.
+nowhere and carries no borrowable identity — supplies no place. Overload
+selection still runs: the temporary's type participates in ordinary
+Pattern/type/Policy matching. Only after the unique borrow-forming builtin is
+selected does place acquisition run; with no place available the invocation
+fails as a precondition failure — `InvocationFailure(NoBorrowableActualPlace)`
+— never as candidate removal, overload reopening, or fallback. `ref` never
+materializes storage on the writer's behalf and never silently retargets to a
+carrier slot; a temporary must first be bound to a named place before it can
+be borrowed.
 
-`ref` is an ordinary meta-function call. It does not ask which symbol slot the
-value came out of, and does not consult, capture, or export it. Therefore:
+`ref` is an ordinary overloaded callable family member. It does not ask which
+symbol slot the value came out of, and does not consult, capture, or export
+it. Therefore:
 
 ```lang
 let t = uint8;

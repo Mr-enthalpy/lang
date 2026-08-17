@@ -887,7 +887,9 @@ ordinary Objects; `tau` is their type-specific closure, not an Object
 embedding or fourth Object coordinate. Consumers project `tau` as needed:
 ordinary Pattern/namespace observation and type-rank equality/keying use
 `Core(tau)=Q`; type-as-callee uses `CallSpace(tau)=V_τ`; copying, `extend`,
-and `inject` preserve or transform the whole closure. `@` is the privileged
+and `inject` preserve or transform the whole closure. `CallSpace(τ)` is an
+intrinsic property of the closure, fixed at formation and never recovered
+from the host Symbol, source binding, or carrier provenance. `@` is the privileged
 place-observation operation that yields a lifetime value and never a
 `type ref` (canonical owner
 `../design/lifetime/lifetime-policy-and-overload-boundary.md` §1–§2).
@@ -938,6 +940,27 @@ Canonical owner:
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
 _See also: Object normal form (`Norm`), TypeMember, `Self_τ`._
+
+---
+
+## EncodeTypeClosure
+
+The canonical Object-ontology representation of a complete type closure:
+`EncodeTypeClosure : WellFormedTau -> Object` with
+`DecodeTypeClosure(EncodeTypeClosure(tau)) = tau`. `tau` itself is not an
+Object; whenever an Object position must carry a closure (e.g. the
+`BareProduct` element inside a Symbol's `Σ_Object`), it stores
+`EncodeTypeClosure(tau) ∈ Object`, never `tau` directly. Fidelity:
+`Norm(EncodeTypeClosure(τ₁)) = Norm(EncodeTypeClosure(τ₂))` iff
+`Norm_type(τ₁) = Norm_type(τ₂)` — the encoding is injective up to the type
+value's own normalization and introduces no extra distinction. The encoding
+is representation-opaque: ordinary Pattern, Object navigation, and Val1/Val2
+inspection cannot observe a second identity system beyond the `tau` API.
+Canonical owner:
+[`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md)
+§4.7.
+
+_See also: Complete type closure (`tau`), Object normal form (`Norm`), Symbol value._
 
 ---
 
@@ -1015,9 +1038,7 @@ E@ : LifetimeVal(p)    where p = privileged-place-of-actual(E)
 `ref` and `share` are the borrow constructors; each is a privileged
 actual-place builtin (`PrivilegedActualPlace(ref-family)` /
 `PrivilegedActualPlace(share-family)`) that may obtain the place of its actual
-argument, while an ordinary user function cannot. An expression with no abstract
-place —
-a freshly computed temporary — supplies none, so no `@` candidate applies to it.
+argument, while an ordinary user function cannot. An expression with no abstract\nplace —\na freshly computed temporary — supplies none: `@` selection still runs, and the\nplace acquisition is a post-selection invocation precondition — absence yields\n`InvocationFailure(NoBorrowableActualPlace)`, not candidate removal or overload\nreopening.
 
 `@` is **not** a general `PlaceOf(E)` defined on every expression. The former
 two instance groups (`Val1?(x) ≠ null -> LifetimeFact`,
@@ -1048,7 +1069,11 @@ _See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref
 
 ## Borrow view
 
-`ref` and `share` are privileged actual-place builtins
+`ref` and `share` are an overloaded callable/operator family with two member
+phases: the **type-forming** member is a meta member producing the borrow
+TypeValue (`T : U_n ⊢ T |> ref = RefTy(U_n)`); the **borrow-forming** member
+inside the formed borrow type's callspace is a runtime || compile default
+member and is the family member that may obtain the privileged actual place
 (`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`).
 There is no global `E ref = Ref(Read(E))` law: the selected overload determines
 the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
@@ -1224,7 +1249,9 @@ _See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
 
 ## `type ref`
 
-`type ref` is the borrow-reference type produced by `type |> ref`. A value
+`type ref` is the borrow-reference type produced by `type |> ref` through the
+type-forming meta member of the `ref` family (`type : U_1 ⊢ type |> ref =
+RefTy(U_1)`). A value
 `r : type ref` is a borrow view of a type-valued place. Reaching the
 type-level place of a pure type slot uses `t |> (type ref)`; a Symbol uses
 `(S ref).type` when its unique `Q` satisfies `TypeRole`. Ordinary borrow
@@ -1748,8 +1775,9 @@ external installation. The canonical judgments and seal algorithm belong to
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
 At seal only the returned unique pure role member `Q`'s owned closure may be
-promoted. `Q` may be namespace-only; type capability is the additional
-`TypeRole(Q)` refinement.
+promoted. `Q` may be namespace-only (`NamespaceRole(Q)` and not
+`HasRegisteredSelfConstruction(Q)`; `../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` §13); type capability is
+the additional `TypeRole(Q)` refinement.
 `EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
 horizontal borrow targets; it is not a val-sibling-only check.
 
@@ -2244,6 +2272,12 @@ TypeOf(symbol) = type
 rank(type ref/share) = rank(type)
 rank(T*N) = rank(T*omega) = rank(T)
 ```
+
+`type ref` = `RefTy(U_1)` and `type share` = `ShareTy(U_1)`. The family-wide
+constructors are `RefTy(U_n)` / `ShareTy(U_n)` (`n ≥ 0`), defined in
+[`../design/lifetime/lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
+§2; `n type ref` / `n type share` are pure metavariable notation, not source
+syntax.
 
 _See also: Type-object, Kind/rank object, `@`, Symbol value._
 
