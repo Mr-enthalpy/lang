@@ -1108,7 +1108,7 @@ _See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref
 
 `ref` and `share` are an overloaded callable/operator family with two member
 phases: the **type-forming** member is a meta member producing the borrow
-TypeValue (`T : U_n ⊢ T |> ref = RefTy(U_n)`); the **borrow-forming** member
+TypeValue (`T : U_n ⊢ T |> ref = RefTy(T)`); the **borrow-forming** member
 inside the formed borrow type's callspace is a runtime || compile default
 member and is the family member that may obtain the privileged actual place
 (`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`).
@@ -1120,15 +1120,18 @@ type-forming overload and yields the TypeValue `uint8 ref` — a borrow-type
 formation, not a borrow instance and not a borrow of the binding slot.
 Reaching the type-level place of the type-valued binding uses
 `t |> (type ref)`, which is borrow formation and yields a value `r : type ref`
-with `Target = place(t)`. Both expressions produce the string `uint8 ref`, but
-their semantic category differs:
+with `Target = place(t)`. The two expressions do not produce the same value:
+`t ref` is the TypeValue `uint8 ref`, while `t |> (type ref)` is a `type ref`
+borrow instance whose target slot currently holds `uint8`. Their semantic
+category differs:
 
 ```text
 t ref            = borrow-type formation = TypeValue(uint8 ref)
                    // type-forming overload, not a borrow instance
 
 t |> (type ref)  = borrow formation = value r : type ref
-                   // Target = place(t)
+                   // Target = place(t); the value is the borrow instance,
+                   //   not the TypeValue/string `uint8 ref`
 ```
 
 Neither uses `@` (`@` yields a lifetime value, not a borrow). Whether `ref` or
@@ -1287,8 +1290,10 @@ _See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
 ## `type ref`
 
 `type ref` is the borrow-reference type produced by `type |> ref` through the
-type-forming meta member of the `ref` family (`type : U_1 ⊢ type |> ref =
-RefTy(U_1)`). A value
+type-forming meta member of the `ref` family. The operand is the base universe
+object itself (`U_0 = type`, classified by `U_1`), so the formed borrow type is
+`RefTy(type) = RefTy(U_0)` — not `RefTy(U_1)`, which would conflate the operand
+with its classifier. A value
 `r : type ref` is a borrow view of a type-valued place. Reaching the
 type-level place of a pure type slot uses `t |> (type ref)`; a Symbol uses
 `(S ref).type` when its unique `Q` satisfies `TypeRole`. Ordinary borrow
@@ -2341,8 +2346,11 @@ rank(type ref/share) = rank(type)
 rank(T*N) = rank(T*omega) = rank(T)
 ```
 
-`type ref` = `RefTy(U_1)` and `type share` = `ShareTy(U_1)`. The family-wide
-constructors are `RefTy(U_n)` / `ShareTy(U_n)` (`n ≥ 0`), defined in
+`type ref` = `RefTy(U_0)` and `type share` = `ShareTy(U_0)` — the operand is
+the base universe object `type` itself (`U_1` only classifies it). The
+family-wide constructors are `RefTy(T)` / `ShareTy(T)` for every operand
+`T : U_n`, with `RefTy(U_n)` / `ShareTy(U_n)` (`n ≥ 0`) as the universe-object
+cases, defined in
 [`../design/lifetime/lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 §2; `n type ref` / `n type share` are pure metavariable notation, not source
 syntax.

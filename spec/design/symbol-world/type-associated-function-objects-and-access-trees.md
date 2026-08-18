@@ -122,7 +122,9 @@ val ref.field1.field2
 val share.field1.field2
 ```
 
-This document does not specify evaluation or lowering for those forms.
+This document does not separately define evaluation or lowering for those
+forms; their semantics is given by the canonical `ProjectionSlot` borrow-lifting
+law (`type-values-places-and-borrow-views.md` §2.3).
 
 Explicit `ref` / `share` constructs a borrow object before candidate adaptation;
 argument passing only moves that already formed borrow handle. Moving a borrow
@@ -148,7 +150,9 @@ document therefore depends on three identities being kept separate:
 
 - a name (`SymbolId`),
 - a writable location (`PlaceId`),
-- a canonical type value (`TypeValueId`).
+- a canonical type value (the implementation index root currently called
+  `TypeValueId`; the canonical semantic type value is the rank-indexed closure
+  `tau = <Q, V_τ>` in `type-values-places-and-borrow-views.md`).
 
 The consequences that field/access-tree work must preserve:
 
@@ -176,9 +180,10 @@ The consequences that field/access-tree work must preserve:
   may remain writable for wholesale replacement, and an Open value may be
   extended purely without a writable carrier.
 
-This is only a summary. For the canonical `TypeValueId` / `PlaceId` / `SymbolId`
-distinction — including the object normal form, the borrow views, writability,
-construction-lineage Open, and the namespace member-creation/write pipeline — see
+This is only a summary. For the canonical `TypeValueId` implementation index
+root / `PlaceId` / `SymbolId` distinction — including the object normal form,
+the borrow views, writability, construction-lineage Open, and the namespace
+member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 
 ## v0.6 Implementation Note
@@ -192,10 +197,10 @@ keeps observing `Core(tau)=Q` by default, while `Addr(Norm_type(tau))` is used
 to tell shared-root snapshots apart in transport and in positions the language
 has independently frozen to whole-snapshot semantics. Preserving `V_τ` in
 copied/extended
-snapshots remains implementation migration. Writability checking, borrow-view evaluation, and
-the field-function / access-tree machinery of this note remain future work;
-the identity model and its implemented/future split are documented in
-`spec/design/symbol-world/type-values-places-and-borrow-views.md`.
+snapshots remains implementation migration. Writability checking and borrow-view
+evaluation remain future work; the field-function / access-tree semantics are
+borrowed from `spec/design/symbol-world/type-values-places-and-borrow-views.md` §2.3
+and §5, and the access-tree machinery of this note remains future work.
 
 ## Non-Goals
 
@@ -206,9 +211,11 @@ This note does not implement or specify:
   `type-values-places-and-borrow-views.md`);
 - whole-snapshot comparison is required only at independently specified
   snapshot-sensitive positions;
-- full borrow-view evaluation;
+- full borrow-view evaluation (canonical semantics are in
+  `type-values-places-and-borrow-views.md` §5);
 - writability or extension-place lifetime checking;
-- field access evaluation;
+- field access evaluation (canonical projection-slot semantics are in
+  `type-values-places-and-borrow-views.md` §2.3 and §5);
 - access-tree scanning;
 - implementation of complete type closures `tau = <Q,V_τ>`, their optional
   binder-aware form `bind alpha.<Q,V_τ[alpha]>`, and direct-home TypeMember

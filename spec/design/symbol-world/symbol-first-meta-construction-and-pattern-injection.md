@@ -72,8 +72,10 @@ Consequences:
    place. Neither operation forwards, reroots, or merges identities, and bare
    `=` never creates a missing member.
 3. `compile` computes values. It may accept and return **any** ordinary
-   `PatternValue`, including a type value, a symbol value, and a `type ref`.
-   What it may not do is create a new global root: it registers no global
+   semantic value across ranks: an ordinary `PatternValue` (including a
+   symbol value), a complete type value `tau` (a rank-indexed closure, not an
+   ordinary PatternValue), and a `type ref` borrow instance. What it may not
+   do is create a new global root: it registers no global
    Symbol, produces no nominal type lacking a normal global root, and never
    promotes a local temporary pattern value into a global type (§4.2).
 4. For an ordinary meta callable, `meta` is static evaluation **plus** the

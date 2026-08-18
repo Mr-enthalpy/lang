@@ -116,7 +116,7 @@ ordinary type construction through the ordinary type-as-callee / overload
 machinery; no `RefType` primitive is introduced:
 
 The `ref`/`share` family is not a single meta stage: the **type-forming**
-member is a **meta** member (`T : U_n ⊢ T |> ref = RefTy(U_n)`, producing the
+member is a **meta** member (`T : U_n ⊢ T |> ref = RefTy(T)`, producing the
 borrow TypeValue), while the **borrow-forming** member inside the formed
 borrow type's callspace is a **runtime || compile** builtin/default member and
 is the only family member that may obtain `PrivilegedActualPlace`. The
@@ -136,15 +136,36 @@ let share =
     => default;
 ```
 
-For each universe level `n ≥ 1`, the type-forming members accept a `U_n`
-operand and produce the borrow-type values `RefTy(U_n)` / `ShareTy(U_n)`:
+The general type-forming rule takes the **operand type** `T` itself as the
+parameter to `RefTy` / `ShareTy` — not the universe `U_n` in which `T` resides:
+
+```text
+T : U_n
+----------------------------
+T |> ref   = RefTy(T)   : U_n
+T |> share = ShareTy(T) : U_n
+```
+
+When the operand **is itself a universe object** `U_n`, the rule
+mechanically specializes:
 
 ```text
 U_0          = type
 U_1          = type_1
-RefTy(U_n)   = U_n |> ref        (n ≥ 0)
-ShareTy(U_n) = U_n |> share      (n ≥ 0)
+U_n |> ref   = RefTy(U_n)        (n ≥ 0)
+U_n |> share = ShareTy(U_n)      (n ≥ 0)
 ```
+
+In particular:
+
+```text
+type |> ref   = RefTy(U_0) = type ref
+type |> share = ShareTy(U_0) = type share
+```
+
+This is **not** `RefTy(U_1)`: `type` is `U_0`, and `U_1` is merely the
+universe that classifies `type`. Confusing the operand with its classifier
+would collapse distinct types (`uint8 ref`, `uint16 ref`) into one.
 
 (`n type ref` / `n type share` are pure mathematical metavariable notation
 for `RefTy(U_n)` / `ShareTy(U_n)`; they are **not** a legal source LHS and
@@ -157,20 +178,38 @@ future work:
 rank(t ref)   = rank(t)
 rank(t share) = rank(t)
 
+CallSpace(RefTy(T))
+  contains
+    T -> RefTy(T)
+
+CallSpace(ShareTy(T))
+  contains
+    T -> ShareTy(T)
+```
+
+Specialized to universe objects:
+
+```text
 CallSpace(RefTy(U_n))
   contains
-    U_{n-1} -> RefTy(U_{n-1})      (n ≥ 1)
+    U_n -> RefTy(U_n)              (n ≥ 0)
 
 CallSpace(ShareTy(U_n))
   contains
-    U_{n-1} -> ShareTy(U_{n-1})    (n ≥ 1)
+    U_n -> ShareTy(U_n)            (n ≥ 0)
 ```
 
-For `n = 1`, `U_0` is the base `type` universe. Its
-callspace contains exactly the member `U_0 -> U_0 ref` /
-`U_0 -> U_0 share` (i.e. `type -> type ref` / `type -> type share`),
-which is the instance needed for `t |> (type ref)` / `t |> (type share)`.
-The `(n-1)` recursion terminates here: there is no `type_{-1}`.
+The base case is immediate — no off-by-one recursion is needed:
+
+```text
+R_1 = RefTy(U_0) = type ref
+
+CallSpace(type ref)
+  contains
+    type -> type ref
+```
+
+This is the instance needed for `t |> (type ref)` / `t |> (type share)`.
 
 The type-forming members need no privileged actual-place access. Only the
 selected borrow-forming defaults inside these borrow-type callspaces possess

@@ -883,6 +883,10 @@ Rank-preserving computation: ordinary computation preserves the declared
                            semantic rank; place projection, borrow lifting,
                            and type formation compose by the ordinary
                            typing/naturality laws below
+Description-rank stability: P/Val2 formation and transformation do not
+                           apply UniverseSuccessor; the description layer
+                           stays at rank 0 regardless of what rank the
+                           described type inhabits
 ```
 
 **OrdinaryRankPreservation.** Ordinary value computation never changes the
@@ -891,6 +895,39 @@ ordinary Object, a complete type value stays a complete type value, and a
 borrow view stays a borrow view. No ordinary operation silently promotes a
 value across ranks or demotes a rank-indexed closure back to bare Object
 material.
+
+The indexed form of this invariant is:
+
+```text
+Γ ⊢ x : U_n
+¬ExplicitRankChanging(F)
+----------------------------
+Γ ⊢ F(x) : U_n
+```
+
+`ExplicitRankChanging` is the set of operations that genuinely move to a
+higher universe: `TypeOf` (classifier extraction, e.g. `TypeOf(type) =
+type_1`) and explicit universe-annotation/successor forms. `RefTy`,
+`ShareTy`, projection, borrow lifting, and ordinary function application are
+**not** in this set — they preserve `U_n` — and are thus instances of the
+general theorem rather than ad-hoc exceptions.
+
+**DescriptionRankStability.** The `P × Val2` description layer is orthogonal
+to universe rank. Even when `P/Val2` describes a type `τ : U_n`, the
+description formation and transformation themselves do not induce universe
+lifting:
+
+```text
+DescriptionRank(P, Val2) = 0
+
+P/Val2 formation and transformation
+  do not apply UniverseSuccessor
+```
+
+This replaces the retired “everything is an Object” formulation as the
+long-term structural invariant. It does not introduce a fourth Object
+coordinate; `P` and `Val2` are structural material within
+`Object = <Val1?, P, Val2>`, and their description activity stays at rank 0.
 
 Borrow lifting and type observation commute (naturality of `TypeOf` with
 borrow formation):
@@ -903,7 +940,8 @@ rank(RefTy(T))   = rank(T)
 rank(ShareTy(T)) = rank(T)
 ```
 
-`RefTy(U_n)` / `ShareTy(U_n)` are defined in
+`RefTy(T)` / `ShareTy(T)` (general operand form, with `RefTy(U_n)` /
+`ShareTy(U_n)` as the universe-object specialization) are defined in
 `../lifetime/lifetime-policy-and-overload-boundary.md` §2; the rank equations
 state that borrow-type formation preserves the semantic rank of its pointee.
 
@@ -925,14 +963,53 @@ inner : T ref    -> A ref
 inner : T share  -> A share
 ```
 
-When `A` is itself a type position, the same family reads at the type rank:
+When `A` is itself a type position, the same family reads at the type rank.
+The field function is the same borrowed-extraction theorem as above — the
+argument is a `T ref` borrow handle, and the projection is taken through its
+target, never through the handle's own carrier place:
 
 ```text
-inner : T ref -> type ref
-  = borrow of ProjectionSlot(place(object), inner)
+inner_ref : T ref -> A ref
 
+inner_ref(r)
+  = Ref(
+      ProjectionSlot(
+        Target(r),
+        inner
+      )
+    )
+```
+
+When `inner : T -> type`, this mechanically yields:
+
+```text
+inner_ref : T ref -> type ref
+
+object ref.inner
+  = Ref(
+      ProjectionSlot(
+        Target(object ref),
+        inner
+      )
+    )
+```
+
+By the naturality law `TypeOf(Ref(p)) = RefTy(TypeOf(Read(p)))`:
+
+```text
+TypeOf(object ref.inner) = type ref
+```
+
+Contrast the type formation on the extracted value:
+
+```text
 (object.inner) ref : type = RefTy(value(object.inner))
 ```
+
+`object ref.inner` is a `type ref` borrow **instance** (its target slot
+currently holds a type); `(object.inner) ref` is the borrow **type** of the
+extracted value. The two are distinct and both follow from the same
+rank-preserving family.
 
 Finally, type formation and borrow formation are distinct operations and stay
 separate under rank preservation: `t ref` is type formation (a type-forming
@@ -1330,9 +1407,11 @@ member phases are distinct:
 
 ```text
 type-forming member:    meta
-  T : U_n ⊢ T |> ref = RefTy(U_n)
-      -- produces the borrow TypeValue U_n ref; the borrow-type constructor
-         RefTy(U_n) is defined in lifetime-policy-and-overload-boundary.md §2
+  T : U_n ⊢ T |> ref = RefTy(T) : U_n
+      -- produces the borrow TypeValue T ref, indexed by the operand type
+         itself (not by the classifying universe); the borrow-type
+         constructor RefTy(T) is defined in
+         lifetime-policy-and-overload-boundary.md §2
 
 borrow-forming member:  runtime || compile
   E |> RefTy(T)
