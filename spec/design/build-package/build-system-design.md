@@ -355,8 +355,9 @@ metaprogramming system may extend the namespace graph with declared and virtual
 namespace nodes.
 
 In the final symbol-first model these are not mutually exclusive `SymbolKind`s.
-They describe origin/provenance for one Symbol's pure role member `Q` and its
-derived namespace projection. Every such role member has one creation origin:
+They describe origin/provenance for one Symbol's installed type core
+`Core(τ)` (when a well-formed `τ` is present) and its
+derived namespace projection. Every such role material has one creation origin:
 
 ```text
 PhysicalDirectory(path)

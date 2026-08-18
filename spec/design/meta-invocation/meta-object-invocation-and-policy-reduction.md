@@ -357,7 +357,7 @@ Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 Omitted P1 keeps the complete result. Single P1 `q` selects values visible
 under `q` and follows their associated pattern components. Pair P1 `qv:qp`
 filters both. Single P1 is not normalized to `q:q`. These lower-case policy
-metavariables are distinct from the Symbol pure-role member `Q`.
+metavariables are distinct from the Symbol type-core `Core(τ)`.
 
 P2 is an explicit pair or a context-specific single-policy shorthand:
 
@@ -596,7 +596,7 @@ returns `Core(tau)`. “Meta returns type” is only shorthand for a `symbol` re
 whose content is `⟨tau, empty⟩` and whose `Core(tau)` satisfies `TypeRole`.
 
 The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
-slot relation, rank-directed identity, pure-role self-root validation, and complete
+slot relation, rank-directed identity, return self-root validation, and complete
 navigation atom belong to
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 This document consumes those result ranks only to define candidate preparation,
@@ -644,7 +644,7 @@ The current Rust substrate still uses `MetaInvocationResult::Value` with
 `MetaInvocationValue::{ForwardedValue, GeneratedConstructionValue,
 GeneratedTypeDefinitionValue}`. Those cases describe transitional v0.8/v0.9
 implementation transport, not the final public rank model. It also does not
-implement `MetaInstanceScopeId`, meta return pure-role self-root checking, complete
+implement `MetaInstanceScopeId`, meta return self-root checking, complete
 `compile`/`meta` separation, or the canonical meta-instance navigation atom.
 
 The canonical note also owns the complete invocation navigation atom; this
@@ -989,7 +989,7 @@ Current state:
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
-Not yet present are Symbol `Q` role projection / implementation caches,
+Not yet present are Symbol `Core(τ)` projection / implementation caches,
 `PatternValue` as the single static
 result model, meta root establishment/sealing,
 `ResolvedPatternScope`, final binding-independent `struct` owner resolution,
@@ -1104,7 +1104,7 @@ pattern, type-value, and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
-2. Introduce Symbol `Q` role projection and typed value-member candidate lookup.
+2. Introduce Symbol `Core(τ)` projection and typed value-member candidate lookup.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.

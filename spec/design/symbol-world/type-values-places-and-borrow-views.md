@@ -713,14 +713,24 @@ The distinction is a judgment over `Q`'s Pattern `P` (imported from the
 Pattern relational semantics), **never** `count(pure members in V_S)`. The
 `NamespaceClosure`/`TypeClosure` split above follows the same core judgment.
 
-A derived snapshot `tau' = <Q', V_τ>` produced by an ordinary slot update is
-checked the same way as any closure: `WellFormedTau(tau')` is an independent
-structural judgment over `tau' = <Q', V_τ>` — `Q'` is a well-formed pure Object
-obtained from `Q` by a permitted slot update, and `V_τ` is unchanged. Ordinary
-slot replacement preserves `TypeRole(Q)`, so `TypeValueRole(tau')` holds. Only
-structural transformations (`extend`) produce a new `V_τ'`; the resulting `τ'`
-satisfies `WellFormedTau(τ')` by its own structure, never by inheriting any
-formation history.
+A snapshot `tau' = <Q', V_τ>` written by an ordinary slot update is checked
+the same way as any closure: `WellFormedTau(tau')` is an independent structural
+judgment over `tau' = <Q', V_τ>` — `Q'` is a well-formed pure Object, and `V_τ`
+is unchanged. `TypeRole(Q')` / `TypeValueRole(tau')` must be independently
+re-derived from the result structure; ordinary write does not register
+`ConstructEdge`, so it neither automatically preserves nor automatically
+breaks `TypeRole`.
+
+**Counter-example.** Suppose the sole type-role witness is
+`Val2(Q)[s] = K ∧ ConstructEdge_P(C, Q, K)`. An ordinary write
+`Write(ProjectionSlot(Q, s), K')` updates `Val2(Q')[s] = K'` but does not
+register `ConstructEdge_P(C, Q, K')`. The original joint witness disappears,
+so `TypeRole(Q)` may become `¬TypeRole(Q')`. There is no global theorem
+`ordinary write ⇒ TypeRole preserved`.
+
+Only structural transformations (`extend`) produce a new `V_τ'`; the resulting
+`τ'` satisfies `WellFormedTau(τ')` by its own structure, never by inheriting
+any formation history.
 
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
@@ -735,17 +745,39 @@ keeps its captured `V_τ`.
 `tau` is not another Object and does not add a fourth Object coordinate. `Q`
 and every ordinary member in `V_τ` remain Objects governed by the existing
 `<Val1?,P,Val2>` ontology. The closure only preserves their type-specific
-pairing so a copied or extracted type carries its own callspace. Because `tau`
-is not an Object, any Object-position representation — including the
-`BareProduct` element inside `Σ_Object` — stores the canonical encoding
-`EncodeTypeClosure(tau) ∈ Object`, not `tau` itself. The representation
-boundary `EncodeTypeClosure` is defined in symbol-first §4.7, which states the
-fidelity theorem `Norm(EncodeTypeClosure(τ₁)) = Norm(EncodeTypeClosure(τ₂))`
-iff `Norm_type(τ₁) = Norm_type(τ₂)`. The encoding is representation-opaque:
-ordinary Pattern, Object navigation, and Val1/Val2 inspection cannot observe
-any distinction beyond the `tau` API; the encoding is the single canonical
-representation inside the Object ontology and does not form a second
-observable identity system.
+pairing so a copied or extracted type carries its own callspace.
+
+Object-membership is **not** a semantic dispatch axis: whether `tau` is or is
+not an Object does not by itself decide whether any operation may consume it.
+Only the judgments an operation actually requires participate in admissibility:
+
+```text
+NoSemanticDispatchByCarrierMembership
+  x ∈ Object / x ∉ Object
+    itself implies no operation role
+```
+
+Consumers use the projections they need (`Core`, `CallSpace`, `CarrierPlace`,
+`ProjectionSlot`, `OpenHere`, `GlobalSurvivable`, `TypeRole`, `WellFormedTau`)
+rather than first classifying `tau` as Object / non-Object / PatternValue /
+CompleteType and then bridging values that "do not belong" to a class.
+
+If an implementation needs to store `tau` in an Object-position carrier (for
+example the `BareProduct` element inside `Σ_Object`), it uses the lowering
+mechanism `LowerTypeClosure(tau) ∈ Object` (symbol-first §4.7), never `tau`
+itself. `LowerTypeClosure` is representation-only: it is not derived from
+`¬Object(τ)`, it is not a precondition for ordinary semantic operations on
+`τ`, and its fidelity is a representation theorem:
+
+```text
+Fidelity (representation faithfulness):
+  Norm(LowerTypeClosure(τ₁)) = Norm(LowerTypeClosure(τ₂))
+    iff Norm_type(τ₁) = Norm_type(τ₂)
+```
+
+The representation is opaque: ordinary Pattern, Object navigation, and
+Val1/Val2 inspection cannot observe any distinction beyond the `tau` API; the
+lowering does not form a second observable identity system.
 
 Evaluation of a type-valued binding yields the complete closure; it never
 degrades into `Core(tau)` on its own. Observation is consumer-specific
@@ -852,26 +884,17 @@ Ordinary associated-member installation is ordinary **slot replacement**, not
 `extend`:
 
 ```text
-old := Read(type_place)
-new = <Q', V_τ>       -- Q' from the permitted slot update
-Write(type_place, new)
-
-P(Q')    = P(Q)
-Val2(Q') = Val2(Q)[selector := value]
-
-V_τ unchanged
-no DirectPatternChild added
-WellFormedTau(new) checked independently on the result structure
-  (Q' well-formed; V_τ unchanged)
--- the carrier receives a fresh snapshot; the previous snapshot is not mutated
+Write(place_or_projection_slot, new_value)
+-- the new_value independently satisfies its own well-formedness judgments
 ```
 
-The place-level operation is `old := Read(type_place); new := <Q', V_τ>;
-Write(type_place, new)` (§7.1) — ordinary slot replacement. The old `tau` copy
-is never mutated; the carrier receives a fresh snapshot that shares the same
-`V_τ`. Only `extend` produces a new `V_τ'`, and the legality of that
-modification step is a contextual operation judgment, separate from
-well-formedness:
+No `old -> new` derivation is implied: the written `new_value` is a fresh
+snapshot validated on its own structure. If a persistent implementation
+reconstructs the parent snapshot to realise a slot update (old parent
+-> reconstructed parent), that is a lowering / storage representation,
+not a source-semantic transformation. Only `extend` produces a new `V_τ'`
+(`τ -> τ'`), and the legality of that modification step is a contextual
+operation judgment, separate from well-formedness:
 
 ```text
 AdmissibleExtend_Γ(τ, Δ, τ')
@@ -907,14 +930,20 @@ Object structural core:    ordinary structural content is governed by
                            Object = <Val1?, P, Val2>
 Rank-indexed closure:      complete types are rank-indexed closures
                            tau = <Q, V_τ> over that Object material
-Rank-determined computation:   result rank is fixed solely by the
-                           operation's declared typing rule
-                           (Rank(result(F,x)) = DeclaredResultRank(F,x));
-                           evaluation stage, description depth, and carrier
-                           form cannot apply UniverseSuccessor implicitly;
-                           place projection, borrow lifting, and type
-                           formation compose by the ordinary
-                           typing/naturality laws below
+Ordinary rank preservation:  an operation with no explicit rank-shifting
+                           rule keeps the input's rank:
+
+                           Γ ⊢ x : U_n
+                           F has no explicit rank-shifting rule
+                           -----------------------------------
+                           Γ ⊢ F(x) : U_n
+
+                           RankShift(F, n, m), m ≠ n, must be declared by a
+                           rule or signature; evaluation stage, description
+                           depth, and carrier form cannot apply
+                           UniverseSuccessor implicitly; place projection,
+                           borrow lifting, and type formation compose by the
+                           ordinary typing/naturality laws below
 Description-rank stability: P/Val2 formation and transformation do not
                            apply UniverseSuccessor; the description layer
                            stays at rank 0 regardless of what rank the
@@ -924,18 +953,32 @@ Description-rank stability: P/Val2 formation and transformation do not
 **OrdinaryRankPreservation.** No ordinary operation silently changes the
 semantic *category* of what it transports: an ordinary Object stays an
 ordinary Object, a complete type value stays a complete type value, and a
-borrow view stays a borrow view. Rank is a different matter: it is fixed
-solely by the operation's own declared typing rule, and the evaluation
-stage, description depth, or carrier form never inject a rank silently.
-The category-level statement is not the rank invariant; the rank invariant
-is:
+borrow view stays a borrow view. Rank is the same: an ordinary operation
+without an explicit rank-shifting rule keeps the rank of what it
+transports; the evaluation stage, description depth, or carrier form never
+injects a rank silently.
+
+The rank invariant is:
 
 ```text
-Rank(result(F, x)) = DeclaredResultRank(F, x)
+Γ ⊢ x : U_n
+F has no explicit rank-shifting rule
+------------------------------------
+Γ ⊢ F(x) : U_n
+
+RankShift(F, n, m), m ≠ n,
+  must be declared by a rule or signature
 
 evaluation stage / description depth / carrier form
   cannot apply UniverseSuccessor implicitly
 ```
+
+Equivalently, a signature `F : U_n -> U_m (m ≠ n)` is itself an explicit
+rank shift; it is not a counter-example to default rank preservation. Only
+operations whose rule or signature explicitly changes rank do so;
+`TypeOf`, the explicit universe successor, and a declared cross-rank
+result are rank-shifting. Description nesting, meta/compile stage, carrier
+representation, and `P × Val2` description depth are not.
 
 A family may be rank-parametric:
 
@@ -946,12 +989,15 @@ RankTransparent(F)
 
 `RefTy` and `ShareTy` are `RankTransparent` (`T : U_n ⊢ RefTy(T) : U_n` and
 `T : U_n ⊢ ShareTy(T) : U_n`): borrow-type formation preserves the operand's
-rank. Field projection is **not** universally rank-preserving:
-`inner : T ref -> A ref` has `Rank(result) = rank(A ref) = rank(A)`, which
-follows the declared result type `A` and may differ from `rank(T)`. `TypeOf`
-is genuinely rank-changing (`TypeOf(type) = type_1`). Ordinary function
-application follows its declared signature: it is neither universally
-rank-preserving nor universally rank-changing.
+rank. This is an instance of the default rank-preservation principle, not
+a special exception. Field projection follows the declared result type:
+`inner : T ref -> A ref` has `Rank(result) = rank(A ref) = rank(A)`. When
+`rank(A) ≠ rank(T)` this is a *declared* rank shift — the signature itself
+says `T ref -> A ref` — never an implicit rank change injected by the
+projection step. `TypeOf` is genuinely rank-changing
+(`TypeOf(type) = type_1`). Ordinary function application follows the
+default: it preserves rank unless its signature or rule explicitly says
+otherwise.
 
 **DescriptionRankStability.** The `P × Val2` description layer is orthogonal
 to universe rank. Even when `P/Val2` describes a type `τ : U_n`, the
@@ -1050,7 +1096,12 @@ Contrast the type formation on the extracted value:
 `object ref.inner` is a `type ref` borrow **instance** (its target slot
 currently holds a type); `(object.inner) ref` is the borrow **type** of the
 extracted value. The two are distinct and both follow from the same
-rank-preserving family.
+rank-preserving family. Neither derivation asks whether `type ∈ Object` or
+`type ∉ Object` first: the borrowed field projection
+(`inner_ref(r) = Ref(ProjectionSlot(Target(r), inner))`) is admissibility-
+judgment-driven and simply yields `T ref -> type ref` when the field type
+happens to be `type`
+(`NoSemanticDispatchByCarrierMembership`).
 
 Finally, type formation and borrow formation are distinct operations and stay
 separate under rank preservation: `t ref` is type formation (a type-forming
@@ -2207,14 +2258,14 @@ type, pattern, ordinary value-member, or overload subtree created by a parallel
 directory authority and construction-unit ownership are specified in
 `symbol-construction-units-and-namespace-origin.md`.
 
-An ordinary Symbol's pure role member is installed at most once. Repeating:
+An ordinary Symbol's type core is installed at most once. Repeating:
 
 ```lang
 let T = A;
 let T = B;
 ```
 
-as two competing pure-role definitions is a conflict, not implicit `A | B`.
+as two competing core-installation definitions is a conflict, not implicit `A | B`.
 For `struct`, the installed member additionally satisfies `TypeRole`. Child
 construction and sum construction require explicit APIs and remain distinct
 from repeated ordinary binding.
@@ -2277,7 +2328,7 @@ and 4 of the canonical model — RHS operation legality, result-object invariant
 (`WellFounded` / `Canonicalizable` / `NoForbiddenCycle`), and the enclosing
 region's semantic-boundary constraints (meta self-root, ref / pattern-value
 lifetimes, global type-bearing mutability limits, seal /
-global promotion, single-pure-role-member bound) — remain independently applicable to
+global promotion, single-τ-installation bound) — remain independently applicable to
 the write result.
 
 ## 8. Type values in overload and pattern matching

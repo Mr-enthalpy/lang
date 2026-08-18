@@ -615,7 +615,11 @@ NamespaceOnly(Q) <=> NamespaceRole(Q) and not HasRegisteredSelfConstruction(Q)
 
 Copying or installing an ordinary callable does not grant it structural role.
 An implementation may replace a callable while preserving the Pattern role
-contract and therefore preserving Pattern identity.
+contract and therefore preserving Pattern identity. Ordinary slot
+replacement (`Write(slot, new_value)`) does not register `ConstructEdge`;
+therefore `TypeRole` is neither automatically preserved nor automatically
+broken by ordinary write — it must be independently re-derived from the
+result structure (see `type-values-places-and-borrow-views.md` §2.2).
 
 ## 14. Borrowed extraction is derived from ProjectionSlot
 

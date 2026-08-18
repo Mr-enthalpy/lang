@@ -1171,8 +1171,8 @@ let box = (self, t: type): meta -> r: symbol => {
 };
 ```
 
-If a meta return Symbol has a pure role member `Q`, its root must be the canonical
-ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta role returns are
+If a meta return Symbol has an installed type core `Core(τ)`, its root must be the canonical
+ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta core returns are
 invalid. This additional construction invariant does not alter the ordinary
 block-result rule. In both examples the final expression:
 

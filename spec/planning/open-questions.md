@@ -523,7 +523,7 @@ here so they are not mistaken for design decisions:
   `Write(ClusterSymbol, RHS)` algebra. What this stage freezes is only
   the boundary pair `let` (creation) ≠ `=` (write to an existing target)
   and return event ≠ binding/write; how a real `=` on a cluster target
-  adds or replaces the Q-role cache / val siblings by RHS shape is future
+  adds or replaces the `Core(τ)` projection / val siblings by RHS shape is future
   work. Current executable-slice cache resolution distinguishes only the pure-P
   type-role projection, and the placeholder
   selection and harvest-shape behavior are pinned by unit tests only.

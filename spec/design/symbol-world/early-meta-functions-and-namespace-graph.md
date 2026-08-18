@@ -238,7 +238,7 @@ model boundary:
   namespace injection targets.
 - The current slice does not implement `NamespaceOrigin`, source/meta
   construction-unit ownership, physical contribution authority, cross-file
-  reopening diagnostics, or meta return pure-role self-root checking.
+  reopening diagnostics, or meta return self-root checking.
 - v0.8 source-declared callable overload selection reports structured failure
   kinds. Initializer MetaPartial residualization is driven by those kinds, not
   by diagnostic message text. Ambiguity remains a hard diagnostic; no
@@ -902,7 +902,7 @@ restricted evaluator
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
 transport. They do not implement canonical facets, `MetaInstanceScope`,
-construction-authority (`OpenHere_Σ` / `OpenCapability`), `extend`/`inject`, pure-role self-root validation, or
+construction-authority (`OpenHere_Σ` / `OpenCapability`), `extend`/`inject`, return self-root validation, or
 construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the

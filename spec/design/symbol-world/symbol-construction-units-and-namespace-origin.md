@@ -1,6 +1,6 @@
 # Symbol Construction Units and Namespace Origin
 
-**Status: Canonical future-design note for pure-role namespace origin,
+**Status: Canonical future-design note for type-core namespace origin,
 construction-unit ownership, physical contribution authority, and cross-file
 reopening. These rules are not implemented by the current v0.6–v0.9
 substrate.**
@@ -14,7 +14,7 @@ which physical files have authority to contribute at a directory namespace?
 when may independently produced deltas be combined?
 ```
 
-The Symbol role/member, `compile` / `meta`, meta pure-role self-root, `struct`, pure
+The Symbol role/member, `compile` / `meta`, meta return self-root, `struct`, pure
 `extend`, and place-level `inject` semantics are canonical in
 `symbol-first-meta-construction-and-pattern-injection.md`. The build projection
 and assembly phases are described in
@@ -35,7 +35,7 @@ construction capabilities:
 
 ```text
 declare Symbol role/value material
-extend a pure role member's navigable structure
+extend the navigable structure of the current `Core(τ)`
 construct a direct child
 construct descendants owned by that new child
 form a replayable contribution/delta
@@ -56,7 +56,8 @@ ordinary canonical meta invocation
 
 An ordinary meta instance is therefore not merely “like a folder.” It is a real
 virtual Symbol layer: it participates in navigation, may carry one optional
-pure role member plus typed value members, anchors its returned role root, and is a candidate cache/
+complete type value `τ` (whose core `Core(τ)` anchors the returned role root)
+plus typed value members, and is a candidate cache/
 incremental unit.
 
 Formal ordinary meta invocation produces uninstalled construction material.
@@ -69,7 +70,7 @@ validation, and installation.
 
 ## 2. Namespace Origin Is Unique
 
-Every created pure role member / derived namespace projection records exactly
+Every created type core `Core(τ)` / derived namespace projection records exactly
 one creation origin:
 
 ```text
@@ -309,18 +310,18 @@ A helper ordinary-meta invocation with its own canonical instance has a separate
 uninstalled construction value according to explicit composition rules. It may
 not directly mutate an already installed subtree owned by the helper instance.
 
-The ordinary-meta return Symbol's pure-role self-root invariant follows from
-this ownership: its optional distinguished pure member `Q` is rooted at the
+The ordinary-meta return Symbol's self-root invariant follows from
+this ownership: its optional installed type core `Core(τ)` is rooted at the
 invocation's `MetaInstanceScope` whenever it exists. The condition is the
-member's presence, independent of `TypeRole(Q)`. An external Object may be a
-member under that root but cannot replace it. Compiler-defined privileged
+core's presence, independent of `TypeRole(Core(τ))`. An external Object may be
+a member under that root but cannot replace it. Compiler-defined privileged
 AST operations `struct`, `extend`, and
 `inject` use their separately specified scope/owner rule and do not acquire an
 ordinary externally navigable instance root merely by being called.
 
 ## 8. Pattern Material and Namespace Values Are Orthogonal
 
-A pattern-material leaf belongs to a pure role member's `PatternValue`. It
+A pattern-material leaf belongs to the installed type core's `PatternValue`. It
 participates in:
 
 ```text
@@ -331,8 +332,8 @@ pattern matching and extraction
 type semantics when the owner additionally satisfies `TypeRole`
 ```
 
-An ordinary namespace value member is a normal value-bearing Symbol under a
-pure role member's namespace projection, analogous to a static member in some
+An ordinary namespace value member is a normal value-bearing Symbol under the
+type core's namespace projection (`Core(τ)`), analogous to a static member in some
 languages. Adding one:
 
 ```text
@@ -349,7 +350,7 @@ For example:
 val::ns1::ns2::ns3
 ```
 
-navigates the pure role member's namespace projection to `val` and then reads
+navigates the type core's namespace projection (`Core(τ)`) to `val` and then reads
 `val`'s value member. “Value
 is a leaf” means only:
 
@@ -362,22 +363,23 @@ type closure `tau`. Type projection returns the `tau` that was formed and
 stored at installation; it neither forms a fresh closure at projection time
 nor turns the closure into another Object.
 
-## 9. Ordinary Pure-Role Installation Is Not Sum Extension
+## 9. Ordinary Core Installation Is Not Sum Extension
 
-One Symbol place's pure role member may be installed once by ordinary definition:
+One Symbol place's type core `Core(τ)` may be installed once by ordinary
+definition:
 
 ```lang
 let T = A;
 let T = B;
 ```
 
-If both forms attempt pure-role installation, the second conflicts. It does not
+If both forms attempt core installation, the second conflicts. It does not
 form `A | B`.
 
 These remain separate operations:
 
 ```text
-ordinary first pure-role installation
+ordinary first core installation
 explicit child construction through extend (directly or through inject)
 explicit sum construction / sum extension
 ```
@@ -521,7 +523,7 @@ construction ownership, or meta return root identity.
 Not implemented:
 
 ```text
-meta result pure-role self-root checking
+meta return self-root checking
 complete compile/meta language-level separation
 MetaInstanceScopeId
 ordinary canonical meta invocation navigation atom

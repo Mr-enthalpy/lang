@@ -7,7 +7,7 @@ construction-authority (`OpenHere_Σ` / `OpenCapability`) checking,
 Symbol `<tau?,V_S?>` role/member projections, complete type snapshots,
 `PatternValue`, ordinary Symbol-valued meta results
 (current transitional carrier: `SymbolConstruction`),
-`ResolvedPatternScope`, `MetaInstanceScopeId`, meta pure-role self-root checking,
+`ResolvedPatternScope`, `MetaInstanceScopeId`, meta return self-root checking,
 pure `extend`, place-level `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
 access-tree construction are not implemented. Layered symbol policy,
@@ -32,8 +32,8 @@ The namespace graph world model and symbol-level identity:
   their normalization uses only ordinary `Val1`/`Val2` recursion
 - resolved pattern scopes, `struct` forming complete type values, pure child-only `extend`,
   place-level `inject`, and binding/install separation
-- meta-return pure-role self-root identity and complete meta-instance navigation atoms
-- pure-role namespace origin, source/meta construction-unit ownership, physical
+- meta-return self-root identity and complete meta-instance navigation atoms
+- type-core namespace origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
 - the borrow views `ref` / `share` and the place-sensitive lifetime
   observation `@`, writability, and construction-authority
@@ -55,7 +55,7 @@ recovery are retired.
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
   direction for Symbol `<tau?,V_S?>` role/member projection, heterogeneous value/call candidates,
-  `compile` / `meta`, meta pure-role self-root, resolved pattern scopes,
+  `compile` / `meta`, meta return self-root, resolved pattern scopes,
   `struct` forming complete type values, pure `extend`, place-level `inject`, Symbol
   uniqueness/replay, and outer
   graph installation.

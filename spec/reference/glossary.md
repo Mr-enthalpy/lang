@@ -803,12 +803,16 @@ The structural identity of an object. The governing principle has three parts:
 2. Complete types are rank-indexed closures `tau = <Q, V_τ>` over that Object
    material; `tau` participates in Pattern observation through `Core(tau) = Q`
    and is not itself an ordinary Object.
-3. Rank is determined solely by the operation's declared typing rule;
+3. Rank is preserved by default: an operation with no explicit
+   rank-shifting rule keeps the input's rank
+   (`Γ ⊢ x : U_n, F has no explicit rank-shifting rule ⊢ F(x) : U_n`);
+   `RankShift(F, n, m), m ≠ n` must be declared by a rule or signature
+   (`OrdinaryRankPreservation`, §2.3 of the canonical owner below);
    evaluation stage, description depth, and carrier form cannot apply
-   `UniverseSuccessor` implicitly (`OrdinaryRankPreservation`, §2.3 of the
-   canonical owner below). `RefTy`/`ShareTy` are `RankTransparent`
-   (`∀n. F : U_n -> U_n`); field projection follows the declared result
-   type; `TypeOf` is genuinely rank-changing.
+   `UniverseSuccessor` implicitly. `RefTy`/`ShareTy` are `RankTransparent`
+   (`∀n. F : U_n -> U_n`) as instances of the default principle; field
+   projection follows the declared result type; `TypeOf` is genuinely
+   rank-changing.
 
 Bare Product, Sequence, `product`, and Symbol are constructor instances,
 not parallel aggregates. Borrow targets are horizontal identity-bearing leaves.
@@ -839,6 +843,32 @@ OpenHere_Σ(v)
   ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
 ```
 
+`AuthorityMatches` is the coordinate equality between the value's static
+anchor and the evaluation stack's current dynamic position (canonical owner
+§12.1.1):
+
+```text
+CurrentEvaluationCoordinate_nonmeta(Σ)
+  = ⟨RootCoordinate(CurrentCallable), ActiveInlineClosurePath⟩
+
+RootCoordinate(F)
+  = MetaPartnerRoot(F, GenericArgs)   if Generic(F)
+    CallableRoot(F)                   otherwise
+
+AuthorityMatches_nonmeta(v, Σ)
+  iff Anchor(v) = CurrentEvaluationCoordinate_nonmeta(Σ)
+
+CurrentEvaluationCoordinate_meta(Σ) = ⟨NearestMetaRoot(Σ), ε⟩
+AuthorityMatches_meta(v, Σ)
+  iff Anchor(v) = CurrentEvaluationCoordinate_meta(Σ)
+```
+
+The equality is opaque navigation-coordinate equality, not prefix matching;
+`AuthorityMatches` is the regime-dispatched name of the same judgment.
+`PatternValue` records static anchor; the evaluation stack records the current
+dynamic evaluation position; `PatternValue` does not record dynamic call
+history.
+
 `OpenCapability` is a value attribute: the construction window has not been
 permanently closed. `OpenHere_Σ` adds the contextual question: does the current
 evaluation stack hold construction authority over this value's anchor?
@@ -858,10 +888,15 @@ canonical in
 The state transition of `OpenCapability` is one-way: once closed
 (`OpenCapability(v) := false`), it is never retracted. An ordinary meta
 invocation forms a new boundary. Non-meta construction follows its stable
-lexical-owner interval and closes `OpenCapability` on the specified
-semantic-use, meta-argument, residual-runtime/control, or owner-exit events
-(§12.1.2 of the canonical owner). This judgment is orthogonal to place
-writability and borrow lifetime.
+lexical-owner interval; the open window is a linear evaluation flow segment,
+and each action on the value receives a disposition
+(`OpenDisposition_κ ∈ { Continue, Terminate, Reject }`, canonical owner
+§12.1.2): legal terminal actions (`UseForVal1`, meta-argument use,
+residual-runtime/control at the generation level, owner exit) end the window
+(`Terminate`), while the same actions inside an opaque non-meta inline closure
+below the value's open coordinate are forbidden (`Reject`).
+`EffectiveOpenSegment(p) ⊆ OwningInlineClosureEvaluationSegment(p)`. This
+judgment is orthogonal to place writability and borrow lifetime.
 
 _See also: `OpenHere_Σ`, `OpenCapability`, `extend`, `type ref`, `GenerationRegime`._
 
@@ -950,7 +985,7 @@ homogeneous entries form a `product*omega` carrier. The logical
 `<tau?, V_S?>` notation projects this ordinary Object composition.
 
 The privileged `struct` operation forms a complete type value directly: it
-creates the unique pure-role core `Q_struct = Core(tau_struct)` satisfying
+creates the type core `Q_struct = Core(tau_struct)` satisfying
 `TypeRole(Q_struct)` with mechanically generated
 field/access/assignment/borrow partner families entering `V_τ` at the formation
 event. The Symbol carrying the formed value appears only at a subsequent
@@ -985,17 +1020,20 @@ _See also: Object normal form (`Norm`), TypeMember, `Self_τ`._
 
 ---
 
-## EncodeTypeClosure
+## LowerTypeClosure
 
-The canonical Object-ontology representation of a complete type closure:
-`EncodeTypeClosure : WellFormedTau -> Object` with
-`DecodeTypeClosure(EncodeTypeClosure(tau)) = tau`. `tau` itself is not an
-Object; whenever an Object position must carry a closure (e.g. the
-`BareProduct` element inside a Symbol's `Σ_Object`), it stores
-`EncodeTypeClosure(tau) ∈ Object`, never `tau` directly. Fidelity:
-`Norm(EncodeTypeClosure(τ₁)) = Norm(EncodeTypeClosure(τ₂))` iff
-`Norm_type(τ₁) = Norm_type(τ₂)` — the encoding is injective up to the type
-value's own normalization and introduces no extra distinction. The encoding
+The lowering/representation mechanism that stores a complete type closure in
+an Object-position carrier: `LowerTypeClosure : WellFormedTau -> Object` with
+`DecodeTypeClosure(LowerTypeClosure(tau)) = tau`. `tau` itself is a semantic
+package; whenever an implementation must carry a closure in an Object
+position (e.g. the `BareProduct` element inside a Symbol's `Σ_Object`), it
+stores `LowerTypeClosure(tau) ∈ Object`, never `tau` directly. The lowering
+is representation-only: it is not derived from `¬Object(τ)`, and it is not a
+precondition for ordinary semantic operations on `τ` (see
+`NoSemanticDispatchByCarrierMembership`). Fidelity:
+`Norm(LowerTypeClosure(τ₁)) = Norm(LowerTypeClosure(τ₂))` iff
+`Norm_type(τ₁) = Norm_type(τ₂)` — the lowering is injective up to the type
+value's own normalization and introduces no extra distinction. The lowering
 is representation-opaque: ordinary Pattern, Object navigation, and Val1/Val2
 inspection cannot observe a second identity system beyond the `tau` API.
 Canonical owner:
@@ -1864,10 +1902,11 @@ successful call establishes root identity and construction navigation, not
 external installation. The canonical judgments and seal algorithm belong to
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-At seal only the returned unique pure role member `Q`'s owned closure may be
-promoted. `Q` may be namespace-only (`NamespaceRole(Q)` and not
-`HasRegisteredSelfConstruction(Q)`; `../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` §13); type capability is
-the additional `TypeRole(Q)` refinement. The registered-self-construction
+At seal only the returned Symbol's installed type core material
+(`Core(τ)` when a well-formed `τ` is present, otherwise none) may be
+promoted. The core may be namespace-only (`NamespaceRole(Core(τ))` and not
+`HasRegisteredSelfConstruction(Core(τ))`; `../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` §13); type capability is
+the additional `TypeRole(Core(τ))` refinement. The registered-self-construction
 witness requires an actual `Val2` member: `Val2(Q)[s] = K` together with
 `ConstructEdge_P_Q(C, Q, K)` for the same `K`.
 `EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
