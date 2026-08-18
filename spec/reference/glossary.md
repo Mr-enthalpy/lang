@@ -350,7 +350,8 @@ _See also: Direct Pattern child, Extractor, Associated Val2 Contribution._
 A Pattern position with `BinderPresence = Absent`. The explicit binding form is
 `let <> P`; the current atomic pipe shorthand `|> P { ... }` has the same
 binderless head as `|> (<> P) { ... }`. `_` is instead a real wildcard position,
-so `(_ P)` is distinct. Canonical owner: the Pattern authority linked under
+so `(_ P)` is distinct. Canonical owner: the relational Pattern authority
+linked under
 Pattern.
 
 _See also: DeduceList, Pattern, InPlaceClosureAST._
@@ -592,8 +593,9 @@ _See also: OperatorName, Fixity, Arity._
 ## Overload Candidate
 
 A callable entry prepared for a given call. Final preparation first resolves a
-Symbol, projects its heterogeneous typed `V` members for the current policy view,
-enumerates `Val2` objects, obtains each surviving value's type, and resolves
+Symbol and forms `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`,
+then applies the current policy view to the projected candidates,
+obtains each surviving value's type, and resolves
 that type's associated `()` entry. Non-callable values are discarded. A derived
 compile companion is itself a complete `Val2` function object with stable
 object identity, its own function-object type, and its
@@ -878,6 +880,12 @@ deeper meta invocation). Clone, value copy, and construction-transparent
 `compile` frames preserve the anchor and capability; they do not preserve or
 manufacture source-place identity. `Anchor(v) ∉ Norm(v)`.
 
+`OpenHere_Σ` does not propagate along owned field relations: no
+`OpenHere_Σ(child) ⇒ OpenHere_Σ(parent)` or
+`OpenCapability(parent) ⇒ OpenCapability(child)` implication holds. Each
+PatternValue's open authority is determined independently by stack-relative
+coordinate equality, not by the state of any parent or sibling value.
+
 Openness is a static value property: `OpenHere_Σ(v)` alone does not mean the
 current computation flow re-traverses `v`. Live reentry additionally requires
 an active evaluation edge — `OpenEvalReentry_κ(v)` — whose criteria are
@@ -1061,7 +1069,8 @@ _See also: TypeMemberScope, `Self_τ`, Symbol value._
 
 ## TypeMemberScope
 
-The direct classifier-home scope associated with the pure role `Q` of a type.
+The direct classifier-home scope associated with the installed type core `Q`
+of a type.
 Creation under this scope is the membership proof that places a member into
 `V_τ` at type-value formation; arbitrary descendants do not qualify. Selecting
 this home at classifier creation requires current construction authority for
@@ -2574,7 +2583,8 @@ formation provenance but never the real child or completed navigation.
 
 Frontend desugaring of extraction skeletons and DeduceLists prepares input for
 this later semantic operation; it does not itself execute matching or resolve
-semantic applicability. Canonical owner: the Pattern authority linked under
+semantic applicability. Canonical owner: the relational Pattern authority
+linked under
 Pattern.
 
 _See also: Normalization, CanonicalSkeleton, DeduceList._

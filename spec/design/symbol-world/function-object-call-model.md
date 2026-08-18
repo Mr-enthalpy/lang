@@ -161,7 +161,7 @@ function objects and toolchain-source associated `()` entries:
 
 ```text
 Semantic Symbol / Pattern owner
-  -> heterogeneous semantic values
+  -> CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
   -> TypeValue
   -> PatternValue / ResolvedPatternScope
   -> associated ()

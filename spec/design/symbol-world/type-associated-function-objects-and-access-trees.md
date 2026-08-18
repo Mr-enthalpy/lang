@@ -51,12 +51,13 @@ predicate, not because “type/PatternValue field” is a separate category.
 Generated candidates use the ordinary context preference
 `succ_plain: let > const = mut`; if no plain `let` candidate exists, tied
 `const` and `mut` candidates are ambiguous rather than arbitrarily selected.
-Owned construction relations propagate open/closed capability but never mutability:
+Open authority does not propagate along owned field relations; each
+PatternValue's `OpenHere_Σ` is determined independently by stack-relative
+coordinate equality (canonical §12.1.1). Mutability does not propagate:
 
 ```text
-OpenCapability(child)   => OpenCapability(parent)
-¬OpenCapability(parent) => ¬OpenCapability(child)
-mut(child)              does not imply mut(parent)
+mut(child) does not imply mut(parent)
+mut(parent) does not imply mut(child)
 ```
 
 These signatures display only the explicit call-site Product. Every listed

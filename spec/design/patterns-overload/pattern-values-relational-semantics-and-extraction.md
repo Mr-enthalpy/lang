@@ -687,7 +687,7 @@ WellFormedTau(tau)
       (each F in V_τ satisfies TypeMember_Q(F))
   and binder/backref invariants hold
       (BoundRef(alpha) notin Children_owned)
-  and Pattern authority over Q is consistent with V_τ
+  and PatternClosureConsistent(Q, V_τ)
       -- structural, history-free; depends only on the current closure value
          (canonical definition: type-values-places-and-borrow-views.md §2.2)
 

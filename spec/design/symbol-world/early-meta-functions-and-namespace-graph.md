@@ -283,13 +283,17 @@ behind named operations, at least:
 
 - **resolve** — resolve a navigation path to a `SymbolObject`.
 - **declare** — introduce a declared symbol under a node.
-- **inject child material** — add a direct child to a contribution or
-  construction under a legal owner (see §4). The future source-level `inject`
-  built-in is functional and returns a new ordinary `type` pattern value; only
-  the outer binding/assembly layer installs the resulting delta.
-- **open virtual node** — open a virtual namespace node for generated structure.
 - **install namespace delta** — apply a set of physical, declared, or generated
-  contributions as one unit under a legal node.
+  contributions as one unit under a legal node. This is the graph/world
+  installation operation: the only capability that changes namespace-graph
+  structure.
+- **open virtual node** — open a virtual namespace node for generated structure.
+- **source-level `inject` operation** — the source-level `inject` built-in is a
+  place-level read–extend–write wrapper on an existing `type ref` place:
+  `inject(r, Δ)` reads the current pointee, applies `extend(old, Δ)` to obtain
+  `new`, writes `new` back to the same place, and returns `r`. It does not
+  itself produce a new ordinary `type` pattern value and does not install a
+  `NamespaceDelta`; the outer binding/assembly step performs installation.
 - **canonical meta instance key** — compute the stable identity of a meta
   instantiation (see §6).
 - **diagnostic** — attach a diagnostic with provenance to a node / operation.
@@ -331,8 +335,9 @@ member environment and never recomputes `V_τ`. When `TypeSlot(S) = Some(τ)`
 and `TypeRole(Core(τ))`, `TypeProjection(S)` returns the already-formed `τ`;
 `.type` returns the complete `τ` by value, and a borrowed `.type`
 (`(S ref).type` / `(S share).type`) returns a borrow observation of the
-type-valued slot. Namespace projection selects the distinguished pure member,
-which for a type-valued Symbol observes `Core(τ) = Q` — the first-order
+type-valued slot. Namespace projection selects the canonical namespace object
+(the installed type core), which for a type-valued Symbol observes
+`Core(τ) = Q` — the first-order
 observation of the stored `τ`, not raw material from which `τ` is
 reconstructed. Current namespace/type facet buckets may cache derived views but
 do not define independent semantic Objects or another copy of `V_τ`.

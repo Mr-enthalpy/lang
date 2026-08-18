@@ -132,7 +132,7 @@ This is not type-system subtyping. It describes role implication:
 
 ```text
 Pure(x)          => x is navigable and has NamespaceRole
-TypeRole(Q)      => Q is a type-capable pure role core
+TypeRole(Q)      => Q is a type-capable pure Object core
 NamespaceRole(x) and not TypeRole(x)
                  => x is navigable but unavailable to AsType
 

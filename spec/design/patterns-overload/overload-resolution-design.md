@@ -159,8 +159,8 @@ sets come from the selected namespace graph view.
 This document is the formal specification of overload resolution for the lang
 language. It defines:
 
-- how overload candidate sets are constructed from a resolved Symbol's `Val2`
-  objects
+- how overload candidate sets are constructed from
+  `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
 - how visibility and export rules gate internal vs external lookup
 - how each Val2 object's policy-projected view enters candidate preparation
 - how hard legality, including declared receiver/parameter pair compatibility
@@ -339,7 +339,7 @@ slices visible under Q and follows their associated pattern components. Pair P1
 `Qv:Qp` filters both. A written P1 cannot manufacture a stage absent from the
 derived object.
 
-After path resolution and heterogeneous Val2 enumeration, C2 observes the
+After path resolution has formed `CallableProjection(S)`, C2 observes the
 object view available at the current lookup stage. Base path-to-Symbol
 resolution is not conditioned by P1.
 
@@ -1106,7 +1106,7 @@ The connected ordinary path now implements:
 
 ```text
 source Symbol or held PatternValue
-  -> heterogeneous semantic Val2
+  -> form CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
   -> value TypeValue
   -> Pattern owner / associated ()
   -> InvocationFrame

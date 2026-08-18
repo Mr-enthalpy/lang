@@ -1049,9 +1049,9 @@ meta:
 A meta callable may accept a `symbol` parameter, or constrain a parameter to a
 narrower `type` or ordinary PatternValue. That does not introduce another result
 rank: successful ordinary meta invocation still yields `symbol`. `M` exists in
-the global world from body entry; the return stage validates the at-most-one pure
-role member constraint, promotes only that member's owned PatternValue closure, and
-seals the result.
+the global world from body entry; the return stage validates the at-most-one
+installed type core `Core(τ)` constraint, promotes only that core's owned
+PatternValue closure, and seals the result.
 
 Failure never publishes construction material:
 
@@ -1393,11 +1393,11 @@ keeps `(t fn)` as the return symbol's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
 `DistinguishedPureMember(r) = bool::`.
 
-The self-root check is conditional on the distinguished pure member `Q`, not on
-`TypeRole(Q)`. A namespace-only `Q` — `NamespaceRole(Q)` and
+The self-root check is conditional on the installed type core `Core(τ) = Q`, not
+on `TypeRole(Q)`. A namespace-only `Q` — `NamespaceRole(Q)` and
 `not HasRegisteredSelfConstruction(Q)` — is self-rooted and may own fresh
-invocation-local material. A return Symbol with no distinguished pure member
-does not acquire a synthetic role member merely to satisfy this rule. When
+invocation-local material. A return Symbol with no installed type core
+does not acquire a synthetic core merely to satisfy this rule. When
 `TypeRole(Q)` does hold, it is the additional type
 refinement (imported judgment); namespace-only `Q` is not required to define Val1.
 
@@ -2357,14 +2357,21 @@ snapshot. The
 retired `HomeSymbol(TypeValue)`, `RecoverSymbol(TypeValue)`, most-recent carrier,
 source-place, and reverse-`AsType` routes are not deferred alternatives.
 
-Construction state propagates only along owned field relations:
+Open authority does not propagate along owned field relations. Each
+PatternValue's open authority is determined independently by stack-relative
+coordinate equality:
 
 ```text
-OpenHere_Σ(child)       => OpenHere_Σ(parent)
-OpenCapability(parent) := false  => OpenCapability(child) := false
+OpenHere_Σ(v)
+  iff OpenCapability(v)
+  ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
 ```
 
-Borrow edges are horizontal and do not participate. Mutability is independent:
+No parent-to-child or child-to-parent implication holds; a terminal event that
+closes multiple capabilities in one structural region does so because each value
+independently fails `OpenCapability` or `AuthorityMatches`, not because a
+neighboring value closed. Borrow edges are horizontal and do not participate.
+Mutability is independent:
 
 ```text
 mut(child) does not imply mut(parent)

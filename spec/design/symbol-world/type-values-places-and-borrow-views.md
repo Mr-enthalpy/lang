@@ -617,11 +617,16 @@ CallSpace(tau) = V_τ
 WellFormedTau(tau)
   iff tau = <Q, V_τ>
   and Q is a well-formed pure Object
-  and V_τ is a well-formed TypeMember set
-      (each F in V_τ satisfies TypeMember_Q(F))
-  and binder/backref invariants hold
+  and PatternClosureConsistent(Q, V_τ)
+
+PatternClosureConsistent(Q, V_τ) iff
+  each F ∈ V_τ satisfies TypeMember_Q(F)
+  and every BoundRef in Q is bound and restricted
       (BoundRef(alpha) notin Children_owned)
-  and Pattern authority over Q is consistent with V_τ
+  and all structural/interface registrations referenced by Q and V_τ
+      are internally well-formed
+  and no CurrentAuthority / OpenHere_Σ / GenerationRegime /
+      OpenCapability / stack / provenance premise is used
   -- a structural judgment over the current closure value, with no
      dependence on how tau was produced
 
@@ -1414,9 +1419,9 @@ type value does not generate a new type, and it does not forward to `uint8`'s
 symbol or place.
 
 This ordinary declaration rule does not license a meta return Symbol to use an
-external pure Object as its distinguished pure member. A canonical meta
-instance has an additional self-root invariant: if its return Symbol contains a
-distinguished pure member `Q`, `Q`'s outer Pattern root must be the
+external pure Object as its installed type core. A canonical meta
+instance has an additional self-root invariant: if its return Symbol contains an
+installed type core `Q`, `Q`'s outer Pattern root must be the
 `MetaInstanceScope`. The condition is `Q`'s presence, independent of
 `TypeRole(Q)`. Thus ordinary
 `let T: type = uint8` remains legal while direct `r = uint8` as a meta return

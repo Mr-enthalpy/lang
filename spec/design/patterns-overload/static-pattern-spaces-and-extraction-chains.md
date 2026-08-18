@@ -1493,9 +1493,10 @@ Extraction participates in overload candidate filtering and resolution. A candid
 
 ### 12.1 Overload Set Construction
 
-Final candidate preparation first resolves a `Symbol`, projects its
-heterogeneous typed `V` members for the current policy view, enumerates `Val2`
-objects, obtains each surviving object's type, resolves the type-associated
+Final candidate preparation first resolves a `Symbol` and forms
+`CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`, then applies the
+current policy view to the projected candidates, obtains each surviving
+object's type, resolves the type-associated
 `()` entry, and discards non-callable entries. The current same-name namespace
 bucket is only transitional substrate.
 
