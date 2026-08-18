@@ -51,12 +51,12 @@ predicate, not because “type/PatternValue field” is a separate category.
 Generated candidates use the ordinary context preference
 `succ_plain: let > const = mut`; if no plain `let` candidate exists, tied
 `const` and `mut` candidates are ambiguous rather than arbitrarily selected.
-Owned construction relations propagate Open/frozen state but never mutability:
+Owned construction relations propagate open/closed capability but never mutability:
 
 ```text
-Open(child)   => Open(parent)
-Frozen(parent) => Frozen(child)
-mut(child)    does not imply mut(parent)
+OpenCapability(child)   => OpenCapability(parent)
+¬OpenCapability(parent) => ¬OpenCapability(child)
+mut(child)              does not imply mut(parent)
 ```
 
 These signatures display only the explicit call-site Product. Every listed
@@ -176,13 +176,13 @@ The consequences that field/access-tree work must preserve:
   formed from a resident child. Parent wholesale replacement may invalidate the
   old borrow, but never redirects it to a new child at the same coordinate;
   only `rebind` selects a new target.
-- `Writable(place)` and `Open(Value(place))` are independent. A frozen type slot
-  may remain writable for wholesale replacement, and an Open value may be
+- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. A closed-capability type slot
+  may remain writable for wholesale replacement, and an open-capability value may be
   extended purely without a writable carrier.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
 root / `PlaceId` / `SymbolId` distinction — including the object normal form,
-the borrow views, writability, construction-lineage Open, and the namespace
+the borrow views, writability, construction-authority (`OpenHere_Σ` / `OpenCapability`), and the namespace
 member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 

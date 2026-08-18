@@ -290,7 +290,7 @@ all symbol construction performed by that invocation
 Within that transaction, the meta body may:
 
 - chain pure `extend` operations for different children over PatternValues whose
-  construction lineage is still Open in this `MetaConstructionUnit`, and use
+  construction authority is still open in this `MetaConstructionUnit`, and use
   `inject` only when writing an existing local type slot is also required;
 - construct a complete type/pattern subtree;
 - establish multiple heterogeneous value entries;

@@ -3,7 +3,7 @@
 **Status: Non-normative future design with a partial implementation note. A
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
-construction-lineage Open checking,
+construction-authority (`OpenHere_Σ` / `OpenCapability`) checking,
 Symbol `<tau?,V_S?>` role/member projections, complete type snapshots,
 `PatternValue`, ordinary Symbol-valued meta results
 (current transitional carrier: `SymbolConstruction`),
@@ -36,7 +36,8 @@ The namespace graph world model and symbol-level identity:
 - pure-role namespace origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
 - the borrow views `ref` / `share` and the place-sensitive lifetime
-  observation `@`, writability, and construction-lineage Open
+  observation `@`, writability, and construction-authority
+  (`OpenHere_Σ` / `OpenCapability`)
 - field functions and same-name value/ref/share receiver overload families
 - type-associated function objects and namespace extension targets
 - the early-meta / namespace-graph bootstrap (broad bootstrap document)

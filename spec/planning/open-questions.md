@@ -46,7 +46,7 @@ Still open after this correction:
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
-  construction-lineage Open checking.
+  construction-authority (`OpenHere_Σ` / `OpenCapability`) checking.
 - Implementation of source-level `let f::(U |> (type ref))` against an already
   installed type carrier/place: the associated-extension entry point currently
   requires a still-open construction and resolves the target object from the
@@ -797,7 +797,7 @@ Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
 | Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
 | Pattern relation, binderless Pattern, structural child and extraction roles | `design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` | derivation/residual IR only |
 | Symbol `<Q?,V>` Set quotient, complete type snapshots, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate only |
-| construction lineage and Open/frozen | same canonical construction document plus `design/lifetime/` | region/stack representation |
+| construction authority (`OpenHere_Σ` / `OpenCapability`) and stack-relative open window | same canonical construction document plus `design/lifetime/` | region/stack representation |
 | retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
 
 The concrete unresolved items remain in the earlier “Still open” lists. This

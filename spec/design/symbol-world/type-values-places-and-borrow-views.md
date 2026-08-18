@@ -7,7 +7,7 @@ type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
 per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
 `Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
 `share`, `rebind`), the place-sensitive lifetime observation (`@`),
-construction-lineage Open judgment, and type checker
+construction-authority (`OpenHere_Σ` / `OpenCapability`) judgment, and type checker
 remain unimplemented target semantics. §10 registers the implementation debt.**
 
 This document specifies the semantic boundary between *object values*, *symbol
@@ -564,7 +564,7 @@ ActiveEvaluation_kappa(x)
   := x lies on the currently running stage-kappa evaluation flow.
 
 OpenEvalReentry_kappa(x)
-  iff Open_Gamma(x)
+  iff OpenHere_Σ(x)
   and ActiveEvaluation_kappa(x)
   and NextEvaluationStep_kappa enters x
 ```
@@ -713,14 +713,14 @@ The distinction is a judgment over `Q`'s Pattern `P` (imported from the
 Pattern relational semantics), **never** `count(pure members in V_S)`. The
 `NamespaceClosure`/`TypeClosure` split above follows the same core judgment.
 
-A derived snapshot `tau' = Associate(tau, f, v)` is checked the same way as
-any closure: `WellFormedTau(tau')` is an independent structural judgment over
-`tau' = <Q', V_τ>` — `Q'` is a well-formed pure Object obtained from `Q` by a
-permitted slot update, and `V_τ` is unchanged. `Associate` is an ordinary
-non-structural snapshot update and preserves `TypeRole(Q)`, so
-`TypeValueRole(tau')` holds. Only structural transformations (`extend`)
-produce a new `V_τ'`; the resulting `τ'` satisfies `WellFormedTau(τ')` by its
-own structure, never by inheriting any formation history.
+A derived snapshot `tau' = <Q', V_τ>` produced by an ordinary slot update is
+checked the same way as any closure: `WellFormedTau(tau')` is an independent
+structural judgment over `tau' = <Q', V_τ>` — `Q'` is a well-formed pure Object
+obtained from `Q` by a permitted slot update, and `V_τ` is unchanged. Ordinary
+slot replacement preserves `TypeRole(Q)`, so `TypeValueRole(tau')` holds. Only
+structural transformations (`extend`) produce a new `V_τ'`; the resulting `τ'`
+satisfies `WellFormedTau(τ')` by its own structure, never by inheriting any
+formation history.
 
 `V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
 direct TypeMember members placed into `tau` when it was produced
@@ -812,11 +812,30 @@ WellFounded_runtime(tau):
 The binder is not a `mu`-type, an equi-recursive type rule, or permission for
 cyclic Object content.
 
+There are exactly three ways a type-valued place moves from one snapshot to
+another; they are not one family, and ordinary `let`/`=` does not secretly
+perform structural extension:
+
+```text
+ordinary slot replacement:
+    Write(slot, new_value)
+    -- no old τ -> new τ semantic relationship is established
+       and no structural incidence is added
+
+structural transformation:
+    Extend_Σ(old, Δ) -> new
+    -- the only τ -> τ' construction transformation
+
+place wrapper:
+    Inject_Σ(r, Δ)
+      = Read -> Extend -> Write
+    -- `inject` is the place-level wrapper of `extend`
+```
+
 Each `tau` is an immutable snapshot; no operation mutates an existing closure.
-The non-structural `Associate` operation (defined below; place operation §7.1)
-replaces a carrier's stored snapshot with a derived `tau' = <Q', V_τ>` without
-changing `V_τ` or adding structural incidence; `extend` remains the structural
-transformation. Copying a type-valued binding copies the
+A carrier's stored snapshot is replaced only by ordinary slot replacement
+(§7.1) — a fresh `tau' = <Q', V_τ>` sharing `V_τ`, with no structural incidence
+added. Copying a type-valued binding copies the
 whole closure:
 
 ```text
@@ -829,31 +848,30 @@ PatternView(tau) = Q
 CallSpace(tau) = V_τ
 ```
 
-Ordinary associated-member installation is a **non-structural snapshot
-update**, not `extend`:
+Ordinary associated-member installation is ordinary **slot replacement**, not
+`extend`:
 
 ```text
-Associate(
-    tau = <Q, V_τ>,
-    selector,
-    value
-)
-  = tau' = <Q', V_τ>
+old := Read(type_place)
+new = <Q', V_τ>       -- Q' from the permitted slot update
+Write(type_place, new)
 
 P(Q')    = P(Q)
 Val2(Q') = Val2(Q)[selector := value]
 
 V_τ unchanged
 no DirectPatternChild added
-WellFormedTau(tau') checked independently on the result structure
+WellFormedTau(new) checked independently on the result structure
   (Q' well-formed; V_τ unchanged)
+-- the carrier receives a fresh snapshot; the previous snapshot is not mutated
 ```
 
-The place-level operation is `old := Read(type_place); new := Associate(old, f,
-expr); Write(type_place, new)` (§7.1). The old `tau` copy is never mutated; the
-carrier receives a fresh snapshot that shares the same `V_τ`. Only `extend`
-produces a new `V_τ'`, and the legality of that modification step is a
-contextual operation judgment, separate from well-formedness:
+The place-level operation is `old := Read(type_place); new := <Q', V_τ>;
+Write(type_place, new)` (§7.1) — ordinary slot replacement. The old `tau` copy
+is never mutated; the carrier receives a fresh snapshot that shares the same
+`V_τ`. Only `extend` produces a new `V_τ'`, and the legality of that
+modification step is a contextual operation judgment, separate from
+well-formedness:
 
 ```text
 AdmissibleExtend_Γ(τ, Δ, τ')
@@ -1883,9 +1901,9 @@ ordinary borrow coordinates:
 ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-A frozen type-valued slot may still be observed through `type ref`. If the view
+A closed-capability type-valued slot may still be observed through `type ref`. If the view
 is writable, the complete current value may be replaced by any compatible,
-well-formed type value. What is forbidden is using the frozen pointee as the
+well-formed type value. What is forbidden is using the closed-capability pointee as the
 `old` input of `extend`; holding a reference does not change that value's
 anchor or open capability.
 
@@ -1932,8 +1950,8 @@ returning / storing a ref   ->  ordinary lifetime/capability escape check
 
 Returning a `type ref` from a `compile` callable is therefore governed by the
 same borrow escape rule as any other reference. It may remain usable after the
-pointee freezes; a later `extend`/`inject` attempt rechecks the current value's
-lineage and may fail independently of the reference's validity.
+pointee's capability closes; a later `extend`/`inject` attempt rechecks the current value's
+open-capability and may fail independently of the reference's validity.
 
 ### 5.6 Type-expected positions elaborate `|> type`; candidate discovery does not
 
@@ -2055,8 +2073,8 @@ OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
 CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
 ```
 
-A writable slot may contain a frozen type value that can be replaced wholesale
-but cannot be structurally extended from. Conversely an Open value may be
+A writable slot may contain a closed-capability type value that can be replaced wholesale
+but cannot be structurally extended from. Conversely an open-capability value may be
 extended purely and bound elsewhere even when its source is immutable or has no
 write-back place.
 
@@ -2225,7 +2243,7 @@ freshness. `let` is the only operation that changes `None` to `Some(value)`.
 The two forms also differ in what they change about the host:
 
 ```text
-let f::((T ref).type) = expr -> Associate(tau, f, expr) = <Q',V_τ>; P and V_τ unchanged (§2.2)
+let f::((T ref).type) = expr -> Write(slot, <Q',V_τ>); P and V_τ unchanged (§2.2)
 extend(TypeValue(T), Δ)      -> new tau' = <Q',V_τ'> snapshot
 inject((T ref).type, Δ)      -> read + extend + write through the type ref
 ```
@@ -2238,7 +2256,7 @@ are specified in
 extending the current parent pattern with a *direct* child; neither reaches into
 a grandchild pattern.
 
-Assignment carries no `extend`-specific construction-lineage check, but that is
+Assignment carries no `extend`-specific construction-authority check, but that is
 not the same as carrying no check. The canonical four-layer assignment model in
 `symbol-first-meta-construction-and-pattern-injection.md` §4.5.1 governs, and the
 text below only spells out its layer 2 for this document.
@@ -2251,7 +2269,7 @@ Compatible(P(lhs), rhs)    — the right value conforms to the target's Pattern
 ValidCapability(lhs)       — lifetime and capability conditions of lhs hold
 ```
 
-Assignment performs no `extend`-specific construction-lineage check: there is no
+Assignment performs no `extend`-specific construction-authority check: there is no
 requirement that the RHS came from a particular producer. That freedom covers
 layer 1 (the RHS operation, including `extend`, discharged its own Open check)
 and nothing more. Layers 1, 3,
@@ -2360,7 +2378,7 @@ full three-component Norm(x) including recursive Norm_Val1?
   (current normalizer keeps an opaque Val1 leaf)
 ref / share / @ / rebind operations and their overloads
 type ref and type share values, and ValidContext for them
-the independent writability and construction-lineage Open judgments of §6
+the independent writability and construction-authority (`OpenHere_Σ` / `OpenCapability`) judgments of §6
 the = assignment operator and its four-layer check (§4.5.1 there)
 construction-unit ownership enforcement
 ```

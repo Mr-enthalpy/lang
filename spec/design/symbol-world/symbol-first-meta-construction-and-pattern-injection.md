@@ -15,7 +15,7 @@ This document builds on, without replacing:
 - `spec/design/symbol-world/type-values-places-and-borrow-views.md` for
   `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` and
   the place-sensitive lifetime observation `@`,
-  and independent writability / construction-lineage Open judgments;
+  and independent writability / construction-authority (`OpenHere_Σ` / `OpenCapability`) judgments;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
   positive overloads of `@`, escape checking, and the lifetime-rule boundary;
 - `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` for
@@ -798,7 +798,7 @@ ordinary navigable `M`.
 
 This is not a new SymbolConstruction rank. The returned Symbol is an ordinary
 PatternValue whose mutable member content is `Val1`; root authority governs the
-construction lineage and global lifetime of its unique pure-role-member-owned
+`OpenCapability` window and global lifetime of its unique pure-role-member-owned
 closure. An implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
 
@@ -2503,7 +2503,10 @@ Canonicalizable(result)
 ```
 
 `OpenHere_Σ(old)` is derived from `Anchor(old)` and `CurrentAuthority(Σ)`
-(§12.1.1), not from a carrier place. Clone/read preserves the anchor:
+(§12.1.1), not from a carrier place. Because `old` is a complete type value `τ`
+rather than an ordinary `PatternValue`, the horizontal attributes resolve by
+Core projection (§12.1.2): `OpenHere_Σ(old) = OpenHere_Σ(Core(old))`. Clone/read
+preserves the anchor:
 
 ```text
 Anchor(Clone(old)) = Anchor(old)
@@ -2620,7 +2623,7 @@ second produces values only. The resulting type Pattern is:
 ```
 
 `extend` determines the child set of the resulting pattern value. It does not
-change owner identity or reopen a frozen value. `inject` additionally requires
+change owner identity or reopen a closed-capability value. `inject` additionally requires
 the target to be writable; formation of `r_ref` alone proves neither premise.
 
 As with `struct`, the lowest-level leaf reduction has the form:
@@ -3437,13 +3440,13 @@ Place(T)  != Place(U)  != Place(uint8)
 
 `let f::(T |> (type ref))` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
-Symbol-to-type projection and is not this operation. The ordinary associated installation is the non-structural `Associate`
-operation (type-values §2.2, §7.1): it derives a fresh snapshot
-`tau' = <Q', V_τ>` from the carrier's current `tau` and updates only `T`'s
-carrier-local `Val2` observation; it neither changes the copied snapshot in
-`U`, changes `V_τ`, nor registers a structural child. The fresh snapshot
-`tau' = <Q', V_τ>` is checked independently: `WellFormedTau(tau')` is a
-structural judgment (`Q'` is a well-formed pure Object obtained by the
+Symbol-to-type projection and is not this operation. The ordinary associated
+installation is ordinary **slot replacement** (type-values §2.2, §7.1): it
+replaces the carrier's stored snapshot with a fresh `tau' = <Q', V_τ>` and
+updates only `T`'s carrier-local `Val2` observation; it neither changes the
+copied snapshot in `U`, changes `V_τ`, nor registers a structural child. The
+fresh snapshot `tau' = <Q', V_τ>` is checked independently: `WellFormedTau(tau')`
+is a structural judgment (`Q'` is a well-formed pure Object obtained by the
 permitted slot update, and `V_τ` is unchanged), so `CompleteType(tau')` is
 derivable without any formation-history reasoning. Complete type observation includes the resulting core observation when
 identity is demanded. Generated
@@ -3578,11 +3581,29 @@ OpenCapability(v) := false   -- the only real close; never retracted
 ```
 
 For a **non-meta** context, `CurrentAuthority(Σ)` is determined by the
-`CallableRoot`, the `MetaPartnerRoot` (if the callable is generic and has a
-compile partner providing the stable Pattern root), and the
+`CallableRoot`, the `MetaPartnerRoot` when the callable is generic (providing
+the stable symbolic anchoring for the generic arguments), and the
 `ActiveInlineClosurePath` — the current navigation level within the in-place
 closure. These are different authority computations over the same
 `OpenHere_Σ` judgment, not different notions of place capability.
+
+The `MetaPartnerRoot` answers where generic symbolic anchoring lives for a
+generic callable `F`, and is required exactly when `F` is generic:
+
+```text
+Generic(F) => MetaPartnerRoot(F, GenericArgs)
+```
+
+It is **not** conditioned on whether `F` also has a `CompilePartner(F)`. The
+compile partner `CompilePartner(F) = C(F)` (function-object-call-model §8)
+answers how the compile-time realization of `F` is produced; the meta partner
+`MetaPartner(F) = M(F)` (meta-object-invocation §4) answers at which level the
+callable's generic symbolic identity is anchored. The two partners are
+orthogonal: a runtime generic `F` has both `C(F)` and `M(F)`; a compile generic
+`F` has no distinct compile partner but still has `M(F)`; a meta `F` has
+neither. `CurrentAuthority(Σ)` therefore uses `MetaPartnerRoot(F, GenericArgs)`
+for generic symbolic anchoring, independent of any `CompilePartner(F)`
+consideration.
 
 The required independence is explicit:
 
@@ -3618,6 +3639,27 @@ participate in canonical Pattern identity or τ normalization. It is an
 implementation attribute used only to decide how `OpenCapability(v)` may be
 closed.
 
+Although `GenerationRegime`, `OpenCapability`, and `Anchor` are defined on
+ordinary `PatternValue`s, `extend` operates on the complete type value
+`τ = <Q, V_τ>`, which is not itself an ordinary `PatternValue`. The bridge is
+by Core projection, consistent with the minimal-change observation rule (§2.2:
+ordinary type-rank equality observes `Core(τ) = Q`):
+
+```text
+GenerationRegime(τ) := GenerationRegime(Core(τ))
+OpenCapability(τ)   := OpenCapability(Core(τ))
+Anchor(τ)           := Anchor(Core(τ))
+
+OpenHere_Σ(τ)
+  = OpenCapability(τ) ∧ AuthorityMatches(Anchor(τ), CurrentAuthority(Σ))
+  = OpenHere_Σ(Core(τ))
+```
+
+`GenerationRegime(τ)` does not participate in `WellFormedTau(τ)` or in Pattern
+identity; it is consulted only by the contextual capability rules above. No new
+`ConstructionSubject` ontology is introduced: the horizontal attributes of a
+complete type value are those of its core `PatternValue`.
+
 - **MetaGenerated.** A value produced inside a meta body has no birthright
   global lifetime. It can be used freely within the same meta computation, and
   it may be promoted into a stable result only when the MetaInstance seals and
@@ -3628,37 +3670,52 @@ closed.
 - **NonMetaGenerated.** A value produced in an ordinary (non-meta) construction
   context is born both globally survivable and open-capable:
   `GlobalSurvivable(v) ∧ OpenCapability(v)` hold from creation. Its
-  `OpenCapability` is closed permanently when one of the following events
-  occurs **at the generation level** of the value:
+  `OpenCapability` is closed permanently by the following events (control-flow
+  events only at the generation level of the value, the others at any call
+  depth):
 
 ```text
 CloseEvent(v, e, Σ)
   iff GenerationRegime(v) = NonMetaGenerated
-  ∧ AtGenerationLevel(v, e, Σ)
-  ∧ Kind(e) ∈ {
-       UseForVal1,           -- x is installed as Val1 of another object
-       UseAsMetaArgument,      -- x is passed as a meta-call argument
-       ControlFlowMerge,     -- x participates in a static join/loop-carried state
-       ControlFlowSplit      -- x is carried across a residual-runtime fork
-     }
+  ∧ (
+       Kind(e) = UseForVal1
+         -- x is installed as Val1 of another object; closes at any call depth
+     ∨ Kind(e) = UseAsMetaArgument
+         -- x is passed as a meta-call argument; closes at any call depth
+     ∨ ( Kind(e) ∈ { ControlFlowMerge, ControlFlowSplit }
+          ∧ AtGenerationLevel(v, e, Σ) )
+         -- x participates in a static join/loop-carried state, or is carried
+            across a residual-runtime fork; level-scoped
+     )
 ```
 
-These events close `OpenCapability(v)` irreversibly. Passing the value into a
-deeper call frame does **not** automatically close it; only an event at the
-value's own generation level does. Likewise, a value's visibility (`Visible_Σ`)
-may be lost because of stack masking without its `OpenCapability` being
-touched.
+`UseForVal1` and `UseAsMetaArgument` close `OpenCapability(v)` irreversibly at
+any call-frame depth: a meta boundary cannot be escaped by performing the meta
+call inside a deeper ordinary frame, and installing the value as `Val1` is
+likewise unconditional. `ControlFlowMerge` and `ControlFlowSplit` close the
+capability only at the value's own generation level; a merge or split inside a
+deeper ordinary call frame does not reach back and close an open value
+generated at an outer level. Passing the value into a deeper ordinary call
+frame does **not** automatically close it. Likewise, a value's visibility
+(`Visible_Σ`) may be lost because of stack masking without its
+`OpenCapability` being touched.
 
 In an ordinary, non-meta construction context the concrete closing events are:
 
 ```text
 UseForVal1(x)                                    -> close OpenCapability
+                                                     (any call depth)
 x used as a meta argument                        -> close OpenCapability
+                                                     (any call depth)
 x entering a global normalized structure         -> close OpenCapability
+                                                     (any call depth)
 x in Dependencies(c), for NonMetaStaticControl(c) -> close OpenCapability
+                                                     (at generation level)
 x in LiveAcross(c), for ResidualRuntimeFork(c)    -> close OpenCapability
+                                                     (at generation level)
 leaving the construction interval of the
   in-place closure that owns x                   -> close OpenCapability
+                                                     (owner's interval)
 ```
 
 Observation is not a closing event: reading `P` or `Val2`, extending a child
@@ -3694,6 +3751,10 @@ itself (§4.3.1):
 inside M (MetaGenerated material):
   UseForVal1(x)                     does not close OpenCapability(x)
   using x as a meta argument        does not close OpenCapability(x)
+      -- presupposes meta argument admissibility (§4.3.1–§4.3.3):
+         MetaArgumentAdmissible(a) => GlobalSurvivable(a), and a
+         non-GlobalSurvivable MetaGenerated local cannot enter another
+         meta invocation at all
   entering global-normalization     does not close OpenCapability(x)
   static control flow               does not close OpenCapability(x)
   entering an in-place closure of M does not close OpenCapability(x)
@@ -3703,7 +3764,10 @@ The only capability-closing event for material owned by the meta construction
 is its return-stage seal (§4.3.2). A fresh meta-local PatternValue nevertheless
 has `Life = MetaInvocation(M)`. Attempting to pass it to another ordinary meta
 does not close or promote it; candidate formation rejects the call when the
-canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). `compile` and
+canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). The rejection is
+total: the argument never enters the deeper invocation, so meta invocations
+cannot smuggle meta-local open material into the closed world and re-open it
+when the stack unwinds. `compile` and
 transparent construction intrinsics may consume it because they create no new
 MetaInstance key.
 

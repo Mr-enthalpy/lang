@@ -108,7 +108,7 @@ implementation guardrail, not the semantic entry point.
 | Block | Responsibility | Not responsible for |
 |---|---|---|
 | `build-package/` | Package/build layer projected into the namespace graph: package identity, manifest records, source roots, dependency edges, mount paths, physical-directory contribution authority, export surface, cache/fingerprint/provenance. | Language expression semantics. |
-| `symbol-world/` | Namespace graph world model: Symbol `<tau?,V_S?>` role/member projection and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut member overloads, compile-flow projection and companions, automatic require, meta pure-role self-root, construction-lineage Open/frozen state, explicit borrow views (`ref` / `share` / `rebind`), pattern scopes, `struct` forming complete type values, pure `extend`, place-level `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, borrow-view/writability checking implementation, access-tree construction, lifetime checking implementation. |
+| `symbol-world/` | Namespace graph world model: Symbol `<tau?,V_S?>` role/member projection and identities, `compile` / `meta`, canonical `Pv:Pp`, contextual P1/P2 elaboration, seal visibility, const/mut member overloads, compile-flow projection and companions, automatic require, meta pure-role self-root, construction-authority (`OpenHere_Σ` / `OpenCapability`) state, explicit borrow views (`ref` / `share` / `rebind`), pattern scopes, `struct` forming complete type values, pure `extend`, place-level `inject`, namespace origin/construction ownership, binding/install, and early-meta bootstrap. | Full type checking, borrow-view/writability checking implementation, access-tree construction, lifetime checking implementation. |
 | `patterns-overload/` | Canonical relational Pattern semantics, proof-relevant observation/extraction, structural incidence, binderless Patterns and annotation interaction; plus `PatternObject`, argument/parameter shapes, candidate adaptation, overload vision, and later residual/control-pattern consumers. | Runtime overload resolution implementation and concrete pattern-space/derivation IR. |
 | `meta-invocation/` | Symbol-first invocation frames, candidate-selection handoff, partial vs strict demand, residualization, and policy-staged pattern matching. | Defining symbol construction, layered policy, overload ordering, or pattern algebra (it references their canonical owners). |
 | `policy-capability/` | Current flat-metadata mapping to canonical `Pv:Pp`, P1/P2 contextual elaboration, and orthogonal policy dimensions. | Compile-flow/require semantics and mechanical return normalization. |
@@ -138,7 +138,7 @@ implementation guardrail, not the semantic entry point.
 - Future design only (not implemented): `patterns-overload/`,
   `meta-invocation/`, `mechanical-lowering/`, `lifetime/`, and the remaining
   `symbol-world/` and `policy-capability/` semantics (TypeValueId, borrow views
-  and `rebind`, construction-lineage Open/frozen checking, independent
+  and `rebind`, construction-authority (`OpenHere_Σ` / `OpenCapability`) checking, independent
   writability/member-creation checking, pure `extend`, place-level `inject`,
   full policy checking).
 

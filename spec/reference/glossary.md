@@ -234,8 +234,8 @@ _See also: Pattern derivation, PatternValue, Direct Pattern child._
 
 An ordinary Object observed together with its Pattern coordinate. The term
 does not name a separate rank or carrier: its value, Pattern, and associated
-members remain the ordinary `<Val1?,P,Val2>` coordinates. Construction lineage,
-places, and borrow capability are orthogonal.
+members remain the ordinary `<Val1?,P,Val2>` coordinates. Open authority
+(`Anchor` / `OpenCapability`), places, and borrow capability are orthogonal.
 
 _See also: Pattern, Object normal form (`Norm`), Open authority._
 
@@ -1240,9 +1240,9 @@ ValidRegion( type ref )   =  BorrowLifetimeRegion( Target, ref )
 ValidRegion( type share ) =  LifetimeRegion( Target )
 ```
 
-A `type ref` may remain valid while its pointee type value is frozen. A mutable
+A `type ref` may remain valid while its pointee type value is closed-capability. A mutable
 ref may then replace the whole slot with another legal value, but cannot use the
-frozen value as `extend` input. `Open(value)` and `Writable(place)` are separate
+closed-capability value as `extend` input. `OpenHere_Σ(v)` and `Writable(place)` are separate
 judgments in both directions.
 
 It applies to the destination classes that can outlive a valid region
@@ -1268,8 +1268,9 @@ Root(tau_new) = Root(tau_old)
 ```
 
 `extend` accepts the whole complete type closure, never a `type ref` or
-`type share`. It checks
-`OpenHere_Σ(old)` from `Anchor(old)` and `CurrentAuthority(Σ)`, and the result
+`type share`. It checks `OpenHere_Σ(old)` from `Anchor(old)` and
+`CurrentAuthority(Σ)`, resolved through `Core(old)` for a complete type value
+(§12.1.2 of the canonical owner), and the result
 independently satisfies `WellFormedTau(τ')` (history-free; never inherited
 along a modification chain). It creates no root, modifies no place, and
 preserves the input root. Failure is
@@ -1336,9 +1337,9 @@ ordinary borrow facts, never a second type-value shape:
 ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-It contains no construction-open witness. A frozen type can therefore be read
+It contains no construction-open witness. A closed-capability type can therefore be read
 through `type ref`; if the ref is writable, the whole slot can be replaced by an
-independently legal type value. Using the current frozen value as input to
+independently legal type value. Using the current closed-capability value as input to
 `extend` still fails. Returning or storing the view is an ordinary borrow escape
 question.
 

@@ -902,7 +902,7 @@ restricted evaluator
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
 transport. They do not implement canonical facets, `MetaInstanceScope`,
-construction-lineage `Open`, `extend`/`inject`, pure-role self-root validation, or
+construction-authority (`OpenHere_Σ` / `OpenCapability`), `extend`/`inject`, pure-role self-root validation, or
 construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the

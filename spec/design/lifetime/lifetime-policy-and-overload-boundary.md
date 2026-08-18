@@ -400,9 +400,9 @@ The two views differ in write capability, not in whether their pointee is Open:
 | `type ref` | read and policy-bounded write | no | no |
 | `type share` | read/observe only | no | no |
 
-Both views may remain valid after the current pointee freezes. `type ref` may
+Both views may remain valid after the current pointee's capability closes. `type ref` may
 then replace the pointee wholesale if `Writable(Target)` holds, but neither view
-can make the frozen value admissible as `extend`'s old value.
+can make the closed-capability value admissible as `extend`'s old value.
 
 ### 3.2 Borrow validity never discharges construction openness
 
