@@ -677,10 +677,15 @@ Core(tau)      = Q
 CallSpace(tau) = V_τ
 
 WellFormedTau(tau)
-  iff exists a formation witness w:
-      FormationLine(w, Q_0, V_τ)
-      and CoreOnFormationLine(w, Q)
-      (canonical definition: type-values-places-and-borrow-views.md §2.2)
+  iff tau = <Q, V_τ>
+  and Q is a well-formed pure Object
+  and V_τ is a well-formed TypeMember set
+      (each F in V_τ satisfies TypeMember_Q(F))
+  and binder/backref invariants hold
+      (BoundRef(alpha) notin Children_owned)
+  and Pattern authority over Q is consistent with V_τ
+      -- structural, history-free; depends only on the current closure value
+         (canonical definition: type-values-places-and-borrow-views.md §2.2)
 
 CompleteType(tau)  iff WellFormedTau(tau) and TypeRole(Q)   -- TypeValueRole
 NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceOnly(Q)
@@ -690,11 +695,11 @@ NamespaceOnly(tau)  iff WellFormedTau(tau) and NamespaceOnly(Q)
 tau = bind alpha. <Q, V_τ[alpha]>
 ```
 
-`V_τ = CallSpace(tau)` is the callspace captured when the type value was
-formed: the direct TypeMember members placed into `tau` at that formation
-event (`TypeMember_Q` handoff invariants below), not a global function of
+`V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
+direct TypeMember members placed into `tau` when it was produced
+(`TypeMember_Q` handoff invariants below), not a global function of
 the bare core `Q` and not a post-hoc partition of a shared Symbol space.
-Members created under the same `Q` after formation never retroactively enter
+Members created under the same `Q` later never retroactively enter
 an existing snapshot, and a copied or extracted `tau` keeps its captured `V_τ`.
 
 where `V_τ` contains the ordinary val members that belong directly to this type
@@ -722,9 +727,9 @@ CreateClassifier_Gamma(
   F,
   DirectClassifierHome = TypeMemberScope(Q)
 )
-  => CurrentConstructionAuthority_Gamma(Q)
+  => CurrentAuthority_Γ(Q)
 
-V_τ = CallSpace(tau)   -- fixed at formation, not a post-hoc partition
+V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partition
 
 Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned

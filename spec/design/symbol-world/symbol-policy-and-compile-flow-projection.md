@@ -754,7 +754,7 @@ their storage/lowering algorithms are not implemented:
   `⟨BorrowKind, StableTargetIdentity(Target(view))⟩`; two targets remain distinct
   even when their current contents normalize equally.
 - Cache keying does not swallow the caller's construction context wholesale.
-  Canonical value identity and `ConstructionLineage` remain separate inputs to
+  Canonical value identity and `Anchor`/`OpenCapability` remain separate inputs to
   applicability. A `compile` function that calls pure `extend` on a transported
   type, or place-level `inject` through a ref, may be legal or illegal for the
   same normalized contents in different stacks:
@@ -763,7 +763,7 @@ their storage/lowering algorithms are not implemented:
   Eval(F, t; Γ_open)  ≠  Eval(F, t; Γ_closed)
   ```
 
-  `extend` requires `Open_Γ(value)`; `inject` independently also requires
+  `extend` requires `OpenHere_Σ(value)`; `inject` independently also requires
   `Writable_Γ(Target(ref))`. A `type ref` key preserves referent identity but
   proves neither current premise. Cache the pure value computation separately
   from applicability, or record/recheck those requirements in a function

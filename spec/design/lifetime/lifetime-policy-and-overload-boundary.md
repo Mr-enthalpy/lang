@@ -9,7 +9,7 @@ shape, ordering) is deliberately left unfrozen.
 This document is the canonical owner of `@`. The object model, the value/place
 split, and the `ref` / `share` / `rebind` operations are owned by
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md);
-construction-lineage `Open_Γ(value)` is owned by
+construction authority (`OpenHere_Σ(value)`) is owned by
 [`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
 ## 1. `@` is a privileged place-observation operation
@@ -409,9 +409,9 @@ can make the frozen value admissible as `extend`'s old value.
 The positive separation is:
 
 ```text
-Γ ⊢ r : type ref  does not imply Open_Γ(Read(r))
-Open_Γ(v)          does not imply that v has a writable carrier
-Open_Γ(v)          does not imply the current computation flow re-enters v
+Γ ⊢ r : type ref  does not imply OpenHere_Σ(Read(r))
+OpenHere_Σ(v)      does not imply that v has a writable carrier
+OpenHere_Σ(v)      does not imply the current computation flow re-enters v
 ```
 
 The third line separates static openness from live evaluation flow: reentry is
@@ -421,20 +421,21 @@ establishes it. The reentry criteria are canonical in
 [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
 §2.1.1.
 
-A consumer that performs `extend` must query `Open_Γ(old_value)` even when the
+A consumer that performs `extend` must query `OpenHere_Σ(old_value)` even when the
 value was read through `type ref`. The place-level `inject` wrapper in
 [`../symbol-world/symbol-first-meta-construction-and-pattern-injection.md`](../symbol-world/symbol-first-meta-construction-and-pattern-injection.md)
 §8 performs two checks independently:
 
 ```text
-Open_Γ(Read(r))
+OpenHere_Σ(Read(r))
 Writable_Γ(Target(r))
 ```
 
 Returning or storing `type ref` asks only the ordinary escape question of this
-section. A later `inject` may fail because the then-current value is frozen even
+section. A later `inject` may fail because the then-current value has closed
+its `OpenCapability` (OpenCapability(v) = false) even
 though the reference remains lifetime-valid. Weakening to `share` surrenders
-write capability, but does not alter construction lineage and never extends the
+write capability, but does not alter the value's anchor or open capability and never extends the
 target lifetime.
 
 ## 4. `@` and lifetime rules never reselect an ordinary call

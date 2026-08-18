@@ -61,7 +61,7 @@ Still open after this correction:
   facet exposure;
   semantically, formal invocation remains uninstalled and outer binding resolves
   the installation place.
-- Exact Rust/IR scheduling of `ConstructionLineage` freeze events relative to
+- Exact Rust/IR scheduling of `OpenCapability` closing events relative to
   graph seal, without reintroducing a place-level Open capability.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
@@ -552,16 +552,16 @@ here so they are not mistaken for design decisions:
   direct `struct` generation is not implemented.
 - Ordinary construction windows carry provisional closing coordinates
   (`OrdinaryOpenWindow { creation_flow_segment, first_use_seen,
-  closed_by_fork_or_end }`) and freeze on the explicit events
+  closed_by_fork_or_end }`) and close `OpenCapability` on the explicit events
   `note_first_semantic_use` / `note_residual_runtime_fork_or_end`, which the
-  evaluation driver must raise by hand. The canonical freezing event set for an
+  evaluation driver must raise by hand. The canonical closing event set for an
   ordinary (non-meta) construction is defined in
   `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`
   §12.1.2 and covers `UseForVal1`, use as a meta argument, entry into a global
   normalized structure, actual dependencies/identity merges of non-meta static
   control, values carried across a residual-runtime fork, and leaving the
   construction interval of the owning in-place closure. Mere `LiveAcross` over
-  an unrelated compile-only branch/join/loop is not a freezing dependency. The
+  an unrelated compile-only branch/join/loop is not a closing dependency. The
   current API does not derive `Dependencies(control)` or distinguish every
   static edge from a residual-runtime fork through real control-flow analysis;
   its coarse `note_residual_runtime_fork_or_end` event is implementation debt,
@@ -753,10 +753,10 @@ forwarding or spelling-only lookup.
 **Status:** Open (engineering, active at v0.10+)
 
 **Closed part of the question:**
-The semantics do not place `ConstructionLineage`, `Open`, or a borrow witness in
+The semantics do not place `Anchor`/`OpenCapability`, `Open`, or a borrow witness in
 normalized PatternValue identity. A `compile` frame transports the input value
-and its lineage without creating a root, while every `extend` application
-rechecks `Open_Γ(value)` in the current compile-time stack. A `type ref`
+and its anchor without creating a root, while every `extend` application
+rechecks `OpenHere_Σ(value)` against `CurrentAuthority(Σ)`. A `type ref`
 parameter does not discharge that check. Thus the same normalized value may be
 extension-legal at one call site and illegal at another:
 

@@ -237,7 +237,7 @@ does not name a separate rank or carrier: its value, Pattern, and associated
 members remain the ordinary `<Val1?,P,Val2>` coordinates. Construction lineage,
 places, and borrow capability are orthogonal.
 
-_See also: Pattern, Object normal form (`Norm`), ConstructionLineage._
+_See also: Pattern, Object normal form (`Norm`), Open authority._
 
 ---
 
@@ -818,36 +818,52 @@ The complete equations and well-foundedness rules belong to
 `Val1? = absent` is payload absence only. In the well-formed Object kernel every
 `Val2` is navigable, so `Pure(x) <=> NamespaceRole(x)`. `TypeRole(x)` is an
 additional imported judgment and is therefore the strict refinement.
-Construction lineage and carrier place remain outside normal form.
+Anchor and carrier place remain outside normal form.
 
-_See also: Policy Pair, Borrow view, ConstructionLineage._
+_See also: Policy Pair, Borrow view, Open authority (`OpenHere_Σ`, `OpenCapability`)._
 
 ---
 
-## ConstructionLineage
+## Open authority (OpenHere_Σ, OpenCapability, Visible_Σ)
 
-Context carried alongside a PatternValue for deciding whether the value is
-still within its construction window. It is preserved by value clone and by
-construction-transparent `compile` frames, but it is neither source-place
-identity nor part of `Norm(value)`.
+Whether a `PatternValue` may be structurally modified in the current evaluation
+context is decided by two independent facts:
 
 ```text
-Open_Γ(v) = Open(ConstructionLineage(v), CompileTimeStack_Γ)
+Anchor(v) = ⟨PatternRoot(v), Navigation(v)⟩
+
+OpenCapability(v)   -- construction window still open (value attribute)
+Visible_Σ(v)        -- current frame can obtain v
+OpenHere_Σ(v)
+  iff OpenCapability(v)
+  ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
 ```
 
-Openness is a static value property: `Open_Γ(v)` alone does not mean the
+`OpenCapability` is a value attribute: the construction window has not been
+permanently closed. `OpenHere_Σ` adds the contextual question: does the current
+evaluation stack hold construction authority over this value's anchor?
+`Visible_Σ` captures a third state: the value exists and its capability may
+still be open, but the current frame cannot obtain it (e.g. shadowed by a
+deeper meta invocation). Clone, value copy, and construction-transparent
+`compile` frames preserve the anchor and capability; they do not preserve or
+manufacture source-place identity. `Anchor(v) ∉ Norm(v)`.
+
+Openness is a static value property: `OpenHere_Σ(v)` alone does not mean the
 current computation flow re-traverses `v`. Live reentry additionally requires
 an active evaluation edge — `OpenEvalReentry_κ(v)` — whose criteria are
 canonical in
 [`../design/symbol-world/type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md)
 §2.1.1.
 
-An ordinary meta invocation forms a new boundary. Non-meta construction follows
-its stable lexical-owner interval and freezes on the specified semantic-use,
-meta-argument, residual-runtime/control, or owner-exit events. This judgment is
-orthogonal to place writability and borrow lifetime.
+The state transition of `OpenCapability` is one-way: once closed
+(`OpenCapability(v) := false`), it is never retracted. An ordinary meta
+invocation forms a new boundary. Non-meta construction follows its stable
+lexical-owner interval and closes `OpenCapability` on the specified
+semantic-use, meta-argument, residual-runtime/control, or owner-exit events
+(§12.1.2 of the canonical owner). This judgment is orthogonal to place
+writability and borrow lifetime.
 
-_See also: `Open_Γ`, `extend`, `type ref`._
+_See also: `OpenHere_Σ`, `OpenCapability`, `extend`, `type ref`, `GenerationRegime`._
 
 ---
 
@@ -1103,7 +1119,7 @@ shape, and ordering — is deliberately not frozen here. See
 [`lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 §1–§2.
 
-_See also: Borrow view, ConstructionLineage, Lifetime Policy Boundary, `type ref`._
+_See also: Borrow view, Open authority, Lifetime Policy Boundary, `type ref`._
 
 ---
 
@@ -1253,12 +1269,14 @@ Root(tau_new) = Root(tau_old)
 
 `extend` accepts the whole complete type closure, never a `type ref` or
 `type share`. It checks
-`Open_Γ(old)` from `ConstructionLineage(old)` and the current compile-time stack,
-creates no root, modifies no place, and preserves the input root. Failure is
+`OpenHere_Σ(old)` from `Anchor(old)` and `CurrentAuthority(Σ)`, and the result
+independently satisfies `WellFormedTau(τ')` (history-free; never inherited
+along a modification chain). It creates no root, modifies no place, and
+preserves the input root. Failure is
 total: no partial value, write, or rollback. Equal roots do not imply equal
 closures or equal callspaces; older copies retain `V_old`.
 
-_See also: `inject`, `Open_Γ`, ConstructionLineage._
+_See also: `inject`, `OpenHere_Σ`, Open authority, `WellFormedTau`._
 
 ---
 
@@ -1278,15 +1296,16 @@ return t_ref
 Legality is the conjunction of two independent checks:
 
 ```text
-Open_Γ(old)
+OpenHere_Σ(old)
 Writable(Target(t_ref)) ∧ BorrowValid_Γ(t_ref)
 ```
 
 Neither check proves the other. In particular, a `type ref` does not prove that
-its current pointee is open. Pure value code calls `extend`; `inject` is only the
-read–extend–write wrapper.
+its current pointee is open. The final `Write` is ordinary slot replacement,
+not a `τ -> τ'` construction transformation. Pure value code calls `extend`;
+`inject` is only the read–extend–write wrapper.
 
-_See also: `extend`, `Open_Γ`, Meta-function, Borrow view, `type ref`._
+_See also: `extend`, `OpenHere_Σ`, Open authority, Meta-function, Borrow view, `type ref`._
 
 ---
 
@@ -1340,7 +1359,7 @@ Borrow type constructors are universe fixed points:
 (`type ref@ = type ref`, `type share@ = type share`) are retired; `@` yields a
 lifetime value uniformly and is not a borrow constructor.
 
-_See also: `@`, `extend`, `inject`, Borrow view, Escape check, ConstructionLineage._
+_See also: `@`, `extend`, `inject`, Borrow view, Escape check, Open authority._
 
 ---
 

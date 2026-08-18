@@ -175,7 +175,7 @@ CreateClassifier_Gamma(
   F,
   DirectClassifierHome = TypeMemberScope(Q)
 )
-  => CurrentConstructionAuthority_Gamma(Q)
+  => CurrentAuthority_Γ(Q)
 ```
 
 `DirectClassifierHome` is fixed when the classifier is created, but formation
@@ -761,6 +761,7 @@ WellFormedMetaCall_Gamma(F, args)
   <=> F in OrdinaryMetaFunction
    and Admissible_Gamma(F, args)
    and forall a in Canonicalize(args): GlobalKeyable_Gamma(a)
+   and forall a in Canonicalize(args): MetaArgumentAdmissible(a)
 
 WellFormedMetaCall_Gamma(F, args)
   => M = MetaInstance(F, Canonicalize(args))
@@ -880,7 +881,7 @@ The returned view is subject to the ordinary lifetime/capability condition of
 §5.5, evaluated at the receiving position. Its validity is independent of
 whether the then-current pointee is Open. A return is rejected only when the
 ordinary borrow escape check fails; a valid returned ref may later be unable to
-`inject` because `Open_Γ(Read(ref))` is false. Escape checking belongs to
+`inject` because `OpenHere_Σ(Read(ref))` is false. Escape checking belongs to
 [`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
 §3. The body may weaken before returning when write capability is unnecessary:
 
@@ -900,23 +901,24 @@ DefinitionLexicalContext(F)
     lexically declared identity
 
 CallerConstructionContext
-  — the current compile-time stack used with each value's ConstructionLineage
+  — the current evaluation stack used with each value's `Anchor` and
+    `OpenCapability`
 ```
 
 The definition context decides names and lexical owners. The caller context is
-used only by operations that query `Open_Γ(v)`: they compare the value's
-`ConstructionLineage` with the current compile-time stack (§12.1.1). Neither
+used only by operations that query `OpenHere_Σ(v)`: they compare the value's
+`Anchor` and `OpenCapability` with `CurrentAuthority(Σ)` (§12.1.1). Neither
 context substitutes for the other.
 
 Passing through a `compile` call, cloning, selecting, or composing a value
-preserves its canonical value and `ConstructionLineage` while discarding source
-place identity. A compile frame is transparent to the Open stack walk, so an
-Open value remains Open through any number of compile/transparent-intrinsic
+preserves its canonical value and `Anchor`/`OpenCapability` while discarding source
+place identity. A compile frame is transparent to the Open-authority stack walk, so an
+OpenHere value remains OpenHere through any number of compile/transparent-intrinsic
 frames unless another semantic boundary closes its construction interval:
 
 ```text
-Lineage(Clone(Read(q))) = Lineage(Read(q))
-Open_{Γ + compile-frame}(v) = Open_Γ(v)
+Anchor(Clone(Read(q))) = Anchor(Read(q))
+OpenHere_{Σ + compile-frame}(v) = OpenHere_Σ(v)
 ```
 
 The formal-parameter case is ordinary value transport:
@@ -928,12 +930,12 @@ let extend =
     };
 ```
 
-The call is applicable only when the transported value is Open in the caller's
+The call is applicable only when the transported value is open in the caller's
 stack:
 
 ```text
-Requires(extend) = Open_Γ(t)
-Γ_caller ⊨ Open(Lineage(t), CompileTimeStack_caller)
+Requires(extend) = OpenHere_Σ(t)
+Γ_caller ⊨ OpenCapability(t) ∧ AuthorityMatches(Anchor(t), CurrentAuthority(Σ_caller))
 ```
 
 A `type ref` parameter proves no such fact. A body that performs place-level
@@ -948,20 +950,20 @@ let extend_ref =
 ```
 
 ```text
-Requires(extend_ref) = Open_Γ(Read(t)) ∧ Writable_Γ(Target(t))
+Requires(extend_ref) = OpenHere_Σ(Read(t)) ∧ Writable_Γ(Target(t))
 ```
 
-Hence compile context sensitivity is value-lineage sensitivity, never a hidden
-capability on `type ref`:
+Hence compile context sensitivity is construction-authority sensitivity, never
+a hidden capability on `type ref`:
 
 ```text
 a compile evaluation depends on the caller's Open window
-  exactly for operations that query Open_Γ on a transported PatternValue
+  exactly for operations that query OpenHere_Σ on a transported PatternValue
 ```
 
 not as a general property of every `compile` call, and not decided by whether a
 `type` value happens to be a formal parameter. Caches and `Requires` summaries
-track `ConstructionLineage` separately from canonical value identity and recheck
+track `Anchor` and `OpenCapability` separately from canonical value identity and recheck
 applicability in the caller stack.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
@@ -975,6 +977,24 @@ let identity = (self, t: type): compile -> r: type => {
     r;
 };
 ```
+
+The opposite boundary: `compile` has no responsibility to establish a new
+globally stable `MetaInstance` anchor, so it may transport local or open
+PatternValues as ordinary values:
+
+```text
+compile computation   may transport open/local PatternValues
+meta invocation       requires globally survivable inputs (§4.3.3)
+
+transport of an open PatternValue
+  ≠
+evaluation reentry of that PatternValue
+```
+
+Transporting an open PatternValue through `compile` remains subject to
+`NoOpenEvaluationReentry` (PR99; `OpenEvalReentry_κ`, type-values §2.1.1):
+the value may be passed, but no active evaluation edge may be re-entered into
+it. This is the complement of §4.3.3's argument boundary.
 
 When a `compile` body uses a local `struct`, ordinary function-object scope
 rules apply. Its ambient lexical/Pattern owner is the current
@@ -1194,7 +1214,7 @@ Formation additionally requires:
 
 ```text
 for every canonical argument a:
-  GlobalKeyable(a)
+  GlobalKeyable(a) ∧ MetaArgumentAdmissible(a)
 
 OwnedDependency(a) != GlobalKeyDependency(a)
 
@@ -1206,6 +1226,29 @@ GlobalKeyable_Γ(a)
         AlreadyGlobalStable_Γ(d)
       | AlreadyPromoted_Γ(d)
 ```
+
+A meta invocation is a new stable MetaInstance construction boundary, so its
+arguments must carry no PatternValue dependency that cannot survive globally:
+
+```text
+MetaArgumentAdmissible(a)
+  => GlobalSurvivable(a)
+
+GlobalSurvivable(a)
+  <=> every dependency d reachable from a is globally survivable:
+       direct PatternValue dependency
+     | PatternValue held inside a carried type (τ)
+     | dependency reachable through a type ref / type share target
+     | nested dependency in Val1 / Val2
+     | other escaping semantic dependency
+
+GlobalSurvivable(a) ≠ GloballyVisible(a)
+```
+
+A value may survive globally without being name-visible everywhere, and a
+PatternValue visible in the current lexical scope whose lifetime ends with the
+current meta invocation is **not** admissible as an argument of a deeper meta
+invocation.
 
 A binder local to a meta invocation is not rejected merely for being local: if
 it holds a canonical value whose dependencies are already global-keyable, that
@@ -2303,8 +2346,8 @@ source-place, and reverse-`AsType` routes are not deferred alternatives.
 Construction state propagates only along owned field relations:
 
 ```text
-Open_Γ(child)    => Open_Γ(parent)
-Frozen(parent)   => Frozen(child)
+OpenHere_Σ(child)       => OpenHere_Σ(parent)
+OpenCapability(parent) := false  => OpenCapability(child) := false
 ```
 
 Borrow edges are horizontal and do not participate. Mutability is independent:
@@ -2444,31 +2487,32 @@ Because `extend` writes nothing, a failed `extend` has nothing to undo. There is
 no half-extended pattern, no compensating action, and no rollback protocol. A
 failed call simply produces no value.
 
-#### 8.2.2 `extend` applicability is a value-lineage judgment
+#### 8.2.2 `extend` applicability is a construction-authority judgment
 
-The primitive checks the old value in the current compile-time context:
+The primitive checks the old value in the current evaluation context:
 
 ```text
 Γ ⊢ old : type
-Open_Γ(old)
+OpenHere_Σ(old)
 ParentToChild(old, Δ)
 NoPatternConflict(old, Δ)
 Canonicalizable(result)
 --------------------------------
 Γ ⊢ (old, Δ) |> extend : type
+  and WellFormedTau(result)     -- independently checked on the result structure
 ```
 
-`Open_Γ(old)` is derived from `ConstructionLineage(old)` and the current
-compile-time stack (§12.1.1), not from a carrier place. Clone/read preserves
-lineage:
+`OpenHere_Σ(old)` is derived from `Anchor(old)` and `CurrentAuthority(Σ)`
+(§12.1.1), not from a carrier place. Clone/read preserves the anchor:
 
 ```text
-Lineage(Clone(old)) = Lineage(old)
+Anchor(Clone(old)) = Anchor(old)
 ```
 
-Consequently an Open value with no writable carrier may be extended and bound
-elsewhere, while a frozen value read through a writable `type ref` is rejected.
-There are deliberately no `type ref` or `type share` overloads for `extend`.
+Consequently an `OpenHere` value with no writable carrier may be extended and
+bound elsewhere, while a closed-capability value read through a writable
+`type ref` is rejected. There are deliberately no `type ref` or `type share`
+overloads for `extend`.
 
 A navigated `let child::target = result;` is **not** a structural installer:
 ordinary navigated `let` creates a Val2 associated member and never substitutes
@@ -2481,26 +2525,35 @@ for `extend` or for the write-back performed by `inject`.
 ```text
 inject : type ref × StructLikeMaterial ⇀ type ref
 
-Inject_Γ(r, Δ):
+Inject_Σ(r, Δ):
   require Writable_Γ(Target(r))
   old := Clone(Read(r))
-  new := Extend_Γ(old, Δ)       -- independently requires Open_Γ(old)
-  Write(Target(r), new)           -- installs the complete new snapshot
+  new := Extend_Σ(old, Δ)       -- independently requires OpenHere_Σ(old)
+  Write(Target(r), new)           -- ordinary slot replacement, not construction
   return r
 ```
 
 The two requirements are deliberately independent:
 
 ```text
-CanInject_Γ(r, Δ)
+CanInject_Σ(r, Δ)
   = Writable_Γ(Target(r))
-  ∧ CanExtend_Γ(Clone(Read(r)), Δ)
+  ∧ CanExtend_Σ(Clone(Read(r)), Δ)
 ```
 
+`inject` is the composition `clone/read old τ → Extend → ordinary Write back`.
+The step that depends on construction authority is `Extend`; the final
+`Write` is an ordinary slot replacement (`slot := x'`) that needs only
+`Writable_Γ(p)` and the slot's local constraints. Ordinary slot replacement
+is **not** a `τ -> τ'` construction transformation: it does not require
+formation history, and it does not automatically acquire `extend` semantics
+just because the carrier is a type value.
+
 `r : type ref` proves target/lifetime/capability only. It never proves the
-current pointee Open. A frozen pointee may therefore be replaced wholesale by
-ordinary assignment through a writable ref, while `inject(r, Δ)` fails before
-the write because its `extend` step is inadmissible.
+current pointee satisfies `OpenHere_Σ`. A closed-capability pointee may
+therefore be replaced wholesale by ordinary assignment through a writable
+ref, while `inject(r, Δ)` fails before the write because its `extend` step is
+inadmissible.
 
 Failure before `Write` leaves the target unchanged. `type share` has no
 `inject` candidate because it is not writable; by-value `type` has no `inject`
@@ -2626,7 +2679,7 @@ It does not:
 - delete an existing child;
 - implicitly reroot an arbitrary external pattern value;
 - mutate the input value or the installed namespace graph;
-- extend a value that is not `Open_Γ` in the calling context;
+- extend a value that is not `OpenHere_Σ` in the calling context;
 - grant a general macro or arbitrary AST-rewrite capability.
 
 `inject` adds only the ordinary write to an already existing target; it does not
@@ -3264,7 +3317,7 @@ resolve source Symbol
 ```
 
 This expectation is exercised by `struct` inline construction elements and
-`extend`. It requires the input PatternValue to be `Open_Γ`; `inject` reaches
+`extend`. It requires the input PatternValue to satisfy `OpenHere_Σ`; `inject` reaches
 the same rule only by reading its ref and invoking `extend`.
 
 Under the current `NamespaceValueMember` implementation expectation, the source
@@ -3388,9 +3441,11 @@ Symbol-to-type projection and is not this operation. The ordinary associated ins
 operation (type-values §2.2, §7.1): it derives a fresh snapshot
 `tau' = <Q', V_τ>` from the carrier's current `tau` and updates only `T`'s
 carrier-local `Val2` observation; it neither changes the copied snapshot in
-`U`, changes `V_τ`, nor registers a structural child. `CoreOnFormationLine(w,
-Q')` holds: `Q'` is on the same `FormationLine(w, Q_0, V_τ)` as the original
-`Q`, so `CompleteType(tau')` is derivable without a new formation event. Complete type observation includes the resulting core observation when
+`U`, changes `V_τ`, nor registers a structural child. The fresh snapshot
+`tau' = <Q', V_τ>` is checked independently: `WellFormedTau(tau')` is a
+structural judgment (`Q'` is a well-formed pure Object obtained by the
+permitted slot update, and `V_τ` is unchanged), so `CompleteType(tau')` is
+derivable without any formation-history reasoning. Complete type observation includes the resulting core observation when
 identity is demanded. Generated
 construction-time TypeMembers are already closed into `V_τ`; they are never
 recovered through fallback to a mutable defining Symbol or canonical root.
@@ -3445,77 +3500,168 @@ work. Bare `let f::U` is not shorthand for obtaining the type-level place.
 The two operations may target the same still-open construction, but one source
 value is not simultaneously interpreted under both judgments.
 
-#### 12.1.1 Open is construction lineage relative to the compile-time stack
+#### 12.1.1 Open authority is stack-relative
 
-Every constructed PatternValue has a `ConstructionLineage` separate from its
-canonical contents and from every place that may carry it:
-
-```text
-Open_Γ(v)
-  = Open(ConstructionLineage(v), CompileTimeStack_Γ)
-
-ConstructionLineage(v) ∉ Norm(v)
-CarrierPlace(v)         ∉ ConstructionLineage(v)
-```
-
-Lineage records the construction owner/interval under which the value was
-formed and whether that owned line has sealed. Clone, value copy, and compile
-transport preserve it; they do not preserve or manufacture source place
-identity:
+Every constructed PatternValue carries a structural anchor and a remaining
+open-capability flag. Whether that capability may be exercised in the current
+evaluation context is a separate, dynamic judgment:
 
 ```text
-Lineage(Clone(v)) = Lineage(v)
-Lineage(let-copy(v)) = Lineage(v)
+Anchor(v) = ⟨PatternRoot(v), Navigation(v)⟩
+
+OpenCapability(v)          -- construction window still open (value attribute)
+Visible_Σ(v)               -- current frame can obtain v
+OpenHere_Σ(v)
+  iff OpenCapability(v)
+  ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
+
+Anchor(v) ∉ Norm(v)
+CarrierPlace(v) ∉ Anchor(v)
 ```
 
-When checking in a meta context, walk down the current compile-time stack while
-ignoring `compile` and transparent construction-intrinsic frames. Let `M` be the
-first ordinary meta invocation frame found:
+`OpenCapability` is a property of the value itself: its construction window
+has not been permanently closed. `OpenHere_Σ` adds the contextual question:
+does the current evaluation stack hold construction authority over this
+value's anchor? `Visible_Σ` adds a third state: the value exists and its
+capability may still be open, but the current frame cannot obtain it (for
+example, it is shadowed by a deeper meta invocation — see below).
+
+Clone, value copy, and compile transport preserve the anchor and capability;
+they do not preserve or manufacture source-place identity:
 
 ```text
-Open_Γ(v) <=> DominatedBy(Lineage(v), M) ∧ not Sealed(Lineage(v))
+Anchor(Clone(v))    = Anchor(v)
+Anchor(let-copy(v)) = Anchor(v)
 ```
 
-In a non-meta context, the corresponding walk follows the stable lexical owner
-chain and requires the originating construction interval still to be active and
-unfrozen. These are different closing disciplines over the same relation, not
-different notions of place capability.
+The current construction authority is computed from the evaluation stack:
+
+```text
+Frame = ⟨ CallableRoot, MetaPartnerRoot?, ActiveInlineClosurePath ⟩
+
+CurrentAuthority(Σ)
+  -- derived from the frame stack:
+     meta context      : NearestMetaRoot(Σ)
+     non-meta context  : ⟨CallableRoot, MetaPartnerRoot?, ActiveInlineClosurePath⟩
+
+CurrentAuthority_Γ     -- typing-context form of the same judgment, unifying
+                          the former `CurrentConstructionAuthority_Gamma`
+```
+
+For a **meta** context, walk the compile-time stack in reverse, skipping
+`compile` and transparent construction-intrinsic frames. Let `M` be the first
+ordinary meta invocation frame found; `NearestMetaRoot(Σ)` is its MetaInstance
+root:
+
+```text
+OpenHere_Σ(v)
+  iff OpenCapability(v)
+  ∧ RootOf(Anchor(v)) = NearestMetaRoot(Σ)
+```
+
+Meta invocation is naturally masking. If `M₀ └─ M₁` and the current context
+is `M₁`, a value anchored on `M₀` satisfies:
+
+```text
+OpenCapability(v) = true   -- window still open
+Visible_Σ(v)      = false  -- not obtainable in M₁'s frame
+OpenHere_Σ(v)     = false  -- M₁ lacks authority over M₀'s anchor
+```
+
+The value may persist in `M₀`'s suspended frame. It cannot be accessed or
+passed as an argument in `M₁`. When the stack returns to `M₀`, the value
+becomes visible and `OpenHere` again — this is **not** a reopen. True close is
+the permanent, irreversible transition:
+
+```text
+OpenCapability(v) := false   -- the only real close; never retracted
+```
+
+For a **non-meta** context, `CurrentAuthority(Σ)` is determined by the
+`CallableRoot`, the `MetaPartnerRoot` (if the callable is generic and has a
+compile partner providing the stable Pattern root), and the
+`ActiveInlineClosurePath` — the current navigation level within the in-place
+closure. These are different authority computations over the same
+`OpenHere_Σ` judgment, not different notions of place capability.
 
 The required independence is explicit:
 
 ```text
-Writable_Γ(q) does not imply Open_Γ(Read(q))
-Open_Γ(v)     does not imply Writable_Γ(Carrier(v))
-Γ ⊢ r : type ref does not imply Open_Γ(Read(r))
+Writable_Γ(q)            does not imply OpenHere_Σ(Read(q))
+OpenHere_Σ(v)            does not imply Writable_Γ(Carrier(v))
+Γ ⊢ r : type ref         does not imply OpenHere_Σ(Read(r))
+OpenCapability(v)        does not imply Visible_Σ(v)
+Visible_Σ(v)             does not imply OpenHere_Σ(v)
 ```
 
-The state transition is one-way:
+The state transition of `OpenCapability` is one-way:
 
 ```text
-Open -> Frozen
-Frozen -/> Open
+OpenCapability(v) := false   -- irreversible
 ```
 
-Nothing reopens frozen material. `extend`/`inject` do not reopen it (§8.2), a borrow
-view does not reopen it, and re-navigating to the same object from a new context
-does not reopen it.
+Nothing reopens closed material. `extend`/`inject` do not reopen it (§8.2), a
+borrow view does not reopen it, and re-navigating to the same object from a
+new context does not reopen it.
 
-#### 12.1.2 Freezing events of an ordinary construction
+#### 12.1.2 GenerationRegime and closing events
 
-In an **ordinary, non-meta** construction context, the following events freeze the
-material being built:
+Every `PatternValue` carries a small immutable horizontal attribute:
 
 ```text
-UseForVal1(x)                                    -> Frozen
-x used as a meta argument                        -> Frozen
-x entering a global normalized structure         -> Frozen
-x in Dependencies(c), for NonMetaStaticControl(c) -> Frozen
-x in LiveAcross(c), for ResidualRuntimeFork(c)    -> Frozen
+GenerationRegime(v) ∈ { MetaGenerated, NonMetaGenerated }
+```
+
+`GenerationRegime(v)` is **not** part of the Object structure
+`Object = ⟨Val1?, P, Val2⟩`, is not part of `Norm(v)`, and does not
+participate in canonical Pattern identity or τ normalization. It is an
+implementation attribute used only to decide how `OpenCapability(v)` may be
+closed.
+
+- **MetaGenerated.** A value produced inside a meta body has no birthright
+  global lifetime. It can be used freely within the same meta computation, and
+  it may be promoted into a stable result only when the MetaInstance seals and
+  owns/copies the material it owns. The original local value is not magically
+  prolonged: persistence happens by promoting the MetaInstance's stable value,
+  never by extending the local value's lifetime.
+
+- **NonMetaGenerated.** A value produced in an ordinary (non-meta) construction
+  context is born both globally survivable and open-capable:
+  `GlobalSurvivable(v) ∧ OpenCapability(v)` hold from creation. Its
+  `OpenCapability` is closed permanently when one of the following events
+  occurs **at the generation level** of the value:
+
+```text
+CloseEvent(v, e, Σ)
+  iff GenerationRegime(v) = NonMetaGenerated
+  ∧ AtGenerationLevel(v, e, Σ)
+  ∧ Kind(e) ∈ {
+       UseForVal1,           -- x is installed as Val1 of another object
+       UseAsMetaArgument,      -- x is passed as a meta-call argument
+       ControlFlowMerge,     -- x participates in a static join/loop-carried state
+       ControlFlowSplit      -- x is carried across a residual-runtime fork
+     }
+```
+
+These events close `OpenCapability(v)` irreversibly. Passing the value into a
+deeper call frame does **not** automatically close it; only an event at the
+value's own generation level does. Likewise, a value's visibility (`Visible_Σ`)
+may be lost because of stack masking without its `OpenCapability` being
+touched.
+
+In an ordinary, non-meta construction context the concrete closing events are:
+
+```text
+UseForVal1(x)                                    -> close OpenCapability
+x used as a meta argument                        -> close OpenCapability
+x entering a global normalized structure         -> close OpenCapability
+x in Dependencies(c), for NonMetaStaticControl(c) -> close OpenCapability
+x in LiveAcross(c), for ResidualRuntimeFork(c)    -> close OpenCapability
 leaving the construction interval of the
-  in-place closure that owns x                   -> Frozen
+  in-place closure that owns x                   -> close OpenCapability
 ```
 
-Observation is not a freezing event: reading `P` or `Val2`, extending a child
+Observation is not a closing event: reading `P` or `Val2`, extending a child
 pattern, and contributing an ordinary Val2 member of another type all leave the
 material open.
 
@@ -3525,43 +3671,45 @@ For static control, dependency and liveness are different facts:
 Dependencies(c) != LiveAcross(c)
 
 NonMetaStaticControl(c)
-  => Freeze*(Dependencies(c))
+  => CloseEvent*(Dependencies(c))
 ```
 
 `Dependencies(c)` contains the open Pattern values actually read by the
 predicate or structural selection, branch/iteration versions whose identity
 must be unified at a join, and loop-carried construction state that feeds a
 later static decision. A value that is merely live across an unrelated static
-branch, join, or loop is not frozen. In contrast, a residual-runtime fork loses
+branch, join, or loop is not closed. In contrast, a residual-runtime fork loses
 the single known static construction path, so open values carried across that
-fork are frozen even when they did not determine its predicate. Leaving the
+fork are closed even when they did not determine its predicate. Leaving the
 ordinary owner interval remains an independent closing event.
 
 #### 12.1.3 Meta construction is transparent but meta-local lifetime is not global
 
-The list in §12.1.2 is scoped to ordinary constructions. Inside a meta body the
-same events do **not** freeze the material, because the construction anchor is the
-meta instance itself (§4.3.1):
+The closing events of §12.1.2 are scoped to `NonMetaGenerated` values. Inside a
+meta body, material is `MetaGenerated`, and the same events do **not** close
+its `OpenCapability`, because the construction anchor is the meta instance
+itself (§4.3.1):
 
 ```text
-inside M:  UseForVal1(x) does not freeze x
-           using x as an attempted meta argument does not freeze x
-           entering global-normalization machinery does not freeze x
-           static control flow does not freeze x
-           entering an in-place closure written by M does not freeze x
+inside M (MetaGenerated material):
+  UseForVal1(x)                     does not close OpenCapability(x)
+  using x as a meta argument        does not close OpenCapability(x)
+  entering global-normalization     does not close OpenCapability(x)
+  static control flow               does not close OpenCapability(x)
+  entering an in-place closure of M does not close OpenCapability(x)
 ```
 
-The only construction-closing event for material owned by the meta construction
+The only capability-closing event for material owned by the meta construction
 is its return-stage seal (§4.3.2). A fresh meta-local PatternValue nevertheless
 has `Life = MetaInvocation(M)`. Attempting to pass it to another ordinary meta
-does not freeze or promote it; candidate formation rejects the call when the
+does not close or promote it; candidate formation rejects the call when the
 canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). `compile` and
 transparent construction intrinsics may consume it because they create no new
 MetaInstance key.
 
 At seal, only the `OwnedClosure` of the returned Symbol's unique pure role member, if
 present, is promoted. Other local PatternValues expire with the invocation. Consequently
-`UseForVal1 -> Frozen` must not be read as a universal invariant, while “meta
+`CloseEvent(v, UseForVal1, Σ)` must not be read as a universal invariant, while “meta
 body is transparent” must not be read as implicit global promotion.
 
 #### 12.1.4 The apparent self-typed intersection
@@ -3574,7 +3722,8 @@ extension is attempted from an ordinary context:
 ```text
 construct RHS value of target type
   -> UseForVal1(target)
-  -> target is no longer Open_Γ
+  -> CloseEvent(target, UseForVal1, Σ)
+  -> target is no longer OpenHere_Σ
   -> attempt to extend target
   -> no applicable overload
 ```
@@ -3586,7 +3735,7 @@ as ordinary Val2 while the target is open; its own Pattern and Val2 remain
 attached to that value.
 
 In a meta body the same sequence is simply legal, because the first step did not
-freeze anything.
+close the capability (the material is `MetaGenerated`).
 
 The empty destination `()` is the special call-entry leaf rather than a normal
 value-member name. Inside construction of `T`, `let () = impl` contributes one
@@ -3755,7 +3904,7 @@ This substrate does **not** implement:
 - ordinary Symbol as the public meta result (the current
   `SymbolConstruction` carrier is transitional);
 - pure value `extend`;
-- place-level `inject` with independent `Open_Γ(Read(ref))` and writability;
+- place-level `inject` with independent `OpenHere_Σ(Read(ref))` and writability;
 - contribution-expectation-driven pattern-child versus namespace-value cache
   selection;
 - an explicit sum construction/extension API;
@@ -3832,7 +3981,7 @@ The ordering dependency is a build-order fact, not a semantic condition:
 
 ```text
 extend is a pure value function      -- settled (§8.2)
-extend needs Open_Γ(old), not a place -- settled (§8.2.2)
+extend needs OpenHere_Σ(old), not a place -- settled (§8.2.2)
 inject needs a writable type ref     -- settled (§8.2.3)
 inject = read + extend + write       -- settled (§8.2.3)
 ordinary `=` is not yet implemented  -- shared implementation debt
@@ -3851,7 +4000,7 @@ The consequences are:
 
 Remaining engineering questions in this area are about representation, not about
 meaning: the exact ordinary write algebra for the optional Q member and val siblings
-(§13), and how ConstructionLineage/stack applicability is tracked efficiently
+(§13), and how Anchor/OpenCapability/stack applicability is tracked efficiently
 without entering canonical value identity.
 
 Until those objects exist, the current attachment registry is useful substrate,

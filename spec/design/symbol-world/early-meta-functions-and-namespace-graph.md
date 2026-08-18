@@ -1016,8 +1016,8 @@ inside formal `struct`/`extend` or through `inject`.
   AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
-- Pure `extend(type, material)` adds direct children only when the value's
-  `ConstructionLineage` is Open in the current stack. `inject(type ref,
+- Pure `extend(type, material)` adds direct children only when the value
+  satisfies `OpenHere_Σ` in the current stack. `inject(type ref,
   material)` is read--extend--write and additionally requires the target place
   writable. A ref proves neither Open nor promotion, and there is no
   construction-handle rank.

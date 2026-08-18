@@ -615,11 +615,21 @@ Core(tau)      = Q
 CallSpace(tau) = V_τ
 
 WellFormedTau(tau)
-  iff exists a formation witness w:
-      FormationLine(w, Q_0, V_τ)
-      and CoreOnFormationLine(w, Q)
-      -- closure/formation/backref invariants; the judgment that the
-         type-value package tau exists
+  iff tau = <Q, V_τ>
+  and Q is a well-formed pure Object
+  and V_τ is a well-formed TypeMember set
+      (each F in V_τ satisfies TypeMember_Q(F))
+  and binder/backref invariants hold
+      (BoundRef(alpha) notin Children_owned)
+  and Pattern authority over Q is consistent with V_τ
+  -- a structural judgment over the current closure value, with no
+     dependence on how tau was produced
+
+WellFormedTau is history-free:
+  Norm(τ₁) = Norm(τ₂)
+  ⇒ WellFormedTau(τ₁) ↔ WellFormedTau(τ₂)
+      -- structurally identical closures never differ in well-formedness
+         because of construction history
 
 TypeValueRole(tau)
   iff WellFormedTau(tau)
@@ -643,24 +653,12 @@ TypeClosure(tau) => NamespaceClosure(tau)
 NamespaceOnly(tau)  iff NamespaceClosure(tau) and not TypeClosure(tau)
       -- equivalently: NamespaceRole(Q) and not TypeRole(Q)
 
-FormationLine(w, Q_0, V_τ)
-  // w is the formation event that created Q_0 and fixed V_τ
-  iff w is a formation event for Q_0
-  and V_τ is the TypeMember set placed into tau at w
-      (each F in V_τ satisfies TypeMember_{Q_0}(F) at formation;
-       members created later under the same Q_0 never enter V_τ)
-
-CoreOnFormationLine(w, Q)
-  // Q is Q_0 itself, or a core derived from Q_0 by zero or more
-  // permitted Associate* operations on the same formation line
-  iff Q = Q_0
-  or exists Q_prev: CoreOnFormationLine(w, Q_prev)
-      and Q = AssociateCore(Q_prev, selector, value)
-
 CallSpace(tau) = V_τ
-  // Intrinsic property of the closure, fixed at formation.
-  // It does not depend on the current host Symbol, source binding,
-  // carrier Symbol, HomeSymbol, or any other provenance recovery.
+  // Intrinsic property of the closure: the TypeMember set captured in this
+  // closure value. It does not depend on the current host Symbol, source
+  // binding, carrier Symbol, HomeSymbol, or any other provenance recovery.
+  // Members created later under the same Q never retroactively enter an
+  // existing snapshot; a copied or extracted tau keeps the same V_τ.
 ```
 
 The closure value is first-class: `copy(τ)`, `extract(τ)`, and ordinary
@@ -674,7 +672,9 @@ RemoveSibling(<tau, V_S>, F) = <tau, V_S \ {F}>
 They do not modify the `V_τ` already encapsulated in `τ`; `-=`, sibling
 removal, or any ordinary mutation of `V_S` cannot reach into the closure.
 Changing `V_τ` requires a semantic operation that produces a new type value
-(principally `extend`, which establishes a new `FormationLine`).
+(principally `extend`; the legality of that step is the contextual judgment
+`AdmissibleExtend_Γ`, and the result satisfies `WellFormedTau(τ')`
+independently — never by inheritance along a formation history).
 
 When a Symbol carries both `V_S` and `τ`,
 
@@ -713,21 +713,22 @@ The distinction is a judgment over `Q`'s Pattern `P` (imported from the
 Pattern relational semantics), **never** `count(pure members in V_S)`. The
 `NamespaceClosure`/`TypeClosure` split above follows the same core judgment.
 
-A derived snapshot `tau' = Associate(tau, f, v)` is a well-formed type value
-on the same formation line: `WellFormedTau(tau')` holds because
-`CoreOnFormationLine(w, Q')` holds — `Q'` is obtained from `Q_0` by permitted
-`Associate*` — while `FormationLine(w, Q_0, V_τ)` and `V_τ` are unchanged.
-`Associate` is not a new formation event, and the ordinary
-associated-installation `Associate` preserves `TypeRole(Q)`, so
-`TypeValueRole(tau')` holds. Only structural transformations (`extend`) form a
-new `V_τ` and establish a new `FormationLine` with a fresh witness `w'`.
+A derived snapshot `tau' = Associate(tau, f, v)` is checked the same way as
+any closure: `WellFormedTau(tau')` is an independent structural judgment over
+`tau' = <Q', V_τ>` — `Q'` is a well-formed pure Object obtained from `Q` by a
+permitted slot update, and `V_τ` is unchanged. `Associate` is an ordinary
+non-structural snapshot update and preserves `TypeRole(Q)`, so
+`TypeValueRole(tau')` holds. Only structural transformations (`extend`)
+produce a new `V_τ'`; the resulting `τ'` satisfies `WellFormedTau(τ')` by its
+own structure, never by inheriting any formation history.
 
-`V_τ = CallSpace(tau)` is the callspace captured when the type value was
-formed: the direct TypeMember members placed into `tau` at that event
+`V_τ = CallSpace(tau)` is the callspace captured into the closure value: the
+direct TypeMember members placed into `tau` when it was produced
 (`TypeMember_Q`, symbol-first §2.1), not a later partition of a shared Symbol
-space and not a global function of the bare core `Q`. The witness `w` pins the
-snapshot to one formation event, so `WellFormedTau` / `TypeValueRole` are not
-global functions of the bare core `Q`. Members created under the same `Q` after formation never
+space and not a global function of the bare core `Q`. `V_τ` is part of the
+closure value itself — snapshot capture is intrinsic to `τ`, not a history
+judgment — so `WellFormedTau` / `TypeValueRole` are not global functions of
+the bare core `Q`. Members created under the same `Q` later never
 retroactively enter an existing snapshot, and a copied or extracted `tau`
 keeps its captured `V_τ`.
 
@@ -844,15 +845,24 @@ Val2(Q') = Val2(Q)[selector := value]
 
 V_τ unchanged
 no DirectPatternChild added
-CoreOnFormationLine(w, Q') holds
-  (same FormationLine(w, Q_0, V_τ); Q' is on the line)
+WellFormedTau(tau') checked independently on the result structure
+  (Q' well-formed; V_τ unchanged)
 ```
 
 The place-level operation is `old := Read(type_place); new := Associate(old, f,
 expr); Write(type_place, new)` (§7.1). The old `tau` copy is never mutated; the
-carrier receives a fresh snapshot that shares the same `V_τ` and the same
-formation line. Only `extend` establishes a new `FormationLine` with a fresh
-witness `w'` and a new `V_τ'`.
+carrier receives a fresh snapshot that shares the same `V_τ`. Only `extend`
+produces a new `V_τ'`, and the legality of that modification step is a
+contextual operation judgment, separate from well-formedness:
+
+```text
+AdmissibleExtend_Γ(τ, Δ, τ')
+=>
+WellFormedTau(τ')
+
+-- τ' is checked independently on its own structure; well-formedness
+   is never inherited along a modification chain
+```
 
 Pure extension may preserve a construction root while producing a different
 snapshot:
@@ -1853,7 +1863,7 @@ expression has a carrier slot that `t |> (type ref)` reaches explicitly as
 `type ref`; `@` yields a lifetime value and never forms a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1).
 Construction openness is not a capability carried by the closure or by a view;
-it is the separate `Open_Γ(value)` judgment over construction lineage (§6 and
+it is the separate `OpenHere_Σ(value)` judgment over open authority (§6 and
 the symbol-first construction document).
 
 `type ref` is the borrow-reference type produced by `type |> ref`; a value
@@ -1877,7 +1887,7 @@ A frozen type-valued slot may still be observed through `type ref`. If the view
 is writable, the complete current value may be replaced by any compatible,
 well-formed type value. What is forbidden is using the frozen pointee as the
 `old` input of `extend`; holding a reference does not change that value's
-construction lineage.
+anchor or open capability.
 
 The holdable interval is consequently its ordinary borrow-valid region, not an
 Open window. Weakening remains useful when write authority is unnecessary:
@@ -1890,13 +1900,12 @@ Reachability alone still forms no view, and neither reachability nor a view
 decides construction state:
 
 ```text
-GlobalLifetime(q) does not imply Open_Γ(Value(q))
-Γ ⊢ r : type ref does not imply Open_Γ(Read(r))
+GlobalLifetime(q) does not imply OpenHere_Σ(Value(q))
+Γ ⊢ r : type ref does not imply OpenHere_Σ(Read(r))
 ```
 
-`Open_Γ` is defined from `ConstructionLineage` and the current compile-time call
-stack in
-`symbol-first-meta-construction-and-pattern-injection.md` §12.
+`OpenHere_Σ` is defined from `Anchor`/`OpenCapability` and `CurrentAuthority(Σ)` in
+`symbol-first-meta-construction-and-pattern-injection.md` §12.1.1.
 
 `type share` is the deliberately weaker view. It may be stored or passed across
 any region admitted by the ordinary lifetime relation, but is not assignable and
@@ -1916,8 +1925,8 @@ error discovered after the operation has begun.
 The following obligations never collapse into one check:
 
 ```text
-extend on a type value      ->  Open_Γ(value)
-inject through a type ref   ->  Open_Γ(Read(ref)) and Writable(Target(ref))
+extend on a type value      ->  OpenHere_Σ(value)
+inject through a type ref   ->  OpenHere_Σ(Read(ref)) and Writable(Target(ref))
 returning / storing a ref   ->  ordinary lifetime/capability escape check
 ```
 
@@ -2031,17 +2040,18 @@ The checker owns three independent judgments:
 ```text
 Writable_Γ(q)
 CanCreateMember_Γ(parent_place, selector)
-Open_Γ(v)
+OpenHere_Σ(v)
 ```
 
 `Writable` is a place/borrow-capability question. `CanCreateMember` combines a
 stable parent place with construction-unit, lexical, policy, and freshness
-authority. `Open` is a value-lineage question used by structural `extend`.
+authority. `OpenHere_Σ` is an open-authority question used by structural
+`extend`.
 None is a spelling or proof of another:
 
 ```text
-Writable_Γ(q)           does not imply Open_Γ(Read(q))
-Open_Γ(v)               does not imply Writable_Γ(Carrier(v))
+Writable_Γ(q)           does not imply OpenHere_Σ(Read(q))
+OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
 CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
 ```
 
@@ -2054,8 +2064,8 @@ At minimum, ordinary place operations reject a core/external stable place, a
 place reached only through `share`, a place outside its borrow lifetime, or a
 place whose policy denies the action. Member creation additionally rejects a
 parent outside the current construction unit or an already-instantiated child.
-Structural `extend` independently rejects a value whose `ConstructionLineage`
-is not Open in the current compile-time stack.
+Structural `extend` independently rejects a value whose `OpenCapability` is
+closed or whose `Anchor` lacks authority in `CurrentAuthority(Σ)`.
 
 Value equality grants no write permission. Even when:
 
@@ -2386,8 +2396,8 @@ meaning.
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical
   symbol-first facet resolution, `PatternValue`, `compile` / `meta`, pattern
-  scopes, `struct`, pure `extend`, place-level `inject`, construction-lineage
-  `Open_Γ`, and the
+  scopes, `struct`, pure `extend`, place-level `inject`, open-authority
+  `OpenHere_Σ`, and the
   binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
   `TypeValueId` and place judgments.
 - `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of
