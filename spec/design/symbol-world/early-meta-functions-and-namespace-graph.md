@@ -145,16 +145,16 @@ change.
 New methods on `NamespaceGraphCapability`:
 
 - `resolve_with_policy(…, PolicyEnv)` — filters per-component and terminal
-  results; a symbol that does not satisfy the policy environment is treated as
+  results; a Symbol that does not satisfy the policy environment is treated as
   not found in that search root.
 - `resolve_str_with_policy(…, PolicyEnv)`
 - `resolve_type_object_with_policy(…, PolicyEnv)`
 - `resolve_meta_function_with_policy(…, PolicyEnv)`
 
 The compatibility APIs still filter before cross-root conflict reporting. This
-is a known substrate gap: canonical resolution must first produce a symbol and
+is a known substrate gap: canonical resolution must first produce a Symbol and
 only then expose its current-phase slices. A hidden runtime value must not erase
-the symbol or its compile Pattern facet.
+the Symbol or its compile Pattern facet.
 
 Policy filtering is **per-component**: every path component (including
 namespace intermediaries like `core`) is checked against the policy
@@ -547,7 +547,7 @@ let binding / namespace contribution -> NamespaceDelta atomic install
 ```
 
 The `compile` / ordinary-`meta` authority difference remains within the ordinary
-PatternValue domain and introduces no construction rank; see
+PatternValue domain and introduces no construction class; see
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
 §4.1.
 
@@ -781,7 +781,7 @@ has target semantics:
 | --- | --- | --- | --- |
 | `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> (type ref))` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
-| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is the formed complete type value whose core `Q_struct = Core(value(T))` satisfies `TypeRole`; the Symbol is created by this binding, not by `struct` | `let f::((T ref).type)` may create under that explicit type-member place |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is the formed complete type value whose core `Q_struct = Core(value(T))` satisfies `TypeRole`; the Symbol is created by this binding, not by `struct` | `let f::(T |> (type ref))` may create under that explicit type-member place |
 
 Fresh formed type values provide their `Q_struct` core's associated
 namespace, so `let T = (uint8 a, uint8 b) |> struct` creates one associated
@@ -900,7 +900,7 @@ records the migration boundary:
 ```text
 restricted evaluator
   -> shared invocation frame and policy checks
-  -> PatternValue result rank
+  -> PatternValue result class
   -> outer binding/NamespaceDelta installation
 ```
 
@@ -974,7 +974,7 @@ semantics; HIR/codegen integration beyond placeholder nodes.
 
 Must cover the transition from the restricted type-shaped evaluator toward:
 ordinary normalized structured input; `compile` producing `PatternValue`;
-`meta` sealing a `MetaInstance` and returning its symbol value; rank-directed
+`meta` sealing a `MetaInstance` and returning its default `τ` result; rank-directed
 canonical
 argument identity; orthogonal creation/write/return events (current compatibility
 encoding:
@@ -1007,7 +1007,8 @@ inside formal `struct`/`extend` or through `inject`.
 - Compile/meta bodies consume ordinary parsed and normalized structured material
   under capability policy — not a separate compile-time DSL or text macro.
 - `compile` computes `PatternValue`; `meta` seals a `MetaInstance` and returns
-  its symbol value, which is an ordinary `PatternValue`. Target semantics use
+  its default result `τ` (`DefaultMetaResult = τ`), which carries an ordinary
+  `PatternValue` as `Core(τ)` when a type core is installed. Target semantics use
   ordinary `let` creation, existing-place `=` writes, and a separate return
   event. The current `let`-only compatibility encoding is: `let r = expr;` adds
   a fresh member, `r = expr;` writes to an existing

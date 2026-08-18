@@ -75,7 +75,7 @@ Still open after this correction:
   receiver candidates in one associated `()` Symbol; the current rule requires
   separate authorized contributions.
 - End-to-end syntax/integration for an externally navigated call-entry
-  extension such as `let ()::((T ref).type) = ...`; the semantic
+  extension such as `let ()::(T |> (type ref)) = ...`; the semantic
   destination and ordinary type-check behavior are fixed, but the current
   frontend does not claim this complete declaration path.
 
@@ -567,10 +567,10 @@ here so they are not mistaken for design decisions:
   its coarse `note_residual_runtime_fork_or_end` event is implementation debt,
   not a broader language rule.
 - The privileged `extend` and `inject` built-ins do not exist yet.
-  `let member::((target ref).type) = RHS;` is only associated-member installation
+  `let member::(target |> (type ref)) = RHS;` is only associated-member installation
   (never a Pattern-structure write); the end-to-end equivalence
   `let t = ((x inner) t) |> struct;`  ≡
-  `let t = (() t) |> struct; let t_ref = (t ref).type;`
+  `let t = (() t) |> struct; let t_ref = t |> (type ref);`
   `(t_ref, (x inner)) |> inject;`
   is a *future acceptance test*, blocked on Symbol borrowing, same-name `.type`
   place projection, and `extend`/`inject`. `inject` denotes the ordinary
@@ -683,7 +683,7 @@ Resolved semantics are indexed rather than restated here:
 | `Done` isolation and early `self..return(d)` | same document §6–§7 plus `design/symbol-world/function-object-self-and-return-capability.md` | concrete `Done` and lifetime-fact representation |
 | `let` creates, `=` writes, return transfers control; alias event retired | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.5 | remove compatibility return accumulator |
 | `TypeValueId` is only a first-order root projection; ordinary type equality/keying observes `Core(tau)=Q` by default, while `Addr(Norm_type(tau))` is the whole-snapshot identity for frozen whole-snapshot positions | `design/symbol-world/type-values-places-and-borrow-views.md` | root representation and consumer migration |
-| compile returns declared PatternValue; ordinary meta returns Symbol | canonical symbol-first construction document §4 | transitional transport removal |
+| compile returns declared PatternValue; ordinary meta defaults to τ (`DefaultMetaResult = τ`; explicit `symbol` still legal) | canonical symbol-first construction document §4 | transitional transport removal |
 
 #### Still open
 
@@ -693,6 +693,11 @@ The following remain open for later implementation phases:
   pattern constructors (product patterns, sum patterns, canonical skeletons).
 - Concrete representation of `Done` in later semantic IR.
 - Exact lifetime fact encoding for the self-return capability postcondition.
+- Generalizing the default meta result from `τ` to a capability constraint: the
+  abstract requirement is `Result satisfies MetaStableSemanticUnit` (Callable ∧
+  DependencyClosed ∧ StableRooted ∧ Persistable ∧ StructurallyDescribed),
+  future rule `MetaCall -> X where MetaResultCapable(X)` (τ-like). Do not
+define a nominal supertype now.
 - Exact implementation phase that builds the final return accumulator.
 - Diagnostics and recovery details for unconsumed results.
 - Representation of extraction chains and residual propagation in later IR.

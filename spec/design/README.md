@@ -43,7 +43,7 @@ has one normative owner inside the staging area:
 | Current `PatternHeadId` registry/materialization substrate | `../contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` | No claim of final owner resolution |
 | Pattern/argument shape adaptation before overload qualification | `patterns-overload/pattern-normalization-and-first-order-overload.md` | Structural handoff only; consumes the relational Pattern authority and defines no competing relation, policy, or final selection rules |
 | Overload candidate preparation, linear filters, qualification boundary, must-select final check | `patterns-overload/overload-resolution-design.md` | Invocation consumes the selected entry; policy definition stays in symbol-world |
-| Invocation frames, partial/strict demand, residualization | `meta-invocation/meta-object-invocation-and-policy-reduction.md` | References to symbol-world policy/result ranks and overload selection |
+| Invocation frames, partial/strict demand, residualization | `meta-invocation/meta-object-invocation-and-policy-reduction.md` | References to symbol-world policy/result classes and overload selection |
 | Pattern-space residual, `Done`, and control-pattern algebra | `patterns-overload/static-pattern-spaces-and-extraction-chains.md` | Consumes the canonical Pattern relation and symbol-to-value lookup |
 | Lifetime-policy separation from type/compile overload | `lifetime/lifetime-policy-and-overload-boundary.md` | No positive lifetime algorithm in this stage |
 | Stage ordering and implementation dependencies | `../planning/roadmap.md` | Links to semantic owners rather than duplicated rules |

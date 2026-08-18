@@ -297,11 +297,12 @@ Within that transaction, the meta body may:
 - establish multiple heterogeneous value entries;
 - call `compile` helpers to obtain `PatternValue`s;
 - combine other uninstalled construction material;
-- return one ordinary Symbol PatternValue, for which the outer
+- return one ordinary result value — by default the complete type value
+`τ` (`DefaultMetaResult = τ`) — for which the outer
   binding/assembly layer may form one `NamespaceDelta` candidate.
 
 These operations are not cross-file or cross-construction-unit reopening.
-They do not make arbitrary installed Symbol values structurally extendable. The
+They do not make arbitrary installed `Symbol` constructor values structurally extendable. The
 canonical `extend`/`inject` input and ownership preconditions are defined in
 `symbol-first-meta-construction-and-pattern-injection.md`.
 
@@ -310,7 +311,7 @@ A helper ordinary-meta invocation with its own canonical instance has a separate
 uninstalled construction value according to explicit composition rules. It may
 not directly mutate an already installed subtree owned by the helper instance.
 
-The ordinary-meta return Symbol's self-root invariant follows from
+The ordinary-meta returned result's self-root invariant follows from
 this ownership: its optional installed type core `Core(τ)` is rooted at the
 invocation's `MetaInstanceScope` whenever it exists. The condition is the
 core's presence, independent of `TypeRole(Core(τ))`. An external Object may be

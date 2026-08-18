@@ -346,7 +346,7 @@ occurrence never resolves as a value, and a value never re-enters as a binder.
 ## 5. First-order type values
 
 When a first-order type participates in candidate matching, the thing compared
-is **not** a symbol name. It is a canonical type value.
+is **not** a binding name. It is a canonical type value.
 
 The conceptual identity used here is:
 

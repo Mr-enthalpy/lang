@@ -1222,19 +1222,21 @@ is fully admissible.
 Static views include meta values, compile values, compile Pattern/type
 projections of runtime symbols, and derived compile companions. Meta and compile
 callables may invoke one another in one evaluator. Their return ontologies differ
-in authority, not in value rank:
+in authority, not in result class:
 
 ```text
 ordinary meta
-        -> establishes and seals one navigable MetaInstanceRoot; returns symbol
+        -> establishes and seals one navigable MetaInstanceRoot; returns τ
+                     (DefaultMetaResult = τ)
 compile -> any declared ordinary PatternValue or complete type value tau;
            root-conserving, with no root authority
 privileged builtin
         -> follows its member-declared result and owner rules
 ```
 
-An ordinary meta callable's result Pattern is exactly `symbol`; it does not use a
-generic “any PatternValue” return rule. `compile` may return a complete type
+An ordinary meta callable's default result is `τ` (`DefaultMetaResult = τ`);
+the old `ResultPattern = symbol` rule is retired. An explicit `f : … -> symbol`
+remains legal. `compile` may return a complete type
 value `tau` (participating in Pattern observation through `Core(tau)`, not
 itself an ordinary PatternValue/Object), a Symbol
 value, `type ref`, or any other declared ordinary PatternValue. Privileged

@@ -8,7 +8,7 @@ engine.**
 The policy-governed meta object invocation model:
 
 - symbol-first heterogeneous value-facet candidate preparation
-- orthogonal execution capability / evaluation demand / result rank
+- orthogonal execution capability / evaluation demand / result class
 - ordinary-meta `MetaInstanceScope`, return self-root validation, and
   complete invocation navigation atom
 - bounded compiler-defined `BuiltinPrivilegedAstMetaFunction` invocation,

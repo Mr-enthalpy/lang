@@ -171,7 +171,7 @@ would collapse distinct types (`uint8 ref`, `uint16 ref`) into one.
 for `RefTy(U_n)` / `ShareTy(U_n)`; they are **not** a legal source LHS and
 **not** a source-parser `n type ref` / `n type share` expression.) The
 universe-uniform routing — `type : type_1` being the instance that makes
-`U_n |> ref/share` well-formed at every level `n ≥ 1` — is frozen, not
+`U_n |> ref/share` well-formed at every level `n ≥ 0` — is frozen, not
 future work:
 
 ```text

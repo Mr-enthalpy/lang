@@ -141,11 +141,11 @@ This block records implementation behavior only; it must not be used to infer
 a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
-meta-return semantics. Target semantics use an ordinary Symbol value: `let`
+meta-return semantics. Target semantics use the default `τ` result (`DefaultMetaResult = τ`): `let`
 creates members, `=` writes existing places, and the return event transfers
 control. The current `let r`/`r =`/`r;` cluster behavior is a transitional
 compatibility encoding, and `SymbolConstruction` is its carrier rather than a
-result rank. There is no alias-member event. See
+result class. There is no alias-member event. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
@@ -894,7 +894,7 @@ parameter count and structural shape
 Pattern/extraction applicability
 receiver and explicit-parameter policy-pair compatibility
 P2 result pair compatibility with any target-result constraint
-expected result rank/facet compatibility
+expected result class/facet compatibility
 concept and ordinary require legality
 other compile/type-stage hard preconditions
 ```

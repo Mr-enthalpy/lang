@@ -18,7 +18,7 @@ Policy implementation mapping and orthogonal future dimensions:
   `../../contracts/v0.6-cross-policy-value-transition.md`);
 - meta/compile/seal visibility and the pre-seal snapshot boundary;
 - explicit retirement of an independent return-policy `P3`;
-- component-preserving results rather than a scalar result-symbol policy;
+- component-preserving results rather than a scalar result-class policy;
 - current flat `PolicyEnv` filtering substrate;
 - typed namespace, const/mut, value-presence, error/panic, and resource policy.
 

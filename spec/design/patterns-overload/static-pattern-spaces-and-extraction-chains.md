@@ -225,13 +225,13 @@ In expression position, `P1` and `P2` are ordinary value-side names, call target
 ### 2.3 Values and patterns do not implicitly convert into each other
 
 A `Val1` leaf is not a `Pattern`, and a `Pattern` is not a `Val1` leaf. They are
-layers of the same symbol flow, not separate semantic worlds:
+layers of the same ordinary value flow, not separate semantic worlds:
 
 ```text
-Symbol = Val1? x Pattern x Val2
+Object = ⟨Val1?, P, Val2⟩
 ```
 
-Pattern matching may directly read the symbol's `Pattern` layer. It does not
+Pattern matching may directly read the value's `Pattern` layer. It does not
 convert a runtime value leaf into a pattern and does not require postfix `?` as
 an enabling bridge. Postfix `?` merely peels one top Pattern layer as specified
 in §9.
@@ -299,9 +299,9 @@ explicit `::`
 ```
 
 Inherited and explicit navigation therefore differ in symbol-path formation,
-not in direct versus indirect value access. Program text names a symbol first;
-the evaluator sees the pattern value through that symbol. A pattern's
-diagnostic navigation may share the symbol's spelling without sharing identity.
+not in direct versus indirect value access. Program text names a Symbol first;
+the evaluator sees the pattern value through that Symbol. A pattern's
+diagnostic navigation may share the Symbol's spelling without sharing identity.
 The parent walk does not classify Patterns as internal or external. If it
 reaches a top Pattern whose navigation was omitted, that omission is an exact
 global `::` anchor, not ordinary bare-symbol `near -> outer -> core` lookup.
@@ -1171,7 +1171,7 @@ let box = (self, t: type): meta -> r: symbol => {
 };
 ```
 
-If a meta return Symbol has an installed type core `Core(τ)`, its root must be the canonical
+If a meta returned result has an installed type core `Core(τ)`, its root must be the canonical
 ordinary-meta `MetaInstanceScope`; direct `r = t` or `r = uint8` ordinary-meta core returns are
 invalid. This additional construction invariant does not alter the ordinary
 block-result rule. In both examples the final expression:
@@ -1343,11 +1343,11 @@ destructuring operation:
 ? does not convert arbitrary ranks or search for a Pattern
 ```
 
-The matcher may directly read a symbol's Pattern layer. For a bool symbol:
+The matcher may directly read a `Symbol`'s Pattern layer. For a bool binding:
 
 ```text
 logical operator
-  -> bool symbol
+  -> bool binding
 
 bool symbol Pattern
   -> if::bool | else::bool alternatives
@@ -1545,7 +1545,7 @@ multi-pass preference pipeline eliminate candidates:
 |---|---|---|
 | 1 | **Policy view + visibility** | Keep `Val2` objects present in the current projected value view and namespace visibility domain. |
 | 2 | **Pattern + type matching** | Remove structurally inapplicable call entries. |
-| 3 | **Full admissibility** | Form `A` using parameter/receiver policy pairs, target-result constraints when present, stage legality, expected result rank/facet, concept/require legality, and other hard compile/type checks. |
+| 3 | **Full admissibility** | Form `A` using parameter/receiver policy pairs, target-result constraints when present, stage legality, expected result class/facet, concept/require legality, and other hard compile/type checks. |
 | 4 | **Const/mut maxima** | Apply the product partial order across all constrained positions; no score or lexicographic fallback is allowed. |
 | 5 | **Preference filters** | Apply configured entry preference, concept ordering, extraction specificity, first-order preference, in-place-over-non-in-place preference, then named strategy rules in fixed order. |
 | 6 | **Ordinary uniqueness** | Produce the ordinary final survivor set. |

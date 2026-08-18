@@ -527,7 +527,7 @@ _See also: NavPath, SelectorAst, OperatorName._
 
 ## OperatorName
 
-A symbol spelling that can be used as an operator identity component, an
+A `Symbol` spelling that can be used as an operator identity component, an
 expression operator, a binder name, or an innermost navigation component.
 Operator names are not keywords, and their spelling does not imply arithmetic, comparison,
 mutation, assignment, lookup, or evaluation semantics.
@@ -620,7 +620,7 @@ _See also: OverloadSpecificity, OverloadResolutionPipeline,
 An overload candidate that has passed every hard legality check for the current
 call: namespace/policy-view visibility, associated `()`, argument/Pattern shape,
 receiver and parameter policy pairs, stage legality, any target-result policy
-constraint, expected result rank/facet, concept and ordinary require
+constraint, expected result class/facet, concept and ordinary require
 satisfaction, and other compile/type prerequisites. The set of all such
 candidates is `A`.
 
@@ -681,7 +681,7 @@ _See also: FullyAdmissibleCandidate, OverloadResolutionPipeline._
 
 Seal slices are exposed only in SealStatic; meta slices only in OpenStatic;
 compile slices in both. Symbol resolution precedes this exposure, so a hidden
-slice does not erase the symbol. Seal policy grants no global scan capability.
+slice does not erase the binding. Seal policy grants no global scan capability.
 Compiler-known privileged seal operations may inspect exactly Wpre, the least
 semantic dependency closure rooted at exported symbols, actually materialized
 results of exported meta functions, and their parameter/signature dependencies.
@@ -916,8 +916,11 @@ and each action on the value receives a disposition
 (`OpenDisposition_κ ∈ { Continue, Terminate, Reject }`, canonical owner
 §12.1.2): legal terminal actions (`UseForVal1`, meta-argument use,
 residual-runtime/control at the generation level, owner exit) end the window
-(`Terminate`), while the same actions inside an opaque non-meta inline closure
-below the value's open coordinate are forbidden (`Reject`).
+(`Terminate`); `UseForVal1` and meta-argument use inside an opaque non-meta
+inline closure below the value's open coordinate are forbidden (`Reject`).
+`ControlFlowSplit`/`ControlFlowMerge` are generation-coordinate events: at the
+generation level they terminate the window, while at a deeper ordinary
+coordinate they are irrelevant to the outer window.
 `EffectiveOpenSegment(p) ⊆ OwningInlineClosureEvaluationSegment(p)`. This
 judgment is orthogonal to place writability and borrow lifetime.
 
@@ -964,11 +967,47 @@ No general runtime `product[]` is defined in this stage. In both erased cases,
 “erased” affects only outer classification; the actual `Val1` information is not
 discarded.
 
-_See also: ProductForm, Object normal form (`Norm`), Symbol value._
+_See also: ProductForm, Object normal form (`Norm`), `Symbol` constructor value._
 
 ---
 
-## Symbol value
+## Symbol terminology: NameBinding, `symbol` type, `Symbol` constructor
+
+Three distinct concepts share the word "symbol" in this specification. The
+distinction is frozen to prevent conflation:
+
+```text
+NameBinding(a)   = the environment contains a resolvable name a
+                   (source/environment naming concept)
+`symbol`         = the language's first-class type value; symbol : type
+                   (same category as uint8 : type)
+x : symbol       = classification judgment TypeOf(x) = symbol
+Symbol(...)      = the unique well-defined semantic constructor
+                   S = ⟨τ?, V_S?⟩; written SymbolValue(τ?, V_S?) when
+                   emphasis on the value is needed
+```
+
+**Key rule.** `NameBinding(a)` does not imply `a : symbol`. A bare sentence
+"a is a symbol" is prohibited as a formal statement: it is ambiguous between
+"a is a binding name" and "a : symbol". Natural language prefers "binding
+name", "symbolic name", or "named binding" for the naming concept; English
+documents write "the `symbol` type" or "the type value `symbol`" for the
+type. Capitalized `Symbol` is reserved for the semantic constructor.
+
+**Counterexample.** In `a : uint8; b : type; c : symbol`, all three names
+satisfy `NameBinding`, but only `c` satisfies `TypeOf(c) = symbol`.
+
+**Interpretive note.** Phrases such as "symbol hierarchy", "symbol root",
+or "meta-symbol structure" describe the symbolic/name/meta-structural side
+of the model; they must not be read as automatically carrying a
+`symbol`-typed value.
+
+_See also: `Symbol` constructor value (value of type `symbol`), Complete type
+closure (`tau`), Namespace (source name)._
+
+---
+
+## `Symbol` constructor value (value of type `symbol`)
 
 An ordinary value of the ordinary `symbol` type. Its mutable member content is
 `Val1(Symbol) = Σ = <tau?, V_S?>`, never a mutable `P x Val2` side
@@ -1063,7 +1102,7 @@ Canonical owner:
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md)
 §4.7.
 
-_See also: Complete type closure (`tau`), Object normal form (`Norm`), Symbol value._
+_See also: Complete type closure (`tau`), Object normal form (`Norm`), `Symbol` constructor value._
 
 ---
 
@@ -1087,12 +1126,15 @@ Descendant ownership, copying, rebinding, and namespace
 installation are insufficient. Creating a classifier with that direct home
 requires current construction authority for `Q`; ordinary callable creation or
 navigated `let` cannot nominate the scope and thereby forge membership.
+Concretely, a `V_τ` callable member is realized through an anonymous type
+directly under `τ` (symbol-first §2.1.1): the callable's entry is the
+associated `()` Val2 leaf of that anonymous type.
 `V_τ` is fixed at formation; classifiers created later under the same scope
 enter only a new snapshot, never an older `V_τ`.
 Canonical owner:
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-_See also: TypeMemberScope, `Self_τ`, Symbol value._
+_See also: TypeMemberScope, `Self_τ`, `Symbol` constructor value._
 
 ---
 
@@ -1189,7 +1231,7 @@ borrow-type fixed points (`type ref@ = type ref`, `type share@ = type share`)
 are retired and do not return. Reaching the type-level place of a type-valued
 binding explicitly uses `t |> (type ref)` or `(S ref).type`, not `@`.
 
-`@` never projects a Symbol to its type member. Symbol supplies the ordinary
+`@` never projects a `Symbol` constructor value to its type member. Symbol supplies the ordinary
 same-name family `S.type : type`, `(S ref).type : type ref`, and
 `(S share).type : type share`. The borrow is formed before field projection, so
 no source place is recovered from `AsType(S)`. `@` is not a stage name and not
@@ -1242,12 +1284,12 @@ t |> (type ref)  = borrow formation = value r : type ref
 Neither uses `@` (`@` yields a lifetime value, not a borrow). Whether `ref` or
 `t |> (type ref)` is the right operation is decided by what the surface means,
 never by type-rank: for `s : symbol` the payload exists, so `s ref : symbol ref`
-borrows the symbol value `s` carries: `Target(s ref) = PrivilegedActualPlace(s)`
+borrows the `Symbol` value `s` carries: `Target(s ref) = PrivilegedActualPlace(s)`
 — the borrow target has one source: `CarrierPlace(actual)`; there is no second
 `ObjectPlace(Read(actual))`. A type-rank object with a payload behaves the same
 way.
 
-A borrow view is a value, not a second name for a symbol: it does not forward
+A borrow view is a value, not a second name for a `Symbol` constructor value: it does not forward
 `SymbolId`, and its member set is not silently that of its target. It does carry
 the stable semantic identity of its referent as value content:
 
@@ -1405,7 +1447,7 @@ object itself (`U_0 = type`, classified by `U_1`), so the formed borrow type is
 `RefTy(type) = RefTy(U_0)` — not `RefTy(U_1)`, which would conflate the operand
 with its classifier. A value
 `r : type ref` is a borrow view of a type-valued place. Reaching the
-type-level place of a pure type slot uses `t |> (type ref)`; a Symbol uses
+type-level place of a pure type slot uses `t |> (type ref)`; a `Symbol` constructor value uses
 `(S ref).type` when `S` carries `τ` and `TypeValueRole(τ)` (equivalently
 `TypeRole(Core(τ))`). Ordinary borrow
 lifetime and policy rules determine formation, validity, and writability.
@@ -1581,7 +1623,7 @@ performed.
 > **Semantic direction: retired.** The semantic reading of this form — a
 > compile-time lookup alias that forwards symbol identity, place, or writability
 > to a target — is retired, not deferred. There is no declaration form that
-> forwards a Symbol or a place. `let a = b` creates a fresh symbol in a fresh
+> forwards a `Symbol` constructor value or a place. `let a = b` creates a fresh binding in a fresh
 > place carrying `b`'s value (`SymbolId(a) ≠ SymbolId(b)`,
 > `PlaceId(a) ≠ PlaceId(b)`, `Value(a) = Value(b)`). Shared observation of another
 > object is expressed only by a borrow view (`ref` / `share`); to observe its
@@ -1716,7 +1758,7 @@ External explicit navigation reaches the namespace export view; internal
 explicit navigation reaches the complete namespace view. Because exported
 value views are const-projected, externally navigated values and callable
 targets normally satisfy `ImplicitConst` dependencies. Automatic capture and
-call resolution share the symbol-identity/const-view problem domain; this does
+call resolution share the Symbol-identity/const-view problem domain; this does
 not imply pass ordering or an implementation dependency.
 
 An explicit capture and an automatic capture may name the same source but
@@ -1934,7 +1976,7 @@ instance yields `GeneratedClosure(F, GenericArgs)` (written `C_F,A...`), whose
 type is rooted at that scope: `ClassifierRoot(TypeOf(C_F,A...)) = M`. A
 generated meta partner returns a callable closure, so
 `GeneratedMetaPartner ≠ OrdinaryMetaFunction`: the ordinary-meta
-`ReturnClassifier = symbol` rule does not apply to generated closures.
+`DefaultMetaResult = τ` rule does not apply to generated closures.
 Canonical owner:
 [`meta-object-invocation-and-policy-reduction.md`](../design/meta-invocation/meta-object-invocation-and-policy-reduction.md)
 §4.4.
@@ -1946,20 +1988,21 @@ _See also: Meta-function, CompilePartner._
 ## Meta-function
 
 A callable whose entry executes under meta construction capability. Callable
-kind fixes `P2=meta` and result classifier `symbol`; a particular call is
+kind fixes `P2=meta` and `DefaultMetaResult = τ`; a particular call is
 well-formed only after ordinary admissibility and `GlobalKeyable` checks. A
 successful call establishes root identity and construction navigation, not
-external installation. The canonical judgments and seal algorithm belong to
+external installation. An explicit `f : … -> symbol` is still legal.
+The canonical judgments and seal algorithm belong to
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-At seal only the returned Symbol's installed type core material
+At seal only the returned result's installed type core material
 (`Core(τ)` when a well-formed `τ` is present, otherwise none) may be
 promoted. The core may be namespace-only (`NamespaceRole(Core(τ))` and not
 `HasRegisteredSelfConstruction(Core(τ))`; `../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` §13); type capability is
 the additional `TypeRole(Core(τ))` refinement. The registered-self-construction
 witness requires an actual `Val2` member: `Val2(Q)[s] = K` together with
 `ConstructEdge_P_Q(C, Q, K)` for the same `K`.
-`EscapeDeps(ReturnSymbol)` checks the complete returned Object graph plus
+`EscapeDeps(ReturnedResult)` checks the complete returned Object graph plus
 horizontal borrow targets; it is not a val-sibling-only check.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
@@ -1969,7 +2012,7 @@ scope/owner rule. `struct` forms a complete type value `tau` directly
 (`struct: StructLikePattern -> tau`; the core `Q_struct = Core(tau_struct)`
 is produced during the formation event) and establishes or selects its
 `Q_struct` type-role member's stable lexical root from input navigation plus
-ambient scope; the Symbol carrying the formed value appears only at a
+ambient scope; the `Symbol` constructor value carrying the formed value appears only at a
 subsequent binding/install. `extend` establishes no root and preserves the
 input root; `inject` is
 its place-level read–extend–write wrapper. Any later privileged member must declare its own owner rule. Users
@@ -2012,10 +2055,10 @@ allocate fresh LHS Symbol/Place
 bind that exact v to the LHS Symbol
 ```
 
-If RHS is a path, the path first resolves a Symbol and reads `v`; the RHS
+If RHS is a path, the path first resolves a `Symbol` constructor value and reads `v`; the RHS
 carrier Symbol is not part of `v` after that read. `let T: type = uint8`
 therefore binds the existing type value under a fresh carrier. No declaration
-form forwards a Symbol or a place; to observe another object's place, bind a
+form forwards a `Symbol` constructor value or a place; to observe another object's place, bind a
 borrow view (`uint8 ref`, `uint8 share`); to observe its place-level lifetime,
 apply the privileged place-observation `@` (yields `LifetimeVal`).
 
@@ -2087,7 +2130,7 @@ Wfinal       Wpre ∪ Wseal, materialized/retained/generated build world
 ```
 
 Internal explicit resolution searches `Σ_full`; external explicit resolution
-searches `Σ_export`; world membership asks whether a symbol exists in Wpre or
+searches `Σ_export`; world membership asks whether a binding exists in Wpre or
 Wseal. The export overload set preserves the same candidate identities as the
 full set, but every external candidate carries a separately const-projected
 resolved `PolicyPair` rather than a declaration-side `P1Projection` or a clone
@@ -2098,7 +2141,7 @@ Within each admitted full overload set, mut-only candidates remain internal
 and candidates with const (or pure `Pp`) views enter the external set.
 Publicly reachable export-retention-closure ancestors and descendants receive this
 projection even when they are not export roots. World membership does not
-imply export, and export does not imply that the symbol itself was an export
+imply export, and export does not imply that the binding itself was an export
 root. Retention-closure membership is graph/interface-construction input, not
 synonymous with membership in `Σ_export`.
 
@@ -2438,7 +2481,7 @@ _See also: Kind/rank object, BindingAnnotation, AnnotationHole._
 ## AsType and TypeOf
 
 `AsType(E) = E |> type` does not raise universe rank or preserve a source place.
-For a Symbol carrying a type value `tau`, it returns the complete immutable type
+For a `Symbol` constructor value carrying a type value `tau`, it returns the complete immutable type
 closure `tau = bind alpha.<Q,V_τ[alpha]>`. For an already complete type value
 `tau`, it is the identity. Bare `Q` is the type-capable core, not the complete type.
 It never searches a namespace-role Object for a hidden type member. Symbol's
@@ -2467,7 +2510,7 @@ cases, defined in
 §2; `n type ref` / `n type share` are pure metavariable notation, not source
 syntax.
 
-_See also: Type-object, Kind/rank object, `@`, Symbol value._
+_See also: Type-object, Kind/rank object, `@`, `Symbol` constructor value._
 
 ---
 

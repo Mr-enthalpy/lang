@@ -78,7 +78,7 @@ For declaration-context call-entry injection, the self-position may have a
 non-anonymous type such as `T ref` in:
 
 ```lang
-let ()::((T ref).type) = (object: T ref) => { ... }
+let ()::(T |> (type ref)) = (object: T ref) => { ... }
 ```
 
 The candidate joins the same associated `()` Symbol as value/share receiver

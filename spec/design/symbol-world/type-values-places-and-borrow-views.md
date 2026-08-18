@@ -60,7 +60,7 @@ This document does **not** define:
 
 Three phrasings are explicitly rejected throughout. `let T: type = uint8` is
 **not** fresh nominal type generation. A borrow view is **not** textual
-substitution and **not** a second name for a symbol. And value equality is
+substitution and **not** a second name for a Symbol. And value equality is
 **not** place equality.
 
 ## 2. Semantic identities
@@ -75,7 +75,7 @@ TypeValueId
 PatternValue identity
 ```
 
-- `SymbolId` is the identity of a symbol object in the name graph.
+- `SymbolId` is the identity of a `Symbol` constructor value (name-graph node).
 - `PlaceId` is the identity of a location that can be bound, updated, injected
   into, or opened for a namespace delta.
 - `TypeValueId` is the stable first-order root of `Core(tau)` — a registry
@@ -469,10 +469,10 @@ This is what makes an open construction observable at all. Given
 let fn = (...): meta -> _ :symbol = {
     let t = (() t) |> struct;
 
-    let f::((t ref).type) = X;
+    let f::(t |> (type ref)) = X;
     let A = t |> compile_fn;
 
-    let g::((t ref).type) = Y;
+    let g::(t |> (type ref)) = Y;
     let B = t |> compile_fn;
     t;
 };
@@ -690,7 +690,7 @@ Changing `V_τ` requires a semantic operation that produces a new type value
 `AdmissibleExtend_Γ`, and the result satisfies `WellFormedTau(τ')`
 independently — never by inheritance along a formation history).
 
-When a Symbol carries both `V_S` and `τ`,
+When a `Symbol` constructor value carries both `V_S` and `τ`,
 
 ```text
 CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
@@ -854,6 +854,14 @@ WellFounded_static(tau):
 WellFounded_runtime(tau):
   the materialized owned graph is acyclic
 ```
+
+`BackRefsOnlyInStaticPV2Region(tau)` is the well-foundedness projection of the
+enclosing-reference theorem (symbol-first §2.1.1): an upward reference from a
+`V_τ` descendant to its enclosing `τ` follows the same `P × Val2`
+descriptive-reference rule as a `Val2` referring to its enclosing `P` layer —
+a static, non-owned `BoundRef` edge, never an owned edge, so it does not form
+a `τ → A_F → () → τ` owned cycle and needs no separate recursive `V_τ` loop
+condition.
 
 The binder is not a `mu`-type, an equi-recursive type rule, or permission for
 cyclic Object content.
@@ -1171,12 +1179,12 @@ selects the explicit higher-level ref of that slot:
 let f::(t |> (type ref)) = ...;
 ```
 
-When the source is instead a Symbol `S`, the Symbol must first be borrowed and
+When the source is instead a `Symbol` constructor value `S`, it must first be borrowed and
 its ordinary same-name `type` field projected: `let f::((S ref).type) = ...`.
 `AsType(S) = S |> type` is by-value only and never participates in place
 recovery.
 
-### 3.1 General value binding resolves symbols first
+### 3.1 General value binding resolves bindings first
 
 The ordinary rule:
 
@@ -1206,7 +1214,7 @@ let a = b;
 ```
 
 binds the exact value read through `symbol(b)` into the fresh destination
-`symbol(a)`. It does not alias the symbols or merge their places.
+`symbol(a)`. It does not alias the bindings or merge their places.
 
 Formally:
 
@@ -1264,19 +1272,19 @@ type value read through `T` after `let T: type = uint8`; comparing the strings
 The same rule applies to an externally owned pattern value:
 
 ```lang
-let t1::((t ref).type) = bool;
+let t1::(t |> (type ref)) = bool;
 ```
 
 resolves `symbol(bool)`, reads its `PatternValue`, and binds that value to the
-destination prospective ProjectionSlot under `(t ref).type`. It does not reroot the pattern, rewrite its
+destination prospective ProjectionSlot under `(t |> (type ref))`. It does not reroot the pattern, rewrite its
 navigation, or make the destination symbol identical to the pattern owner.
 
 Literal syntax is the explicit exception only to source-path resolution. It
 still evaluates to a value and uses the same binding rule. In
-`let a = 'a';`, the left `a` is a symbol name while the right `'a'` is a
+`let a = 'a';`, the left `a` is a binding name while the right `'a'` is a
 character literal; matching textual content does not make them the same object.
 Pattern values have no analogous standalone literal syntax, so same-spelled
-symbol paths and pattern diagnostic names must be kept especially distinct.
+Symbol paths and pattern diagnostic names must be kept especially distinct.
 
 ### 3.2 One navigator, many projections
 
@@ -1385,7 +1393,7 @@ Consequently `f::T` denotes `Val2(T)[f]` in all of
 ```lang
 let A: type = f::T;
 let B = (f::T) meta_fn;
-let g::((U ref).type) = f::T;
+let g::(U |> (type ref)) = f::T;
 (…) |> f::T;
 g::f::T
 ```
@@ -1435,19 +1443,19 @@ This must be read precisely:
 
 ```text
 T is not a fresh nominal type.
-T is not a symbol alias.
+T is not a Symbol alias.
 T has fresh place identity.
 T may evaluate to an existing type value.
 ```
 
-`T` is a new symbol with its own fresh, current-level writable place. Its *type
+`T` is a new binding with its own fresh, current-level writable place. Its *type
 value* is the value read through `uint8`, while its *place* is its own. Binding to an existing
 type value does not generate a new type, and it does not forward to `uint8`'s
-symbol or place.
+Symbol or place.
 
-This ordinary declaration rule does not license a meta return Symbol to use an
+This ordinary declaration rule does not license a meta returned result to use an
 external pure Object as its installed type core. A canonical meta
-instance has an additional self-root invariant: if its return Symbol contains an
+instance has an additional self-root invariant: if the returned result contains an
 installed type core `Q`, `Q`'s outer Pattern root must be the
 `MetaInstanceScope`. The condition is `Q`'s presence, independent of
 `TypeRole(Q)`. Thus ordinary
@@ -1532,7 +1540,7 @@ accept an arbitrary numeric identifier as an implemented core `str` carrier.
 
 ## 5. Borrow views
 
-There is no declaration form that makes two symbols share one symbol identity
+There is no declaration form that makes two bindings share one Symbol identity
 or one place. Shared observation is expressed by the borrow constructors `ref`
 and `share`; the privileged place-observation `@` yields a lifetime value
 (`LifetimeVal`) and is not a borrow representation.
@@ -1676,15 +1684,15 @@ let s: symbol = ...;
 let r = s ref;              // Read(s) : symbol, so r : symbol ref
 ```
 
-A symbol value is value-bearing, so `s ref` is the ordinary "form a borrow of
+A `Symbol` constructor value is value-bearing, so `s ref` is the ordinary "form a borrow of
 this value" operation. Because `Read` does not descend into `Val1`, `r` is a
 `symbol ref` and **not** a reference to the member array held inside the
 symbol. The referent is the value that `s` holds: `Target(s ref) =
 PrivilegedActualPlace(s)` (§5.1.0) — the borrow target has one source:
 `CarrierPlace(actual)`; there is no second `ObjectPlace(Read(actual))`.
 
-When the intent is to form a borrow of the symbol's **type** rather than the
-symbol value itself — i.e. `(s |> type) ref` — an explicit `AsType` in a
+When the intent is to form a borrow of the `Symbol`'s **type** rather than the
+`Symbol` value itself — i.e. `(s |> type) ref` — an explicit `AsType` in a
 type-expected position is required: there is **no global** `symbol` ref/share
 forwarding bridge (lifetime §2.0.1) and no implicit `AsType` during candidate
 matching. A bridge overload authored in a local `ref` Symbol is local Symbol
@@ -1818,7 +1826,7 @@ The operator choice is decided by what the surface means, never by type-rank:
 | what the expression reads | `E ref` | `E |> (type ref)` needed |
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
-| symbol value with `Val1` | `symbol ref` | no |
+| `Symbol` constructor value with `Val1` | `symbol ref` | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |
 | pure pattern value | `ref` of that pattern value | only to reach the carrier slot |
 | pure `type` slot | type formation: the TypeValue `t ref` (the borrow type) | yes — for a borrow instance over the carrier place |
@@ -2195,7 +2203,7 @@ accepted:
 
 ```lang
 let T = (() t) |> struct;
-let f::((T ref).type) = ...;
+let f::(T |> (type ref)) = ...;
 ```
 
 No binding or borrow view can amplify the place authority it observes:
@@ -2310,8 +2318,8 @@ from repeated ordinary binding.
 The two forms are distinct operations on the same resolved prospective target:
 
 ```text
-let f::((T ref).type) = expr   — instantiate a missing associated member
-f::((T ref).type) = expr       — write an already existing member
+let f::(T |> (type ref)) = expr   — instantiate a missing associated member
+f::(T |> (type ref)) = expr       — write an already existing member
 ```
 
 Bare `=` never creates a missing member. There is no declaration shorthand in
@@ -2329,9 +2337,9 @@ freshness. `let` is the only operation that changes `None` to `Some(value)`.
 The two forms also differ in what they change about the host:
 
 ```text
-let f::((T ref).type) = expr -> Write(slot, <Q',V_τ>); P and V_τ unchanged (§2.2)
+let f::(T |> (type ref)) = expr -> Write(slot, <Q',V_τ>); P and V_τ unchanged (§2.2)
 extend(TypeValue(T), Δ)      -> new tau' = <Q',V_τ'> snapshot
-inject((T ref).type, Δ)      -> read + extend + write through the type ref
+inject(T |> (type ref), Δ)   -> read + extend + write through the type ref
 ```
 
 An ordinary member declaration adds a `Val2` entry under an existing pattern
@@ -2407,7 +2415,7 @@ navigation name, it is
 `Map<CanonicalFullNavigation, CanonicalPatternValue>`. A naked Product remains
 positional regardless of whether its elements are named. `SymbolId` and
 `PlaceId` identify carriers/locations; they are neither map keys nor resident
-values. Extraction resolves a source symbol, reads its `PatternValue`, and
+values. Extraction resolves a source Symbol, reads its `PatternValue`, and
 looks up that value by complete navigation and normalized resident. A symbol
 path may share the value's navigation spelling or differ from it without
 changing this sequence. Source/provenance classification does not participate

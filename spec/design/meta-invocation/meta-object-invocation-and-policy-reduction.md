@@ -80,7 +80,7 @@ member must observe an external object, it holds a borrow view
 (`ref` / `share`), which is an ordinary value — and a borrow edge is not owned
 material, so it is not promoted at seal. Installing an external pure Object as
 the meta return role member still fails the self-root invariant. No declaration form,
-inside or outside a meta body, forwards a symbol or a place.
+inside or outside a meta body, forwards a `Symbol` constructor value or a place.
 
 Unsupported selected body forms return hard diagnostics. In particular, a body
 that requires guarded branch evaluation, predicate calls, postfix `?`,
@@ -224,7 +224,7 @@ found invalid.
 The v0.8 success path for `let X: type = int + unit;` is:
 
 ```text
-source declarations install real `+` overload symbols
+source declarations install real `+` overload bindings
 ordinary initializer sees normalized `int + unit`
 MetaPartial invokes restricted overload selection under MetaAction lookup
 selected `(self, t: type, _ unit: type): meta -> ...` body (legacy substrate
@@ -311,7 +311,7 @@ Meta behavior is ordinary callable behavior observed under a stricter policy env
 
 Concretely, `struct`, `verify`, match-closing consumers, and predicate operators
 such as `&&`, `||`, `==`, and `!=` should all eventually be ordinary callable
-symbols selected by the same lookup-and-invocation mechanism. None introduces
+bindings selected by the same lookup-and-invocation mechanism. None introduces
 a second branch semantics beyond policy-staged pattern matching. They are not
 parser keywords and not normalizer special cases. Whatever specialness they
 have lives in:
@@ -319,7 +319,7 @@ have lives in:
 - their **symbol payload** (what kind of callable object they are),
 - their **invocation strategy** (how arguments are evaluated and how branches
   are selected),
-- their **policy** (where the symbol is visible and where its body may execute),
+- their **policy** (where the binding is visible and where its body may execute),
 
 and never in parser recognition of the name. The parser and normalizer preserve
 normalized structure; the meaning of `struct`, `verify`, `cond`, or `==` is
@@ -441,7 +441,7 @@ fully admissible candidate set A:
   call-entry pool + every hard structural/Pattern/type/require check
   + declared receiver/parameter pair compatibility for self and explicit arguments
   + P2 result compatibility with any target-result expectation
-  + expected result rank/facet compatibility
+  + expected result class/facet compatibility
 
 selected result:
   A -> ordinary preference filters -> final survivor set
@@ -529,18 +529,21 @@ return execution, D/Done, lifetime checking, or implicit `?`.
 
 ## 4. Partial meta reduction versus strict meta execution
 
-Evaluation demand is orthogonal to execution capability and result rank:
+Evaluation demand is orthogonal to execution capability and result class:
 
 ```text
 execution capability: compile / meta / seal / runtime
 evaluation demand:     partial | strict
-result rank:           PatternValue | runtime value
+result class:          ordinary PatternValue
+                       | complete type value τ
+                       | type ref / type share borrow instance
+                       | runtime value
 ```
 
 `MetaPartialContext` and `MetaStrictContext` retain their existing purpose: they
 say whether a runtime boundary may residualize. They do not define `meta`, do
-not turn `compile` into symbol construction, and do not change the rank of a
-successful result.
+not turn `compile` into symbol construction, and do not change the result class
+of a successful result.
 
 A call site is reduced in one of two demand contexts, and the difference between
 them is what makes one invocation framework cover both compile-time reduction
@@ -566,40 +569,59 @@ execution capability. A successful compile-time result is not merely a
 compile callable -> PatternValue, construction-transparent, root-conserving,
                     and with no root authority
 ordinary meta callable
-                  -> symbol PatternValue, plus authority to establish and seal
+                  -> τ (DefaultMetaResult = τ, not OnlyMetaResult = τ),
+                     plus authority to establish and seal
                      one navigable MetaInstanceRoot M
 privileged builtin
                   -> PatternValue, with only its member-specific owner rule
 runtime callable -> runtime value
 ```
 
-`PatternValue` includes ordinary compile-time values, type values, symbol values,
-and structured pattern values. A type value is not thereby an installed type
-symbol. The `compile` / `meta` difference is world authority, not result rank:
-there is no third rank, and the meta result is an ordinary value of type
-`symbol`. What the current implementation calls `SymbolConstructionValue` is
-the transitional carrier for that ordinary Symbol's multi-member material; it
+`PatternValue` includes ordinary compile-time values, `Symbol` constructor values, and
+structured pattern values; a complete type value `τ` is not itself an ordinary
+`PatternValue`/Object. A type value is not thereby an installed type
+symbol. The `compile` / `meta` difference is world authority, not result class:
+there is no third class. The default meta result is a complete type value `τ`;
+an explicit `f : … -> symbol` remains fully legal because `symbol : type` is
+an ordinary first-class type and `x : symbol` is an ordinary language value.
+The old design's problem was not favoring `symbol` but demoting `τ` to a
+half-complete entity that had to parasitize a Symbol. Since `τ = ⟨Q, V_τ⟩`
+now independently exists, owns its own `CallSpace`, closes its own dependencies,
+and carries a stable meta-instance root, the old indirection chain
+`MetaInstance M -> returned Symbol S -> extract Q/type meaning -> use sibling V`
+has lost its necessity. What the current implementation calls
+`SymbolConstructionValue` is
+the transitional carrier for that default `τ` result's member material; it
 remains uninstalled and does not define another ontology.
 
-Two names keep classifier and content shape distinct:
+Default result and `symbol`-value shape are distinct:
 
 ```text
-ReturnClassifier(ordinary meta) = symbol
-ReturnShapeWithinSymbol         = Σ = ⟨ tau?, V_S ⟩, with at most one tau
+DefaultMetaResult = τ
+MetaInstance(M) -> τ_M
+struct(P)       -> τ_P          -- struct is a special built-in meta
+                                 -- constructor; same default-result principle
+
+MetaResult : τ                  -- default
+MetaResult : T                  -- when an explicit result type is declared
+
+ShapeOfTypeSymbol(v) = Σ = ⟨ τ?, V_S ⟩  -- describes the shape of a value
+                                          -- of type `symbol` only; decoupled
+                                          -- from the meta result rule
 ```
 
-`tau` may be present or absent and `V_S` may contain any ordinary sibling
-values. Those are content facts within one returned Symbol Object, not
-type/val/namespace return categories. `tau` is the optional stored complete
-type closure: type projection returns it directly, while namespace projection
-returns `Core(tau)`. “Meta returns type” is only shorthand for a `symbol` result
-whose content is `⟨tau, empty⟩` and whose `Core(tau)` satisfies `TypeRole`.
+For a value of type `symbol`, `τ` may be present or absent and `V_S` may
+contain any ordinary sibling values. Those are content facts within that
+`symbol`-typed value, not type/val/namespace return categories. `τ` is the
+complete type closure: type projection returns it directly, while namespace
+projection returns `Core(τ)`. “Meta returns type” is shorthand for the default
+`τ` result whose `Core(τ)` satisfies `TypeRole`.
 
-The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
+The exact capability split, canonical `MetaInstanceScope`, returned-result/return-
 slot relation, rank-directed identity, return self-root validation, and complete
 navigation atom belong to
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-This document consumes those result ranks only to define candidate preparation,
+This document consumes those result classes only to define candidate preparation,
 policy filtering, and partial/strict reduction; it does not restate their
 construction semantics.
 
@@ -614,7 +636,7 @@ well formed only if:
 ```
 
 The canonical owner separates callable kind, call admissibility, and effect:
-`OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and result classifier `symbol`;
+`OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and `DefaultMetaResult = τ`;
 `WellFormedMetaCall(F,args)` contains admissibility plus `GlobalKeyable`; only a
 well-formed call establishes `RootIdentityExists(M)` and construction-local
 navigation. Root identity is not external namespace installation.
@@ -786,10 +808,9 @@ stage:
 
 **GeneratedMetaPartner ≠ OrdinaryMetaFunction.** A generated meta partner
 returns a callable closure (a `GeneratedClosure`), so it does not fall under
-the ordinary-meta rule that a successful ordinary meta invocation returns a
-`symbol` value whose result classifier is exactly `symbol`. The two callable
+the ordinary-meta `DefaultMetaResult = τ` rule. The two callable
 kinds therefore never share that conclusion, and the ordinary-meta
-`ReturnClassifier = symbol` rule is not violated by generated closures; the
+default-result rule is not violated by generated closures; the
 generated closure's own type is rooted at its `MetaInstance` scope instead.
 
 ## 5. Match and If Share One Pattern Mechanism
@@ -966,7 +987,7 @@ Current state:
 - `verify` is a core meta-visible verification namespace/object, with
   verification operations installed below it as core symbols.
 - Source-declared callable/meta-function overloads can be harvested into graph
-  symbols and selected by the restricted v0.8 overload path.
+  bindings and selected by the restricted v0.8 overload path.
 - Formal `struct` invocation still produces anonymous
   `GeneratedTypeDefinitionValue` pattern heads. Ordinary binding preserves those
   provisional heads or restores stripped material under the anonymous
@@ -1070,8 +1091,8 @@ determines the boundaries of the candidate search. The relevant boundaries are:
 - source root contribution,
 - package artifact metadata.
 
-These determine which symbols are reachable and which are exported across a
-package boundary, and therefore which candidates can populate the symbol
+These determine which bindings are reachable and which are exported across a
+package boundary, and therefore which candidates can populate the name-graph
 candidate pool for an external lookup. This document does not define manifest
 syntax or the build graph. For those, see the existing build and package design
 notes (`build-system-design.md`, `package-manifest-v0.md`, and

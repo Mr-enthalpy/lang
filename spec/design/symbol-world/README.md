@@ -5,7 +5,7 @@ narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
 construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) checking,
 Symbol `<tau?,V_S?>` role/member projections, complete type snapshots,
-`PatternValue`, ordinary Symbol-valued meta results
+`PatternValue`, default `τ`-valued meta results
 (current transitional carrier: `SymbolConstruction`),
 `ResolvedPatternScope`, `MetaInstanceScopeId`, meta return self-root checking,
 pure `extend`, place-level `inject`, `NamespaceOrigin`, construction-unit ownership,
@@ -23,7 +23,7 @@ The namespace graph world model and symbol-level identity:
 - symbol-first `<tau?,V_S?>` role/member projections and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
-- `Val1? x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
+- Object `⟨Val1?, P, Val2⟩`, canonical `Pv:Pp`, contextual P1 projection, P2
   result normalization, derived function-object stage views, seal visibility,
   const/mut product order, compile-flow projection over ordinary call nodes,
   complete derived compile-companion objects, coarse inferred require, and
