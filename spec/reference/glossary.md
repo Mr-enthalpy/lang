@@ -235,7 +235,7 @@ _See also: Pattern derivation, PatternValue, Direct Pattern child._
 An ordinary Object observed together with its Pattern coordinate. The term
 does not name a separate rank or carrier: its value, Pattern, and associated
 members remain the ordinary `<Val1?,P,Val2>` coordinates. Open authority
-(`Anchor` / `OpenCapability`), places, and borrow capability are orthogonal.
+(`Anchor` / `WindowLive_Σ`), places, and borrow capability are orthogonal.
 
 _See also: Pattern, Object normal form (`Norm`), Open authority._
 
@@ -826,11 +826,11 @@ The complete equations and well-foundedness rules belong to
 additional imported judgment and is therefore the strict refinement.
 Anchor and carrier place remain outside normal form.
 
-_See also: Policy Pair, Borrow view, Open authority (`OpenHere_Σ`, `OpenCapability`)._
+_See also: Policy Pair, Borrow view, Open authority (`OpenHere_Σ`, `WindowLive_Σ`)._
 
 ---
 
-## Open authority (OpenHere_Σ, OpenCapability, Visible_Σ)
+## Open authority (OpenHere_Σ, WindowLive_Σ, Visible_Σ)
 
 Whether a `PatternValue` may be structurally modified in the current evaluation
 context is decided by two independent facts:
@@ -838,53 +838,68 @@ context is decided by two independent facts:
 ```text
 Anchor(v) = ⟨PatternRoot(v), Navigation(v)⟩
 
-OpenCapability(v)   -- construction window still open (value attribute)
+GenerationRegime(v) ∈ { MetaGenerated, NonMetaGenerated }
+                     -- immutable birth classification (value attribute)
+WindowLive_Σ(v)     -- construction window still open at the current program
+                       point (evaluation/window state)
 Visible_Σ(v)        -- current frame can obtain v
 OpenHere_Σ(v)
-  iff OpenCapability(v)
-  ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
+  iff WindowLive_Σ(v)
+  ∧ AuthorityMatches(v, Σ)
 ```
 
-`AuthorityMatches` is the coordinate equality between the value's static
-anchor and the evaluation stack's current dynamic position (canonical owner
+`AuthorityMatches` resolves the frame that still owns the value's static
+anchor on the current evaluation stack; authority belongs to that owning
+frame, not unconditionally to the stack-top callable (canonical owner
 §12.1.1):
 
 ```text
-CurrentEvaluationCoordinate_nonmeta(Σ)
-  = ⟨RootCoordinate(CurrentCallable), ActiveInlineClosurePath⟩
+EvaluationCoordinate(f)
+  = ⟨RootCoordinate(Callable(f)), ActiveInlineClosurePath(f)⟩
 
 RootCoordinate(F)
   = MetaPartnerRoot(F, GenericArgs)   if Generic(F)
     CallableRoot(F)                   otherwise
 
+AuthorityFrame_Σ(v)                      -- non-meta context
+  = the nearest still-active frame f owning Anchor(v)
+    (EvaluationCoordinate(f) = Anchor(v)), searched outward from the
+    current frame, skipping compile/transparent frames, and stopping at
+    any meta invocation frame (a meta boundary masks v)
+
 AuthorityMatches_nonmeta(v, Σ)
-  iff Anchor(v) = CurrentEvaluationCoordinate_nonmeta(Σ)
+  iff AuthorityFrame_Σ(v) exists
 
 CurrentEvaluationCoordinate_meta(Σ) = ⟨NearestMetaRoot(Σ), ε⟩
 AuthorityMatches_meta(v, Σ)
   iff Anchor(v) = CurrentEvaluationCoordinate_meta(Σ)
 ```
 
-The equality is opaque navigation-coordinate equality, not prefix matching;
-`AuthorityMatches` is the regime-dispatched name of the same judgment.
-`PatternValue` records static anchor; the evaluation stack records the current
-dynamic evaluation position; `PatternValue` does not record dynamic call
-history.
+Passing an open value into a deeper ordinary call frame does not destroy
+authority: the caller's frame remains still-active and continues to own the
+anchor. The equality is opaque navigation-coordinate equality, not prefix
+matching; `AuthorityMatches` is the regime-dispatched name of the same
+judgment. `PatternValue` records static anchor; the evaluation stack records
+the current dynamic evaluation position; `PatternValue` does not record
+dynamic call history.
 
-`OpenCapability` is a value attribute: the construction window has not been
-permanently closed. `OpenHere_Σ` adds the contextual question: does the current
-evaluation stack hold construction authority over this value's anchor?
-`Visible_Σ` captures a third state: the value exists and its capability may
-still be open, but the current frame cannot obtain it (e.g. shadowed by a
-deeper meta invocation). Clone, value copy, and construction-transparent
-`compile` frames preserve the anchor and capability; they do not preserve or
-manufacture source-place identity. `Anchor(v) ∉ Norm(v)`.
+`WindowLive_Σ` is a property of the current evaluation state: the construction
+window has not been permanently closed at the current program point.
+`OpenHere_Σ` adds the contextual question: does the current
+evaluation stack still contain the frame that owns this value's anchor, and is
+the window still live there? `Visible_Σ` captures a third state: the value
+exists and its window may still be live, but the current frame cannot obtain it
+(e.g. shadowed by a deeper meta invocation). Clone, value copy, and
+construction-transparent `compile` frames preserve the anchor and
+`GenerationRegime`; they do not preserve or manufacture source-place identity
+and do not create a fresh window. `Anchor(v) ∉ Norm(v)`; `GenerationRegime(v) ∉
+Norm(v)`.
 
 `OpenHere_Σ` does not propagate along owned field relations: no
 `OpenHere_Σ(child) ⇒ OpenHere_Σ(parent)` or
-`OpenCapability(parent) ⇒ OpenCapability(child)` implication holds. Each
+`WindowLive_Σ(parent) ⇒ WindowLive_Σ(child)` implication holds. Each
 PatternValue's open authority is determined independently by stack-relative
-coordinate equality, not by the state of any parent or sibling value.
+authority-frame resolution, not by the state of any parent or sibling value.
 
 Openness is a static value property: `OpenHere_Σ(v)` alone does not mean the
 current computation flow re-traverses `v`. Live reentry additionally requires
@@ -893,8 +908,8 @@ canonical in
 [`../design/symbol-world/type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md)
 §2.1.1.
 
-The state transition of `OpenCapability` is one-way: once closed
-(`OpenCapability(v) := false`), it is never retracted. An ordinary meta
+The state transition of the open window is one-way: once closed
+(`WindowLive_Σ(v) := false`), it is never retracted. An ordinary meta
 invocation forms a new boundary. Non-meta construction follows its stable
 lexical-owner interval; the open window is a linear evaluation flow segment,
 and each action on the value receives a disposition
@@ -906,7 +921,7 @@ below the value's open coordinate are forbidden (`Reject`).
 `EffectiveOpenSegment(p) ⊆ OwningInlineClosureEvaluationSegment(p)`. This
 judgment is orthogonal to place writability and borrow lifetime.
 
-_See also: `OpenHere_Σ`, `OpenCapability`, `extend`, `type ref`, `GenerationRegime`._
+_See also: `OpenHere_Σ`, `WindowLive_Σ`, `extend`, `type ref`, `GenerationRegime`._
 
 ---
 
@@ -1054,12 +1069,26 @@ _See also: Complete type closure (`tau`), Object normal form (`Norm`), Symbol va
 
 ## TypeMember
 
-An ordinary val member included in a complete type snapshot exactly when its
-anonymous classifier has direct immutable canonical home
-`TypeMemberScope(Q)`. Descendant ownership, copying, rebinding, and namespace
+Home eligibility and snapshot membership are two layers. An ordinary val
+member is included in a complete type snapshot exactly when it is actually
+carried by that snapshot's `V_τ` and its anonymous classifier has direct
+immutable canonical home `TypeMemberScope(Q)`:
+
+```text
+HomeEligible_Q(F)   -- equivalently TypeMember_Q(F)
+  iff Anonymous(F)
+  and DirectClassifierHome(F) = TypeMemberScope(Q)
+
+TypeMember_τ(F)
+  iff F ∈ ClassifierDomain(V_τ) and HomeEligible_{Core(τ)}(F)
+```
+
+Descendant ownership, copying, rebinding, and namespace
 installation are insufficient. Creating a classifier with that direct home
 requires current construction authority for `Q`; ordinary callable creation or
 navigated `let` cannot nominate the scope and thereby forge membership.
+`V_τ` is fixed at formation; classifiers created later under the same scope
+enter only a new snapshot, never an older `V_τ`.
 Canonical owner:
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
@@ -1069,8 +1098,18 @@ _See also: TypeMemberScope, `Self_τ`, Symbol value._
 
 ## TypeMemberScope
 
-The direct classifier-home scope associated with the installed type core `Q`
-of a type.
+The direct classifier-home scope derived from the canonical self-pattern root
+of the type core `Q`:
+
+```text
+CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)
+TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
+```
+
+It is invariant under core changes that preserve that root
+(`CoreAnchor(Q') = CoreAnchor(Q) ⇒ TypeMemberScope(Q') = TypeMemberScope(Q)`,
+`TypeMemberScopeStability`, canonical §2.1) and is independent of the
+remaining `Q` snapshot.
 Creation under this scope is the membership proof that places a member into
 `V_τ` at type-value formation; arbitrary descendants do not qualify. Selecting
 this home at classifier creation requires current construction authority for
@@ -1287,9 +1326,9 @@ ValidRegion( type ref )   =  BorrowLifetimeRegion( Target, ref )
 ValidRegion( type share ) =  LifetimeRegion( Target )
 ```
 
-A `type ref` may remain valid while its pointee type value is closed-capability. A mutable
+A `type ref` may remain valid while its pointee type value's window is closed. A mutable
 ref may then replace the whole slot with another legal value, but cannot use the
-closed-capability value as `extend` input. `OpenHere_Σ(v)` and `Writable(place)` are separate
+closed-window value as `extend` input. `OpenHere_Σ(v)` and `Writable(place)` are separate
 judgments in both directions.
 
 It applies to the destination classes that can outlive a valid region
@@ -1315,8 +1354,9 @@ Root(tau_new) = Root(tau_old)
 ```
 
 `extend` accepts the whole complete type closure, never a `type ref` or
-`type share`. It checks `OpenHere_Σ(old)` from `Anchor(old)` and
-`CurrentAuthority(Σ)`, resolved through `Core(old)` for a complete type value
+`type share`. It checks `OpenHere_Σ(old)` from `Anchor(old)` and the
+authority-frame resolution of §12.1.1, resolved through `Core(old)` for a
+complete type value
 (§12.1.2 of the canonical owner), and the result
 independently satisfies `WellFormedTau(τ')` (history-free; never inherited
 along a modification chain). It creates no root, modifies no place, and
@@ -1366,7 +1406,8 @@ object itself (`U_0 = type`, classified by `U_1`), so the formed borrow type is
 with its classifier. A value
 `r : type ref` is a borrow view of a type-valued place. Reaching the
 type-level place of a pure type slot uses `t |> (type ref)`; a Symbol uses
-`(S ref).type` when its unique `Q` satisfies `TypeRole`. Ordinary borrow
+`(S ref).type` when `S` carries `τ` and `TypeValueRole(τ)` (equivalently
+`TypeRole(Core(τ))`). Ordinary borrow
 lifetime and policy rules determine formation, validity, and writability.
 
 `type share` is the borrow-reference type produced by `type |> share`; a value
@@ -1384,9 +1425,9 @@ ordinary borrow facts, never a second type-value shape:
 ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-It contains no construction-open witness. A closed-capability type can therefore be read
+It contains no construction-open witness. A closed-window type can therefore be read
 through `type ref`; if the ref is writable, the whole slot can be replaced by an
-independently legal type value. Using the current closed-capability value as input to
+independently legal type value. Using the current closed-window value as input to
 `extend` still fails. Returning or storing the view is an ordinary borrow escape
 question.
 

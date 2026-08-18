@@ -46,7 +46,7 @@ Still open after this correction:
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
-  construction-authority (`OpenHere_Σ` / `OpenCapability`) checking.
+  construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) checking.
 - Implementation of source-level `let f::(U |> (type ref))` against an already
   installed type carrier/place: the associated-extension entry point currently
   requires a still-open construction and resolves the target object from the
@@ -61,7 +61,7 @@ Still open after this correction:
   facet exposure;
   semantically, formal invocation remains uninstalled and outer binding resolves
   the installation place.
-- Exact Rust/IR scheduling of `OpenCapability` closing events relative to
+- Exact Rust/IR scheduling of open-window closing events relative to
   graph seal, without reintroducing a place-level Open capability.
 - Whether and how external objects can intentionally expose extension points.
 - Whether escaped field names are still needed for namespace-role conflicts
@@ -552,7 +552,7 @@ here so they are not mistaken for design decisions:
   direct `struct` generation is not implemented.
 - Ordinary construction windows carry provisional closing coordinates
   (`OrdinaryOpenWindow { creation_flow_segment, first_use_seen,
-  closed_by_fork_or_end }`) and close `OpenCapability` on the explicit events
+  closed_by_fork_or_end }`) and close the window on the explicit events
   `note_first_semantic_use` / `note_residual_runtime_fork_or_end`, which the
   evaluation driver must raise by hand. The canonical closing event set for an
   ordinary (non-meta) construction is defined in
@@ -753,10 +753,10 @@ forwarding or spelling-only lookup.
 **Status:** Open (engineering, active at v0.10+)
 
 **Closed part of the question:**
-The semantics do not place `Anchor`/`OpenCapability`, `Open`, or a borrow witness in
+The semantics do not place `Anchor`/`WindowLive_Σ`, `Open`, or a borrow witness in
 normalized PatternValue identity. A `compile` frame transports the input value
 and its anchor without creating a root, while every `extend` application
-rechecks `OpenHere_Σ(value)` against `CurrentAuthority(Σ)`. A `type ref`
+rechecks `OpenHere_Σ(value)` through the authority-frame resolution of §12.1.1. A `type ref`
 parameter does not discharge that check. Thus the same normalized value may be
 extension-legal at one call site and illegal at another:
 
@@ -797,7 +797,7 @@ Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
 | Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
 | Pattern relation, binderless Pattern, structural child and extraction roles | `design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` | derivation/residual IR only |
 | Symbol `<Q?,V>` Set quotient, complete type snapshots, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate only |
-| construction authority (`OpenHere_Σ` / `OpenCapability`) and stack-relative open window | same canonical construction document plus `design/lifetime/` | region/stack representation |
+| construction authority (`OpenHere_Σ` / `WindowLive_Σ`) and stack-relative open window | same canonical construction document plus `design/lifetime/` | region/stack representation |
 | retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
 
 The concrete unresolved items remain in the earlier “Still open” lists. This

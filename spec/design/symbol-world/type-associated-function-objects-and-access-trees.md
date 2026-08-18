@@ -177,13 +177,13 @@ The consequences that field/access-tree work must preserve:
   formed from a resident child. Parent wholesale replacement may invalidate the
   old borrow, but never redirects it to a new child at the same coordinate;
   only `rebind` selects a new target.
-- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. A closed-capability type slot
-  may remain writable for wholesale replacement, and an open-capability value may be
+- `Writable(place)` and `OpenHere_Σ(Value(place))` are independent. A closed-window type slot
+  may remain writable for wholesale replacement, and an open-window value may be
   extended purely without a writable carrier.
 
 This is only a summary. For the canonical `TypeValueId` implementation index
 root / `PlaceId` / `SymbolId` distinction — including the object normal form,
-the borrow views, writability, construction-authority (`OpenHere_Σ` / `OpenCapability`), and the namespace
+the borrow views, writability, construction-authority (`OpenHere_Σ` / `WindowLive_Σ`), and the namespace
 member-creation/write pipeline — see
 `spec/design/symbol-world/type-values-places-and-borrow-views.md`.
 

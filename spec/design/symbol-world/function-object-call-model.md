@@ -614,11 +614,21 @@ Compile projection preserves an ordinary projected call; normal compile
 evaluation later enumerates and selects objects.
 
 The semantic source of a compile companion is derivation, not Symbol
-injection. For any callable `F`, its compile partner is the complete function
-object produced by the compile transform:
+injection. The compile realization is defined only for the stage that admits
+one — a runtime generic callable — and is undefined for the other stages:
 
 ```text
-CompilePartner(F) = C(F)
+CompileRealization(F)
+  = C(F)        if Stage(F) = runtime
+  = F           if Stage(F) = compile
+  = undefined   if Stage(F) = meta
+    -- a partner operation is undefined for meta callables
+
+DistinctCompilePartner(F)
+  iff Stage(F) = runtime
+  -- equivalently: CompileRealization(F) = C(F) != F
+
+CompilePartner(F) = C(F)   -- defined exactly when DistinctCompilePartner(F)
 
 C(n) = n  with produced-runtime-Val1 := absent
          if ManufacturesRuntimeVal1(n)
@@ -630,7 +640,12 @@ C(F) = Resolve(CompileTransform(body(F)))
 classification so that a runtime-value-producing body instead produces its
 static result (absent runtime `Val1`), leaving the callable structure,
 receiver, and associated static `()` intact. The compile companion's existence
-is a fact about `F` under the compile transform. A host Symbol's symbol-facet
+is a fact about `F` under the compile transform, and only about a runtime
+callable: a compile generic `F` has no distinct compile partner, and a meta `F`
+has none either (its realization is `F` itself in both cases). This matches the
+partner classification table of meta-object-invocation §4: runtime generic `F`
+has `C(F)` plus `M(F)`; compile generic `F` has only `M(F)`; meta `F` has
+neither. A host Symbol's symbol-facet
 entry for the companion (overload-resolution §3.3) is a lowering/implementation
 cache, not the semantic cause: removing the cache entry does not remove
 `CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that

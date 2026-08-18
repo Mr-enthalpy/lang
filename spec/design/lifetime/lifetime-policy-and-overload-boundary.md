@@ -400,9 +400,9 @@ The two views differ in write capability, not in whether their pointee is Open:
 | `type ref` | read and policy-bounded write | no | no |
 | `type share` | read/observe only | no | no |
 
-Both views may remain valid after the current pointee's capability closes. `type ref` may
+Both views may remain valid after the current pointee's open window closes. `type ref` may
 then replace the pointee wholesale if `Writable(Target)` holds, but neither view
-can make the closed-capability value admissible as `extend`'s old value.
+can make the closed-window value admissible as `extend`'s old value.
 
 ### 3.2 Borrow validity never discharges construction openness
 
@@ -432,10 +432,10 @@ Writable_Γ(Target(r))
 ```
 
 Returning or storing `type ref` asks only the ordinary escape question of this
-section. A later `inject` may fail because the then-current value has closed
-its `OpenCapability` (OpenCapability(v) = false) even
+section. A later `inject` may fail because the then-current value's open
+window has closed (`WindowLive_Σ(v) = false`) even
 though the reference remains lifetime-valid. Weakening to `share` surrenders
-write capability, but does not alter the value's anchor or open capability and never extends the
+write capability, but does not alter the value's anchor or window state and never extends the
 target lifetime.
 
 ## 4. `@` and lifetime rules never reselect an ordinary call

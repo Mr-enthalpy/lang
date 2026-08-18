@@ -7,7 +7,7 @@ type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
 per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
 `Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
 `share`, `rebind`), the place-sensitive lifetime observation (`@`),
-construction-authority (`OpenHere_Σ` / `OpenCapability`) judgment, and type checker
+construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgment, and type checker
 remain unimplemented target semantics. §10 registers the implementation debt.**
 
 This document specifies the semantic boundary between *object values*, *symbol
@@ -620,21 +620,30 @@ WellFormedTau(tau)
   and PatternClosureConsistent(Q, V_τ)
 
 PatternClosureConsistent(Q, V_τ) iff
-  each F ∈ V_τ satisfies TypeMember_Q(F)
-  and every BoundRef in Q is bound and restricted
-      (BoundRef(alpha) notin Children_owned)
+  WellFormedCore(Q)
+  and ∀F ∈ ClassifierDomain(V_τ):
+      Anonymous(F) ∧ DirectClassifierHome(F) = TypeMemberScope(Q)
+      (home eligibility; equivalent to HomeEligible_Q(F), canonical §2.1)
+  and AllBoundRefsBoundAndRestricted(bind α.⟨Norm(Q), Norm_V^α(V_τ)⟩)
+      (every BoundRef reachable during Norm_type^α(Q, V_τ) is bound by α
+       and belongs to an authorized static edge kind;
+       BoundRef(alpha) notin Children_owned)
   and all structural/interface registrations referenced by Q and V_τ
       are internally well-formed
   and no CurrentAuthority / OpenHere_Σ / GenerationRegime /
-      OpenCapability / stack / provenance premise is used
+      WindowLive_Σ / stack / provenance premise is used
   -- a structural judgment over the current closure value, with no
-     dependence on how tau was produced
+     dependence on how tau was produced; the member condition compares
+     DirectClassifierHome(F) with the current TypeMemberScope(Q) — it
+     never asks for which old core F was created
 
 WellFormedTau is history-free:
-  Norm(τ₁) = Norm(τ₂)
+  Norm_type(τ₁) = Norm_type(τ₂)
   ⇒ WellFormedTau(τ₁) ↔ WellFormedTau(τ₂)
       -- structurally identical closures never differ in well-formedness
          because of construction history
+         (τ is not an Object; complete type normalization is
+          Norm_type(tau) = bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
 
 TypeValueRole(tau)
   iff WellFormedTau(tau)
@@ -858,6 +867,9 @@ ordinary slot replacement:
     Write(slot, new_value)
     -- no old τ -> new τ semantic relationship is established
        and no structural incidence is added
+    -- does not consume Open/construction authority, and does not
+       guarantee preserving WellFormedTau: the result is judged
+       independently and may be false
 
 structural transformation:
     Extend_Σ(old, Δ) -> new
@@ -872,7 +884,21 @@ place wrapper:
 Each `tau` is an immutable snapshot; no operation mutates an existing closure.
 A carrier's stored snapshot is replaced only by ordinary slot replacement
 (§7.1) — a fresh `tau' = <Q', V_τ>` sharing `V_τ`, with no structural incidence
-added. Copying a type-valued binding copies the
+added. `WellFormedTau(<Q', V_τ>)` is then judged independently and may fail;
+slot replacement is **not** a well-formedness-preservation theorem. The
+scope-preserving case is the one that keeps the member homes valid:
+
+```text
+WF(⟨Q, V⟩) ∧ CoreAnchor(Q') = CoreAnchor(Q) ∧ WellFormedCore(Q')
+  ⇒ HomeCompatibility(Q', V)
+      -- every F ∈ ClassifierDomain(V) keeps
+         DirectClassifierHome(F) = TypeMemberScope(Q')
+         (TypeMemberScopeStability, canonical §2.1)
+but WF(⟨Q', V⟩) still requires all other conditions and is not
+inherited from WF(⟨Q, V⟩)
+```
+
+Copying a type-valued binding copies the
 whole closure:
 
 ```text
@@ -890,7 +916,8 @@ Ordinary associated-member installation is ordinary **slot replacement**, not
 
 ```text
 Write(place_or_projection_slot, new_value)
--- the new_value independently satisfies its own well-formedness judgments
+-- the new_value independently satisfies its own well-formedness judgments;
+   the judgment may answer false — replacement is not WF preservation
 ```
 
 No `old -> new` derivation is implied: the written `new_value` is a fresh
@@ -1957,11 +1984,11 @@ ordinary borrow coordinates:
 ⟨ TargetPlace, type, BorrowCapability, LifetimeRelation ⟩
 ```
 
-A closed-capability type-valued slot may still be observed through `type ref`. If the view
+A closed-window type-valued slot may still be observed through `type ref`. If the view
 is writable, the complete current value may be replaced by any compatible,
-well-formed type value. What is forbidden is using the closed-capability pointee as the
+well-formed type value. What is forbidden is using the closed-window pointee as the
 `old` input of `extend`; holding a reference does not change that value's
-anchor or open capability.
+anchor or open window.
 
 The holdable interval is consequently its ordinary borrow-valid region, not an
 Open window. Weakening remains useful when write authority is unnecessary:
@@ -1978,7 +2005,8 @@ GlobalLifetime(q) does not imply OpenHere_Σ(Value(q))
 Γ ⊢ r : type ref does not imply OpenHere_Σ(Read(r))
 ```
 
-`OpenHere_Σ` is defined from `Anchor`/`OpenCapability` and `CurrentAuthority(Σ)` in
+`OpenHere_Σ` is defined from `Anchor`/`WindowLive_Σ` and the
+authority-frame resolution of §12.1.1 in
 `symbol-first-meta-construction-and-pattern-injection.md` §12.1.1.
 
 `type share` is the deliberately weaker view. It may be stored or passed across
@@ -2006,8 +2034,8 @@ returning / storing a ref   ->  ordinary lifetime/capability escape check
 
 Returning a `type ref` from a `compile` callable is therefore governed by the
 same borrow escape rule as any other reference. It may remain usable after the
-pointee's capability closes; a later `extend`/`inject` attempt rechecks the current value's
-open-capability and may fail independently of the reference's validity.
+pointee's open window closes; a later `extend`/`inject` attempt rechecks the current value's
+window state and may fail independently of the reference's validity.
 
 ### 5.6 Type-expected positions elaborate `|> type`; candidate discovery does not
 
@@ -2129,8 +2157,8 @@ OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
 CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
 ```
 
-A writable slot may contain a closed-capability type value that can be replaced wholesale
-but cannot be structurally extended from. Conversely an open-capability value may be
+A writable slot may contain a closed-window type value that can be replaced wholesale
+but cannot be structurally extended from. Conversely an open-window value may be
 extended purely and bound elsewhere even when its source is immutable or has no
 write-back place.
 
@@ -2138,8 +2166,10 @@ At minimum, ordinary place operations reject a core/external stable place, a
 place reached only through `share`, a place outside its borrow lifetime, or a
 place whose policy denies the action. Member creation additionally rejects a
 parent outside the current construction unit or an already-instantiated child.
-Structural `extend` independently rejects a value whose `OpenCapability` is
-closed or whose `Anchor` lacks authority in `CurrentAuthority(Σ)`.
+Structural `extend` independently rejects a value whose window is
+closed (`WindowLive_Σ = false`) or whose `Anchor` lacks authority under the
+authority-frame resolution
+of §12.1.1.
 
 Value equality grants no write permission. Even when:
 
@@ -2434,7 +2464,7 @@ full three-component Norm(x) including recursive Norm_Val1?
   (current normalizer keeps an opaque Val1 leaf)
 ref / share / @ / rebind operations and their overloads
 type ref and type share values, and ValidContext for them
-the independent writability and construction-authority (`OpenHere_Σ` / `OpenCapability`) judgments of §6
+the independent writability and construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgments of §6
 the = assignment operator and its four-layer check (§4.5.1 there)
 construction-unit ownership enforcement
 ```

@@ -15,7 +15,8 @@ This document builds on, without replacing:
 - `spec/design/symbol-world/type-values-places-and-borrow-views.md` for
   `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` and
   the place-sensitive lifetime observation `@`,
-  and independent writability / construction-authority (`OpenHere_Σ` / `OpenCapability`) judgments;
+  and independent writability / construction-authority (`OpenHere_Σ` /
+  `WindowLive_Σ`) judgments;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
   positive overloads of `@`, escape checking, and the lifetime-rule boundary;
 - `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` for
@@ -200,6 +201,60 @@ and DirectClassifierHome(G) != TypeMemberScope(Q)
   => not TypeMember_Q(G)
 ```
 
+`TypeMemberScope(Q)` itself is not a function of the whole `Q` snapshot. It is
+derived from a stable, self-observable anchor inside `Q` — its canonical
+self-pattern root — so that ordinary core replacement in a type-valued slot
+does not silently invalidate every member's home:
+
+```text
+CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)
+
+TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
+
+CoreAnchor(Core(τ)) = Root(τ)      -- for a complete type value τ;
+                                    -- Root(τ) is the closure's canonical
+                                    -- self-pattern root (see `extend`)
+```
+
+`MemberScope` is a derived classifier-home scope over the canonical Pattern
+root; it introduces no new namespace/type identity ontology. The stability
+theorem this anchors is:
+
+```text
+TypeMemberScopeStability:
+  CoreAnchor(Q') = CoreAnchor(Q)
+  ⇒ TypeMemberScope(Q') = TypeMemberScope(Q)
+```
+
+The converse is deliberately not promised: a replacement that changes the
+core anchor (`CoreAnchor(Q') ≠ CoreAnchor(Q)`) may change the scope, and the
+replaced closure `<Q', V_τ>` may then simply fail `WellFormedTau` — that is
+the correct, history-free outcome, not a contradiction (type-values §2.2).
+
+Home eligibility and snapshot membership are two different judgments:
+
+```text
+HomeEligible_Q(F)
+  iff Anonymous(F)
+  and DirectClassifierHome(F) = TypeMemberScope(Q)
+      -- answers: which stable scope may this classifier belong to?
+      -- TypeMember_Q(F) is the established name of this judgment
+
+TypeMember_τ(F)
+  iff F ∈ ClassifierDomain(V_τ)
+  and HomeEligible_{Core(τ)}(F)
+      -- answers: is this classifier actually carried by this snapshot?
+      -- F ∈ MemberDomain(τ) ⇔ F ∈ ClassifierDomain(V_τ)
+```
+
+A concrete `τ`'s `V_τ` is fixed at formation and never grows: classifiers
+created later under the same scope (e.g. by an `extend` that preserves
+`CoreAnchor`) enter only the new snapshot `V_τ'` and never retroactively enter
+an older `V_τ`. `DirectClassifierHome(F)` is immutable after creation, so a
+surviving member's home eligibility is checked by comparing two current
+values (`DirectClassifierHome(F) = TypeMemberScope(Q')`) — never by asking
+whether `F` was originally created for an old `Q`.
+
 Projections over the Symbol value are:
 
 ```text
@@ -320,7 +375,8 @@ AsType(E) != TypeOf(E)
 explicit type-of extraction may obtain the next classifier. `@` is the
 privileged place-observation operation and yields a lifetime value; it never
 supplies `AsType` implicitly and never forms a borrow. A Symbol's `.type`
-family is applicable exactly when its unique `Q` satisfies `TypeRole`:
+family is applicable exactly when the Symbol carries `τ` and
+`TypeValueRole(τ)` holds (equivalently `TypeRole(Core(τ))`):
 `S.type` reads the complete type snapshot by value, `(S ref).type` projects
 `type ref`, and `(S share).type` projects `type share`. Reaching the
 type-level place of an already-pure type slot uses `t |> (type ref)`, not `@`
@@ -801,7 +857,7 @@ ordinary navigable `M`.
 
 This is not a new SymbolConstruction rank. The returned Symbol is an ordinary
 PatternValue whose mutable member content is `Val1`; root authority governs the
-`OpenCapability` window and global lifetime of its installed type-core material
+open-window state and global lifetime of its installed type-core material
 (`Core(τ)` plus `CallSpace(τ)`, when a well-formed `τ` is present). An
 implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
@@ -906,16 +962,16 @@ DefinitionLexicalContext(F)
 
 CallerConstructionContext
   — the current evaluation stack used with each value's `Anchor` and
-    `OpenCapability`
+    current window state
 ```
 
 The definition context decides names and lexical owners. The caller context is
-used only by operations that query `OpenHere_Σ(v)`: they compare the value's
-`Anchor` and `OpenCapability` with `CurrentAuthority(Σ)` (§12.1.1). Neither
-context substitutes for the other.
+used only by operations that query `OpenHere_Σ(v)`: they combine the value's
+`Anchor` with the current window state and an authority-frame resolution over the
+caller's stack (§12.1.1). Neither context substitutes for the other.
 
 Passing through a `compile` call, cloning, selecting, or composing a value
-preserves its canonical value and `Anchor`/`OpenCapability` while discarding source
+preserves its canonical value and `Anchor`/`GenerationRegime` while discarding source
 place identity. A compile frame is transparent to the Open-authority stack walk, so an
 OpenHere value remains OpenHere through any number of compile/transparent-intrinsic
 frames unless another semantic boundary closes its construction interval:
@@ -939,10 +995,9 @@ stack:
 
 ```text
 Requires(extend) = OpenHere_Σ(t)
-Γ_caller ⊨ OpenCapability(t) ∧ AuthorityMatches(Anchor(t), CurrentAuthority(Σ_caller))
-  -- AuthorityMatches is the regime-dispatched coordinate equality of §12.1.1
-  -- (non-meta: Anchor = CurrentEvaluationCoordinate_nonmeta;
-  --  meta: Anchor = CurrentEvaluationCoordinate_meta)
+  -- OpenHere_Σ combines the live window state with the authority-frame
+  -- judgment of §12.1.1 (non-meta: AuthorityFrame_Σ(t) exists;
+  --          meta: Anchor = CurrentEvaluationCoordinate_meta)
 ```
 
 A `type ref` parameter proves no such fact. A body that performs place-level
@@ -970,8 +1025,8 @@ a compile evaluation depends on the caller's Open window
 
 not as a general property of every `compile` call, and not decided by whether a
 `type` value happens to be a formal parameter. Caches and `Requires` summaries
-track `Anchor` and `OpenCapability` separately from canonical value identity and recheck
-applicability in the caller stack.
+track `Anchor` and the open-window state separately from canonical value
+identity and recheck applicability in the caller stack.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
 meta-style virtual symbol layer for name shadowing, and does not impose a
@@ -2359,17 +2414,17 @@ source-place, and reverse-`AsType` routes are not deferred alternatives.
 
 Open authority does not propagate along owned field relations. Each
 PatternValue's open authority is determined independently by stack-relative
-coordinate equality:
+authority-frame resolution:
 
 ```text
 OpenHere_Σ(v)
-  iff OpenCapability(v)
-  ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
+  iff WindowLive_Σ(v)
+  ∧ AuthorityMatches(v, Σ)
 ```
 
 No parent-to-child or child-to-parent implication holds; a terminal event that
-closes multiple capabilities in one structural region does so because each value
-independently fails `OpenCapability` or `AuthorityMatches`, not because a
+closes multiple windows in one structural region does so because each value
+independently fails `WindowLive_Σ` or `AuthorityMatches`, not because a
 neighboring value closed. Borrow edges are horizontal and do not participate.
 Mutability is independent:
 
@@ -2523,10 +2578,11 @@ Canonicalizable(result)
   and WellFormedTau(result)     -- independently checked on the result structure
 ```
 
-`OpenHere_Σ(old)` is derived from `Anchor(old)` and `CurrentAuthority(Σ)`
-(§12.1.1), not from a carrier place. Because `old` is a complete type value `τ`
-rather than an ordinary `PatternValue`, the horizontal attributes resolve by
-Core projection (§12.1.2): `OpenHere_Σ(old) = OpenHere_Σ(Core(old))`. Clone/read
+`OpenHere_Σ(old)` is derived from `Anchor(old)` and the authority-frame
+resolution of §12.1.1 (non-meta: `AuthorityFrame_Σ(Core(old))` exists; meta:
+coordinate equality against `CurrentEvaluationCoordinate_meta`), not from a
+carrier place. Because `old` is a complete type value `τ` rather than an
+ordinary `PatternValue`, the horizontal attributes resolve by Core projection (§12.1.2): `OpenHere_Σ(old) = OpenHere_Σ(Core(old))`. Clone/read
 preserves the anchor:
 
 ```text
@@ -2534,7 +2590,7 @@ Anchor(Clone(old)) = Anchor(old)
 ```
 
 Consequently an `OpenHere` value with no writable carrier may be extended and
-bound elsewhere, while a closed-capability value read through a writable
+bound elsewhere, while a closed-window value read through a writable
 `type ref` is rejected. There are deliberately no `type ref` or `type share`
 overloads for `extend`.
 
@@ -2574,7 +2630,7 @@ formation history, and it does not automatically acquire `extend` semantics
 just because the carrier is a type value.
 
 `r : type ref` proves target/lifetime/capability only. It never proves the
-current pointee satisfies `OpenHere_Σ`. A closed-capability pointee may
+current pointee satisfies `OpenHere_Σ`. A closed-window pointee may
 therefore be replaced wholesale by ordinary assignment through a writable
 ref, while `inject(r, Δ)` fails before the write because its `extend` step is
 inadmissible.
@@ -2644,7 +2700,7 @@ second produces values only. The resulting type Pattern is:
 ```
 
 `extend` determines the child set of the resulting pattern value. It does not
-change owner identity or reopen a closed-capability value. `inject` additionally requires
+change owner identity or reopen a closed-window value. `inject` additionally requires
 the target to be writable; formation of `r_ref` alone proves neither premise.
 
 As with `struct`, the lowest-level leaf reduction has the form:
@@ -3526,47 +3582,68 @@ value is not simultaneously interpreted under both judgments.
 
 #### 12.1.1 Open authority is stack-relative
 
-Every constructed PatternValue carries a structural anchor and a remaining
-open-capability flag. Whether that capability may be exercised in the current
-evaluation context is a separate, dynamic judgment:
+Every constructed PatternValue carries a structural anchor and an immutable
+birth regime. Whether it may be structurally modified in the current evaluation
+context is a separate, dynamic judgment that combines the value's static anchor
+with the evaluation stack and the current open-window state:
 
 ```text
 Anchor(v) = ⟨PatternRoot(v), Navigation(v)⟩
 
-OpenCapability(v)          -- construction window still open (value attribute)
-Visible_Σ(v)               -- current frame can obtain v
+GenerationRegime(v) ∈ { MetaGenerated, NonMetaGenerated }
+                     -- immutable birth classification (value attribute)
+
+WindowLive_Σ(v)       -- construction window still open at current program point
+                       -- evaluation/window state, not a value attribute
+Visible_Σ(v)          -- current frame can obtain v
+
 OpenHere_Σ(v)
-  iff OpenCapability(v)
-  ∧ AuthorityMatches(Anchor(v), CurrentAuthority(Σ))
+  iff WindowLive_Σ(v)
+  ∧ AuthorityMatches(v, Σ)
+
+AuthorityMatches(v, Σ)
+  iff AuthorityFrame_Σ(v) exists
 
 Anchor(v) ∉ Norm(v)
 CarrierPlace(v) ∉ Anchor(v)
+GenerationRegime(v) ∉ Norm(v)
 ```
 
-`OpenCapability` is a property of the value itself: its construction window
-has not been permanently closed. `OpenHere_Σ` adds the contextual question:
-does the current evaluation stack hold construction authority over this
-value's anchor? `Visible_Σ` adds a third state: the value exists and its
-capability may still be open, but the current frame cannot obtain it (for
-example, it is shadowed by a deeper meta invocation — see below).
+`GenerationRegime(v)` is fixed at creation. `WindowLive_Σ(v)` is a property of
+the current evaluation state: the construction window has not been permanently
+closed at the current program point. `OpenHere_Σ` adds the contextual question:
+does the current evaluation stack still contain the frame that owns this value's
+anchor, and is the window still live there? `Visible_Σ` adds a third state: the
+value exists and the window may still be live, but the current frame cannot
+obtain it (for example, it is shadowed by a deeper meta invocation — see below).
 
-Clone, value copy, and compile transport preserve the anchor and capability;
-they do not preserve or manufacture source-place identity:
+Clone, value copy, and compile transport preserve the anchor and regime; they
+do not preserve or manufacture source-place identity, and they do not create a
+fresh window state:
 
 ```text
 Anchor(Clone(v))    = Anchor(v)
 Anchor(let-copy(v)) = Anchor(v)
 ```
 
-The current construction authority is computed from the evaluation stack:
+Construction authority is resolved **per value** against the evaluation
+stack. The PatternValue supplies the static anchor; the stack supplies each
+level's current evaluation position; authority then belongs to the frame that
+still owns that anchor — not unconditionally to the stack-top callable:
 
 ```text
 Frame = ⟨ CallableRoot, MetaPartnerRoot?, ActiveInlineClosurePath ⟩
 
-CurrentAuthority(Σ)
-  -- derived from the frame stack:
-     meta context      : NearestMetaRoot(Σ)
-     non-meta context  : ⟨CallableRoot, MetaPartnerRoot?, ActiveInlineClosurePath⟩
+EvaluationCoordinate(f)
+  = ⟨RootCoordinate(Callable(f)), ActiveInlineClosurePath(f)⟩
+
+RootCoordinate(F)
+  = MetaPartnerRoot(F, GenericArgs)   if Generic(F)
+    CallableRoot(F)                   otherwise
+
+AuthorityFrame_Σ(v)
+  -- the nearest still-active frame owning Anchor(v),
+     resolved per regime (below)
 
 CurrentAuthority_Γ     -- typing-context form of the same judgment, unifying
                           the former `CurrentConstructionAuthority_Gamma`
@@ -3576,15 +3653,20 @@ For a **meta** context, walk the compile-time stack in reverse, skipping
 `compile` and transparent construction-intrinsic frames. Let `M` be the first
 ordinary meta invocation frame found; `NearestMetaRoot(Σ)` is its MetaInstance
 root. In-place closure navigation is transparent for authority purposes
-(`VisibleInlinePath_meta(path) = ε`), so the meta evaluation coordinate is the
-trivial quotient of the same coordinate model:
+(`VisibleInlinePath_meta(path) = ε`), so the meta authority frame degenerates
+to the nearest meta root:
 
 ```text
 CurrentEvaluationCoordinate_meta(Σ)
   = ⟨NearestMetaRoot(Σ), ε⟩
 
+AuthorityFrame_Σ(v)                  -- meta context
+  = the nearest meta invocation frame M such that
+      EvaluationCoordinate(M) = Anchor(v)
+  -- equivalent to Anchor(v) = CurrentEvaluationCoordinate_meta(Σ)
+
 OpenHere_Σ(v)
-  iff OpenCapability(v)
+  iff WindowLive_Σ(v)
   ∧ AuthorityMatches_meta(v, Σ)
   where AuthorityMatches_meta(v, Σ)
           iff Anchor(v) = CurrentEvaluationCoordinate_meta(Σ)
@@ -3598,9 +3680,12 @@ Meta invocation is naturally masking. If `M₀ └─ M₁` and the current cont
 is `M₁`, a value anchored on `M₀` satisfies:
 
 ```text
-OpenCapability(v) = true   -- window still open
-Visible_Σ(v)      = false  -- not obtainable in M₁'s frame
-OpenHere_Σ(v)     = false  -- M₁ lacks authority over M₀'s anchor
+WindowLive_Σ(v) = true   -- window still open
+Visible_Σ(v)    = false  -- not obtainable in M₁'s frame
+OpenHere_Σ(v)   = false  -- AuthorityFrame_Σ(v) undefined: M₁ is the
+                             nearest meta frame and does not own the
+                             anchor; the resolution does not look past a
+                             masking meta boundary
 ```
 
 The value may persist in `M₀`'s suspended frame. It cannot be accessed or
@@ -3609,33 +3694,58 @@ becomes visible and `OpenHere` again — this is **not** a reopen. True close is
 the permanent, irreversible transition:
 
 ```text
-OpenCapability(v) := false   -- the only real close; never retracted
+WindowLive_Σ(v) := false   -- the only real close; never retracted
 ```
 
-For a **non-meta** context, `CurrentAuthority(Σ)` is determined by the
-`CallableRoot`, the `MetaPartnerRoot` when the callable is generic (providing
-the stable symbolic anchoring for the generic arguments), and the
-`ActiveInlineClosurePath` — the current navigation level within the in-place
-closure. These are different authority computations over the same
-`OpenHere_Σ` judgment, not different notions of place capability.
+Nothing reopens closed material. `extend`/`inject` do not reopen it (§8.2), a
+borrow view does not reopen it, and re-navigating to the same object from a
+new context does not reopen it. Cloning/copying/transporting a closed-window
+value carries its closed state with it: the clone is not a reopening.
 
-`AuthorityMatches` is therefore not an open ontology decision: it is the
-coordinate equality between the value's static anchor and the evaluation
-stack's current dynamic position:
+For a **non-meta** context, authority is **not** a fixed function of the
+stack-top callable. `AuthorityFrame_Σ(v)` is the nearest still-active frame
+whose evaluation coordinate owns `Anchor(v)`, searched outward from the
+current frame:
 
 ```text
-Anchor(v) = ⟨PatternRoot(v), Navigation(v)⟩
-
-CurrentEvaluationCoordinate_nonmeta(Σ)
-  = ⟨RootCoordinate(CurrentCallable), ActiveInlineClosurePath⟩
-
-RootCoordinate(F)
-  = MetaPartnerRoot(F, GenericArgs)   if Generic(F)
-    CallableRoot(F)                   otherwise
+AuthorityFrame_Σ(v)                        -- non-meta context
+  = the nearest still-active frame f such that
+      EvaluationCoordinate(f) = Anchor(v),
+    searched outward from the current frame,
+    skipping compile and transparent construction-intrinsic frames,
+    and stopping at any meta invocation frame:
+    a meta boundary between the current frame and f masks v and
+    leaves AuthorityFrame_Σ(v) undefined
 
 AuthorityMatches_nonmeta(v, Σ)
-  iff Anchor(v) = CurrentEvaluationCoordinate_nonmeta(Σ)
+  iff AuthorityFrame_Σ(v) exists
 ```
+
+The owning frame's coordinate contributes the `CallableRoot`, the
+`MetaPartnerRoot` when the callable is generic (providing the stable symbolic
+anchoring for the generic arguments), and that frame's own
+`ActiveInlineClosurePath` — its navigation level within the in-place closure.
+The path entering the comparison is always the owning frame's path, never
+unconditionally the stack-top frame's path. Meta and non-meta resolutions are
+different authority computations over the same `OpenHere_Σ` judgment, not
+different notions of place capability.
+
+Passing an open value into a deeper ordinary call frame therefore does not
+destroy authority: the caller's frame remains still-active on the stack and
+continues to own the anchor:
+
+```text
+F calls G (ordinary), v anchored at F:
+  AuthorityFrame_Σ(v) = F's still-active frame while G executes
+  OpenHere_Σ(v) holds inside G while the window is live
+  -- G operates on v under the §12.1.2 disposition rules: at
+     coordinates below the anchor the terminal actions are Reject,
+     not Terminate
+```
+
+`AuthorityMatches` is therefore not an open ontology decision: it is the
+coordinate equality between the value's static anchor and the owning frame's
+evaluation coordinate.
 
 The equality is opaque navigation-coordinate equality, **not** arbitrary
 prefix matching. A prefix match would let an outer PatternValue automatically
@@ -3681,14 +3791,14 @@ The required independence is explicit:
 Writable_Γ(q)            does not imply OpenHere_Σ(Read(q))
 OpenHere_Σ(v)            does not imply Writable_Γ(Carrier(v))
 Γ ⊢ r : type ref         does not imply OpenHere_Σ(Read(r))
-OpenCapability(v)        does not imply Visible_Σ(v)
+WindowLive_Σ(v)          does not imply Visible_Σ(v)
 Visible_Σ(v)             does not imply OpenHere_Σ(v)
 ```
 
-The state transition of `OpenCapability` is one-way:
+The state transition of the open window is one-way:
 
 ```text
-OpenCapability(v) := false   -- irreversible
+WindowLive_Σ(v) := false   -- irreversible
 ```
 
 Nothing reopens closed material. `extend`/`inject` do not reopen it (§8.2), a
@@ -3706,25 +3816,27 @@ GenerationRegime(v) ∈ { MetaGenerated, NonMetaGenerated }
 `GenerationRegime(v)` is **not** part of the Object structure
 `Object = ⟨Val1?, P, Val2⟩`, is not part of `Norm(v)`, and does not
 participate in canonical Pattern identity or τ normalization. It is an
-implementation attribute used only to decide how `OpenCapability(v)` may be
+implementation attribute used only to decide how the open window may be
 closed.
 
-Although `GenerationRegime`, `OpenCapability`, and `Anchor` are defined on
-ordinary `PatternValue`s, `extend` operates on the complete type value
+Although `GenerationRegime` and `Anchor` are defined on
+ordinary `PatternValue`s, and `WindowLive_Σ` is defined on the evaluation
+state, `extend` operates on the complete type value
 `τ = <Q, V_τ>`, which is not itself an ordinary `PatternValue`. The bridge is
 by Core projection, consistent with the minimal-change observation rule (§2.2:
 ordinary type-rank equality observes `Core(τ) = Q`):
 
 ```text
 GenerationRegime(τ) := GenerationRegime(Core(τ))
-OpenCapability(τ)   := OpenCapability(Core(τ))
+WindowLive_Σ(τ)   := WindowLive_Σ(Core(τ))
 Anchor(τ)           := Anchor(Core(τ))
 
 OpenHere_Σ(τ)
-  = OpenCapability(τ) ∧ AuthorityMatches(Anchor(τ), CurrentAuthority(Σ))
+  = WindowLive_Σ(τ) ∧ AuthorityMatches(τ, Σ)
   = OpenHere_Σ(Core(τ))
-  -- AuthorityMatches as defined in §12.1.1: coordinate equality against
-  -- CurrentEvaluationCoordinate_nonmeta / CurrentEvaluationCoordinate_meta
+  -- AuthorityMatches as defined in §12.1.1: per-value authority-frame
+  -- resolution (non-meta: AuthorityFrame_Σ exists;
+  -- meta: coordinate equality against CurrentEvaluationCoordinate_meta)
 ```
 
 `GenerationRegime(τ)` does not participate in `WellFormedTau(τ)` or in Pattern
@@ -3740,8 +3852,8 @@ complete type value are those of its core `PatternValue`.
   never by extending the local value's lifetime.
 
 - **NonMetaGenerated.** A value produced in an ordinary (non-meta) construction
-  context is born both globally survivable and open-capable:
-  `GlobalSurvivable(v) ∧ OpenCapability(v)` hold from creation. Its open window
+  context is born globally survivable with a live open window:
+  `GlobalSurvivable(v) ∧ WindowLive_Σ(v)` hold from creation. Its open window
   is a linear evaluation flow, not a flat event list. The disposition of an
   action on `v` is one of three outcomes:
 
@@ -3809,7 +3921,7 @@ or split inside a deeper ordinary call frame does not reach back and close an
 open value generated at an outer level. Passing the value into a deeper
 ordinary call frame does **not** itself end or forbid the window. Likewise, a
 value's visibility (`Visible_Σ`) may be lost because of stack masking without
-its `OpenCapability` being touched.
+its open window being touched.
 
 In an ordinary, non-meta construction context the concrete dispositions are:
 
@@ -3856,7 +3968,7 @@ disposition.
 
 The open dispositions of §12.1.2 are scoped to `NonMetaGenerated` values.
 Inside a meta body, material is `MetaGenerated`, and the same actions do
-**not** terminate its `OpenCapability`, because the construction anchor is the
+**not** terminate its open window, because the construction anchor is the
 meta instance itself (§4.3.1). Meta navigation is transparent for authority:
 `ActiveInlineClosurePath_meta` is quotient/erased (`VisibleInlinePath_meta(path)
 = ε`), so meta evaluation never produces the opaque nested state that triggers
@@ -3866,7 +3978,7 @@ and seal/promotion rules instead:
 
 ```text
 inside M (MetaGenerated material):
-  UseForVal1(x)                     Continue -- does not end OpenCapability(x)
+  UseForVal1(x)                     Continue -- does not end the window
   using x as a meta argument        Continue -- presupposes meta argument
                                       admissibility (§4.3.1–§4.3.3):
                                       MetaArgumentAdmissible(a) =>
@@ -3874,8 +3986,8 @@ inside M (MetaGenerated material):
                                         non-GlobalSurvivable MetaGenerated
                                         local cannot enter another meta
                                         invocation at all
-  entering global-normalization     Continue -- does not end OpenCapability(x)
-  static control flow               Continue -- does not end OpenCapability(x)
+  entering global-normalization     Continue -- does not end the window
+  static control flow               Continue -- does not end the window
   entering an in-place closure of M Continue -- transparent navigation;
                                       ActiveInlineClosurePath_meta is erased
 ```
@@ -4195,7 +4307,7 @@ The consequences are:
 
 Remaining engineering questions in this area are about representation, not about
 meaning: the exact ordinary write algebra for the optional Q member and val siblings
-(§13), and how Anchor/OpenCapability/stack applicability is tracked efficiently
+(§13), and how Anchor/open-window/stack applicability is tracked efficiently
 without entering canonical value identity.
 
 Until those objects exist, the current attachment registry is useful substrate,

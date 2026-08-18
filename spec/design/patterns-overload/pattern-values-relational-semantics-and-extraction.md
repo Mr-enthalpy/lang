@@ -685,8 +685,10 @@ WellFormedTau(tau)
   and Q is a well-formed pure Object
   and V_τ is a well-formed TypeMember set
       (each F in V_τ satisfies TypeMember_Q(F))
-  and binder/backref invariants hold
-      (BoundRef(alpha) notin Children_owned)
+  and AllBoundRefsBoundAndRestricted(bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
+      (every BoundRef reachable during Norm_type^alpha(Q, V_τ) is bound
+       by alpha and belongs to an authorized static edge kind;
+       BoundRef(alpha) notin Children_owned)
   and PatternClosureConsistent(Q, V_τ)
       -- structural, history-free; depends only on the current closure value
          (canonical definition: type-values-places-and-borrow-views.md §2.2)
@@ -723,9 +725,16 @@ whole-snapshot semantics. Ordinary Pattern and namespace observation also uses
 The handoff invariants are:
 
 ```text
-TypeMember_Q(F)
+CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)      -- canonical §2.1
+TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
+
+HomeEligible_Q(F)                                -- TypeMember_Q(F)
   iff Anonymous(F)
   and DirectClassifierHome(F) = TypeMemberScope(Q)
+
+TypeMember_τ(F)
+  iff F ∈ ClassifierDomain(V_τ)
+  and HomeEligible_{Core(τ)}(F)
 
 CreateClassifier_Gamma(
   F,
@@ -738,6 +747,11 @@ V_τ = CallSpace(tau)   -- intrinsic to the closure value, not a post-hoc partit
 Norm_type^alpha(Self_τ) = BoundRef(alpha)
 BoundRef(alpha) notin Children_owned
 ```
+
+`V_τ` is fixed at formation and never grows: classifiers created later under
+the same scope enter only the new snapshot `V_τ'` (extend preserves
+`CoreAnchor`, so `TypeMemberScope` is stable), never an older `V_τ` — no
+retroactive membership.
 
 Direct canonical home is fixed at classifier creation. Selecting that home is
 itself privileged: only a process holding current construction authority for
