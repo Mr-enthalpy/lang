@@ -420,11 +420,12 @@ earlier decision.
 resolve name/path:
   -> Symbol
 
-project typed val members:
-  -> zero or more heterogeneous values
+form CallableProjection(Symbol):
+  -> DedupCandidateIdentity(V_S ⊎ V_τ)   (symbol-first §2.1)
+  -> zero or more heterogeneous candidates
 
 stage-visible object pool:
-  observe the policy-projected view of each enumerated Val2 object
+  observe the policy-projected view of each projected candidate
 
 call-entry candidate pool:
   obtain each stage-visible value's type
@@ -449,9 +450,12 @@ selected result:
 
 Reading the layers from the top:
 
-- **Symbol resolution** produces a first-class symbol, then projects its value
-  facet. The facet may contain heterogeneous callable and non-callable values.
-- The **stage-visible object pool** observes each enumerated `Val2` object's
+- **Symbol resolution** produces a first-class symbol, then forms
+  `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`. The projection
+  may contain heterogeneous callable and non-callable candidates from both the
+  Symbol's own sibling space (`V_S`) and the intrinsic callspace of any
+  carried `τ` (`V_τ`).
+- The **stage-visible object pool** observes each projected candidate's
   available pair-projected view; this does not rerun base symbol resolution.
 - The **call-entry candidate pool** obtains each value's type and resolves the
   type-associated `()` entry. Non-callable values are valid facet material but

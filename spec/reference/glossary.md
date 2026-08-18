@@ -803,9 +803,12 @@ The structural identity of an object. The governing principle has three parts:
 2. Complete types are rank-indexed closures `tau = <Q, V_τ>` over that Object
    material; `tau` participates in Pattern observation through `Core(tau) = Q`
    and is not itself an ordinary Object.
-3. Ordinary computation preserves the declared semantic rank; place projection,
-   borrow lifting, and type formation compose by the ordinary typing/naturality
-   laws (`OrdinaryRankPreservation`, §2.3 of the canonical owner below).
+3. Rank is determined solely by the operation's declared typing rule;
+   evaluation stage, description depth, and carrier form cannot apply
+   `UniverseSuccessor` implicitly (`OrdinaryRankPreservation`, §2.3 of the
+   canonical owner below). `RefTy`/`ShareTy` are `RankTransparent`
+   (`∀n. F : U_n -> U_n`); field projection follows the declared result
+   type; `TypeOf` is genuinely rank-changing.
 
 Bare Product, Sequence, `product`, and Symbol are constructor instances,
 not parallel aggregates. Borrow targets are horizontal identity-bearing leaves.

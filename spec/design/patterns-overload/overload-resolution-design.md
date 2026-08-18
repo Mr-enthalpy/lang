@@ -71,8 +71,9 @@ Implemented for this slice:
   never as a second resolver or source-language callable family.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
-Symbol, projects and enumerates its heterogeneous typed `V` members, observes each
-object's policy-projected view, obtains each surviving value's type, resolves each
+Symbol, forms `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
+(symbol-first §2.1), observes each projected candidate's policy-projected view,
+obtains each surviving value's type, resolves each
 type-associated `()` entry, discards non-callable entries, and then performs
 parameter-pair, stage, P2-result, and applicability filtering to a unique
 maximal candidate. Same-name
@@ -111,7 +112,7 @@ return-object policy metadata
 
 They are not three final source-level policy positions. In the final model,
 base path resolution produces `Symbol` before policy-view filtering; each
-enumerated `Val2` object carries its own `Pv:Pp`, P2 describes the call result
+projected candidate carries its own `Pv:Pp`, P2 describes the call result
 pair and derives the function-object stage view, and there is no independent
 `P3`. The
 current return-object field is provisional transport until canonical component
@@ -262,7 +263,7 @@ ResolveSymbol(callee path)
   -> Symbol Σ
   -> form CallableProjection(Σ) = DedupCandidateIdentity(V_S ⊎ V_τ)   (unified entrance)
   -> apply call-site candidate-family filter to the projection
-  -> enumerate heterogeneous Val2 objects
+  -> enumerate candidates from CallableProjection(Σ)
   -> observe each object's policy-projected view for the lookup stage
   -> obtain each value's type
   -> resolve its type-associated `()` entry
@@ -833,7 +834,7 @@ filter, but filters are not assumed to commute.
 
 After path resolution has produced the callee `Symbol` `S`, `C0` is formed in
 one step as `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (symbol-first §2.1) and
-enumerates its heterogeneous value/`Val2` objects. These objects may have
+enumerates the projected candidates. These candidates may have
 unrelated types and different available `Pv:Pp` views. The final model does not
 treat same-name namespace children as already-formed callable overloads.
 

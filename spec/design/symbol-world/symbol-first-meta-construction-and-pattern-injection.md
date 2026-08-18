@@ -683,7 +683,7 @@ A call position performs the following conceptual flow:
 
 ```text
 resolve symbol
-  -> project typed V members
+  -> form CallableProjection(S)
   -> enumerate heterogeneous values
   -> observe each Val2 object's Pv:Pp view for the current lookup stage
   -> obtain each value's type

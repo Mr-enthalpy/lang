@@ -879,9 +879,13 @@ Object structural core:    ordinary structural content is governed by
                            Object = <Val1?, P, Val2>
 Rank-indexed closure:      complete types are rank-indexed closures
                            tau = <Q, V_τ> over that Object material
-Rank-preserving computation: ordinary computation preserves the declared
-                           semantic rank; place projection, borrow lifting,
-                           and type formation compose by the ordinary
+Rank-determined computation:   result rank is fixed solely by the
+                           operation's declared typing rule
+                           (Rank(result(F,x)) = DeclaredResultRank(F,x));
+                           evaluation stage, description depth, and carrier
+                           form cannot apply UniverseSuccessor implicitly;
+                           place projection, borrow lifting, and type
+                           formation compose by the ordinary
                            typing/naturality laws below
 Description-rank stability: P/Val2 formation and transformation do not
                            apply UniverseSuccessor; the description layer
@@ -889,28 +893,37 @@ Description-rank stability: P/Val2 formation and transformation do not
                            described type inhabits
 ```
 
-**OrdinaryRankPreservation.** Ordinary value computation never changes the
-declared semantic rank of what it transports: an ordinary Object stays an
+**OrdinaryRankPreservation.** No ordinary operation silently changes the
+semantic *category* of what it transports: an ordinary Object stays an
 ordinary Object, a complete type value stays a complete type value, and a
-borrow view stays a borrow view. No ordinary operation silently promotes a
-value across ranks or demotes a rank-indexed closure back to bare Object
-material.
-
-The indexed form of this invariant is:
+borrow view stays a borrow view. Rank is a different matter: it is fixed
+solely by the operation's own declared typing rule, and the evaluation
+stage, description depth, or carrier form never inject a rank silently.
+The category-level statement is not the rank invariant; the rank invariant
+is:
 
 ```text
-Γ ⊢ x : U_n
-¬ExplicitRankChanging(F)
-----------------------------
-Γ ⊢ F(x) : U_n
+Rank(result(F, x)) = DeclaredResultRank(F, x)
+
+evaluation stage / description depth / carrier form
+  cannot apply UniverseSuccessor implicitly
 ```
 
-`ExplicitRankChanging` is the set of operations that genuinely move to a
-higher universe: `TypeOf` (classifier extraction, e.g. `TypeOf(type) =
-type_1`) and explicit universe-annotation/successor forms. `RefTy`,
-`ShareTy`, projection, borrow lifting, and ordinary function application are
-**not** in this set — they preserve `U_n` — and are thus instances of the
-general theorem rather than ad-hoc exceptions.
+A family may be rank-parametric:
+
+```text
+RankTransparent(F)
+  iff ∀n. F : U_n -> U_n
+```
+
+`RefTy` and `ShareTy` are `RankTransparent` (`T : U_n ⊢ RefTy(T) : U_n` and
+`T : U_n ⊢ ShareTy(T) : U_n`): borrow-type formation preserves the operand's
+rank. Field projection is **not** universally rank-preserving:
+`inner : T ref -> A ref` has `Rank(result) = rank(A ref) = rank(A)`, which
+follows the declared result type `A` and may differ from `rank(T)`. `TypeOf`
+is genuinely rank-changing (`TypeOf(type) = type_1`). Ordinary function
+application follows its declared signature: it is neither universally
+rank-preserving nor universally rank-changing.
 
 **DescriptionRankStability.** The `P × Val2` description layer is orthogonal
 to universe rank. Even when `P/Val2` describes a type `τ : U_n`, the
@@ -1200,11 +1213,30 @@ overload resolution failing inside the selected head
   -> NOT a reason to resume the outward walk
 ```
 
-This is what keeps a local Symbol with a type-capable `Q` but no callable val
-member from silently shadowing an outer callable Symbol of the same spelling:
-at a call site the coarse role/member demand is callability, so a local Symbol
-that carries no callable val member is simply not a
-candidate head. It is equally what stops the search from degenerating into
+Callability is not determined by the presence of a value-facet member. The
+coarse demand `q` at a call site is callability, defined by the full
+callable projection:
+
+```text
+CallablyPresent(S)
+  iff CallableProjection(S) != ∅
+
+CallableProjection(S)
+  = DedupCandidateIdentity(V_S ⊎ V_τ)
+
+ResolveBare_call(name)
+  = nearest same-spelled Symbol S with CallablyPresent(S)
+
+final call projection
+  = CallableProjection(S)
+```
+
+A Symbol `S = <τ, None>` with a non-empty `V_τ` is therefore
+`CallablyPresent` even though it carries no value-facet members; the `V_τ`
+candidates are not lost by a value-facet-only head selection. This is what
+keeps a local Symbol with a type-capable `Q` but no callable projection from
+silently shadowing an outer callable Symbol of the same spelling, and it is
+equally what stops the search from degenerating into
 "retry outward until something type-checks" — the demand is coarse, and it is
 consulted once.
 
@@ -1231,7 +1263,7 @@ chosen terminal symbol:
 
 | context | projection |
 | --- | --- |
-| call target | callable sibling vals |
+| call target | `CallableProjection(S)` |
 | type | pure-P member |
 | value | sibling vals |
 | extension target | extendable host object / place |
@@ -1568,24 +1600,26 @@ operand or argument position performs no implicit type conversion. An explicit
 ```text
 AsType(S : symbol) = TypeProjection(S)
   = tau_S
-    when TypeSlot(S) = Some(tau_S)
+    when TypeSlot(S) = Some(tau_S) and TypeValueRole(tau_S)
 
-AsType(tau) = tau
-  when tau is already a complete TypeValue
+AsType(τ) = τ   iff TypeValueRole(τ)
+
+WellFormedTau(τ) ∧ NamespaceOnly(τ)
+  => AsType(τ) undefined
 ```
 
-The second rule validates an existing complete type value. It does not treat a
-bare pure namespace Object as a complete type, wrap a namespace, or search for
-a hidden type member. `TypeRole(Core(tau))` holds for every carried `tau`; the
+The second rule validates an existing **type-role** τ, not any well-formed
+τ. It does not treat a bare pure namespace Object as a complete type, wrap a
+namespace, or search for a hidden type member. A Symbol may carry any
+`WellFormedTau` (§2.2): no τ (no type projection), a namespace-only τ
+(`WellFormedTau(τ) ∧ NamespaceOnly(τ)`, for which `AsType` is undefined), or
+a type-role τ (`TypeValueRole(τ)`). When a type-role τ is present, the
 complete result is the whole `tau = <Q, V_τ>`, whose callspace `V_τ` was fixed
 at formation (the direct TypeMember members of symbol-first §2.1). A copied
 or extracted `tau` keeps its captured `V_τ`; members created under the same `Q`
-later never enter an existing snapshot. Payload presence alone
-remains irrelevant to type
-applicability: a Symbol may carry no `tau` (no type projection), or carry a
-complete `tau`. A
-language-designated type-expected position may
-insert `AsType`; ordinary operand positions may not. See §5.6.
+later never enter an existing snapshot. Payload presence alone remains
+irrelevant to type applicability. A language-designated type-expected position
+may insert `AsType`; ordinary operand positions may not. See §5.6.
 
 #### 5.1.2 No implicit borrow formation
 
