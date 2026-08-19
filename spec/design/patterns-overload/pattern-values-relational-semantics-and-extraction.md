@@ -377,6 +377,69 @@ a binderless Pattern. A source form requiring no binder must use `let <> P`.
 DeduceList holes are resolved to exact `HoleBinderId` / `HoleRef` identities
 under their `PatternRoot`; spelling alone is not semantic identity.
 
+The decisive corollary is that implicit-hole shorthand is local to its binding
+site:
+
+```text
+ImplicitDeductionIsSiteLocal:
+
+Site_1:
+  let t
+  ~= let <t₁> t₁
+
+Site_2:
+  let t
+  ~= let <t₂> t₂
+
+HoleBinderId(t₁) != HoleBinderId(t₂)
+```
+
+Two independent deduction sites that both spell `t` do **not** denote the same
+hole, even though the display spelling is identical: spelling is never semantic
+identity. The shorthand introduces a fresh hole at each binding site.
+
+Only an explicit shared `DeduceList` establishes shared-hole identity:
+
+```text
+<t>(..., site1 uses t, site2 uses t, ...)
+
+HoleRef(site1.t) -> same HoleBinderId
+HoleRef(site2.t) -> same HoleBinderId
+```
+
+So:
+
+```text
+explicit shared DeduceList
+    = equality constraint / shared unknown
+
+multiple local shorthand holes
+    = independent unknowns
+```
+
+The counterexample that must be in the specification:
+
+```text
+<t>(..., x:t, y:t)
+```
+
+requires the two positions to share one hole, while dropping the shared `<t>`
+and using implicit deduction shorthand at each position in principle yields two
+independent unknowns `t₁` / `t₂` that may be deduced separately. It is exactly
+this that makes the general equivalence
+
+```text
+RemoveOuterDeduceList
+=/=>
+SemanticsPreserved
+```
+
+false: it holds only inside a specific candidate where the remaining
+constraints happen to force `t₁ = t₂`, so the observable result is the same.
+That coincidence must not be promoted into a language theorem. This is why the
+old `ref` declarations' `<t>` could be dropped in those particular examples
+while behaving identically, without any general equivalence existing.
+
 ## 9. Pure Pattern nodes and pipe branch shorthand
 
 A pure Pattern node needs no artificial wildcard/value padding layer. For example:

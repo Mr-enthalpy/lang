@@ -16,7 +16,55 @@ distinction.
 Fields and member-like operations are function objects installed in a
 type-associated companion space. A field is the unary special case; a
 member-like operation may consume a receiver plus ordinary remaining
-arguments:
+arguments.
+
+The `struct` registration `Field(T, name, A)` generates the field's complete
+associated candidate family under `T`: one by-value accessor, plus for each
+borrow observation `ρ ∈ {ref, share}` a triple of policy cells:
+
+```text
+GeneratedFieldFamily(T, name, A):
+
+  let
+  name(self, object:T)
+      -> A
+      => default
+
+  const let
+  name(self, object:T ref)
+      -> A ref
+      => default
+
+  mut let
+  name(self, const let object:T ref)
+      -> A ref
+      => delete
+
+  mut let
+  name(self, mut let object:T ref)
+      -> A ref
+      => default
+
+  const let
+  name(self, object:T share)
+      -> A share
+      => default
+
+  mut let
+  name(self, const let object:T share)
+      -> A share
+      => delete
+
+  mut let
+  name(self, mut let object:T share)
+      -> A share
+      => default
+```
+
+`default` cells expose their operation; `delete` cells exist so the policy
+lattice can reject the mutation-shaped call at selection time instead of
+silently degrading the selected operation. Erasing policy detail, this is the
+familiar three-signature summary:
 
 ```text
 AssociatedSymbol(T, field):
@@ -28,11 +76,15 @@ AssociatedSymbol(T, push):
   push : (object: T, value) -> result
 ```
 
-For a `struct`-generated field these are ordinary typed candidate objects in one
-associated Symbol, accompanied by an assignment/write candidate over
-`T ref × field` whenever field policy admits mutation. `const let`, unqualified
-`let`, and `mut let` select the admitted cells of the same general access/
-borrow/write family; there is no special semantic field category.
+The full candidate family is normative; the summary is its policy-erased
+projection and is not the sole specification. For a `struct`-generated field
+these are ordinary typed candidate objects in one associated Symbol. The
+assignment/write family over `T ref × A` is a separate ordinary associated
+family (`AssignmentFamily`, canonical in
+`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1), admitted
+only where field policy permits mutation. `const let`, unqualified `let`, and
+`mut let` select the admitted cells of this same family; there is no special
+semantic field category.
 
 The stage rule is structural:
 
@@ -94,6 +146,10 @@ argument.
 `E..field(product)` remains the direct member-call sugar. Candidate selection
 uses the actual receiver Pattern (`T`, `T ref`, or `T share`) in the ordinary
 overload family; it does not navigate through a `ref` or `share` child namespace.
+For a borrowed receiver the ordinary family reached is the derived type's own
+forwarding member (`Derived-Type Associated Forwarding` below), which performs a
+fresh ordinary invocation of the base family; the dot lowering itself never
+inspects the external receiver's type context.
 
 An ordinary let-shaped declaration consumed by `struct` contributes its
 initializer as Val2 material under the current Pattern owner:
@@ -142,6 +198,138 @@ results, not generated namespace subspaces. A structural field literally named
 `ref` or `share` is therefore just another same-name associated Symbol and does
 not collide with a projection namespace. Ordinary overload resolution selects
 the candidate from the receiver Pattern and Policy.
+
+## Derived-Type Associated Forwarding
+
+A derived type construction `D(T)` — `T ref`, `T share`, and any future derived
+construction — does not gain associated capabilities by copying the original
+type's members. Every member of `V_(D(T))` must truly belong to the derived
+type's own structural level:
+
+```text
+τ = ⟨Q, V_τ⟩
+
+F ∈ V_τ
+=>
+Anonymous(F)
+∧ DirectClassifierHome(F) = TypeMemberScope(Q)
+```
+
+In particular, `F ∈ V_T` never implies `F ∈ V_(T ref)` or `F ∈ V_(T share)`:
+those are three complete type values with three independently home-checked
+callspaces. Foreign-member injection into a derived type's callspace is
+forbidden (`NoForeignTypeMemberInjection`,
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1). The correct
+mechanism is derived associated forwarding: the derived type generates its own
+forwarding member
+
+```text
+ForwardAssoc(D(T), name)
+```
+
+satisfying:
+
+```text
+ForwardAssoc(D(T), name) ∈ V_(D(T))
+
+DirectClassifierHome(
+  ForwardAssoc(D(T), name)
+)
+=
+TypeMemberScope(Core(τ_(D(T))))
+```
+
+so the forwarder is a real ordinary member of the derived type, homed in the
+derived type's own level. Its behavior is an ordinary call:
+
+```text
+(args) |> name::D(T)
+
+    ↓ selected forwarding callable
+
+(args) |> name::T
+```
+
+For fields this gives the two instances:
+
+```text
+inner::(T ref)   -> forward -> inner::T
+inner::(T share) -> forward -> inner::T
+```
+
+with no `T ref -> T` value conversion: the original receiver passes through
+unchanged (`object : T ref |> inner::T`), and `inner::T`'s own overload family
+already contains `inner : T ref -> A ref`, so the inner ordinary overload
+resolution selects the correct candidate.
+
+The defining equation is:
+
+```text
+ForwardAssocCall:
+  Invoke(name::D(T), args)
+    =
+  Invoke(name::T, args)
+```
+
+not:
+
+```text
+CopyAssociatedMembers(T, D(T))
+```
+
+Forwarding is a new ordinary invocation, not a reopened candidate set:
+
+```text
+resolve name::D(T)
+-> select forwarder uniquely
+-> execute forwarder body
+-> body performs a new ordinary invocation of name::T
+```
+
+It is not fallback, candidate reopening, or late adaptation.
+
+The `.field` lowering (above) resolves the generated hole `T` and, for a
+borrowed receiver `r : X ref`, lands on `r |> inner::(X ref)`. The connection
+
+```text
+inner::(X ref) -> inner::X
+```
+
+is what the specification must provide: nothing in the independent dot lowering
+can by itself reach the `inner : X ref -> A ref` candidate inside `inner::X`.
+The full chain therefore has four layers that must not be merged:
+
+```text
+surface / dot lowering
+    r.inner
+      ↓
+    r |> inner::(X ref)
+
+derived associated forwarding
+      ↓
+    r |> inner::X
+
+ordinary overload resolution
+      ↓
+    inner : X ref -> A ref
+
+projection semantics
+      ↓
+    Ref(ProjectionSlot(Target(r), inner))
+```
+
+In particular:
+
+```text
+derived associated forwarding
+≠
+borrowed projection
+```
+
+Forwarding only locates the correct associated callable family; borrowed
+projection decides the `Ref(ProjectionSlot(...))` form (canonical
+`type-values-places-and-borrow-views.md` §2.3) rather than materializing the
+field value and then forming `A ref`.
 
 ## Type Values, Places, and Injection (summary)
 

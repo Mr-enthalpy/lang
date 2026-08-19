@@ -219,6 +219,47 @@ Policy supplies the migration output endpoint coordinate, the formal inherits
 the complete P2 and supplies input fit, and ordinary invocation preserves the
 complete P2 until the later demanded `Project_out`.
 
+### 2.2 Derived associated forwarding is an ordinary call
+
+A derived associated forwarder is an ordinary callable. After it is uniquely
+selected, its body may invoke another associated family. That inner invocation
+is a new ordinary call and does not reopen the candidate set of the outer
+call:
+
+```text
+resolve name::D(T)
+-> select forwarder uniquely
+-> execute forwarder body
+-> body performs a new ordinary invocation of name::T
+```
+
+This covers `field::(T ref) -> field::T` and `field::(T share) -> field::T`
+(canonical `ForwardAssoc` in
+`type-associated-function-objects-and-access-trees.md`), as well as any future
+derived-type forwarding. It is not fallback, not candidate reopening, and not
+late adaptation.
+
+### 2.3 Compiler-authorized stage migration vs explicit `const`/`mut` reconstruction
+
+The compiler-authorized stage migration of §2.1 (static-value-to-runtime-value)
+and the explicit `const` / `mut` reconstruction of
+`symbol-policy-and-compile-flow-projection.md` §1.2 are distinct:
+
+```text
+compiler-authorized stage migration
+≠
+explicit const/mut reconstruction
+```
+
+Both may reuse `T`'s ordinary construction/call family, but their triggers
+differ. Stage migration is inserted by the compiler when an existing-view
+projection is empty and the demanded stage accepts runtime; explicit
+`const`/`mut` is a user-visible reconstruction demand. Neither turns `T` into
+`T ref`/`T share`, neither reopens a candidate set after selection, and both
+obtain their conversion capability from the complete `τ`'s callspace
+(`CallSpace(τ) = V_τ`), never from defining-Symbol or carrier-provenance
+recovery.
+
 ## 3. `()` is not an operator
 
 `()` is not an operator. An operator is a callable value with special binding and parsing behavior. Since values are not namespace/type parents, an operator cannot serve as an intermediate navigation node.

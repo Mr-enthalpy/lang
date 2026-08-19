@@ -72,6 +72,26 @@ does carry `Val1`. Object shape is therefore not inferred back from an
 observation, while an impossible two-policy split is not invented for a pure
 PatternValue.
 
+The old phrasing "`Pv = null` 时 `const`/`mut` 无意义" migrates to the current
+model as a theorem:
+
+```text
+NoIndependentValueMutabilityForPureObject:
+
+Val1?(x) = null
+=>
+there is no independent value-mutability coordinate to vary
+```
+
+This is not the obsolete `Pv = null` representation; the policy model now
+expresses the same fact as `Pv = Pp` (§1). The consequence is fixed at the
+semantic level: on a pure PatternValue, surface `const` / `mut` qualifiers
+**cannot create a semantic distinction** — they cannot produce two different
+semantic value views. Whether a surface front-end diagnoses such a qualifier
+as redundant or rejects it is a secondary, surface-level decision; the
+specification first fixes that no independent value-mutability coordinate
+exists to vary.
+
 Policy dimensions are typed and orthogonal:
 
 ```text
@@ -104,6 +124,168 @@ delete               — removing a candidate removes the corresponding
 Both are local and per-member. An observer that reaches a nested member composes
 the views it actually traverses; nothing recomputes an aggregate mutability for
 the host.
+
+Policy is a selection relation, never a capability grant. The accompanying
+theorem is:
+
+```text
+PolicyDoesNotGrantCapability:
+
+Policy(actual) = mut
+  !=>
+Writable(actual)
+
+Policy(actual) = const
+  !=>
+not Writable(underlying place)
+
+Writable(place)
+  !=>
+Policy(view) = mut
+```
+
+`const let` / `let` / `mut let` on a formal parameter are first an overload
+preference coordinate (the `succ_const` / `succ_mut` / `succ_plain` partial
+orders of §3.2). A `mut` candidate being preferred and the selected operation
+actually exposing a write are two different facts. Real write capability comes
+from the conjunction:
+
+```text
+selected associated operation
++ borrow capability
++ Writable(place)
++ lifetime validity
+```
+
+never from the `mut let` spelling itself. This is why the `ref` family, the
+`share` family, and the `=` family compose to the language's actual behavior
+without policy carrying a writable/nonwritable promise (§1.1's two mechanisms
+`member overload` + `delete` remain the only local capability-exposure
+mechanisms, and the candidate schemas of `=` / field / `ref` / `share` in
+`symbol-first` §4.5.1 and `type-values` §5.1.3 reference exactly this rule
+rather than redefining a second mutability system).
+
+## 1.2 Explicit `const` / `mut` are value reconstruction, not in-place policy casts
+
+Global `const` / `mut` are not a way to change the policy tag on the current
+place. They are explicit policy reconstruction:
+
+```text
+ExplicitPolicyReconstruction
+```
+
+For example `val const` logically:
+
+```text
+1. derive TypeOf(val) = T
+2. invoke T's own construction/call family with the requested const-result
+   policy
+3. obtain a new T value
+```
+
+and `val mut` likewise produces a new mutable-view/value result. The old
+source-like schema remains usable as an explanatory realization:
+
+```text
+const let const(self, object:T) -> T
+{ const let r = object |> T; r; }
+
+const let const(self, const let object:T) -> T
+{ const let r = object |> T; r; }
+
+const let const(self, mut let object:T) -> T
+{ const let r = object |> T; r; }
+
+mut let mut(self, object:T) -> T
+{ mut let r = object |> T; r; }
+
+mut let mut(self, const let object:T) -> T
+{ mut let r = object |> T; r; }
+
+mut let mut(self, mut let object:T) -> T
+{ mut let r = object |> T; r; }
+```
+
+but the normative content is the three theorems, not the six lines.
+
+First:
+
+```text
+PolicyConversionIsConstruction
+```
+
+`val const` and `val mut` both generate a new value. Therefore in general:
+
+```text
+CarrierPlace(result) != CarrierPlace(source)
+```
+
+when both reside in places. Even
+
+```text
+ValueEquality(result, source)
+```
+
+does not imply:
+
+```text
+PlaceIdentity(result, source)
+```
+
+Second:
+
+```text
+PolicyConversionIsNotInPlaceCast
+```
+
+There is no `mutate-policy-tag(source)` primitive.
+
+Third — the most important one under the current `τ` model — conversion
+capability is recoverable from `τ` itself:
+
+```text
+T is the complete type value τ
+
+object |> T
+    gets candidates from CallSpace(τ) = V_τ
+```
+
+The construction/reconstruction capability corresponding to type formation is
+part of the complete `τ` snapshot, so `copy τ`, `return τ`, and `store τ` all
+keep the knowledge of how to attempt reconstruction. It is never recovered by
+going back out of `τ`:
+
+```text
+τ
+-> recover defining Symbol(...)
+-> inspect its V_S
+```
+
+That carrier-provenance route is retired. The global `const` / `mut`
+dispatcher itself does not guarantee conversion success. The correct order is:
+
+```text
+select global const/mut dispatcher
+-> execute its body
+-> ordinary invocation object |> τ
+-> this invocation may succeed/fail according to τ's callspace
+```
+
+Formally:
+
+```text
+ExplicitConst(v:T)
+    -> fresh T value through ordinary T invocation
+
+ExplicitMut(v:T)
+    -> fresh T value through ordinary T invocation
+
+CallSpace(T) = V_τ        -- the conversion-capability source
+```
+
+If the inner ordinary invocation fails, the failure is final for this
+candidate: the resolver does not go back and re-select another global
+`const` / `mut` overload.
 
 ## 2. Pattern alternative and policy operators
 

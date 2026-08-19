@@ -1763,6 +1763,99 @@ fixed points and weakening on an **existing** borrow (`ref ref`, `share share`,
 and `ref share`) remain valid (§5.3), as does the separately specified implicit
 `self` capability of a callable frame; neither is ordinary argument repair.
 
+#### 5.1.3 The generated `ref` / `share` instance families
+
+The borrow-forming defaults inside the formed borrow type's callspace are not
+an ad hoc pair of builtins; they are generated instance families with a fixed
+policy matrix. The `ref` family has two input shapes (`T`, `T ref`), two
+member result-policies (`mut`, `const`), and three formal mutability patterns
+(`mut`, `const`, `plain`):
+
+```text
+GeneratedRefInstanceFamily(T):
+
+member  formal  actual T       actual T ref
+-------------------------------------------------
+mut     mut     default        ref fixed-point
+mut     const   delete         delete
+mut     plain   delete         delete
+
+const   mut     default        ref fixed-point
+const   const   default        ref fixed-point
+const   plain   default        ref fixed-point
+```
+
+`ref fixed-point` is not "borrow again". It is the ordinary candidate
+realization of the existing fixed-point theorem
+`Borrow_ref(Borrow_ref(p)) = Borrow_ref(p)` (§5.3): the old
+`{ object ref; }` declaration is demoted to an ordinary forwarding body of
+that theorem, not a new primitive. For an actual `T` shape, the `default`
+cells are the selected builtin/default borrow-forming members, and only the
+selected builtin/default holds `PrivilegedActualPlace(actual)`:
+
+```text
+PrivilegedActualPlace(actual)
+    -- held only by the selected borrow-forming default,
+       not by the formal pattern, not by ordinary parameter semantics
+```
+
+The formal head does not materialize a borrow source:
+
+```text
+FormalHeadDoesNotMaterializeBorrowSource:
+
+object : T
+    = candidate extraction head + formal policy pattern
+
+    !=  first move actual into a parameter-local T slot,
+        then borrow that slot
+```
+
+The selected borrow-forming builtin observes the call-site actual place, not
+the ordinary post-pass parameter binding place. This is the builtin's place
+privilege (§5.1.0), not general parameter semantics.
+
+The `share` family is simpler and carries no write capability:
+
+```text
+GeneratedShareInstanceFamily(T):
+
+T        -> T share     default
+T share  -> T share     fixed point
+T ref    -> T share     legal weakening
+T share  -> T ref       no candidate
+```
+
+This is the §5.3 `Borrow_k(Borrow_j(q)) = Coerce_{j->k}(Borrow_j(q))` algebra
+expressed as a generated family:
+
+```text
+ref ref       = ref
+share share   = share
+ref share     = share
+share ref     = no candidate
+```
+
+and the type-value layer obeys the same capability direction:
+`ShareTy(RefTy(T))` is a legal weakening; the reverse strengthening is
+forbidden. The capability conclusion is explicit:
+
+```text
+share exposes no write operation.
+share does not acquire internal mutability merely by being shared.
+
+SharedObservation
+≠
+AliasWrite
+```
+
+If the language has an alias-write / internal-mutability path, it must come
+from that independent capability system, not from `share`. `T share` also
+provides no `=` / assignment family (`AssignmentFamily`,
+`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1): a
+`share`-valued left side yields no applicable assignment overload, never a
+selected write that then fails `Writable`.
+
 ### 5.2 Reaching the type-level place: `t |> (type ref)`
 
 The type-forming `ref` overload over a type value forms the borrow **type**

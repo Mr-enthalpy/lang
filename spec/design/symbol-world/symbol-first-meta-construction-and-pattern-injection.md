@@ -266,6 +266,30 @@ surviving member's home eligibility is checked by comparing two current
 values (`DirectClassifierHome(F) = TypeMemberScope(Q')`) — never by asking
 whether `F` was originally created for an old `Q`.
 
+A direct corollary is the injection invariant:
+
+```text
+NoForeignTypeMemberInjection:
+
+F ∈ V_τ1
+∧ TypeMemberScope(Core(τ1))
+    !=
+  TypeMemberScope(Core(τ2))
+--------------------------------
+F cannot become a member of V_τ2
+merely because τ2 is structurally derived from τ1
+```
+
+A derived type value (`T ref`, `T share`, and any future derived construction)
+has its own `V_τ` with its own direct-home obligation; it never inherits the
+original type's callable objects. When a derived type must expose an associated
+operation of its base, it creates a fresh, direct-home forwarder of its own
+(`ForwardAssoc`, canonical in
+`type-associated-function-objects-and-access-trees.md` — "Derived-Type
+Associated Forwarding"); it never transports the base member `F` itself. This
+invariant governs every derived type uniformly — `ref`, `share`, sequences, and
+any future derived construction — and is not an exception to `WellFormedTau`.
+
 Projections over the Symbol value are:
 
 ```text
@@ -1774,11 +1798,62 @@ Consequently:
   analogous to dead code — not erroneous, because intermediate computation may
   have side effects.
 
-Assignment carries no `extend`-specific validation, but that is not the same as
-carrying no validation. A pure `extend` in the right side already discharged
-`Open ∧ ParentToChild ∧ NoPatternConflict`. The place-level `inject` wrapper
-performs that check before its own write. Everything else that applies to any
-write still applies. A write `lhs = rhs` is checked in four independent layers:
+Assignment is itself an associated operation. The source spelling `=` selects an
+ordinary assignment candidate; only the selected candidate's default
+implementation performs the universal write judgment below. There is no
+compiler primitive `Write` behind the source spelling, and no assignment
+candidate exists merely because a checker could prove the place writable —
+write capability is exposed by the selected associated callable, not invented
+by `mut` policy.
+
+The `=` family for `T ref` is:
+
+```text
+AssignmentFamily(T):
+
+  =
+  (self,
+   mut let object : T ref,
+   other : T)
+  -> unit
+  => default
+
+  =
+  (self,
+   const let object : T ref,
+   other : T)
+  => delete
+
+  =
+  (self,
+   let object : T ref,
+   other : T)
+  => delete
+```
+
+Only the selected `default` performs the universal write judgment below. The
+three layers are thereby fully separated:
+
+```text
+policy
+    controls which = candidate wins
+
+selected = candidate
+    exposes the write operation
+
+Write default
+    validates the actual place
+```
+
+`T share` provides no `=` family at all: `share-value = other` yields **no
+applicable overload** in the candidate domain, never a selected assignment that
+then fails `Writable`. Assignment carries no `extend`-specific validation, but
+that is not the same as carrying no validation. A pure `extend` in the right
+side already discharged `Open ∧ ParentToChild ∧ NoPatternConflict`. The
+place-level `inject` wrapper performs that check before its own write.
+Everything else that applies to any write still applies. After the assignment
+candidate is selected, the write `lhs = rhs` is checked in four independent
+layers:
 
 ```text
 1. RHS operation legality
@@ -1806,6 +1881,36 @@ write still applies. A write `lhs = rhs` is checked in four independent layers:
      -- these may run at write time, normalization time, return time, or
         install time, but they all remain in force
 ```
+
+Assignment RHS semantics are explicitly value semantics:
+
+```text
+AssignmentRHSIsValueSemantic:
+
+object : T ref
+other  : T
+```
+
+`other` is a genuine `T` value. There is no implicit dereference
+(`T ref -> T`), no implicit clone (`T share -> T`), and no reading of a borrow
+handle's referent bytes as if they were the value (`T ref -> T ref` memcpy).
+In assignment candidate adaptation:
+
+```text
+T ref/share =/=> T
+```
+
+must hold. If `T ref |> cloneable == true` or `T share |> cloneable == true`,
+the legal path is an explicit/independently selected clone producing a `T`
+value, then `=`; assignment never secretly clones or dereferences. This is
+orthogonal to `NoImplicitBorrowFormation`:
+
+```text
+NoImplicitBorrowFormation     forbids T -> T ref/share
+AssignmentRHSIsValueSemantic  forbids T ref/share -> T
+```
+
+both directions are closed.
 
 The two validation families are therefore distinct and must not be conflated:
 
@@ -2537,7 +2642,12 @@ For a structural field `f : A` produced during the `struct` formation event, let
 formation event; there is no intermediate `S_struct` from which it is projected.
 `struct` uses one general field rule. It does not introduce a separate semantic
 category for “type fields”. All observations are candidates of one same-name associated
-Symbol `f`; receiver and result observation kinds distinguish the overloads:
+Symbol `f`; receiver and result observation kinds distinguish the overloads.
+The `struct` generator produces the full `GeneratedFieldFamily(T, name, A)` —
+the by-value accessor plus the `ref`/`share` policy triples with their exact
+`default` / `delete` cells (canonical schema in
+`type-associated-function-objects-and-access-trees.md`). Erasing policy detail,
+the family presents as:
 
 ```text
 f : (object: T)       -> A
@@ -2550,6 +2660,23 @@ is stored once as ordinary callable/member Objects. Its direct anonymous
 classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_τ`; `const
 let` / `let` / `mut let` policy and the formal object type determine its
 candidates.
+
+The `ref` / `share` type constructions do not copy that family. Each derived
+type value `T ref` / `T share` generates its own forwarding entries
+(`ForwardAssoc`, §2.1 `NoForeignTypeMemberInjection`): `f::(T ref) ->
+f::T` and `f::(T share) -> f::T` are fresh derived-type members homed in the
+derived type's own `V_τ`, whose bodies perform a new ordinary invocation of the
+base family. The model is therefore:
+
+```text
+struct
+    generates the real field family under T
+
+ref/share type construction
+    generates only forwarding entries under derived types
+```
+
+no foreign callable object ever enters a derived `V_τ`.
 Their selection uses the ordinary context-indexed preference relations. In a
 plain context `succ_plain: let > const = mut`; if no plain `let` candidate is
 admissible, a surviving `const` and `mut` pair remains ambiguous rather than
