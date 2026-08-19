@@ -357,7 +357,7 @@ Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 Omitted P1 keeps the complete result. Single P1 `q` selects values visible
 under `q` and follows their associated pattern components. Pair P1 `qv:qp`
 filters both. Single P1 is not normalized to `q:q`. These lower-case policy
-metavariables are distinct from the Symbol type-core `Core(τ)`.
+metavariables are distinct from the type-core `Core(τ)`.
 
 P2 is an explicit pair or a context-specific single-policy shorthand:
 
@@ -400,7 +400,7 @@ exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
 
-There is no independent P3 and no scalar policy for the whole result symbol.
+There is no independent P3 and no scalar policy for the entire returned result.
 Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
 retains its own pair. Return positions inherit P1 and may refine mutability
 only; parameters symmetrically refine inherited P2 mutability only. Current
@@ -720,7 +720,7 @@ or declaration context. This includes:
 - binding the declared target (e.g. `let T: type = ...`);
 - exposing an extraction-facing interface on the constructed value;
 - applying context-directed `ProjectP1` to value/pattern result entries without
-  assigning one scalar policy to the result symbol.
+  assigning one scalar policy to the entire returned result.
 ```
 
 This separation is intentional: invocation produces an uninstalled value, and
@@ -1010,7 +1010,7 @@ Current state:
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
-Not yet present are Symbol `Core(τ)` projection / implementation caches,
+Not yet present are type-core `Core(τ)` projection / implementation caches,
 `PatternValue` as the single static
 result model, meta root establishment/sealing,
 `ResolvedPatternScope`, final binding-independent `struct` owner resolution,
@@ -1125,7 +1125,7 @@ pattern, type-value, and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
-2. Introduce Symbol `Core(τ)` projection and typed value-member candidate lookup.
+2. Introduce type-core `Core(τ)` projection and typed value-member candidate lookup.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
 4. Introduce PatternValue / TypeValueId identities and callable signature objects.

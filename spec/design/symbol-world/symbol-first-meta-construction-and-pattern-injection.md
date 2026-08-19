@@ -95,9 +95,10 @@ Consequences:
    other ordinary callable coordinate may establish or seal that *kind* of
    root. It returns the default complete type value `τ` of that instance; the
    return stage
-   promotes only the MetaInstance-owned stable result graph — the installed
-   type-core material (`Core(τ)`, when a well-formed `τ` is present) plus its
-   captured callspace `CallSpace(τ)` — and seals the instance
+   promotes only the MetaInstance-owned stable result graph — the default
+   result's `OwnedResultClosure(τ_M)`: `OwnedClosure(Core(τ_M))` plus its
+   owned callspace closure `OwnedCallSpaceClosure(CallSpace(τ_M))` — and
+   seals the instance
    (§4.1, §4.3). Privileged built-ins retain member-specific owner rules (§4.8).
 5. In target semantics, `struct` forms a complete type value `tau` directly and
    `extend` is the primitive referentially pure value transformation. `inject`
@@ -923,7 +924,7 @@ result class:
     | runtime value
 ```
 
-There is no third result class. A value of type `symbol` is an ordinary
+There is no private SymbolConstruction result ontology. A value of type `symbol` is an ordinary
 `PatternValue` (§4.7), so a declared `symbol` result is a statement about which
 pattern value is returned, not about a separate ontological class.
 
@@ -1007,8 +1008,10 @@ This is not a new result class. The default meta result is the complete type
 value `τ` itself, which is not an ordinary `PatternValue`; an explicitly
 declared `symbol` result returns a `symbol`-typed `Symbol` value rather than
 turning `τ` into a `PatternValue`. Root authority governs the
-open-window state and global lifetime of `τ`'s installed type-core material
-(`Core(τ)` plus `CallSpace(τ)`, when a well-formed `τ` is present). An
+open-window state and global lifetime of the default result's
+`OwnedResultClosure(τ_M)` — `OwnedClosure(Core(τ_M))` plus
+`OwnedCallSpaceClosure(CallSpace(τ_M))`, where `Core(τ_M)` is the first
+projection of the default result and hence always present. An
 implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
 
@@ -1179,8 +1182,8 @@ track `Anchor` and the open-window state separately from canonical value
 identity and recheck applicability in the caller stack.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
-meta-style virtual Symbol layer for name shadowing, and does not impose a
-self-root requirement on a returned type value. It may freely return an
+meta-style virtual symbolic-navigation layer for name shadowing, and does not
+impose a self-root requirement on a returned type value. It may freely return an
 already existing value:
 
 ```lang
@@ -1254,9 +1257,10 @@ meta:
 A meta callable may accept a `symbol` parameter, or constrain a parameter to a
 narrower `type` or ordinary PatternValue. That does not introduce another result
 class: successful ordinary meta invocation still defaults to `τ`. `M` exists in
-the global world from body entry; the return stage validates the at-most-one
-installed type core `Core(τ)` constraint, promotes only that core's owned
-PatternValue closure, and seals the result.
+the global world from body entry; the return stage runs the default-branch seal
+`Seal(DefaultTau(τ_M))` of §4.3.2 —
+well-formedness of `τ_M`, promotion of `OwnedResultClosure(τ_M)`, escape check —
+and seals the result.
 
 Failure never publishes construction material:
 
@@ -1339,90 +1343,149 @@ closure type itself has a stable site name.
 #### 4.3.2 Seal happens only at the return stage
 
 The only construction-ending disposition of a meta invocation is its final
-return stage, and it runs in a fixed order. The returned result has the
-shape `τ` by default, or an explicitly declared result type — at most one
-installed type core, any number of val members when `symbol`-typed:
+return stage, and it runs in a fixed order. The returned result is either the
+default complete type value `τ_M = ⟨ Q, V_τ ⟩`, or the value of an explicitly
+declared result type such as `Σ = ⟨ τ?, V_S ⟩` when that type is `symbol`.
+These shapes have different seal obligations, so the seal judgment branches on
+the result shape instead of sharing one optional-core criterion:
 
 ```text
-τ_M = ⟨ Q, V_τ ⟩   (default)
-Σ = ⟨ τ?, V_S ⟩    (when explicitly symbol-typed)
+Seal(DefaultTau(τ_M)):
+    WellFormedTau(τ_M)
+    Q := Core(τ_M)          // first projection of the construction; always present
+    Pure(Q)
+    Root(Q) = M
+    promote OwnedResultClosure(τ_M) into M   (call it P)
+    EscapeDeps(τ_M) subset AlreadyGlobalStable union P
+    seal M
 
-1. validate that there is at most one installed type core `Core(τ)` and that it is Pure
-2. if τ is present, promote OwnedClosure(Core(τ)) into M and call it P_Q
-3. validate the escape dependencies of the entire returned result
-4. seal M
+Seal(ExplicitSymbol(Σ)),  ShapeOfTypeSymbol(Σ) = ⟨ τ?, V_S ⟩:
+    τ present ->
+        Pure(Core(τ)) ∧ Root(Core(τ)) = M
+        promote OwnedResultClosure(τ)          (call it P_Σ)
+        EscapeDeps(Σ) subset AlreadyGlobalStable union P_Σ
+    τ absent  -> EscapeDeps(Σ) subset AlreadyGlobalStable
+    seal M
+
+Seal(ExplicitOther(T)):
+    the result-type-specific seal obligations of T
 ```
 
-Step 1 is a cardinality bound, **not** a requirement that a type core be
-present. Nothing in the `τ` ontology or in the self-root constraint promotes
-`|Core(τ)| <= 1` to `|Core(τ)| = 1`: the self-root rule says that *if* an
-installed type core `Core(τ)` exists it must be rooted at `M`, which is vacuous
-when there is none. A namespace-only core — `NamespaceRole(Core(τ))` and
-`not HasRegisteredSelfConstruction(Core(τ))` — is
-therefore a valid promotion anchor even when `TypeRole(Core(τ))` is false;
-type-role requirements are refinements, not generic result constraints. Step 2
-is simply skipped when `τ` is absent:
+For the default branch, `|Core(τ_M)| = 1` is the construction shape, not a
+cardinality constraint: `Q` is the first projection of `τ_M`, so there is no
+`τ`-absent case to guard and no optional installed-core slot to count. The
+self-root rule is unconditional there: `Root(Core(τ_M)) = M` holds for every
+well-formed default result. A namespace-only core — `NamespaceRole(Core(τ_M))`
+and `not HasRegisteredSelfConstruction(Core(τ_M))` — is
+therefore a valid promotion anchor even when `TypeRole(Core(τ_M))` is false;
+type-role requirements are refinements, not generic result constraints.
+
+The `τ?` slot belongs to an explicitly `symbol`-typed result value
+(`ShapeOfTypeSymbol`, glossary), and the conditional form above applies only to
+that branch. An explicitly declared `symbol` result with `τ` absent skips
+promotion and requires its entire escape dependency set to be already globally
+stable:
 
 ```text
-τ present -> EscapeDeps(ReturnedResult)
-               subset AlreadyGlobalStable union P_Q
-τ absent  -> EscapeDeps(ReturnedResult)
+τ present -> EscapeDeps(Σ)
+               subset AlreadyGlobalStable union P_Σ
+τ absent  -> EscapeDeps(Σ)
                subset AlreadyGlobalStable
 ```
 
-`EscapeDeps(ReturnedResult)` traverses the entire returned result through
+`EscapeDeps(τ)` traverses the whole returned result at the τ level:
+`Core(τ) union CallSpace(τ)` plus every horizontal `ref` / `share` / `rebind`
+dependency target. At the Object level this still runs through
 `Children_Val1 union Children_Val2`, including nested products, Sequences,
-callables, and navigable `Val2` structures. It additionally includes every
-target reached through a horizontal `ref` / `share` / `rebind` view. Thus no
-returned branch can smuggle unrelated meta-local material out of the invocation.
-Borrow edges remain excluded from `OwnedClosure(Core(τ))` and are never
-promoted merely because they are referenced.
+callables, and navigable `Val2` structures; the τ-level entry is what makes
+`V_τ` — its closures, their anonymous types, and their captures — part of the
+escape check rather than an implementation guess. Thus no returned branch can
+smuggle unrelated meta-local material out of the invocation, and no `V_τ`
+member can escape the closure check by being reachable only through the
+callspace.
 
-Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
-ownership and are never dragged into the promotion:
+Promotion is likewise defined at the τ level:
+
+```text
+OwnedResultClosure(τ)
+    = OwnedClosure(Core(τ))
+      union OwnedCallSpaceClosure(CallSpace(τ))
+
+OwnedCallSpaceClosure(CallSpace(τ))
+    = least closure of the CallSpace(τ) members — including the V_τ closure
+      anonymous types A_F and their () leaves, per the §2.1 V_τ member
+      closure-ownership theorem — under the owned navigation relation of τ
+```
+
+Horizontal borrow edges are not ownership and are never dragged into either
+component:
 
 ```text
 OwnedClosure(x) excludes every ref / share / rebind edge reachable from x
 ```
 
+Edge classification is explicit:
+
+```text
+BoundRef / stable enclosing-root reference
+    = dependency / backreference, not an owned promotion edge
+
+ref / share / rebind target
+    = escape dependency, not an owned promotion edge
+
+external stable dependency
+    = dependency leaf, not recursively promoted
+```
+
 For this promotion, “owned closure” is not arbitrary graph reachability. Let
 `OwnedNavigation_Q(x, y)` hold only when `y` is a genuine direct child owned by
-`x` in Q's construction tree. Then `OwnedClosure(Q)` is the least closure under
-that relation, subject to all of these invariants:
+`x` in Q's construction tree; the callspace component uses the isomorphic
+relation over `CallSpace(τ)`. Then `OwnedClosure(Q)` is the least closure under
+that relation, subject to all of these invariants, applied component-wise:
 
 ```text
 direct child only:       every step is parent -> direct child
 no jump:                 a parent cannot inherit a deeper descendant directly
-bare termination:        Bare(x) stops expansion for Q
-external termination:    ExternalTo(Q, x) is an opaque dependency leaf
-no external re-entry:    expansion never leaves Q, enters an external subtree,
-                         and later re-enters Q-owned material
-no cycle:                 x not-in OwnedNavigation_Q+(x)
+bare termination:        Bare(x) stops expansion for the component
+external termination:    ExternalTo(component, x) is an opaque dependency leaf
+no external re-entry:    expansion never leaves the component, enters an
+                         external subtree, and later re-enters owned material
+no cycle:                 x not-in OwnedNavigation_component+(x)
 
 OwnedNavigation_Q(x, y) => DirectOwnedChild(x, y)
 Bare(x) | ExternalTo(Q, x) => no y: OwnedNavigation_Q(x, y)
 ExternalTo(Q, q_i) => no j > i: Owner(q_j) = Owner(Q)
 ```
 
+Borrow edges remain excluded from both components of `OwnedResultClosure(τ)`
+and are never promoted merely because they are referenced.
+
 External leaves may retain their own independently owned trees, but those trees
-are not promoted through `Q`; their dependencies must already be globally
+are not promoted through `τ`; their dependencies must already be globally
 stable. The ordinary recursive Object normal form still traverses
 `Children_Val1 union Children_Val2`; this construction judgment only determines
 which fresh-owned part may acquire M's global lifetime.
 
 A member reachable only through a borrow view is therefore not promoted, and its
 presence does not extend `M`'s owned material. Its target must already satisfy
-the step-3 escape condition. After step 4, `M` is sealed and nothing may reopen
+the escape condition. After the seal step, `M` is sealed and nothing may reopen
 it.
 
 #### 4.3.3 `M` as a navigable layer
 
 Every ordinary canonical meta-function invocation establishes a virtual
-symbol-construction scope:
+symbolic-navigation and construction-authority scope:
 
 ```text
 M = MetaInstanceScope(callee_symbol, canonical_arguments)
 ```
+
+`M` is the `MetaInstanceRoot` of §2.1 — the symbolic-navigation, stable-identity,
+and construction-authority anchor of the invocation. It is **not** itself the
+result value: the default result is `τ_M` with `Root(τ_M) = M`; an explicitly
+`symbol`-typed result is a `Symbol` value `Σ : symbol` (`ShapeOfTypeSymbol`).
+A `NameBinding` or installation is a separate outer-graph binding/assembly
+operation and does not constitute the result ontology.
 
 Formation additionally requires:
 
@@ -1485,26 +1548,30 @@ the diagnostic navigation projection of `M` is:
 (t f)
 ```
 
-This is not merely a folder analogy. `M` is a Symbol/namespace layer that
-participates in default pattern navigation and name shadowing, may carry a stored complete type closure and typed value members, anchors cache/incremental identity, and owns
-the return construction transaction. An ordinary meta invocation must therefore
-establish its own Symbol layer rather than act as a value-level forwarding
-function.
+This is not merely a folder analogy. `M` is a symbolic-navigation layer that
+participates in default pattern navigation and name shadowing; the stored
+complete type closure and typed value members belong to `τ_M`'s `Core(τ_M)` and
+`V_τ` (not to `M` as a Symbol). `M` anchors cache/incremental identity and owns
+the return construction transaction.
 
-The externally navigable result symbol is `M` itself. The declared return slot
-is only a lexical name for that symbol, not a transferable construction class:
+The default result is `τ_M` rooted at `M`; an explicit `symbol`-typed result is
+a `Symbol` value `Σ : symbol` governed by `ShapeOfTypeSymbol`. The declared
+return slot is a lexical name for the result value, not a transferable
+construction class:
 
 ```text
-symbol_of_result(invoke_meta(callee, canonical_arguments)) = M
-return_slot(r) = lexical_name(M)
+ResultValue = τ_M,  Root(τ_M) = M        (default)
+ResultValue = Σ : symbol                (explicit symbol)
+return_slot(r) = NameBinding of τ_M / Σ (lexical name, not a result class)
 ```
 
 The slot name `r` does not add another component to the final navigation path.
-Material written through `r` contributes role/value members or children to `M`; it does not
+Material written through `r` contributes role/value members or children to
+`τ_M` rooted at `M`; it does not
 create `r::M` or place an extra symbol named `r` beneath `M`. For example, a
 pattern-child contribution written as `let t1::r = bool;` inside the invocation
-targets `t1::M` under the applicable pattern-construction expectation, not
-`t1::r::M`.
+targets `t1`'s `M`-rooted `τ_M` under the applicable pattern-construction
+expectation, not `t1::r::M`.
 
 Canonical argument identity follows parameter rank:
 
@@ -4177,8 +4244,10 @@ when the stack unwinds. `compile` and
 transparent construction intrinsics may consume it because they create no new
 MetaInstance key.
 
-At seal, only the `OwnedClosure` of the returned result's installed type core material
-(`Core(τ)` when a well-formed `τ` is present, otherwise none), is promoted. Other local
+At seal, only `OwnedResultClosure(τ)` is promoted: for the default result `τ_M`
+that is `OwnedClosure(Core(τ_M))` plus `OwnedCallSpaceClosure(CallSpace(τ_M))`
+(§4.3.2); an explicitly `symbol`-typed result promotes the carried `τ`'s owned
+result closure only when that `τ` is present. Other local
 PatternValues expire with the invocation. Consequently the open-disposition rule for
 `UseForVal1` (§12.1.2) must not be read as a universal invariant, while “meta body is
 transparent” must not be read as implicit global promotion.
@@ -4250,8 +4319,8 @@ require WellFormedTau(τ) and Pure(Core(τ));
 derive NamespaceProjection(S) from Core(τ) when τ is present;
 derive TypeProjection(S) from τ only when TypeValueRole(τ);
 add children only under the owning construction/authority rules;
-seal/promotion uses the MetaInstance-owned stable result graph built from
-    Core(τ) and CallSpace(τ), not a unique pure member
+seal/promotion uses OwnedResultClosure(τ) — OwnedClosure(Core(τ))
+    plus OwnedCallSpaceClosure(CallSpace(τ)) — not a unique pure member
 
 value members V:
   admit multiple heterogeneous value entries;
@@ -4380,7 +4449,7 @@ This substrate does **not** implement:
 - `MetaInstanceScopeId` or a meta-instance pattern scope such as `(t f)`;
 - meta return type-core self-root validation;
 - the canonical meta-invocation navigation atom;
-- Symbol `Core(τ)` projection and any corresponding implementation caches;
+- type-core `Core(τ)` projection and any corresponding implementation caches;
 - the `compile` / `meta` capability split specified here;
 - the default meta result `τ` (the current `SymbolConstruction` carrier is
   transitional; an ordinary Symbol remains only an explicit `symbol`-typed
@@ -4441,7 +4510,7 @@ This document does not:
 Future implementation should converge in this order:
 
 ```text
-Symbol `Core(τ)` projection / typed-value-member resolution
+type-core `Core(τ)` projection / typed-value-member resolution
   -> PatternValue identity and rank-directed canonical arguments
   -> ordinary Symbol result (current carrier: transitional SymbolConstruction)
   -> ResolvedPatternScope / PatternScopeId / MetaInstanceScopeId

@@ -55,10 +55,11 @@ ordinary canonical meta invocation
 ```
 
 An ordinary meta instance is therefore not merely “like a folder.” It is a real
-virtual Symbol layer: it participates in navigation, may carry one optional
-complete type value `τ` (whose core `Core(τ)` anchors the returned role root)
-plus typed value members, and is a candidate cache/
-incremental unit.
+virtual symbolic-navigation and construction-authority layer: it participates
+in navigation, anchors the default complete type value `τ_M` (`Root(τ_M) = M`;
+`Core(τ_M)` anchors the returned role root), may carry typed value members in
+`V_τ` (or in `V_S` for an explicit `symbol` result), and is a candidate
+cache/incremental unit.
 
 Formal ordinary meta invocation produces uninstalled construction material.
 Compiler-defined privileged AST operations such as `struct` and `extend` remain
@@ -312,9 +313,11 @@ uninstalled construction value according to explicit composition rules. It may
 not directly mutate an already installed subtree owned by the helper instance.
 
 The ordinary-meta returned result's self-root invariant follows from
-this ownership: its optional installed type core `Core(τ)` is rooted at the
-invocation's `MetaInstanceScope` whenever it exists. The condition is the
-core's presence, independent of `TypeRole(Core(τ))`. An external Object may be
+this ownership. For the default result `τ_M`, `Root(Core(τ_M))` equals the
+invocation's `MetaInstanceScope` unconditionally, because `Core(τ_M)` is the
+first projection of `τ_M`. For an explicitly `symbol`-typed result that carries
+a type core `Q`, the same root identity holds conditionally on `Q`'s presence.
+The condition is the core's presence, independent of `TypeRole(Q)`. An external Object may be
 a member under that root but cannot replace it. Compiler-defined privileged
 AST operations `struct`, `extend`, and
 `inject` use their separately specified scope/owner rule and do not acquire an

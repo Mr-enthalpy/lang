@@ -1963,7 +1963,10 @@ _See also: ClosureAST, ClosureObject._
 ## MetaInstance / MetaPartner / GeneratedClosure
 
 The virtual construction scope established by a canonical meta invocation is
-`M = MetaInstanceScope(callee_symbol, canonical_arguments)`. Generic
+`M = MetaInstanceScope(callee_symbol, canonical_arguments)` — the
+`MetaInstanceRoot`: a symbolic-navigation and construction-authority anchor,
+not a `symbol`-typed result value (the default result is `τ_M` rooted at `M`;
+`ShapeOfTypeSymbol` applies only to explicit `symbol` results). Generic
 construction anchors through the callee's declared meta partner:
 
 ```text
@@ -1995,15 +1998,20 @@ external installation. An explicit `f : … -> symbol` is still legal.
 The canonical judgments and seal algorithm belong to
 [`symbol-first-meta-construction-and-pattern-injection.md`](../design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md).
 
-At seal only the returned result's installed type core material
-(`Core(τ)` when a well-formed `τ` is present, otherwise none) may be
-promoted. The core may be namespace-only (`NamespaceRole(Core(τ))` and not
+At seal only the returned result's `OwnedResultClosure(τ)` may be promoted.
+For the default result `τ_M`, `OwnedResultClosure(τ_M)` =
+`OwnedClosure(Core(τ_M))` plus `OwnedCallSpaceClosure(CallSpace(τ_M))`, and
+`Core(τ_M)` is the first projection of `τ_M` (always present). For an
+explicitly `symbol`-typed result, the carried `τ`'s owned result closure is
+promoted only when `τ` is present. The core may be namespace-only
+(`NamespaceRole(Core(τ))` and not
 `HasRegisteredSelfConstruction(Core(τ))`; `../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` §13); type capability is
 the additional `TypeRole(Core(τ))` refinement. The registered-self-construction
 witness requires an actual `Val2` member: `Val2(Q)[s] = K` together with
 `ConstructEdge_P_Q(C, Q, K)` for the same `K`.
-`EscapeDeps(ReturnedResult)` checks the complete returned Object graph plus
-horizontal borrow targets; it is not a val-sibling-only check.
+`EscapeDeps(τ)` checks the complete returned result at the τ level
+(`Core(τ)` ∪ `CallSpace(τ)`) plus horizontal borrow targets; it is not a
+val-sibling-only check.
 
 Compiler-defined `BuiltinPrivilegedAstMetaFunction` objects are a separate
 subclass. A member such as `struct`, `extend`, or `inject` may accept one

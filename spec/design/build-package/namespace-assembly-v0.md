@@ -121,7 +121,7 @@ materialization. This phase validates:
 one NamespaceOrigin per child namespace-role Object
 source/meta construction-unit ownership
 physical directory contribution authority
-single installation of the optional type core `Core(τ)`
+at most one installed type core `Core(τ)` per construction unit
 cross-file reopening prohibition
 NamespaceDelta atomicity
 semantic-owner identity

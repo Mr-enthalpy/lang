@@ -710,7 +710,8 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal
   Self frame; compile does not create a MetaInstanceScope.
-- Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
+- Ordinary meta construction is anchored by the canonical MetaInstance anchor
+  `M` (a symbolic-navigation layer); its default result is `τ_M` rooted at `M`;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
 - `.name` is a first-class closure expression whose normalization produces a

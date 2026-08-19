@@ -1455,9 +1455,12 @@ Symbol or place.
 
 This ordinary declaration rule does not license a meta returned result to use an
 external pure Object as its installed type core. A canonical meta
-instance has an additional self-root invariant: if the returned result contains an
-installed type core `Q`, `Q`'s outer Pattern root must be the
-`MetaInstanceScope`. The condition is `Q`'s presence, independent of
+instance has an additional self-root invariant, stated per result shape:
+for the default result `τ_M`, `Root(Core(τ_M)) = MetaInstanceScope` holds
+unconditionally (`Core(τ_M)` is the first projection of `τ_M`); an explicitly
+declared result that carries an installed type core `Q` requires `Q`'s outer
+Pattern root to be the `MetaInstanceScope` when `Q` is present. The condition is
+`Q`'s presence, independent of
 `TypeRole(Q)`. Thus ordinary
 `let T: type = uint8` remains legal while direct `r = uint8` as a meta return
 type construction is rejected.
