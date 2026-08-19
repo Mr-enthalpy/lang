@@ -410,8 +410,10 @@ result pair rather than a substitute parameter policy.
 Explicit `runtime:seal` remains valid. `compile`, `meta`, and `seal` remain
 distinct static capabilities/domains.
 Compile computes any declared static PatternValue. Ordinary meta computes the
-Symbol of its MetaInstance and additionally carries the authority to root and
-seal that instance; privileged builtins have member-declared results. Seal
+default complete type value `τ_M` of its MetaInstance and additionally
+carries the authority to establish and seal that instance. Only an explicitly
+declared `symbol` result returns a `symbol`-typed value. Privileged builtins
+have member-declared results. Seal
 excludes ordinary OpenStatic meta visibility and provides no global scan
 privilege by itself.
 

@@ -998,8 +998,8 @@ Current state:
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with the
   construction-effect family (`let r = expr;` fresh member, `r = expr;` write,
-  `r;` delivery terminal) producing an ordinary Symbol PatternValue (current
-  carrier: `SymbolConstruction`); the legacy `===`
+  `r;` delivery terminal) producing the default complete type value `tau`
+  (current carrier: `SymbolConstruction`); the legacy `===`
   spelling has no successor, because the semantic alias/forwarding direction is
   retired.
 - The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and

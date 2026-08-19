@@ -427,8 +427,8 @@ Target(Borrow_k(q))           ∈ Norm(Borrow_k(q))
 The second coordinate is not provenance about where an ordinary value happened
 to be stored; it is the observable referent identity of the borrow-view value.
 Assignment, `rebind`, ordinary borrow escape checking, and compile-reference
-cache identity all depend on that distinction. Construction-lineage Open does
-not depend on the target coordinate.
+cache identity all depend on that distinction. Construction-authority Open
+(`OpenHere_Σ`) does not depend on the target coordinate.
 
 For an ordinary by-value Object, its `PlaceId` is **not** identity material. A
 place is only the coordinate from which that Object's current value is read:

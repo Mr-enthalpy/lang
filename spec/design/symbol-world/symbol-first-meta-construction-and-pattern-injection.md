@@ -597,8 +597,11 @@ TypeValueId:
   has independently frozen to whole-snapshot semantics
 
 PatternValue identity:
-  canonical identity of an ordinary compile-time value, type value, or
-  structured pattern value
+  canonical identity of an ordinary compile-time value or structured pattern
+  value — an ordinary Object / PatternValue. A complete type value `tau` is
+  not itself an ordinary PatternValue: Pattern-facing observation goes
+  through `Core(tau)`, and whole type identity goes through
+  `Addr(Norm_type(tau))` (type-values §2.2)
 
 PatternScopeId:
   identity of a navigable pattern-owner layer
@@ -1001,8 +1004,9 @@ specified owner rules (§4.8). They cannot use those rules to manufacture an
 ordinary navigable `M`.
 
 This is not a new result class. The default meta result is the complete type
-value `τ` itself — an ordinary `PatternValue` only when the result is
-explicitly `symbol`-typed. Root authority governs the
+value `τ` itself, which is not an ordinary `PatternValue`; an explicitly
+declared `symbol` result returns a `symbol`-typed `Symbol` value rather than
+turning `τ` into a `PatternValue`. Root authority governs the
 open-window state and global lifetime of `τ`'s installed type-core material
 (`Core(τ)` plus `CallSpace(τ)`, when a well-formed `τ` is present). An
 implementation may retain a carrier to accumulate those members,
@@ -4326,7 +4330,7 @@ The installation flow is:
 ```text
 compile/meta invocation
   -> compile: an ordinary PatternValue or complete type value of its declared result Pattern
-  -> meta: an ordinary symbol PatternValue
+  -> meta: the default result τ_M (an ordinary `Symbol` PatternValue only for an explicitly declared `symbol` result)
   -> for a source path: resolve Symbol -> read its value/facets
   -> let creates a destination or ordinary =/inject writes an existing place
   -> resolve writable install PlaceId
