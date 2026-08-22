@@ -834,7 +834,7 @@ Resolved semantics do not remain as pseudo-questions here. Canonical owners are:
 | Object closure, `Pure => NamespaceRole`, AsType, ProjectionSlot, borrow targets, NoImplicitBorrowFormation | `design/symbol-world/type-values-places-and-borrow-views.md` | concrete root/slot generation representation |
 | Policy projections and `succ_const/succ_mut/succ_plain` | `design/symbol-world/symbol-policy-and-compile-flow-projection.md` | evaluator integration only |
 | Pattern relation, binderless Pattern, structural child and extraction roles | `design/patterns-overload/pattern-values-relational-semantics-and-extraction.md` | derivation/residual IR only |
-| Symbol `<Q?,V>` Set quotient, complete type snapshots, ordinary-meta Q-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate only |
+| Symbol `<τ?, V_S?>` projection/quotient, complete type snapshots, ordinary-meta `τ_M` / `Core(τ_M)`-root seal, `struct`/`extend`/`inject`, containers | `design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md` | implementation substrate only |
 | construction authority (`OpenHere_Σ` / `WindowLive_Σ`) and stack-relative open window | same canonical construction document plus `design/lifetime/` | region/stack representation |
 | retired semantic alias family | `design/symbol-world/entity-alias-design.md` | frozen Raw-AST preservation only |
 

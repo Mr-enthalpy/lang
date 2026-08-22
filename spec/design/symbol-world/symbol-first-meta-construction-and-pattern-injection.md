@@ -1416,9 +1416,18 @@ Seal(ExplicitOther(T)):
     the result-type-specific seal obligations of T
 ```
 
-For the default branch, `|Core(τ_M)| = 1` is the construction shape, not a
-cardinality constraint: `Q` is the first projection of `τ_M`, so there is no
-`τ`-absent case to guard and no optional installed-core slot to count. The
+For the default branch, `Core` is a total projection on complete type
+values, so `τ_M` always has a defined core projection:
+
+```text
+τ_M = ⟨Q, V_τ⟩
+--------------------------------
+Core(τ_M) = Q
+```
+
+This is a pair projection (an elimination rule), not a cardinality count:
+there is no "core collection" to size, no `τ`-absent case to guard, and no
+optional installed-core slot. `Q` is the first projection of `τ_M`. The
 self-root rule is unconditional there: `Root(Core(τ_M)) = M` holds for every
 well-formed default result. A namespace-only core — `NamespaceRole(Core(τ_M))`
 and `not HasRegisteredSelfConstruction(Core(τ_M))` — is
@@ -1928,7 +1937,9 @@ layers:
 4. semantic-boundary constraints of the enclosing region
      meta return self-root; ref / pattern-value lifetimes;
      mutability limits on global type-bearing values; seal / global-promotion
-     rules; the single-τ-installation bound (`|Core(τ)| ≤ 1`) on a returned result
+     rules; the single-τ-installation bound on a returned result — the
+     installed type value slot is optional (`τ?`), so a result installs at
+     most one τ by shape, never by counting cores
      -- these may run at write time, normalization time, return time, or
         install time, but they all remain in force
 ```
