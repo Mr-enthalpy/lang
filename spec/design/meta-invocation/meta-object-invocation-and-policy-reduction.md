@@ -543,6 +543,11 @@ result class:          ordinary PatternValue
                        | runtime value
 ```
 
+The result-class set is normative in
+`symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.1;
+this document only repeats it for the orthogonality claim and does not own a
+second enumeration.
+
 `MetaPartialContext` and `MetaStrictContext` retain their existing purpose: they
 say whether a runtime boundary may residualize. They do not define `meta`, do
 not turn `compile` into symbol construction, and do not change the result class
@@ -670,14 +675,17 @@ boundary because they form no MetaInstance key and generate no root.
 The public future boundary is conceptually:
 
 ```text
-InvocationResult =
-  | ordinary PatternValue (including a Symbol constructor value)
-  | complete type value τ
-  | type ref / type share borrow instance
-  | runtime value
+InvocationResult(F)
+  = SemanticResult(DeclaredResultClass(F))
   | Residual(expr, suspension_reason)
   | Diagnostic(error)
 ```
+
+The semantic result branch is driven by the callable's declared result class;
+the ordinary classes themselves (PatternValue including a Symbol constructor
+value, complete type value τ, type ref / type share borrow instance, runtime
+value) are normative in
+`symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.1.
 
 The current Rust substrate still uses `MetaInvocationResult::Value` with
 `MetaInvocationValue::{ForwardedValue, GeneratedConstructionValue,

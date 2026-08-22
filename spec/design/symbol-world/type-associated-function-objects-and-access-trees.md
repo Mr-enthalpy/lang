@@ -78,13 +78,89 @@ AssociatedSymbol(T, push):
 
 The full candidate family is normative; the summary is its policy-erased
 projection and is not the sole specification. For a `struct`-generated field
-these are ordinary typed candidate objects in one associated Symbol. The
-assignment/write family over `T ref × A` is a separate ordinary associated
-family (`AssignmentFamily`, canonical in
-`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1), admitted
-only where field policy permits mutation. `const let`, unqualified `let`, and
-`mut let` select the admitted cells of this same family; there is no special
-semantic field category.
+these are ordinary typed candidate objects in one associated Symbol.
+
+#### Family registration: producer side of `StructuralDefault`
+
+Every candidate of the generated schema is registered in one stable
+call-site candidate family:
+
+```text
+StructuralFamily(T, name, A)
+  = StableFamilyId(Q_T, name, StructuralDefault)
+
+c ∈ GeneratedFieldFamily(T, name, A)
+---------------------------------------
+CandidateFamily(c) = StructuralFamily(T, name, A)
+```
+
+where `Q_T = Core(τ_T)`. P-internal extraction
+(`AtomicExtract_P`, canonical
+`pattern-values-relational-semantics-and-extraction.md` §3.1) applies
+`CallSiteFamilyFilter = StructuralDefault` before C0; that filter preserves
+exactly the candidates registered under this family identity. This is the
+registration that closes the consumer/producer loop: the extraction rule
+names the family, and the generator assigns every generated cell to it.
+
+Three attributes of a generated cell are distinct and must never be conflated
+under the single word `default`:
+
+```text
+CandidateFamily(c)
+    call-site family identity (what the StructuralDefault filter preserves)
+
+per-cell policy disposition
+    => default   exposes the operation's mechanical implementation body
+    => delete    rejects the mutation-shaped call at selection time
+
+declaration-side fallback
+    =>[[fallback]]   DeclarationCandidatePolicy after FullyAdmissible A
+                     (overload-resolution-design.md §2.3)
+```
+
+Family identity decides which candidates a call site sees; the per-cell
+disposition decides what the generated body does once selected; the fallback
+annotation decides how an already-admissible candidate participates after
+`A`. None of the three implies another.
+
+#### Field write candidates are not `AssignmentFamily(T)`
+
+Where field policy permits mutation, the generator also contributes field
+write candidates shaped `T ref × A`. They are a field-specific setter family
+under the ordinary `.=` / `=::adl` candidate domain:
+
+```text
+FieldWriteFamily(T, name, A)
+  ⊆ Candidates(=::adl)
+
+  =
+  (self,
+   mut let object : T ref,
+   name : A)
+  -> unit
+  => default
+  (+ policy-deleted const/let cells, same schema style as above)
+```
+
+The universal assignment family remains exactly:
+
+```text
+AssignmentFamily(U):
+    U ref × U -> unit        (canonical §4.5.1)
+```
+
+so when `A ≠ T`:
+
+```text
+FieldWriteFamily(T, name, A) ≠ AssignmentFamily(T)
+```
+
+They are two ordinary associated candidate families reachable through the same
+`.=` entrance; only the selected `default` body performs the universal write
+judgment. Field write candidates are admitted only where field policy permits
+mutation. `const let`, unqualified `let`, and `mut let` select the admitted
+cells of the field's ordinary overload family; there is no special semantic
+field category.
 
 The stage rule is structural:
 

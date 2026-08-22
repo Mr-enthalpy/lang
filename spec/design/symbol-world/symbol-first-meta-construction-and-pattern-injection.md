@@ -59,7 +59,7 @@ ordinary value binding:
     -> resolve source Symbol -> read value -> bind destination Symbol/Place
 
 compile-time value computation:
-  compile -> any ordinary PatternValue or complete type value tau
+  compile -> any declared ordinary semantic value across result classes (§4.1)
     subject to the root-conservation law of §4.2
 
 ordinary meta symbol construction:
@@ -82,9 +82,9 @@ Consequences:
    place. Neither operation forwards, reroots, or merges identities, and bare
    `=` never creates a missing member.
 3. `compile` computes values. It may accept and return **any** ordinary
-   semantic value across ranks: an ordinary `PatternValue` (including a
+   semantic value across result classes (§4.1): an ordinary `PatternValue` (including a
    `Symbol` constructor value), a complete type value `tau` (a rank-indexed closure, not an
-   ordinary PatternValue), and a `type ref` borrow instance. What it may not
+   ordinary PatternValue), and a `type ref` / `type share` borrow instance. What it may not
    do is create a new global root: it registers no global
    Symbol, produces no nominal type lacking a normal global root, and never
    promotes a local temporary pattern value into a global type (§4.2).
@@ -948,6 +948,11 @@ result class:
     | runtime value
 ```
 
+This is the current result-class set. Invocation results are driven by each
+callable's declared result class — `Result(F)` follows
+`DeclaredResultClass(F)` — and consumers must not maintain separate narrow
+hand-written enumerations of what `compile` or `meta` can return.
+
 There is no private SymbolConstruction result ontology. A value of type `symbol` is an ordinary
 `PatternValue` (§4.7), so a declared `symbol` result is a statement about which
 pattern value is returned, not about a separate ontological class.
@@ -966,9 +971,10 @@ CallableSemantics
 Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
-`compile` may return any declared ordinary PatternValue (including a
-`Symbol` constructor value) or
-a complete type value `tau`; a returned `tau` participates in Pattern
+`compile` may return any declared ordinary semantic value across result
+classes (§4.1): an ordinary `PatternValue` (including a `Symbol` constructor
+value), a complete type value `tau`, or a `type ref` / `type share` borrow
+instance; a returned `tau` participates in Pattern
 observation through `Core(tau)` and is not itself an ordinary
 PatternValue/Object.
 Ordinary-meta callable kind, call legality, and successful-call effects are
@@ -1061,8 +1067,8 @@ creating a symbol-construction root:
 
 ```text
 compile:
-  input  ordinary PatternValue or complete type value tau
-  -> output ordinary PatternValue or complete type value tau
+  input / output  any declared ordinary semantic value across result classes
+                  (subject to root conservation, §4.2.1)
 ```
 
 `compile` may pass and return:
@@ -1870,7 +1876,12 @@ Write default
 
 `T share` provides no `=` family at all: `share-value = other` yields **no
 applicable overload** in the candidate domain, never a selected assignment that
-then fails `Writable`. Assignment carries no `extend`-specific validation, but
+then fails `Writable`. `AssignmentFamily` here is the universal `T ref × T`
+family; field-specific write candidates (`FieldWriteFamily(T, name, A) ⊆
+Candidates(=::adl)`) are a separate ordinary associated family and coincide
+with `AssignmentFamily(T)` only when `A = T` — their domain is `T ref × A`,
+never `T ref × T` by naming (canonical field-side rule:
+`type-associated-function-objects-and-access-trees.md`). Assignment carries no `extend`-specific validation, but
 that is not the same as carrying no validation. A pure `extend` in the right
 side already discharged `Open ∧ ParentToChild ∧ NoPatternConflict`. The
 place-level `inject` wrapper performs that check before its own write.
@@ -2711,10 +2722,18 @@ admissible, a surviving `const` and `mut` pair remains ambiguous rather than
 being resolved by generation order.
 
 Where the field policy permits mutation, the same generator also contributes
-the corresponding assignment/write candidate over `T ref × A`; assignment
-still uses the general existing-place write rule and never creates the field.
-Written `const let` / unqualified `let` / `mut let` field policy selects the
-admitted value, shared, mutable, and assignment cells of this ordinary overload
+field write candidates shaped `T ref × A`. They form a field-specific setter
+family `FieldWriteFamily(T, name, A) ⊆ Candidates(=::adl)` — an ordinary
+associated family reachable through the same `.=` entrance, and **not** the
+universal `AssignmentFamily(T)` (whose domain is `T ref × T`; canonical §4.5.1).
+Field write, accessor, and policy cells are all registered under the stable
+call-site family identity `StructuralFamily(T, name, A)` =
+`StableFamilyId(Q_T, name, StructuralDefault)` that P-internal extraction
+filters on (§7.5 family registration is normative in
+`type-associated-function-objects-and-access-trees.md`). Assignment still uses
+the general existing-place write rule and never creates the field. Written
+`const let` / unqualified `let` / `mut let` field policy selects the admitted
+value, shared, mutable, and assignment cells of this ordinary overload
 family. The exact machine body and access-tree representation are implementation
 debt, not additional semantics.
 

@@ -56,10 +56,20 @@ The `struct` consumer retains its structural leaf order:
 E name
 ```
 
-Its semantic result is the complete symbol-pattern object:
+Its semantic result is the complete type value:
 
 ```text
-StructResult(T) = Val1_T × Pattern_T × Val2_T
+StructResult(T) = τ_T
+```
+
+not a separate `Val1 × Pattern × Val2` object. When a consumer needs the
+structural description, it reads a view of the same semantic entity
+(same-entity invariant, canonical
+`pattern-values-relational-semantics-and-extraction.md` §15):
+
+```text
+DescriptionView(τ_T) = ⟨P_T, Val2_T⟩
+Core(τ_T)            = Q_T
 ```
 
 Structural leaves contribute object structure and the construction/extraction
@@ -163,8 +173,12 @@ associative, and idempotent identity, or report an explicit unsupported
 diagnostic. The current restricted slice reports the diagnostic.
 
 This paragraph describes the implemented v0.8 evaluator only. Target meta
-semantics build an ordinary Symbol through ordinary `let` creation and
-existing-place `=` writes, then transfer it through a separate return event.
+semantics evaluate the body under `DefaultMetaResult = τ`: the body computes
+the instance's default result `τ_M` through ordinary `let` creation and
+existing-place `=` writes over its construction material, then transfers it
+through a separate return event (canonical
+`symbol-first-meta-construction-and-pattern-injection.md` §4.1: an explicit
+declared result may be `symbol` or another permitted result).
 The current `r = ...` / `SymbolConstruction` path is compatibility substrate.
 There is no ordinary declaration aliasing: the semantic alias/forwarding
 direction is retired, and `===` survives only as a frozen parser spelling.
