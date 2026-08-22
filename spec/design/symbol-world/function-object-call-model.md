@@ -5,7 +5,9 @@ Design consolidation note. Not a user-visible syntax document.
 The canonical symbol-first/facet boundary is
 `symbol-first-meta-construction-and-pattern-injection.md`. This document owns
 the type-associated `()` call mechanism; it does not redefine how a name first
-resolves to a Symbol and heterogeneous typed `V` members.
+resolves to a Symbol and forms the callable candidate set
+`CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (canonical owner
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1).
 Policy pairs, binding P1, result P2, compile companions, and must-select consistency
 are canonical in `symbol-policy-and-compile-flow-projection.md`.
 
@@ -20,9 +22,15 @@ let f = (self) => {};
 `f` is a value of an anonymous function-object type `F`. `F` is usually not nameable in source syntax (obtainable as `f |> type`).
 
 The converse is not true: a value entry need not be a function. A symbol's
-typed `V` members may contain ordinary uncallable values and multiple heterogeneous
-values of unrelated types. Callability is tested only in a call position by
-resolving each value's type-associated `()` entry.
+callable candidate set `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (canonical owner
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1) may contain
+ordinary uncallable values and multiple heterogeneous values of unrelated
+types. The Symbol's own value-member bucket `V_S` is unioned with the
+intrinsic `CallSpace(τ) = V_τ` of any stored `τ` in one step: there is no
+priority, fallback, or reopening between `V_S` and `V_τ`; the same candidate
+reachable through both paths is deduplicated, and two different callables with
+identical signatures remain two candidates. Callability is tested only in a call
+position by resolving each value's type-associated `()` entry.
 
 Under the associated namespace of `F` there is a call entry `() :: F`. This `()` is the call method of the function object.
 
@@ -44,11 +52,14 @@ Product |> Expr
 
 The target expression is not itself the call method. The target is a value whose type-associated namespace contains the call method.
 
-When `Expr` is a name/path, resolution first produces a symbol and projects its
-heterogeneous typed `V` members. Candidate preparation observes each enumerated
-object's `Pv:Pp` view for the current lookup domain before type-associated call
-lookup. The remaining steps run independently for each surviving value entry;
-entries without an applicable `()` call entry are discarded.
+When `Expr` is a name/path, resolution first produces a Symbol `S` and forms
+the candidate set `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` in one step — no
+priority, no fallback, no reopening (symbol-first §2.1); the same candidate
+reachable through both `V_S` and `V_τ` is deduplicated. Candidate preparation
+observes each enumerated object's `Pv:Pp` view for the current lookup domain
+before type-associated call lookup. The remaining steps run independently for
+each surviving value entry; entries without an applicable `()` call entry are
+discarded.
 
 ### 2.1 Compiler-inserted atomic runtime migration call
 
@@ -125,10 +136,10 @@ The migration adapter selects views around an ordinary call; it does not
 rewrite the callable's complete P2 into a migration edge.
 
 Migration still cannot turn `T` into `T ref`, repair a failed Pattern/Type
-match, or search an arbitrary operation graph. `ref`, `share`, and `alias`
-remain independently selected ordinary mechanical operations. When one of
-those operations is explicitly required, its ordinary result may change Type
-and Pattern; that is not Policy-demand repair.
+match, or search an arbitrary operation graph. `ref` and `share` remain
+independently selected ordinary mechanical operations. When one of those
+operations is explicitly required, its ordinary result may change Type and
+Pattern; that is not Policy-demand repair.
 
 Any successful existing-view satisfaction terminates before migration
 candidate enumeration. In the currently implemented binding case, a non-empty
@@ -150,7 +161,7 @@ function objects and toolchain-source associated `()` entries:
 
 ```text
 Semantic Symbol / Pattern owner
-  -> heterogeneous semantic values
+  -> CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
   -> TypeValue
   -> PatternValue / ResolvedPatternScope
   -> associated ()
@@ -166,16 +177,21 @@ not fabricate a source path or require migration metadata.
 Name-based source calls and compiler-authorized operations therefore have
 different candidate entrances but one ordinary call trunk. Neither entrance
 requires `TypeValue -> original carrier Symbol`: source navigation resolves a
-Symbol and reads its values, while an already-held PatternValue directly
-provides its canonical associated `Val2`.
+Symbol and reads its values, while an already-held complete type value carries
+its own callspace:
 
-This closes calls whose entry is owned by that associated `Val2`; it does not
-yet close copied/extracted **type-as-callee** lookup when the intended
-constructor or policy-transform overload is a sibling value of the defining
-Symbol rather than an associated member of the type value. A future
-`HomeSymbol(TypeValue)` relation or equivalent canonical-root recovery remains
-deferred. It may not be reconstructed from the most recent carrier, binding
-provenance, or an `AsType` source path.
+```text
+TypeValue(t) = tau = <Q, V_τ>
+Core(tau) = Q
+CallSpace(tau) = V_τ
+
+Candidates(args |> t) = CallSpace(TypeValue(t)) = V_τ
+```
+
+Copied/extracted type-as-callee lookup selects candidates from that immutable
+`V_τ` snapshot. `HomeSymbol(TypeValue)`, defining-Symbol recovery, most-recent
+carrier provenance, and reverse `AsType` provenance are retired designs, not
+deferred candidate entrances.
 
 Associated source navigation obeys the same forward-only rule. If:
 
@@ -183,12 +199,11 @@ Associated source navigation obeys the same forward-only rule. If:
 let T: type = uint8;
 ```
 
-then a target selected through `T` resolves `Symbol(T)`, reads the carried
-TypeValue/PatternValue, enters that PatternValue's resolved scope, and obtains
-the named associated Symbol there. It does not inspect T's provenance, search
-for `Symbol(uint8)`, or copy the associated member into T's fresh companion
-place. The named associated Symbol then supplies its heterogeneous values to
-the same C0/C1/C2/C3 trunk.
+then a target selected through `T` resolves `Symbol(T)` and reads the complete
+type snapshot. Type-as-callee candidates come from its `V_τ`; an ordinary
+navigated member may additionally be selected through `Q`/`Val2` under the
+normal navigation rules. Neither path inspects provenance or searches for
+`Symbol(uint8)`.
 
 The older `PolicyTransitionCallable` Rust carrier remains bounded algebra/test
 fixture material. Its caller-supplied result Pattern proves only fixture
@@ -203,6 +218,47 @@ first-formal Policy Pattern, and complete result P2 remain distinct. The member
 Policy supplies the migration output endpoint coordinate, the formal inherits
 the complete P2 and supplies input fit, and ordinary invocation preserves the
 complete P2 until the later demanded `Project_out`.
+
+### 2.2 Derived associated forwarding is an ordinary call
+
+A derived associated forwarder is an ordinary callable. After it is uniquely
+selected, its body may invoke another associated family. That inner invocation
+is a new ordinary call and does not reopen the candidate set of the outer
+call:
+
+```text
+resolve name::D(T)
+-> select forwarder uniquely
+-> execute forwarder body
+-> body performs a new ordinary invocation of name::T
+```
+
+This covers `field::(T ref) -> field::T` and `field::(T share) -> field::T`
+(canonical `ForwardAssoc` in
+`type-associated-function-objects-and-access-trees.md`), as well as any future
+derived-type forwarding. It is not fallback, not candidate reopening, and not
+late adaptation.
+
+### 2.3 Compiler-authorized stage migration vs explicit `const`/`mut` reconstruction
+
+The compiler-authorized stage migration of §2.1 (static-value-to-runtime-value)
+and the explicit `const` / `mut` reconstruction of
+`symbol-policy-and-compile-flow-projection.md` §1.2 are distinct:
+
+```text
+compiler-authorized stage migration
+≠
+explicit const/mut reconstruction
+```
+
+Both may reuse `T`'s ordinary construction/call family, but their triggers
+differ. Stage migration is inserted by the compiler when an existing-view
+projection is empty and the demanded stage accepts runtime; explicit
+`const`/`mut` is a user-visible reconstruction demand. Neither turns `T` into
+`T ref`/`T share`, neither reopens a candidate set after selection, and both
+obtain their conversion capability from the complete `τ`'s callspace
+(`CallSpace(τ) = V_τ`), never from defining-Symbol or carrier-provenance
+recovery.
 
 ## 3. `()` is not an operator
 
@@ -568,7 +624,9 @@ lookup, capture-environment layout, or capture admissibility analysis.
 Product |> Expr
 
 1. Shape explicit Product: ProductObject → ArgProductShape → RawArgShape*
-2. Resolve a name/path to Symbol and project/enumerate its heterogeneous typed V members
+2. Resolve a name/path to Symbol `S`; form `C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
+   and enumerate that candidate set (one step, no priority, no fallback, no
+   reopening; the same candidate reachable through both paths is deduplicated)
 3. Expose each Val2 object's policy-pair view for the current `Phase`
 4. For each surviving value entry, obtain its type / TypeValueId
 5. Find call entry: type(value).associated_namespace → lookup `()`
@@ -595,6 +653,44 @@ lookup-failure fallback. If its prepared candidate enters fully admissible set
 `A`, its must-select strategy requires it to be the final unique candidate.
 Compile projection preserves an ordinary projected call; normal compile
 evaluation later enumerates and selects objects.
+
+The semantic source of a compile companion is derivation, not Symbol
+injection. The compile realization is defined only for the stage that admits
+one — a runtime generic callable — and is undefined for the other stages:
+
+```text
+CompileRealization(F)
+  = C(F)        if Stage(F) = runtime
+  = F           if Stage(F) = compile
+  = undefined   if Stage(F) = meta
+    -- a partner operation is undefined for meta callables
+
+DistinctCompilePartner(F)
+  iff Stage(F) = runtime
+  -- equivalently: CompileRealization(F) = C(F) != F
+
+CompilePartner(F) = C(F)   -- defined exactly when DistinctCompilePartner(F)
+
+C(n) = n  with produced-runtime-Val1 := absent
+         if ManufacturesRuntimeVal1(n)
+C(n) = n  otherwise
+C(F) = Resolve(CompileTransform(body(F)))
+```
+
+`CompileTransform(body(F))` rewrites the callable body's result
+classification so that a runtime-value-producing body instead produces its
+static result (absent runtime `Val1`), leaving the callable structure,
+receiver, and associated static `()` intact. The compile companion's existence
+is a fact about `F` under the compile transform, and only about a runtime
+callable: a compile generic `F` has no distinct compile partner, and a meta `F`
+has none either (its realization is `F` itself in both cases). This matches the
+partner classification table of meta-object-invocation §4: runtime generic `F`
+has `C(F)` plus `M(F)`; compile generic `F` has only `M(F)`; meta `F` has
+neither. A host Symbol's symbol-facet
+entry for the companion (overload-resolution §3.3) is a lowering/implementation
+cache, not the semantic cause: removing the cache entry does not remove
+`CompilePartner(F)`, and `C(F)` never becomes a candidate by virtue of that
+entry alone.
 
 ## 9. Relation to v0.8 substrate
 
@@ -655,7 +751,8 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
   function-object and implicit-self call model.
 - Ordinary/compile local pattern construction uses the function-object internal
   Self frame; compile does not create a MetaInstanceScope.
-- Ordinary meta symbol construction is anchored by canonical MetaInstanceScope;
+- Ordinary meta construction is anchored by the canonical MetaInstance anchor
+  `M` (a symbolic-navigation layer); its default result is `τ_M` rooted at `M`;
   built-in privileged AST meta functions may instead use their declared special
   scope/owner rule.
 - `.name` is a first-class closure expression whose normalization produces a

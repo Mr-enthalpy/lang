@@ -382,7 +382,7 @@ error-policy checker exists. The relevant dimensions are:
   `Error` branch predicate or handler objects are available;
 - receiver/parameter policy pairs and stage constraints determine whether a
   handler call is admissible, while P2 describes its result pair;
-- the produced result remains layered `Val1? x Pattern x Val2` material; there is
+- the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material; there is
   no independent return-policy `P3` or scalar whole-result policy, while the
   return position may refine inherited P1 mutability only;
 - `noerror` changes the current capability / policy environment so that the

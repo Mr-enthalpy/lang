@@ -2,6 +2,12 @@
 
 **Status: Future design boundary. Not current implementation behavior.**
 
+The relational meaning of Pattern observation/extraction and the fact that
+constructor/extractor inverses are family-specific theorems are canonical in
+`pattern-values-relational-semantics-and-extraction.md`. This document applies
+that authority to result delivery and one-layer view construction; it does not
+define a second base Pattern calculus.
+
 Policy staging of this extraction flow, including runtime Pattern retention and
 automatic require, is canonical in
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.
@@ -45,31 +51,21 @@ x?? = (x?)?
 ```
 
 `TopPattern(P)? = P` is only display shorthand for the resident body. The
-exposed extraction view must retain an anonymous Pattern-layer boundary:
+exposed extraction view must retain a name-absent Pattern-layer boundary:
 
 ```text
 OptionalPeel(
   PatternLayer(name = c, body = B, order = O)
 ) =
-  PatternLayer(name = _, body = B, order = O)
+  PatternLayer(name = absent, body = B, order = O)
 ```
 
-Therefore, if `TopPattern_c` had a fully named, order-insensitive body before
-the peel:
-
-```text
-(a, b) <= (a, b)c?
-```
-
-is semantically understood as:
-
-```text
-(a, b) _ <= (a, b)c
-```
-
-The left side is therefore
-`PatternLayer(_, Product(a, b), Unordered)`, not a naked Product. `_` erases the
-peeled top Pattern identity while preserving its layer boundary and ordering.
+If `TopPattern_c` had a fully named, order-insensitive body before the peel, the
+exposed view is therefore
+`PatternLayer(absent, Product(a, b), Unordered)`, not a naked Product. `absent`
+is a semantic name-absence marker; it is not source wildcard `_`, binder
+absence syntax, or an artificial child. The peel erases the top Pattern name
+while preserving its layer boundary and ordering.
 This does not make a naked Product unordered: `(a, b) != (b, a)`, and the
 fixed point `(a, b)? = (a, b)` gains no matching authority. A positional top
 Pattern body also remains positional after peeling.
@@ -81,7 +77,7 @@ OptionalPeel(x) = x
 ```
 
 This is an ordinary fixed point, not matching failure and not a `none` result.
-The retained anonymous layer must also make peeling commute with
+The retained name-absent layer must also make peeling commute with
 normalization:
 
 ```text
@@ -135,7 +131,8 @@ Every constructed value can be understood as a waist point:
         one-layer top Pattern view
 ```
 
-Upward, the value participates in a constructor-specific isomorphism:
+Upward, a Pattern family that declares these interfaces may prove a
+constructor-specific isomorphism:
 
 ```text
 construct_C : Pattern_C -> Value_C
@@ -155,7 +152,8 @@ product P?    = P
 TopPattern(P)? = P
 ```
 
-For extraction, the last result is an anonymous `PatternLayer(_, P, O)` whose
+For extraction, the last result is a name-absent
+`PatternLayer(absent, P, O)` whose
 ordering `O` is inherited from the peeled top Pattern. This is a retained
 structural boundary, not merely metadata attached to a naked Product and not a
 change to Product equality.
@@ -189,7 +187,7 @@ product P:
   P? = P
 
 TopPattern(P):
-  TopPattern(P)? = PatternLayer(name = _, body = P, order = TopPatternOrder)
+  TopPattern(P)? = PatternLayer(name = absent, body = P, order = TopPatternOrder)
 ```
 
 Pattern matching may consume a symbol's Pattern layer directly without `?`;

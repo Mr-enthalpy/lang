@@ -145,16 +145,16 @@ change.
 New methods on `NamespaceGraphCapability`:
 
 - `resolve_with_policy(…, PolicyEnv)` — filters per-component and terminal
-  results; a symbol that does not satisfy the policy environment is treated as
+  results; a Symbol that does not satisfy the policy environment is treated as
   not found in that search root.
 - `resolve_str_with_policy(…, PolicyEnv)`
 - `resolve_type_object_with_policy(…, PolicyEnv)`
 - `resolve_meta_function_with_policy(…, PolicyEnv)`
 
 The compatibility APIs still filter before cross-root conflict reporting. This
-is a known substrate gap: canonical resolution must first produce a symbol and
+is a known substrate gap: canonical resolution must first produce a Symbol and
 only then expose its current-phase slices. A hidden runtime value must not erase
-the symbol or its compile Pattern facet.
+the Symbol or its compile Pattern facet.
 
 Policy filtering is **per-component**: every path component (including
 namespace intermediaries like `core`) is checked against the policy
@@ -238,7 +238,7 @@ model boundary:
   namespace injection targets.
 - The current slice does not implement `NamespaceOrigin`, source/meta
   construction-unit ownership, physical contribution authority, cross-file
-  reopening diagnostics, or meta return pure-role self-root checking.
+  reopening diagnostics, or meta return self-root checking.
 - v0.8 source-declared callable overload selection reports structured failure
   kinds. Initializer MetaPartial residualization is driven by those kinds, not
   by diagnostic message text. Ambiguity remains a hard diagnostic; no
@@ -283,13 +283,17 @@ behind named operations, at least:
 
 - **resolve** — resolve a navigation path to a `SymbolObject`.
 - **declare** — introduce a declared symbol under a node.
-- **inject child material** — add a direct child to a contribution or
-  construction under a legal owner (see §4). The future source-level `inject`
-  built-in is functional and returns a new ordinary `type` pattern value; only
-  the outer binding/assembly layer installs the resulting delta.
-- **open virtual node** — open a virtual namespace node for generated structure.
 - **install namespace delta** — apply a set of physical, declared, or generated
-  contributions as one unit under a legal node.
+  contributions as one unit under a legal node. This is the graph/world
+  installation operation: the only capability that changes namespace-graph
+  structure.
+- **open virtual node** — open a virtual namespace node for generated structure.
+- **source-level `inject` operation** — the source-level `inject` built-in is a
+  place-level read–extend–write wrapper on an existing `type ref` place:
+  `inject(r, Δ)` reads the current pointee, applies `extend(old, Δ)` to obtain
+  `new`, writes `new` back to the same place, and returns `r`. It does not
+  itself produce a new ordinary `type` pattern value and does not install a
+  `NamespaceDelta`; the outer binding/assembly step performs installation.
 - **canonical meta instance key** — compute the stable identity of a meta
   instantiation (see §6).
 - **diagnostic** — attach a diagnostic with provenance to a node / operation.
@@ -311,16 +315,32 @@ objects, so later phases (meta lookup, type checking) operate on objects rather
 than re-parsing path strings.
 
 `SymbolObject` is the current implementation substrate. The final conceptual
-model is one Symbol with one `SymbolId`, one `PlaceId`, an optional pure role
-member `Q`, and heterogeneous typed value-member buckets:
+model is one Symbol with one `SymbolId`, one `PlaceId`, and the shape
+`S = <τ?, V_S?>` (canonical owner
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1):
 
 ```text
 path/name -> Symbol -> context-directed role/member projection
+
+S = <τ?, V_S?>
+TypeSlot(S) = Some(τ)     when the Symbol carries a type value
+TypeProjection(S) = stored τ
+Core(τ) = Q
+CallSpace(τ) = V_τ
 ```
 
-Namespace projection selects `Q`; type projection selects the same `Q` only
-when `TypeRole(Q)`. Current namespace/type facet buckets may cache those derived
-views but do not define independent semantic Objects.
+A type value `τ = <Q, V_τ>` is formed **before installation** and stored as an
+immutable snapshot — projection does not post-hoc close `Q` against a later
+member environment and never recomputes `V_τ`. When `TypeSlot(S) = Some(τ)`
+and `TypeRole(Core(τ))`, `TypeProjection(S)` returns the already-formed `τ`;
+`.type` returns the complete `τ` by value, and a borrowed `.type`
+(`(S ref).type` / `(S share).type`) returns a borrow observation of the
+type-valued slot. Namespace projection selects the canonical namespace object
+(the installed type core), which for a type-valued Symbol observes
+`Core(τ) = Q` — the first-order
+observation of the stored `τ`, not raw material from which `τ` is
+reconstructed. Current namespace/type facet buckets may cache derived views but
+do not define independent semantic Objects or another copy of `V_τ`.
 
 This document does not require an immediate Rust refactor. It does require that
 new design text avoid treating namespace/type/value/callable as disjoint
@@ -519,15 +539,22 @@ and later compile/meta construction callables.
 The final boundary is sharper:
 
 ```text
-compile -> PatternValue, with root conservation and no root authority of its own
-ordinary meta -> symbol PatternValue, plus authority to establish and seal one
+compile -> any declared ordinary semantic value across result classes
+           (ordinary PatternValue, complete type value tau, type ref / type
+           share borrow instance, ...), with root conservation and no root
+           authority of its own
+ordinary meta -> the default complete type value τ (DefaultMetaResult = τ;
+                 an explicit declared result may be a symbol or another
+                 permitted result), plus authority to establish and seal one
                  navigable MetaInstanceRoot M
-privileged builtin -> PatternValue under its member-specific owner rule
+privileged builtin -> its member-specific declared result under its
+                      member-specific owner rule
 let binding / namespace contribution -> NamespaceDelta atomic install
 ```
 
-The `compile` / ordinary-`meta` authority difference remains within the ordinary
-PatternValue domain and introduces no construction rank; see
+The `compile` / ordinary-`meta` difference is world authority, not result
+class: `compile` results may be ordinary PatternValues, complete type values
+`τ`, or borrow instances, none of which introduces a construction class; see
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
 §4.1.
 
@@ -750,8 +777,8 @@ let b = 1
 `a` and `b` are distinct symbols, while their values are equal.
 
 Member creation is not pure type-value evaluation.
-Because this `T` is already a pure type slot, `let f::(T@) = ...` explicitly
-targets `place(T)`, not `place(uint8)`. Type-value equality must not
+Because this `T` is already a pure type slot, `let f::(T |> (type ref)) = ...`
+explicitly targets `place(T)`, not `place(uint8)`. Type-value equality must not
 canonicalize injection targets.
 
 `let` and the frozen `===` surface form are not interchangeable, and only `let`
@@ -759,11 +786,11 @@ has target semantics:
 
 | Form | Symbol effect | Type-value effect | Extension-place effect |
 | --- | --- | --- | --- |
-| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T@)` may create under `place(T)` when separately authorized |
+| `let T: type = uint8` | Creates new symbol/place `T` | `value(T) == value(uint8)` | `let f::(T |> (type ref))` may create under `place(T)` when separately authorized |
 | `let T === uint8` | Frozen parser surface only; **no target semantics** — the alias/forwarding direction is retired | — | — |
-| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is a generated Symbol with `Q_struct` satisfying `TypeRole` | `let f::((T ref).type)` may create under that explicit type-member place |
+| `let T = ... \|> struct` | Creates new symbol/place `T` | `value(T)` is the formed complete type value whose core `Q_struct = Core(value(T))` satisfies `TypeRole`; the Symbol is created by this binding, not by `struct` | `let f::(T |> (type ref))` may create under that explicit type-member place |
 
-Fresh generated Symbols own/provide their `Q_struct` type-role member's associated
+Fresh formed type values provide their `Q_struct` core's associated
 namespace, so `let T = (uint8 a, uint8 b) |> struct` creates one associated
 Symbol for `a` and one for `b`; each contains value/ref/share receiver candidates.
 
@@ -780,11 +807,12 @@ let A: type = (int Vec::std)
 let B: type = (int Vec::std)
 ```
 
-means `A == B` by type-value equality while `A` and `B` remain distinct symbols.
+means `A == B` by ordinary type-value equality (default `Core(tau)=Q`,
+first-order `TypeValueId`) while `A` and `B` remain distinct symbols.
 No declaration form can make them the same symbol or the same place. The
-canonical type-value equality relation
-is defined as the recursive observation `Addr(Norm_type)` (bare `TypeValueId`
-is only the stable first-order root); carrying that settled relation into all
+whole-snapshot identity is `Addr(Norm_type(tau))`, used to tell shared-root
+snapshots apart in transport and in positions the language has independently
+frozen to whole-snapshot semantics; carrying that settled relation into all
 remaining semantic comparison sites is future work.
 
 See `spec/design/symbol-world/type-associated-function-objects-and-access-trees.md` for the
@@ -865,8 +893,9 @@ special case.
   arbitrary rewrite of parent / sibling / global namespace.
 
 The future public boundary is
-`struct: StructLikePattern -> symbol`; AST remains an internal carrier, and
-graph installation remains in the outer binding layer.
+`struct: StructLikePattern -> tau`; AST remains an internal carrier, graph
+installation remains in the outer binding layer, and the Symbol appears only at
+that binding/install.
 
 ## 6. Compile / symbol construction interpreter bootstrap (v0.8)
 
@@ -878,14 +907,14 @@ records the migration boundary:
 ```text
 restricted evaluator
   -> shared invocation frame and policy checks
-  -> PatternValue result rank
+  -> ordinary semantic result across result classes
   -> outer binding/NamespaceDelta installation
 ```
 
 The current `ForwardedValue`, `GeneratedConstructionValue`, and
 `GeneratedTypeDefinitionValue` enums remain transitional implementation
 transport. They do not implement canonical facets, `MetaInstanceScope`,
-construction-lineage `Open`, `extend`/`inject`, pure-role self-root validation, or
+construction-authority (`OpenHere_Σ` / `WindowLive_Σ`), `extend`/`inject`, return self-root validation, or
 construction-unit authority.
 
 Before ordinary generic type-style meta-functions are implemented, the
@@ -901,7 +930,7 @@ resolve callee
   -> RawArgShape / ParameterShape
   -> rank-directed Symbol / TypeValueId / PatternValue classification
   -> policy body-entry check
-  -> PatternValue
+  -> ordinary semantic result across result classes
   -> binding-layer installation adapter
   -> NamespaceDelta atomic install
 ```
@@ -952,7 +981,7 @@ semantics; HIR/codegen integration beyond placeholder nodes.
 
 Must cover the transition from the restricted type-shaped evaluator toward:
 ordinary normalized structured input; `compile` producing `PatternValue`;
-`meta` sealing a `MetaInstance` and returning its symbol value; rank-directed
+`meta` sealing a `MetaInstance` and returning its default `τ` result; rank-directed
 canonical
 argument identity; orthogonal creation/write/return events (current compatibility
 encoding:
@@ -985,7 +1014,8 @@ inside formal `struct`/`extend` or through `inject`.
 - Compile/meta bodies consume ordinary parsed and normalized structured material
   under capability policy — not a separate compile-time DSL or text macro.
 - `compile` computes `PatternValue`; `meta` seals a `MetaInstance` and returns
-  its symbol value, which is an ordinary `PatternValue`. Target semantics use
+  its default result `τ` (`DefaultMetaResult = τ`), which carries an ordinary
+  `PatternValue` as `Core(τ)` when a type core is installed. Target semantics use
   ordinary `let` creation, existing-place `=` writes, and a separate return
   event. The current `let`-only compatibility encoding is: `let r = expr;` adds
   a fresh member, `r = expr;` writes to an existing
@@ -999,8 +1029,8 @@ inside formal `struct`/`extend` or through `inject`.
   AST meta functions use their separately declared scope/owner rule.
 - `struct` owner identity comes from input pattern navigation plus ambient
   `ResolvedPatternScope`, never from the later binding destination.
-- Pure `extend(type, material)` adds direct children only when the value's
-  `ConstructionLineage` is Open in the current stack. `inject(type ref,
+- Pure `extend(type, material)` adds direct children only when the value
+  satisfies `OpenHere_Σ` in the current stack. `inject(type ref,
   material)` is read--extend--write and additionally requires the target place
   writable. A ref proves neither Open nor promotion, and there is no
   construction-handle rank.

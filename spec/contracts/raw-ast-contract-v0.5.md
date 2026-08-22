@@ -218,10 +218,40 @@ Source mapping:
 `[[name]]` is the explicit named-strategy escape. The parser does not
 backtrack.
 
+### 4.1 Binderless heads and atomic pipe branches
+
+An empty DeduceList is a valid, non-decorative binding prefix:
+
+```text
+let <> P
+  -> BindingSlotAst {
+       deduce: Some(DeduceListAst { binders: [] }),
+       pattern: Skeleton(P)
+     }
+  -> semantic handoff: BinderPresence = Absent
+```
+
+`let x` remains `Binder(x)`. `let <> x` contains `PatternName(x)`, and
+`let <> _` contains a real wildcard Pattern with no outer binder. Binder
+absence and wildcard presence are different facts.
+
+For one non-composite atomic Pattern `P`, the parser contract is:
+
+```text
+|> P { body }
+  == |> (<> P) { body }
+  -> headed InPlace closure
+```
+
+The shorthand and explicit spelling produce the same structural Raw AST apart
+from source spans/provenance. They do not produce `Product(_, P)`, an ordinary
+closure, or `Binder(P)`. Explicit `(_ P)` remains the pre-existing Product plus
+body shape and is not a spelling of the shorthand.
+
 In-place closures cannot have capture lists. Invalid capture/tail forms become
 `ErrorAst`; an error cannot be represented as a valid empty Block.
 
-### 4.1 Capture items are let-shaped
+### 4.2 Capture items are let-shaped
 
 ```text
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"

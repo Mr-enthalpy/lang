@@ -83,8 +83,10 @@ completed the remaining Raw AST stability-window questions. During this window:
 
 - Richer literal spelling was implemented (radix integers, digit separators,
   scientific notation, hexadecimal floats, ranked quote-boundary strings).
-- The pipe branch-name shorthand (`|> name { ... } ⇝ |> (_ name) { ... }`)
-  was accepted as the only local mechanical whole-shape sugar.
+- The pipe branch-name shorthand was accepted as the only local mechanical
+  whole-shape sugar. Its v0.1.w snapshot used `(_ name)`; the current
+  binderless authority supersedes that expansion with `(<> name)` while the
+  frozen v0.1/v0.2 records remain unchanged.
 - The final current-stage open question was closed.
 
 `v0.1.w` is now complete. The project then entered v0.2; v0.2 is now closed.
@@ -251,7 +253,7 @@ package/manifest identity
   -> Object-closed container PatternValues: bare Product / T*N / T*omega /
      product / Symbol (no compiler-private collection identity)
   -> meta Symbol-valued construction (current SymbolConstruction is substrate)
-  -> ResolvedPatternScope / struct -> symbol / pure extend / place inject
+  -> ResolvedPatternScope / struct forming complete type values / pure extend / place inject
   -> let-only creation + existing-place writes + NamespaceDelta install
   -> formal invocation demand/policy integration
   -> mechanical lowering family
@@ -448,8 +450,9 @@ Must cover:
 - closed `SyntaxObject` passing
 - `assert` as a compile-time hard-check primitive
 - `struct` as the first real globally visible
-  `BuiltinPrivilegedAstMetaFunction` object from the core namespace, producing
-  a Symbol with one `Q_struct` satisfying `TypeRole` plus generated partner families
+  `BuiltinPrivilegedAstMetaFunction` object from the core namespace, forming a
+  complete type value whose core `Q_struct` satisfies `TypeRole` plus generated
+  partner families entering `V_τ` at formation
 - current meta call replacement adapter
 - current `MetaExpansionResult` transport (replacement object / namespace delta /
   diagnostics / provenance); final formal invocation returns an uninstalled

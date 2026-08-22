@@ -8,8 +8,8 @@ engine.**
 The policy-governed meta object invocation model:
 
 - symbol-first heterogeneous value-facet candidate preparation
-- orthogonal execution capability / evaluation demand / result rank
-- ordinary-meta `MetaInstanceScope`, return pure-role self-root validation, and
+- orthogonal execution capability / evaluation demand / result class
+- ordinary-meta `MetaInstanceScope`, return self-root validation, and
   complete invocation navigation atom
 - bounded compiler-defined `BuiltinPrivilegedAstMetaFunction` invocation,
   including `struct` / `extend` / `inject` special scope and owner rules
@@ -34,8 +34,8 @@ built.
 
 Read
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` for
-the canonical Symbol `<Q?,V>` role/member model, `compile` / `meta`, result-rank, pattern-owner,
-`struct -> symbol`, pure `extend`, place-level `inject`, and meta pure-role self-root
+the canonical Symbol `<tau?,V_S?>` role/member model, `compile` / `meta`, result-rank, pattern-owner,
+`struct` forming complete type values, pure `extend`, place-level `inject`, and meta return self-root
 boundary. Read
 `../symbol-world/symbol-construction-units-and-namespace-origin.md` for the
 `MetaConstructionUnit` transaction and namespace ownership boundary. Then read

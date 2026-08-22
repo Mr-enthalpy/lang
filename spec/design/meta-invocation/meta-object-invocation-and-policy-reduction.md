@@ -80,7 +80,7 @@ member must observe an external object, it holds a borrow view
 (`ref` / `share`), which is an ordinary value — and a borrow edge is not owned
 material, so it is not promoted at seal. Installing an external pure Object as
 the meta return role member still fails the self-root invariant. No declaration form,
-inside or outside a meta body, forwards a symbol or a place.
+inside or outside a meta body, forwards a `Symbol` constructor value or a place.
 
 Unsupported selected body forms return hard diagnostics. In particular, a body
 that requires guarded branch evaluation, predicate calls, postfix `?`,
@@ -206,33 +206,41 @@ available stage slice for the materialized binding. Namespace export visibility
 is not copied from a forwarded dependency; namespace visibility belongs to the
 destination's namespace-scoped P1 declaration.
 
-If any initializer residualizes and the binding has an assertion annotation
-such as `: type`, the assertion is not considered proven or failed. It is
-deferred with the residual expression. Because v0.8 has no deferred/runtime
-type assertion model, the implementation reports:
+If an initializer residualizes and the binding has a closed annotation such as
+`: type`, the ordinary result-as transformation residualizes with the
+expression. Because v0.8 has no deferred/runtime result-as implementation, the
+current substrate reports the legacy-named diagnostic:
 
 ```text
 UnsupportedDeferredTypeAssertion
 ```
 
-This diagnostic means the assertion boundary is unsupported for residual
-initializers; it does not mean the RHS was already checked and found not to be
-a type-level meta value.
+That diagnostic name does not redefine the annotation as a Boolean assertion.
+
+This diagnostic means the closed result-as boundary is unsupported for
+residual initializers; it does not mean the RHS was already transformed and
+found invalid.
 
 The v0.8 success path for `let X: type = int + unit;` is:
 
 ```text
-source declarations install real `+` overload symbols
+source declarations install real `+` overload bindings
 ordinary initializer sees normalized `int + unit`
 MetaPartial invokes restricted overload selection under MetaAction lookup
-selected `(self, t: type, _ unit: type): meta -> ...` body forwards `t`
+selected `(self, t: type, _ unit: type): meta -> ...` body (legacy substrate
+shape) forwards `t`
 RHS value is `ForwardedValue(int)`
-`: type` assertion checks that the RHS is a type-level value
-binding materialization installs `X` as a fresh symbol/place whose unique pure
-role member `Q` projects the `int` type value and satisfies `TypeRole(Q)`; the
+hole-free `: type` applies the ordinary result-as-`type` transformation
+binding materialization installs `X` as a fresh symbol/place carrying the
+complete immutable `int` type closure `tau = <Q,V_τ>`, optionally written
+`bind alpha.<Q,V_τ[alpha]>`; `Q`
+satisfies `TypeRole(Q)`, and the
 binding is an ordinary fresh symbol and place,
 not a forwarding of `int`'s own symbol or place
 ```
+
+The current evaluator may still name its narrow check an “assertion”; that is
+implementation substrate, not the target annotation semantics.
 
 The identity path does not require full canonical sum-pattern values. A
 selected body such as `r === t | u` still requires canonical sum-pattern value
@@ -287,10 +295,13 @@ The language wants exactly one invocation model. The same mechanism must serve:
 
 There is intentionally no second mechanism reserved for "compile-time code."
 Compile-time behavior uses the ordinary callable framework under either
-`compile` capability (computing a root-conserving `PatternValue` with no root
-authority of the compile coordinate itself) or ordinary `meta` capability
-(computing a `PatternValue` and establishing a navigable `M`). A privileged
-builtin instead follows only its member-specific owner rule. Policy and
+`compile` capability (computing an ordinary semantic value across result
+classes, root-conserving, with no root authority of the compile coordinate
+itself) or ordinary `meta` capability (computing the default complete type
+value `τ`, or another explicitly declared result, and establishing a
+navigable `M`). A privileged
+builtin instead follows its member-specific declared result and owner rule.
+Policy and
 partial/strict demand determine whether
 the callable may execute or residualize; they do not merge the two capabilities.
 
@@ -303,7 +314,7 @@ Meta behavior is ordinary callable behavior observed under a stricter policy env
 
 Concretely, `struct`, `verify`, match-closing consumers, and predicate operators
 such as `&&`, `||`, `==`, and `!=` should all eventually be ordinary callable
-symbols selected by the same lookup-and-invocation mechanism. None introduces
+bindings selected by the same lookup-and-invocation mechanism. None introduces
 a second branch semantics beyond policy-staged pattern matching. They are not
 parser keywords and not normalizer special cases. Whatever specialness they
 have lives in:
@@ -311,7 +322,7 @@ have lives in:
 - their **symbol payload** (what kind of callable object they are),
 - their **invocation strategy** (how arguments are evaluated and how branches
   are selected),
-- their **policy** (where the symbol is visible and where its body may execute),
+- their **policy** (where the binding is visible and where its body may execute),
 
 and never in parser recognition of the name. The parser and normalizer preserve
 normalized structure; the meaning of `struct`, `verify`, `cond`, or `==` is
@@ -337,7 +348,7 @@ The judgments are:
 
 ```text
 Gamma |- ResolveSymbol(path) => Symbol
-Gamma; Phase |- ExposePolicySlice(typed_val_members(Symbol)) => Val2View*
+Gamma; Phase |- ExposePolicySlice(CallableProjection(Symbol)) => Val2View*
 
 Gamma |- invoke(selected object, InvocationFrame)
       => result(P2v:P2p)
@@ -349,7 +360,7 @@ Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 Omitted P1 keeps the complete result. Single P1 `q` selects values visible
 under `q` and follows their associated pattern components. Pair P1 `qv:qp`
 filters both. Single P1 is not normalized to `q:q`. These lower-case policy
-metavariables are distinct from the Symbol pure-role member `Q`.
+metavariables are distinct from the type-core `Core(τ)`.
 
 P2 is an explicit pair or a context-specific single-policy shorthand:
 
@@ -392,7 +403,7 @@ exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
 
-There is no independent P3 and no scalar policy for the whole result symbol.
+There is no independent P3 and no scalar policy for the entire returned result.
 Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
 retains its own pair. Return positions inherit P1 and may refine mutability
 only; parameters symmetrically refine inherited P2 mutability only. Current
@@ -412,11 +423,12 @@ earlier decision.
 resolve name/path:
   -> Symbol
 
-project typed val members:
-  -> zero or more heterogeneous values
+form CallableProjection(Symbol):
+  -> DedupCandidateIdentity(V_S ⊎ V_τ)   (symbol-first §2.1)
+  -> zero or more heterogeneous candidates
 
 stage-visible object pool:
-  observe the policy-projected view of each enumerated Val2 object
+  observe the policy-projected view of each projected candidate
 
 call-entry candidate pool:
   obtain each stage-visible value's type
@@ -432,7 +444,7 @@ fully admissible candidate set A:
   call-entry pool + every hard structural/Pattern/type/require check
   + declared receiver/parameter pair compatibility for self and explicit arguments
   + P2 result compatibility with any target-result expectation
-  + expected result rank/facet compatibility
+  + expected result class/facet compatibility
 
 selected result:
   A -> ordinary preference filters -> final survivor set
@@ -441,9 +453,12 @@ selected result:
 
 Reading the layers from the top:
 
-- **Symbol resolution** produces a first-class symbol, then projects its value
-  facet. The facet may contain heterogeneous callable and non-callable values.
-- The **stage-visible object pool** observes each enumerated `Val2` object's
+- **Symbol resolution** produces a first-class symbol, then forms
+  `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`. The projection
+  may contain heterogeneous callable and non-callable candidates from both the
+  Symbol's own sibling space (`V_S`) and the intrinsic callspace of any
+  carried `τ` (`V_τ`).
+- The **stage-visible object pool** observes each projected candidate's
   available pair-projected view; this does not rerun base symbol resolution.
 - The **call-entry candidate pool** obtains each value's type and resolves the
   type-associated `()` entry. Non-callable values are valid facet material but
@@ -480,7 +495,7 @@ A formal sketch of the intended end-to-end frame:
 
 ```text
 Gamma |- ResolveSymbol(callee_path) => Symbol
-Gamma; Phase |- typed_val_members(Symbol) => V*
+Gamma; Phase |- CallableProjection(Symbol) => V*
 Gamma; Phase |- ExposePolicySlice(V*) => V_phase*
 Gamma; Phase |- type(V_phase*) / () => C0
 Gamma |- explicit_user_product => ArgShapes
@@ -517,18 +532,26 @@ return execution, D/Done, lifetime checking, or implicit `?`.
 
 ## 4. Partial meta reduction versus strict meta execution
 
-Evaluation demand is orthogonal to execution capability and result rank:
+Evaluation demand is orthogonal to execution capability and result class:
 
 ```text
 execution capability: compile / meta / seal / runtime
 evaluation demand:     partial | strict
-result rank:           PatternValue | runtime value
+result class:          ordinary PatternValue
+                       | complete type value τ
+                       | type ref / type share borrow instance
+                       | runtime value
 ```
+
+The result-class set is normative in
+`symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.1;
+this document only repeats it for the orthogonality claim and does not own a
+second enumeration.
 
 `MetaPartialContext` and `MetaStrictContext` retain their existing purpose: they
 say whether a runtime boundary may residualize. They do not define `meta`, do
-not turn `compile` into symbol construction, and do not change the rank of a
-successful result.
+not turn `compile` into symbol construction, and do not change the result class
+of a successful result.
 
 A call site is reduced in one of two demand contexts, and the difference between
 them is what makes one invocation framework cover both compile-time reduction
@@ -547,47 +570,78 @@ MetaStrictContext
 ### 4.1 Invocation layer: capability-directed results
 
 The invocation layer evaluates or reduces a callable under policy and a demanded
-execution capability. A successful compile-time result is not merely a
-`TypeValueId`:
+execution capability. A successful result follows the callable's declared
+result class/rank; it is not a single fixed carrier and in particular is not
+merely a `TypeValueId`:
 
 ```text
-compile callable -> PatternValue, construction-transparent, root-conserving,
-                    and with no root authority
+Result(F) follows F's declared result class/rank.
+
+compile callable
+                  -> any declared ordinary semantic value across result
+                     classes (ordinary PatternValue, complete type value τ,
+                     type ref/share borrow instance, ...),
+                     construction-transparent, root-conserving,
+                     and with no root authority
 ordinary meta callable
-                  -> symbol PatternValue, plus authority to establish and seal
+                  -> τ by default (DefaultMetaResult = τ, not
+                     OnlyMetaResult = τ); an explicit declared result may
+                     be a symbol or another permitted result,
+                     plus authority to establish and seal
                      one navigable MetaInstanceRoot M
 privileged builtin
-                  -> PatternValue, with only its member-specific owner rule
-runtime callable -> runtime value
+                  -> its member-specific declared result
+                     (e.g. struct -> τ), with only its member-specific
+                     owner rule
+runtime callable -> declared runtime result
 ```
 
-`PatternValue` includes ordinary compile-time values, type values, symbol values,
-and structured pattern values. A type value is not thereby an installed type
-symbol. The `compile` / `meta` difference is world authority, not result rank:
-there is no third rank, and the meta result is an ordinary value of type
-`symbol`. What the current implementation calls `SymbolConstructionValue` is
-the transitional carrier for that ordinary Symbol's multi-member material; it
+`PatternValue` includes ordinary compile-time values, `Symbol` constructor values, and
+structured pattern values; a complete type value `τ` is not itself an ordinary
+`PatternValue`/Object, and a borrow instance is not a `PatternValue` merely to
+make the result table smaller. A type value is not thereby an installed type
+symbol. The `compile` / `meta` difference is world authority, not result class:
+there is no private `SymbolConstruction` result ontology. The default meta result is a complete type value `τ`;
+an explicit `f : … -> symbol` remains fully legal because `symbol : type` is
+an ordinary first-class type and `x : symbol` is an ordinary language value.
+The old design's problem was not favoring `symbol` but demoting `τ` to a
+half-complete entity that had to parasitize a Symbol. Since `τ = ⟨Q, V_τ⟩`
+now independently exists, owns its own `CallSpace`, closes its own dependencies,
+and carries a stable meta-instance root, the old indirection chain
+`MetaInstance M -> returned Symbol S -> extract Q/type meaning -> use sibling V`
+has lost its necessity. What the current implementation calls
+`SymbolConstructionValue` is
+the transitional carrier for that default `τ` result's member material; it
 remains uninstalled and does not define another ontology.
 
-Two names keep classifier and content shape distinct:
+Default result and `symbol`-value shape are distinct:
 
 ```text
-ReturnClassifier(ordinary meta) = symbol
-ReturnShapeWithinSymbol         = Σ = ⟨ Q?, V ⟩, with |Q| <= 1 and Pure(Q)
+DefaultMetaResult = τ
+MetaInstance(M) -> τ_M
+struct(P)       -> τ_P          -- struct is a special built-in meta
+                                 -- constructor; same default-result principle
+
+MetaResult : τ                  -- default
+MetaResult : T                  -- when an explicit result type is declared
+
+ShapeOfTypeSymbol(v) = Σ = ⟨ τ?, V_S ⟩  -- describes the shape of a value
+                                          -- of type `symbol` only; decoupled
+                                          -- from the meta result rule
 ```
 
-`Q` may be present or absent and `V` may contain any ordinary sibling values.
-Those are content facts within one returned Symbol Object, not type/val/namespace
-return categories. `Q` is the one optional pure role member: namespace
-projection selects it directly, while type projection additionally requires
-`TypeRole(Q)`. “Meta returns type” is only shorthand for a `symbol` result whose
-content is `⟨Q, empty⟩` and whose `Q` satisfies `TypeRole`.
+For a value of type `symbol`, `τ` may be present or absent and `V_S` may
+contain any ordinary sibling values. Those are content facts within that
+`symbol`-typed value, not type/val/namespace return categories. `τ` is the
+complete type closure: type projection returns it directly, while namespace
+projection returns `Core(τ)`. “Meta returns type” is shorthand for the default
+`τ` result whose `Core(τ)` satisfies `TypeRole`.
 
-The exact capability split, canonical `MetaInstanceScope`, result-symbol/return-
-slot relation, rank-directed identity, pure-role self-root validation, and complete
+The exact capability split, canonical `MetaInstanceScope`, returned-result/return-
+slot relation, rank-directed identity, return self-root validation, and complete
 navigation atom belong to
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
-This document consumes those result ranks only to define candidate preparation,
+This document consumes those result classes only to define candidate preparation,
 policy filtering, and partial/strict reduction; it does not restate their
 construction semantics.
 
@@ -602,7 +656,7 @@ well formed only if:
 ```
 
 The canonical owner separates callable kind, call admissibility, and effect:
-`OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and result classifier `symbol`;
+`OrdinaryMetaFunction(F)` fixes `P2(F)=meta` and `DefaultMetaResult = τ`;
 `WellFormedMetaCall(F,args)` contains admissibility plus `GlobalKeyable`; only a
 well-formed call establishes `RootIdentityExists(M)` and construction-local
 navigation. Root identity is not external namespace installation.
@@ -621,18 +675,23 @@ boundary because they form no MetaInstance key and generate no root.
 The public future boundary is conceptually:
 
 ```text
-InvocationResult =
-  | PatternValue(...)
-  | RuntimeValue(...)
+InvocationResult(F)
+  = SemanticResult(DeclaredResultClass(F))
   | Residual(expr, suspension_reason)
   | Diagnostic(error)
 ```
+
+The semantic result branch is driven by the callable's declared result class;
+the ordinary classes themselves (PatternValue including a Symbol constructor
+value, complete type value τ, type ref / type share borrow instance, runtime
+value) are normative in
+`symbol-world/symbol-first-meta-construction-and-pattern-injection.md` §4.1.
 
 The current Rust substrate still uses `MetaInvocationResult::Value` with
 `MetaInvocationValue::{ForwardedValue, GeneratedConstructionValue,
 GeneratedTypeDefinitionValue}`. Those cases describe transitional v0.8/v0.9
 implementation transport, not the final public rank model. It also does not
-implement `MetaInstanceScopeId`, meta return pure-role self-root checking, complete
+implement `MetaInstanceScopeId`, meta return self-root checking, complete
 `compile`/`meta` separation, or the canonical meta-instance navigation atom.
 
 The canonical note also owns the complete invocation navigation atom; this
@@ -677,7 +736,9 @@ well-identified call; it does not defer candidate choice.
 
 ### 4.2 Expansion / binding layer
 
-After the invocation layer produces a `PatternValue`, the expansion / binding
+After the invocation layer produces an ordinary semantic result value (an
+ordinary `PatternValue`, a complete type value `τ`, a borrow instance, or a
+runtime value), the expansion / binding
 layer applies it to a build
 or declaration context. This includes:
 
@@ -686,7 +747,7 @@ or declaration context. This includes:
 - binding the declared target (e.g. `let T: type = ...`);
 - exposing an extraction-facing interface on the constructed value;
 - applying context-directed `ProjectP1` to value/pattern result entries without
-  assigning one scalar policy to the result symbol.
+  assigning one scalar policy to the entire returned result.
 ```
 
 This separation is intentional: invocation produces an uninstalled value, and
@@ -702,7 +763,7 @@ permanent model.
 `IdentityType` proves graph-resolved invocation plumbing: it demonstrates that
 a prepared candidate can flow through the candidate preparation, key
 computation, cache lookup, and primitive reduction pipeline. It does **not**
-prove final `PatternValue` or meta-construction semantics.
+prove final ordinary-semantic-result or meta-construction semantics.
 
 ```text
 IdentityType proves:
@@ -714,7 +775,8 @@ IdentityType proves:
   canonical key computation and cache memoization.
 
 IdentityType does NOT prove:
-  PatternValue computation under compile capability;
+  ordinary-semantic-value computation under compile capability
+    (across result classes);
   meta root establishment and sealing under meta capability;
   MetaInstanceScopeId or returned type-role member self-root validation;
   rank-directed symbol/type/value parameter identity;
@@ -726,6 +788,58 @@ IdentityType does NOT prove:
 Any implementation, test, or document that uses `IdentityType` as evidence that
 ordinary `PatternValue` / meta-construction semantics have been
 implemented is incorrect.
+
+### 4.4 Generic symbolic anchoring: MetaPartner and GeneratedClosure
+
+Generic construction is anchored to its callee through one symbolic relation,
+not through ordinary invocation arguments. The canonical relational objects
+are:
+
+```text
+MetaPartner(F)
+  := the meta-level partner bound to callable F by its declared generic
+     signature; it exists as a fact about F, not as a runtime value.
+
+MetaInstance(MetaPartner(F), Norm(GenericArgs))
+  := the meta instance keyed by the partner and the normalized generic
+     arguments; this is the scope that roots the generated construction.
+
+GeneratedClosure(F, GenericArgs)
+  := the callable closure produced by evaluating the anchored instance;
+     written C_F,A... for the closure rooted at MetaInstance(MetaPartner(F),
+     Norm(A...)).
+
+ClassifierRoot(TypeOf(C_F,A...)) = M
+  := the classifier root of the generated closure's type is the MetaInstance
+     scope M above.
+```
+
+Generic arguments are identity arguments of the **anchoring relation**, not
+ordinary invocation arguments of `F`:
+
+```text
+GenericArgs   -- key MetaInstance(MetaPartner(F), Norm(GenericArgs));
+              -- they participate in generic meta-instance identity.
+
+InvocationArgs -- the ordinary call arguments consumed by F's selected `()`;
+              -- they do not participate in generic meta-instance identity.
+```
+
+One callable therefore admits three realization/partner classifications, by
+stage:
+
+| callee stage | runtime realization | compile partner | meta partner |
+|---|---|---|---|
+| runtime generic `F` | `F` itself | `C(F)` = `CompilePartner(F)` | `MetaPartner(F)` = `M(F)` |
+| compile generic `F` | compile realization `F` | — | `MetaPartner(F)` = `M(F)` |
+| meta `F` | `F` itself | — | — |
+
+**GeneratedMetaPartner ≠ OrdinaryMetaFunction.** A generated meta partner
+returns a callable closure (a `GeneratedClosure`), so it does not fall under
+the ordinary-meta `DefaultMetaResult = τ` rule. The two callable
+kinds therefore never share that conclusion, and the ordinary-meta
+default-result rule is not violated by generated closures; the
+generated closure's own type is rooted at its `MetaInstance` scope instead.
 
 ## 5. Match and If Share One Pattern Mechanism
 
@@ -848,7 +962,10 @@ Neither class grants arbitrary token splicing or parser re-entry.
 A meta object may produce:
 
 ```text
-a pattern value with symbol/facet/pattern construction material
+an ordinary semantic result value across result classes:
+  an ordinary pattern value with symbol/facet/pattern construction material
+  a complete type value τ (the ordinary-meta default)
+  a type ref / type share borrow instance
 a residual expression
 a diagnostic
 ```
@@ -857,8 +974,10 @@ Graph deltas and member creation belong to the expansion/binding layer (§4.2),
 not the ordinary returned-value layer. Place-level `inject` writes one already
 existing type slot; it creates no member and installs no new root.
 
-A `compile` callable uses the same invocation framework but produces a
-`PatternValue`, not symbol construction. The distinction is an execution
+A `compile` callable uses the same invocation framework but produces an
+ordinary semantic value across result classes (an ordinary `PatternValue`, a
+complete type value `τ`, or a borrow instance), not symbol construction. The
+distinction is an execution
 capability/result-rank boundary, not a second parser or expression language.
 
 Both classes still participate in symbol-first lookup, function-object/type/
@@ -896,11 +1015,12 @@ Current state:
   graph.
 - `struct` is a core `BuiltinPrivilegedAstMetaFunction` symbol resolved through
   the namespace graph, not a parser keyword or an ordinary user-definable meta
-  function.
+  function. Its result contract is a complete type value `tau`, not a Symbol;
+  the Symbol appears only at a subsequent binding/install (symbol-first §7.1).
 - `verify` is a core meta-visible verification namespace/object, with
   verification operations installed below it as core symbols.
 - Source-declared callable/meta-function overloads can be harvested into graph
-  symbols and selected by the restricted v0.8 overload path.
+  bindings and selected by the restricted v0.8 overload path.
 - Formal `struct` invocation still produces anonymous
   `GeneratedTypeDefinitionValue` pattern heads. Ordinary binding preserves those
   provisional heads or restores stripped material under the anonymous
@@ -911,8 +1031,8 @@ Current state:
 - The current restricted evaluator still recognizes the legacy `r === ...`
   forwarding body. The final model replaces that formal return split with the
   construction-effect family (`let r = expr;` fresh member, `r = expr;` write,
-  `r;` delivery terminal) producing an ordinary Symbol PatternValue (current
-  carrier: `SymbolConstruction`); the legacy `===`
+  `r;` delivery terminal) producing the default complete type value `tau`
+  (current carrier: `SymbolConstruction`); the legacy `===`
   spelling has no successor, because the semantic alias/forwarding direction is
   retired.
 - The compatibility `PolicyEnv` now has exactly OpenStatic, SealStatic, and
@@ -923,9 +1043,10 @@ Current state:
 - The current early-meta, verification, and v0.8 overload behavior are not yet
   the full invocation model; they are bounded vertical slices.
 
-Not yet present are Symbol `Q` role projection / implementation caches,
-`PatternValue` as the single static
-result model, meta root establishment/sealing,
+Not yet present are type-core `Core(τ)` projection / implementation caches,
+the unified ordinary static result-class rule (`PatternValue`, complete type
+value `τ`, borrow instances) stated as one result-class-neutral model, meta
+root establishment/sealing,
 `ResolvedPatternScope`, final binding-independent `struct` owner resolution,
 pure `extend`, or place-level `inject`.
 
@@ -961,7 +1082,7 @@ For v0.8-adjacent compile/meta construction, argument shape means the
 contract-shaped route through `ProductObject` / `ArgProductShape`, not
 callee-specific parsing of raw normalized product material. Canonical meta
 instance keys must be computed only after product canonicalization and
-first-order `TypeValueId` argument compatibility are established. The detailed
+first-order `Core(tau) = Q` argument compatibility are established. The detailed
 construction guardrails live in
 `spec/contracts/v0.8-meta-construction-agent-constraints.md`.
 
@@ -1004,8 +1125,8 @@ determines the boundaries of the candidate search. The relevant boundaries are:
 - source root contribution,
 - package artifact metadata.
 
-These determine which symbols are reachable and which are exported across a
-package boundary, and therefore which candidates can populate the symbol
+These determine which bindings are reachable and which are exported across a
+package boundary, and therefore which candidates can populate the name-graph
 candidate pool for an external lookup. This document does not define manifest
 syntax or the build graph. For those, see the existing build and package design
 notes (`build-system-design.md`, `package-manifest-v0.md`, and
@@ -1038,10 +1159,12 @@ pattern, type-value, and meta-invocation machinery exists.
 
 ```text
 1. Keep current `struct` and `verify` behavior as implemented vertical slices.
-2. Introduce Symbol `Q` role projection and typed value-member candidate lookup.
+2. Introduce type-core `Core(τ)` projection and typed value-member candidate lookup.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
-4. Introduce PatternValue / TypeValueId identities and callable signature objects.
+4. Introduce the ordinary static result classes (PatternValue, complete type
+   value τ, borrow instances), TypeValueId identities, and callable signature
+   objects.
 5. Introduce the meta-construction carrier and rank-directed canonical instance
    keys.
 6. Carry canonical `Pv:Pp` through candidate qualification and every

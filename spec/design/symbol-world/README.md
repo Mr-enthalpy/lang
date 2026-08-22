@@ -3,10 +3,11 @@
 **Status: Non-normative future design with a partial implementation note. A
 narrow namespace-graph / resolver / early-meta slice exists in
 `crates/lang_build`; `TypeValueId`, borrow views, writability and
-construction-lineage Open checking,
-Symbol `<Q?,V>` role/member projections, `PatternValue`, ordinary Symbol-valued meta results
+construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) checking,
+Symbol `<tau?,V_S?>` role/member projections, complete type snapshots,
+`PatternValue`, default `τ`-valued meta results
 (current transitional carrier: `SymbolConstruction`),
-`ResolvedPatternScope`, `MetaInstanceScopeId`, meta pure-role self-root checking,
+`ResolvedPatternScope`, `MetaInstanceScopeId`, meta return self-root checking,
 pure `extend`, place-level `inject`, `NamespaceOrigin`, construction-unit ownership,
 physical/cross-file contribution authority, field-access evaluation, and
 access-tree construction are not implemented. Layered symbol policy,
@@ -19,22 +20,24 @@ evaluation are also not implemented.**
 The namespace graph world model and symbol-level identity:
 
 - `SymbolObject` and the namespace graph world model
-- symbol-first `<Q?,V>` role/member projections and context-directed projection
+- symbol-first `<tau?,V_S?>` role/member projections and context-directed projection
 - the `SymbolId` / `PlaceId` / `TypeValueId` distinction
 - `PatternValue`, `compile` / `meta`, and rank-directed canonical identity
-- `Val1? x Pattern x Val2`, canonical `Pv:Pp`, contextual P1 projection, P2
+- Object `⟨Val1?, P, Val2⟩`, canonical `Pv:Pp`, contextual P1 projection, P2
   result normalization, derived function-object stage views, seal visibility,
   const/mut product order, compile-flow projection over ordinary call nodes,
   complete derived compile-companion objects, coarse inferred require, and
   shared compile evaluation
 - Object-closed bare Product, `T*N`, `T*omega`, `product`, and Symbol carriers;
   their normalization uses only ordinary `Val1`/`Val2` recursion
-- resolved pattern scopes, `struct -> symbol`, pure child-only `extend`,
+- resolved pattern scopes, `struct` forming complete type values, pure child-only `extend`,
   place-level `inject`, and binding/install separation
-- meta-return pure-role self-root identity and complete meta-instance navigation atoms
-- pure-role namespace origin, source/meta construction-unit ownership, physical
+- meta-return self-root identity and complete meta-instance navigation atoms
+- type-core namespace origin, source/meta construction-unit ownership, physical
   contribution authority, and cross-file closure
-- the borrow views `ref` / `share` / `@`, writability, and construction-lineage Open
+- the borrow views `ref` / `share` and the place-sensitive lifetime
+  observation `@`, writability, and construction-authority
+  (`OpenHere_Σ` / `WindowLive_Σ`)
 - field functions and same-name value/ref/share receiver overload families
 - type-associated function objects and namespace extension targets
 - the early-meta / namespace-graph bootstrap (broad bootstrap document)
@@ -42,18 +45,19 @@ The namespace graph world model and symbol-level identity:
 ## Not in scope
 
 Pattern/overload candidate adaptation, meta invocation execution, and the full
-policy checker (referenced from the other blocks). Defining-Symbol recovery for
-a copied/extracted type used as a callee (`HomeSymbol(TypeValue)` or equivalent)
-also remains outside the current closure; it cannot be inferred from carrier
-provenance.
+policy checker (referenced from the other blocks). Type-as-callee is closed by
+the complete immutable closure `tau = <Q,V_τ>`, optionally written
+`bind alpha.<Q,V_τ[alpha]>`, and `CallSpace(tau)=V_τ`; defining-Symbol,
+recent-carrier, and `AsType` provenance
+recovery are retired.
 
 ## Documents
 
 - `symbol-first-meta-construction-and-pattern-injection.md` — canonical future
-  direction for Symbol `<Q?,V>` role/member projection, heterogeneous value/call candidates,
-  `compile` / `meta`, meta pure-role self-root, resolved pattern scopes,
-  `struct -> symbol`, pure `extend`, place-level `inject`, pattern-layer
-  ordering, uniqueness/replay, and outer
+  direction for Symbol `<tau?,V_S?>` role/member projection, heterogeneous value/call candidates,
+  `compile` / `meta`, meta return self-root, resolved pattern scopes,
+  `struct` forming complete type values, pure `extend`, place-level `inject`, Symbol
+  uniqueness/replay, and outer
   graph installation.
 - `symbol-construction-units-and-namespace-origin.md` — canonical future
   namespace-origin, source/meta construction-unit ownership, physical-directory
@@ -69,8 +73,8 @@ provenance.
   bootstrap and early-meta `struct` / `verify` slice. This document is broad;
   once the symbol world stabilizes it may be split further.
 - `type-values-places-and-borrow-views.md` — canonical `TypeValueId` /
-  `PlaceId` / `SymbolId` distinction, object normal form, and the borrow views
-  `ref` / `share` / `@`.
+  `PlaceId` / `SymbolId` distinction, object normal form, the borrow views
+  `ref` / `share`, and the place-sensitive lifetime observation `@`.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   same-name receiver overload families, and access-tree implications.
 - `entity-ref-design.md` — general `EntityRef` design (alias-RHS subset

@@ -4,6 +4,11 @@
 design. v0.8 implements only the restricted source-declared meta-overload
 selection slice described in §0.1.
 
+Pattern satisfaction, proof-relevant observation/extraction, direct structural
+incidence, binderless semantics, and `Norm_P` soundness are canonical in
+`pattern-values-relational-semantics-and-extraction.md`. This document consumes
+their applicability evidence; it does not define another Pattern calculus.
+
 This document remains the broader overload-resolution design. The earlier
 pattern/type candidate-preparation subset used by future meta object invocation
 is documented in `pattern-normalization-and-first-order-overload.md`. That
@@ -66,8 +71,9 @@ Implemented for this slice:
   never as a second resolver or source-language callable family.
 
 This implemented C0 bucket is transitional. Final call preparation resolves one
-Symbol, projects and enumerates its heterogeneous typed `V` members, observes each
-object's policy-projected view, obtains each surviving value's type, resolves each
+Symbol, forms `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
+(symbol-first §2.1), observes each projected candidate's policy-projected view,
+obtains each surviving value's type, resolves each
 type-associated `()` entry, discards non-callable entries, and then performs
 parameter-pair, stage, P2-result, and applicability filtering to a unique
 maximal candidate. Same-name
@@ -81,7 +87,9 @@ Explicitly not implemented in v0.8:
 - first-order instantiation preference;
 - in-place closure materialization, lazy embedding lookup, or the B5
   in-place-over-non-in-place preference;
-- ADL, unrestricted lookup, or global search for all symbols of a name;
+- ADL, unrestricted lookup, or global search for all symbols of a name
+  (only the discovery algorithm; the operator dispatch identity boundary is
+  closed in §1);
 - D/Done reduction or control-flow pattern transformation;
 - guarded branch invocation, short-circuit invocation, or full meta block
   interpretation.
@@ -92,8 +100,9 @@ two equal maximal candidates, selection reports ambiguity.
 `meta || runtime` is a policy expression in declaration-policy context. Its
 `||` is same-dimension stage choice. It is not Pattern alternative, not
 expression-level operator lookup, and not evidence that the body may execute
-under runtime policy. Pattern-side forms such as `_ if | else: type` are parsed
-and interpreted in parameter-pattern context only.
+under runtime policy. Legacy-substrate pattern-side forms such as
+`_ if | else: type` are parsed and interpreted in parameter-pattern context
+only.
 
 The implementation currently stores three metadata fields:
 
@@ -105,7 +114,7 @@ return-object policy metadata
 
 They are not three final source-level policy positions. In the final model,
 base path resolution produces `Symbol` before policy-view filtering; each
-enumerated `Val2` object carries its own `Pv:Pp`, P2 describes the call result
+projected candidate carries its own `Pv:Pp`, P2 describes the call result
 pair and derives the function-object stage view, and there is no independent
 `P3`. The
 current return-object field is provisional transport until canonical component
@@ -134,11 +143,11 @@ This block records implementation behavior only; it must not be used to infer
 a final `P3` return policy.
 
 The `r === t` body above is an implemented-v0.8 fixture shape, not final formal
-meta-return semantics. Target semantics use an ordinary Symbol value: `let`
+meta-return semantics. Target semantics use the default `τ` result (`DefaultMetaResult = τ`): `let`
 creates members, `=` writes existing places, and the return event transfers
 control. The current `let r`/`r =`/`r;` cluster behavior is a transitional
 compatibility encoding, and `SymbolConstruction` is its carrier rather than a
-result rank. There is no alias-member event. See
+result class. There is no alias-member event. See
 `spec/design/symbol-world/symbol-first-meta-construction-and-pattern-injection.md`.
 
 The current `+` overload support is not compiler-intrinsic set union. `+`
@@ -152,8 +161,8 @@ sets come from the selected namespace graph view.
 This document is the formal specification of overload resolution for the lang
 language. It defines:
 
-- how overload candidate sets are constructed from a resolved Symbol's `Val2`
-  objects
+- how overload candidate sets are constructed from
+  `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
 - how visibility and export rules gate internal vs external lookup
 - how each Val2 object's policy-projected view enters candidate preparation
 - how hard legality, including declared receiver/parameter pair compatibility
@@ -169,13 +178,37 @@ language. It defines:
   operate only after the fully admissible set exists
 - a compact judgment form
 
+**Operator dispatch identity boundary (closed).** The identity layer that maps
+an operator spelling/syntax to a dispatch entrance is frozen by this design
+(canonical phrasing: `spec/reference/glossary.md`, "Naked operator" / "ADL" /
+"Assignment operator"; assignment special case:
+`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1):
+
+```text
+OperatorDispatchIdentity:
+  NakedOperator(op)    -> operator[OperatorIdentity(op)]
+  DotOperator(.op)     -> op::adl
+  ExplicitPath(P::op)  -> P::op
+
+operator[=]   -> .=
+.=            ≡ =::adl
+```
+
+This boundary is normative here: the three entrances are orthogonal, an
+explicit path never runs ADL or operator forwarding, and "global operator"
+and "ADL" are not synonymous. What remains deferred is not the identity
+boundary but only the *general ADL associated-scope discovery / candidate
+enumeration algorithm* behind `op::adl`.
+
 This document does **not** define:
 
 - concept semantics (only the interface: `concept_projection` must produce a
   stable poset element)
 - lifetime checking or any lifetime-driven second selection; see
   `../lifetime/lifetime-policy-and-overload-boundary.md`
-- ADL or unrestricted symbol search
+- general ADL associated-scope discovery / candidate enumeration, or
+  unrestricted symbol search (the operator dispatch *identity* boundary is
+  closed above; only the ADL discovery algorithm behind `op::adl` is deferred)
 - implicit type conversion or coercion
 - implicit borrow formation (`T` is never repaired to `T ref` / `T share`)
 - partial-application overloads
@@ -236,7 +269,10 @@ Visible(C, External)
 
 Path traversal is always built from the visibility-filtered graph view, never
 from raw graph children directly. Once it resolves the callee `Symbol`, object
-candidate construction proceeds from that Symbol's typed `V` members.
+candidate construction proceeds from that Symbol's callable projection
+`CallableProjection(Σ) = DedupCandidateIdentity(V_S ⊎ V_τ)`, where `V_τ = CallSpace(τ)` is the intrinsic
+callspace of the embedded closure and `V_S` is the Symbol's own sibling
+candidate space.
 
 Candidate construction is closed over the namespace-graph view selected for the
 query: it performs no ADL-like expansion and no external scope search, external
@@ -251,9 +287,9 @@ The final candidate source is symbol-first:
 ```text
 ResolveSymbol(callee path)
   -> Symbol Σ
-  -> apply call-site candidate-family filter to Σ
-  -> project heterogeneous typed V members
-  -> enumerate heterogeneous Val2 objects
+  -> form CallableProjection(Σ) = DedupCandidateIdentity(V_S ⊎ V_τ)   (unified entrance)
+  -> apply call-site candidate-family filter to the projection
+  -> enumerate candidates from CallableProjection(Σ)
   -> observe each object's policy-projected view for the lookup stage
   -> obtain each value's type
   -> resolve its type-associated `()` entry
@@ -262,11 +298,14 @@ ResolveSymbol(callee path)
 
 The current same-name namespace bucket is only a restricted precursor to this
 flow. A derived compile companion is a complete `Val2` function object with its
-own type and associated compile `()`. It is inserted into the symbol value
-facet before ordinary candidate preparation, not after overload failure.
+own type and associated compile `()`. It is derived from the callable under
+the compile transform (`CompilePartner(F) = C(F)`, canonical in
+`function-object-call-model.md` §8); the symbol-facet entry used at lowering is
+an implementation cache, not the semantic cause, and the companion never
+appears by that entry alone.
 
 ```text
-C0 = EnumerateValueObjects(CallSiteFamilyView(Symbol, call_site_annotation))
+C0 = CallSiteFamilyView(CallableProjection(Σ), call_site_annotation)
 C1 = VisibleObjects(C0, V)
 C2 = ExposePhaseViews(C1, Phase)
 C3 = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -281,13 +320,55 @@ surface may resemble `args |[[annotation]]> callee` (for example default-only or
 nongeneric-only), but spelling and general selector algebra remain deferred.
 With no annotation, the family view is the complete typed `V` member family.
 
+The two annotation phases are distinct semantic stages:
+
+```text
+|[[α]]>
+    CallSiteFamilyFilter
+    before C0
+
+=>[[δ]]
+    DeclarationCandidatePolicy
+    after FullyAdmissible A
+```
+
+`|[[α]]>` only decides which candidate families may enter generation for this
+call. It is not a priority: it cannot make an invisible, ill-typed,
+policy-illegal, or lifetime-illegal candidate legal, and it does not select
+among candidates inside a family. `=>[[δ]]` is not a candidate generator: it
+cannot resurrect a candidate already excluded at C0..A.
+
+The generated structural default family has a stable identity used by the
+language itself (canonical owner
+`pattern-values-relational-semantics-and-extraction.md` §3.1,
+`AtomicExtract_P`). P-internal extraction applies it implicitly before C0;
+ordinary user `x.field` does not. The identity is part of the language
+interpretation of P and is never stored as Pattern data.
+
+Custom/default recursion example:
+
+```text
+custom getter + generated default =>[[fallback]]
+
+external ordinary call x.field:
+    A = {custom, default}
+    default retreats (fallback suppressed while custom survives)
+
+inside the custom body:
+    ... |[[default]]> ...
+    removes the custom family from C0
+    at the fallback stage only default remains
+    => no recursion
+```
+
 Declaration-side annotations act only after `A` has been formed. They control
 how already-fully-admissible candidates participate — for example fallback
 suppression or must-select consistency. They never generate a candidate or make
 an inadmissible candidate viable.
 
-- `C0`: heterogeneous value/`Val2` objects enumerated from the already-resolved
-  callee symbol.
+- `C0`: `CallableProjection(Symbol) = DedupCandidateIdentity(V_S ⊎ V_τ)` — heterogeneous value/`Val2`
+  objects (symbol-first §2.1; never a `V_S`-only projection); `V_τ` is the
+  intrinsic callspace of the carried closure, not recovered from the Symbol.
 - `C1`: filtered by object-level visibility view (internal or external).
 - `C2`: filtered independently by each object's available policy-pair view.
 - `C3`: objects whose type-associated `()` entry exists and is structurally
@@ -325,7 +406,7 @@ slices visible under Q and follows their associated pattern components. Pair P1
 `Qv:Qp` filters both. A written P1 cannot manufacture a stage absent from the
 derived object.
 
-After path resolution and heterogeneous Val2 enumeration, C2 observes the
+After path resolution has formed `CallableProjection(S)`, C2 observes the
 object view available at the current lookup stage. Base path-to-Symbol
 resolution is not conditioned by P1.
 
@@ -395,9 +476,13 @@ result pair rather than a substitute parameter policy.
 
 Explicit `runtime:seal` remains valid. `compile`, `meta`, and `seal` remain
 distinct static capabilities/domains.
-Compile computes any declared static PatternValue. Ordinary meta computes the
-Symbol of its MetaInstance and additionally carries the authority to root and
-seal that instance; privileged builtins have member-declared results. Seal
+Compile computes any declared ordinary semantic value across result classes
+(an ordinary PatternValue, a complete type value `τ`, or a borrow instance).
+Ordinary meta computes the
+default complete type value `τ_M` of its MetaInstance and additionally
+carries the authority to establish and seal that instance. Only an explicitly
+declared `symbol` result returns a `symbol`-typed value. Privileged builtins
+have member-declared results. Seal
 excludes ordinary OpenStatic meta visibility and provides no global scan
 privilege by itself.
 
@@ -408,14 +493,22 @@ A mechanically derived compile companion is a complete Val2 function object:
 ```text
 DerivedCompileCompanionObject {
   object_id,
-  origin_runtime_object_id,
+  origin_runtime_object_id,   -- implementation-transport field only
   function_object_type,
   associated_namespace,
   associated_call_entry,
   overload_strategy = must_select_if_qualified,
-  provenance,
+  provenance,                 -- implementation-transport field only
 }
 ```
+
+`object_id`/`origin_runtime_object_id`/`provenance` are
+implementation-transport fields: they describe the lowering record, not the
+semantic source. The companion's existence is `CompilePartner(F) = C(F)`
+(function-object-call-model §8); type-as-callee never recovers a defining
+Symbol from these fields, and the carrier-independence rule
+(function-object-call-model §8) keeps copied/extracted type-as-callee lookup
+on the immutable `V_τ` snapshot.
 
 For origin P2 `runtime:Qstatic`, its static result pair is
 `Qstatic:Qstatic`. It participates
@@ -743,8 +836,7 @@ cannot reopen its discarded candidate set.
 
 ```text
 Σ   = ResolveSymbol(callee_path)
-F   = CallSiteCandidateFilter(Σ, call_site_annotation)
-C0  = EnumerateValueObjects(F)                -- candidate generation begins
+C0  = CallSiteFamilyView(CallableProjection(Σ), call_site_annotation) -- candidate generation begins
 C1  = VisibleObjects(C0, V)                 -- V ∈ {Internal, External}
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -811,10 +903,11 @@ filter, but filters are not assumed to commute.
 
 ### 5.3 C0: heterogeneous value objects
 
-After path resolution has produced the callee `Symbol`, `C0` enumerates its
-heterogeneous value/`Val2` objects. These objects may have unrelated types and
-different available `Pv:Pp` views. The final model does not treat same-name namespace
-children as already-formed callable overloads.
+After path resolution has produced the callee `Symbol` `S`, `C0` is formed in
+one step as `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (symbol-first §2.1) and
+enumerates the projected candidates. These candidates may have
+unrelated types and different available `Pv:Pp` views. The final model does not
+treat same-name namespace children as already-formed callable overloads.
 
 The current implementation's restricted same-name child bucket may still
 pre-filter by:
@@ -872,7 +965,7 @@ parameter count and structural shape
 Pattern/extraction applicability
 receiver and explicit-parameter policy-pair compatibility
 P2 result pair compatibility with any target-result constraint
-expected result rank/facet compatibility
+expected result class/facet compatibility
 concept and ordinary require legality
 other compile/type-stage hard preconditions
 ```
@@ -1024,8 +1117,7 @@ Derivation:
 
 ```text
 CalleeSymbol = ResolveSymbol(Γ, name)
-F   = CallSiteCandidateFilter(CalleeSymbol, call_site_annotation)
-C0  = EnumerateValueObjects(F)
+C0  = CallSiteFamilyView(CallableProjection(CalleeSymbol), call_site_annotation)
 C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
@@ -1085,7 +1177,7 @@ The connected ordinary path now implements:
 
 ```text
 source Symbol or held PatternValue
-  -> heterogeneous semantic Val2
+  -> form CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
   -> value TypeValue
   -> Pattern owner / associated ()
   -> InvocationFrame
@@ -1116,7 +1208,9 @@ The following are explicitly **not** part of this design and are deferred to
 later phases or separate documents:
 
 ```text
-ADL (argument-dependent lookup)
+general ADL associated-scope discovery / candidate enumeration
+  (only the discovery algorithm behind `op::adl`; the three-entrance
+   operator dispatch identity boundary itself is closed in §1)
 implicit type conversion / coercion ranks
 partial-application overloads (curried candidate matching)
 package-internal symbol aliases as overload carriers

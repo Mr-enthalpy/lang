@@ -19,7 +19,9 @@ namespace-resolution, or semantic lookup feature in this window.
 > model — lexical alias binding, symbol/place forwarding, `AliasChain`, and
 > alias-inherited writability — is retired; see the retirement notice in
 > [`entity-alias-design.md`](entity-alias-design.md). Shared observation of
-> another object is expressed by a borrow view (`ref` / `share` / `@`), owned by
+> another object is expressed by a borrow view (`ref` / `share`); the privileged
+> place-observation `@` yields a lifetime value (`LifetimeVal`) and is not a
+> borrow view. The canonical owner is
 > [`type-values-places-and-borrow-views.md`](type-values-places-and-borrow-views.md).
 > Operator-name binding is not a surviving semantic exception. Operator values
 > use ordinary copy/shadow/Symbol algebra; the frozen operator-binder branch is

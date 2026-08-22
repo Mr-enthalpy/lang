@@ -3,7 +3,7 @@
 **Status: Canonical future-design direction. Not current public language
 behavior and not fully implemented.** This document is the canonical design
 note for symbol-first resolution, Symbol role/member projections, `compile` / `meta` result
-boundaries, meta return pure-role self-root identity, resolved pattern scopes,
+boundaries, meta return self-root identity (§4.4), resolved pattern scopes,
 `struct`, pure `extend`, place-level `inject`, and the binding/install boundary.
 
 The current implementation is a transitional substrate described in §13. In
@@ -13,16 +13,20 @@ final owner-resolution rule.
 This document builds on, without replacing:
 
 - `spec/design/symbol-world/type-values-places-and-borrow-views.md` for
-  `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` / `@`,
-  and independent writability / construction-lineage Open judgments;
+  `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` and
+  the place-sensitive lifetime observation `@`,
+  and independent writability / construction-authority (`OpenHere_Σ` /
+  `WindowLive_Σ`) judgments;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
   positive overloads of `@`, escape checking, and the lifetime-rule boundary;
 - `spec/contracts/v0.9-pattern-head-identity-and-explicit-navigation.md` for
   the preserved bare-name versus explicit-`::` distinction and the current
   registry-backed substrate;
+- `spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+  for the canonical Pattern relation, direct structural incidence,
+  binderless Patterns, observation/extraction, and Pattern normalization;
 - `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md`
-  for static pattern spaces, bounded extraction, and extraction-chain
-  semantics;
+  for later residual, `Done`, and control-pattern semantics;
 - `spec/design/meta-invocation/meta-object-invocation-and-policy-reduction.md`
   for candidate selection, evaluation demand, policy, and residualization;
 - `spec/design/build-package/build-system-design.md` for transactional
@@ -31,10 +35,18 @@ This document builds on, without replacing:
   for namespace-facet origin, source/meta construction ownership, physical
   authority, and cross-file closure;
 - `spec/design/symbol-world/symbol-policy-and-compile-flow-projection.md` for
-  `Val1? x Pattern x Val2`, `Pv:Pp`, binding `P1`, result `P2`, compile-flow
-  projection, derived compile companions, match staging, and automatic require.
+  the Object flow `⟨Val1?, P, Val2⟩`, `Pv:Pp`, binding `P1`, result `P2`,
+  compile-flow projection, derived compile companions, match staging, and
+  automatic require.
 
 ## 1. Canonical Boundaries
+
+**Terminology (frozen).** "Symbol" (capitalized) is the semantic constructor
+`S = ⟨τ?, V_S?⟩` — a value of type `symbol` (glossary: Symbol terminology).
+"A symbol" in natural language below means that constructor value (the
+name-graph node); "binding name" / "symbolic name" / "named binding" name the
+`NameBinding` concept; "the `symbol` type" / "`x : symbol`" are the type and its
+classification. `NameBinding(a)` never implies `a : symbol`.
 
 The design has five load-bearing boundaries:
 
@@ -47,7 +59,7 @@ ordinary value binding:
     -> resolve source Symbol -> read value -> bind destination Symbol/Place
 
 compile-time value computation:
-  compile -> any ordinary PatternValue
+  compile -> any declared ordinary semantic value across result classes (§4.1)
     subject to the root-conservation law of §4.2
 
 ordinary meta symbol construction:
@@ -63,14 +75,17 @@ graph mutation:
 Consequences:
 
 1. A name does not initially resolve as a type, value, namespace, function, or
-   category. It resolves as a first-class symbol.
-2. Ordinary `let` reads a value through the source symbol and creates a distinct
-   destination symbol/place. Ordinary `=` only writes an already existing
+   category. It resolves as a first-class `Symbol` constructor value (a value
+   of type `symbol`).
+2. Ordinary `let` reads a value through the source Symbol and creates a distinct
+   destination Symbol/place. Ordinary `=` only writes an already existing
    place. Neither operation forwards, reroots, or merges identities, and bare
    `=` never creates a missing member.
 3. `compile` computes values. It may accept and return **any** ordinary
-   `PatternValue`, including a type value, a symbol value, and a `type ref`.
-   What it may not do is create a new global root: it registers no global
+   semantic value across result classes (§4.1): an ordinary `PatternValue` (including a
+   `Symbol` constructor value), a complete type value `tau` (a rank-indexed closure, not an
+   ordinary PatternValue), and a `type ref` / `type share` borrow instance. What it may not
+   do is create a new global root: it registers no global
    Symbol, produces no nominal type lacking a normal global root, and never
    promotes a local temporary pattern value into a global type (§4.2).
 4. For an ordinary meta callable, `meta` is static evaluation **plus** the
@@ -78,21 +93,27 @@ Consequences:
    invocation establishes that globally identified but unsealed root on entry,
    without externally installing it, and no
    other ordinary callable coordinate may establish or seal that *kind* of
-   root. It returns the ordinary Symbol value of that instance; the return stage
-   promotes only the unique pure-role-member-owned closure and seals the instance
+   root. It returns the default complete type value `τ` of that instance; the
+   return stage
+   promotes only the MetaInstance-owned stable result graph — the default
+   result's `OwnedResultClosure(τ_M)`: `OwnedClosure(Core(τ_M))` plus its
+   owned callspace closure `OwnedCallSpaceClosure(CallSpace(τ_M))` — and
+   seals the instance
    (§4.1, §4.3). Privileged built-ins retain member-specific owner rules (§4.8).
-5. In target semantics, `struct` is a symbol-producing structural generator and
+5. In target semantics, `struct` forms a complete type value `tau` directly and
    `extend` is the primitive referentially pure value transformation. `inject`
    is the explicit read--extend--write wrapper over an existing `type ref`.
    None installs a new global root; only `inject` mutates an existing slot. A
-   current registry allocation used to represent a result is non-semantic
-   substrate bookkeeping, not an observable effect.
+   `let` binding or installation path that later carries `struct`'s result is
+   what creates a Symbol; it does not retroactively make `struct` a
+   symbol-producing generator. A current registry allocation used to represent
+   a result is non-semantic substrate bookkeeping, not an observable effect.
 6. A `let` binding or installation path chooses the installation place. It does
    not retroactively choose or reroot the pattern owner carried by the value.
 
 ## 2. Symbol-First Resolution and Role Projections
 
-### 2.1 Conceptual Symbol value
+### 2.1 Conceptual `Symbol` constructor value
 
 The specification model is:
 
@@ -101,24 +122,273 @@ SymbolValue {
     SymbolId
     PlaceId
 
-    Q: zero or one pure Object role member
-    V: zero or more heterogeneous value members in typed buckets
+    tau: zero or one well-formed type value (WellFormedTau, type-values §2.2)
+    V_S: zero or more ordinary sibling value members in typed buckets
 }
 ```
 
-The target ontology stores neither an independent namespace facet nor an
-independent type facet. `Q`, when present, is pure. Namespace and type
-projections are derived judgments over that same Object:
+A `Symbol` constructor value carries an optional well-formed type value `tau` and an optional
+sibling space `V_S`. All four shapes are well-formed:
 
 ```text
-NamespaceProjection(S) = Q
-  iff Val1(S) = <Q, V>
+WellFormedSymbol(<None, None>)
+WellFormedSymbol(<tau,  None>)
+WellFormedSymbol(<None, V_S>)
+WellFormedSymbol(<tau,  V_S>)
+```
 
-TypeProjection(S) = Q
-  iff Val1(S) = <Q, V> and TypeRole(Q)
+A `Symbol` constructor value with `<None, None>` has nothing to project; it remains a valid
+name/candidate-bearing node. The Symbol never forms a type from its own
+contents: `tau` is formed before installation and carried as a whole value.
+
+The canonical namespace object of a `Symbol` constructor value is the core of its installed type
+value (the former “distinguished pure member” label):
+
+```text
+DistinguishedPureMember(S) =
+    Some(Core(tau))   if tau is present
+    None              otherwise
+
+NamespaceProjection(S) = DistinguishedPureMember(S)
+TypeProjection(S)      = tau  iff tau present and TypeValueRole(tau)
+                               (undefined otherwise)
+```
+
+When `tau` is present, `NamespaceProjection(S) = Core(tau) = Q` whether or not
+`TypeRole(Q)` holds: namespace projection exists whenever the Symbol carries a
+well-formed `tau` (type-values §2.2). Type projection requires the type-role
+refinement: `TypeProjection(S) = tau` iff `TypeValueRole(tau)` (equivalently
+`CompleteType(tau)`), i.e. `TypeRole(Core(tau))`. A `Symbol` constructor value with `<None, V_S>`
+has no core: ordinary sibling members never become one by
+count — `NamespaceOnly(tau)` binds to the formal `NamespaceOnly(Q)` judgment
+(`NamespaceRole(Q)` and not `HasRegisteredSelfConstruction(Q)`; type-values
+§2.2, pattern-values §13), never `count(pure members in V_S)`.
+
+The complete type value is the closure:
+
+```text
+tau = bind alpha. <Q, V_τ[alpha]>
+
+Core(tau)      = Q
+CallSpace(tau) = V_τ
+```
+
+The closure and its description material are one semantic entity with two
+equivalent views, not two objects (normative:
+`spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+§15; `SameEntityTypeInvariant` in
+`spec/design/symbol-world/type-values-places-and-borrow-views.md` §2.2):
+
+```text
+DescriptionView(X) = ⟨P, Val2⟩
+TypeClosureView(X) = τ = ⟨Q, V_τ⟩
+τ ≡ DescriptionClosure(P, Val2)
+```
+
+Constraints on `⟨P, Val2⟩` and on `⟨Q, V_τ⟩` constrain the same entity;
+neither view may be extended independently of the other.
+
+`Q` is the ordinary pure Object core. `V_τ` is the callspace captured when
+`tau` was formed — the direct TypeMember members that belong to this type
+snapshot. `V_S` is the Symbol's own ordinary sibling candidate space,
+independent of `V_τ`.
+
+TypeMember membership is decided when a member is created, by its direct
+classifier home; it is never a post-hoc partition of a shared Symbol space:
+
+```text
+TypeMember_Q(F)
+  iff Anonymous(F)
+  and DirectClassifierHome(F) = TypeMemberScope(Q)
+
+CreateClassifier_Gamma(
+  F,
+  DirectClassifierHome = TypeMemberScope(Q)
+)
+  => CurrentAuthority_Γ(Q)
+```
+
+`DirectClassifierHome` is fixed when the classifier is created, but formation
+itself is privileged: only a process holding current construction authority
+for `Q` may create an anonymous classifier directly in `TypeMemberScope(Q)`.
+Type/`struct` construction and `extend` over the current snapshot may hold that
+authority; `inject` reaches it only by invoking `extend`. Ordinary callable
+creation, navigated `let`, copying, rebinding, writing, and namespace
+installation may neither nominate this direct home at creation nor change it
+afterward. An anonymous classifier nested inside a direct TypeMember
+classifier is a descendant, not a direct member:
+
+```text
+DirectClassifierHome(F) = TypeMemberScope(Q)
+  => TypeMember_Q(F)
+
+AncestorClassifierHome(G) = TypeMemberScope(Q)
+and DirectClassifierHome(G) != TypeMemberScope(Q)
+  => not TypeMember_Q(G)
+```
+
+`TypeMemberScope(Q)` itself is not a function of the whole `Q` snapshot. It is
+derived from a stable, self-observable anchor inside `Q` — its canonical
+self-pattern root — so that ordinary core replacement in a type-valued slot
+does not silently invalidate every member's home:
+
+```text
+CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)
+
+TypeMemberScope(Q) = MemberScope(CoreAnchor(Q))
+
+CoreAnchor(Core(τ)) = Root(τ)      -- for a complete type value τ;
+                                    -- Root(τ) is the closure's canonical
+                                    -- self-pattern root (see `extend`)
+```
+
+`MemberScope` is a derived classifier-home scope over the canonical Pattern
+root; it introduces no new namespace/type identity ontology. The stability
+theorem this anchors is:
+
+```text
+TypeMemberScopeStability:
+  CoreAnchor(Q') = CoreAnchor(Q)
+  ⇒ TypeMemberScope(Q') = TypeMemberScope(Q)
+```
+
+The converse is deliberately not promised: a replacement that changes the
+core anchor (`CoreAnchor(Q') ≠ CoreAnchor(Q)`) may change the scope, and the
+replaced closure `<Q', V_τ>` may then simply fail `WellFormedTau` — that is
+the correct, history-free outcome, not a contradiction (type-values §2.2).
+
+Home eligibility and snapshot membership are two different judgments:
+
+```text
+HomeEligible_Q(F)
+  iff Anonymous(F)
+  and DirectClassifierHome(F) = TypeMemberScope(Q)
+      -- answers: which stable scope may this classifier belong to?
+      -- TypeMember_Q(F) is the established name of this judgment
+
+TypeMember_τ(F)
+  iff F ∈ ClassifierDomain(V_τ)
+  and HomeEligible_{Core(τ)}(F)
+      -- answers: is this classifier actually carried by this snapshot?
+      -- F ∈ MemberDomain(τ) ⇔ F ∈ ClassifierDomain(V_τ)
+```
+
+A concrete `τ`'s `V_τ` is fixed at formation and never grows: classifiers
+created later under the same scope (e.g. by an `extend` that preserves
+`CoreAnchor`) enter only the new snapshot `V_τ'` and never retroactively enter
+an older `V_τ`. `DirectClassifierHome(F)` is immutable after creation, so a
+surviving member's home eligibility is checked by comparing two current
+values (`DirectClassifierHome(F) = TypeMemberScope(Q')`) — never by asking
+whether `F` was originally created for an old `Q`.
+
+A direct corollary is the injection invariant:
+
+```text
+NoForeignTypeMemberInjection:
+
+F ∈ V_τ1
+∧ TypeMemberScope(Core(τ1))
+    !=
+  TypeMemberScope(Core(τ2))
+--------------------------------
+F cannot become a member of V_τ2
+merely because τ2 is structurally derived from τ1
+```
+
+A derived type value (`T ref`, `T share`, and any future derived construction)
+has its own `V_τ` with its own direct-home obligation; it never inherits the
+original type's callable objects. When a derived type must expose an associated
+operation of its base, it creates a fresh, direct-home forwarder of its own
+(`ForwardAssoc`, canonical in
+`type-associated-function-objects-and-access-trees.md` — "Derived-Type
+Associated Forwarding"); it never transports the base member `F` itself. This
+invariant governs every derived type uniformly — `ref`, `share`, sequences, and
+any future derived construction — and is not an exception to `WellFormedTau`.
+
+Projections over the Symbol value are:
+
+```text
+NamespaceProjection(S) = DistinguishedPureMember(S)   (§2.1)
+TypeProjection(S)       = tau_S   iff tau_S present and TypeValueRole(tau_S)
 
 TypeProjection(S) defined => NamespaceProjection(S) defined
+(the converse does not hold: a Symbol may carry a namespace-only tau with
+NamespaceRole(Core(tau)) and no TypeProjection)
+
+CallableProjection(S)
+  = DedupCandidateIdentity(V_S ⊎ V_τ)
+
+V_S ⊎ V_τ
+  -- source-annotated union: every candidate carries its source path
+     (Symbol sibling space vs embedded closure callspace); the same
+     object reachable through both paths appears here once per source
+
+DedupCandidateIdentity(X)
+  -- folds X by candidate/declaration identity: entries that are the
+     same candidate (same declaration identity) collapse to one
+     candidate; two different callables with identical signatures
+     remain two candidates
+
+Case analysis (a missing source contributes nothing to ⊎):
+  = DedupCandidateIdentity(V_S ⊎ V_τ)   when both present
+  = V_S                                 when tau_S absent
+  = V_τ                                 when V_S absent
+  = ∅                                   when <None, None>
 ```
+
+Definition levels: `⊎` records provenance, `DedupCandidateIdentity` is the
+candidate-identity quotient. Once duplicates are folded, the result is the
+ordinary set union of the two sources — documents may write
+`CallableProjection(S) = V_S ∪ V_τ` as shorthand for that quotient, but the
+normative form is `DedupCandidateIdentity(V_S ⊎ V_τ)` and there is exactly one
+canonical formula.
+
+`CallableProjection` forms the candidate set in one step: there is no priority,
+fallback, or reopening between `V_S` and `V_τ`. The same candidate reachable
+through both paths is deduplicated by `DedupCandidateIdentity`; two different
+callables with identical signatures remain two candidates. After the set is
+formed, the ordinary overload pipeline runs once (hard admissibility → policy
+preference → unique selection); failure does not reopen lookup.
+
+`V_τ` is an intrinsic property of the embedded closure `τ`, not a function
+of the Symbol `S`; `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)`
+is the Symbol call interface exposing the embedded closure callspace in one
+step, and does not break the closure's independence. Ordinary sibling
+operations only modify `V_S`; they cannot reach into the `V_τ` already
+encapsulated in `τ`.
+
+`tau` is not another Object and does not add a fourth Object coordinate. `Q`
+and every ordinary member in `V_τ` remain ordinary Objects governed by the
+existing `<Val1?,P,Val2>` ontology. The closure preserves their type-specific
+pairing so a copied or extracted type carries its own callspace. `@` is the
+privileged place-observation operation that yields a lifetime value and never
+a `type ref` (canonical owner
+`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2); reaching the
+type-level place explicitly uses `t |> (type ref)` or `(S ref).type`. The
+closure is not normalized as a fourth kind of Object.
+
+References from members in `V_τ` to the current type use the canonical binder:
+
+```text
+Norm_type^alpha(Self_τ) = BoundRef(alpha)
+BoundRef(alpha) notin Children_owned
+```
+
+`Self_τ` establishes a `SymbolicReferenceEdge` to the enclosing closure —
+symbolic anchoring, not an ownership edge and not an evaluation-flow edge, so
+it never establishes an `ActiveEvaluation` or `OpenEvalReentry_κ`. Meta and
+nonmeta closures share the same `bind alpha` / `Self_τ` representation; the
+difference lives in the symbolic anchoring relation `SelfResolve`
+(meta: root-relative/deferred; nonmeta: finite same-stratum static
+backreference). The edge taxonomy and reentry criteria are canonical in
+`type-values-places-and-borrow-views.md` §2.1.1.
+
+After those authorized references are erased, the owned graph must satisfy
+`WellFounded_kappa` (`type-values-places-and-borrow-views.md` §2.1): finite
+under static-eval generation (covering both compile and meta) and acyclic once
+materialized at runtime. This is
+not a general recursive-Object rule; the complete normalization contract is
+owned by `type-values-places-and-borrow-views.md` §2.1–§2.2.
 
 An implementation may cache role projections in separate buckets, but those
 caches are transitional substrate, not two semantic Objects. This is not a
@@ -144,7 +414,7 @@ symbol |> namespace
 They are not traditional casts or conversions. Projection selects an ordinary
 member/role view of the same symbol under the expectation of the use site.
 
-The type projection is `AsType`, not `TypeOf`:
+The complete type projection is `AsType`, not `TypeOf`:
 
 ```text
 AsType(E) = E |> type
@@ -152,12 +422,15 @@ AsType(E) != TypeOf(E)
 ```
 
 `AsType` neither raises universe rank nor manufactures a carrier place. Only
-explicit type-of extraction may obtain the next classifier. `@` never supplies
-`AsType` implicitly. A Symbol's `.type` family is applicable exactly when its
-unique `Q` satisfies `TypeRole`: `S.type` reads `Q` by value, `(S ref).type`
-projects `type ref`, and
-`(S share).type` projects `type share`. Only an already-pure type slot uses
-direct `t@`.
+explicit type-of extraction may obtain the next classifier. `@` is the
+privileged place-observation operation and yields a lifetime value; it never
+supplies `AsType` implicitly and never forms a borrow. A Symbol's `.type`
+family is applicable exactly when the Symbol carries `τ` and
+`TypeValueRole(τ)` holds (equivalently `TypeRole(Core(τ))`):
+`S.type` reads the complete type snapshot by value, `(S ref).type` projects
+`type ref`, and `(S share).type` projects `type share`. Reaching the
+type-level place of an already-pure type slot uses `t |> (type ref)`, not `@`
+(the retired carrier-slot form `t@` does not return).
 
 Each cluster member carries its own complete Policy view; the cluster itself
 stores no flat Symbol-level Policy. The cluster-level Policy exists only as a
@@ -198,18 +471,140 @@ there and nowhere else. There is no second disjunction site to look for:
 - no namespace, owner, or overload-selection layer forms a Policy
   disjunction.
 
+### 2.1.1 V_τ closure materialization: derived semantics
+
+The invariants already stated — `τ = ⟨Q, V_τ⟩`, `TypeMember_Q(F)` home
+eligibility, `P × Val2` as the description axis, `SymbolicReferenceEdge` ≠ owned
+edge, and the stable `MetaInstanceRoot` — entail four derived theorems about
+what `V_τ` contains and how its members may refer back to the enclosing type.
+These are not optional explanatory text; they are semantic consequences that
+close the abstraction boundary. Without them, two implementations could both
+satisfy the surface formulas yet differ on what may enter `V_τ`, where the
+`()` call-entry leaf lives, what a closure's structural formation is, and what
+an enclosing-type reference resolves to.
+
+**Theorem 1 — V_τ member closure ownership.**
+
+For every callable member `F ∈ V_τ` there exists an anonymous type `A_F`
+directly under the `τ` layer:
+
+```text
+F ∈ V_τ
+  ⇒ exists A_F.
+      AnonymousType(A_F)
+      and DirectClassifierHome(A_F) = TypeMemberScope(Core(τ))
+      and the callable's actual entry is the associated () Val2 leaf:
+          Val2(A_F)[()] = call-entry(F)
+```
+
+`F` is not an arbitrary callable dropped into a set; it is materialized
+through an anonymous type directly under `τ`. Capture, visibility, and the
+`()` leaf placement constraint — the leaf must inhabit the associated scope of
+the first parameter's type — jointly make arbitrary insertion impossible: only
+a classifier whose direct home is `TypeMemberScope(Core(τ))`, created under
+current construction authority for the core, may appear.
+
+**Theorem 2 — Closure structural lowering.**
+
+Closure materialization has the same structural formation semantics as an
+anonymous `struct` construction that produces an anonymous type carrying an
+associated `()` Val2 leaf:
+
+```text
+MaterializeClosure_τ(C)
+  = anonymous type A directly below τ
+  + associated Val2(A)[()] = call-entry(C)
+```
+
+This is a formation-semantics equation: the two paths share one structural
+formation rule. It does not require source code to desugar into `struct`; it
+requires that the canonical structural semantics of closure materialization and
+anonymous-`struct` construction coincide. The anonymous type must sit directly
+below the `τ` layer, just as a `struct` element sits directly below its owner —
+the same layering constraint `struct` applies when it locates its top pattern.
+
+**Theorem 3 — Enclosing-reference theorem.**
+
+`V_τ` follows the `P × Val2` model: a `Val2` leaf inhabits a structural
+position *below* the `P`/type layer it describes. An upward reference from a
+`V_τ` descendant to its enclosing `τ` is therefore the same structural problem
+as a `Val2` referring to its enclosing `P` layer — a static descriptive
+reference, not an owned edge:
+
+```text
+upper P/type layer (τ)
+    ↓
+anonymous type A_F
+    ↓
+Val2[()] callable entry
+    ↖ static reference to enclosing layer
+```
+
+The reference is a `BoundRef(alpha)` / `SymbolicReferenceEdge` (§2.1),
+authorized and static; it is not in `Children_owned`, so it does not form an
+owned cycle `τ → A_F → () → τ`. The existing invariant
+`BackRefsOnlyInStaticPV2Region(τ)` (type-values §2.2, `WellFounded_static`) is
+the well-foundedness projection of this theorem — it records the consequence,
+not the theorem itself, and needs no separate recursive `V_τ` loop rule.
+
+**Theorem 4 — Meta anchoring theorem.**
+
+In a meta construction context, the upward enclosing reference resolves to the
+stable `MetaInstanceRoot` determined at invocation entry, never to a
+meta-local `r` or another ephemeral PatternValue:
+
+```text
+M = MetaInstanceRoot(MetaInstance(F, args))
+
+HostAnchor(A_F) = M                -- always the stable invocation root
+
+Forbidden:
+  HostAnchor(A_F) = r_local        -- even when Value(r_local) = Value(installed result)
+```
+
+This is not a new prohibitive rule. It is the inevitable closure of three
+existing invariant families:
+
+```text
+visibility
++ lifetime / global-survivability
++ capture / classifier-home
+----------------------------------------
+=> ephemeral return-local PatternValue
+cannot become a V_τ enclosing anchor
+```
+
+While `int Vec::std` is computing, its body may hold a local construction
+result `r`. In ordinary name resolution `r` can be only one of three things: a
+capture-list entry, a local definition, or a global symbolic name. It cannot
+be context-sensitively remembered as "the `r` from the return position": a
+local definition or global lookup finds a *different* `r` (or none), and the
+only candidate that could denote the meta-local value is the capture list. But
+meta-local PatternValues whose lifetime is governed by the open/construction
+window have non-global lifetimes that do not extend by simple copy — whether
+interpreted by value or by borrow — so the capture-list path is closed as
+well. The returned PatternValue and its **dependency closure** must both
+satisfy global survivability; `EscapeDeps` checks this at seal (§4.3.2).
+
+Even when `Value(r) = Value(installed result)`, value equality does not
+retroactively imply `Identity(r) = MetaInstanceRoot`. Permitting such
+retroactive promotion would reintroduce "future promotion can ratify past
+capture" — exactly the model the meta-key / global-stability boundary has
+always prohibited.
+
 ### 2.2 Role and value projections coexist
 
 One symbol may simultaneously provide:
 
-- one optional pure role member `Q` and its namespace projection;
-- the type projection of that same `Q` when `TypeRole(Q)`;
+- the complete immutable type closure `tau = <Q,V_τ>`, optionally written
+  `bind alpha.<Q,V_τ[alpha]>`, stored at installation and returned by type
+  projection; its pure core `Q = Core(tau)` also serves namespace projection;
 - an ordinary value;
 - a callable value;
 - multiple heterogeneous value entries forming an overload candidate set.
 
-The symbol remains one symbol. Namespace and type are not independently stored
-Objects, and coexistence does not collapse role, value, symbol, or place
+The Symbol remains one Symbol. Namespace and type are not independently stored
+Objects, and coexistence does not collapse role, value, Symbol, or place
 identity.
 
 ### 2.3 Identity separation
@@ -234,13 +629,19 @@ PlaceId:
   identity of the bindable/openable installation location
 
 TypeValueId:
-  stable first-order type root (registry projection); the full
-  type-object semantic identity at an observation moment is the
-  canonical observation Addr(Norm_type), not the bare TypeValueId
+  stable first-order root projection of Core(tau); implementation/index
+  key only, not semantic equality. Ordinary type equality and keying
+  observe Core(tau) = Q by default (minimal-change rule, type-values §2).
+  Addr(Norm_type(tau)) is the whole-snapshot identity, used to tell
+  shared-root snapshots apart in transport and in positions the language
+  has independently frozen to whole-snapshot semantics
 
 PatternValue identity:
-  canonical identity of an ordinary compile-time value, type value, or
-  structured pattern value
+  canonical identity of an ordinary compile-time value or structured pattern
+  value — an ordinary Object / PatternValue. A complete type value `tau` is
+  not itself an ordinary PatternValue: Pattern-facing observation goes
+  through `Core(tau)`, and whole type identity goes through
+  `Addr(Norm_type(tau))` (type-values §2.2)
 
 PatternScopeId:
   identity of a navigable pattern-owner layer
@@ -248,11 +649,11 @@ PatternScopeId:
 
 No equality implication is automatic between these identities.
 
-### 2.4 Program text names symbols before values
+### 2.4 Program text names bindings before values
 
 Except for literal syntax and other explicitly specified immediate values,
 program text does not directly name a value. A source path first names a
-symbol, and value use then reads a facet/value from that symbol:
+Symbol, and value use then reads a facet/value from that Symbol:
 
 ```text
 source path
@@ -279,11 +680,11 @@ For example:
 let a = 'a';
 ```
 
-The left `a` is a symbol name. The right `'a'` is a character literal. Their
+The left `a` is a binding name. The right `'a'` is a character literal. Their
 textual content happens to match, but they are not one semantic object.
 Pattern values have no comparable standalone literal syntax, which makes a
 same-spelled source path and pattern diagnostic projection especially easy to
-confuse. The language still resolves the source path as a symbol first.
+confuse. The language still resolves the source path as a Symbol first.
 
 ### 2.5 General `let` value binding
 
@@ -409,25 +810,29 @@ Symbol(U) != Symbol(T)
 Place(T)  != Place(uint8)
 Place(U)  != Place(T)
 
-value(U) = value(T) = value(uint8)
-TypeValue(U) = TypeValue(T) = TypeValue(uint8)
-PatternValue(U) = PatternValue(T) = PatternValue(uint8)
+TypeValue(uint8) = tau_uint8 = <Q_uint8,V_uint8>
+TypeValue(T) = TypeValue(U) = Copy(tau_uint8)
+Eval(T) = Eval(U) = tau_uint8
+CoreView(tau_uint8) = Q_uint8
+PatternView(T) = PatternView(U) = Q_uint8
+CallSpace(tau_uint8) = V_uint8
 ```
 
-`type` is an expected rank/facet assertion applied while evaluating the RHS.
-It does not select a second “type binding” judgment.
+The hole-free annotation `type` is the ordinary result-as transformation
+applied while evaluating the RHS. It does not select a second “type binding”
+judgment or a Boolean compatibility check.
 
 Canonical summary:
 
 ```text
-Program text normally cannot name values directly. It names a symbol, then
-obtains a value through that symbol.
+Program text normally cannot name values directly. It names a Symbol, then
+obtains a value through that Symbol.
 
 Name navigation is a way to obtain a value, not part of ordinary value
 identity.
 
-Pattern navigation paths are likewise symbol navigation first. Even when a
-PatternValue's canonical navigation name matches the symbol carrying it, the
+Pattern navigation paths are likewise Symbol navigation first. Even when a
+PatternValue's canonical navigation name matches the Symbol carrying it, the
 matching spelling does not establish identity.
 
 A normalized fully named body of a named Pattern contains
@@ -466,8 +871,8 @@ The language defines **no** ordinary symbol-alias or place-forwarding
 declaration. There is no form that makes a second name resolve to another
 symbol's place, inherit its writability, or serve as a second entry point for
 namespace extension. Shared observation of another object is expressed only by
-the borrow views `ref`, `share`, and `@`, specified in
-`type-values-places-and-borrow-views.md`.
+the borrow views `ref` and `share` and the place-sensitive lifetime observation
+`@`, specified in `type-values-places-and-borrow-views.md`.
 
 The canonical conclusion is:
 
@@ -477,7 +882,7 @@ value equality does not imply place equality;
 no declaration converts value equality into place sharing.
 ```
 
-Therefore several symbols may expose the same `TypeValueId` or pattern value
+Therefore several bindings may expose the same `TypeValueId` or pattern value
 while each retaining its own distinct symbol and place.
 
 No operator-name binding exception survives. The closed direction treats
@@ -498,7 +903,7 @@ let f = expr;
 ```
 
 If `expr` produces a value, the declaration may contribute a value entry to
-the symbol `f`. The entry need not originate from closure syntax and need not
+the Symbol `f`. The entry need not originate from closure syntax and need not
 be callable.
 
 Multiple entries under the same symbol may have heterogeneous types. A same-name
@@ -511,7 +916,7 @@ A call position performs the following conceptual flow:
 
 ```text
 resolve symbol
-  -> project typed V members
+  -> form CallableProjection(S)
   -> enumerate heterogeneous values
   -> observe each Val2 object's Pv:Pp view for the current lookup stage
   -> obtain each value's type
@@ -526,13 +931,15 @@ resolve symbol
 ```
 
 An uncallable value is valid value-facet material. It is discarded only while
-preparing candidates for a call position. Its presence does not make the symbol
+preparing candidates for a call position. Its presence does not make the Symbol
 invalid and does not turn it into a function overload.
 
 Candidate identity and applicability belong to the candidate/invocation model;
 symbol-first resolution only establishes where the heterogeneous values come
 from. Derived compile companions are complete first-class `Val2` function
-objects, not post-failure fallback entries; their policy and overload
+objects whose existence is derived under the compile transform
+(`CompilePartner(F) = C(F)`, function-object-call-model §8), not post-failure
+fallback entries; their policy and overload
 obligations are defined in
 `symbol-policy-and-compile-flow-projection.md`.
 
@@ -549,20 +956,28 @@ execution capability:
 evaluation demand:
     partial / strict
 
-result rank:
-    PatternValue / runtime value
+result class:
+    ordinary PatternValue
+    | complete type value τ
+    | type ref / type share borrow instance
+    | runtime value
 ```
 
-There is no third result rank. A symbol value is an ordinary `PatternValue`
-(§4.7), so "returns a symbol" is a statement about which pattern value is
-returned, not about a separate ontological rank.
+This is the current result-class set. Invocation results are driven by each
+callable's declared result class — `Result(F)` follows
+`DeclaredResultClass(F)` — and consumers must not maintain separate narrow
+hand-written enumerations of what `compile` or `meta` can return.
+
+There is no private SymbolConstruction result ontology. A value of type `symbol` is an ordinary
+`PatternValue` (§4.7), so a declared `symbol` result is a statement about which
+pattern value is returned, not about a separate ontological class.
 
 `MetaPartial` / `MetaStrict` describe evaluation demand. They do not define the
 meaning of `compile` or `meta`, and they do not determine the successful result
-rank.
+class.
 
 Callable semantics still use ordinary PatternValue result declarations; there
-is no private construction result rank:
+is no private construction result class:
 
 ```text
 CallableSemantics
@@ -571,19 +986,25 @@ CallableSemantics
 Privilege   ::= Ordinary | BuiltinPrivileged   -- bounded AST access
 ```
 
-`compile` may return any declared ordinary PatternValue, including a Symbol.
+`compile` may return any declared ordinary semantic value across result
+classes (§4.1): an ordinary `PatternValue` (including a `Symbol` constructor
+value), a complete type value `tau`, or a `type ref` / `type share` borrow
+instance; a returned `tau` participates in Pattern
+observation through `Core(tau)` and is not itself an ordinary
+PatternValue/Object.
 Ordinary-meta callable kind, call legality, and successful-call effects are
 separate judgments inside the ordinary value/policy model:
 
 ```text
 F in OrdinaryMetaFunction
   => P2(F) = meta
-  and ResultPattern(F) = symbol
+  and DefaultMetaResult(F) = τ
 
 WellFormedMetaCall_Gamma(F, args)
   <=> F in OrdinaryMetaFunction
    and Admissible_Gamma(F, args)
    and forall a in Canonicalize(args): GlobalKeyable_Gamma(a)
+   and forall a in Canonicalize(args): MetaArgumentAdmissible(a)
 
 WellFormedMetaCall_Gamma(F, args)
   => M = MetaInstance(F, Canonicalize(args))
@@ -594,17 +1015,29 @@ WellFormedMetaCall_Gamma(F, args)
 Equivalently, and without overloading “return shape”:
 
 ```text
-ReturnClassifier(F) = symbol
-ReturnShapeWithinSymbol(F(args)) = Σ = ⟨ Q?, V ⟩
+DefaultMetaResult(F) = τ
+MetaInstance(M) -> τ_M
+ShapeOfTypeSymbol(v) = Σ = ⟨ τ?, V_S ⟩  -- shape of a `symbol`-typed value
 ```
 
-The classifier is fixed for every ordinary meta callable. `Q`, when present, is
-the unique pure role member and may or may not satisfy `TypeRole`; `V` may
-contain any ordinary sibling values. These are content facts about one Symbol
-Object, not type/val/namespace result categories. Namespace projection selects
-`Q`; type projection selects the same `Q` only when `TypeRole(Q)`.
+`DefaultMetaResult = τ` is a default, not a constraint
+(`OnlyMetaResult = τ` is false): an explicit `f : … -> symbol` is legal
+because `symbol : type` is a first-class type. The old design's problem was
+not favoring `symbol` but demoting `τ` to a half-complete entity that had to
+parasitize a Symbol. `let t = meta_expr;` merely binds `τ_M` to a name;
+binding does not retroactively prove the meta expression returns a Symbol.
+`struct(P) → τ_P` follows the same default-result principle — `struct` is a
+special built-in meta constructor.
 
-Callable kind fixes `P2` and the result classifier; `GlobalKeyable` belongs to a
+The default result is fixed for every ordinary meta callable. `τ`, when present,
+is the stored complete type closure; `V_S` may contain any ordinary sibling
+values (when the result is explicitly `symbol`-typed). These are content facts
+about the result value, not type/val/namespace result categories. Namespace projection selects `Core(tau)=Q` when `tau` is
+present; type projection returns the stored `tau` — it never re-partitions
+members to form `tau` post-hoc. The optional binder-aware form of `tau` is
+`bind alpha.<Q,V_τ[alpha]>` when its members refer to `Self_τ`.
+
+Callable kind fixes `P2` and `DefaultMetaResult`; `GlobalKeyable` belongs to a
 particular call's well-formedness, never to the callable type itself. A
 successful call establishes a globally stable root identity and makes it
 navigable to the construction, while sealing remains the return-stage effect.
@@ -616,10 +1049,15 @@ establish, select, or preserve other root kinds only through their separately
 specified owner rules (§4.8). They cannot use those rules to manufacture an
 ordinary navigable `M`.
 
-This is not a new SymbolConstruction rank. The returned Symbol is an ordinary
-PatternValue whose mutable member content is `Val1`; root authority governs the
-construction lineage and global lifetime of its unique pure-role-member-owned
-closure. An implementation may retain a carrier to accumulate those members,
+This is not a new result class. The default meta result is the complete type
+value `τ` itself, which is not an ordinary `PatternValue`; an explicitly
+declared `symbol` result returns a `symbol`-typed `Symbol` value rather than
+turning `τ` into a `PatternValue`. Root authority governs the
+open-window state and global lifetime of the default result's
+`OwnedResultClosure(τ_M)` — `OwnedClosure(Core(τ_M))` plus
+`OwnedCallSpaceClosure(CallSpace(τ_M))`, where `Core(τ_M)` is the first
+projection of the default result and hence always present. An
+implementation may retain a carrier to accumulate those members,
 but may not expose that carrier as a callable result ontology.
 
 `ClusterSymbol` and `ReturnShape::ClusterSymbol` survive in the current
@@ -644,15 +1082,16 @@ creating a symbol-construction root:
 
 ```text
 compile:
-  input  ordinary PatternValue
-  -> output ordinary PatternValue
+  input / output  any declared ordinary semantic value across result classes
+                  (subject to root conservation, §4.2.1)
 ```
 
-`PatternValue` includes:
+`compile` may pass and return:
 
-- ordinary compile-time values;
-- type values;
-- symbol values;
+- ordinary compile-time values (ordinary PatternValues);
+- complete type values `tau` — they participate in Pattern observation through
+  `Core(tau)` and are not ordinary PatternValues/Objects;
+- `Symbol` constructor values (ordinary PatternValues);
 - `type ref` and `type share` views;
 - structured pattern values.
 
@@ -681,7 +1120,7 @@ produces no nominal type that lacks a normal global root
 never promotes a local temporary pattern value into a global type
 ```
 
-This is a conservation law, not a shape restriction. Returning a symbol value or
+This is a conservation law, not a shape restriction. Returning a `Symbol` constructor value or
 a `type ref` whose root already exists is legal; manufacturing a rootless
 nominal type is not. `compile` is therefore not a rootless meta-type generator,
 and "compile may return a type" and "compile may not invent a type root" are
@@ -700,7 +1139,7 @@ The returned view is subject to the ordinary lifetime/capability condition of
 §5.5, evaluated at the receiving position. Its validity is independent of
 whether the then-current pointee is Open. A return is rejected only when the
 ordinary borrow escape check fails; a valid returned ref may later be unable to
-`inject` because `Open_Γ(Read(ref))` is false. Escape checking belongs to
+`inject` because `OpenHere_Σ(Read(ref))` is false. Escape checking belongs to
 [`../lifetime/lifetime-policy-and-overload-boundary.md`](../lifetime/lifetime-policy-and-overload-boundary.md)
 §3. The body may weaken before returning when write capability is unnecessary:
 
@@ -720,23 +1159,24 @@ DefinitionLexicalContext(F)
     lexically declared identity
 
 CallerConstructionContext
-  — the current compile-time stack used with each value's ConstructionLineage
+  — the current evaluation stack used with each value's `Anchor` and
+    current window state
 ```
 
 The definition context decides names and lexical owners. The caller context is
-used only by operations that query `Open_Γ(v)`: they compare the value's
-`ConstructionLineage` with the current compile-time stack (§12.1.1). Neither
-context substitutes for the other.
+used only by operations that query `OpenHere_Σ(v)`: they combine the value's
+`Anchor` with the current window state and an authority-frame resolution over the
+caller's stack (§12.1.1). Neither context substitutes for the other.
 
 Passing through a `compile` call, cloning, selecting, or composing a value
-preserves its canonical value and `ConstructionLineage` while discarding source
-place identity. A compile frame is transparent to the Open stack walk, so an
-Open value remains Open through any number of compile/transparent-intrinsic
+preserves its canonical value and `Anchor`/`GenerationRegime` while discarding source
+place identity. A compile frame is transparent to the Open-authority stack walk, so an
+OpenHere value remains OpenHere through any number of compile/transparent-intrinsic
 frames unless another semantic boundary closes its construction interval:
 
 ```text
-Lineage(Clone(Read(q))) = Lineage(Read(q))
-Open_{Γ + compile-frame}(v) = Open_Γ(v)
+Anchor(Clone(Read(q))) = Anchor(Read(q))
+OpenHere_{Σ + compile-frame}(v) = OpenHere_Σ(v)
 ```
 
 The formal-parameter case is ordinary value transport:
@@ -748,12 +1188,14 @@ let extend =
     };
 ```
 
-The call is applicable only when the transported value is Open in the caller's
+The call is applicable only when the transported value is open in the caller's
 stack:
 
 ```text
-Requires(extend) = Open_Γ(t)
-Γ_caller ⊨ Open(Lineage(t), CompileTimeStack_caller)
+Requires(extend) = OpenHere_Σ(t)
+  -- OpenHere_Σ combines the live window state with the authority-frame
+  -- judgment of §12.1.1 (non-meta: AuthorityFrame_Σ(t) exists;
+  --          meta: Anchor = CurrentEvaluationCoordinate_meta)
 ```
 
 A `type ref` parameter proves no such fact. A body that performs place-level
@@ -768,25 +1210,25 @@ let extend_ref =
 ```
 
 ```text
-Requires(extend_ref) = Open_Γ(Read(t)) ∧ Writable_Γ(Target(t))
+Requires(extend_ref) = OpenHere_Σ(Read(t)) ∧ Writable_Γ(Target(t))
 ```
 
-Hence compile context sensitivity is value-lineage sensitivity, never a hidden
-capability on `type ref`:
+Hence compile context sensitivity is construction-authority sensitivity, never
+a hidden capability on `type ref`:
 
 ```text
 a compile evaluation depends on the caller's Open window
-  exactly for operations that query Open_Γ on a transported PatternValue
+  exactly for operations that query OpenHere_Σ on a transported PatternValue
 ```
 
 not as a general property of every `compile` call, and not decided by whether a
 `type` value happens to be a formal parameter. Caches and `Requires` summaries
-track `ConstructionLineage` separately from canonical value identity and recheck
-applicability in the caller stack.
+track `Anchor` and the open-window state separately from canonical value
+identity and recheck applicability in the caller stack.
 
 `compile` does **not** create a `MetaInstanceScope`, does not introduce a
-meta-style virtual symbol layer for name shadowing, and does not impose a
-self-root requirement on a returned type value. It may freely return an
+meta-style virtual symbolic-navigation layer for name shadowing, and does not
+impose a self-root requirement on a returned type value. It may freely return an
 already existing value:
 
 ```lang
@@ -795,6 +1237,24 @@ let identity = (self, t: type): compile -> r: type => {
     r;
 };
 ```
+
+The opposite boundary: `compile` has no responsibility to establish a new
+globally stable `MetaInstance` anchor, so it may transport local or open
+PatternValues as ordinary values:
+
+```text
+compile computation   may transport open/local PatternValues
+meta invocation       requires globally survivable inputs (§4.3.3)
+
+transport of an open PatternValue
+  ≠
+evaluation reentry of that PatternValue
+```
+
+Transporting an open PatternValue through `compile` remains subject to
+`NoOpenEvaluationReentry` (PR99; `OpenEvalReentry_κ`, type-values §2.1.1):
+the value may be passed, but no active evaluation edge may be re-entered into
+it. This is the complement of §4.3.3's argument boundary.
 
 When a `compile` body uses a local `struct`, ordinary function-object scope
 rules apply. Its ambient lexical/Pattern owner is the current
@@ -829,22 +1289,23 @@ ConstructionNavigationAvailable_Gamma(M) != ExternallyInstalled(M)
 Entering the invocation creates `M` as a **globally identified but unsealed
 root** available to its construction. This does not publish a partially built
 namespace delta. `ExternallyInstalled(M)` becomes true only after the returned
-Symbol crosses an ordinary outer binding/namespace-installation boundary and
-that delta commits atomically (§12.4). The returned value is the ordinary Symbol
-value of `M`:
+result crosses an ordinary outer binding/namespace-installation boundary and
+that delta commits atomically (§12.4). The returned value is the default result
+`τ_M` of `M`:
 
 ```text
 meta:
   accepted parameters
-  -> the symbol value of M
+  -> the default result τ_M of M
 ```
 
 A meta callable may accept a `symbol` parameter, or constrain a parameter to a
 narrower `type` or ordinary PatternValue. That does not introduce another result
-rank: successful ordinary meta invocation still yields `symbol`. `M` exists in
-the global world from body entry; the return stage validates the at-most-one pure
-role member constraint, promotes only that member's owned PatternValue closure, and
-seals the result.
+class: successful ordinary meta invocation still defaults to `τ`. `M` exists in
+the global world from body entry; the return stage runs the default-branch seal
+`Seal(DefaultTau(τ_M))` of §4.3.2 —
+well-formedness of `τ_M`, promotion of `OwnedResultClosure(τ_M)`, escape check —
+and seals the result.
 
 Failure never publishes construction material:
 
@@ -926,93 +1387,165 @@ closure type itself has a stable site name.
 
 #### 4.3.2 Seal happens only at the return stage
 
-The only construction-closing event of a meta invocation is its final return
-stage, and it runs in a fixed order. The returned symbol has the ordinary Symbol
-shape — at most one pure role member, any number of val members:
+The only construction-ending disposition of a meta invocation is its final
+return stage, and it runs in a fixed order. The returned result is either the
+default complete type value `τ_M = ⟨ Q, V_τ ⟩`, or the value of an explicitly
+declared result type such as `Σ = ⟨ τ?, V_S ⟩` when that type is `symbol`.
+These shapes have different seal obligations, so the seal judgment branches on
+the result shape instead of sharing one optional-core criterion:
 
 ```text
-Σ = ⟨ Q?, V ⟩
+Seal(DefaultTau(τ_M)):
+    WellFormedTau(τ_M)
+    Q := Core(τ_M)          // first projection of the construction; always present
+    Pure(Q)
+    Root(Q) = M
+    promote OwnedResultClosure(τ_M) into M   (call it P)
+    EscapeDeps(τ_M) subset AlreadyGlobalStable union P
+    seal M
 
-1. validate that there is at most one pure role member and that Q is Pure
-2. if Q exists, promote OwnedClosure(Q) into M and call it P_Q
-3. validate the escape dependencies of the entire returned Symbol Object
-4. seal M
+Seal(ExplicitSymbol(Σ)),  ShapeOfTypeSymbol(Σ) = ⟨ τ?, V_S ⟩:
+    τ present ->
+        Pure(Core(τ)) ∧ Root(Core(τ)) = M
+        promote OwnedResultClosure(τ)          (call it P_Σ)
+        EscapeDeps(Σ) subset AlreadyGlobalStable union P_Σ
+    τ absent  -> EscapeDeps(Σ) subset AlreadyGlobalStable
+    seal M
+
+Seal(ExplicitOther(T)):
+    the result-type-specific seal obligations of T
 ```
 
-Step 1 is a cardinality bound, **not** a requirement that a role member be
-present. Nothing in the Symbol ontology or in the self-root constraint promotes
-`|Q| <= 1` to `|Q| = 1`: the self-root rule says that *if* `Q` exists it must be
-rooted at `M`, which is vacuous when there is none. A namespace-only `Q` is
-therefore a valid promotion anchor even when `TypeRole(Q)` is false; type-role
-requirements are refinements, not generic Symbol constraints. Step 2 is simply
-skipped when `Q` is absent:
+For the default branch, `Core` is a total projection on complete type
+values, so `τ_M` always has a defined core projection:
 
 ```text
-Q present -> EscapeDeps(ReturnSymbol)
-               subset AlreadyGlobalStable union P_Q
-Q absent  -> EscapeDeps(ReturnSymbol)
+τ_M = ⟨Q, V_τ⟩
+--------------------------------
+Core(τ_M) = Q
+```
+
+This is a pair projection (an elimination rule), not a cardinality count:
+there is no "core collection" to size, no `τ`-absent case to guard, and no
+optional installed-core slot. `Q` is the first projection of `τ_M`. The
+self-root rule is unconditional there: `Root(Core(τ_M)) = M` holds for every
+well-formed default result. A namespace-only core — `NamespaceRole(Core(τ_M))`
+and `not HasRegisteredSelfConstruction(Core(τ_M))` — is
+therefore a valid promotion anchor even when `TypeRole(Core(τ_M))` is false;
+type-role requirements are refinements, not generic result constraints.
+
+The `τ?` slot belongs to an explicitly `symbol`-typed result value
+(`ShapeOfTypeSymbol`, glossary), and the conditional form above applies only to
+that branch. An explicitly declared `symbol` result with `τ` absent skips
+promotion and requires its entire escape dependency set to be already globally
+stable:
+
+```text
+τ present -> EscapeDeps(Σ)
+               subset AlreadyGlobalStable union P_Σ
+τ absent  -> EscapeDeps(Σ)
                subset AlreadyGlobalStable
 ```
 
-`EscapeDeps(ReturnSymbol)` traverses the entire returned Symbol Object through
+`EscapeDeps(τ)` traverses the whole returned result at the τ level:
+`Core(τ) union CallSpace(τ)` plus every horizontal `ref` / `share` / `rebind`
+dependency target. At the Object level this still runs through
 `Children_Val1 union Children_Val2`, including nested products, Sequences,
-callables, and navigable `Val2` structures. It additionally includes every
-target reached through a horizontal `ref` / `share` / `rebind` view. Thus no
-returned branch can smuggle unrelated meta-local material out of the invocation.
-Borrow edges remain excluded from `OwnedClosure(Q)` and are never promoted
-merely because they are referenced.
+callables, and navigable `Val2` structures; the τ-level entry is what makes
+`V_τ` — its closures, their anonymous types, and their captures — part of the
+escape check rather than an implementation guess. Thus no returned branch can
+smuggle unrelated meta-local material out of the invocation, and no `V_τ`
+member can escape the closure check by being reachable only through the
+callspace.
 
-Step 2 promotes the **owned** closure only. Horizontal borrow edges are not
-ownership and are never dragged into the promotion:
+Promotion is likewise defined at the τ level:
+
+```text
+OwnedResultClosure(τ)
+    = OwnedClosure(Core(τ))
+      union OwnedCallSpaceClosure(CallSpace(τ))
+
+OwnedCallSpaceClosure(CallSpace(τ))
+    = least closure of the CallSpace(τ) members — including the V_τ closure
+      anonymous types A_F and their () leaves, per the §2.1 V_τ member
+      closure-ownership theorem — under the owned navigation relation of τ
+```
+
+Horizontal borrow edges are not ownership and are never dragged into either
+component:
 
 ```text
 OwnedClosure(x) excludes every ref / share / rebind edge reachable from x
 ```
 
+Edge classification is explicit:
+
+```text
+BoundRef / stable enclosing-root reference
+    = dependency / backreference, not an owned promotion edge
+
+ref / share / rebind target
+    = escape dependency, not an owned promotion edge
+
+external stable dependency
+    = dependency leaf, not recursively promoted
+```
+
 For this promotion, “owned closure” is not arbitrary graph reachability. Let
 `OwnedNavigation_Q(x, y)` hold only when `y` is a genuine direct child owned by
-`x` in Q's construction tree. Then `OwnedClosure(Q)` is the least closure under
-that relation, subject to all of these invariants:
+`x` in Q's construction tree; the callspace component uses the isomorphic
+relation over `CallSpace(τ)`. Then `OwnedClosure(Q)` is the least closure under
+that relation, subject to all of these invariants, applied component-wise:
 
 ```text
 direct child only:       every step is parent -> direct child
 no jump:                 a parent cannot inherit a deeper descendant directly
-bare termination:        Bare(x) stops expansion for Q
-external termination:    ExternalTo(Q, x) is an opaque dependency leaf
-no external re-entry:    expansion never leaves Q, enters an external subtree,
-                         and later re-enters Q-owned material
-no cycle:                 x not-in OwnedNavigation_Q+(x)
+bare termination:        Bare(x) stops expansion for the component
+external termination:    ExternalTo(component, x) is an opaque dependency leaf
+no external re-entry:    expansion never leaves the component, enters an
+                         external subtree, and later re-enters owned material
+no cycle:                 x not-in OwnedNavigation_component+(x)
 
 OwnedNavigation_Q(x, y) => DirectOwnedChild(x, y)
 Bare(x) | ExternalTo(Q, x) => no y: OwnedNavigation_Q(x, y)
 ExternalTo(Q, q_i) => no j > i: Owner(q_j) = Owner(Q)
 ```
 
+Borrow edges remain excluded from both components of `OwnedResultClosure(τ)`
+and are never promoted merely because they are referenced.
+
 External leaves may retain their own independently owned trees, but those trees
-are not promoted through `Q`; their dependencies must already be globally
+are not promoted through `τ`; their dependencies must already be globally
 stable. The ordinary recursive Object normal form still traverses
 `Children_Val1 union Children_Val2`; this construction judgment only determines
 which fresh-owned part may acquire M's global lifetime.
 
 A member reachable only through a borrow view is therefore not promoted, and its
 presence does not extend `M`'s owned material. Its target must already satisfy
-the step-3 escape condition. After step 4, `M` is sealed and nothing may reopen
+the escape condition. After the seal step, `M` is sealed and nothing may reopen
 it.
 
 #### 4.3.3 `M` as a navigable layer
 
 Every ordinary canonical meta-function invocation establishes a virtual
-symbol-construction scope:
+symbolic-navigation and construction-authority scope:
 
 ```text
 M = MetaInstanceScope(callee_symbol, canonical_arguments)
 ```
 
+`M` is the `MetaInstanceRoot` of §2.1 — the symbolic-navigation, stable-identity,
+and construction-authority anchor of the invocation. It is **not** itself the
+result value: the default result is `τ_M` with `Root(τ_M) = M`; an explicitly
+`symbol`-typed result is a `Symbol` value `Σ : symbol` (`ShapeOfTypeSymbol`).
+A `NameBinding` or installation is a separate outer-graph binding/assembly
+operation and does not constitute the result ontology.
+
 Formation additionally requires:
 
 ```text
 for every canonical argument a:
-  GlobalKeyable(a)
+  GlobalKeyable(a) ∧ MetaArgumentAdmissible(a)
 
 OwnedDependency(a) != GlobalKeyDependency(a)
 
@@ -1024,6 +1557,29 @@ GlobalKeyable_Γ(a)
         AlreadyGlobalStable_Γ(d)
       | AlreadyPromoted_Γ(d)
 ```
+
+A meta invocation is a new stable MetaInstance construction boundary, so its
+arguments must carry no PatternValue dependency that cannot survive globally:
+
+```text
+MetaArgumentAdmissible(a)
+  => GlobalSurvivable(a)
+
+GlobalSurvivable(a)
+  <=> every dependency d reachable from a is globally survivable:
+       direct PatternValue dependency
+     | PatternValue held inside a carried type (τ)
+     | dependency reachable through a type ref / type share target
+     | nested dependency in Val1 / Val2
+     | other escaping semantic dependency
+
+GlobalSurvivable(a) ≠ GloballyVisible(a)
+```
+
+A value may survive globally without being name-visible everywhere, and a
+PatternValue visible in the current lexical scope whose lifetime ends with the
+current meta invocation is **not** admissible as an argument of a deeper meta
+invocation.
 
 A binder local to a meta invocation is not rejected merely for being local: if
 it holds a canonical value whose dependencies are already global-keyable, that
@@ -1046,51 +1602,58 @@ the diagnostic navigation projection of `M` is:
 (t f)
 ```
 
-This is not merely a folder analogy. `M` is a symbol/namespace layer that
-participates in default pattern navigation and name shadowing, may carry the
-optional pure role member and ordinary value members, anchors cache/incremental identity, and owns
-the return construction transaction. An ordinary meta invocation must therefore
-establish its own symbol layer rather than act as a value-level forwarding
-function.
+This is not merely a folder analogy. `M` is a symbolic-navigation layer that
+participates in default pattern navigation and name shadowing; the stored
+complete type closure and typed value members belong to `τ_M`'s `Core(τ_M)` and
+`V_τ` (not to `M` as a Symbol). `M` anchors cache/incremental identity and owns
+the return construction transaction.
 
-The externally navigable result symbol is `M` itself. The declared return slot
-is only a lexical name for that symbol, not a transferable construction rank:
+The default result is `τ_M` rooted at `M`; an explicit `symbol`-typed result is
+a `Symbol` value `Σ : symbol` governed by `ShapeOfTypeSymbol`. The declared
+return slot is a lexical name for the result value, not a transferable
+construction class:
 
 ```text
-symbol_of_result(invoke_meta(callee, canonical_arguments)) = M
-return_slot(r) = lexical_name(M)
+ResultValue = τ_M,  Root(τ_M) = M        (default)
+ResultValue = Σ : symbol                (explicit symbol)
+return_slot(r) = NameBinding of τ_M / Σ (lexical name, not a result class)
 ```
 
 The slot name `r` does not add another component to the final navigation path.
-Material written through `r` contributes role/value members or children to `M`; it does not
+Material written through `r` contributes role/value members or children to
+`τ_M` rooted at `M`; it does not
 create `r::M` or place an extra symbol named `r` beneath `M`. For example, a
 pattern-child contribution written as `let t1::r = bool;` inside the invocation
-targets `t1::M` under the applicable pattern-construction expectation, not
-`t1::r::M`.
+targets `t1`'s `M`-rooted `τ_M` under the applicable pattern-construction
+expectation, not `t1::r::M`.
 
 Canonical argument identity follows parameter rank:
 
 ```text
 symbol parameter -> SymbolId / symbol-place identity
-type parameter   -> canonical observation of the evaluated type object
-                    = Addr(Norm_type)   (TypeValueId is only the
-                      first-order root, never the argument identity)
+type parameter   -> default Core(tau) = Q observation, exactly as the old
+                    `type = Q` rules did; `TypeValueId` is only the
+                    implementation/index projection, not semantic equality;
+                    whole-snapshot Addr(Norm_type(tau)) identity applies only
+                    where the language has independently frozen it
 value parameter  -> PatternValue identity
 ```
 
 The exact inclusion of `PlaceId` in a symbol-parameter key depends on whether
-the callable observes the symbol's installation place. A key must not silently
-replace symbol identity with type-value equality.
+the callable observes the Symbol's installation place. A key must not silently
+replace Symbol identity with type-value equality.
 
-### 4.4 Ordinary meta return pure-role self-root invariant
+### 4.4 Ordinary meta return self-root invariant
 
-If the return symbol of an ordinary canonical meta invocation has a pure role
-member `Q`, its outermost pattern root must be the invocation's own `M`:
+If the return value of an ordinary canonical meta invocation carries a
+complete type value `τ`, its installed type core `Core(τ)` — the structural
+material that anchors the returned role root — must have its outermost
+pattern root at the invocation's own `M`:
 
 ```text
-RoleMember(r) = Q
-  => Pure(Q)
-   and root_pattern_scope(Q) = M
+τ present
+  => Pure(Core(τ))
+   and root_pattern_scope(Core(τ)) = M
 ```
 
 This is identity equality between a pattern root and the meta-instance symbol
@@ -1122,7 +1685,7 @@ let fn = (self, t: type): meta -> r: symbol => {
 The right sides are valid external type values, but their `PatternValue` roots
 belong to external scopes. Resolving `symbol(t)` or `symbol(uint8)` and reading
 its value does not make that external root identical to `(t f)` or `(t fn)`.
-Neither value may directly replace the return symbol's required role root.
+Neither value may directly replace the returned result's required role root.
 The failure is the hard diagnostic `MetaReturnRoleRootMismatch` (the current
 implementation may retain `MetaReturnTypeRootMismatch` as a transitional code). An
 implementation must not silently repair the mismatch by wrapping the external
@@ -1143,7 +1706,7 @@ Its complete pattern is:
 (t inner::(t f))::(t f)
 ```
 
-External `PatternValue`s may be members of the self-rooted `Q`; they may not
+External `PatternValue`s may be members of the self-rooted core; they may not
 replace the root. For example:
 
 ```lang
@@ -1153,20 +1716,22 @@ let fn = (self, t: type): meta -> r: symbol => {
 };
 ```
 
-keeps `(t fn)` as the return symbol's root and includes the externally owned
+keeps `(t fn)` as the returned result's root and includes the externally owned
 `bool::` value as a member beneath that root. It must not be summarized as
-`RoleMember(r) = bool::`.
+`DistinguishedPureMember(r) = bool::`.
 
-The self-root check is conditional on `Q`, not on `TypeRole(Q)`. A namespace-only
-`Q` is self-rooted and may own fresh invocation-local material. A return Symbol
-with no `Q` does not acquire a synthetic role member merely to satisfy this
-rule. When `TypeRole(Q)` does hold, it is the additional type
+The self-root check is conditional on the installed type core `Core(τ) = Q`, not
+on `TypeRole(Q)`. A namespace-only `Q` — `NamespaceRole(Q)` and
+`not HasRegisteredSelfConstruction(Q)` — is self-rooted and may own fresh
+invocation-local material. A returned result with no installed type core
+does not acquire a synthetic core merely to satisfy this rule. When
+`TypeRole(Q)` does hold, it is the additional type
 refinement (imported judgment); namespace-only `Q` is not required to define Val1.
 
 ### 4.5 Formal return material
 
 Target semantics do not give the spelling of a return slot a special creation
-meaning. A meta body computes an ordinary Symbol value; `let` creates its local
+meaning. A meta body computes its result value (`τ` by default); `let` creates its local
 members, `=` writes existing places, and the return event transfers that value.
 The current execution substrate still maps the explicit return-slot spelling
 `r` onto an open construction carrier. That mapping is transitional
@@ -1182,7 +1747,7 @@ Current execution encoding (this stage, while expression-level `=` does
 not exist):
 
     let r = expr;     -> AddMember — return-slot compatibility encoding:
-                         one fresh member event on the return symbol;
+                         one fresh member event on the returned result;
                          ordinary locals may not shadow the explicit
                          return slot
     r = expr;         -> PlaceholderOverwrite — placeholder write to an
@@ -1214,7 +1779,7 @@ Target orthogonal semantics (future, once `=` is semantic):
   existing member of the written facet, purely to validate
   existing-target addressing. That unique-member replacement rule is not
   the final write algebra for a multi-member symbol — how a real `=` adds or
-  replaces the pure role member / val siblings by RHS shape is registered
+  replaces the core / val siblings by RHS shape is registered
   implementation debt in §13.
 - In the current compatibility encoding, `r;` is the TailValue terminal. It
   delivers the constructed symbol to the directly enclosing layer. It is not a
@@ -1230,8 +1795,8 @@ by the function-object type `T`.
 Add-fresh-member and write-to-existing-target are two distinct construction
 effects. They must not be collapsed into one injection event, and neither is a
 return. Whether contributed material references an existing `PatternValue`,
-computes new material, or projects a symbol member is represented inside the
-construction value; any resulting pure role member must pass the self-root invariant in
+computes new material, or projects a Symbol member is represented inside the
+construction value; any resulting type core `Core(τ)` must pass the self-root invariant in
 §4.4.
 
 There is no fourth "alias member" event. A member is created by `let`, written by
@@ -1263,11 +1828,92 @@ Consequently:
   analogous to dead code — not erroneous, because intermediate computation may
   have side effects.
 
-Assignment carries no `extend`-specific validation, but that is not the same as
-carrying no validation. A pure `extend` in the right side already discharged
-`Open ∧ ParentToChild ∧ NoPatternConflict`. The place-level `inject` wrapper
-performs that check before its own write. Everything else that applies to any
-write still applies. A write `lhs = rhs` is checked in four independent layers:
+Assignment is itself an associated operation. The source spelling `=` selects an
+ordinary assignment candidate; only the selected candidate's default
+implementation performs the universal write judgment below. There is no
+compiler primitive `Write` behind the source spelling, and no assignment
+candidate exists merely because a checker could prove the place writable —
+write capability is exposed by the selected associated callable, not invented
+by `mut` policy.
+
+The default `=` entrance forwards through the operator/ADL path, not through
+special compiler logic that inspects the LHS and searches for an assignment
+family:
+
+```text
+operator[=]   -> .=
+.=            ≡ =::adl
+```
+
+Required source behavior:
+
+```text
+object : T        object ref = value   -- form ref, then .=
+object : T ref    object = value        -- direct .= on the ref's target
+```
+
+`NoImplicitBorrowFormation` remains absolute: an ordinary `T`-valued LHS
+never secretly forms `Ref(CarrierPlace(lhs))` (`AssignmentReceiverFromPlace`
+is forbidden). When the receiver is already `T ref`, assignment writes
+`Target(receiver)`, not the place storing the ref handle. Custom Val2 may
+define setter candidates through `.=`; setter participation does not make
+anything a P structural field.
+
+The `=` family for `T ref` is:
+
+```text
+AssignmentFamily(T):
+
+  =
+  (self,
+   mut let object : T ref,
+   other : T)
+  -> unit
+  => default
+
+  =
+  (self,
+   const let object : T ref,
+   other : T)
+  => delete
+
+  =
+  (self,
+   let object : T ref,
+   other : T)
+  => delete
+```
+
+Only the selected `default` performs the universal write judgment below. The
+three layers are thereby fully separated:
+
+```text
+policy
+    controls which = candidate wins
+
+selected = candidate
+    exposes the write operation
+
+Write default
+    validates the actual place
+```
+
+`T share` provides no `=` family at all: `share-value = other` yields **no
+applicable overload** in the candidate domain, never a selected assignment that
+then fails `Writable`. `AssignmentFamily` here is the universal `T ref × T`
+family. Field-specific write candidates (`FieldWriteFamily(T, name, A) ⊆
+Candidates(=::adl)`) are a distinct ordinary associated family for every `A`
+— including `A = T`: shape coincidence (both `T ref × T -> unit`) is never
+family identity, because the field family's target operation is
+`field(receiver, name)` while the universal family's is `Target(receiver)`;
+selector entry and family identity are normative in
+`type-associated-function-objects-and-access-trees.md`. Assignment carries no `extend`-specific validation, but
+that is not the same as carrying no validation. A pure `extend` in the right
+side already discharged `Open ∧ ParentToChild ∧ NoPatternConflict`. The
+place-level `inject` wrapper performs that check before its own write.
+Everything else that applies to any write still applies. After the assignment
+candidate is selected, the write `lhs = rhs` is checked in four independent
+layers:
 
 ```text
 1. RHS operation legality
@@ -1282,7 +1928,7 @@ write still applies. A write `lhs = rhs` is checked in four independent layers:
      -- a type share is not a write target; bare = never creates None
 
 3. result-object invariants
-     WellFounded(v)
+     WellFounded_kappa(v)
      Canonicalizable(v)
      NoForbiddenCycle(v)
      -- a write forming a non-normalizable Val2 cycle fails, even when it comes
@@ -1291,10 +1937,42 @@ write still applies. A write `lhs = rhs` is checked in four independent layers:
 4. semantic-boundary constraints of the enclosing region
      meta return self-root; ref / pattern-value lifetimes;
      mutability limits on global type-bearing values; seal / global-promotion
-     rules; the single-pure-role-member bound (`|Q| ≤ 1`) on a returned Symbol
+     rules; the single-τ-installation bound on a returned result — the
+     installed type value slot is optional (`τ?`), so a result installs at
+     most one τ by shape, never by counting cores
      -- these may run at write time, normalization time, return time, or
         install time, but they all remain in force
 ```
+
+Assignment RHS semantics are explicitly value semantics:
+
+```text
+AssignmentRHSIsValueSemantic:
+
+object : T ref
+other  : T
+```
+
+`other` is a genuine `T` value. There is no implicit dereference
+(`T ref -> T`), no implicit clone (`T share -> T`), and no reading of a borrow
+handle's referent bytes as if they were the value (`T ref -> T ref` memcpy).
+In assignment candidate adaptation:
+
+```text
+T ref/share =/=> T
+```
+
+must hold. If `T ref |> cloneable == true` or `T share |> cloneable == true`,
+the legal path is an explicit/independently selected clone producing a `T`
+value, then `=`; assignment never secretly clones or dereferences. This is
+orthogonal to `NoImplicitBorrowFormation`:
+
+```text
+NoImplicitBorrowFormation     forbids T -> T ref/share
+AssignmentRHSIsValueSemantic  forbids T ref/share -> T
+```
+
+both directions are closed.
 
 The two validation families are therefore distinct and must not be conflated:
 
@@ -1311,15 +1989,15 @@ does **not** exempt the result from layers 2–4 — the write result must still
 satisfy every ordinary type, capability, lifetime, normal-form, and boundary
 invariant.
 
-This distinction does not cancel `let f::(t@) = expr` for an already-pure type
-slot, or `let f::((S ref).type) = expr` for a Symbol whose `Q` satisfies `TypeRole`
-(ordinary `Val2` member creation at an explicit type place), and does not change the `r;`
-terminal semantics. The current
+This distinction does not cancel `let f::(t |> (type ref)) = expr` for an
+already-pure type slot, or `let f::((S ref).type) = expr` for a Symbol whose
+`Q` satisfies `TypeRole` (ordinary `Val2` member creation at an explicit type
+place), and does not change the `r;` terminal semantics. The current
 `let r =` binding-to-return-value with no-shadow is a transitional encoding, not
 the target rule.
 
-A symbol construction value is not restricted to newly generated structure
-definitions. It may describe a fresh return symbol with its own `SymbolId` and,
+A construction value is not restricted to newly generated structure
+definitions. It may describe a fresh returned result with its own `SymbolId` and,
 once bound, a potentially independent `PlaceId`; it may also reuse existing
 values as ordinary value-facet material or as members of a newly self-rooted
 type construction:
@@ -1337,34 +2015,34 @@ assigned non-root value/member may equal an already existing PatternValue
 
 Value equality remains independent of source name and navigation path and does
 not merge symbol or place identity. However, that general identity separation
-does not waive the pure-role self-root invariant: `r = uint8` as a direct meta
-return role installation is rejected after symbol resolution/value read, rather than
+does not waive the meta return self-root invariant (§4.4): `r = uint8` as a direct meta
+return core installation is rejected after symbol resolution/value read, rather than
 being reinterpreted as forwarding or accepted as an identity meta type.
 
-### 4.7 A symbol is an ordinary PatternValue
+### 4.7 A `Symbol` constructor value is an ordinary PatternValue
 
-A symbol value is not a separate ontological rank. It is an object with the same
+A `Symbol` constructor value is not a separate ontological rank. It is an object with the same
 three components as every other object:
 
 ```text
 SymbolValue = ⟨ Σ, P_symbol, Val2_symbol ⟩
 
-Σ = ⟨ Q?, V ⟩
-V = ⨄_{T_c} V[T_c]
-V[T_c] : T_c * omega
+Σ = ⟨ tau?, V_S ⟩
+V_S = ⨄_{T_c} V_S[T_c]
+V_S[T_c] : T_c * omega
 ```
 
 Its member content is ordinary object content:
 
 ```text
-at most one pure role member Q
-any number of val members
+optional complete type value tau
+any number of ordinary sibling val members
 ```
 
 Because the member content is the mutable part, it lives in `Val1`:
 
 ```text
-Val1(Symbol) = Σ = ⟨ Q?, ⨄_{T_c} V[T_c] ⟩
+Val1(Symbol) = Σ = ⟨ tau?, ⨄_{T_c} V_S[T_c] ⟩
 ```
 
 `Σ` is a logical view over ordinary Object containers, not a
@@ -1372,24 +2050,49 @@ specification-private record carrier. Using the constructor lemmas in
 `type-values-places-and-borrow-views.md`:
 
 ```text
-RoleOption(absent) = BareProduct()
-RoleOption(Q)      = BareProduct(Q) where Pure(Q)
+TypeOption(absent) = BareProduct()
+TypeOption(tau)    = BareProduct(LowerTypeClosure(tau))
+                     where WellFormedTau(tau)
 
-BucketEntry(T_c)  = ProductValue(T_c, V[T_c]) : product
-BucketCarrier(V)  = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
+LowerTypeClosure : WellFormedTau -> Object
+-- lowering/representation only: used when an implementation stores tau in
+   an Object-position carrier (e.g. Σ_Object); NOT derived from
+   ¬Object(τ), NOT a precondition for ordinary semantic operations on τ
+DecodeTypeClosure(LowerTypeClosure(tau)) = tau
 
-Σ_Object(Q?, V)   = BareProduct(RoleOption(Q?), BucketCarrier(V)) ∈ Object
-Val1(Symbol)       = Σ_Object(Q?, V)
+Fidelity (representation faithfulness):
+  Norm(LowerTypeClosure(tau_1)) = Norm(LowerTypeClosure(tau_2))
+    iff Norm_type(tau_1) = Norm_type(tau_2)
+  -- LowerTypeClosure is injective up to Norm_type: two closures lower to
+     the same normalized Object exactly when their normalized type values
+     are equal (Norm_type as defined in
+     type-values-places-and-borrow-views.md §2.1); the lowering introduces
+     no extra observable distinction beyond the tau API
+
+BucketEntry(T_c)     = ProductValue(T_c, V_S[T_c]) : product
+BucketCarrier(V_S)   = Seq_omega(product; BucketEntry(T_c) for each occupied T_c)
+
+Σ_Object(tau?, V_S)  = BareProduct(TypeOption(tau?), BucketCarrier(V_S)) ∈ Object
+Val1(Symbol)         = Σ_Object(tau?, V_S)
 ```
 
-The notation `⟨Q?, V⟩` merely projects the two ordinal positions of this bare
-Product Object. Every `V[T_c]` is itself the ordinary `T_c * omega` Sequence
+The notation `⟨tau?, V_S⟩` merely projects the two ordinal positions of this bare
+Product Object. `tau` itself is a semantic package; when an implementation must
+store it in an Object-position carrier, the Symbol's
+Val1 stores its lowering `LowerTypeClosure(tau)`. Every
+`V_S[T_c]` is itself the ordinary `T_c * omega` Sequence
 Object, and every bucket entry is classified by the global `product` type so
 the bucket carrier remains genuinely homogeneous. Symbol normalization applies
 its unordered quotient to this ordinary carrier; neither `Σ` nor its buckets
 introduce a compiler-private semantic collection.
 
-Each `V[T_c]` contains ordinary member/candidate objects of their actual type
+The lowering is representation-opaque: ordinary Pattern, Object navigation,
+and Val1/Val2 inspection semantics must not observe any extra distinction
+beyond what the `tau` API defines through `LowerTypeClosure`. The lowering is
+the single canonical representation inside the Object ontology; it does not
+form a second observable identity system.
+
+Each `V_S[T_c]` contains ordinary member/candidate objects of their actual type
 `T_c`. Those objects preserve stable declaration/candidate identity, their
 complete value or callable body, and every annotation that affects semantics
 through their own ordinary recursive identity. Symbol is not a set of erased
@@ -1478,11 +2181,11 @@ or a type witness and remains deferred. The four ordered-container cases are:
 The Symbol Pattern applies an unordered identity quotient to each typed bucket:
 
 ```text
-DecodeSymbolPayload(Σ_Object) = ⟨ Q?, V ⟩
+DecodeSymbolPayload(Σ_Object) = ⟨ τ?, V_S ⟩
 
 Norm_Val1?^P_symbol(Σ_Object)
-  = ⟨ Norm(Q)? ,
-      { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V[T_c] } } ⟩
+  = ⟨ Norm_type(τ)? ,
+      { Norm(T_c) ↦ Set{ Norm(v) | v ∈ V_S[T_c] } } ⟩
 ```
 
 If distinct `T_c` keys normalize equally, their buckets are combined under that
@@ -1493,13 +2196,13 @@ conflicts are diagnosed in construction/well-formedness before normalization;
 they are not remembered as value multiplicity. Distinct stable member objects
 remain distinct even when their callable bodies normalize alike. In particular,
 `s += a; s += b;` and `s += b; s += a;` normalize equally exactly when their
-optional pure role member and every typed member set are equal.
+stored `tau` (if any) and every typed member set are equal.
 
 Callable val members project the formal overload set directly from this value:
 
 ```text
 OverloadSet(Σ, q)
-  = ⨄_{T_c} { v ∈ V[T_c] | Callable(v) ∧ q(v) }
+  = ⨄_{T_c} { v ∈ V_S[T_c] | Callable(v) ∧ q(v) }
 ```
 
 This is an ordinary projection from the typed Symbol buckets, not a
@@ -1515,17 +2218,17 @@ type : (object: symbol)       -> type
 type : (object: symbol ref)   -> type ref
 type : (object: symbol share) -> type share
 
-Applicable(type candidate, Σ) <=> Σ = <Q, V> and TypeRole(Q)
+Applicable(type candidate, Σ) <=> TypeSlot(Σ) = Some(τ) and TypeValueRole(τ)
 ```
 
-Thus `S.type` agrees by value with `AsType(S)`, while `(S ref).type` and
-`(S share).type` preserve the borrow observation of the `Q` slot when
-`TypeRole(Q)`.
+Thus `S.type` agrees by value with `AsType(S)` and returns the complete stored
+`τ`, while `(S ref).type` and `(S share).type` return a borrow observation of
+the type-valued slot when `TypeSlot(S) = Some(τ)`.
 This is ordinary field/candidate selection, not a resolver primitive that
 projects a value and then recovers its provenance.
 
-The consequence is that symbol-level operations are `Val1` transformations and
-leave the symbol's own pattern untouched:
+The consequence is that Symbol-level operations are `Val1` transformations and
+leave the Symbol's own pattern untouched:
 
 ```text
 s = new_symbol                   -> replaces Val1(s)
@@ -1541,11 +2244,11 @@ borrow edges or adapt `s` into `s ref`. An explicit source operation
 would spell `s ref += contribution` and satisfy the ordinary borrow
 formation boundary (§9).
 
-A symbol is therefore an ordinary value that can be computed, passed, and
+A `Symbol` constructor value is therefore an ordinary value that can be computed, passed, and
 returned like any other — including by `compile`, subject only to root
 conservation (§4.2.1). The four roles listed in §4.1 (value ontology, meta return
 construction, namespace same-name synthesis, world installation) are separate
-concerns that happen to involve symbols; none of them is the symbol's ontology.
+concerns that happen to involve bindings; none of them is the Symbol's ontology.
 
 ### 4.8 Built-in privileged AST meta functions
 
@@ -1572,18 +2275,18 @@ have function-object, type, and associated () identity;
 use the ordinary invocation frame, including implicit self;
 may accept a bounded Normalized-AST or pattern carrier;
 establish no ordinary MetaInstance root;
-return ordinary PatternValues rather than a construction rank;
+return ordinary PatternValues or complete type values rather than a construction class;
 declare explicitly whether they are pure or write an existing place.
 ```
 
 Privilege buys a bounded AST carrier and a special scope/owner rule — it buys no
 result ontology. There is no shared "construction handle" return family and no
-third result rank (§4.1):
+third result class (§4.1):
 
 ```text
 extend  : type × StructLikeMaterial -> type
 inject  : type ref × StructLikeMaterial -> type ref
-struct  : StructLikePattern -> symbol
+struct  : StructLikePattern -> tau
 *       : type × (CompileNatural | omega) -> type
 ```
 
@@ -1671,7 +2374,7 @@ Both origins share capabilities for:
 ```text
 declare symbol/facet material
 inject a direct child into a construction
-extend the current pure role member's navigable structure
+extend the navigable structure of the current `Core(τ)`
 form a replayable contribution/delta
 install a delta transactionally at the outer assembly/binding layer
 ```
@@ -1829,30 +2532,46 @@ The public semantic boundary is:
 ```text
 struct:
   StructLikePattern
-  -> symbol
+  -> tau
 ```
 
 An implementation may carry AST or Normalized AST as a private structured
-carrier. The public result is an ordinary Symbol PatternValue, not AST and not a
-separate construction rank (§4.1, §4.7–§4.8). Its `Val1` contains exactly one
-pure-role member `Q_struct` satisfying `TypeRole(Q_struct)`, plus any ordinary
-sibling values explicitly contributed by the construction. Section 7.5 closes
-the mechanically generated field/access/ref/share/assignment partners in
-`Q_struct`'s associated
-`Val2`; it does not imply a closed defining-Symbol recovery path for other
-type-as-callee sibling families. This bounded capability does not expose a
-general macro system.
-
-In the general Symbol notation this producer-specific guarantee is:
+carrier. The public result is a complete type value `tau`, not AST, not an
+ordinary Symbol PatternValue, and not a separate construction class (§4.1,
+§4.7–§4.8). The formation event is:
 
 ```text
-Val1(struct(material)) = <Q_struct, V>
+struct(P)
+  = tau_P
+  = bind alpha.<Q_P[alpha], V_τ[alpha]>
+```
+
+where the core `Q_struct = Core(tau_struct)` is produced
+during the formation event, satisfying `TypeRole(Q_struct)`, and the
+direct TypeMembers generated during that formation event enter `V_τ`
+immediately; there is no intermediate Symbol from which `Q_struct` or `V_τ`
+is later projected. Section 7.5 closes the mechanically generated
+field/access/ref/share/assignment partners in that complete type snapshot and
+exposes corresponding associated views. Other direct-home TypeMembers, when
+present, are likewise part of that snapshot's `V_τ`; type-as-callee never
+recovers a defining Symbol. This bounded capability does not expose a general
+macro system.
+
+In the complete-type notation this producer-specific guarantee is:
+
+```text
+Core(struct(material)) = Q_struct
 Pure(Q_struct)
 TypeRole(Q_struct)
+CallSpace(tau_struct) = V_τ
 ```
 
 Thus general Symbol and ordinary-meta ontology use optional pure `Q`; `struct`
-specifically guarantees that its `Q_struct` exists and is type-capable.
+specifically guarantees that its core `Q_struct` exists and is type-capable.
+The two-step reading is preserved: `struct(P) -> tau_P` is a formation event,
+while a subsequent `let t = P |> struct` is the binding that creates the Symbol
+`S_t = <tau_P, V_St?>` (§6). These are consecutive but distinct semantic steps;
+the type closure is formed by `struct` alone, before any Symbol is installed.
 
 ### 7.2 Owner resolution
 
@@ -1930,7 +2649,7 @@ binding-free
 referentially pure
 ```
 
-Purity means that `struct` does not install the returned Symbol or mutate an
+Purity means that `struct` does not install a Symbol or mutate an
 input place. It may establish the result type's declared `StructLexicalRoot`
 under its privileged owner rule, but outer `let` remains the only operation that
 creates the destination Symbol/member in the surrounding graph.
@@ -1979,11 +2698,18 @@ meaning to an anonymous bare `() |> struct`; that is a separate boundary.
 
 ### 7.5 Generated field and companion members
 
-For a structural field `f : A` owned by `Q_struct`, let
-`T = AsType(Q_struct)`. `struct`
-uses one general field rule. It does not introduce a separate semantic category
-for “type fields”. All observations are candidates of one same-name associated
-Symbol `f`; receiver and result observation kinds distinguish the overloads:
+For a structural field `f : A` produced during the `struct` formation event, let
+`tau_struct = struct(material)` and
+`T = tau_struct`. The core `Q_struct = Core(tau_struct)` is produced during that
+formation event; there is no intermediate `S_struct` from which it is projected.
+`struct` uses one general field rule. It does not introduce a separate semantic
+category for “type fields”. All observations are candidates of one same-name associated
+Symbol `f`; receiver and result observation kinds distinguish the overloads.
+The `struct` generator produces the full `GeneratedFieldFamily(T, name, A)` —
+the by-value accessor plus the `ref`/`share` policy triples with their exact
+`default` / `delete` cells (canonical schema in
+`type-associated-function-objects-and-access-trees.md`). Erasing policy detail,
+the family presents as:
 
 ```text
 f : (object: T)       -> A
@@ -1991,19 +2717,56 @@ f : (object: T ref)   -> A ref
 f : (object: T share) -> A share
 ```
 
-`ref` and `share` are not generated navigation subspaces. The associated Symbol
-is installed once beneath `Q_struct`'s place; `const let` / `let` /
-`mut let` policy and the formal object type determine its candidates.
+`ref` and `share` are not generated navigation subspaces. The same-name family
+is stored once as ordinary callable/member Objects. Its direct anonymous
+classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_τ`; `const
+let` / `let` / `mut let` policy and the formal object type determine its
+candidates.
+
+The `ref` / `share` type constructions do not copy that family. With respect
+to inherited associated names, each derived type value `T ref` / `T share`
+generates fresh direct-home forwarding entries
+(`ForwardAssoc`, §2.1 `NoForeignTypeMemberInjection`): `f::(T ref) ->
+f::T` and `f::(T share) -> f::T` are fresh derived-type members homed in the
+derived type's own `V_τ`, whose bodies perform a new ordinary invocation of the
+base family. The model is therefore:
+
+```text
+struct
+    generates the real field family under T
+
+ref/share type construction
+    for inherited associated names:
+        generates fresh direct-home forwarding entries
+    derived τ still owns its intrinsic
+        ref/share formation, borrow formation,
+        fixed-point/weakening, and other native callspace members
+```
+
+no foreign callable object ever enters a derived `V_τ`.
 Their selection uses the ordinary context-indexed preference relations. In a
 plain context `succ_plain: let > const = mut`; if no plain `let` candidate is
 admissible, a surviving `const` and `mut` pair remains ambiguous rather than
 being resolved by generation order.
 
 Where the field policy permits mutation, the same generator also contributes
-the corresponding assignment/write candidate over `T ref × A`; assignment
-still uses the general existing-place write rule and never creates the field.
-Written `const let` / unqualified `let` / `mut let` field policy selects the
-admitted value, shared, mutable, and assignment cells of this ordinary overload
+field write candidates shaped `T ref × A`. They form a field-specific setter
+family `FieldWriteFamily(T, name, A) ⊆ Candidates(=::adl)` — an ordinary
+associated family reachable through the same `.=` entrance, and **never** the
+universal `AssignmentFamily(T)` (whose domain is `T ref × T`): for every `A`,
+`FieldWriteFamily(T, name, A) ≠ AssignmentFamily(T)`; at `A = T` the two have
+coincident formal shape only, never coincident family identity (canonical
+field-side rules: `type-associated-function-objects-and-access-trees.md`).
+Field write, accessor, and policy cells are all registered under the stable
+call-site family identity `StructuralFamily(T, name, A)` =
+`StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)` that P-internal
+extraction filters on; the identity key is the stable core anchor
+(§2.1), not the whole `Q` snapshot. Family registration and the stability
+theorem are normative in
+`type-associated-function-objects-and-access-trees.md`. Assignment still uses
+the general existing-place write rule and never creates the field. Written
+`const let` / unqualified `let` / `mut let` field policy selects the admitted
+value, shared, mutable, and assignment cells of this ordinary overload
 family. The exact machine body and access-tree representation are implementation
 debt, not additional semantics.
 
@@ -2044,37 +2807,51 @@ Stage(Index(s, i)) = meet { Stage(d) | d in Dependencies(Index(s, i)) }
 `RuntimeField(selected element)` is one local condition inside that meet. No
 Sequence-specific stage rule exists.
 
-The generated partner candidates live in same-name associated Symbols in
-`Q_struct`'s `Val2`. The returned Symbol's `Val1` contains `Q_struct` and any
-ordinary sibling values explicitly contributed by the
-construction; this section does not duplicate the generated accessors into a
-second sibling universe. The partners are ordinary typed member objects: user
+The generated partner candidates are ordinary members whose classifiers
+satisfy `TypeMember_Q_struct`; they enter `V_τ` during the `struct` formation
+event, and `Core(tau_struct) = Q_struct` exposes them as its associated members.
+Any navigable associated
+view is a projection of those same members, not a second owned copy in
+`Q_struct` or its `Val2`. The partners are ordinary typed member objects: user
 construction may remove them, replace them, or add a more specific declaration
 subject to the ordinary duplicate, fallback, and overload rules. They are not
 hidden compiler metadata.
 
-The closure claim of this PR stops at the same-name field value/ref/share
-observations and the corresponding assignment/write partners described above:
+The closed structural generator contract stops at the same-name field
+value/ref/share observations and the corresponding assignment/write partners
+described above:
 
 ```text
-#99 closes = field + access + ref/share observation + assignment/write partners
+struct closure = field + access + ref/share observation + assignment/write partners
 ```
 
-It does not yet define `HomeSymbol(TypeValue)` (or an equivalent recovery from a
-canonical type root), nor how a copied or extracted type used as a callee finds
-constructor or policy-transform siblings of its defining Symbol. Those are
-explicitly deferred. Any future solution must be a semantic property or
-recoverable relation of the canonical type root; it may not use the most recent
-binding carrier, source place, or reverse provenance from `AsType`.
-
-Construction state propagates only along owned field relations:
+Type-as-callee is now closed without any defining-Symbol recovery:
 
 ```text
-Open_Γ(child)    => Open_Γ(parent)
-Frozen(parent)   => Frozen(child)
+TypeValue(t) = tau = <Q,V_τ>
+CallSpace(tau) = V_τ
 ```
 
-Borrow edges are horizontal and do not participate. Mutability is independent:
+A copied or extracted type value retains the `V_τ` of that immutable `tau`
+snapshot. The
+retired `HomeSymbol(TypeValue)`, `RecoverSymbol(TypeValue)`, most-recent carrier,
+source-place, and reverse-`AsType` routes are not deferred alternatives.
+
+Open authority does not propagate along owned field relations. Each
+PatternValue's open authority is determined independently by stack-relative
+authority-frame resolution:
+
+```text
+OpenHere_Σ(v)
+  iff WindowLive_Σ(v)
+  ∧ AuthorityMatches(v, Σ)
+```
+
+No parent-to-child or child-to-parent implication holds; a terminal event that
+closes multiple windows in one structural region does so because each value
+independently fails `WindowLive_Σ` or `AuthorityMatches`, not because a
+neighboring value closed. Borrow edges are horizontal and do not participate.
+Mutability is independent:
 
 ```text
 mut(child) does not imply mut(parent)
@@ -2088,8 +2865,9 @@ separate “type/PatternValue field” category.
 ### 7.6 Internal construction and later extension normalize equally
 
 An element written inside the original `struct` input and an equal element
-added later through the owner's navigated structural-extension path differ only in how
-their full navigation is obtained. For example:
+added later through the owner's navigated structural-extension path differ only
+in **how their full navigation is obtained**. They do not differ in the Pattern
+**entity identity** of the child. For example:
 
 ```lang
 let t = ((bool inner)t) |> struct;
@@ -2099,30 +2877,45 @@ and the construction sequence using place-level `inject`:
 
 ```lang
 let s = (()t) |> struct;
-let t_ref = (s ref).type;
+let t_ref = s |> (type ref);
 (t_ref, bool inner) |> inject;
 ```
 
-produce Symbols whose `Q_struct` members both satisfy `TypeRole` and have the
-same normalized PatternValue, provided the read value is Open and the destination slot is
-writable:
+produce type values whose core `Q_struct` members both satisfy `TypeRole`,
+provided the read value is Open and the destination slot is writable. Both
+paths install exactly one canonical Pattern child under `t`:
 
 ```text
-NamedPattern(
-  name = t,
-  child = inner::t -> Norm(bool::)
-)
+exists exactly one C.
+  C = inner::t
+  and DirectPatternChild(t, inner, C)
+  and LeafSource(C, bool)
+  and Norm(leaf value of C) = Norm(bool::)
+```
+
+The canonical entry is the child entity `C = inner::t` carrying its leaf value;
+the same structural theorem is stated in
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md` §12.
+The two construction paths differ only in formation/navigation provenance:
+
+```text
+SameChildPattern(C₁, C₂) ∧ DifferentNavigationFormation(path₁, path₂)
+  ⇒ SameCanonicalEntry(C₁, C₂)
+
+-- the converse does not hold: erasing formation provenance never erases the
+   child entity itself, and never equates distinct pattern children
 ```
 
 The first form inherits/completes `inner` under `t`; the second supplies the
-same complete navigation through pure `extend`, then writes it back through the
-type-member slot reached by `(s ref).type`. After
-completion, normalization retains only the complete navigation and normalized
-resident value. It erases whether the element was internal or extended, and
-whether its navigation was inherited or explicit.
+same child material through pure `extend`, then writes it back through the
+type-level carrier slot reached by `s |> (type ref)`. After
+completion, normalization retains the child entity `inner::t` and its
+normalized leaf value. It erases only how the child's navigation was obtained
+(inherited versus explicit) and how the child was formed (internal versus
+extended) — never the Pattern entity identity of `inner`.
 
 > **Correction:** Ordinary navigated
-> `let inner::((s ref).type) = bool::;` does **not** produce the same PatternValue.
+> `let inner::(s |> (type ref)) = bool::;` does **not** produce the same PatternValue.
 > It only installs `bool::` as an associated type (Val2 member) named
 > `inner` under `t`'s scope, without registering `inner` into `t`'s
 > Pattern canonical structure. Registering a member into the Pattern
@@ -2150,13 +2943,16 @@ the frozen parser or introduce traditional `f(args)` call syntax.
 
 ### 8.2 `extend` is the primitive pure value transformation
 
-`extend` takes an ordinary type PatternValue and struct-like child material, and
-returns a new type PatternValue:
+`extend` takes one complete ordinary type snapshot and struct-like child
+material, and returns a new complete type snapshot:
 
 ```text
 extend : type × StructLikeMaterial ⇀ type
 
-Extend_Γ(old, Δ) ⇓ new
+old = bind alpha. <Q_old, V_old[alpha]>
+
+Extend_Gamma(old, Delta)
+  => new = bind beta. <Q_new, V_new[beta]>
 ```
 
 `extend` establishes no root and preserves the root already carried by its
@@ -2165,6 +2961,21 @@ input:
 ```text
 Root(new) = Root(old)
 ```
+
+Root preservation is not snapshot equality and never redirects older copies to
+a current mutable Symbol:
+
+```text
+new != old                 when the extension contributes semantic material
+V_new != V_old             when generated/direct TypeMembers change
+CallSpace(old) = V_old
+CallSpace(new) = V_new
+```
+
+The structural contribution first changes `Q_new` under the canonical Pattern
+relation. Any generated classifier whose
+`DirectClassifierHome = TypeMemberScope(Q_new)` contributes its ordinary
+members to `V_new`. Both components belong to the returned snapshot.
 
 There is no construction-handle rank. The input is an ordinary value of rank
 `type`; `type ref` and `type share` are not accepted inputs. A caller may first
@@ -2179,9 +2990,9 @@ Extend does not install a namespace delta
 Extend does not perform an assignment
 ```
 
-`old` is an input value and is left exactly as it was. `new` is a distinct
-resulting value. Discarding `new` produces no symbol-world side effect, because
-there was never a side effect to discard.
+`old` is an input value and is left exactly as it was, including its `V_old`
+callspace. `new` is a distinct resulting value. Discarding `new` produces no
+symbol-world side effect, because there was never a side effect to discard.
 
 #### 8.2.1 Failure is total
 
@@ -2193,31 +3004,36 @@ Because `extend` writes nothing, a failed `extend` has nothing to undo. There is
 no half-extended pattern, no compensating action, and no rollback protocol. A
 failed call simply produces no value.
 
-#### 8.2.2 `extend` applicability is a value-lineage judgment
+#### 8.2.2 `extend` applicability is a construction-authority judgment
 
-The primitive checks the old value in the current compile-time context:
+The primitive checks the old value in the current evaluation context:
 
 ```text
 Γ ⊢ old : type
-Open_Γ(old)
+OpenHere_Σ(old)
 ParentToChild(old, Δ)
 NoPatternConflict(old, Δ)
 Canonicalizable(result)
 --------------------------------
 Γ ⊢ (old, Δ) |> extend : type
+  and WellFormedTau(result)     -- independently checked on the result structure
 ```
 
-`Open_Γ(old)` is derived from `ConstructionLineage(old)` and the current
-compile-time stack (§12.1.1), not from a carrier place. Clone/read preserves
-lineage:
+`OpenHere_Σ(old)` is derived from `Anchor(old)` and the authority-frame
+resolution of §12.1.1 (non-meta: `AuthorityFrame_Σ(Core(old))` exists; meta:
+coordinate equality against `CurrentEvaluationCoordinate_meta`), not from a
+carrier place. Because `old` is a complete type value `τ` rather than an
+ordinary `PatternValue`, the horizontal attributes resolve by Core projection (§12.1.2): `OpenHere_Σ(old) = OpenHere_Σ(Core(old))`. Clone/read
+preserves the anchor:
 
 ```text
-Lineage(Clone(old)) = Lineage(old)
+Anchor(Clone(old)) = Anchor(old)
 ```
 
-Consequently an Open value with no writable carrier may be extended and bound
-elsewhere, while a frozen value read through a writable `type ref` is rejected.
-There are deliberately no `type ref` or `type share` overloads for `extend`.
+Consequently an `OpenHere` value with no writable carrier may be extended and
+bound elsewhere, while a closed-window value read through a writable
+`type ref` is rejected. There are deliberately no `type ref` or `type share`
+overloads for `extend`.
 
 A navigated `let child::target = result;` is **not** a structural installer:
 ordinary navigated `let` creates a Val2 associated member and never substitutes
@@ -2230,26 +3046,35 @@ for `extend` or for the write-back performed by `inject`.
 ```text
 inject : type ref × StructLikeMaterial ⇀ type ref
 
-Inject_Γ(r, Δ):
+Inject_Σ(r, Δ):
   require Writable_Γ(Target(r))
   old := Clone(Read(r))
-  new := Extend_Γ(old, Δ)       -- independently requires Open_Γ(old)
-  Write(Target(r), new)
+  new := Extend_Σ(old, Δ)       -- independently requires OpenHere_Σ(old)
+  Write(Target(r), new)           -- ordinary slot replacement, not construction
   return r
 ```
 
 The two requirements are deliberately independent:
 
 ```text
-CanInject_Γ(r, Δ)
+CanInject_Σ(r, Δ)
   = Writable_Γ(Target(r))
-  ∧ CanExtend_Γ(Clone(Read(r)), Δ)
+  ∧ CanExtend_Σ(Clone(Read(r)), Δ)
 ```
 
+`inject` is the composition `clone/read old τ → Extend → ordinary Write back`.
+The step that depends on construction authority is `Extend`; the final
+`Write` is an ordinary slot replacement (`slot := x'`) that needs only
+`Writable_Γ(p)` and the slot's local constraints. Ordinary slot replacement
+is **not** a `τ -> τ'` construction transformation: it does not require
+formation history, and it does not automatically acquire `extend` semantics
+just because the carrier is a type value.
+
 `r : type ref` proves target/lifetime/capability only. It never proves the
-current pointee Open. A frozen pointee may therefore be replaced wholesale by
-ordinary assignment through a writable ref, while `inject(r, Δ)` fails before
-the write because its `extend` step is inadmissible.
+current pointee satisfies `OpenHere_Σ`. A closed-window pointee may
+therefore be replaced wholesale by ordinary assignment through a writable
+ref, while `inject(r, Δ)` fails before the write because its `extend` step is
+inadmissible.
 
 Failure before `Write` leaves the target unchanged. `type share` has no
 `inject` candidate because it is not writable; by-value `type` has no `inject`
@@ -2316,7 +3141,7 @@ second produces values only. The resulting type Pattern is:
 ```
 
 `extend` determines the child set of the resulting pattern value. It does not
-change owner identity or reopen a frozen value. `inject` additionally requires
+change owner identity or reopen a closed-window value. `inject` additionally requires
 the target to be writable; formation of `r_ref` alone proves neither premise.
 
 As with `struct`, the lowest-level leaf reduction has the form:
@@ -2371,11 +3196,11 @@ Within that scope, `extend`:
 It does not:
 
 - replace the owner;
-- overwrite an existing pure role member;
+- overwrite an existing core `Core(τ)`;
 - delete an existing child;
 - implicitly reroot an arbitrary external pattern value;
 - mutate the input value or the installed namespace graph;
-- extend a value that is not `Open_Γ` in the calling context;
+- extend a value that is not `OpenHere_Σ` in the calling context;
 - grant a general macro or arbitrary AST-rewrite capability.
 
 `inject` adds only the ordinary write to an already existing target; it does not
@@ -2383,6 +3208,12 @@ relax any `extend` restriction. Failing Open or write applicability produces no
 partial write.
 
 ## 9. Pattern-Layer Ordering
+
+This section applies the canonical named-versus-positional and structural-child
+rules from
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md` to
+Symbol construction. It is not an independent definition of Pattern identity
+or relational equivalence.
 
 Let the direct children of one pattern layer be:
 
@@ -2516,7 +3347,7 @@ PatternValue navigation carried there:  t1::t
 ```
 
 The `t1::t` key in a normalized map is still canonical Pattern navigation; its
-spelling does not turn it into a symbol reference. Conversely:
+spelling does not turn it into a Symbol reference. Conversely:
 
 ```lang
 let t3::t = bool;
@@ -2594,7 +3425,7 @@ The future default `?` operation must therefore use:
 
 ```text
 PatternLayer(c, B, O)
-  ?-> PatternLayer(_, B, O)
+  ?-> PatternLayer(NameAbsent, B, O)
 ```
 
 not:
@@ -2668,7 +3499,13 @@ map keyed by canonical complete Pattern navigation.
 
 ## 11. Extraction and Explicit Navigation
 
-### 11.1 Navigation always reaches a symbol before a value
+This section applies the canonical navigation-formation and child-identity
+rules from
+`../patterns-overload/pattern-values-relational-semantics-and-extraction.md` to
+symbol-first lookup. Formation provenance may be retained for diagnostics but
+does not define a competing Pattern normal form.
+
+### 11.1 Navigation always reaches a Symbol before a value
 
 Both inherited and explicit pattern navigation use the same final two steps:
 
@@ -2865,8 +3702,8 @@ explicit form:
 ```
 
 It is never a distinction between an indirect pattern value and a directly
-named pattern value. Source navigation names symbols first. A pattern's
-canonical/diagnostic navigation may match a source symbol spelling without
+named pattern value. Source navigation names bindings first. A pattern's
+canonical/diagnostic navigation may match a source Symbol spelling without
 becoming the same identity.
 
 ### 11.4 Extraction looks up PatternValue in the canonical map
@@ -2906,8 +3743,8 @@ not:
 lookup(resolve_symbol(path), M)
 ```
 
-because `M` contains evaluated canonical navigation/value entries, not symbols
-or symbol references.
+because `M` contains evaluated canonical navigation/value entries, not
+name-graph nodes or Symbol references.
 
 For example:
 
@@ -2980,16 +3817,17 @@ ContributionExpectation =
 > - `extend` primitive (directly or through `inject`)
 >
 > Ordinary navigated member creation is interpreted under
-> `NamespaceValueMember`, regardless of whether `expr` is `null × P × Val2`
-> (a pure type object) or `Val1 × P × Val2` (a complete value). The
+> `NamespaceValueMember`, regardless of whether `expr` is type-valued
+> (`TypeValue(expr)=tau`, with ordinary observation `Core(tau)=Q`) or an
+> ordinary value-bearing Object. The
 > expectation is never guessed from the RHS shape.
 >
 > ```text
-> let f::((t ref).type)   -> NamespaceValueMember (always)
+> let f::(t |> (type ref))   -> NamespaceValueMember (always)
 > struct inline / extend  -> PatternChild (privileged)
 > ```
 
-Under `PatternChild`, the source path is resolved to a symbol and projected to
+Under `PatternChild`, the source path is resolved to a Symbol and projected to
 its type/pattern value. The resulting `PatternValue` is installed as a child of
 the owner's type construction and participates in normalization and extraction:
 
@@ -3000,7 +3838,7 @@ resolve source Symbol
 ```
 
 This expectation is exercised by `struct` inline construction elements and
-`extend`. It requires the input PatternValue to be `Open_Γ`; `inject` reaches
+`extend`. It requires the input PatternValue to satisfy `OpenHere_Σ`; `inject` reaches
 the same rule only by reading its ref and invoking `extend`.
 
 Under the current `NamespaceValueMember` implementation expectation, the source
@@ -3011,13 +3849,13 @@ enter or change the owner's
 
 ```text
 resolve source Symbol
-  -> project/read value (including pure type objects)
+  -> project/read value (including a complete type closure when type-demanded)
   -> install as associated Val2 member
   -> does NOT modify target Pattern canonical structure
 ```
 
 This is the expectation of:
-- Explicit-place navigated `let f::((t ref).type) = expr`
+- Explicit-place navigated `let f::(t |> (type ref)) = expr`
 - An ordinary let-shaped declaration consumed inside `struct` construction:
 
 ```lang
@@ -3029,22 +3867,22 @@ It contributes one associated member to the current Pattern owner's
 
 ```text
 target pure-P contribution = none
-injected member             = the complete expr object (Val1 × P × Val2 or null × P × Val2)
+installed contribution      = the complete expr value
 ```
 
 The initializer is not restricted to type/Pattern material or to `Pv=absent`.
 It may contribute any ordinary heterogeneous value entry, including a callable
-function object or a pure type object. Its `P(expr) × Val2(expr)` remains the
-recursive structure of that installed member; it is not spliced into the target
-owner's pure Pattern. The construction stores the complete member as an
-associated value contribution; it does not mutate the namespace graph during
-`struct` evaluation.
+function Object or a type-valued entry. A type-valued entry preserves its whole
+`tau=<Q,V_τ>` snapshot in the slot while ordinary Pattern/namespace observation
+sees `Q`; an ordinary Object preserves its own recursive coordinates. Neither
+form is spliced into the target owner's pure Pattern. The construction does not
+mutate the namespace graph during `struct` evaluation.
 
 The four-way classification of installed members:
 
 ```text
 Associated member     : Val2 中存在
-Associated type       : Val2 中存在 null × P × Val2 成员
+Associated type       : Val2 slot 中存在完整 tau，普通观察为 Core(tau)=Q
 Structural child      : Val2 成员已登记到父 P 正规结构
 Bare structural value : 登记到正规结构但局部模式为 ε
 
@@ -3057,13 +3895,13 @@ injection as a possible outcome of associated-member `let`:
 
 ```text
 Privileged structural registration (struct inline / extend ONLY):
-  null × P × Val2
-  -> registers pure Pattern material into target P canonical structure
+  Core(tau) = Q or other admitted pure Pattern material
+  -> registers that material into target P canonical structure
   -> the member becomes a structural child with extraction/construction capability
 
 Ordinary Val2 installation (let f::(type_ref) = expr, always):
-  null × P × Val2  -> installs as associated type (Val2 only)
-  Val1 × P × Val2  -> installs as associated value (Val2 only)
+  TypeValue(expr)=tau -> installs complete tau in the associated slot (Val2 only)
+  ordinary Object     -> installs that Object as associated value (Val2 only)
   Neither modifies the target Pattern canonical structure.
 ```
 
@@ -3086,8 +3924,8 @@ x ∉ Members(C_t)
 x  = PureP(C_f),  C_f ∈ Val2(T_t)
 ```
 
-Resolving `let f::((t ref).type) = x` borrows the target Symbol and projects its
-ordinary same-name type-member field as `type ref`, derives the
+Resolving `let f::(t |> (type ref)) = x` borrows the type-level carrier place of the
+target type-valued binding as `type ref`, derives the
 stable prospective `ProjectionSlot(ObjectPlace(T_t), f)`, interns the associated
 Symbol `C_f` there, and installs `x`
 as `C_f.pure_p` with the binding-level member view in `C_f.member_views`.
@@ -3102,9 +3940,10 @@ P(C_f) = P(P_x) || P(w_1) || ... || P(w_m)
 the associated type is the member view of `C_f` — the RHS complete pure-P
 view already restricted by the binding's written P1, exactly as on the
 ordinary value path; a type does not get a second P1 discipline for lacking
-a Val1. The `ObjectPlace` entry carries only the TypeObject transport
-reference needed to index a pure type object by value id; that adapter is
-globally reused per TypeValue and is never a binding-Policy carrier.
+a Val1. The current `ObjectPlace` substrate may carry a `TypeObject` transport
+reference for its first-order core. That adapter is not complete `tau`, is not
+canonical identity, and is never a binding-Policy carrier. The target
+type-valued slot preserves its own whole `tau=<Q,V_τ>` snapshot.
 
 A pure P is a real object, so the place is per carrier, never per
 PatternValue:
@@ -3113,25 +3952,31 @@ PatternValue:
 let T: type = uint8;
 let U: type = T;
 
-Pattern(T) = Pattern(U) = Pattern(uint8)
+Core(TypeValue(T)) = Core(TypeValue(U)) = Q_uint8
 Place(T)  != Place(U)  != Place(uint8)
 ```
 
-`let f::(T@)` therefore creates beneath `T`'s own pure-type place, and
+`let f::(T |> (type ref))` therefore creates beneath `T`'s own pure-type place, and
 `U::f` / `uint8::f` do not see it. Bare `let f::T` performs no implicit
-Symbol-to-type projection and is not this operation. Reads fall back from the carrier's own place to
-the Pattern's canonical type object, which is where construction-time and
-toolchain-installed type members live, so inherited type members stay
-visible through every carrier while a per-carrier member installation stays local.
-The carrier that declared the Pattern keeps writing the canonical object,
-because construction-time members were installed there before any
-rebinding carrier existed. There is no second, place-forwarding declaration
-form: every carrier allocates its own place (§2.6), so a per-carrier extension
-is always local to that carrier. Where one place must be reached through
-another name, the value held is a borrow view. Member creation still requires a
-prospective ProjectionSlot plus `let`; later writes require an existing place and
-`Writable(place)`. Neither obtains structural `Open` from the view, as specified
-in `type-values-places-and-borrow-views.md`.
+Symbol-to-type projection and is not this operation. The ordinary associated
+installation is ordinary **slot replacement** (type-values §2.2, §7.1): it
+replaces the carrier's stored snapshot with a fresh `tau' = <Q', V_τ>` and
+updates only `T`'s carrier-local `Val2` observation; it neither changes the
+copied snapshot in `U`, changes `V_τ`, nor registers a structural child. The
+fresh snapshot `tau' = <Q', V_τ>` is checked independently: `WellFormedTau(tau')`
+is a structural judgment (`Q'` is a well-formed pure Object obtained by the
+permitted slot update, and `V_τ` is unchanged), so `CompleteType(tau')` is
+derivable without any formation-history reasoning. Complete type observation includes the resulting core observation when
+identity is demanded. Generated
+construction-time TypeMembers are already closed into `V_τ`; they are never
+recovered through fallback to a mutable defining Symbol or canonical root.
+There is no second, place-forwarding declaration form: every carrier allocates
+its own place (§2.6), so a per-carrier installation is local to that carrier.
+Where one place must be reached through another name, the value held is a borrow
+view. Member creation still requires a prospective ProjectionSlot plus `let`;
+later writes require an existing place and `Writable(place)`. Neither obtains
+structural `Open` from the view, as specified in
+`type-values-places-and-borrow-views.md`.
 
 Exposure of `t::f` composes `Expose(T_t, φ) ∧ Expose(C_f, φ)` at lookup
 time, and a deeper path `g::f::T` composes the whole chain
@@ -3139,7 +3984,7 @@ time, and a deeper path `g::f::T` composes the whole chain
 or writes `P(x)` back into `P(T_t)`. The conjunction is a phase predicate
 applied per layer, not a stage-set intersection: a `meta` host legitimately
 carries `compile` members, and it is each host's own binding-level view — not
-the shared TypeObject adapter and not the Pattern — that decides that layer's
+the current first-order `TypeObject` adapter and not the Pattern — that decides that layer's
 factor. Explicit navigation therefore carries the resolved host chain (each
 layer's carrier Symbol, its object place, its member view) along with the
 selected `C_f`, so the invocation pipeline applies every host factor before
@@ -3168,87 +4013,384 @@ own member views, and the layered exposure conjunction on explicitly
 navigated targets are implemented in `crates/lang_build`. Still open debt:
 the associated-extension entry point is reached only through a still-open
 construction, so it resolves the target object from the constructed
-Pattern; source-level `let f::(U@)` against an already installed pure-type
-rebinding carrier, navigation through that explicit `type ref` view, and
-writability checking of the selected place remain future implementation work.
-Bare `let f::U` is not shorthand for obtaining the carrier place.
+Pattern; source-level `let f::(U |> (type ref))` against an already installed
+pure-type rebinding carrier, navigation through that explicit `type ref` view,
+and writability checking of the selected place remain future implementation
+work. Bare `let f::U` is not shorthand for obtaining the type-level place.
 
 The two operations may target the same still-open construction, but one source
 value is not simultaneously interpreted under both judgments.
 
-#### 12.1.1 Open is construction lineage relative to the compile-time stack
+#### 12.1.1 Open authority is stack-relative
 
-Every constructed PatternValue has a `ConstructionLineage` separate from its
-canonical contents and from every place that may carry it:
-
-```text
-Open_Γ(v)
-  = Open(ConstructionLineage(v), CompileTimeStack_Γ)
-
-ConstructionLineage(v) ∉ Norm(v)
-CarrierPlace(v)         ∉ ConstructionLineage(v)
-```
-
-Lineage records the construction owner/interval under which the value was
-formed and whether that owned line has sealed. Clone, value copy, and compile
-transport preserve it; they do not preserve or manufacture source place
-identity:
+Every constructed PatternValue carries a structural anchor and an immutable
+birth regime. Whether it may be structurally modified in the current evaluation
+context is a separate, dynamic judgment that combines the value's static anchor
+with the evaluation stack and the current open-window state:
 
 ```text
-Lineage(Clone(v)) = Lineage(v)
-Lineage(let-copy(v)) = Lineage(v)
+Anchor(v) = ⟨PatternRoot(v), Navigation(v)⟩
+
+GenerationRegime(v) ∈ { MetaGenerated, NonMetaGenerated }
+                     -- immutable birth classification (value attribute)
+
+WindowLive_Σ(v)       -- construction window still open at current program point
+                       -- evaluation/window state, not a value attribute
+Visible_Σ(v)          -- current frame can obtain v
+
+OpenHere_Σ(v)
+  iff WindowLive_Σ(v)
+  ∧ AuthorityMatches(v, Σ)
+
+AuthorityMatches(v, Σ)
+  iff AuthorityFrame_Σ(v) exists
+
+Anchor(v) ∉ Norm(v)
+CarrierPlace(v) ∉ Anchor(v)
+GenerationRegime(v) ∉ Norm(v)
 ```
 
-When checking in a meta context, walk down the current compile-time stack while
-ignoring `compile` and transparent construction-intrinsic frames. Let `M` be the
-first ordinary meta invocation frame found:
+`GenerationRegime(v)` is fixed at creation. `WindowLive_Σ(v)` is a property of
+the current evaluation state: the construction window has not been permanently
+closed at the current program point. `OpenHere_Σ` adds the contextual question:
+does the current evaluation stack still contain the frame that owns this value's
+anchor, and is the window still live there? `Visible_Σ` adds a third state: the
+value exists and the window may still be live, but the current frame cannot
+obtain it (for example, it is shadowed by a deeper meta invocation — see below).
+
+Clone, value copy, and compile transport preserve the anchor and regime; they
+do not preserve or manufacture source-place identity, and they do not create a
+fresh window state:
 
 ```text
-Open_Γ(v) <=> DominatedBy(Lineage(v), M) ∧ not Sealed(Lineage(v))
+Anchor(Clone(v))    = Anchor(v)
+Anchor(let-copy(v)) = Anchor(v)
 ```
 
-In a non-meta context, the corresponding walk follows the stable lexical owner
-chain and requires the originating construction interval still to be active and
-unfrozen. These are different closing disciplines over the same relation, not
+Construction authority is resolved **per value** against the evaluation
+stack. The PatternValue supplies the static anchor; the stack supplies each
+level's current evaluation position; authority then belongs to the frame that
+still owns that anchor — not unconditionally to the stack-top callable:
+
+```text
+Frame = ⟨ CallableRoot, MetaPartnerRoot?, ActiveInlineClosurePath ⟩
+
+EvaluationCoordinate(f)
+  = ⟨RootCoordinate(Callable(f)), ActiveInlineClosurePath(f)⟩
+
+RootCoordinate(F)
+  = MetaPartnerRoot(F, GenericArgs)   if Generic(F)
+    CallableRoot(F)                   otherwise
+
+AuthorityFrame_Σ(v)
+  -- the nearest still-active frame owning Anchor(v),
+     resolved per regime (below)
+
+CurrentAuthority_Γ     -- typing-context form of the same judgment, unifying
+                          the former `CurrentConstructionAuthority_Gamma`
+```
+
+For a **meta** context, walk the compile-time stack in reverse, skipping
+`compile` and transparent construction-intrinsic frames. Let `M` be the first
+ordinary meta invocation frame found; `NearestMetaRoot(Σ)` is its MetaInstance
+root. In-place closure navigation is transparent for authority purposes
+(`VisibleInlinePath_meta(path) = ε`), so the meta authority frame degenerates
+to the nearest meta root:
+
+```text
+CurrentEvaluationCoordinate_meta(Σ)
+  = ⟨NearestMetaRoot(Σ), ε⟩
+
+AuthorityFrame_Σ(v)                  -- meta context
+  = the nearest meta invocation frame M such that
+      EvaluationCoordinate(M) = Anchor(v)
+  -- equivalent to Anchor(v) = CurrentEvaluationCoordinate_meta(Σ)
+
+OpenHere_Σ(v)
+  iff WindowLive_Σ(v)
+  ∧ AuthorityMatches_meta(v, Σ)
+  where AuthorityMatches_meta(v, Σ)
+          iff Anchor(v) = CurrentEvaluationCoordinate_meta(Σ)
+```
+
+The original spelling `RootOf(Anchor(v)) = NearestMetaRoot(Σ)` is the
+simplified form of this unified rule under the meta transparent-navigation
+quotient.
+
+Meta invocation is naturally masking. If `M₀ └─ M₁` and the current context
+is `M₁`, a value anchored on `M₀` satisfies:
+
+```text
+WindowLive_Σ(v) = true   -- window still open
+Visible_Σ(v)    = false  -- not obtainable in M₁'s frame
+OpenHere_Σ(v)   = false  -- AuthorityFrame_Σ(v) undefined: M₁ is the
+                             nearest meta frame and does not own the
+                             anchor; the resolution does not look past a
+                             masking meta boundary
+```
+
+The value may persist in `M₀`'s suspended frame. It cannot be accessed or
+passed as an argument in `M₁`. When the stack returns to `M₀`, the value
+becomes visible and `OpenHere` again — this is **not** a reopen. True close is
+the permanent, irreversible transition:
+
+```text
+WindowLive_Σ(v) := false   -- the only real close; never retracted
+```
+
+Nothing reopens closed material. `extend`/`inject` do not reopen it (§8.2), a
+borrow view does not reopen it, and re-navigating to the same object from a
+new context does not reopen it. Cloning/copying/transporting a closed-window
+value carries its closed state with it: the clone is not a reopening.
+
+For a **non-meta** context, authority is **not** a fixed function of the
+stack-top callable. `AuthorityFrame_Σ(v)` is the nearest still-active frame
+whose evaluation coordinate owns `Anchor(v)`, searched outward from the
+current frame:
+
+```text
+AuthorityFrame_Σ(v)                        -- non-meta context
+  = the nearest still-active frame f such that
+      EvaluationCoordinate(f) = Anchor(v),
+    searched outward from the current frame,
+    skipping compile and transparent construction-intrinsic frames,
+    and stopping at any meta invocation frame:
+    a meta boundary between the current frame and f masks v and
+    leaves AuthorityFrame_Σ(v) undefined
+
+AuthorityMatches_nonmeta(v, Σ)
+  iff AuthorityFrame_Σ(v) exists
+```
+
+The owning frame's coordinate contributes the `CallableRoot`, the
+`MetaPartnerRoot` when the callable is generic (providing the stable symbolic
+anchoring for the generic arguments), and that frame's own
+`ActiveInlineClosurePath` — its navigation level within the in-place closure.
+The path entering the comparison is always the owning frame's path, never
+unconditionally the stack-top frame's path. Meta and non-meta resolutions are
+different authority computations over the same `OpenHere_Σ` judgment, not
 different notions of place capability.
+
+Passing an open value into a deeper ordinary call frame therefore does not
+destroy authority: the caller's frame remains still-active on the stack and
+continues to own the anchor:
+
+```text
+F calls G (ordinary), v anchored at F:
+  AuthorityFrame_Σ(v) = F's still-active frame while G executes
+  OpenHere_Σ(v) holds inside G while the window is live
+  -- G operates on v under the §12.1.2 disposition rules: at
+     coordinates below the anchor the terminal actions are Reject,
+     not Terminate
+```
+
+`AuthorityMatches` is therefore not an open ontology decision: it is the
+coordinate equality between the value's static anchor and the owning frame's
+evaluation coordinate.
+
+The equality is opaque navigation-coordinate equality, **not** arbitrary
+prefix matching. A prefix match would let an outer PatternValue automatically
+acquire authority over every deeper inline closure, destroying the property
+that non-meta in-place closure levels are opaque to authority.
+
+The bare name `AuthorityMatches(v, Σ)` is the regime-dispatched form of the
+same judgment: `AuthorityMatches_nonmeta` when the current context is non-meta,
+`AuthorityMatches_meta` when the current context is meta.
+
+The meta case is the same coordinate model under the transparent-navigation
+quotient (above): `CurrentEvaluationCoordinate_meta(Σ) = ⟨NearestMetaRoot(Σ), ε⟩`.
+
+The canonical principle is:
+
+```text
+PatternValue     records static PatternRoot + Navigation
+evaluation stack records current dynamic evaluation position
+PatternValue does not record dynamic call history
+```
+
+The `MetaPartnerRoot` answers where generic symbolic anchoring lives for a
+generic callable `F`, and is required exactly when `F` is generic:
+
+```text
+Generic(F) => MetaPartnerRoot(F, GenericArgs)
+```
+
+It is **not** conditioned on whether `F` also has a `CompilePartner(F)`. The
+compile partner `CompilePartner(F) = C(F)` (function-object-call-model §8)
+answers how the compile-time realization of `F` is produced; the meta partner
+`MetaPartner(F) = M(F)` (meta-object-invocation §4) answers at which level the
+callable's generic symbolic identity is anchored. The two partners are
+orthogonal: a runtime generic `F` has both `C(F)` and `M(F)`; a compile generic
+`F` has no distinct compile partner but still has `M(F)`; a meta `F` has
+neither. `CurrentAuthority(Σ)` therefore uses `MetaPartnerRoot(F, GenericArgs)`
+for generic symbolic anchoring, independent of any `CompilePartner(F)`
+consideration.
 
 The required independence is explicit:
 
 ```text
-Writable_Γ(q) does not imply Open_Γ(Read(q))
-Open_Γ(v)     does not imply Writable_Γ(Carrier(v))
-Γ ⊢ r : type ref does not imply Open_Γ(Read(r))
+Writable_Γ(q)            does not imply OpenHere_Σ(Read(q))
+OpenHere_Σ(v)            does not imply Writable_Γ(Carrier(v))
+Γ ⊢ r : type ref         does not imply OpenHere_Σ(Read(r))
+WindowLive_Σ(v)          does not imply Visible_Σ(v)
+Visible_Σ(v)             does not imply OpenHere_Σ(v)
 ```
 
-The state transition is one-way:
+The state transition of the open window is one-way:
 
 ```text
-Open -> Frozen
-Frozen -/> Open
+WindowLive_Σ(v) := false   -- irreversible
 ```
 
-Nothing reopens frozen material. `extend`/`inject` do not reopen it (§8.2), a borrow
-view does not reopen it, and re-navigating to the same object from a new context
-does not reopen it.
+Nothing reopens closed material. `extend`/`inject` do not reopen it (§8.2), a
+borrow view does not reopen it, and re-navigating to the same object from a
+new context does not reopen it.
 
-#### 12.1.2 Freezing events of an ordinary construction
+#### 12.1.2 GenerationRegime and open dispositions
 
-In an **ordinary, non-meta** construction context, the following events freeze the
-material being built:
+Every `PatternValue` carries a small immutable horizontal attribute:
 
 ```text
-UseForVal1(x)                                    -> Frozen
-x used as a meta argument                        -> Frozen
-x entering a global normalized structure         -> Frozen
-x in Dependencies(c), for NonMetaStaticControl(c) -> Frozen
-x in LiveAcross(c), for ResidualRuntimeFork(c)    -> Frozen
+GenerationRegime(v) ∈ { MetaGenerated, NonMetaGenerated }
+```
+
+`GenerationRegime(v)` is **not** part of the Object structure
+`Object = ⟨Val1?, P, Val2⟩`, is not part of `Norm(v)`, and does not
+participate in canonical Pattern identity or τ normalization. It is an
+implementation attribute used only to decide how the open window may be
+closed.
+
+Although `GenerationRegime` and `Anchor` are defined on
+ordinary `PatternValue`s, and `WindowLive_Σ` is defined on the evaluation
+state, `extend` operates on the complete type value
+`τ = <Q, V_τ>`, which is not itself an ordinary `PatternValue`. The bridge is
+by Core projection, consistent with the minimal-change observation rule (§2.2:
+ordinary type-rank equality observes `Core(τ) = Q`):
+
+```text
+GenerationRegime(τ) := GenerationRegime(Core(τ))
+WindowLive_Σ(τ)   := WindowLive_Σ(Core(τ))
+Anchor(τ)           := Anchor(Core(τ))
+
+OpenHere_Σ(τ)
+  = WindowLive_Σ(τ) ∧ AuthorityMatches(τ, Σ)
+  = OpenHere_Σ(Core(τ))
+  -- AuthorityMatches as defined in §12.1.1: per-value authority-frame
+  -- resolution (non-meta: AuthorityFrame_Σ exists;
+  -- meta: coordinate equality against CurrentEvaluationCoordinate_meta)
+```
+
+`GenerationRegime(τ)` does not participate in `WellFormedTau(τ)` or in Pattern
+identity; it is consulted only by the contextual capability rules above. No new
+`ConstructionSubject` ontology is introduced: the horizontal attributes of a
+complete type value are those of its core `PatternValue`.
+
+- **MetaGenerated.** A value produced inside a meta body has no birthright
+  global lifetime. It can be used freely within the same meta computation, and
+  it may be promoted into a stable result only when the MetaInstance seals and
+  owns/copies the material it owns. The original local value is not magically
+  prolonged: persistence happens by promoting the MetaInstance's stable value,
+  never by extending the local value's lifetime.
+
+- **NonMetaGenerated.** A value produced in an ordinary (non-meta) construction
+  context is born globally survivable with a live open window:
+  `GlobalSurvivable(v) ∧ WindowLive_Σ(v)` hold from creation. Its open window
+  is a linear evaluation flow, not a flat event list. The disposition of an
+  action on `v` is one of three outcomes:
+
+```text
+OpenDisposition_κ(p, action, Σ)
+  ∈ { Continue, Terminate, Reject }
+```
+
+The owning in-place closure's evaluation segment is only the natural upper
+bound of the open window; the window may end earlier. In particular:
+
+```text
+EffectiveOpenSegment(p)
+  ⊆ OwningInlineClosureEvaluationSegment(p)
+```
+
+At the value's own outermost open coordinate
+(`CurrentCoordinate = OpenRootCoordinate(p)`), the legal terminal actions end
+the open window (`Terminate`); they are not forbidden, but they close the
+window:
+
+```text
+CurrentCoordinate = OpenRootCoordinate(p)      -- outermost open coordinate
+
+UseForVal1(p)        ->  Terminate   -- legal action; ends the open window
+UseAsMetaArgument(p) ->  Terminate   -- legal action; ends the open window
+ControlFlowSplit(p) / ControlFlowMerge(p)
+  at generation level                  ->  Terminate
+  -- the window requires a single, non-forking, non-merging linear
+     evaluation stream; a static join/loop-carried state or a
+     residual-runtime fork at the generation level violates that
+     requirement exactly at that point
+```
+
+Inside an opaque non-meta inline closure (the evaluation has already moved
+below the value's own open coordinate), `UseForVal1` and `UseAsMetaArgument`
+are **forbidden** (`Reject`) at any depth, because performing the construction
+effect would already have crossed the value's legal linear open flow.
+`ControlFlowSplit` / `ControlFlowMerge` are **generation-coordinate** events:
+they terminate the window only at the value's own generation level, and at a
+deeper ordinary coordinate they are **irrelevant to the outer window** —
+neither `Reject` nor `Terminate`:
+
+```text
+CurrentCoordinate ≻opaque OpenRootCoordinate(p)
+  -- evaluation is inside an opaque non-meta inline closure below the
+     PatternValue's own open coordinate
+
+UseForVal1(p)        ->  Reject
+UseAsMetaArgument(p) ->  Reject
+ControlFlowSplit(p) / ControlFlowMerge(p)
+  at the generation coordinate    ->  Terminate
+  at a deeper ordinary coordinate ->  Continue (irrelevant to outer window)
+```
+
+The judgment reversal therefore applies only to `UseForVal1` and
+`UseAsMetaArgument`: at the outermost coordinate the action is a legal
+terminal action; in a nested opaque non-meta level the same action is a
+forbidden one. It cannot be explained as "first allow `UseForVal1`, then
+close": by the time the construction effect happens, the value's legal linear
+open flow has already been crossed. Control-flow split/merge are not "close
+after the fact" events: they are scoped to the value's own generation
+coordinate, so a split or merge inside a deeper ordinary frame does not reach
+back and close an open value generated at an outer level.
+
+`UseForVal1` and `UseAsMetaArgument` reject/terminate independent of
+call-frame depth at the relevant coordinate: a meta boundary cannot be
+escaped by performing the meta call inside a deeper ordinary frame, and
+installing the value as `Val1` is likewise unconditional. `ControlFlowMerge`
+and `ControlFlowSplit` apply only at the value's own generation level; a merge
+or split inside a deeper ordinary call frame does not reach back and close an
+open value generated at an outer level. Passing the value into a deeper
+ordinary call frame does **not** itself end or forbid the window. Likewise, a
+value's visibility (`Visible_Σ`) may be lost because of stack masking without
+its open window being touched.
+
+In an ordinary, non-meta construction context the concrete dispositions are:
+
+```text
+UseForVal1(x)                                    -> Terminate at OpenRootCoordinate(x)
+                                                     Reject inside an opaque non-meta
+                                                     inline closure below it
+x used as a meta argument                        -> Terminate / Reject (same rule)
+x entering a global normalized structure         -> Terminate (at OpenRootCoordinate)
+x in Dependencies(c), for NonMetaStaticControl(c) -> Terminate
+                                                     (at generation level)
+x in LiveAcross(c), for ResidualRuntimeFork(c)    -> Terminate
+                                                     (at generation level)
 leaving the construction interval of the
-  in-place closure that owns x                   -> Frozen
+  in-place closure that owns x                   -> Terminate
+                                                     (owner's interval)
 ```
 
-Observation is not a freezing event: reading `P` or `Val2`, extending a child
-pattern, and contributing an ordinary Val2 member of another type all leave the
-material open.
+Observation is not a terminating action: reading `P` or `Val2`, extending a
+child pattern, and contributing an ordinary Val2 member of another type all
+leave the material open (`Continue`).
 
 For static control, dependency and liveness are different facts:
 
@@ -3256,56 +4398,79 @@ For static control, dependency and liveness are different facts:
 Dependencies(c) != LiveAcross(c)
 
 NonMetaStaticControl(c)
-  => Freeze*(Dependencies(c))
+  => OpenDisposition_κ(d, UseInControlFlow, Σ) = Terminate
+     for each d ∈ Dependencies(c) at the generation level
 ```
 
 `Dependencies(c)` contains the open Pattern values actually read by the
 predicate or structural selection, branch/iteration versions whose identity
 must be unified at a join, and loop-carried construction state that feeds a
 later static decision. A value that is merely live across an unrelated static
-branch, join, or loop is not frozen. In contrast, a residual-runtime fork loses
-the single known static construction path, so open values carried across that
-fork are frozen even when they did not determine its predicate. Leaving the
-ordinary owner interval remains an independent closing event.
+branch, join, or loop is not terminated. In contrast, a residual-runtime fork
+loses the single known static construction path, so open values carried across
+that fork are terminated even when they did not determine its predicate.
+Leaving the ordinary owner interval remains an independent terminating
+disposition.
 
 #### 12.1.3 Meta construction is transparent but meta-local lifetime is not global
 
-The list in §12.1.2 is scoped to ordinary constructions. Inside a meta body the
-same events do **not** freeze the material, because the construction anchor is the
-meta instance itself (§4.3.1):
+The open dispositions of §12.1.2 are scoped to `NonMetaGenerated` values.
+Inside a meta body, material is `MetaGenerated`, and the same actions do
+**not** terminate its open window, because the construction anchor is the
+meta instance itself (§4.3.1). Meta navigation is transparent for authority:
+`ActiveInlineClosurePath_meta` is quotient/erased (`VisibleInlinePath_meta(path)
+= ε`), so meta evaluation never produces the opaque nested state that triggers
+`Reject` for non-meta inline closures. The meta space is governed by
+`NearestMetaRoot`, `MetaArgumentAdmissible`, `GlobalSurvivable`, PR99 reentry,
+and seal/promotion rules instead:
 
 ```text
-inside M:  UseForVal1(x) does not freeze x
-           using x as an attempted meta argument does not freeze x
-           entering global-normalization machinery does not freeze x
-           static control flow does not freeze x
-           entering an in-place closure written by M does not freeze x
+inside M (MetaGenerated material):
+  UseForVal1(x)                     Continue -- does not end the window
+  using x as a meta argument        Continue -- presupposes meta argument
+                                      admissibility (§4.3.1–§4.3.3):
+                                      MetaArgumentAdmissible(a) =>
+                                        GlobalSurvivable(a), and a
+                                        non-GlobalSurvivable MetaGenerated
+                                        local cannot enter another meta
+                                        invocation at all
+  entering global-normalization     Continue -- does not end the window
+  static control flow               Continue -- does not end the window
+  entering an in-place closure of M Continue -- transparent navigation;
+                                      ActiveInlineClosurePath_meta is erased
 ```
 
-The only construction-closing event for material owned by the meta construction
+The only capability-ending event for material owned by the meta construction
 is its return-stage seal (§4.3.2). A fresh meta-local PatternValue nevertheless
 has `Life = MetaInvocation(M)`. Attempting to pass it to another ordinary meta
-does not freeze or promote it; candidate formation rejects the call when the
-canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). `compile` and
+does not close or promote it; candidate formation rejects the call when the
+canonical argument is not `GlobalKeyable` (§4.3.1–§4.3.3). The rejection is
+total: the argument never enters the deeper invocation, so meta invocations
+cannot smuggle meta-local open material into the closed world and re-open it
+when the stack unwinds. `compile` and
 transparent construction intrinsics may consume it because they create no new
 MetaInstance key.
 
-At seal, only the `OwnedClosure` of the returned Symbol's unique pure role member, if
-present, is promoted. Other local PatternValues expire with the invocation. Consequently
-`UseForVal1 -> Frozen` must not be read as a universal invariant, while “meta
-body is transparent” must not be read as implicit global promotion.
+At seal, only `OwnedResultClosure(τ)` is promoted: for the default result `τ_M`
+that is `OwnedClosure(Core(τ_M))` plus `OwnedCallSpaceClosure(CallSpace(τ_M))`
+(§4.3.2); an explicitly `symbol`-typed result promotes the carried `τ`'s owned
+result closure only when that `τ` is present. Other local
+PatternValues expire with the invocation. Consequently the open-disposition rule for
+`UseForVal1` (§12.1.2) must not be read as a universal invariant, while “meta body is
+transparent” must not be read as implicit global promotion.
 
 #### 12.1.4 The apparent self-typed intersection
 
-With §12.1.2 in force, the ordinary case that looked like an intersection resolves
-without a special rule. Suppose an RHS is a complete `Val1? x P x Val2` whose own
-`P x Val2` is the very type being extended, and the extension is attempted from an
-ordinary context:
+With §12.1.2 in force, the ordinary case that looked like an intersection
+resolves without a special rule. Suppose an RHS is an ordinary value-bearing
+Object whose Pattern core is the `Q` of the type closure being extended, and the
+extension is attempted from an ordinary context:
 
 ```text
 construct RHS value of target type
-  -> UseForVal1(target)
-  -> target is no longer Open_Γ
+  -> UseForVal1(target) at OpenRootCoordinate(target)
+  -> Terminate -- legal action, but it ends target's open window
+  -> target is no longer OpenHere_Σ
   -> attempt to extend target
   -> no applicable overload
 ```
@@ -3316,8 +4481,9 @@ still-open target. A complete value of some *other* type may still be contribute
 as ordinary Val2 while the target is open; its own Pattern and Val2 remain
 attached to that value.
 
-In a meta body the same sequence is simply legal, because the first step did not
-freeze anything.
+In a meta body the same sequence is simply legal: the first step is
+`Continue` (the material is `MetaGenerated`), so the open window survives the
+`UseForVal1` and the subsequent extension is admissible.
 
 The empty destination `()` is the special call-entry leaf rather than a normal
 value-member name. Inside construction of `T`, `let () = impl` contributes one
@@ -3346,15 +4512,22 @@ general symbol-resolution-then-facet-projection rule.
 
 ### 12.2 Same-symbol role/member rules
 
-The future Symbol direction is:
+The canonical Symbol is a pair `S = ⟨τ?, V_S?⟩` where `τ` is an optional complete
+type value and `V_S` is an optional candidate space. Namespace consumers read
+`Core(τ)` (when `τ` is present); call consumers read the deduplicated candidate
+space `CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)` (symbol-first
+§2.1). Symbol role/member rules are therefore:
 
 ```text
-pure role member Q:
-  install at most once by ordinary definition;
-  require Pure(Q);
-  derive NamespaceProjection from Q;
-  derive TypeProjection only when TypeRole(Q);
-  add children only under the owning construction/authority rules
+S = ⟨τ?, V_S?⟩
+
+install τ at most once by ordinary definition;
+require WellFormedTau(τ) and Pure(Core(τ));
+derive NamespaceProjection(S) from Core(τ) when τ is present;
+derive TypeProjection(S) from τ only when TypeValueRole(τ);
+add children only under the owning construction/authority rules;
+seal/promotion uses OwnedResultClosure(τ) — OwnedClosure(Core(τ))
+    plus OwnedCallSpaceClosure(CallSpace(τ)) — not a unique pure member
 
 value members V:
   admit multiple heterogeneous value entries;
@@ -3362,18 +4535,20 @@ value members V:
   do not infer cross-construction-unit merge authority
 ```
 
-When `struct` establishes a type-role `Q` inside an already resolved owner
-pattern scope, an existing incompatible role member is a hard conflict.
-Same-origin, same-material cache replay may reuse the existing member.
+The phrase “pure role member” below is a retired historical label; it referred to
+`Core(τ)`. Any active rule about a “unique pure role member” is replaced by the
+rules above. When `struct` establishes a type-role `Q` inside an already resolved
+owner pattern scope, an existing incompatible core is a hard conflict.
+Same-origin, same-material cache replay may reuse the existing core.
 
-In particular, an ordinary symbol place receives its pure role member at most once:
+In particular, an ordinary symbol place receives its type core at most once:
 
 ```lang
 let T = A;
 let T = B;
 ```
 
-If both declarations attempt to install `T`'s role member, the second is a hard
+If both declarations attempt to install `T`'s core, the second is a hard
 conflict. It is never interpreted as:
 
 ```text
@@ -3383,8 +4558,8 @@ A | B
 Three operations must remain distinct:
 
 ```text
-first pure-role-member installation
-  -> ordinary role-member installation
+first type-core installation
+  -> ordinary core installation
 
 add a direct child under an owned, still-open construction
   -> extend (directly or through inject)
@@ -3430,8 +4605,8 @@ The installation flow is:
 
 ```text
 compile/meta invocation
-  -> compile: an ordinary PatternValue of its declared result Pattern
-  -> meta: an ordinary symbol PatternValue
+  -> compile: an ordinary PatternValue or complete type value of its declared result Pattern
+  -> meta: the default result τ_M (an ordinary `Symbol` PatternValue only for an explicitly declared `symbol` result)
   -> for a source path: resolve Symbol -> read its value/facets
   -> let creates a destination or ordinary =/inject writes an existing place
   -> resolve writable install PlaceId
@@ -3479,14 +4654,15 @@ This substrate does **not** implement:
 
 - `PatternScopeId` or `ResolvedPatternScope`;
 - `MetaInstanceScopeId` or a meta-instance pattern scope such as `(t f)`;
-- meta return pure-role self-root validation;
+- meta return type-core self-root validation;
 - the canonical meta-invocation navigation atom;
-- Symbol `Q` role projection and any corresponding implementation caches;
+- type-core `Core(τ)` projection and any corresponding implementation caches;
 - the `compile` / `meta` capability split specified here;
-- ordinary Symbol as the public meta result (the current
-  `SymbolConstruction` carrier is transitional);
+- the default meta result `τ` (the current `SymbolConstruction` carrier is
+  transitional; an ordinary Symbol remains only an explicit `symbol`-typed
+  result);
 - pure value `extend`;
-- place-level `inject` with independent `Open_Γ(Read(ref))` and writability;
+- place-level `inject` with independent `OpenHere_Σ(Read(ref))` and writability;
 - contribution-expectation-driven pattern-child versus namespace-value cache
   selection;
 - an explicit sum construction/extension API;
@@ -3541,12 +4717,12 @@ This document does not:
 Future implementation should converge in this order:
 
 ```text
-Symbol Q-role / typed-value-member resolution
+type-core `Core(τ)` projection / typed-value-member resolution
   -> PatternValue identity and rank-directed canonical arguments
   -> ordinary Symbol result (current carrier: transitional SymbolConstruction)
   -> ResolvedPatternScope / PatternScopeId / MetaInstanceScopeId
   -> namespace origin and construction-unit ownership
-  -> meta return pure-role self-root validation
+  -> meta return self-root validation (§4.4)
   -> struct owner resolution independent of binding place
   -> = operator (distinct from let =)
   -> pure child-only extend and read--extend--write inject
@@ -3563,7 +4739,7 @@ The ordering dependency is a build-order fact, not a semantic condition:
 
 ```text
 extend is a pure value function      -- settled (§8.2)
-extend needs Open_Γ(old), not a place -- settled (§8.2.2)
+extend needs OpenHere_Σ(old), not a place -- settled (§8.2.2)
 inject needs a writable type ref     -- settled (§8.2.3)
 inject = read + extend + write       -- settled (§8.2.3)
 ordinary `=` is not yet implemented  -- shared implementation debt
@@ -3582,7 +4758,7 @@ The consequences are:
 
 Remaining engineering questions in this area are about representation, not about
 meaning: the exact ordinary write algebra for the optional Q member and val siblings
-(§13), and how ConstructionLineage/stack applicability is tracked efficiently
+(§13), and how Anchor/open-window/stack applicability is tracked efficiently
 without entering canonical value identity.
 
 Until those objects exist, the current attachment registry is useful substrate,

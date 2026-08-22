@@ -5,14 +5,18 @@ normalization and first-order overload preparation. v0.8 implements only the
 restricted meta-overload subset described in §0.1; full runtime lookup, type
 checking, and full pattern-space reasoning remain future work.
 
+The base Pattern relation, proof-relevant evidence, structural incidence,
+observation/extraction, binderless Pattern semantics, and `Norm_P` soundness
+are canonical in `pattern-values-relational-semantics-and-extraction.md`.
+
 This document specifies the *pattern/type candidate-preparation layer* that must
 exist before a formal meta object invocation model can select callables. It is a
 future design note. It is not current public language behavior, not an
 implemented pass, and not a parser or normalizer rule.
 
-The document is self-contained for pattern and argument-shape preparation. It
-does not restate final overload ordering, pattern-space algebra, or symbol
-policy; those boundaries remain owned by their canonical documents.
+The document is self-contained for argument-shape preparation. It consumes the
+canonical Pattern relation and does not restate it, final overload ordering,
+pattern-space algebra, or symbol policy.
 
 Canonical `Pv:Pp`, contextual P1 projection, P2 result normalization,
 function-object stage-view derivation, complete derived compile-companion
@@ -26,7 +30,8 @@ define a competing body-entry or return-policy model.
 The implemented v0.8 subset object-izes only enough parameter-pattern and
 argument-shape material to select source-declared meta overloads.
 
-Supported parameter patterns:
+Supported parameter patterns (legacy v0.8 substrate shapes, not target
+pattern syntax):
 
 ```text
 t: type
@@ -41,12 +46,17 @@ The restricted semantics are:
 
 - `t: type` and `u: type` are binders that match any supported type-pattern
   argument and bind the matched argument value for a selected body;
-- `_ unit: type`, `_ if: type`, and `_ else: type` are discard plus named
-  type-pattern matches against the argument top pattern name;
-- `_ if | else: type` is a restricted pattern-side or-pattern that matches
-  `if` or `else` and does not match `unit`;
+- `_ unit: type`, `_ if: type`, and `_ else: type` are legacy substrate
+  discard-plus-named type-pattern matches against the argument top pattern
+  name;
+- `_ if | else: type` is a legacy substrate restricted pattern-side or-pattern
+  that matches `if` or `else` and does not match `unit`;
 - the `|` in `_ if | else` is pattern-context material, not policy union and
   not expression-level operator lookup.
+
+These `_ unit` / `_ if` / `_ else` / `_ if | else` shapes are transitional
+implementation substrate, not target pattern-language surface; the canonical
+pattern-space model is owned by the patterns-overload design documents.
 
 Supported argument shapes are produced from normalized/product-derived material,
 not raw source text. The intended bridge remains:
@@ -68,7 +78,8 @@ does not trigger special reduction inside overload selection.
 The ordinary-initializer path now consumes this restricted candidate model under
 the default `MetaPartial` strategy. `let X: type = int + unit;` succeeds because
 the argument shape for `int + unit` selects the source-declared identity
-overload `(self, t: type, _ unit: type): meta -> ...`, and the selected body
+overload `(self, t: type, _ unit: type): meta -> ...` (legacy substrate
+shape), and the selected body
 forwards `t`. The left-hand `: type` annotation is only checked after this RHS
 result exists; it does not cause the RHS meta evaluation.
 
@@ -104,9 +115,9 @@ specificity(P, E) =
 ```
 
 Comparison is lexicographic. Declaration order is not part of this tuple and
-is not a semantic priority. For or-patterns, v0.8 uses the selected alternative
-for specificity so `_ if | else` does not outrank `_ if` merely because it
-mentions more alternatives.
+is not a semantic priority. For the legacy `_ if | else` or-pattern, v0.8 uses
+the selected alternative for specificity so `_ if | else` does not outrank
+`_ if` merely because it mentions more alternatives.
 
 ## 1. Purpose
 
@@ -167,7 +178,8 @@ lookup callee name
 It must be at least:
 
 ```text
-resolve callee Symbol and project heterogeneous value entries
+resolve callee Symbol S; C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
+     (symbol-first §2.1; never a V_S-only projection)
 prepare type-associated `()` entries, including entries of derived companion objects
 normalize argument shapes
 match candidate parameter patterns
@@ -334,13 +346,20 @@ occurrence never resolves as a value, and a value never re-enters as a binder.
 ## 5. First-order type values
 
 When a first-order type participates in candidate matching, the thing compared
-is **not** a symbol name. It is a canonical type value.
+is **not** a binding name. It is a canonical type value.
 
 The conceptual identity used here is:
 
 ```text
-TypeValueId
+OrdinaryTypeObservation(τ) = Core(τ) = Q
+
+τ₁ ≈type τ₂  iff  Norm(Core(τ₁)) = Norm(Core(τ₂))
 ```
+
+`TypeValueId` is only the implementation/index root projection of `Core(τ)`
+(canonical owner `spec/design/symbol-world/type-values-places-and-borrow-views.md`
+§2, §8); it is not semantic equality and does not participate in overload or
+pattern compatibility.
 
 For example:
 
@@ -359,16 +378,24 @@ identity. Two bindings can share a type value even though their binding symbols
 differ.
 
 This document does **not** fully specify symbol identity, places, or injection
-targets; the canonical `TypeValueId` / `PlaceId` / `SymbolId` distinction is
+targets; the canonical `Core(τ) / PlaceId / SymbolId` distinction is
 defined in `spec/design/symbol-world/type-values-places-and-borrow-views.md`. Here it is
-enough to state the comparison rule: candidate matching uses type value, not
-source name.
+enough to state the comparison rule: candidate matching uses the canonical type
+value (`Core(τ) = Q`), not source name.
 
-Pass mode is explicitly **not** part of `TypeValueId`. A construct such as
-`T move` does not introduce a new type, and `move` / `copy` / `ref` / `share`
-must not change type-value comparison. Type-value equality is invariant under
-pass mode. Pass mode is a separate dimension handled elsewhere and must never be
-folded into the type value used for candidate matching.
+Pass mode is explicitly **not** part of ordinary type-value observation, but
+only the mechanical pass actions `move` / `copy` preserve the already-established type
+value: `T move` does not introduce a new type, and type-value equality is
+invariant under `move` / `copy`.
+
+`ref` and `share` are not pass modes: they are explicit borrow/type-formation
+operations and may produce `T ref` / `T share` as distinct type values. They
+are never inserted merely to satisfy a formal (`NoImplicitBorrowFormation`).
+Moving an already-formed borrow handle `r : T ref` does not change its type;
+forming `T ref` itself does.
+
+The mechanical pass dimension is handled elsewhere and must never be folded
+into the type value used for candidate matching.
 
 ## 6. RawArgShape and ParameterShape
 
@@ -404,9 +431,12 @@ not a lowering target.
 
 The `pass expectation` on a `ParameterShape` and the `explicit pass mode` /
 `is value?` facts on a `RawArgShape` are consumed by the mechanical
-argument-passing layer, which inserts a concrete pass action (move/ref/share/copy)
-after or within candidate adaptation. Pass matching is separate from type
-matching: pass mode is not part of `TypeValueId`. See
+argument-passing layer, which inserts a concrete default pass action
+(move/copy) after or within candidate adaptation; under
+`NoImplicitBorrowFormation`, automatic insertion never inserts `ref`, `share`,
+or `@` — an actual must already contain an explicit `ref` or `share` result.
+Pass matching is separate from type matching: pass mode is not part of
+`TypeValueId`. See
 `spec/design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md`.
 
 ## 7. Applicability judgment
@@ -463,7 +493,7 @@ formal meta object invocation engine. The end-to-end pipeline is:
 
 ```text
 normalized call
-  -> callee Symbol / heterogeneous value projection
+  -> callee Symbol S / C0 := CallableProjection(S) = DedupCandidateIdentity(V_S ⊎ V_τ)
   -> type-associated `()` candidate preparation
   -> argument shape formation
   -> parameter pattern normalization
@@ -527,10 +557,10 @@ them for its definitions.
   pattern-space / extraction-chain semantics. The pattern normalization layer
   here is an earlier candidate-shape layer and is a different layer from that
   pattern-space design.
-- `type-values-places-and-borrow-views.md` — the canonical `TypeValueId` /
-  `PlaceId` / `SymbolId` distinction that first-order type matching here relies
-  on. First-order type matching uses `TypeValueId`; that document defines what
-  type-value, place, and symbol identity mean.
+- `type-values-places-and-borrow-views.md` — the canonical `Core(τ) / PlaceId /
+  SymbolId` distinction that first-order type matching here relies on. Ordinary
+  type matching observes `Core(τ) = Q`; that document defines what type-value,
+  place, and symbol identity mean.
 - `type-associated-function-objects-and-access-trees.md` — background for
   type-associated function objects, field functions, and access-tree work.
 - `mechanical-argument-passing-and-move-fixed-point.md` — the mechanical
