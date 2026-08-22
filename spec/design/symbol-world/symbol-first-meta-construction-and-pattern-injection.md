@@ -1806,6 +1806,29 @@ candidate exists merely because a checker could prove the place writable —
 write capability is exposed by the selected associated callable, not invented
 by `mut` policy.
 
+The default `=` entrance forwards through the operator/ADL path, not through
+special compiler logic that inspects the LHS and searches for an assignment
+family:
+
+```text
+operator[=]   -> .=
+.=            ≡ =::adl
+```
+
+Required source behavior:
+
+```text
+object : T        object ref = value   -- form ref, then .=
+object : T ref    object = value        -- direct .= on the ref's target
+```
+
+`NoImplicitBorrowFormation` remains absolute: an ordinary `T`-valued LHS
+never secretly forms `Ref(CarrierPlace(lhs))` (`AssignmentReceiverFromPlace`
+is forbidden). When the receiver is already `T ref`, assignment writes
+`Target(receiver)`, not the place storing the ref handle. Custom Val2 may
+define setter candidates through `.=`; setter participation does not make
+anything a P structural field.
+
 The `=` family for `T ref` is:
 
 ```text
@@ -2661,8 +2684,9 @@ classifier home is `TypeMemberScope(Q_struct)`, so it belongs to `V_τ`; `const
 let` / `let` / `mut let` policy and the formal object type determine its
 candidates.
 
-The `ref` / `share` type constructions do not copy that family. Each derived
-type value `T ref` / `T share` generates its own forwarding entries
+The `ref` / `share` type constructions do not copy that family. With respect
+to inherited associated names, each derived type value `T ref` / `T share`
+generates fresh direct-home forwarding entries
 (`ForwardAssoc`, §2.1 `NoForeignTypeMemberInjection`): `f::(T ref) ->
 f::T` and `f::(T share) -> f::T` are fresh derived-type members homed in the
 derived type's own `V_τ`, whose bodies perform a new ordinary invocation of the
@@ -2673,7 +2697,11 @@ struct
     generates the real field family under T
 
 ref/share type construction
-    generates only forwarding entries under derived types
+    for inherited associated names:
+        generates fresh direct-home forwarding entries
+    derived τ still owns its intrinsic
+        ref/share formation, borrow formation,
+        fixed-point/weakening, and other native callspace members
 ```
 
 no foreign callable object ever enters a derived `V_τ`.

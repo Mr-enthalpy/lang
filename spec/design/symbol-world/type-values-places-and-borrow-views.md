@@ -961,7 +961,7 @@ An old copy retains `V_old`. No
 `Root(tau) -> current mutable Symbol -> current V` indirection participates in
 type identity or call lookup.
 
-### 2.3 Ordinary rank preservation and typing naturality
+### 2.3 Rank and typing naturality
 
 The semantic layers compose as one principle:
 
@@ -970,55 +970,41 @@ Object structural core:    ordinary structural content is governed by
                            Object = <Val1?, P, Val2>
 Rank-indexed closure:      complete types are rank-indexed closures
                            tau = <Q, V_τ> over that Object material
-Ordinary rank preservation:  an operation with no explicit rank-shifting
-                           rule keeps the input's rank:
+Declared-result rank:      the rank of a callable's result is solely its
+                           declared result rank:
 
-                           Γ ⊢ x : U_n
-                           F has no explicit rank-shifting rule
-                           -----------------------------------
-                           Γ ⊢ F(x) : U_n
+                           Rank(result(F, x)) = DeclaredResultRank(F, x)
 
-                           RankShift(F, n, m), m ≠ n, must be declared by a
-                           rule or signature; evaluation stage, description
-                           depth, and carrier form cannot apply
-                           UniverseSuccessor implicitly; place projection,
-                           borrow lifting, and type formation compose by the
-                           ordinary typing/naturality laws below
+                           There is no default rank-preservation rule and
+                           no RankShift(F, n, m) as a second mechanism;
+                           evaluation stage, description depth, and carrier
+                           form cannot apply UniverseSuccessor implicitly;
+                           place projection, borrow lifting, and type
+                           formation compose by the ordinary typing/
+                           naturality laws below
 Description-rank stability: P/Val2 formation and transformation do not
                            apply UniverseSuccessor; the description layer
                            stays at rank 0 regardless of what rank the
                            described type inhabits
 ```
 
-**OrdinaryRankPreservation.** No ordinary operation silently changes the
-semantic *category* of what it transports: an ordinary Object stays an
-ordinary Object, a complete type value stays a complete type value, and a
-borrow view stays a borrow view. Rank is the same: an ordinary operation
-without an explicit rank-shifting rule keeps the rank of what it
-transports; the evaluation stage, description depth, or carrier form never
-injects a rank silently.
+**DeclaredResultRank.** The rank of a callable's result is solely
+`DeclaredResultRank(F, x)` — the rank declared by `F`'s signature or
+formation rule. No ordinary operation silently changes the semantic
+*category* of what it transports: an ordinary Object stays an ordinary
+Object, a complete type value stays a complete type value, and a borrow
+view stays a borrow view. But rank is not preserved by default; it is
+determined by declaration. The evaluation stage, description depth, or
+carrier form never injects a rank silently.
 
 The rank invariant is:
 
 ```text
-Γ ⊢ x : U_n
-F has no explicit rank-shifting rule
-------------------------------------
-Γ ⊢ F(x) : U_n
-
-RankShift(F, n, m), m ≠ n,
-  must be declared by a rule or signature
+Rank(result(F, x)) = DeclaredResultRank(F, x)
 
 evaluation stage / description depth / carrier form
   cannot apply UniverseSuccessor implicitly
 ```
-
-Equivalently, a signature `F : U_n -> U_m (m ≠ n)` is itself an explicit
-rank shift; it is not a counter-example to default rank preservation. Only
-operations whose rule or signature explicitly changes rank do so;
-`TypeOf`, the explicit universe successor, and a declared cross-rank
-result are rank-shifting. Description nesting, meta/compile stage, carrier
-representation, and `P × Val2` description depth are not.
 
 A family may be rank-parametric:
 
@@ -1029,15 +1015,14 @@ RankTransparent(F)
 
 `RefTy` and `ShareTy` are `RankTransparent` (`T : U_n ⊢ RefTy(T) : U_n` and
 `T : U_n ⊢ ShareTy(T) : U_n`): borrow-type formation preserves the operand's
-rank. This is an instance of the default rank-preservation principle, not
-a special exception. Field projection follows the declared result type:
+rank. This is a property of their declared result, not a default rule.
+Field projection follows the declared result type:
 `inner : T ref -> A ref` has `Rank(result) = rank(A ref) = rank(A)`. When
 `rank(A) ≠ rank(T)` this is a *declared* rank shift — the signature itself
 says `T ref -> A ref` — never an implicit rank change injected by the
 projection step. `TypeOf` is genuinely rank-changing
-(`TypeOf(type) = type_1`). Ordinary function application follows the
-default: it preserves rank unless its signature or rule explicitly says
-otherwise.
+(`TypeOf(type) = type_1`). Ordinary cross-rank functions simply follow
+their declared result rank.
 
 **DescriptionRankStability.** The `P × Val2` description layer is orthogonal
 to universe rank. Even when `P/Val2` describes a type `τ : U_n`, the
@@ -1082,7 +1067,7 @@ E_ref(Ref(p)) = Ref(ProjectionSlot_E(p))
 where ProjectionSlot_E(p) = ProjectionSlot(Target(Ref(p)), pi_E)
 ```
 
-Field functions follow the same rank-preserving family:
+Field functions follow the same declared result-rank family:
 
 ```text
 inner : T        -> A
@@ -1136,7 +1121,7 @@ Contrast the type formation on the extracted value:
 `object ref.inner` is a `type ref` borrow **instance** (its target slot
 currently holds a type); `(object.inner) ref` is the borrow **type** of the
 extracted value. The two are distinct and both follow from the same
-rank-preserving family. Neither derivation asks whether `type ∈ Object` or
+declared result-rank family. Neither derivation asks whether `type ∈ Object` or
 `type ∉ Object` first: the borrowed field projection
 (`inner_ref(r) = Ref(ProjectionSlot(Target(r), inner))`) is admissibility-
 judgment-driven and simply yields `T ref -> type ref` when the field type
@@ -1144,7 +1129,8 @@ happens to be `type`
 (`NoSemanticDispatchByCarrierMembership`).
 
 Finally, type formation and borrow formation are distinct operations and stay
-separate under rank preservation: `t ref` is type formation (a type-forming
+separate, each following its declared result rank: `t ref` is type formation
+(a type-forming
 overload yielding the borrow TypeValue), while `t |> (type ref)` is borrow
 formation (yielding a value `r : type ref`). The member-phase split and the
 no-implicit-borrow rule are canonical in

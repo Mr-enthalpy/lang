@@ -164,6 +164,94 @@ structural-child evidence, extraction roles, or binder observations. Those
 facts are semantic evidence; they are not required to be stored as a compiler
 object after the consuming judgment completes.
 
+### 3.1 Atomic extraction, whole extraction, and protected observation
+
+**Atomic vs whole extraction.** Two extraction granularities are
+distinguished:
+
+```text
+AtomicExtraction(s, F, x)
+  -- one registered structural observation of element F from source x
+     along a single P-registered edge
+
+WholeExtraction(P, rhs, ρ)
+  -- R(P, rhs, ρ): the complete Pattern solves against the RHS,
+     ultimately assigning one valuation to a set of HoleIds
+```
+
+For most non-leaf structural positions, the field observation and the atomic
+extraction coincide and may even be performed by the same ordinary callable
+Object:
+
+```text
+FieldObservation(s) ≈ AtomicExtraction(s)
+```
+
+At leaf positions a field accessor may perform a two-level descent. It is
+therefore not a global identity:
+
+```text
+FieldFunction ≡ Extractor     -- NOT a global identity
+```
+
+The existing `ConstructEdge`, `ExtractEdge`, and `FieldView` ontology
+already supports this; no new callable categories are introduced.
+
+**Protected P-internal extraction.** When the language interprets
+`R(P, x, ρ)` — i.e. P itself drives the extraction — virtual/custom Val2
+callables must not alter the real structure that P describes. The language
+fixes:
+
+```text
+AtomicExtract_P(s, x)
+  = Resolve(
+      RegisteredRealFieldFamily(P, s),
+      x,
+      CallSiteFamilyFilter = StructuralDefault
+    )
+```
+
+where `StructuralDefault` is a stable generated-structural candidate-family
+identity applied *implicitly* by the language as a call-site filter before
+C0 (see `overload-resolution-design.md` §2.3 / §5.3). The pipeline order is:
+
+```text
+P interpretation
+  ↓
+implicit StructuralDefault family filter
+  ↓
+C0
+  ↓
+ordinary admissibility
+  ↓
+ordinary selection
+```
+
+This is not a privileged callable lookup bypass, not a shortcut past the
+overload resolver, and not a second lookup mechanism. It is one true
+semantic consumer connected to the existing call-site annotation stage.
+
+By contrast, ordinary user-written `x.field` does **not** receive this
+hidden filter: virtual/custom getters may beat the generated getter there.
+
+The implicit filter is part of the language interpretation of P. It is NOT
+stored in P and does NOT participate in `Norm(P)`:
+
+```text
+UserPatternData
+  must not contain arbitrary overload-family selectors
+```
+
+otherwise `Norm(P)` would depend on overload-family organization, which
+itself comes from the same `τ`/`Val2` snapshot — an identity loop.
+
+**Construction is ordinary.** Construction happens in the RHS and is ordinary
+expression evaluation. There is no symmetric hidden filter on the constructor
+side. A caller that needs the generated/default member may explicitly use
+`|[[default]]>` or the final chosen default-family spelling. The asymmetry
+comes from the evaluation direction (extraction reads known structure;
+construction builds from an expression), not from a language exception.
+
 ## 4. Presence, constraint, structure, and navigation are distinct
 
 For selector `s` and child Object `y`, direct structural incidence implies
@@ -440,6 +528,87 @@ That coincidence must not be promoted into a language theorem. This is why the
 old `ref` declarations' `<t>` could be dropped in those particular examples
 while behaving identically, without any general equivalence existing.
 
+### 8.1 Deduction as extraction
+
+Parameter genericity and DeduceList deduction are extraction, not universal
+introduction. The canonical direction is:
+
+```text
+known RHS / actual argument
+  ↓
+Pattern extraction
+  ↓
+valuation ρ
+  ↓
+bind HoleIds
+```
+
+Function parameters are let-shaped binding positions. A call
+
+```text
+F(a1, ..., an)
+```
+
+is applicable exactly when the extraction succeeds:
+
+```text
+Applicable(F, a1...an)
+  iff ∃ρ.
+      Extract(H1, a1, ρ)
+    ∧ Extract(H2, a2, ρ)
+    ∧ ...
+    ∧ Extract(Hn, an, ρ)
+```
+
+An explicit shared `DeduceList` produces shared `HoleBinderId`s, so
+extractions at different parameters must agree on the same `ρ(t)`.
+Site-local shorthand (§8, `ImplicitDeductionIsSiteLocal`) produces
+independent holes instead.
+
+A restriction such as `<t:type>` is a constraint on the extracted value:
+
+```text
+Extract(..., ρ) ∧ ρ(t) : type
+```
+
+It is not a kinded universal generic binder. There is no primitive semantic
+category `GenericParameter`, no `∀t. ...` introduction rule, and no
+"choose arbitrary t, then type-check the body under t". Overloading is
+therefore competition among admissible extraction heads:
+
+```text
+candidate
+  -> parameter extraction heads
+  -> successful Hole valuation
+  -> admissible candidate
+  -> specificity/policy preference
+
+Overloading is competition among admissible extraction heads.
+```
+
+This is an intentional design tradeoff:
+
+```text
+The language sacrifices unrestricted bidirectional global constraint
+solving in exchange for compositional one-way structural observation
+from known RHS / argument prefixes.
+```
+
+and:
+
+```text
+The semantic depth of one extraction expression
+is bounded by the Pattern the user can write,
+not by a language-level solver-depth limit.
+```
+
+This is not Hindley-Milner-style global unification, not concept/trait-solver
+bidirectional constraint propagation, and not "the compiler supports only
+fixed-N-depth pattern matching". Note that mathematical `∀` in meta-level
+statements (for example `RankTransparent(F) iff ∀n. F : U_n -> U_n`) is
+ordinary mathematical quantification and remains valid; only forall-as-a
+language model of generic binding is retired.
+
 ## 9. Pure Pattern nodes and pipe branch shorthand
 
 A pure Pattern node needs no artificial wildcard/value padding layer. For example:
@@ -684,6 +853,43 @@ therefore `TypeRole` is neither automatically preserved nor automatically
 broken by ordinary write — it must be independently re-derived from the
 result structure (see `type-values-places-and-borrow-views.md` §2.2).
 
+### 13.1 Real fields versus virtual observations
+
+Structural reality comes from P registration alone:
+
+```text
+RealField_P(s, F)
+  iff F is registered as a field/interface role on P(s)
+
+RealField_P(s, F) => PresentInVal2(s, F)
+PresentInVal2(s, F) =/=> RealField_P(s, F)
+```
+
+An ordinary `let virtual = ...` may add a same-name callable to `Val2(s)`,
+forming a `VirtualField(s, F)`. A virtual field may win ordinary overload
+resolution against the generated real-field getter, and may form a custom
+setter or member operation. But it cannot change any structural role:
+
+```text
+VirtualField(s, F)
+  =/=> RealField_P(s, F)
+  =/=> DirectPatternChild(s, F)
+  =/=> FieldView_P(s, F)
+  =/=> ExtractEdge_P(s, F)
+  =/=> ConstructEdge_P(s, F)
+```
+
+"Real" is semantic structural reality, never ABI/layout reality. And a
+callable with signature `(self, object:T) -> A` is not ipso facto a
+P-structural field; Val2 membership ≠ structural child. This preserves the
+existing separation:
+
+```text
+Val2 membership
+  !=
+DirectPatternChild / FieldView / ExtractEdge
+```
+
 ## 14. Borrowed extraction is derived from ProjectionSlot
 
 Suppose a by-value structural extraction is:
@@ -724,14 +930,46 @@ No primitive `BorrowLiftable` Pattern flag exists. `struct` generates the
 ordinary value/ref/share callable objects required by its interface. Built-in
 borrow operations associate those already existing callables with their
 ProjectionSlots; they do not synthesize transformed callable objects.
-This borrowed-extraction law is a theorem of the rank-preservation and
-typing-naturality section
-(`../symbol-world/type-values-places-and-borrow-views.md` §2.3).
+This borrowed-extraction law is a theorem of the rank and typing-naturality
+section (`../symbol-world/type-values-places-and-borrow-views.md` §2.3).
 
 Borrow observations are horizontal edges and do not become owned Pattern
 children.
 
 ## 15. Boundary to complete type values
+
+A type is one semantic entity with two equivalent views. The description view
+and the type-closure view constrain the same entity, not two objects that are
+later mapped to each other:
+
+```text
+One semantic type entity X has two equivalent views:
+
+DescriptionView(X) = ⟨P, Val2⟩
+TypeClosureView(X) = τ = ⟨Q, V_τ⟩
+
+τ ≡ DescriptionClosure(P, Val2)
+```
+
+This is not `V_τ = Val2`: `V_τ` is the type-callspace portion observed from
+the same closed entity, and `Q` is its core/Object-structure observation. The
+consistency law is:
+
+```text
+A constraint on ⟨P,Val2⟩
+and
+a constraint on ⟨Q,V_τ⟩
+
+constrain the same semantic entity.
+```
+
+So `Closed(τ)` also means no new structure or callable may be added from the
+`P × Val2` side, and `WellFormedTau(τ)` also guarantees that the P/Val2
+structural registration and the V_τ direct-home callspace are compatible.
+There is no formation order "Q formed first, then some namespace inspected,
+then V_τ attached, then τ obtained"; there is no "P structure is one object,
+V_τ/type callability is another side table"; and there is never a state where
+"τ is already closed but V_τ can still be augmented."
 
 The Pattern/core component of a type is the ordinary pure Object `Q`, but a
 complete type value is not bare `Q`. The canonical type-value authority closes

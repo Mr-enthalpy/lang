@@ -294,6 +294,47 @@ surface may resemble `args |[[annotation]]> callee` (for example default-only or
 nongeneric-only), but spelling and general selector algebra remain deferred.
 With no annotation, the family view is the complete typed `V` member family.
 
+The two annotation phases are distinct semantic stages:
+
+```text
+|[[α]]>
+    CallSiteFamilyFilter
+    before C0
+
+=>[[δ]]
+    DeclarationCandidatePolicy
+    after FullyAdmissible A
+```
+
+`|[[α]]>` only decides which candidate families may enter generation for this
+call. It is not a priority: it cannot make an invisible, ill-typed,
+policy-illegal, or lifetime-illegal candidate legal, and it does not select
+among candidates inside a family. `=>[[δ]]` is not a candidate generator: it
+cannot resurrect a candidate already excluded at C0..A.
+
+The generated structural default family has a stable identity used by the
+language itself (canonical owner
+`pattern-values-relational-semantics-and-extraction.md` §3.1,
+`AtomicExtract_P`). P-internal extraction applies it implicitly before C0;
+ordinary user `x.field` does not. The identity is part of the language
+interpretation of P and is never stored as Pattern data.
+
+Custom/default recursion example:
+
+```text
+custom getter + generated default =>[[fallback]]
+
+external ordinary call x.field:
+    A = {custom, default}
+    default retreats (fallback suppressed while custom survives)
+
+inside the custom body:
+    ... |[[default]]> ...
+    removes the custom family from C0
+    at the fallback stage only default remains
+    => no recursion
+```
+
 Declaration-side annotations act only after `A` has been formed. They control
 how already-fully-admissible candidates participate — for example fallback
 suppression or must-select consistency. They never generate a candidate or make

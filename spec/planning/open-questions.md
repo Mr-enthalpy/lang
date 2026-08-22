@@ -751,6 +751,39 @@ forwarding or spelling-only lookup.
 
 ---
 
+### Generic navigation: binding-name extraction on a closed τ
+
+**Status:** Open (future general `::` operation; not resolved in PR101)
+
+**Question:** Can an already-closed τ carry one finite, already-closed
+general `::` navigation operation, such that a requested binding-name key in
+a known navigation request is obtained by let/Pattern extraction, and the
+member is resolved without later installing new members into τ and without
+orphan contribution?
+
+**Fixed constraints (must hold in any future answer):**
+
+```text
+Closed(τ)
+    must remain Closed(τ)
+
+generic navigation
+    must be an already-existing closed operation of τ
+
+requested binding name
+    must be extracted from known navigation material
+    rather than universally introduced
+```
+
+This question must not be phrased as a universal binding-name mechanism
+(`∀ bindname. ...` is not a language mechanism). It does not change the
+current `.field` lowering (dot lowering → derived associated forwarding →
+ordinary overload → ProjectionSlot projection), and generalizing
+`.field ≡ field::adl` is deliberately not adopted in PR101: it would collide
+with closed τ, the orphan rule, and an arbitrary future field-name domain.
+
+---
+
 ### Static materialization cache
 
 #### How should a compile cache represent Open-sensitive applicability?

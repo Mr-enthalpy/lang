@@ -288,6 +288,54 @@ resolve name::D(T)
 
 It is not fallback, candidate reopening, or late adaptation.
 
+### Candidate-domain-preserving registration
+
+The family-level equation above is the summary; the normative specification
+is candidate-domain preserving. Each admissible base candidate produces one
+forwarder, so the derived candidate domain mirrors the base candidate domain
+instead of collapsing to a single universal trampoline:
+
+```text
+c ∈ Candidates(name::τ_base)
+
+ForwardRegistration(D, τ_base, name, c)
+    -> f
+
+Applicable(f, args)
+  iff
+  Applicable(c, args)
+
+ForwardBaseSnapshot(f)
+  = the complete τ_base snapshot captured when D(τ_base) was formed
+```
+
+The forwarder `f` is a real ordinary callable homed in `V_(D(T))`
+(`DirectClassifierHome(f) = TypeMemberScope(Core(τ_(D(T))))`). Its body
+performs a new ordinary invocation of `c` against `ForwardBaseSnapshot(f)`.
+The applicability equivalence lets a derived caller discover at selection
+time whether the base family has an applicable candidate — not after
+committing to a universal trampoline that then discovers no base candidate
+fits.
+
+Coherence requirements:
+
+```text
+D(τ) = τ
+  => no self-forwarder / no duplicate
+
+Norm(D₁(τ)) = Norm(D₂(τ))
+  => same normalized forwarding set
+
+ForwardedNames(D)
+  is explicit
+```
+
+`ForwardedNames(D)` restricts which associated names a derived type
+forwards. This prevents write capability from leaking from `T ref` to
+`T share` through generic forwarding: `T share` forwards only the
+share-admissible subset of inherited associated names, never the
+ref-only write family.
+
 The `.field` lowering (above) resolves the generated hole `T` and, for a
 borrowed receiver `r : X ref`, lands on `r |> inner::(X ref)`. The connection
 

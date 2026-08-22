@@ -590,6 +590,79 @@ _See also: OperatorName, Fixity, Arity._
 
 ---
 
+## Naked operator (`operator[op]`)
+
+A bare operator expression resolves through the nearest lexical
+`operator : operator` binding and selects `operator[OperatorIdentity(op)]`,
+where `OperatorIdentity = spelling + fixity + arity`. It is not direct
+spelling lookup, not ADL, and not type-directed parser lookup.
+
+```text
+NakedOperator(op)
+    -> operator[OperatorIdentity(op)]
+```
+
+A global/operator-identity callable may choose to forward to `.op`
+(`op::adl`) in its body, but "global operator" and "ADL" are not
+synonymous, and not all unqualified operators automatically perform ADL.
+
+_See also: ADL (.op), OperatorName, OperatorSugar._
+
+---
+
+## ADL (`.op`, `op::adl`)
+
+Argument-dependent lookup through the dot-operator path. It is an
+independent entity from the naked operator:
+
+```text
+.op ≡ op::adl
+```
+
+The three operator-lookup paths are orthogonal:
+
+```text
+NakedOperator(op)    -> operator[OperatorIdentity(op)]
+DotOperator(.op)     -> op::adl
+ExplicitPath(P::op)  -> P::op
+```
+
+An explicit path `P::op` is direct path lookup and does not run operator
+forwarding or ADL.
+
+_See also: Naked operator, OperatorName, Assignment operator (.=)._
+
+---
+
+## Assignment operator (`.=`, `=::adl`)
+
+The default bare `=` resolves to `operator[=]`, which forwards to `.=`,
+which is `=::adl`:
+
+```text
+operator[=]   -> .=
+.=            ≡ =::adl
+```
+
+Required source behavior:
+
+```text
+object : T        object ref = value   -- form ref, then .=
+object : T ref    object = value        -- direct .= on the ref's target
+```
+
+The assignment receiver is never implicitly formed from an ordinary `T`
+value's carrier place (`NoImplicitBorrowFormation` remains absolute; no
+`AssignmentReceiverFromPlace`). When the receiver itself is `T ref`,
+assignment writes `Target(receiver)`, not the place storing the ref handle.
+
+Custom Val2 may define setter candidates through `.=`. Setter participation
+does not make anything a P structural field.
+
+_See also: ADL (.op), Naked operator, NoImplicitBorrowFormation._
+
+---
+
 ## Overload Candidate
 
 A callable entry prepared for a given call. Final preparation first resolves a
@@ -805,14 +878,14 @@ The structural identity of an object. The governing principle has three parts:
 2. Complete types are rank-indexed closures `tau = <Q, V_τ>` over that Object
    material; `tau` participates in Pattern observation through `Core(tau) = Q`
    and is not itself an ordinary Object.
-3. Rank is preserved by default: an operation with no explicit
-   rank-shifting rule keeps the input's rank
-   (`Γ ⊢ x : U_n, F has no explicit rank-shifting rule ⊢ F(x) : U_n`);
-   `RankShift(F, n, m), m ≠ n` must be declared by a rule or signature
-   (`OrdinaryRankPreservation`, §2.3 of the canonical owner below);
+3. Rank is determined by declaration: the rank of a callable's result is
+   solely its declared result rank
+   (`Rank(result(F, x)) = DeclaredResultRank(F, x)`); there is no default
+   rank-preservation rule and no `RankShift(F, n, m)` as a second mechanism
+   (`DeclaredResultRank`, §2.3 of the canonical owner below);
    evaluation stage, description depth, and carrier form cannot apply
    `UniverseSuccessor` implicitly. `RefTy`/`ShareTy` are `RankTransparent`
-   (`∀n. F : U_n -> U_n`) as instances of the default principle; field
+   (`∀n. F : U_n -> U_n`) as declared result properties; field
    projection follows the declared result type; `TypeOf` is genuinely
    rank-changing.
 
