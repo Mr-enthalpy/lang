@@ -644,7 +644,30 @@ WellFormedTau is history-free:
          because of construction history
          (τ is not an Object; complete type normalization is
           Norm_type(tau) = bind alpha.⟨Norm(Q), Norm_V^alpha(V_τ)⟩)
+```
 
+**Same-entity boundary (normative).** A complete type value and its
+description material are one semantic entity observed through two equivalent
+views (canonical owner:
+`spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+§15):
+
+```text
+SameEntityTypeInvariant:
+  DescriptionView(X) = ⟨P, Val2⟩
+  TypeClosureView(X) = τ = ⟨Q, V_τ⟩
+  τ ≡ DescriptionClosure(P, Val2)
+```
+
+`DescriptionView` and `TypeClosureView` are projections of one semantic
+entity; they are not two objects later mapped to each other, and neither
+`⟨P,Val2⟩` nor `⟨Q,Vτ⟩` is an entity prior to or beside the other. The
+closed/well-formedness constraints on the two views apply jointly to that
+one entity; neither view may be extended independently of the other. This is
+not the identity `V_τ = Val2`: it is the statement that both sides constrain
+the same semantic entity.
+
+```text
 TypeValueRole(tau)
   iff WellFormedTau(tau)
   and TypeRole(Q)

@@ -87,7 +87,9 @@ Explicitly not implemented in v0.8:
 - first-order instantiation preference;
 - in-place closure materialization, lazy embedding lookup, or the B5
   in-place-over-non-in-place preference;
-- ADL, unrestricted lookup, or global search for all symbols of a name;
+- ADL, unrestricted lookup, or global search for all symbols of a name
+  (only the discovery algorithm; the operator dispatch identity boundary is
+  closed in §1);
 - D/Done reduction or control-flow pattern transformation;
 - guarded branch invocation, short-circuit invocation, or full meta block
   interpretation.
@@ -176,13 +178,37 @@ language. It defines:
   operate only after the fully admissible set exists
 - a compact judgment form
 
+**Operator dispatch identity boundary (closed).** The identity layer that maps
+an operator spelling/syntax to a dispatch entrance is frozen by this design
+(canonical phrasing: `spec/reference/glossary.md`, "Naked operator" / "ADL" /
+"Assignment operator"; assignment special case:
+`symbol-first-meta-construction-and-pattern-injection.md` §4.5.1):
+
+```text
+OperatorDispatchIdentity:
+  NakedOperator(op)    -> operator[OperatorIdentity(op)]
+  DotOperator(.op)     -> op::adl
+  ExplicitPath(P::op)  -> P::op
+
+operator[=]   -> .=
+.=            ≡ =::adl
+```
+
+This boundary is normative here: the three entrances are orthogonal, an
+explicit path never runs ADL or operator forwarding, and "global operator"
+and "ADL" are not synonymous. What remains deferred is not the identity
+boundary but only the *general ADL associated-scope discovery / candidate
+enumeration algorithm* behind `op::adl`.
+
 This document does **not** define:
 
 - concept semantics (only the interface: `concept_projection` must produce a
   stable poset element)
 - lifetime checking or any lifetime-driven second selection; see
   `../lifetime/lifetime-policy-and-overload-boundary.md`
-- ADL or unrestricted symbol search
+- general ADL associated-scope discovery / candidate enumeration, or
+  unrestricted symbol search (the operator dispatch *identity* boundary is
+  closed above; only the ADL discovery algorithm behind `op::adl` is deferred)
 - implicit type conversion or coercion
 - implicit borrow formation (`T` is never repaired to `T ref` / `T share`)
 - partial-application overloads
@@ -1182,7 +1208,9 @@ The following are explicitly **not** part of this design and are deferred to
 later phases or separate documents:
 
 ```text
-ADL (argument-dependent lookup)
+general ADL associated-scope discovery / candidate enumeration
+  (only the discovery algorithm behind `op::adl`; the three-entrance
+   operator dispatch identity boundary itself is closed in §1)
 implicit type conversion / coercion ranks
 partial-application overloads (curried candidate matching)
 package-internal symbol aliases as overload carriers

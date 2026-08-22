@@ -1151,6 +1151,16 @@ borrow and not part of the complete-type observation classification.
 Canonical owner:
 [`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md).
 
+`tau` and its `⟨P, Val2⟩` description material are one semantic entity with
+two equivalent views (`τ ≡ DescriptionClosure(P, Val2)` — the
+`SameEntityTypeInvariant`): `DescriptionView` and `TypeClosureView` are
+projections of the same entity, and constraints on either view constrain that
+one entity jointly. Normative statement:
+[`pattern-values-relational-semantics-and-extraction.md`](../design/patterns-overload/pattern-values-relational-semantics-and-extraction.md)
+§15, restated in
+[`type-values-places-and-borrow-views.md`](../design/symbol-world/type-values-places-and-borrow-views.md)
+§2.2.
+
 _See also: Object normal form (`Norm`), TypeMember, `Self_τ`._
 
 ---

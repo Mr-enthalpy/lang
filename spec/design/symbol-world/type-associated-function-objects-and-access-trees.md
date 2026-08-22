@@ -83,18 +83,32 @@ these are ordinary typed candidate objects in one associated Symbol.
 #### Family registration: producer side of `StructuralDefault`
 
 Every candidate of the generated schema is registered in one stable
-call-site candidate family:
+call-site candidate family. The identity key is the stable self-observable
+anchor `CoreAnchor(Q_T)`, not the whole `Q` snapshot
+(`CoreAnchor(Q) = CanonicalSelfPatternRoot(Q)`, canonical
+`symbol-first-meta-construction-and-pattern-injection.md` §2.1):
 
 ```text
 StructuralFamily(T, name, A)
-  = StableFamilyId(Q_T, name, StructuralDefault)
+  = StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)
 
 c ∈ GeneratedFieldFamily(T, name, A)
 ---------------------------------------
 CandidateFamily(c) = StructuralFamily(T, name, A)
 ```
 
-where `Q_T = Core(τ_T)`. P-internal extraction
+where `Q_T = Core(τ_T)`. This gives the family-stability theorem:
+
+```text
+StructuralFamilyStability:
+  CoreAnchor(Q') = CoreAnchor(Q) ∧ same registered structural field name
+  ⇒ StructuralFamily(Q', name, A) = StructuralFamily(Q, name, A)
+```
+
+An `extend` that adds unrelated virtual helpers (so `Q ≠ Q'` but
+`CoreAnchor(Q') = CoreAnchor(Q)`) therefore keeps every generated structural
+candidate's identity: P-internal extraction over the new snapshot still
+filters exactly the inherited generated cells. P-internal extraction
 (`AtomicExtract_P`, canonical
 `pattern-values-relational-semantics-and-extraction.md` §3.1) applies
 `CallSiteFamilyFilter = StructuralDefault` before C0; that filter preserves
@@ -149,12 +163,43 @@ AssignmentFamily(U):
     U ref × U -> unit        (canonical §4.5.1)
 ```
 
-so when `A ≠ T`:
+The two families never coincide, for any field type:
 
 ```text
-FieldWriteFamily(T, name, A) ≠ AssignmentFamily(T)
+∀A. FieldWriteFamily(T, name, A) ≠ AssignmentFamily(T)
 ```
 
+Their target operations differ: `AssignmentFamily(T)` writes
+`Target(receiver)` itself, while `FieldWriteFamily(T, name, A)`
+writes/customizes `field(receiver, name)`. Even when `A = T` — e.g.
+`struct Node { next : Node }`, where both signatures may be
+`Node ref × Node -> unit` — `node = rhs` and `node.next = rhs` remain
+distinct operations. The field family's identity is
+
+```text
+FieldWriteFamily(T, name, A)
+  = SetterFamily(CoreAnchor(Q_T), name, StructuralDefault, A)
+    -- ⟨structural-field identity, selector, value type, setter-family kind⟩
+    -- never the parameter shape alone
+```
+
+The parameter-shape statement is separate and weaker:
+
+```text
+A = T
+⇒
+FormalShape(FieldWriteFamily(T, name, A))
+  =
+FormalShape(AssignmentFamily(T))
+    -- coincident formal shape (T ref × T -> unit)
+    -- is never family identity
+```
+
+Selection uses the selector through the LHS navigation: `lhs.name = rhs`
+first lowers the dot expression, and the `=::adl` candidate set over that
+navigated receiver contains only the field-scoped family; `lhs = rhs`
+contains only `AssignmentFamily(T)`. The two candidate sets are therefore
+disjoint in every call, and shape coincidence creates no ambiguity.
 They are two ordinary associated candidate families reachable through the same
 `.=` entrance; only the selected `default` body performs the universal write
 judgment. Field write candidates are admitted only where field policy permits
@@ -399,8 +444,10 @@ Coherence requirements:
 D(τ) = τ
   => no self-forwarder / no duplicate
 
-Norm(D₁(τ)) = Norm(D₂(τ))
+Norm_type(D₁(τ)) = Norm_type(D₂(τ))
   => same normalized forwarding set
+     -- D(τ) is a complete type value; coherence compares Norm_type,
+        never the ordinary Norm(Object) (type-values §2.2)
 
 ForwardedNames(D)
   is explicit

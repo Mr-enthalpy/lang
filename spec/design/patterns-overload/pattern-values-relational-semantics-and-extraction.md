@@ -216,8 +216,10 @@ identity applied *implicitly* by the language as a call-site filter before
 C0 (see `overload-resolution-design.md` §2.3 / §5.3). The producer side is
 closed symmetrically: every candidate of a `struct`-generated
 `GeneratedFieldFamily(T, name, A)` is registered under
-`StableFamilyId(Q_T, name, StructuralDefault)`, so this filter preserves
-exactly those generated cells
+`StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)` — keyed by the
+stable core anchor, not the whole `Q` snapshot, with a stated stability
+theorem (`StructuralFamilyStability`) — so this filter preserves exactly
+those generated cells
 (`symbol-world/type-associated-function-objects-and-access-trees.md`,
 "Family registration"). The pipeline order is:
 

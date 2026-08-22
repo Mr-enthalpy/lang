@@ -173,6 +173,21 @@ Core(tau)      = Q
 CallSpace(tau) = V_τ
 ```
 
+The closure and its description material are one semantic entity with two
+equivalent views, not two objects (normative:
+`spec/design/patterns-overload/pattern-values-relational-semantics-and-extraction.md`
+§15; `SameEntityTypeInvariant` in
+`spec/design/symbol-world/type-values-places-and-borrow-views.md` §2.2):
+
+```text
+DescriptionView(X) = ⟨P, Val2⟩
+TypeClosureView(X) = τ = ⟨Q, V_τ⟩
+τ ≡ DescriptionClosure(P, Val2)
+```
+
+Constraints on `⟨P, Val2⟩` and on `⟨Q, V_τ⟩` constrain the same entity;
+neither view may be extended independently of the other.
+
 `Q` is the ordinary pure Object core. `V_τ` is the callspace captured when
 `tau` was formed — the direct TypeMember members that belong to this type
 snapshot. `V_S` is the Symbol's own ordinary sibling candidate space,
@@ -1877,11 +1892,13 @@ Write default
 `T share` provides no `=` family at all: `share-value = other` yields **no
 applicable overload** in the candidate domain, never a selected assignment that
 then fails `Writable`. `AssignmentFamily` here is the universal `T ref × T`
-family; field-specific write candidates (`FieldWriteFamily(T, name, A) ⊆
-Candidates(=::adl)`) are a separate ordinary associated family and coincide
-with `AssignmentFamily(T)` only when `A = T` — their domain is `T ref × A`,
-never `T ref × T` by naming (canonical field-side rule:
-`type-associated-function-objects-and-access-trees.md`). Assignment carries no `extend`-specific validation, but
+family. Field-specific write candidates (`FieldWriteFamily(T, name, A) ⊆
+Candidates(=::adl)`) are a distinct ordinary associated family for every `A`
+— including `A = T`: shape coincidence (both `T ref × T -> unit`) is never
+family identity, because the field family's target operation is
+`field(receiver, name)` while the universal family's is `Target(receiver)`;
+selector entry and family identity are normative in
+`type-associated-function-objects-and-access-trees.md`. Assignment carries no `extend`-specific validation, but
 that is not the same as carrying no validation. A pure `extend` in the right
 side already discharged `Open ∧ ParentToChild ∧ NoPatternConflict`. The
 place-level `inject` wrapper performs that check before its own write.
@@ -2724,13 +2741,18 @@ being resolved by generation order.
 Where the field policy permits mutation, the same generator also contributes
 field write candidates shaped `T ref × A`. They form a field-specific setter
 family `FieldWriteFamily(T, name, A) ⊆ Candidates(=::adl)` — an ordinary
-associated family reachable through the same `.=` entrance, and **not** the
-universal `AssignmentFamily(T)` (whose domain is `T ref × T`; canonical §4.5.1).
+associated family reachable through the same `.=` entrance, and **never** the
+universal `AssignmentFamily(T)` (whose domain is `T ref × T`): for every `A`,
+`FieldWriteFamily(T, name, A) ≠ AssignmentFamily(T)`; at `A = T` the two have
+coincident formal shape only, never coincident family identity (canonical
+field-side rules: `type-associated-function-objects-and-access-trees.md`).
 Field write, accessor, and policy cells are all registered under the stable
 call-site family identity `StructuralFamily(T, name, A)` =
-`StableFamilyId(Q_T, name, StructuralDefault)` that P-internal extraction
-filters on (§7.5 family registration is normative in
-`type-associated-function-objects-and-access-trees.md`). Assignment still uses
+`StableFamilyId(CoreAnchor(Q_T), name, StructuralDefault)` that P-internal
+extraction filters on; the identity key is the stable core anchor
+(§2.1), not the whole `Q` snapshot. Family registration and the stability
+theorem are normative in
+`type-associated-function-objects-and-access-trees.md`. Assignment still uses
 the general existing-place write rule and never creates the field. Written
 `const let` / unqualified `let` / `mut let` field policy selects the admitted
 value, shared, mutable, and assignment cells of this ordinary overload
