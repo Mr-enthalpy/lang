@@ -1410,8 +1410,9 @@ in authority, not in result class:
 ordinary meta
         -> establishes and seals one navigable MetaInstanceRoot; returns τ
                      (DefaultMetaResult = τ)
-compile -> any declared ordinary PatternValue or complete type value tau;
-           root-conserving, with no root authority
+compile -> any declared ordinary semantic value across result classes
+           (PatternValue, complete type value tau, type ref/share borrow
+           instance); root-conserving, with no root authority
 privileged builtin
         -> follows its member-declared result and owner rules
 ```

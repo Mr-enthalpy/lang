@@ -295,10 +295,13 @@ The language wants exactly one invocation model. The same mechanism must serve:
 
 There is intentionally no second mechanism reserved for "compile-time code."
 Compile-time behavior uses the ordinary callable framework under either
-`compile` capability (computing a root-conserving `PatternValue` with no root
-authority of the compile coordinate itself) or ordinary `meta` capability
-(computing a `PatternValue` and establishing a navigable `M`). A privileged
-builtin instead follows only its member-specific owner rule. Policy and
+`compile` capability (computing an ordinary semantic value across result
+classes, root-conserving, with no root authority of the compile coordinate
+itself) or ordinary `meta` capability (computing the default complete type
+value `τ`, or another explicitly declared result, and establishing a
+navigable `M`). A privileged
+builtin instead follows its member-specific declared result and owner rule.
+Policy and
 partial/strict demand determine whether
 the callable may execute or residualize; they do not merge the two capabilities.
 
@@ -562,26 +565,38 @@ MetaStrictContext
 ### 4.1 Invocation layer: capability-directed results
 
 The invocation layer evaluates or reduces a callable under policy and a demanded
-execution capability. A successful compile-time result is not merely a
-`TypeValueId`:
+execution capability. A successful result follows the callable's declared
+result class/rank; it is not a single fixed carrier and in particular is not
+merely a `TypeValueId`:
 
 ```text
-compile callable -> PatternValue, construction-transparent, root-conserving,
-                    and with no root authority
+Result(F) follows F's declared result class/rank.
+
+compile callable
+                  -> any declared ordinary semantic value across result
+                     classes (ordinary PatternValue, complete type value τ,
+                     type ref/share borrow instance, ...),
+                     construction-transparent, root-conserving,
+                     and with no root authority
 ordinary meta callable
-                  -> τ (DefaultMetaResult = τ, not OnlyMetaResult = τ),
+                  -> τ by default (DefaultMetaResult = τ, not
+                     OnlyMetaResult = τ); an explicit declared result may
+                     be a symbol or another permitted result,
                      plus authority to establish and seal
                      one navigable MetaInstanceRoot M
 privileged builtin
-                  -> PatternValue, with only its member-specific owner rule
-runtime callable -> runtime value
+                  -> its member-specific declared result
+                     (e.g. struct -> τ), with only its member-specific
+                     owner rule
+runtime callable -> declared runtime result
 ```
 
 `PatternValue` includes ordinary compile-time values, `Symbol` constructor values, and
 structured pattern values; a complete type value `τ` is not itself an ordinary
-`PatternValue`/Object. A type value is not thereby an installed type
+`PatternValue`/Object, and a borrow instance is not a `PatternValue` merely to
+make the result table smaller. A type value is not thereby an installed type
 symbol. The `compile` / `meta` difference is world authority, not result class:
-there is no third class. The default meta result is a complete type value `τ`;
+there is no private `SymbolConstruction` result ontology. The default meta result is a complete type value `τ`;
 an explicit `f : … -> symbol` remains fully legal because `symbol : type` is
 an ordinary first-class type and `x : symbol` is an ordinary language value.
 The old design's problem was not favoring `symbol` but demoting `τ` to a
@@ -656,8 +671,10 @@ The public future boundary is conceptually:
 
 ```text
 InvocationResult =
-  | PatternValue(...)
-  | RuntimeValue(...)
+  | ordinary PatternValue (including a Symbol constructor value)
+  | complete type value τ
+  | type ref / type share borrow instance
+  | runtime value
   | Residual(expr, suspension_reason)
   | Diagnostic(error)
 ```
@@ -711,7 +728,9 @@ well-identified call; it does not defer candidate choice.
 
 ### 4.2 Expansion / binding layer
 
-After the invocation layer produces a `PatternValue`, the expansion / binding
+After the invocation layer produces an ordinary semantic result value (an
+ordinary `PatternValue`, a complete type value `τ`, a borrow instance, or a
+runtime value), the expansion / binding
 layer applies it to a build
 or declaration context. This includes:
 
@@ -736,7 +755,7 @@ permanent model.
 `IdentityType` proves graph-resolved invocation plumbing: it demonstrates that
 a prepared candidate can flow through the candidate preparation, key
 computation, cache lookup, and primitive reduction pipeline. It does **not**
-prove final `PatternValue` or meta-construction semantics.
+prove final ordinary-semantic-result or meta-construction semantics.
 
 ```text
 IdentityType proves:
@@ -748,7 +767,8 @@ IdentityType proves:
   canonical key computation and cache memoization.
 
 IdentityType does NOT prove:
-  PatternValue computation under compile capability;
+  ordinary-semantic-value computation under compile capability
+    (across result classes);
   meta root establishment and sealing under meta capability;
   MetaInstanceScopeId or returned type-role member self-root validation;
   rank-directed symbol/type/value parameter identity;
@@ -934,7 +954,10 @@ Neither class grants arbitrary token splicing or parser re-entry.
 A meta object may produce:
 
 ```text
-a pattern value with symbol/facet/pattern construction material
+an ordinary semantic result value across result classes:
+  an ordinary pattern value with symbol/facet/pattern construction material
+  a complete type value τ (the ordinary-meta default)
+  a type ref / type share borrow instance
 a residual expression
 a diagnostic
 ```
@@ -943,8 +966,10 @@ Graph deltas and member creation belong to the expansion/binding layer (§4.2),
 not the ordinary returned-value layer. Place-level `inject` writes one already
 existing type slot; it creates no member and installs no new root.
 
-A `compile` callable uses the same invocation framework but produces a
-`PatternValue`, not symbol construction. The distinction is an execution
+A `compile` callable uses the same invocation framework but produces an
+ordinary semantic value across result classes (an ordinary `PatternValue`, a
+complete type value `τ`, or a borrow instance), not symbol construction. The
+distinction is an execution
 capability/result-rank boundary, not a second parser or expression language.
 
 Both classes still participate in symbol-first lookup, function-object/type/
@@ -1011,8 +1036,9 @@ Current state:
   the full invocation model; they are bounded vertical slices.
 
 Not yet present are type-core `Core(τ)` projection / implementation caches,
-`PatternValue` as the single static
-result model, meta root establishment/sealing,
+the unified ordinary static result-class rule (`PatternValue`, complete type
+value `τ`, borrow instances) stated as one result-class-neutral model, meta
+root establishment/sealing,
 `ResolvedPatternScope`, final binding-independent `struct` owner resolution,
 pure `extend`, or place-level `inject`.
 
@@ -1128,7 +1154,9 @@ pattern, type-value, and meta-invocation machinery exists.
 2. Introduce type-core `Core(τ)` projection and typed value-member candidate lookup.
 3. Introduce ProductObject / ArgProductShape and normalized pattern /
    argument-shape objects, with implicit self kept out of product shape.
-4. Introduce PatternValue / TypeValueId identities and callable signature objects.
+4. Introduce the ordinary static result classes (PatternValue, complete type
+   value τ, borrow instances), TypeValueId identities, and callable signature
+   objects.
 5. Introduce the meta-construction carrier and rank-directed canonical instance
    keys.
 6. Carry canonical `Pv:Pp` through candidate qualification and every

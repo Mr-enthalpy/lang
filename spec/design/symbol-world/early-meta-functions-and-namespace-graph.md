@@ -539,15 +539,22 @@ and later compile/meta construction callables.
 The final boundary is sharper:
 
 ```text
-compile -> PatternValue, with root conservation and no root authority of its own
-ordinary meta -> symbol PatternValue, plus authority to establish and seal one
+compile -> any declared ordinary semantic value across result classes
+           (ordinary PatternValue, complete type value tau, type ref / type
+           share borrow instance, ...), with root conservation and no root
+           authority of its own
+ordinary meta -> the default complete type value τ (DefaultMetaResult = τ;
+                 an explicit declared result may be a symbol or another
+                 permitted result), plus authority to establish and seal one
                  navigable MetaInstanceRoot M
-privileged builtin -> PatternValue under its member-specific owner rule
+privileged builtin -> its member-specific declared result under its
+                      member-specific owner rule
 let binding / namespace contribution -> NamespaceDelta atomic install
 ```
 
-The `compile` / ordinary-`meta` authority difference remains within the ordinary
-PatternValue domain and introduces no construction class; see
+The `compile` / ordinary-`meta` difference is world authority, not result
+class: `compile` results may be ordinary PatternValues, complete type values
+`τ`, or borrow instances, none of which introduces a construction class; see
 [`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md)
 §4.1.
 
@@ -900,7 +907,7 @@ records the migration boundary:
 ```text
 restricted evaluator
   -> shared invocation frame and policy checks
-  -> PatternValue result class
+  -> ordinary semantic result across result classes
   -> outer binding/NamespaceDelta installation
 ```
 
@@ -923,7 +930,7 @@ resolve callee
   -> RawArgShape / ParameterShape
   -> rank-directed Symbol / TypeValueId / PatternValue classification
   -> policy body-entry check
-  -> PatternValue
+  -> ordinary semantic result across result classes
   -> binding-layer installation adapter
   -> NamespaceDelta atomic install
 ```

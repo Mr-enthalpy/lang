@@ -1159,9 +1159,12 @@ let id = (self, t: type): compile -> r: type => {
 };
 ```
 
-This compile body computes a declared ordinary `PatternValue`. An ordinary meta
-body specifically computes and returns the Symbol of its rooted and sealed
-`MetaInstance`; arbitrary PatternValue results belong to compile, while
+This compile body computes a declared ordinary semantic value (here an
+ordinary `PatternValue`; a compile callable may equally return a complete type
+value `τ` or a `type ref` / `type share` borrow instance). An ordinary meta
+body specifically computes the default complete type value `τ` of its rooted
+and sealed `MetaInstance` (`DefaultMetaResult = τ`; an explicitly declared
+`symbol` result is legal), while
 privileged builtins declare their own result Pattern. For example:
 
 ```lang
