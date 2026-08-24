@@ -375,8 +375,8 @@ The identity-preserving external namespace projection used after lookup crosses
 a package boundary. It requires export-retention admission, public reachability
 through every access-path component, and a resolved candidate view. Every
 candidate of an admitted symbol preserves its identity, `Pv:Pp`, and
-`PolicyMode`; consumer capability/Policy checks happen only after this stable
-lookup.
+`PolicyMode`; consumer Policy selection and dynamic-legality checks happen only
+after this stable lookup.
 
 _See also: FullNameView, PackageBoundary, Mount._
 
@@ -764,23 +764,24 @@ three-point Policy preference order: selecting `mut` may still select a
 `delete` member, and `mut` on a non-reference object does not universally imply
 writability. Realization is a stable declaration/intrinsic candidate-family
 fact and may be retained in a namespace candidate snapshot. It is distinct
-from `DynamicCapability_Γ`, which is formed in a concrete consumer context from
-the operation, place, lifetime, access, and authority facts and is never stored
-in `Σ_export`.
+from `DynamicLegality_Γ`, which is formed for the selected invocation in a
+concrete consumer context and is never stored in `Σ_export`.
 
-_See also: PolicyMode, DynamicCapability_Γ, Borrow view._
+_See also: PolicyMode, DynamicLegality_Γ, Borrow view._
 
 ---
 
-## DynamicCapability_Γ
+## DynamicLegality_Γ
 
-The operation-specific applicability or legality fact formed in one consumer
-context `Γ`. It may depend on the requested operation, place state, lifetime,
-access, and construction authority. It is not declaration metadata, is not a
-3×3 default/delete/custom realization cell, and must never be copied from an
-internal observation edge into `Σ_export`. External lookup first returns the
-stable candidate snapshot; the consumer then forms its own
-`DynamicCapability_Γ_consumer`.
+The legality judgment formed for one already selected invocation in consumer
+context `Γ`. It may depend on required capabilities, current writability,
+lifetime, access, escape, `OpenHere`, and construction authority. These are
+premises of legality, not a second 3×3 capability-realization layer. The
+judgment is not declaration metadata and must never be copied from an internal
+observation edge into `Σ_export`. External lookup returns the stable candidate
+snapshot; ordinary Policy/realization selection chooses the invocation; the
+consumer then forms `DynamicLegality_Γ_consumer`. Failure rejects that selected
+invocation without reopening candidate lookup or Policy maxima.
 
 _See also: CapabilityRealization, Namespace Symbol Views._
 
@@ -1399,8 +1400,11 @@ semantic construction that produced the name unless an explicit `origin=None`
 terminates it; omission is not `None`. Exclusive-write borrow roots are
 anonymous and pairwise distinct. All shared-read borrow roots default to the
 same anonymous `G_shared`; a finite Pre patch changes only the relations it
-states. Accessible borrow subnames belong to the default name tree. The
-exclusive/shared root rules specialize function-entry borrows; they do not make
+states. The borrow name tree mirrors exactly the subname edges already admitted
+by the established access relation. Structural membership alone grants neither
+lifetime-name reachability nor access capability, and the lifetime default
+synthesizes no alias-write/internal-mutability edge. The exclusive/shared root
+rules specialize function-entry borrows; they do not make
 ordinary non-borrow values origin-free by default.
 
 Moving a nontrivial value uses one boundary `k`: the old first-level Region is
@@ -2334,9 +2338,9 @@ path.
 Within each admitted full overload set, every resolved candidate enters the
 stable external view with the same identity, pair, mode, declaration/intrinsic
 realization facts, and provenance. It carries no context-indexed dynamic
-capability. A later concrete consumer forms `DynamicCapability_Γ_consumer` and
-applies ordinary capability-family and Policy checks without changing namespace
-membership.
+legality judgment. A later concrete consumer applies ordinary Policy and
+capability-realization selection, then forms `DynamicLegality_Γ_consumer` for
+the selected invocation without changing namespace membership.
 Publicly reachable export-retention-closure ancestors and descendants receive this
 projection even when they are not export roots. World membership does not
 imply export, and export does not imply that the binding itself was an export
@@ -2490,6 +2494,21 @@ or overload selection. Residual representation, effect sequencing, and
 continuation ABI remain open.
 
 _See also: Policy Binding, Policy Pair, Policy Transition._
+
+---
+
+## CallLocalPolicyClosure
+
+The rule that closes every call node before an unresolved outer candidate may
+influence it. A call's output-mode preference is formed before its own candidate
+maxima. It may use an already-formed, candidate-independent immediate-consumer
+demand; when none exists, the local default is `plain`. After unique selection,
+the call's concrete `ResultPolicyMode` is frozen. An outer call consumes that
+result as an ordinary actual and never reopens the inner call. Thus an outer
+formal PolicyMode Pattern cannot be assumed to select an inner call and then be
+used to decide the outer candidate; no cross-call fixed point exists.
+
+_See also: Policy Binding, PolicyMode, OverloadResolutionPipeline._
 
 ---
 

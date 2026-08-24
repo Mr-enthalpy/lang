@@ -687,6 +687,26 @@ There is no total score, exact-match count, parameter weighting,
 left-to-right lexicographic fallback,
 input-before-output preference, or independent conversion rank.
 
+Nested producer calls are closed before an unresolved outer candidate may
+contribute a formal-mode preference:
+
+```text
+CallLocalPolicyClosure:
+  output preference of c
+    = already-formed candidate-independent immediate-consumer demand
+      when one exists
+    = plain otherwise
+
+  select c once -> freeze ResultPolicyMode(c)
+  outer call consumes that concrete result as an ordinary actual
+  outer failure =/=> reopen c
+```
+
+An outer candidate's formal `PolicyMode` Pattern therefore cannot be assumed in
+order to choose a nested actual and then reused to decide whether that outer
+candidate should win. This rule adds no cross-call fixed point or conversion
+rank.
+
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.
@@ -1025,13 +1045,13 @@ Only candidates surviving declaration-side policy enter ordinary preference
 filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
-  phase-local stage specificity and const/mut positions; include target-result
+  phase-local stage specificity and whole-slot PolicyMode positions; include target-result
   policy only when the context supplies one. For an authorized atomic
   runtime-migration call, add input/output endpoint Policy fit as two product
   coordinates. Without those coordinates, this is exactly old Bp.
   Each parameter position is taken from its elaborated formal policy Pattern:
-  the callable P2 is inherited first, then an optional `const let` / `mut let`
-  slice supplies `Const` / `Mut`; omission supplies `Unspecified`. This carrier
+  the callable P2 pair is inherited first, then the written whole-slot mode
+  supplies `const` or `mut`; unwritten mode supplies the concrete `plain`. This carrier
   is part of the externally compared candidate, not merely the body-entry
   environment.
 - **B1 Entry preference**: apply any configured entry preference.

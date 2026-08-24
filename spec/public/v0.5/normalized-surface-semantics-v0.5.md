@@ -873,14 +873,16 @@ admits only the graph-retention dimension; external exposure additionally
 requires every path component to be publicly reachable. A private child and
 public descendants behind it therefore remain internal even inside the
 retention closure. All resolved candidates of an admitted symbol remain in that
-stable external view; a concrete consumer's capability and Policy checks occur
-after lookup and are not a normalization rule. In particular,
+stable external view; a concrete consumer's Policy selection and legality
+checks on the selected invocation occur after lookup and are not a normalization
+rule. In particular,
 normalization does not project external values to `const`, erase a mode on
 `absent:Pp`, or infer capture mode from export.
 
 Automatic capture and call resolution may later touch the same problem
-domain—symbol identity, stable visibility, and consumer capability—but this does
-not prescribe pass ordering, data flow, or an implementation dependency.
+domain—symbol identity, stable visibility, and post-selection legality
+requirements—but this does not prescribe pass ordering, data flow, or an
+implementation dependency.
 
 Explicit and automatic capture remain distinct even when they resolve to the
 same source symbol. Explicit capture may rename, project policy, use a complex

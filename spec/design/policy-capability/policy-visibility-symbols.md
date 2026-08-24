@@ -30,7 +30,8 @@ P1 has three contextual elaborators:
 
 ```text
 ordinary binding P1          -> identity-preserving slice restriction
-formal parameter policy      -> inherit P2, then optional const/mut-only pattern slice
+formal parameter policy      -> inherit P2 pair, then elaborate one whole-slot
+                                PolicyMode Pattern; unwritten mode is plain
 namespace declaration policy -> visibility plus optional export-root
 ```
 
@@ -73,7 +74,7 @@ elaborates directly to the real `plain` point; an explicit
 declaration P1 may crop it. Namespace
 declaration elaboration does not crop this complete internal view merely
 because the declaration is exported. Stable external admission is determined
-by export retention plus public path visibility; later consumer capability
+by export retention plus public path visibility; later consumer dynamic-legality
 checks do not rewrite namespace membership or the internal mode to `const`.
 
 Formal elaboration has two consumers of the same result: the entered callable
@@ -183,11 +184,12 @@ descendants—every resolved candidate is transformed into an identity-preservin
 `ExportCandidateView` whose external policy is another complete `PolicyPair`
 plus its unchanged `PolicyMode`. The Pattern component and stable candidate/
 family `CapabilityRealization` facts are preserved; no context-indexed dynamic
-capability is stored.
-No later call/read/capture capability filters this stable `Σ_export`.
-Consumer-specific capability-family applicability and Policy demand are checked
-after lookup, where the consumer forms `DynamicCapability_Γ_consumer` from its
-operation, place, lifetime, and authority facts. `absent:Pp` is not
+legality judgment is stored.
+No later call/read/capture legality check filters this stable `Σ_export`.
+Consumer Policy demand and capability-family realization are handled after
+lookup by ordinary selection; the consumer then forms
+`DynamicLegality_Γ_consumer` for the selected invocation from its place,
+lifetime, access, escape, and authority facts. `absent:Pp` is not
 special-cased by mode. The generic policy parser and function-object stage
 lifting do not perform these operations.
 

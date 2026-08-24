@@ -155,8 +155,8 @@ Resolved future-design decisions:
   `[val, ...]`.
 - A function-object binding with no written mode is `plain`. Export preserves
   the complete internal `Pv:Pp` and `PolicyMode`; stable external admission
-  uses export retention plus public path visibility, while consumer capability
-  and Policy checks occur after lookup. `Pv = absent` removes
+  uses export retention plus public path visibility, while consumer Policy
+  selection and dynamic-legality checks occur after lookup. `Pv = absent` removes
   value stages and `SemanticValueId`, but does not erase the whole-slot mode.
   The former universal const-projection rule and the equation
   `plain = const || mut` are closed as retired semantics; current flat and
@@ -197,8 +197,8 @@ Resolved future-design decisions:
   or layout declarations. In-place candidates are preferred over otherwise tied
   non-in-place candidates after first-order-over-instantiated preference.
 - Internal explicit navigation searches `Σ_full`; external explicit navigation
-  searches stable `Σ_export`; a later consumer checks its requested capability
-  and Policy demand;
+  searches stable `Σ_export`; a later consumer applies its Policy demand and
+  checks dynamic legality of the selected invocation;
   neither is a Wpre/Wseal membership query. Automatic capture and call
   resolution share a problem domain around symbol identity and the stable
   external view, without implying pass ordering,
@@ -222,7 +222,7 @@ Implemented substrate after this correction:
   PolicyPair }` transformation, and phase/const-mut product-order test
   substrate. These current Rust carriers do not yet implement canonical
   `ResolvedCandidateSnapshot`, whole-slot mode/realization retention, or
-  consumer-context `DynamicCapability_Γ`; they remain the explicitly bounded
+  consumer-context `DynamicLegality_Γ`; they remain the explicitly bounded
   const-projected 2×2 adapter. The direct declaration `external_projection`
   remains a root-local `P1Projection` preview. External admission requires both
   symbol-level export-retention-closure membership and public path
@@ -316,7 +316,7 @@ Not implemented after this correction:
 The implementation work is intentionally split into three follow-up packages:
 
 1. **Policy carrier and 3×3 tests:** add first-class whole-slot `PolicyMode`,
-   stable export admission/projection, later consumer capability checks, all
+   stable export admission/projection, later selected-invocation dynamic-legality checks, all
    nine capability coordinates, plain ambiguity, and asymmetric
    default/delete/custom fixtures without changing resolver retry rules.
 2. **Abstract literals and materialization:** add exact `integer`/`real`

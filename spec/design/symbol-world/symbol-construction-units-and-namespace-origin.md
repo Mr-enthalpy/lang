@@ -483,7 +483,7 @@ ExportCandidateView {
 ```
 
 The snapshot contains declaration/intrinsic candidate-family realization facts,
-not a context-indexed `DynamicCapability_Γ`. Its `internal_candidate` link is
+not a context-indexed `DynamicLegality_Γ`. Its `internal_candidate` link is
 identity/provenance, not an internal observation edge carried into the external
 consumer.
 
@@ -498,8 +498,8 @@ call/read/capture demand.
 For each admitted symbol, canonical semantics preserve candidate identity,
 resolved `PolicyPair`, whole-slot `PolicyMode`, declaration/intrinsic
 `CapabilityRealization` facts, and provenance. Consumer Policy demand and
-`DynamicCapability_Γ_consumer` are formed after lookup and do not universally
-project mode to const. The
+`DynamicLegality_Γ_consumer` are formed after lookup and ordinary invocation
+selection and do not universally project mode to const. The
 currently connected helper still admits candidates
 through a const-projected 2×2 compatibility carrier. That is an implementation
 subset only, not export semantics.

@@ -653,13 +653,21 @@ Product |> Expr
 9. Form fully admissible set A using all hard checks, including receiver and
    parameter pair compatibility, P2 result compatibility with any target
    expectation, stage legality, and require legality
-10. Export every elaborated formal const/mut Pattern to its candidate position,
+10. Export every elaborated formal PolicyMode Pattern to its candidate position,
     apply PolicyMode product-maximal filtering and the remaining fixed-order
     preference filters, including in-place over non-in-place after the
     first-order-over-instantiated filter, then named strategy rules and the
     must-select check
 11. Enter the unique selected invocation or defer according to demand
 ```
+
+Every nested producer actual is closed under the canonical
+`CallLocalPolicyClosure` before an unresolved candidate of the current outer
+call can influence it. A nested call uses an already-formed,
+candidate-independent immediate-consumer output demand when one exists;
+otherwise it uses local `plain`. Its selected concrete result mode is then an
+ordinary actual fact for this pipeline. Outer ambiguity or failure never
+reopens the nested producer.
 
 A derived compile companion is a complete `Val2` function object with stable
 origin, its own type, and its own associated static `()`. For origin result

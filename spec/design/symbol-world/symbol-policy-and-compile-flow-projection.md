@@ -36,27 +36,47 @@ Policy is not a component of the object. It belongs to a complete slot/view
 edge between a context and an object:
 
 ```text
-View_Γ(slot, x, operation)
-  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot),
-       DynamicCapability_Γ(slot, x, operation) ⟩
+PolicyView_Γ(slot, x)
+  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot) ⟩
 ```
 
-Two capability layers must not be collapsed:
+Policy preference, capability realization, and dynamic legality must not be
+collapsed:
 
 ```text
 CapabilityRealization(candidate, family, input_mode, output_mode)
   ∈ { absent, default, delete, custom }
   // stable declaration/intrinsic fact of the candidate and associated family
 
-DynamicCapability_Γ(candidate, operation, place, lifetime, authority)
-  // consumer-context applicability/legality fact
+DynamicLegality_Γ(
+  selected_invocation,
+  place_state,
+  lifetime_state,
+  authority_state,
+  ...)
+  // consumer-context legality of the already selected invocation
 ```
 
 `CapabilityRealization` is stable candidate/family metadata. It records how a
 3×3 cell is realized and may therefore be retained with a candidate snapshot.
-`DynamicCapability_Γ` is formed only in the current consumer context; it may
-depend on place state, lifetime, construction authority, access, and the
-requested operation. It is never frozen into a namespace export snapshot.
+`DynamicLegality_Γ` is formed only for the selected invocation in the current
+consumer context. Place writability, lifetime validity, construction authority,
+access, escape, and `OpenHere` are premises of that legality judgment rather
+than a second capability-realization layer. It is never frozen into a namespace
+export snapshot:
+
+```text
+DynamicLegality_Γ(inv)
+  iff RequiredCapabilityExists(inv)
+  and (RequiresWrite(inv) => Writable_Γ(Target(inv)))
+  and LifetimeLegal_Γ(inv)
+  and AuthorityLegal_Γ(inv)
+  and (OpenSensitive(inv) => OpenHere_Σ(OldTarget(inv)))
+  and EscapeLegal_Γ(inv)
+```
+
+Failure of `DynamicLegality_Γ` rejects that selected invocation and never
+reopens ordinary candidate lookup or Policy maxima.
 
 The same object observed from two contexts is one object with two views. The
 policy of a result is always a pair:
@@ -665,9 +685,46 @@ let y = x copy
 ```
 
 There is no `x move; CopyConstruct(x); move` sequence and no implicit Policy
-conversion. Each nested call closes locally as producer selection, concrete
-result, and then outer consumption/transfer; no cross-call fixed point is
-introduced.
+conversion. Nested calls obey an explicit local-closure theorem:
+
+```text
+CallLocalPolicyClosure:
+
+For every call node c:
+  1. delta_out(c) is formed before the candidate maxima of c.
+
+  2. delta_out(c) may depend only on an already-formed,
+     candidate-independent immediate-consumer demand.
+     It may not depend on an unresolved outer candidate or one of that
+     candidate's formal PolicyMode Patterns.
+
+  3. if no candidate-independent immediate output demand exists,
+     delta_out(c) = plain.
+
+  4. after c is uniquely selected,
+     ResultPolicyMode(c) = mu_c is frozen.
+
+  5. an outer call consumes c as an ordinary actual carrying mu_c
+     and never reopens c.
+```
+
+Thus every nested call closes locally as producer selection, concrete result,
+and then outer consumption/transfer; no cross-call fixed point is introduced.
+Using schematic call notation only (not source syntax):
+
+```text
+let x = g(f())
+
+f()
+  -> no candidate-independent outer-formal demand is available
+  -> resolve locally under plain
+  -> freeze produced mode mu_f
+
+g(f())
+  -> consume the f result as an ordinary actual carrying mu_f
+  -> use the binding's already-formed plain output demand
+  -> resolve g without reopening f
+```
 
 Concretely:
 
@@ -860,8 +917,8 @@ elaboration derives a separate stable external candidate snapshot; it does not
 crop the namespace's complete internal declaration view. Export admission is
 determined by retention plus public reachability, not by a universal const
 projection and not by a future consumer's Policy demand or
-`DynamicCapability_Γ`. Consumer capability is formed only after external
-lookup.
+`DynamicLegality_Γ`. Consumer legality is formed only after external lookup and
+ordinary invocation selection.
 
 Absence removes the complete value subspace of *this observation edge* rather
 than merely selecting a presence tag:
@@ -1499,8 +1556,8 @@ candidate identity, `Pv:Pp`, and `PolicyMode` without selecting an overload.
 
 No PolicyMode is universally safe for a later operation. Stable
 default/delete/custom `CapabilityRealization` facts may accompany a candidate,
-but a concrete consumer forms `DynamicCapability_Γ_consumer` only after lookup
-from `Σ_export`. Neither
+but a concrete consumer forms `DynamicLegality_Γ_consumer` only after lookup
+from `Σ_export` and ordinary selection. Neither
 `const <= mut` nor the retired universal form
 `ExternalView = Project_const(InternalView)` is a foundation theorem.
 
@@ -1574,10 +1631,10 @@ if admission.in_export_retention_closure && admission.publicly_reachable:
 ```
 
 `ExportSnapshotOf` preserves candidate identity, pair, mode, declaration/
-intrinsic realization facts, and provenance. It has no
-`DynamicCapability_Γ_internal` field to copy. Equality here is equality of
-stable candidate facts, not equality of internal and consumer-context
-observation edges.
+intrinsic realization facts, and provenance. It carries no
+`DynamicLegality_Γ` judgment: no such judgment exists before a consumer has
+selected an invocation. Equality here is equality of stable candidate facts,
+not equality of internal and consumer-context observation edges.
 
 Export-retention-closure membership and public path reachability are separate
 symbol/name-level facts; both are required before a symbol contributes to
@@ -1598,9 +1655,10 @@ ordinary sequence:
 ```text
 candidate from Σ_export
   -> CallSitePolicyDemandFormation
-  -> select ordinary candidate/family CapabilityRealization
-  -> form DynamicCapability_Γ_consumer for the requested operation
-  -> ordinary Policy overload / legality
+  -> ordinary Policy overload and CapabilityRealization selection
+  -> unique executable selected invocation (or typed delete rejection)
+  -> form DynamicLegality_Γ_consumer for the selected invocation
+  -> accept or reject without reopening the candidate set
 ```
 
 Const, plain, and mut coordinates may be independently defaulted, deleted, or
@@ -1621,7 +1679,8 @@ legacy `NoExternallyEligibleCandidate` failure name describes that narrower
 adapter only. Before end-to-end external resolver integration, a symbol-level
 diagnostic carrier must preserve admission facts and distinguish an unresolved
 name, a name outside the export-retention closure, and a private path; ordinary
-consumer capability/policy failure occurs only after stable external lookup.
+consumer Policy-selection or dynamic-legality failure occurs only after stable
+external lookup.
 
 ### 9.3 Public/private
 

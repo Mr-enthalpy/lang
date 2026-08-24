@@ -411,7 +411,16 @@ DefaultOriginUniverse:
   only the relations it states
 
   borrow name tree
-    -> covers accessible structural subnames by default
+    -> mirrors exactly the subname edges already admitted by
+       the established access relation
+
+  structural membership alone
+    =/=> lifetime-name reachability
+    =/=> access capability
+
+  no alias-write/internal-mutability edge is synthesized here;
+  when the independent access relation admits no such edge,
+  the mirrored alias-write subtree is empty
 
   unmentioned origin ancestry
     -> continue the applicable semantic default generator
