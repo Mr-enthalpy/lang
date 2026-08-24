@@ -899,11 +899,12 @@ constructors (`PrivilegedActualPlace(ref-family)` /
 privilege. Explicit higher-level selection uses
 `t |> (type ref)` / `t |> (type share)`. Borrow-constructor composition
 preserves its resident target, but that is not a `@` overlap. The semantic core
-now closes `SemanticContinuation`, `LifeName`, `LifetimeValue`, `NameView<T>`,
-`origin`, gapless half-open `Region`, use/move/drop generations, cleanup-before-
-lifetime, Pre/Post summaries, pairwise-distinct exclusive-write and same-root
-shared-read defaults plus finite Pre patch, exact move-origin preservation,
-selected CopyConstruct lifecycle posts, and finite/monotone Color relations.
+now closes `SemanticContinuation`, `LifeName`, first-class ordinary
+`LifetimeValue`, `NameView<T>`, `origin`, gapless half-open `Region`,
+use/move/drop generations, cleanup-before-lifetime, Pre/Post summaries,
+pairwise-distinct exclusive-write and same-root shared-read defaults plus finite
+Pre patch, exact move-origin preservation, selected CopyConstruct lifecycle
+posts, and finite/monotone Color relations.
 Concrete IR carriers, summary compression, and the checker remain
 unimplemented.
 
@@ -1386,8 +1387,18 @@ generated name for a temporary. `LifetimeValue` is the semantic result/value of
 reifying that name at `Pos(SemanticContinuation)`. `NameView<T>` is the typed
 observation that carries a `LifeName`, its half-open `Region=[i,j)`, and an
 `origin` relation for a value of `T`; it is neither a borrow view nor a place
-handle. This semantic-value wording does not decide whether arbitrary source
-storage of `LifetimeValue` is exposed.
+handle.
+
+`LifetimeValue` is an ordinary first-class semantic value. It may be bound,
+stored in an ordinary value slot, passed, returned, and moved/copied wherever
+its ordinary Type, Policy, capability, lifecycle, and destination judgments
+admit those operations. It is not an ephemeral observation-only expression
+species. Transport preserves the value reified at its original continuation
+position and does not silently execute `@` again. First-class status does not
+imply runtime materializability: a same-Type static-to-runtime transition exists
+iff the ordinary `RuntimeMaterializable(T)` callspace rule supplies a
+non-deleted candidate. Compile-known and runtime-known observations do not form
+distinct `LifetimeValue` species.
 
 Every semantically name-projectable value operation has one unique name-level
 companion, and the projections commute: `@(f_V(x)) = f_N(x@)`. Companion
@@ -2528,10 +2539,13 @@ completed concrete Policy view. Parentheses close the boundary; an outer call
 consumes that view as an ordinary actual and cannot reopen the operand call.
 
 `PolicyLet` creates no hidden binding, place, or declaration. It is not an
-ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite. A
-Val2 action may realize value-side reconstruction after operand selection, but
-cannot create the preceding inward demand. The parser and Normalized AST
-preserve this node; the current build prototype does not yet execute its
+ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite.
+Existing accepted views require no value action. When reconstruction is
+required, outward satisfaction must carry an
+`OrdinaryPolicyTransitionWitness` supplied by the selected Type-callspace/Val2
+operation or by the mechanical transfer authorized for that demand kind. Such
+an action cannot create the preceding inward demand. The parser and Normalized
+AST preserve this node; the current build prototype does not yet execute its
 result-demand/cast semantics.
 
 _See also: ResultPolicyDemand, Policy Demand Satisfaction,

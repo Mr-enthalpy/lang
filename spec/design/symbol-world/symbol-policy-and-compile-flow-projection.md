@@ -776,8 +776,11 @@ create a hidden `NameBinding`, `Place`, or declaration.
 ```text
 PolicyCastNotDerivedFromValueCall:
 
-An ordinary value-side Val2 action may realize the value algebra associated
-with the outward satisfaction step.
+When outward satisfaction requires reconstruction, the result must carry an
+ordinary transition witness for the value algebra used by that step. The
+witness may be a selected Type-callspace/Val2 reconstruction or a
+language-prescribed mechanical transfer; it is not optional implementation
+magic.
 
 ordinary Val2 action =/> creates the inward ResultPolicyDemand
 ordinary Val2 action =/> replaces PolicyLet
@@ -1073,6 +1076,27 @@ SatisfyPolicyDemand(demand, result):
   Qr = RuntimeBranch(Q)
   consider one language-authorized atomic runtime migration toward Qr
 ```
+
+The result relation is closed by an explicit witness rule:
+
+```text
+SatisfyPolicyDemand(P, r) = r'
+iff
+  ExistingAcceptedView(P, r, r')
+or
+  (
+    NoExistingAcceptedView(P, r)
+    and exists c.
+      OrdinaryPolicyTransitionWitness(c, r, P, r')
+  )
+```
+
+`OrdinaryPolicyTransitionWitness` is the selected ordinary Type-callspace or
+Val2 reconstruction candidate, or the particular mechanical transfer already
+authorized by the demand kind. It is not a new transition resolver, and it
+does not authorize an arbitrary search across these families. The
+existing-first rule fixes which disjunct is reachable; once `c` is selected,
+its failure does not reopen the operand candidate set.
 
 For every demand kind:
 

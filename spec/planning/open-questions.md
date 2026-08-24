@@ -61,7 +61,7 @@ Still open after this correction:
   constructed Pattern. Bare `let f::U` is not the target place form.
 - Exact future implementation of borrow-view evaluation (`ref` / `share` /
   `rebind`) and of continuation-relative `@` name reification (yields
-  `LifetimeValue` without `PrivilegedActualPlace`), of the capability coercion `Coerce_{j->k}` behind
+  first-class ordinary `LifetimeValue` without `PrivilegedActualPlace`), of the capability coercion `Coerce_{j->k}` behind
   borrow-operator
   overlap, and of the escape check
   `Escapes(view, destination) = Region(destination) ⊄ ValidRegion(view)`.
@@ -323,8 +323,12 @@ Not implemented after this correction:
   integration, lifetime checking, and any extended Horae logic beyond the
   closed core.
 - Borrow-view evaluation (`ref` / `share` / `rebind`) and continuation-relative
-  `@` name reification (yields `LifetimeValue`) under policy projection, type
-  checking, and runtime IR.
+  `@` name reification under policy projection, type checking, and runtime IR.
+  The resulting `LifetimeValue` is already fixed as an ordinary first-class
+  semantic value: implementation must support ordinary binding, value-slot
+  storage, passing, return, and admitted move/copy without introducing an
+  ephemeral observation species. Same-Type runtime materialization remains
+  conditional on the ordinary non-deleted callspace transition.
 
 The implementation work is intentionally split into three follow-up packages:
 
@@ -346,8 +350,9 @@ The implementation work is intentionally split into three follow-up packages:
    pairwise-distinct exclusive-write and same-root shared-read defaults plus
    finite Pre patch, exact move-origin preservation, gapless half-open Region
    boundaries, selected CopyConstruct lifecycle posts, finite Color relations,
-   cleanup ordering, and Pre/Post summaries, then connect the checker without
-   allowing failure to reopen overload selection.
+   cleanup ordering, Pre/Post summaries, and first-class `LifetimeValue`
+   transport/return/storage through ordinary value machinery, then connect the
+   checker without allowing failure to reopen overload selection.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:

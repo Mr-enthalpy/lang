@@ -316,6 +316,58 @@ value identity. It is the semantic name whose lifecycle is observed. A bound
 value normally has a stable LifeName; a temporary may receive a generated one.
 This keeps place identity and lifecycle identity distinct.
 
+#### First-class `LifetimeValue`
+
+`ReifyLife` produces an ordinary first-class semantic value, not an ephemeral
+observation-only expression species:
+
+```text
+FirstClassLifetimeValuePrinciple:
+
+ReifyLife(n, k) : LifetimeValue
+
+LifetimeValue participates in the ordinary value formation machinery:
+  binding
+  storage in an ordinary value slot
+  argument passing
+  return
+  move/copy when admitted by its ordinary Type/callspace
+```
+
+Each use remains subject to the same Type, Policy, capability, lifecycle, and
+destination-legality judgments that apply to another value at that point.
+First-class therefore does not mean unrestricted storage, implicit copying, or
+automatic runtime availability. Binding or transporting `E@` carries the value
+already reified at `Pos(SemanticContinuation)`; it does not silently re-run `@`
+at the later destination and does not turn the destination into a hidden
+LifeName, Place, or borrow view.
+
+```text
+StageDoesNotChangeLifetimeValueOntology:
+
+TypeOf(ReifyLife(n, k)) = LifetimeValue
+  independent of the stage at which the value is known
+
+compile-known LifetimeValue
+  =/= a distinct CompileLifetimeValue species
+```
+
+Whether a `LifetimeValue` can make a same-Type static-to-runtime transition is
+therefore decided by the ordinary materialization theorem, not by first-class
+status and not by a lifetime special case:
+
+```text
+RuntimeMaterializable(LifetimeValue)
+iff exists an ordinary non-deleted callable realizing
+    a legal same-Type static -> runtime transition of LifetimeValue
+```
+
+This is the general `RuntimeMaterializable(T)` rule owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§4.1. Applying `@` is still not an automatic mechanical pass. Once `@` has
+produced a `LifetimeValue`, ordinary transport of that result uses the same
+admitted move/copy machinery as another value.
+
 #### 2.1.1 One semantic continuation
 
 All compile, runtime, meta, and lifetime activity is projected from one
@@ -768,8 +820,6 @@ Still genuinely open engineering questions, not closed by this document:
 - concrete Rust/IR identity for `LifeName`, event positions, generation ids,
   Region slices, lazy origin links, and summary compression;
 - concrete Color carrier and any future source syntax;
-- whether a `LifetimeValue` is generally storable or exposed only to bounded
-  compile-time observation;
 - diagnostics and caching identity for lifetime validation;
 - automatic mechanical move-vs-copy pass selection, concrete borrow/copy
   representation, closure ABI, and environment layout, which remain the
