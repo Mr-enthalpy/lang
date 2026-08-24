@@ -1289,9 +1289,11 @@ destination prospective ProjectionSlot under `(t |> (type ref))`. It does not re
 navigation, or make the destination symbol identical to the pattern owner.
 
 Literal syntax is the explicit exception only to source-path resolution. It
-still evaluates to a value and uses the same binding rule. In
-`let a = 'a';`, the left `a` is a binding name while the right `'a'` is a
-character literal; matching textual content does not make them the same object.
+still evaluates to a value and uses the same binding rule. In the schematic
+future spelling `let a = 'a';`, the left `a` is a binding name while the right
+`'a'` denotes a character literal; matching textual content does not make them
+the same object. The frozen lexer does not yet accept that character spelling
+(§4.1.3).
 Pattern values have no analogous standalone literal syntax, so same-spelled
 Symbol paths and pattern diagnostic names must be kept especially distinct.
 
@@ -1496,66 +1498,168 @@ Member creation is a place operation. Structural extension is different: it is
 the pure value transformation `extend`, while `inject` is the explicit
 read--extend--write wrapper defined in the symbol-first construction document.
 
-### 4.1 Atomic builtin types, concrete numeric types, and literal typing
+### 4.1 Abstract literal denotations and concrete machine types
 
-The literal spelling family, atomic builtin type, and concrete numeric type are
-distinct:
-
-```text
-LiteralFamily
-  = Integer | Float | String
-
-AtomicBuiltinType T
-  = Uint | Int | Float | Buffer | Str
-
-NumericTypeKey Tnum
-  = NumericFamily x width
-```
-
-A literal family records normalized syntax and is not a type identity. Each
-member of `AtomicBuiltinType` denotes an actual atomic builtin type whose
-identity, once installed, comes from its Type symbol; it is not merely a
-classifier invented by literal materialization. The Rust enum is a lookup key,
-not itself a `TypeValueId`.
-
-A concrete numeric key selects a type object such as `uint16` or `float32`.
-Current Rust code carries the first-order `TypeValueId` projection derived from
-the installed canonical core Type symbol. That projection is transitional
-material and does not claim final whole-snapshot type-value identity:
+Lexical family, semantic denotation type, and concrete machine-semantic type
+are three different layers:
 
 ```text
-literal spelling
-  -> LiteralFamily
-  -> contextual/default concrete Tnum selection
-  -> resolve canonical Type Symbol
-  -> project TypeValueId
-  -> materialize semantic value
+lexer/Normalized-AST carrier:
+  LiteralFamily = Integer | Float | String
+
+abstract semantic literal types:
+  integer | real | character
+
+implementation lookup carriers:
+  AtomicBuiltinType T
+    = Uint | Int | Float | Buffer | Str
+
+  NumericTypeKey Tnum
+    = NumericFamily x width
 ```
 
-The lexical frontend continues to preserve spelling only; it does not choose
-width, signedness, precision, or overflow behavior. The semantic selection
-step extends that result without changing lexer meaning. An unsuffixed default
-and range/context rules remain separate decisions.
+`LiteralFamily`, `AtomicBuiltinType`, and `NumericTypeKey` remain useful Rust
+and registry shapes, but none defines the initial source-language semantic
+type. The canonical semantic path is:
 
-Requiring a concrete `Tnum` for numeric literals does not imply that
-`uint`/`int`/`float` cease to be Type values. It means only that the numeric
-literal's final type is the selected concrete numeric Type rather than the
-atomic numeric family Type.
+```text
+token spelling
+  -> ParseLiteral
+  -> AbstractLiteralValue : integer | real | character
+  -> ordinary Convert/Construct to a concrete machine-semantic Type
+  -> optional same-Type Migrate/Materialize for another stage/policy view
+```
 
-The design target for a string literal is a compile-stage `str` value, not
-`str ref`, implicit storage, or a lifetime extension. That statement requires
-a `str` Type symbol and its first-order projection in the semantic world. The
-current core bootstrap installs `uint8`, `uint16`, `uint32`, and `float32`, but
-not `str`; the current helper can materialize a string only when its
-`AtomicBuiltinTypeRegistry` contains a resolved `str` projection. It must not
-accept an arbitrary numeric identifier as an implemented core `str` carrier.
+The frozen lexer continues to preserve spelling only. It does not choose
+width, signedness, precision, encoding, overflow behavior, or a machine type.
+Expected-type-driven insertion of the ordinary construction is a separate
+surface/diagnostic question; an expected `uint32` does not retroactively make
+`1` start with type `uint32`.
+
+#### 4.1.1 `integer`
+
+```text
+Denote(integer) = Z
+```
+
+Radix and digit separators affect parsing, not the semantic type:
+
+```text
+42
+0x2a
+0b101010
+  -> the same integer value 42
+```
+
+The leading minus sign remains ordinary prefix-operator material. `-1` applies
+unary minus to `1 : integer`; it is not a separate signed literal token/type.
+
+#### 4.1.2 `real`
+
+Every finite decimal or hexadecimal source real literal first receives an
+exact denotation:
+
+```text
+0.1      : real = 1/10
+0x1.8p1  : real = 3
+```
+
+`ParseLiteral` performs no binary32/binary64 rounding. The complete
+mathematical carrier of `real` remains extensible, but it must contain an exact
+representation for every finite source real literal. An exact rational-like
+carrier is sufficient for the current finite forms.
+
+#### 4.1.3 `character`
+
+`character` is an abstract source-character domain:
+
+```text
+character != char8
+character != char16
+character != char32
+```
+
+This section does not add a character token to the frozen v0.2 lexer. The final
+source spelling, escape rules, and whether the carrier is exactly the Unicode
+scalar-value set require a current/future surface amendment. Ranked strings
+remain separate and are not reinterpreted as character tokens.
+
+#### 4.1.4 Construct versus materialize
+
+The terminology boundary is normative:
+
+```text
+Convert / Construct
+  may change Type
+
+Migrate / Materialize
+  preserves Type
+  changes only stage/policy availability
+```
+
+For example:
+
+```text
+0.1 : real
+  -> Construct_float32
+  -> rounded float32 value
+
+float32@compile
+  -> Materialize_float32
+  -> float32@runtime with the same typed value semantics
+```
+
+Abstract literal types do not automatically materialize to runtime. A legal
+same-Type static-to-runtime edge exists exactly when an ordinary non-deleted
+callable realizes it:
+
+```text
+RuntimeMaterializable(T)
+iff exists ordinary non-deleted callable realizing
+    a legal same-Type static -> runtime transition of T
+```
+
+A normal integer path is therefore `integer@compile -> Construct_int32 ->
+int32@compile -> Materialize_int32 -> int32@runtime`, not an implicit
+`integer@runtime` identity rewrite.
+
+#### 4.1.5 Stage-invariant machine semantics
+
+Once a concrete Type fixes machine semantics, those semantics do not vary by
+stage:
+
+```text
+StageInvariantTypeSemantics
+
+[[op]]_T : T^n -> Outcome(T)
+Outcome = Value(v) | Error(e) | Trap(t) | ...
+```
+
+There is no separate `[[op]]_(T, stage)`. Compile evaluation of `float32` must
+apply the same per-operation rounding and outcomes as runtime `float32`;
+integer wrap/saturate/trap/checked behavior likewise belongs to the concrete
+Type or operation, not to compile/runtime stage.
+
+```text
+MaterializationPreservesTypedValue
+
+v : T
+--------------------------------
+[[Materialize_T(v)]]_T = [[v]]_T
+```
+
+The existing core bootstrap and helper remain a bounded implementation subset:
+`uint8`, `uint16`, `uint32`, and `float32` are installed concrete lookup
+targets, while `str` is not. `AtomicBuiltinTypeRegistry` and
+`NumericTypeRegistry` resolve those concrete targets only; they neither choose
+an abstract literal's identity nor implement contextual construction.
 
 ## 5. Borrow views
 
 There is no declaration form that makes two bindings share one Symbol identity
 or one place. Shared observation is expressed by the borrow constructors `ref`
-and `share`; the privileged place-observation `@` yields a lifetime value
-(`LifetimeVal`) and is not a borrow representation.
+and `share`; `@` reifies a `LifeName` at the current semantic-continuation
+position and is not a borrow representation.
 
 ### 5.1 `ref` and `share` are privileged actual-place builtins
 
