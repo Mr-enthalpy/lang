@@ -32,11 +32,12 @@ The object ontology is owned by
 `type-values-places-and-borrow-views.md`. This document owns what an *observer*
 sees of that object.
 
-Policy is not a component of the object. It belongs to the observation edge
-between a context and an object:
+Policy is not a component of the object. It belongs to a complete slot/view
+edge between a context and an object:
 
 ```text
-View_Γ(x) = ⟨ x, Pv:Pp, capability_Γ(x) ⟩
+View_Γ(slot, x)
+  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot), capability_Γ(slot, x) ⟩
 ```
 
 The same object observed from two contexts is one object with two views. The
@@ -53,7 +54,8 @@ There is no scalar replacement for this pair and no third policy slot. A
 result object carries its own `PolicyPair` when it re-enters the flow.
 
 The pair is an observation edge, but its two axes are constrained by whether the
-object actually has an independent value projection:
+object actually has an independent value projection. This constraint does not
+constrain the whole-slot PolicyMode coordinate:
 
 ```text
 Val1?(x) = null  =>  Pv = Pp
@@ -62,6 +64,9 @@ Pv != Pp  =>  Val1?(x) != null
           and runtime ∈ Stage(Pv)
 
 Pv = absent  does not imply  Val1?(x) = null
+
+PolicyMode_Γ(slot) ∈ { const, plain, mut }
+PolicyMode_Γ(slot) is independent of Val1?(x), Pv, and Pp
 ```
 
 The first rule does **not** say `Pv = absent`: a pure PatternValue still has one
@@ -72,34 +77,31 @@ does carry `Val1`. Object shape is therefore not inferred back from an
 observation, while an impossible two-policy split is not invented for a pure
 PatternValue.
 
-The old phrasing "`Pv = null` 时 `const`/`mut` 无意义" migrates to the current
-model as a theorem:
+The whole-slot separation is a semantic invariant:
 
 ```text
-NoIndependentValueMutabilityForPureObject:
+PolicyModeOrthogonalToObjectShape:
 
 Val1?(x) = null
-=>
-there is no independent value-mutability coordinate to vary
+  =/> PolicyMode_Γ(slot) = const
+  =/> PolicyMode_Γ(slot) = plain
+  =/> PolicyMode_Γ(slot) = mut
 ```
 
-This is not the obsolete `Pv = null` representation; the policy model now
-expresses the same fact as `Pv = Pp` (§1). The consequence is fixed at the
-semantic level: on a pure PatternValue, surface `const` / `mut` qualifiers
-**cannot create a semantic distinction** — they cannot produce two different
-semantic value views. Whether a surface front-end diagnoses such a qualifier
-as redundant or rejects it is a secondary, surface-level decision; the
-specification first fixes that no independent value-mutability coordinate
-exists to vary.
+`Pv = Pp` says only that the value-side and Pattern-side stage/exposure facts
+cannot split for a pure Object. It does not erase the PolicyMode of the binding,
+formal, argument, or result slot that carries that Object. The same pure value
+may therefore occupy const, plain, and mut slots without changing its Object
+identity or introducing a fourth Object component.
 
 Policy dimensions are typed and orthogonal:
 
 ```text
-stage                       meta / compile / seal / runtime
-value mutability            const / mut
-value presence              present / optional / absent
+pair/view stage              meta / compile / seal / runtime
+pair/view presence           present / optional / absent
+whole-slot PolicyMode        const / plain / mut
 ordinary namespace visibility public / private
-export-root attribute       yes / no
+export-root attribute        yes / no
 ```
 
 They are not members of one untyped atom bag. In particular, export-root and
@@ -131,17 +133,17 @@ theorem is:
 ```text
 PolicyDoesNotGrantCapability:
 
-Policy(actual) = mut
+PolicyMode(actual_slot) = mut
   !=>
 Writable(actual)
 
-Policy(actual) = const
+PolicyMode(actual_slot) = const
   !=>
 not Writable(underlying place)
 
 Writable(place)
   !=>
-Policy(view) = mut
+PolicyMode(view_slot) = mut
 ```
 
 `const let` / `let` / `mut let` on a formal parameter are first an overload
@@ -369,6 +371,13 @@ The parser is a strong-context parser. `meta`, `compile`, `seal`, `runtime`,
 spelling for `AbsentValuePattern` is provisional; implementation fixtures may
 use `S`, but source spelling is not frozen.
 
+Elaboration assigns atoms to typed coordinates. `const` and `mut` constrain the
+whole-slot PolicyMode pattern; they are not stored inside `Pv` or `Pp`.
+Unqualified `let` selects the concrete `plain` point and therefore needs no
+additional source atom. A written choice such as `const || mut` is a Pattern
+over two PolicyMode points, not the meaning of plain and not an omitted-mode
+default.
+
 ### 2.2 Algebra
 
 `||` selects alternatives within one dimension:
@@ -524,85 +533,80 @@ const/mut qualifiers remain in the fully admissible set and are compared only
 by the overload product order in section 12.
 
 Every written formal parameter first inherits the callable result pair `P2`
-without reinterpretation:
+without reinterpretation. Its whole-slot PolicyMode is then fixed by the
+binding spelling:
 
 ```text
 FormalBase(parameter) = P2(callable)
 ```
 
-Omitting the prefix preserves that pair exactly. Writing `const` or `mut`
-restricts only the value-mutability axis of the inherited pair:
+The three spellings select three actual PolicyMode points; plain is not an
+unspecified variable or an instruction to infer one of the other two:
 
 ```text
-let x        -> FormalPattern(P2, mutability = unspecified)
-const let x  -> FormalPattern(const + P2)
-mut let x    -> FormalPattern(mut + P2)
+let x        -> FormalPolicyView(P2, PolicyMode = plain)
+const let x  -> FormalPolicyView(P2, PolicyMode = const)
+mut let x    -> FormalPolicyView(P2, PolicyMode = mut)
 ```
 
 Stages, value presence, and the Pattern component remain byte-for-byte the
-inherited P2 dimensions; the qualifier may neither shrink nor widen them.
+inherited P2 dimensions; PolicyMode may neither shrink nor widen them.
 `public`, `private`, `export`, stage atoms, value absence, and an explicit pair
-are therefore invalid formal prefixes. If P2 already explicitly restricts its
-mutability domain, a contradictory formal qualifier is invalid rather than an
-expansion.
+are therefore invalid formal prefixes.
 
-The const/mut singleton above is a formal Pattern and preference input. It is
-not an ordinary P1 query applied to the actual argument. Consequently an
-oppositely qualified actual is not removed before the product order. Writing
-plain `let` supplies the previously named `unspecified` point. The three
-context-indexed relations are:
+The selected PolicyMode is a formal preference input. It is not an ordinary P1
+query applied to the actual argument. Consequently an oppositely qualified
+actual is not removed before the product order. The three context-indexed
+relations are:
 
 ```text
-succ_const: const > let > mut
-succ_mut:   mut > let > const
-succ_plain: let > const = mut
+succ_const: const > plain > mut
+succ_mut:   mut > plain > const
+succ_plain: plain > const = mut
 ```
 
 The equality in `succ_plain` is semantic: if the fully admissible set contains
-one `const` and one `mut` candidate but no plain `let` candidate, both are
+one `const` and one `mut` candidate but no `plain` candidate, both are
 co-maximal and selection is ambiguous. An implementation may not choose either
 one arbitrarily or use declaration order to break the tie.
 
-The elaborated formal pair is not body-local policy metadata. Candidate
-formation exports its written/inherited mutability Pattern into the callable's
-external parameter-policy position:
+The elaborated formal view is not body-local policy metadata. Candidate
+formation exports its whole-slot PolicyMode into the callable's parameter
+Policy product position:
 
 ```text
-FormalPolicyPattern(parameter)
+FormalPolicyMode(parameter)
   -> Candidate.parameter_policy[position]
   -> MaxPolicyProduct
 ```
 
-Thus the P2-derived restriction affects both the view available inside the
-callable body and comparison of this callable against other fully admissible
-overloads. “Inherit P2” must not be implemented by updating only the body
-environment while leaving the candidate externally `unspecified`.
+Thus P2 still governs the pair visible inside the body, while the whole-slot
+mode participates in comparison against other fully admissible overloads.
+Implementations must not collapse `plain` back into an unspecified carrier.
 
 #### 3.2.1 Return policy refinement inherits P1
 
-There is no independent `P3`, but a return position may refine the mutability
-coordinate inherited from the callable's declaration P1:
+There is no independent `P3`. A return position has the result slot's own
+PolicyMode alongside the pair projected by the callable's declaration P1:
 
 ```text
 ReturnBase(callable) = P1(callable)
-ReturnPolicy         = Refine_mutability(ReturnBase, written_qualifier)
+ReturnMode           = PolicyMode(return_slot)
 ```
 
-Omitting the qualifier preserves P1 exactly. A written `const` or `mut`
-restricts only the inherited value-mutability domain, symmetrically with the
-formal-parameter rule above:
+The written spelling selects the mode symmetrically with the formal-parameter
+rule while leaving P1's stage/exposure pair unchanged:
 
 ```text
-return let x        -> inherited P1
-return const let x  -> const refinement of P1
-return mut let x    -> mut refinement of P1
+return let x        -> inherited P1, PolicyMode = plain
+return const let x  -> inherited P1, PolicyMode = const
+return mut let x    -> inherited P1, PolicyMode = mut
 ```
 
-The refinement may not alter stage, value presence, Pattern policy, ordinary
-visibility, or export-root status. A qualifier contradictory to an already
-restricted P1 is invalid rather than an expansion. “No P3” therefore means that
-the return site has no third complete Policy vector; it does not prohibit this
-single-axis refinement of P1.
+The mode may not alter stage, value presence, Pattern policy, ordinary
+visibility, or export-root status. “No P3” therefore means that the return site
+has no third complete Policy vector; the independent result-slot mode does not
+create one.
 
 ### 3.3 Namespace declaration attributes
 
@@ -613,11 +617,9 @@ are not namespace declaration positions.
 
 `export` has the narrower placement rule described in section 9. Export
 elaboration derives a separate external view; it does not crop the namespace's
-complete internal declaration view. If the exported symbol has an independent
-runtime-value projection, that external view must have a non-empty `const`
-projection. A pure
-PatternValue has `Pv = Pp` and no independent runtime-value mutability
-obligation.
+complete internal declaration view. External eligibility is not a universal
+const projection. It is a separate judgment over resolved visibility,
+capability, and the consumer's Policy demand.
 
 Absence removes the complete value subspace of *this observation edge* rather
 than merely selecting a presence tag:
@@ -625,17 +627,16 @@ than merely selecting a presence tag:
 ```text
 Pv = absent
   => value stages = ∅
-  && value mutability = ∅
 ```
 
 This is a statement about the edge, not about the object behind it. Per §1,
 `Pv = absent` does not assert `Val1?(x) = null`; when `Val1?(x) = null`, the
 canonical unhidden observation instead has `Pv = Pp`.
 
-Consequently `const + S : compile`, `mut + S : compile`, and their `export`
-forms are invalid. The current flat `ValueComponentPolicy` Rust carrier is
-compatibility substrate rather than the final sum type, so P1 elaboration, P2
-normalization, and resolved export projection each validate this invariant.
+The current flat `ValueComponentPolicy` Rust carrier is compatibility substrate
+rather than the final semantic shape. It may continue to reject legacy
+value-side combinations with an absent value component, but that restriction
+does not erase the whole-slot PolicyMode.
 
 ### 3.4 Policy Demand Satisfaction: existing first, constructible second
 
@@ -756,12 +757,12 @@ output selected view:
 
 The compiler mandates only the selected-static-stage to runtime-stage edge.
 Pattern-policy capability does not migrate to runtime and may not be
-manufactured, and Type is unchanged. Other legal endpoint Policy coordinates
+manufactured, and Type is unchanged. The whole-slot input/output PolicyModes
 belong to the selected ordinary callable. In particular:
 
 ```text
-Pv.input.mutability
-Pv.output.mutability
+PolicyMode(input_slot)
+PolicyMode(output_slot)
 ```
 
 need not be equal. A callable may declare `const + compile -> mut + runtime`
@@ -772,15 +773,15 @@ removed by a hard Policy-domain intersection. They reuse ordinary
 actual-relative preference:
 
 ```text
-const actual/demand: const > let > mut
-mut actual/demand:   mut > let > const
-plain demand:        let > const = mut
+const actual/demand: const > plain > mut
+mut actual/demand:   mut > plain > const
+plain demand:        plain > const = mut
 ```
 
 Stage, presence, Pp capability, Type, and structural applicability remain hard
-endpoint conditions. Mutability is a preference coordinate, not a structural
+endpoint conditions. PolicyMode is a preference coordinate, not a structural
 repair and not a capability intersection. In the plain-demand row, equal
-maximal `const` and `mut` endpoints remain ambiguous when no `let` endpoint
+maximal `const` and `mut` endpoints remain ambiguous when no `plain` endpoint
 survives.
 
 `Pp` equality is about Policy capability; it is not an implementation license
@@ -1058,14 +1059,11 @@ For a declaration such as:
 let fn = () => { ... };
 ```
 
-the declaration supplies an empty value-mutability restriction. In the typed
-policy domain, empty here means the complete `const || mut` domain, not “no
-value” and not an unknown third qualifier. A written declaration P1 may crop
-that domain to `const` or `mut`. P2 mutability never propagates into the
-function object during stage lifting. Export is not an exception to this
-internal default. The function object's namespace-internal declaration view
-remains the written/unwritten full domain; only its separately derived external
-value view is const-projected.
+the destination binding has `PolicyMode = plain`. This is a concrete mode, not
+an empty `const || mut` domain and not an inference variable. An explicitly
+written `const let` or `mut let` selects the corresponding concrete mode. P2
+stage/exposure facts never manufacture or propagate a PolicyMode during stage
+lifting, and export does not silently replace the internal mode with const.
 
 ## 6. Three execution phases
 
@@ -1228,24 +1226,20 @@ construction level:
 export let name = expr;
 ```
 
-Let `InternalView(s) = Pv:Pp`. Export derives, rather than replaces, a second
-view:
+Let `InternalView(s) = ⟨Pv:Pp, μ⟩`, where `μ` is the resolved whole-slot
+PolicyMode. Export derives, rather than replaces, a second view:
 
 ```text
-if Pv = absent:
-  require value stages = ∅
-  require value mutability = ∅
-  ExternalView(s) = absent:Pp
+ExternalEligibility(candidate, authority, required_capability, policy_demand)
 
-if Pv is present/optional:
-  require Project_const(Pv) is non-empty
-  ExternalView(s) = Project_const(Pv):Pp
+ExternalEligibility(...) = admitted
+  => ExternalView(candidate) = resolved candidate view
 ```
 
-Thus an omitted mutability axis and `const || mut` are valid complete internal
-domains because both have a const projection. A `mut`-only value export is
-invalid. `export requires const` is only shorthand for this value-facet
-projection rule; it is not a claim about pure type/Pattern exports.
+No PolicyMode is universally export-safe. A concrete export mechanism may
+realize const/plain/mut cells through ordinary default/delete/custom capability
+members, but it must state that family explicitly. Neither `const <= mut` nor
+`ExternalView = Project_const(InternalView)` is a foundation theorem.
 
 It is forbidden in function/meta-function bodies, parameters, return slots,
 P2, Pattern interiors, expression policies, ordinary local P1, and any nested
@@ -1269,13 +1263,18 @@ declaration_projection: P1Projection
 
 RHS/result entries
   -> ApplyDeclarationProjection
-  -> ResolvedCandidatePolicy { pair: PolicyPair, provenance }
+  -> ResolvedCandidateView {
+       pair: PolicyPair,
+       mode: PolicyMode,
+       capability,
+       provenance
+     }
 ```
 
-Only the resolved pair can be projected into the external interface.
+Only the resolved complete view can enter the external-eligibility judgment.
 `P1Projection::Infer` is a valid declaration request, and
 `P1Projection::ValueDominant` does not yet carry the associated `Pp`; neither
-is an external candidate policy.
+is an external candidate view.
 
 The typed substrate therefore represents export as an identity-preserving
 candidate transformation:
@@ -1284,7 +1283,7 @@ candidate transformation:
 ExportCandidateView {
   identity,
   internal_candidate,
-  external_policy: PolicyPair
+  external_view: ResolvedCandidateView
 }
 
 ExportAdmission {
@@ -1293,8 +1292,13 @@ ExportAdmission {
 }
 
 if admission.in_export_retention_closure && admission.publicly_reachable:
-  internal_policy := ResolveCandidatePolicy(candidate)
-  external_policy := Project_const(internal_policy.Pv):internal_policy.Pp
+  internal_view := ResolveCandidateView(candidate)
+  require ExternalEligibility(
+      candidate,
+      admission,
+      required_capability,
+      policy_demand)
+  external_view := internal_view
 ```
 
 Export-retention-closure membership and public path reachability are separate
@@ -1309,15 +1313,11 @@ itself mean that the symbol is externally exported. `Σ_export` is the external
 candidate set.
 
 Admission does not arbitrarily select individual overloads. Within an admitted
-symbol's complete overload set, every candidate whose resolved pair has a
-const value projection enters `Σ_export`; a mut-only candidate remains in
-`Σ_full` but has no external candidate view. A pure PatternValue candidate has
-`Pv = Pp` and enters unchanged unless the observer explicitly hides its value
-axis.
-
-A direct source declaration that explicitly writes `export + mut` is still
-invalid at declaration elaboration. This direct-root error is distinct from
-filtering a mut-only member of an otherwise exported full overload set.
+symbol's complete overload set, each resolved candidate is checked against the
+same explicit external capability family and Policy demand. Const, plain, and
+mut candidates may therefore be independently defaulted, deleted, or given a
+custom realization. No candidate is included or excluded merely because its
+mode has a global safety ordering.
 
 Ancestors and descendants admitted by the final external-exposure check need
 not be export roots and may have used `P1Projection::Infer`; their resolved
@@ -1326,12 +1326,12 @@ candidate pairs are projected in exactly the same way.
 direct-root validation/preview; `None` on a non-root declaration does not mean
 that the eventual namespace export view lacks that declaration.
 
-The current typed set carrier omits a name when its external candidate subset
-is empty. That is sufficient to define `Σ_export`, but not to diagnose why no
-external candidate exists. Before end-to-end external resolver integration, a
-symbol-level diagnostic carrier must preserve admission facts and distinguish
-an unresolved name, a name outside the export-retention closure, a private
-path, and an admitted symbol with no const-projectable candidate.
+The current typed set carrier still implements a const-projected compatibility
+subset. It is implementation transport, not this source-semantic rule. Before
+end-to-end external resolver integration, a symbol-level diagnostic carrier
+must preserve admission facts and distinguish an unresolved name, a name
+outside the export-retention closure, a private path, and an admitted symbol
+with no eligible external candidate.
 
 ### 9.3 Public/private
 
@@ -1481,22 +1481,22 @@ Success requires exactly one maximal candidate. Failure can mean no exposed
 slice, no fully admissible entry, multiple incomparable maxima, a unique delete
 maximum, or an unfinished terminal SealStatic task.
 
-For each const/mut comparison position:
+For each whole-slot PolicyMode comparison position:
 
 ```text
-succ_const: const > let > mut
-succ_mut:   mut > let > const
-succ_plain: let > const = mut
+succ_const: const > plain > mut
+succ_mut:   mut > plain > const
+succ_plain: plain > const = mut
 ```
 
 This order is a *preference* among candidates that are already fully admissible.
 Being higher in the order never grants a capability, and being lower never
 removes one: the order chooses between existing candidates and does not decide
 whether a candidate exists. Nor does it propagate: the selected candidate's
-mutability qualifier describes that one observation edge and is not pushed into
-the argument's other members (§1.1). `const = mut` in `succ_plain` leaves two
-co-maximal candidates and therefore an ambiguity if no plain `let` candidate is
-available; it never means “pick either”.
+PolicyMode describes that one slot edge and is not pushed into the argument's
+other members (§1.1). `const = mut` in `succ_plain` leaves two co-maximal
+candidates and therefore an ambiguity if no `plain` candidate is available; it
+never means “pick either”.
 
 Multiple positions form a product partial order: `f` dominates `g` iff `f` is
 not worse at every participating position and is strictly better at at least
@@ -1504,6 +1504,23 @@ one. Crossed advantages remain incomparable. There is no score, exact-match
 count, parameter weighting, lexicographic order, input-before-output rule, or
 separate conversion rank. A result policy participates only when the call
 context supplies a target-result constraint.
+
+Preference and capability are separate relations. Any operation with input and
+output modes has an expressible 3×3 capability space:
+
+```text
+                  input
+              const   plain   mut
+output const    C<-C    C<-P    C<-M
+output plain    P<-C    P<-P    P<-M
+output mut      M<-C    M<-P    M<-M
+```
+
+Each cell may be realized by an ordinary `default`, `delete`, or custom member,
+or may be absent. A concrete family need not install all nine cells. In
+particular, a Policy preference may select a mut candidate whose requested
+operation is deleted or whose target is not writable; capability facts never
+flow backward into the Policy order.
 
 For the one compiler-inserted atomic runtime-migration call, its selected input
 and required output Policy endpoints add two coordinates to this same Bp
@@ -1575,11 +1592,11 @@ define a B6 strategy.
 Candidate Policy adaptation intersects typed Policy domains directly,
 including stage, Pp, and present/optional/absent alternatives; it does not
 fabricate a concrete `Some(value)` to reuse result-entry projection.
-Migration-candidate mutability is deliberately excluded from that hard
+Migration-candidate PolicyMode is deliberately excluded from that hard
 intersection and instead reuses ordinary actual-relative Bp preference. The
-bounded prototype treats a singleton selected/requested mutability as the
-actual comparison point; a non-singleton endpoint remains neutral until the
-final ordinary Bp carrier is integrated.
+bounded prototype still carries only singleton const/mut endpoints; that 2×2
+subset is transport evidence for the future 3×3 domain, not the source-semantic
+definition of PolicyMode.
 The current binding adapter is reached only after the complete ordinary
 projection is empty and the original query accepts runtime. It extracts a
 runtime-only target branch, skips absent entries, selects a pure-static source
