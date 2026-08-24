@@ -6,7 +6,7 @@ the first-order identity core: recursive normalization over the present
 type-core/`Val2` substrate with an opaque `Val1` leaf, `TypeValueId`, and
 per-carrier places. The complete `tau=<Q,V_τ>` snapshot and
 `Norm_type(tau)`, full recursive `Norm_Val1?`, the borrow-view operators (`ref`,
-`share`, `rebind`), the place-sensitive lifetime observation (`@`),
+`share`, `rebind`), continuation-relative lifetime name reification (`@`),
 construction-authority (`OpenHere_Σ` / `WindowLive_Σ`) judgment, and type checker
 remain unimplemented target semantics. §10 registers the implementation debt.**
 
@@ -837,8 +837,8 @@ snapshot transport / copy / extend / inject
 (`ref`/`share` over a type value are governed by §5: borrow constructors are
 privileged actual-place builtins and never implicitly degrade `tau` to `Q`.)
 
-`@` is not part of this classification: it is the privileged place-observation
-operation that yields a lifetime value (canonical owner
+`@` is not part of this classification: it is the continuation-relative
+name-reification operation that yields a lifetime value (canonical owner
 `../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2) and never a
 borrow or a `type ref`.
 
@@ -1549,6 +1549,9 @@ Radix and digit separators affect parsing, not the semantic type:
 0x2a
 0b101010
   -> the same integer value 42
+
+0xff
+  -> integer value 255
 ```
 
 The leading minus sign remains ordinary prefix-operator material. `-1` applies
@@ -1687,12 +1690,12 @@ borrow-forming member:  runtime || compile
          obtain PrivilegedActualPlace
 ```
 
-Only
-the selected borrow-forming defaults of `ref` / `share`, and the single `@`
-operation, may obtain the actual's place
-(`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`,
-`PrivilegedActualPlace(@-family)`; canonical owner
-`../lifetime/lifetime-policy-and-overload-boundary.md` §2). An ordinary user
+Only the selected borrow-forming defaults of `ref` / `share` may obtain the
+actual's place (`PrivilegedActualPlace(ref-family)` and
+`PrivilegedActualPlace(share-family)`; canonical owner
+`../lifetime/lifetime-policy-and-overload-boundary.md` §2). `@` does not use
+this acquisition path: it reifies a continuation-relative `LifeName`, including
+for temporaries. An ordinary user
 function that spells the same formal head cannot obtain that place.
 
 There is no global `E ref = Ref(Read(E))` law. The result depends on the
@@ -1732,9 +1735,10 @@ obtains the actual's place via its privilege (§5.1.0).
 The selected borrow-forming default of `ref` (or `share`) obtains the place of
 the actual — not a second place source derived from `Read(E)`. The old
 `ObjectPlace(value) ≠ CarrierPlace(E)` binary is retired: it existed only
-because `ref` was assumed unable to observe the actual place while `@` could,
-and that assumption no longer holds now that `ref` and `share` carry
-`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`.
+because `ref` was assumed unable to observe the actual place while the retired
+model assigned that privilege to `@`. The replacement gives `ref` and `share`
+`PrivilegedActualPlace(ref-family)` / `PrivilegedActualPlace(share-family)`;
+continuation-relative `@` does not acquire a place.
 
 ```text
 ordinary candidate preparation:
@@ -1881,7 +1885,7 @@ and `ref share`) remain valid (§5.3), as does the separately specified implicit
 The borrow-forming defaults inside the formed borrow type's callspace are not
 an ad hoc pair of builtins; they are generated instance families with a fixed
 policy matrix. The `ref` family has two input shapes (`T`, `T ref`), two
-member result-policies (`mut`, `const`), and three formal mutability patterns
+member result-policies (`mut`, `const`), and three formal PolicyMode patterns
 (`mut`, `const`, `plain`):
 
 ```text
@@ -2001,7 +2005,7 @@ t |> (type ref) is not a general PlaceOf(E) available on every expression
 ```
 
 The former carrier-borrow `@` group that yielded `type ref` is retired: `@` is
-a privileged place-observation operation that yields a lifetime value, never a
+a continuation-relative name-reification operation that yields a lifetime value, never a
 borrow view and never a `type ref`
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2.1). Reaching the
 carrier slot explicitly uses `t |> (type ref)` or `(S ref).type`.
@@ -2087,9 +2091,9 @@ rank(t ref/share rebind)       = rank(t)
 ```
 
 The former `@` fixed points (`type ref@ = type ref`, `type share@ = type share`)
-and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is a
-privileged place-observation operation that yields a lifetime value uniformly
-and is never a borrow constructor
+and the former value-instance rule `t@ = lifetime(t)` are retired: `@` is
+`ReifyLife(NameOf(actual), Pos(SemanticContinuation))`, yields a lifetime value
+uniformly, and is never a borrow constructor
 (`../lifetime/lifetime-policy-and-overload-boundary.md` §2.1). The old blanket
 equation “`@@` is identity on every borrow view” does not return.
 
@@ -2373,6 +2377,24 @@ Writable_Γ(q)           does not imply OpenHere_Σ(Read(q))
 OpenHere_Σ(v)           does not imply Writable_Γ(Carrier(v))
 CanCreateMember_Γ(p, n) does not follow from Writable_Γ(p) alone
 ```
+
+`PolicyMode` is equally orthogonal to object shape and operation capability:
+
+```text
+PolicyModeOrthogonalToObjectShape:
+  Val1(x) = absent does not determine PolicyMode(slot(x))
+  PolicyMode(slot(x)) does not alter Norm(x)
+
+default ref/write-family realization:
+  Write(const ref) = delete
+  Write(plain ref) = delete
+  Write(mut ref)   = default
+```
+
+The table is a theorem of the builtin ref/write family, not a Policy axiom.
+Another family may mark any 3×3 coordinate absent or realize it with
+`default`, `delete`, or `custom`. In particular `mut` selected for a non-ref
+object does not automatically make any place writable.
 
 A writable slot may contain a closed-window type value that can be replaced wholesale
 but cannot be structurally extended from. Conversely an open-window value may be
@@ -2722,7 +2744,7 @@ meaning.
   binding/install boundary. It uses this document's `SymbolId` / `PlaceId` /
   `TypeValueId` and place judgments.
 - `../lifetime/lifetime-policy-and-overload-boundary.md` — canonical owner of
-  `@` (privileged place observation yielding a lifetime value) and of
+  `@` (continuation-relative name reification yielding a lifetime value) and of
   `ref` / `share` borrow formation, plus escape checking. This document
   supplies only the `Origin`/`Value` split that `@` consumes.
 - `type-associated-function-objects-and-access-trees.md` — field functions,

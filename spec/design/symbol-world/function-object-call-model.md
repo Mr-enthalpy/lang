@@ -99,21 +99,23 @@ output: Type=T, value stage=runtime, Pp=S, presence=present
 ```
 
 Other legal endpoint Policy coordinates belong to the ordinary callable and
-its overload declaration. In particular, input/output mutability need not be
+its overload declaration. In particular, input/output `PolicyMode` need not be
 equal: `const compile -> mut runtime` may construct a fresh mutable runtime
 object when such a candidate is the unique ordinary winner. The compiler
 authorizes the stage edge but does not synthesize the candidate's `mut`
 capability. Opposite const/mut endpoint Patterns remain fully admissible and
 participate in the same actual-relative ordinary Bp order as explicit
-parameters/results; mutability is not tested by Policy-domain intersection.
+parameters/results; mode is not tested by Policy-domain intersection.
 Stage, presence, Pp capability, Type, and structural applicability remain hard
 conditions.
 
 As an explanatory model rather than frozen surface syntax, one type Symbol may
-carry the pure Pattern member `:t` plus ordinary value members for the four
-default transports `const <- const`, `const <- mut`, `mut <- const`, and
-`mut <- mut`. More specific Pattern members may refine or delete regions of
-that default ordinary relation.
+carry the pure Pattern member `:t` plus ordinary value members over all nine
+`output PolicyMode <- input PolicyMode` coordinates. Every coordinate is
+expressible, but no coordinate is required to exist: each may be absent or
+realized by `default`, `delete`, or `custom`. More specific Pattern members may
+refine or delete regions of that capability relation. This 3×3 relation is not
+the three-point Policy preference order.
 
 Those ordinary transport members expose complete callable Policies, not
 special `compile -> runtime` signatures:
@@ -415,13 +417,13 @@ an optional written P1 prefix merely projects that derived view.
 
 Each written formal parameter takes the callable P2 as its base policy pair.
 No formal prefix means exact inheritance. `const let` or `mut let` changes only
-the inherited value-mutability Pattern; every stage, presence, and Pattern-side
+the inherited whole-slot `PolicyMode`; every stage, presence, and Pattern-side
 dimension stays equal to P2. That qualifier remains an overload-order Pattern,
 so it must not be implemented by running ordinary binding P1 projection over
 the actual and deleting the oppositely qualified candidate early.
 
 Candidate preparation also carries that qualifier outward as the parameter's
-const/mut product-order position. It therefore affects selection between
+three-point product-order position. It therefore affects selection between
 callable objects as well as the effective parameter pair seen after entry.
 
 ### 6.1 Callable owner, receiver type, and local pattern construction
@@ -483,42 +485,42 @@ A capture requirement does not by itself imply a stored field or non-ZST
 layout. If representation selection chooses stored state, the resulting object
 may be non-ZST and follows ordinary value-passing and ownership rules.
 
-### 7.1 Function-object mutability default
+### 7.1 Function-object PolicyMode default
 
-The binding created by `let fn = () => { ... }` has no written mutability
-restriction. Its empty typed mutability domain denotes `const || mut`. This is
-the neutral, fully available function-object view; it is not copied from P2.
-An explicit declaration P1 may restrict that domain to one view. The
+The binding created by `let fn = () => { ... }` has no written mode
+restriction. It therefore denotes the real `plain` point, not a `const || mut`
+choice and not an inference variable. The mode is not copied from P2. An
+explicit declaration P1 may select another mode. The
 namespace-declaration spelling `export let fn = ...` does not change this
-complete internal view. Export elaboration separately derives the externally
-visible const projection. A written `const || mut` internal view is therefore
-valid when its const projection is non-empty; a `mut`-only value export is not.
+complete internal view. Export elaboration separately applies
+`ExternalEligibility` to the declared capability and path visibility; it does
+not project the mode to `const`.
 
 ### 7.2 Ordinary closure capture requirements
 
 Ordinary closures combine source-explicit capture bindings with resolved-stage
-automatic const capture:
+automatic eligible capture:
 
 ```text
 source [let x = E] / [x = E] -> Explicit capture
 source [E] shorthand          -> ExplicitInferredBinder capture
-unreplaced resolved free ref  -> ImplicitConst capture
+unreplaced resolved free ref  -> ImplicitEligible capture
 ```
 
-`[x]` is the explicit shorthand `[let x = x]`. Because its capture policy is
-unwritten, its mutability domain is the neutral `const || mut`; it is not
-automatic const capture. A write to an outer source requires an explicit
-capture projected to a `mut` view. Automatic capture never grants mutability.
+`[x]` is the explicit shorthand `[let x = x]`. Because its capture mode is
+unwritten, it is `plain`; capture does not silently replace it with `const`.
+Write capability remains a separate family-specific capability and is not
+implied merely by selecting `mut`.
 
-External explicit navigation resolves through the namespace export view.
+External explicit navigation resolves through the namespace export view and
+must satisfy `ExternalEligibility`.
 Internal explicit navigation resolves through the complete namespace view and
-does not prove export membership. Exported value views are const-projected, so
-an externally navigated callable or value normally satisfies the
-`ImplicitConst` capture requirement. Ordinary external calls are therefore
-normally backed by automatic const dependencies, not by a source capture list.
+does not prove export membership. Eligibility and visibility do not alter the
+selected slot's `PolicyMode`; ordinary external calls therefore do not acquire
+an automatic const dependency merely by crossing the boundary.
 
 Automatic capture and call resolution occupy adjoining problem domains: both
-reason about an external symbol identity and its readable const view. This
+reason about an external symbol identity and its eligible external view. This
 does not require either mechanism to consume the other's output, share a pass,
 or run in a prescribed order. Automatic capture does not skip admissibility or
 select a candidate.
@@ -639,7 +641,7 @@ Product |> Expr
    parameter pair compatibility, P2 result compatibility with any target
    expectation, stage legality, and require legality
 10. Export every elaborated formal const/mut Pattern to its candidate position,
-    apply const/mut product-maximal filtering and the remaining fixed-order
+    apply PolicyMode product-maximal filtering and the remaining fixed-order
     preference filters, including in-place over non-in-place after the
     first-order-over-instantiated filter, then named strategy rules and the
     must-select check
@@ -734,15 +736,14 @@ The current implementation uses a documented shortcut (v0.8): the resolved targe
   type checking, not by a separate declaration validator.
 - ZST function objects are reusable because ZST values are not move-killed.
 - Non-ZST function objects obey ordinary ownership and passing rules.
-- Empty function-object mutability means the unrestricted `const || mut`
-  domain; an explicit declaration P1 may crop it. Export does not crop the
-  complete namespace-internal domain. A value-bearing external candidate view
-  projects that domain to const; `const || mut` is valid, while mut-only has no
-  external candidate view.
-- Written formal parameters inherit P2 exactly outside the optional const/mut
-  Pattern axis.
+- An unwritten function-object mode is `plain`; an explicit declaration P1 may
+  select another mode. Export preserves the complete namespace-internal mode
+  and filters external candidates through independent capability/visibility
+  eligibility rather than a universal const projection.
+- Written formal parameters inherit P2 exactly outside the optional whole-slot
+  PolicyMode axis.
 - Ordinary closures distinguish explicit, explicit-inferred-binder, and
-  implicit-const capture requirements; those requirements do not define
+  implicit-eligible capture requirements; those requirements do not define
   `self` fields or physical layout.
 - In-place closures may be overload candidates, have no capture clause or
   automatic capture set, defer unresolved outer reads to their embedding

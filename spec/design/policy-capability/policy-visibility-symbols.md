@@ -7,11 +7,14 @@ Status: implementation-mapping companion. Canonical semantics are owned by
 
 ```text
 PolicyPair = Pv:Pp
+PolicyMode = const | plain | mut
 ```
 
-Its dimensions are stage, value mutability, value presence, ordinary namespace
-visibility, and export-root. They are not one flag set. Policy syntax preserves
-`||` choice, `+` cross-dimension conjunction, and `:` pair structure.
+`Pv:Pp` owns stage and value-presence shape. `PolicyMode` is a whole-slot
+coordinate orthogonal to both `Pv:Pp` and `Val1` shape; it is not stored inside
+`Pv`. Ordinary namespace visibility, export-root, and per-operation capability
+realization are further independent coordinates. Policy syntax preserves `||`
+choice, `+` cross-dimension conjunction, and `:` pair structure.
 
 P1 has three contextual elaborators:
 
@@ -47,25 +50,24 @@ Stage(P1p) = Stage(P2p)
 Stage(P1v) = Stage(P2v) || Stage(P2p)
 ```
 
-Only stages lift. Mutability, visibility, export-root, and value presence come
-from the object declaration.
+Only stages lift. `PolicyMode`, visibility, export-root, and value presence
+come from the object declaration.
 
 Each written formal parameter inherits P2 first. The first written formal is
 the caller-object self Pattern even though its actual is passed implicitly;
 later formals consume the explicit call-site Product. An omitted qualifier
-keeps it unchanged; `const let` / `mut let` restrict only its mutability Pattern
+keeps it unchanged; `const let` / `mut let` restrict only its `PolicyMode`
 and do not alter any other component. The function object itself defaults to an empty
-mutability restriction, whose typed-domain meaning is the full
-`const || mut` choice; an explicit declaration P1 may crop it. Namespace
+mode restriction, whose semantic value is the real `plain` point; an explicit
+declaration P1 may crop it. Namespace
 declaration elaboration does not crop this complete internal view merely
-because the declaration is exported. A value-bearing exported candidate must
-admit a const projection. Its external candidate view is const-projected; a
-mut-only value candidate is therefore externally ineligible, while
-`const || mut` is valid.
+because the declaration is exported. External eligibility is determined by
+the independently declared capability/visibility boundary; export never
+rewrites the internal mode to `const`.
 
 Formal elaboration has two consumers of the same result: the entered callable
-body receives the effective pair, and overload candidate formation copies the
-qualifier into that parameter's external const/mut product-order position.
+body receives the effective pair and mode, and overload candidate formation
+copies the mode into that parameter's external three-point product-order position.
 Neither consumer may reconstruct a different policy.
 
 ## 3. Phase mapping
@@ -138,28 +140,28 @@ derives a separate external view:
 
 ```text
 InternalView(value export) = full Pv:Pp
-ExternalView(value export) = Project_const(Pv):Pp
+ExternalView(value export) = ExternalEligibleView(full Pv:Pp, PolicyMode, capability)
 InternalView(type export)  = absent:Pp
 ExternalView(type export)  = absent:Pp
 ```
 
-The absent value form has no hidden value subdimensions:
+The absent value form has no hidden value stages, but it does not erase the
+orthogonal whole-slot mode:
 
 ```text
 Pv = absent
   => value stages = ∅
-  && value mutability = ∅
+  && SemanticValueId = none
+
+PolicyMode(absent:Pp slot) ∈ {const, plain, mut}
 ```
 
-Accordingly `const + S : compile` and `mut + S : compile` are invalid before
-export projection; adding `export` does not make either form valid.
-
-An omitted mutability domain and a written `const || mut` domain are valid when
-their const projection is non-empty. A `mut`-only value export is invalid. A
-pure type/Pattern export has no value-mutability requirement. This projection
-is previewed/validated for a direct root by namespace-declaration elaboration.
-That preview remains declaration-side `P1Projection`; it is not a resolved
-external policy.
+`const`, `plain`, and `mut` therefore all remain meaningful for a pure
+type/Pattern slot. Whether a value-bearing or pure slot is externally usable is
+decided by `ExternalEligibility`, not by a universal const projection. That
+check is previewed for a direct root by namespace-declaration elaboration; the
+preview remains declaration-side capability/visibility validation, not a
+resolved external policy.
 
 After declaration projection has been applied to actual RHS/result entries,
 each candidate carries a resolved `PolicyPair`. External admission then
@@ -168,11 +170,11 @@ through every
 path component. For each admitted symbol—including non-root ancestors or
 descendants—every policy-eligible candidate is transformed into an
 identity-preserving
-`ExportCandidateView` whose external policy is another complete `PolicyPair`.
-The Pattern component is preserved. Mut-only candidates stay in `Σ_full` and
-are filtered from `Σ_export`; `absent:Pp` candidates enter unchanged. The
-generic policy parser and function-object stage lifting do not perform these
-operations.
+`ExportCandidateView` whose external policy is another complete `PolicyPair`
+plus its unchanged `PolicyMode`. The Pattern component is preserved.
+Candidates lacking the requested external capability stay in `Σ_full` and are
+filtered from `Σ_export`; `absent:Pp` is not special-cased by mode. The generic
+policy parser and function-object stage lifting do not perform these operations.
 
 Namespace and Pattern consumers use three projections rather than treating
 export as one universal visibility bit:
@@ -196,7 +198,7 @@ The typed substrate currently provides:
 - `PolicyPair` with typed dimensions and `Phase` with exactly three variants;
 - separate binding/formal/namespace elaborators;
 - formal elaboration that receives inherited P2 explicitly and preserves all
-  non-mutability dimensions;
+  non-mode dimensions;
 - P2 normalization and stage-only function-object derivation;
 - owned P1 restricted views rather than reference-only filtering;
 - explicit resolution followed by phase exposure and facet reads;
@@ -207,27 +209,30 @@ The typed substrate currently provides:
   publicly_reachable }` before projection and
   preserve candidate identity while storing a distinct resolved `PolicyPair`
   on each `ExportCandidateView`;
-- phase-aware overload preference combined with const/mut product order.
-- atomic builtin type-key / concrete numeric Tnum separation, current
-  first-order TypeValue projections, and context-selected literal typing;
+- phase-aware overload preference combined with the current Policy-mode
+  carrier;
+- atomic builtin type-key / concrete numeric Tnum separation and current
+  first-order TypeValue projections. These registries perform concrete type
+  lookup only; they do not implement abstract literal denotations;
 - a helper that first projects the complete binding query and, only when that
   is empty, extracts an accepted runtime branch for atomic migration, with a
   projection-only pure-type branch;
 - a transitional migration candidate adapter whose endpoint preference is
   `input x output`, uses the shared maximal-element rule, preserves delete
-  rejection, permits callable-declared endpoint mutability, cannot change
+  rejection, permits callable-declared endpoint `PolicyMode`, cannot change
   Type, and performs no transitive search. Its endpoint-only maxima helper is
   private and is not a sequentially composable implementation of full Bp';
 - a parent-linked semantic-owner graph plus an owner-aware namespace forest
   substrate with explicit package boundaries, identity-preserving mount
   redirects, Full/External view routing, and typed lookup failures.
 
-The older `PolicyFlag`/`PolicySet` path remains compatibility transport. It is
-lossy: it cannot represent choice syntax, Pattern association after cropping,
-or independent public/private and export-root state. The resolver now uses the
-three canonical phase names, but not every namespace graph operation stores a
-full `PolicyPair` yet. Compatibility behavior must not redefine the typed
-contract.
+The older `PolicyFlag`/`PolicySet` path and const-projected export adapter remain
+compatibility transport. They are lossy: they cannot represent the three real
+`PolicyMode` points, the 3×3 capability-realization space, choice syntax,
+Pattern association after cropping, or independent public/private and
+export-root state. The resolver now uses the three canonical phase names, but
+not every namespace graph operation stores a full `PolicyPair` plus
+`PolicyMode` yet. Compatibility behavior must not redefine the typed contract.
 
 ## 6. Guardrails
 
@@ -245,7 +250,7 @@ contract.
   transform a PatternValue.
 - Atomic migration mandates only the static-to-runtime stage edge, unchanged
   Type, present output, and unchanged selected `Pp`; callable-declared
-  mutability endpoints may differ and participate in Bp'.
+  `PolicyMode` endpoints may differ and participate in Bp'.
 - Policy failure cannot repair Type/Pattern structural inapplicability.
 - Runtime value invisibility never deletes the symbol or its Pattern facet.
 - Runtime Policy-slice existence does not imply present-phase value

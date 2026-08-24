@@ -384,7 +384,7 @@ error-policy checker exists. The relevant dimensions are:
   handler call is admissible, while P2 describes its result pair;
 - the produced result remains layered `Object = ⟨Val1?, P, Val2⟩` material; there is
   no independent return-policy `P3` or scalar whole-result policy, while the
-  return position may refine inherited P1 mutability only;
+  return position may refine inherited P1 whole-slot `PolicyMode` only;
 - `noerror` changes the current capability / policy environment so that the
   default return capability is excluded or not executable.
 

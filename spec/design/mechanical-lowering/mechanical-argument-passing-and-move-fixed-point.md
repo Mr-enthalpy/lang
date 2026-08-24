@@ -229,7 +229,7 @@ move(x):
   transfer x into argument slot
 
 copy(x):
-  tmp = copy_construct(x)
+  tmp = CopyConstruct(x)
   move(tmp)
 
 ref(x):
@@ -248,6 +248,23 @@ that can then be `move`d. The only passing endpoint is `move`.
 - `ref(x)` / `share(x)` consume the borrow handle `b`, not `x`.
 - `move(x)` consumes `x` itself.
 - Every pass mode ultimately becomes a single terminal `move` action.
+
+Two additional invariants close the Policy-mode boundary:
+
+```text
+PlainMaterializationPrinciple:
+  destination PolicyMode ∈ {const, plain, mut}
+  copy-to-destination = CopyConstruct(x) + terminal Move
+
+NoPreMoveBeforeCopy:
+  copy(x) ≠ move(x); CopyConstruct(x)
+  copy(x) = CopyConstruct(x); terminal Move(result)
+```
+
+The const, plain, and mut destination cases use this same primitive. The
+destination mode may affect candidate preference or capability realization,
+but it does not introduce three different kinds of copy and never consumes
+`x` before `CopyConstruct(x)` has completed.
 
 ## 8. Borrow movement preserves parent/origin
 

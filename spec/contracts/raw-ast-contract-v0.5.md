@@ -480,18 +480,19 @@ complete body. Nested callables inherit the active environment and extend it
 with their own telescope. Ordinary value binders do not shadow hole identity.
 
 Normalized source capture items are explicit let-shaped bindings. `[x]` is
-explicit shorthand for `[let x = x]` with an unwritten policy domain; it is not
+explicit shorthand for `[let x = x]` with the unwritten `plain` mode; it is not
 automatic const capture. Future resolved free-reference analysis may create
-separate `ImplicitConst` capture requirements. Such requirements are abstract
+separate implicit eligible capture requirements. Such requirements are abstract
 dependencies, not `self` fields or layout decisions. In-place closures create
 no capture set, may resolve outer reads at the embedding layer, and may not
 directly write an outer place.
 
 Explicit-navigation/export checking and automatic capture remain resolved
-semantics, not Raw-to-Norm work. External navigation searches the export view;
-internal navigation searches the complete namespace view. A navigable exported
-value supplies the const projection for `ImplicitConst`; ordinary external call
-references normally inhabit the same external-symbol problem domain. This does
+semantics, not Raw-to-Norm work. External navigation searches the export view
+and later checks independent capability/visibility eligibility; internal
+navigation searches the complete namespace view. External eligibility does not
+rewrite `PolicyMode`; ordinary external call references inhabit the same
+external-symbol problem domain. This does
 not imply an implementation dependency on call resolution. Explicit and
 automatic capture remain distinct dependency declarations even when they
 resolve to the same source symbol; only later layout may coalesce equivalent

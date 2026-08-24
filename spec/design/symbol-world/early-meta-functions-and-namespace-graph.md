@@ -136,8 +136,8 @@ These fields are implementation substrate. They do not establish final scalar
 policy planes. The future model stores `Pv:Pp`, elaborates P1 as a binding/view
 projection, normalizes P2 as the call-result pair, derives function-object stage
 views from P2, and has no independent P3.
-Return positions may nevertheless refine inherited P1 mutability only,
-symmetrically with parameter refinement of P2; no other policy dimension may
+Return positions may nevertheless refine inherited P1 whole-slot `PolicyMode`
+only, symmetrically with parameter refinement of P2; no other policy dimension may
 change.
 
 ### Policy-aware resolver
@@ -743,8 +743,8 @@ predicate, not because “type/PatternValue field” is a separate category. The
 generated assignment partner exists only when the ordinary field Policy admits
 mutation. Current compatibility fields remain transport and do not override
 these target semantics. In a plain use context generated candidates obey
-`succ_plain: let > const = mut`; tied `const` and `mut` candidates remain
-ambiguous when no plain `let` candidate exists.
+`succ_plain: plain > const = mut`; tied `const` and `mut` candidates remain
+ambiguous when no `plain` candidate exists.
 
 The value candidate has value semantics (`T == T move`). Borrowed field access must begin
 from an explicit borrow form such as `val ref.field1` or

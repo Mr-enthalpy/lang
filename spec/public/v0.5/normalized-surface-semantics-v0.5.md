@@ -857,33 +857,28 @@ layout, name resolution, or materialization.
 
 These source-written captures are explicit requirements. In particular,
 `[x]` means explicit `[let x = x]` with the ordinary unwritten capture policy
-domain (`const || mut`); it is not an automatic const capture. A later resolved
-stage may add an `ImplicitConst` requirement for an otherwise uncaptured free
-outer value reference. That later operation requires symbol resolution and
-const-slice projection and therefore is not normalization.
+mode (`plain`); it is not an automatic const capture. A later resolved stage
+may add an implicit capture requirement for an otherwise uncaptured free outer
+value reference. That later operation requires symbol resolution and external
+eligibility checking and therefore is not normalization.
 
 In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
 Declaration-side `P1Projection` first applies to actual RHS/result entries and
-produces a resolved internal `PolicyPair`. Only that complete pair may become
-an external candidate policy: its value component is const-projected and its
-associated Pattern component is preserved. Export-retention-closure membership
+produces a resolved internal `PolicyPair`. Later semantic passes preserve that
+pair and its independently selected whole-slot mode while checking external
+capability eligibility. Export-retention-closure membership
 admits only the graph-retention dimension; external exposure additionally
 requires every path component to be publicly reachable. A private child and
 public descendants behind it therefore remain internal even inside the
-retention closure. Among admitted symbols, mut-only overload candidates remain
-in the complete internal set and are omitted from the external overload set.
-Pure `absent:Pp` candidates enter unchanged, subject to the structural
-invariant that absent Pv has neither value stages nor value mutability. Thus
-`const + S : compile`, `mut + S : compile`, and their `export` forms are
-invalid. A direct source `export + mut` root remains an invalid declaration.
+retention closure. Which admitted candidates remain externally eligible is a
+future semantic capability question, not a normalization rule. In particular,
+normalization does not project external values to `const`, erase a mode on
+`absent:Pp`, or infer capture mode from export.
 
-Value-bearing export views are therefore const-projected, so dependencies reached with
-external authority—including ordinary external call targets—normally satisfy
-automatic const-capture requirements. Automatic capture and call resolution
-therefore touch the same problem domain—symbol identity and readable const
-view—but this does not prescribe pass ordering, data flow, or an implementation
-dependency.
+Automatic capture and call resolution may later touch the same problem
+domain—symbol identity, visibility, and capability eligibility—but this does
+not prescribe pass ordering, data flow, or an implementation dependency.
 
 Explicit and automatic capture remain distinct even when they resolve to the
 same source symbol. Explicit capture may rename, project policy, use a complex

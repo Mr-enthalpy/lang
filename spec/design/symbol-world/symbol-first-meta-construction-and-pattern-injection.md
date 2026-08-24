@@ -14,7 +14,7 @@ This document builds on, without replacing:
 
 - `spec/design/symbol-world/type-values-places-and-borrow-views.md` for
   `SymbolId` / `PlaceId` / `TypeValueId`, the borrow views `ref` / `share` and
-  the place-sensitive lifetime observation `@`,
+  continuation-relative lifetime name reification `@`,
   and independent writability / construction-authority (`OpenHere_Σ` /
   `WindowLive_Σ`) judgments;
 - `spec/design/lifetime/lifetime-policy-and-overload-boundary.md` for the
@@ -361,7 +361,7 @@ encapsulated in `τ`.
 and every ordinary member in `V_τ` remain ordinary Objects governed by the
 existing `<Val1?,P,Val2>` ontology. The closure preserves their type-specific
 pairing so a copied or extracted type carries its own callspace. `@` is the
-privileged place-observation operation that yields a lifetime value and never
+continuation-relative name-reification operation that yields a lifetime value and never
 a `type ref` (canonical owner
 `../lifetime/lifetime-policy-and-overload-boundary.md` §1–§2); reaching the
 type-level place explicitly uses `t |> (type ref)` or `(S ref).type`. The
@@ -423,7 +423,7 @@ AsType(E) != TypeOf(E)
 
 `AsType` neither raises universe rank nor manufactures a carrier place. Only
 explicit type-of extraction may obtain the next classifier. `@` is the
-privileged place-observation operation and yields a lifetime value; it never
+continuation-relative name-reification operation and yields a lifetime value; it never
 supplies `AsType` implicitly and never forms a borrow. A Symbol's `.type`
 family is applicable exactly when the Symbol carries `τ` and
 `TypeValueRole(τ)` holds (equivalently `TypeRole(Core(τ))`):
@@ -674,7 +674,8 @@ PatternValue navigation name is a diagnostic/canonical projection
 same spelling does not imply same semantic object
 ```
 
-For example:
+For a schematic future character spelling (the frozen lexer does not currently
+accept `CharLiteral`):
 
 ```lang
 let a = 'a';
@@ -721,7 +722,7 @@ target. Any non-empty `ProjectP1` result completes the binding and makes
 migration unreachable. Only after the complete query projects nothing may an
 accepted runtime branch be extracted and paired with an eligible static input
 view for one language-authorized atomic migration. The compiler mandates the
-static-to-runtime stage edge; candidate-declared endpoint mutability belongs to
+static-to-runtime stage edge; candidate-declared endpoint `PolicyMode` belongs to
 ordinary overload. Empty queries with no runtime alternative fail, and no
 Policy failure searches structure-changing operations. See
 `../../contracts/v0.6-cross-policy-value-transition.md`.
@@ -871,8 +872,8 @@ The language defines **no** ordinary symbol-alias or place-forwarding
 declaration. There is no form that makes a second name resolve to another
 symbol's place, inherit its writability, or serve as a second entry point for
 namespace extension. Shared observation of another object is expressed only by
-the borrow views `ref` and `share` and the place-sensitive lifetime observation
-`@`, specified in `type-values-places-and-borrow-views.md`.
+the borrow views `ref` and `share` and continuation-relative lifetime name
+reification `@`, specified in `type-values-places-and-borrow-views.md`.
 
 The canonical conclusion is:
 
@@ -2745,7 +2746,7 @@ ref/share type construction
 
 no foreign callable object ever enters a derived `V_τ`.
 Their selection uses the ordinary context-indexed preference relations. In a
-plain context `succ_plain: let > const = mut`; if no plain `let` candidate is
+plain context `succ_plain: plain > const = mut`; if no `plain` candidate is
 admissible, a surviving `const` and `mut` pair remains ambiguous rather than
 being resolved by generation order.
 

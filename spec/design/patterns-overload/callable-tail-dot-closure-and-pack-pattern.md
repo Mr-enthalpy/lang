@@ -318,8 +318,8 @@ inferred:
 ```
 
 In particular `[x]` elaborates to the explicit empty-policy binding
-`[let x = x]`. Its empty capture-policy domain remains `const || mut`; it is
-not the implicit-const rule described below.
+`[let x = x]`. Its unwritten capture mode is the real `plain` point; capture
+does not silently turn it into `const`.
 
 For an ordinary non-in-place closure whose body contains an unresolved free
 outer value reference and no explicit capture binding replaces that reference,
@@ -328,41 +328,43 @@ the resolved layer later forms:
 ```text
 AutoCapture(C, s)
   = capture local binder s from source symbol s
-    with requested policy const
-    and origin ImplicitConst
+    after ExternalEligibility(s, requested capability)
+    with origin ImplicitEligible
 ```
 
 This automatic capture cannot run in Raw-to-Norm normalization. It requires
 name resolution, closure-local binder exclusion, value-facet selection, and
-const policy projection. A resolved/HIR handoff therefore distinguishes:
+external capability/visibility checking. A resolved semantic handoff therefore
+distinguishes:
 
 ```text
 CaptureOrigin
   = Explicit
   | ExplicitInferredBinder
-  | ImplicitConst
+  | ImplicitEligible
 ```
 
-Outer writes require an explicit capture whose selected source view contains
-`mut`. Automatic capture never grants `mut`.
+Outer writes require a write-capable explicit capture. `mut` is a preference
+mode, not a universal writability grant; automatic capture does not manufacture
+write capability.
 
 An externally navigated name is a common case: external authority searches the
-namespace export view, and a value-bearing export view is const-projected.
+namespace export view, then applies independent external eligibility.
 Internal explicit navigation instead searches the complete namespace-internal
 view and does not prove export membership:
 
 ```text
 ResolveExplicitNavigation(path, ExternalAuthority) = exported symbol s
-  -> AutoCapture(C, s, requested_policy = const)
+  -> AutoCapture(C, s, requested capability)
 
 ResolveExplicitNavigation(path, InternalAuthority)
   -> search Σ_full; export membership is independent
 ```
 
-External callable references therefore normally enter an ordinary closure as
-automatic const dependencies rather than source-written capture bindings.
+External callable references may therefore enter an ordinary closure as
+automatic eligible dependencies rather than source-written capture bindings.
 Automatic capture and call resolution meet in the same problem domain because
-both reason about an external symbol's identity and readable const view. This
+both reason about an external symbol's identity and eligible external view. This
 observation imposes no pass ordering, data flow, shared intermediate object, or
 implementation dependency between them. Automatic capture does not itself
 choose an overload.
@@ -374,7 +376,7 @@ initializer, request `mut`, or preserve source-level dependency and diagnostic
 provenance:
 
 ```text
-[let local = external_name] != ImplicitConst(external_name)
+[let local = external_name] != ImplicitEligible(external_name)
 ```
 
 No capture is rejected or erased as “redundant” during parsing,
@@ -391,7 +393,7 @@ ResolvedCaptureRequirement {
   local_binder: BinderId,
   source: ResolvedValueRef,
   requested_policy: PolicySlice,
-  origin: Explicit | ExplicitInferredBinder | ImplicitConst
+  origin: Explicit | ExplicitInferredBinder | ImplicitEligible
 }
 ```
 
@@ -784,7 +786,7 @@ runtime remainder length, and internal node count never manufacture
 same-level Pack specificity.
 
 This tuple is only the Pattern-specificity preference dimension. It is not a
-global score across stage, mutability, result policy, or named strategies.
+global score across stage, PolicyMode, result policy, or named strategies.
 
 ## 6. Current implementation boundary
 

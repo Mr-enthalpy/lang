@@ -629,6 +629,16 @@ Pv = absent
   => value stages = ∅
 ```
 
+The review matrix is therefore complete rather than shape-dependent:
+
+| Observed Val1 | const | plain | mut |
+|---|---:|---:|---:|
+| present | valid mode coordinate | valid mode coordinate | valid mode coordinate |
+| absent | valid mode coordinate | valid mode coordinate | valid mode coordinate |
+
+The cells assert only that the mode coordinate exists. They do not manufacture
+a value stage or any operation capability.
+
 This is a statement about the edge, not about the object behind it. Per §1,
 `Pv = absent` does not assert `Val1?(x) = null`; when `Val1?(x) = null`, the
 canonical unhidden observation instead has `Pv = Pp`.
@@ -1239,6 +1249,7 @@ ExternalEligibility(...) = admitted
 No PolicyMode is universally export-safe. A concrete export mechanism may
 realize const/plain/mut cells through ordinary default/delete/custom capability
 members, but it must state that family explicitly. Neither `const <= mut` nor
+the retired universal form
 `ExternalView = Project_const(InternalView)` is a foundation theorem.
 
 It is forbidden in function/meta-function bodies, parameters, return slots,
@@ -1553,7 +1564,7 @@ reopen fallback.
 
 ## 13. Lifetime boundary
 
-`@` is an ordinary place-sensitive operation with its own overload groups, owned
+`@` is an ordinary continuation-relative name-reification operation with its own overload groups, owned
 by `../lifetime/lifetime-policy-and-overload-boundary.md`. It is not a policy
 atom in the stage dimension of §1, and lifetime policy is not a fifth stage.
 
@@ -1619,7 +1630,8 @@ flat flags.
 This document does not freeze:
 
 - the final source token for `AbsentValuePattern`;
-- full lifetime/Horae semantics;
+- concrete LifeName/Region/Color IR, lifetime-checker integration, summary
+  compression, access-tree integration, and extended Horae logic;
 - future policy stages;
 - arbitrary clause-level Boolean policy logic;
 - a complete runtime reflection API;

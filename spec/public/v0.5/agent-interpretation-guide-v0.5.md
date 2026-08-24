@@ -172,9 +172,10 @@ closure carrier, not a callable value. Only a later explicit binding or call
 consumer may materialize that carrier.
 
 Source-written captures are explicit binding requirements. `[x]` is
-`[let x = x]` with an unwritten (`const || mut`) capture policy, not automatic
-const capture. Automatic const requirements need later resolved free-reference
-analysis. Capture requirements do not define `self` fields, layout, or ABI.
+`[let x = x]` with the unwritten `plain` capture mode, not automatic const
+capture. Any implicit capture requirement needs later resolved free-reference
+and external-eligibility analysis. Capture requirements do not define `self`
+fields, layout, or ABI.
 In-place closures have no capture set: they may read through embedding-layer
 lookup but may not directly write an outer place.
 

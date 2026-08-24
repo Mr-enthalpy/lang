@@ -86,7 +86,7 @@ E name [[private]]
 ```
 
 Only `public` and `private` are admitted here. This slot is not a general
-`PolicySpec`, and it does not admit stage, mutability, export, or arbitrary
+`PolicySpec`, and it does not admit stage, PolicyMode, export, or arbitrary
 strategy names. Unannotated, explicitly public, and private are distinct source
 facts (`Default | Public | Private`), although both Default and Public are
 included in the current default extraction view. The visibility fact is part

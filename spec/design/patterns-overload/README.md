@@ -32,7 +32,7 @@ named-versus-positional normalization boundary are owned by
 `struct` forming complete type values, pure `extend`, and place-level `inject` are owned by
 `../symbol-world/symbol-first-meta-construction-and-pattern-injection.md` and
 must satisfy that Pattern authority.
-Canonical policy pairs, seal visibility, const/mut product order, compile-flow
+Canonical policy pairs, seal visibility, PolicyMode product order, compile-flow
 projection, derived compile companions, must-select semantics, match staging,
 and automatic require are owned by
 `../symbol-world/symbol-policy-and-compile-flow-projection.md`.

@@ -8,9 +8,10 @@ effect/error/panic policy) is not implemented.**
 
 ## Scope
 
-Policy implementation mapping and orthogonal future dimensions:
+Policy implementation mapping and orthogonal semantic dimensions:
 
-- mapping current flat symbol/body/result metadata to canonical `Pv:Pp`;
+- mapping current flat symbol/body/result metadata to canonical `Pv:Pp` plus
+  whole-slot `PolicyMode={const,plain,mut}`;
 - contextual P1 binding/view projection, P2 result normalization, and
   function-object stage-view derivation;
 - a projection-empty Runtime Val1 transition-preparation helper plus a
@@ -20,7 +21,9 @@ Policy implementation mapping and orthogonal future dimensions:
 - explicit retirement of an independent return-policy `P3`;
 - component-preserving results rather than a scalar result-class policy;
 - current flat `PolicyEnv` filtering substrate;
-- typed namespace, const/mut, value-presence, error/panic, and resource policy.
+- typed namespace, three-point PolicyMode, 3×3 capability realization,
+  value-presence, error/panic, and resource policy. The flat adapter and current
+  2×2 transport fixture are legacy implementation subsets only.
 
 Layered symbol policy, compile-flow projection, compile companions, match
 staging, and automatic require are canonical in

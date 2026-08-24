@@ -405,8 +405,8 @@ must wait for SealStatic.
 
 There is no independent P3 and no scalar policy for the entire returned result.
 Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
-retains its own pair. Return positions inherit P1 and may refine mutability
-only; parameters symmetrically refine inherited P2 mutability only. Current
+retains its own pair. Return positions inherit P1 and may refine whole-slot
+`PolicyMode` only; parameters symmetrically refine inherited P2 mode only. Current
 `self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional compatibility transport.
 

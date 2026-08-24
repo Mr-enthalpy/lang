@@ -169,7 +169,7 @@ language. It defines:
   for the complete invocation frame and P2 compatibility with a target-result
   expectation, forms the fully admissible candidate set `A`
 - the extraction-pattern specificity rule as a stable lexicographic rank
-- the const/mut preference relation as a separate product partial order
+- the three-point PolicyMode preference relation as a separate product partial order
 - the full overload resolution pipeline from raw symbol lookup to uniqueness
 - how `must_select_if_qualified` activates from `A` and constrains the final
   result without closing an
@@ -648,25 +648,26 @@ be a type-rank object. This node's depth contributes to specificity.
 
 ### 4.5 Policy product partial order
 
-`const` and `mut` belong to the value component `Pv`. Plain `let` is the
-previously named unspecified policy point. The preference relation is indexed
+`PolicyMode = {const, plain, mut}` is a whole-slot coordinate orthogonal to
+`Pv:Pp`; it is not a subfield of `Pv`. Plain `let` denotes the real `plain`
+point, never an unspecified or missing mode. The preference relation is indexed
 by the actual/demand context:
 
 ```text
-succ_const: const > let > mut
-succ_mut:   mut > let > const
-succ_plain: let > const = mut
+succ_const: const > plain > mut
+succ_mut:   mut > plain > const
+succ_plain: plain > const = mut
 ```
 
 The equality in `succ_plain` does not authorize an arbitrary tie break. If a
 plain context has one fully admissible `const` candidate and one fully
-admissible `mut` candidate but no plain `let` candidate, both are co-maximal and
+admissible `mut` candidate but no `plain` candidate, both are co-maximal and
 the call is ambiguous.
 
 Across the first written self formal, later explicit parameters, and a target
 result policy when one is actually supplied, compare candidates by product
 order. The self actual is injected rather than taken from the call-site
-Product, but its formal const/mut restriction participates in the same order.
+Product, but its formal PolicyMode restriction participates in the same order.
 Candidate `f`
 dominates `g` iff `f` is no worse at every compared position and strictly
 better at at least one.
@@ -711,7 +712,7 @@ so the old Bp survivor identities and every later B1..B6 result are unchanged.
 No transition-specific B6 named strategy exists.
 
 The compiler mandates the static-to-runtime stage edge, not equality of every
-endpoint coordinate. Candidate-declared input/output value mutability belongs
+endpoint coordinate. Candidate-declared input/output `PolicyMode` belongs
 to this product. Thus a callable may expose:
 
 ```text
@@ -722,7 +723,7 @@ for a fresh runtime object. The compiler does not synthesize `mut`; the
 callable declares it and must win ordinary overload selection. Type remains
 unchanged, so this does not reopen structural applicability repair.
 
-Endpoint mutability reuses the ordinary actual-relative order above. It is not
+Endpoint `PolicyMode` reuses the ordinary actual-relative order above. It is not
 a Policy-domain hard intersection:
 
 ```text
@@ -733,42 +734,43 @@ HardEndpointApplicability
   x Pp capability
   x structural applicability
 
-InputMutabilityPreference
+InputPolicyModePreference
   = Compare(candidate input Pattern, selected source actual)
 
-OutputMutabilityPreference
+OutputPolicyModePreference
   = Compare(candidate output Pattern, requested target)
 ```
 
 Consequently an opposite const/mut endpoint remains in fully admissible set
-`A`; it is merely worse than plain `let`, which is worse than the matching
-endpoint. For a const source/target the ordering is `const > let > mut`, and it
+`A`; it is merely worse than `plain`, which is worse than the matching
+endpoint. For a const source/target the ordering is `const > plain > mut`, and it
 reverses for a mut source/target. A plain target uses
-`let > const = mut`, preserving ambiguity when only the tied endpoints survive.
+`plain > const = mut`, preserving ambiguity when only the tied endpoints survive.
 This is the same ordinary Bp relation, not a migration-specific subset order.
 If a unique ordinary winner later produces a result that `Project_out` cannot
 expose to the consumer, that failure does not reopen overload selection.
 
 One explanatory semantic normal form is a type Symbol with one pure Pattern
-facet and ordinary value members implementing the default mutability transport
-relation:
+facet and ordinary value members implementing a capability realization over
+the full 3×3 input/output mode space:
 
 ```text
 Symbol t
   Pattern:
     :t
 
-  ordinary transport members (output <- input):
-    const <- const
-    const <- mut
-    mut   <- const
-    mut   <- mut
+  transport coordinate: output PolicyMode <- input PolicyMode
+  every one of the nine coordinates is expressible
+  each coordinate may be absent or realized by default/delete/custom
 ```
 
 This is not frozen surface syntax and does not require a conversion table or a
-new callable ontology. It illustrates that generic ordinary members define the
-default relation. More specific structural Pattern members may locally refine
-or `delete` regions of that relation. Each default member's ordinary formal
+new callable ontology. It illustrates that ordinary members realize
+capabilities independently of Policy preference. A `mut` endpoint may be the
+unique selected mode while the selected member is `delete`, and `mut` on a
+non-reference object does not by itself grant write capability. More specific
+structural Pattern members may locally refine or `delete` regions of the 3×3
+relation. Each installed member's ordinary formal
 and complete result Policy is `(compile || runtime):compile`; the migration
 context compares the compile `Project_in` and runtime `Project_out` views. It
 does not replace the member's complete P2 with a direct
@@ -801,7 +803,7 @@ crossed ordinary/endpoint advantages must remain incomparable.
 Output Policy participation here does not make ordinary return type an overload
 preference dimension. An optional output-type expectation remains a hard
 admissibility check only. Stage, presence, and Pp endpoint capability remain
-hard constraints, while output mutability remains an actual-relative Bp
+hard constraints, while output `PolicyMode` remains an actual-relative Bp
 preference coordinate. Existing-slice P1 projection is checked first; any
 non-empty binding projection creates no transition request.
 
@@ -1168,7 +1170,7 @@ meta body-entry checking, extraction specificity for selected source
 callables, one remainder pack at each normalized parameter level, and
 propagation of source-named strategy metadata after applicability. It does not
 execute arbitrary named strategy rules. Separate pair-model tests cover P1/P2
-elaboration and const/mut product ordering, but the restricted resolver does
+elaboration and PolicyMode product ordering, but the restricted resolver does
 not yet carry full pairs through candidate preparation, derive compile
 companions, enforce `must_select_if_qualified`, or replace its existing
 specificity selector.
@@ -1182,7 +1184,7 @@ source Symbol or held PatternValue
   -> Pattern owner / associated ()
   -> InvocationFrame
   -> C0/C1/C2/C3/A
-  -> one Bp' product over ordinary mutability/phase coordinates
+  -> one Bp' product over ordinary PolicyMode/phase coordinates
        x optional migration input endpoint
        x optional migration output endpoint
   -> bounded B3 Pattern specificity
@@ -1191,7 +1193,7 @@ source Symbol or held PatternValue
 
 There is no maxima pass between ordinary and endpoint coordinates. Without a
 migration context, the optional endpoint coordinates are absent and the
-comparison is exactly the connected old-Bp mutability/phase order. B1, B2, B4,
+comparison is exactly the connected old-Bp PolicyMode/phase order. B1, B2, B4,
 B5, B6, full Pattern applicability, concepts/requires, and lifetime remain
 incomplete/identity boundaries in this bounded slice.
 
@@ -1230,7 +1232,7 @@ Lifetime checking is separately deferred by
 no refinement, ABI class, or second selection stage, and no lifetime-driven
 re-selection: a lifetime rule never reopens the unique ordinary overload result.
 That is a restriction on lifetime *rules*, not a claim that `@` lacks overloads
-— `@` is an ordinary place-sensitive operation with its own candidate set,
+— `@` is an ordinary continuation-relative name-reification operation with its own candidate set,
 specified in that document.
 
 ---

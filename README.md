@@ -116,11 +116,11 @@ design-fusion staging area; non-normative, not current behavior). Start at
 | Block | Purpose |
 |---|---|
 | `spec/design/build-package/` | Package/build layer, manifest, namespace-graph projection, mounts, physical contribution authority, export surface, provenance |
-| `spec/design/symbol-world/` | Canonical Object roles and Symbol `<Q?,V>` projections, `Pv:Pp`, contextual P1/P2 elaboration, seal visibility/snapshot, const/mut product order, compile-flow projection, companions, automatic require, meta pure-role self-root, pattern scopes, `struct -> symbol`, pure `extend`, place-level `inject`, namespace origin/construction ownership, and retired-alias boundaries |
+| `spec/design/symbol-world/` | Canonical Object roles and Symbol `<Q?,V>` projections, `Pv:Pp` plus whole-slot `PolicyMode`, three-point preference and 3×3 capability realization, external eligibility, abstract literal denotations/concrete construction, compile-flow projection, companions, meta pure-role self-root, pattern scopes, `struct -> symbol`, pure `extend`, place-level `inject`, namespace origin/construction ownership, and retired-alias boundaries |
 | `spec/design/patterns-overload/` | Pattern normalization, candidate shapes, specificity, overload vision, static pattern spaces |
 | `spec/design/meta-invocation/` | Symbol-first callable invocation, policy-pair handoff, partial/strict demand, and residualization |
-| `spec/design/policy-capability/` | Current flat policy-metadata mapping to canonical pairs and future orthogonal policy dimensions |
-| `spec/design/lifetime/` | Negative boundary separating future lifetime policy/refinement from type/compile overload selection |
+| `spec/design/policy-capability/` | Mapping from current flat/2×2 implementation carriers to canonical pairs, whole-slot PolicyMode, and capability realization |
+| `spec/design/lifetime/` | Continuation-relative LifeName/Region semantics plus the boundary that prevents lifetime failure from reopening type/compile overload selection |
 | `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
 
 For the current future semantic baseline, read these canonical construction and
