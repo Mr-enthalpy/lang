@@ -357,8 +357,10 @@ Gamma |- derive_function_object_P1(P2v:P2p) => P1base
 Gamma |- ProjectP1(written_prefix, P1base) => bound object view
 ```
 
-Omitted P1 keeps the complete result pair view; a bare ordinary binding still
-forms concrete destination `PolicyMode=plain`. Single P1 `q` selects values visible
+Before RHS invocation selection, the binding spelling forms its concrete output
+mode demand: a bare ordinary binding supplies `PolicyMode=plain`. That output
+coordinate participates in the same candidate product order as the inputs.
+After unique selection, omitted P1 keeps the complete result pair view. Single P1 `q` selects values visible
 under `q` and follows their associated pattern components. Pair P1 `qv:qp`
 filters both. Single P1 is not normalized to `q:q`. These lower-case policy
 metavariables are distinct from the type-core `Core(τ)`.

@@ -417,11 +417,13 @@ Thus the selected object has the static/runtime view required to supply self;
 an optional written P1 prefix merely projects that derived view.
 
 Each written formal parameter takes the callable P2 as its base policy pair.
-No formal prefix means exact inheritance. `const let` or `mut let` changes only
-the inherited whole-slot `PolicyMode`; every stage, presence, and Pattern-side
-dimension stays equal to P2. That qualifier remains an overload-order Pattern,
-so it must not be implemented by running ordinary binding P1 projection over
-the actual and deleting the oppositely qualified candidate early.
+With no formal prefix, the pair component inherits P2 exactly while the
+unwritten whole-slot mode elaborates to the concrete `plain` point. `const let`
+or `mut let` changes only that whole-slot `PolicyMode`; every stage, presence,
+and Pattern-side dimension stays equal to P2. That qualifier remains an
+overload-order Pattern, so it must not be implemented by running ordinary
+binding P1 projection over the actual and deleting the oppositely qualified
+candidate early.
 
 Candidate preparation also carries that qualifier outward as the parameter's
 three-point product-order position. It therefore affects selection between
@@ -488,14 +490,15 @@ may be non-ZST and follows ordinary value-passing and ownership rules.
 
 ### 7.1 Function-object PolicyMode default
 
-The binding created by `let fn = () => { ... }` has no written mode
-restriction. It therefore denotes the real `plain` point, not a `const || mut`
-choice and not an inference variable. The mode is not copied from P2. An
+The binding created by `let fn = () => { ... }` has an unwritten mode spelling,
+which elaborates to the real `plain` point, not a `const || mut` choice and not
+an inference variable. The mode is not copied from P2. An
 explicit declaration P1 may select another mode. The
 namespace-declaration spelling `export let fn = ...` does not change this
-complete internal view. Export elaboration separately applies
-`ExternalEligibility` to the declared capability and path visibility; it does
-not project the mode to `const`.
+complete internal view. Export elaboration derives a stable, identity-preserving
+`Σ_export` from export retention and public path reachability; it neither
+filters candidates by a future consumer demand nor projects the mode to
+`const`.
 
 ### 7.2 Ordinary closure capture requirements
 
@@ -513,15 +516,16 @@ unwritten, it is `plain`; capture does not silently replace it with `const`.
 Write capability remains a separate family-specific capability and is not
 implied merely by selecting `mut`.
 
-External explicit navigation resolves through the namespace export view and
-must satisfy `ExternalEligibility`.
+External explicit navigation resolves through the stable namespace export view;
+the resulting capture requirement later enters ordinary capability-family and
+Policy checks.
 Internal explicit navigation resolves through the complete namespace view and
 does not prove export membership. Eligibility and visibility do not alter the
 selected slot's `PolicyMode`; ordinary external calls therefore do not acquire
 an automatic const dependency merely by crossing the boundary.
 
 Automatic capture and call resolution occupy adjoining problem domains: both
-reason about an external symbol identity and its eligible external view. This
+reason about an external symbol identity and its stable external view. This
 does not require either mechanism to consume the other's output, share a pass,
 or run in a prescribed order. Automatic capture does not skip admissibility or
 select a candidate.
@@ -540,9 +544,14 @@ ResolvedCaptureRequirement {
   local_binder,
   source,
   requested_policy,
+  required_access_capability,
   origin
 }
 ```
+
+Namespace lookup supplies the stable source candidate set; it does not consume
+these request fields. The later ordinary capture-legality consumer checks both
+the requested Policy demand and required access capability.
 
 This object is not a `self` field list and does not determine receiver mode,
 copy/reference representation, field ordering, ZST status, or ABI layout.

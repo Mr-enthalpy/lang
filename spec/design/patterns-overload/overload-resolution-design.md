@@ -401,8 +401,10 @@ Stage(P1p) = Stage(P2p)
 Stage(P1v) = Stage(P2v) union Stage(P2p)
 ```
 
-Omitted P1 retains the complete object pair view while bare ordinary binding
-forms destination `PolicyMode=plain`. Single P1 `Q` selects value
+Bare ordinary binding forms output demand `PolicyMode=plain` before RHS call
+selection, so that coordinate participates in the same Policy product order as
+the inputs. After unique selection, omitted P1 retains the complete object pair
+view. Single P1 `Q` selects value
 slices visible under Q and follows their associated pattern components. Pair P1
 `Qv:Qp` filters both. A written P1 cannot manufacture a stage absent from the
 derived object.

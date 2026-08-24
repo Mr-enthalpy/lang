@@ -482,15 +482,17 @@ ExportCandidateView {
 
 Declaration-side `P1Projection` is first applied to actual RHS/result entries.
 Namespace external admission then requires both export-retention-closure
-membership and public reachability through every path component, followed by
-the canonical owner's independent `ExternalEligibility` capability check. The
+membership and public reachability through every path component. The
 retention closure alone is not sufficient: a private child and public
 descendants behind it remain internal. This admission is symbol-level and does
-not act as an arbitrary per-candidate eligibility callback.
+not act as an arbitrary per-candidate eligibility callback or consume a future
+call/read/capture demand.
 
 For each admitted symbol, canonical semantics preserve the resolved
-`PolicyPair` and whole-slot `PolicyMode`; eligibility does not universally
-project mode to const. The currently connected helper still admits candidates
+`PolicyPair` and whole-slot `PolicyMode`; every resolved candidate enters the
+stable external view with the same identity. Consumer capability and Policy
+checks happen after lookup and do not universally project mode to const. The
+currently connected helper still admits candidates
 through a const-projected 2×2 compatibility carrier. That is an implementation
 subset only, not export semantics.
 

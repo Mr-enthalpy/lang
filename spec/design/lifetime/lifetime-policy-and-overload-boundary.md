@@ -338,8 +338,8 @@ calculus or numeric/value identity.
 
 #### 2.1.2 NameView, origin, and finite observation
 
-For each name-projectable value type `T`, the compiler may register a
-name-level companion:
+For every semantic value operation `f_V : T -> U` that is name-projectable,
+there exists a unique semantic name-level companion:
 
 ```text
 NameView<T> {
@@ -347,16 +347,25 @@ NameView<T> {
   region,
   name-observable field/operation companions
 }
+
+NameProjectable_T(f)
+  => exists unique f_N : NameView<T> -> NameView<U>
 ```
 
-Value and name projection commute where a companion is registered:
+Value and name projection must commute:
 
 ```text
+@(f_V(x))     = f_N(x@)
 @(field_V(x)) = field_N(x@)
 (x.field)@    = x@.field
 ```
 
 The name-level companion does not re-execute the runtime field operation.
+Companion existence, uniqueness, and commutation are closed semantic
+requirements. How companions are generated, stored, or represented in an IR or
+registry remains implementation-open; absence of a particular registry entry
+cannot make a semantically name-projectable operation fail this law.
+
 `origin : LifeName -> LifeName | None` records semantic provenance rather than
 source text or an address. Origin chains may be coinductive, but each
 `ReifyLife(n, k)` is a finite structural observation. A later `.origin`

@@ -860,24 +860,26 @@ These source-written captures are explicit requirements. In particular,
 mode (`plain`); it is not an automatic const capture. A later resolved stage
 may add an implicit capture requirement for an otherwise uncaptured free outer
 value reference. That later operation requires symbol resolution and external
-eligibility checking and therefore is not normalization.
+namespace visibility plus later capability checking and therefore is not
+normalization.
 
 In later resolved semantics, external explicit navigation searches the export
 view, while internal explicit navigation searches the complete namespace view.
 Declaration-side `P1Projection` first applies to actual RHS/result entries and
 produces a resolved internal `PolicyPair`. Later semantic passes preserve that
-pair and its independently selected whole-slot mode while checking external
-capability eligibility. Export-retention-closure membership
+pair and its independently selected whole-slot mode in a stable external view.
+Export-retention-closure membership
 admits only the graph-retention dimension; external exposure additionally
 requires every path component to be publicly reachable. A private child and
 public descendants behind it therefore remain internal even inside the
-retention closure. Which admitted candidates remain externally eligible is a
-future semantic capability question, not a normalization rule. In particular,
+retention closure. All resolved candidates of an admitted symbol remain in that
+stable external view; a concrete consumer's capability and Policy checks occur
+after lookup and are not a normalization rule. In particular,
 normalization does not project external values to `const`, erase a mode on
 `absent:Pp`, or infer capture mode from export.
 
 Automatic capture and call resolution may later touch the same problem
-domain—symbol identity, visibility, and capability eligibility—but this does
+domain—symbol identity, stable visibility, and consumer capability—but this does
 not prescribe pass ordering, data flow, or an implementation dependency.
 
 Explicit and automatic capture remain distinct even when they resolve to the

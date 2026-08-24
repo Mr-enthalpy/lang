@@ -373,8 +373,10 @@ _See also: ExternalNameView, DefaultExtractionView._
 
 The identity-preserving external namespace projection used after lookup crosses
 a package boundary. It requires export-retention admission, public reachability
-through every access-path component, and an externally eligible candidate
-policy view.
+through every access-path component, and a resolved candidate view. Every
+candidate of an admitted symbol preserves its identity, `Pv:Pp`, and
+`PolicyMode`; consumer capability/Policy checks happen only after this stable
+lookup.
 
 _See also: FullNameView, PackageBoundary, Mount._
 
@@ -1364,10 +1366,17 @@ observation that carries a `LifeName`, its half-open `Region=[i,j)`, and an
 handle. This semantic-value wording does not decide whether arbitrary source
 storage of `LifetimeValue` is exposed.
 
-Moving a nontrivial value ends the current generation and creates a successor
-`LifeName`. Drop ends the current generation after cleanup obligations. Origin
-may be represented lazily and coinductively, and Color information may only be
-inherited monotonically.
+Every semantically name-projectable value operation has one unique name-level
+companion, and the projections commute: `@(f_V(x)) = f_N(x@)`. Companion
+existence is semantic; registry or IR representation remains
+implementation-open.
+
+Moving a nontrivial value ends the current generation and begins a successor
+generation whose corresponding `LifeName` observation and origin relation
+remain expressible. Whether generation identity and `LifeName` identity share
+one concrete representation is implementation-open. Drop ends the current
+generation after cleanup obligations. Origin may be represented lazily and
+coinductively, and Color information may only be inherited monotonically.
 
 _See also: `@`, Region, Lifetime Policy Boundary._
 
@@ -1883,16 +1892,18 @@ materialization.
 Every source-written item is an explicit capture requirement. `[x]` is
 shorthand for `[let x = x]` with the ordinary unwritten `plain` capture mode,
 not an automatic const capture. A future resolved stage may add a separate
-`ImplicitEligible` requirement for an otherwise uncaptured free
-outer value reference. Capture requirements are abstract dependencies: they
-do not declare `self` fields, copy/reference representation, layout, ZST
+`ImplicitEligible` requirement for an otherwise uncaptured free outer value
+reference. Capture requirements are abstract dependencies: they carry
+requested Policy and required access capability into later ordinary checking,
+but do not declare `self` fields, copy/reference representation, layout, ZST
 status, or ABI.
 
-External explicit navigation reaches the namespace export view and must pass
-independent capability/visibility eligibility; internal explicit navigation
-reaches the complete namespace view. External access does not rewrite the
-slot's PolicyMode. Automatic capture and call resolution share the
-Symbol-identity/eligible-view problem domain; this does
+External explicit navigation reaches the stable namespace export view; internal
+explicit navigation reaches the complete namespace view. A capture's access
+capability does not filter namespace membership and is checked later together
+with its Policy demand. External access does not rewrite the slot's PolicyMode.
+Automatic capture and call resolution share the Symbol-identity/stable-view
+problem domain; this does
 not imply pass ordering or an implementation dependency.
 
 An explicit capture and an automatic capture may name the same source but
@@ -2279,8 +2290,10 @@ whole-slot `PolicyMode` rather than carrying a declaration-side `P1Projection`.
 External admission requires both
 export-retention-closure membership and public reachability through the full
 path.
-Within each admitted full overload set, independent `ExternalEligibility`
-filters candidates by required capability without universally projecting mode.
+Within each admitted full overload set, every resolved candidate enters the
+stable external view with the same identity, pair, and mode. A later concrete
+consumer applies ordinary capability-family and Policy checks without changing
+namespace membership.
 Publicly reachable export-retention-closure ancestors and descendants receive this
 projection even when they are not export roots. World membership does not
 imply export, and export does not imply that the binding itself was an export
@@ -2305,6 +2318,10 @@ whole-slot coordinate; stage, value presence, ordinary namespace visibility,
 export-root, and capability realization are further typed orthogonal
 dimensions. A scalar policy is surface shorthand or a derived summary and
 cannot reconstruct the pair plus mode.
+Surface elaboration factors at most one connected whole-slot `ModePattern`
+before elaborating the residual `Pv:Pp`; mode atoms cannot independently occupy
+the value or Pattern side of `:`. `const || mut` is one mode Pattern, not two
+pair components.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
 
@@ -2325,8 +2342,9 @@ Stage, presence, visibility, and every other policy dimension remain invariant.
 
 At namespace direct top level, `export` derives an external view without
 cropping the complete internal `Pv:Pp` or rewriting `PolicyMode`.
-`ExternalEligibility` independently combines declared capability and path
-visibility. A pure `absent:Pp` slot still has a whole-slot mode; absence removes
+That stable view depends on export retention and public path reachability, not a
+future consumer's capability or Policy demand. A pure `absent:Pp` slot still
+has a whole-slot mode; absence removes
 value stages and `SemanticValueId`, not the mode coordinate. The former
 universal `Project_const` export rule is retired semantic vocabulary; any
 remaining const-projected adapter is an explicitly bounded implementation
@@ -2345,9 +2363,13 @@ The future P1 projection judgment for a binding:
 [P1] let x = expr
 ```
 
-Omitted P1 keeps the fully inferred RHS pair view, while bare `let` gives the
-destination the concrete whole-slot mode `plain`; it does not inherit the RHS
-slot's mode. `const let` and `mut let` give singleton `const` and `mut` modes.
+Before resolving/evaluating the RHS, binding spelling forms the output-mode
+demand: bare `let` gives concrete `plain`, while `const let` and `mut let` give
+singleton `const` and `mut`. That output coordinate participates with input
+Policy coordinates in ordinary call overload selection. Only after the unique
+RHS result has been selected does omitted P1 keep its fully inferred pair view
+or an explicit P1 apply the existing pair-view projection/migration machinery.
+The destination never inherits the RHS slot's mode.
 A single `Q` selects values visible
 under `Q` and retains each value's associated Pattern component. An explicit
 `Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
@@ -2588,6 +2610,8 @@ machine-width, signedness, storage, and rounding choices. Their unique initial
 Policy pair is `compile:compile`; parsing never directly creates a runtime
 abstract-literal value. Character spelling is
 still a separate surface amendment and is not added by this semantic closure.
+These are ordinary complete type values satisfying the existing Type role, not
+members of a separate `LiteralType` universe parallel to ordinary types.
 
 _See also: Concrete machine-semantic type, Convert/Construct._
 

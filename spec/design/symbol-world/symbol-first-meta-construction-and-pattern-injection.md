@@ -714,8 +714,10 @@ both components. Single P1 is not `Q:Q`. There is no general
 runtime let x = runtime_value;
 ```
 
-An omitted P1 retains and infers the complete RHS pair view while bare `let`
-independently forms destination `PolicyMode=plain`; it does not inherit the RHS
+Bare `let` first forms output demand `PolicyMode=plain`, before RHS call
+selection; that demand participates with input Policy coordinates in the
+ordinary product order. After unique RHS selection, omitted P1 retains and
+infers the complete RHS pair view. The destination does not inherit the RHS
 mode or make runtime the only way to obtain a runtime binding.
 
 The bounded migration prototype does not reinterpret a P1 query as an exact

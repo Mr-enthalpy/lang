@@ -379,9 +379,11 @@ permission, and generated field functions are `meta+runtime` visible symbols
 with runtime-only bodies. The current implementation's legacy projection nodes
 are transitional; target field access uses one same-name associated Symbol with
 `T` / `T ref` / `T share` receiver candidates.
-The crate also implements a bounded cross-Policy demand preparer: ordinary omitted P1
-continues to preserve the complete RHS pair view while destination mode is
-separately concrete `plain`; explicit P1 first uses the canonical
+The crate also implements a bounded cross-Policy pair-view demand preparer.
+Canonical semantics additionally require binding spelling to form concrete
+output mode (`plain` for bare `let`) before RHS call selection; that first-class
+mode carrier is not implemented by this helper. After demand-aware selection,
+ordinary omitted P1 preserves the complete RHS pair view; explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without
 invalidating value-bearing siblings. Only after the complete query projects
 nothing can an accepted runtime alternative be extracted as the derived

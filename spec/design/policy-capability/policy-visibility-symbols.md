@@ -16,6 +16,14 @@ coordinate orthogonal to both `Pv:Pp` and `Val1` shape; it is not stored inside
 realization are further independent coordinates. Policy syntax preserves `||`
 choice, `+` cross-dimension conjunction, and `:` pair structure.
 
+Semantic elaboration first factors one optional whole-slot `ModePattern` from
+the complete surface policy and only then elaborates the residual `PairSpec` as
+`Pv:Pp`. At most one connected mode Pattern is allowed; neither colon side may
+contain its own mode coordinate. Thus `const || mut` is one whole-slot Pattern,
+while `const:compile`, `runtime:const`, `const:mut`, and
+`const || mut:compile` are ill-formed. This is a semantic elaboration invariant,
+not a new Raw/Normalized AST node.
+
 P1 has three contextual elaborators:
 
 ```text
@@ -56,14 +64,15 @@ come from the object declaration.
 Each written formal parameter inherits P2 first. The first written formal is
 the caller-object self Pattern even though its actual is passed implicitly;
 later formals consume the explicit call-site Product. An omitted qualifier
-keeps it unchanged; `const let` / `mut let` restrict only its `PolicyMode`
-and do not alter any other component. The function object itself defaults to an empty
-mode restriction, whose semantic value is the real `plain` point; an explicit
+keeps the pair unchanged and elaborates the formal mode to concrete `plain`;
+`const let` / `mut let` restrict only its `PolicyMode` and do not alter any
+other component. The function object's unwritten mode spelling likewise
+elaborates directly to the real `plain` point; an explicit
 declaration P1 may crop it. Namespace
 declaration elaboration does not crop this complete internal view merely
-because the declaration is exported. External eligibility is determined by
-the independently declared capability/visibility boundary; export never
-rewrites the internal mode to `const`.
+because the declaration is exported. Stable external admission is determined
+by export retention plus public path visibility; later consumer capability
+checks do not rewrite namespace membership or the internal mode to `const`.
 
 Formal elaboration has two consumers of the same result: the entered callable
 body receives the effective pair and mode, and overload candidate formation
@@ -140,7 +149,7 @@ derives a separate external view:
 
 ```text
 InternalView(value export) = full Pv:Pp
-ExternalView(value export) = ExternalEligibleView(full Pv:Pp, PolicyMode, capability)
+ExternalView(value export) = identity-preserving full Pv:Pp plus PolicyMode
 InternalView(type export)  = absent:Pp
 ExternalView(type export)  = absent:Pp
 ```
@@ -157,24 +166,24 @@ PolicyMode(absent:Pp slot) ∈ {const, plain, mut}
 ```
 
 `const`, `plain`, and `mut` therefore all remain meaningful for a pure
-type/Pattern slot. Whether a value-bearing or pure slot is externally usable is
-decided by `ExternalEligibility`, not by a universal const projection. That
-check is previewed for a direct root by namespace-declaration elaboration; the
-preview remains declaration-side capability/visibility validation, not a
-resolved external policy.
+type/Pattern slot. Stable external membership is decided by export-retention
+closure plus public path reachability, not by a universal const projection or a
+future consumer demand. Direct-root namespace-declaration elaboration may
+preview those declaration-side admission facts; it does not create a resolved
+consumer policy.
 
 After declaration projection has been applied to actual RHS/result entries,
 each candidate carries a resolved `PolicyPair`. External admission then
 requires both export-retention-closure membership and public reachability
 through every
 path component. For each admitted symbol—including non-root ancestors or
-descendants—every policy-eligible candidate is transformed into an
-identity-preserving
+descendants—every resolved candidate is transformed into an identity-preserving
 `ExportCandidateView` whose external policy is another complete `PolicyPair`
 plus its unchanged `PolicyMode`. The Pattern component is preserved.
-Candidates lacking the requested external capability stay in `Σ_full` and are
-filtered from `Σ_export`; `absent:Pp` is not special-cased by mode. The generic
-policy parser and function-object stage lifting do not perform these operations.
+No later call/read/capture capability filters this stable `Σ_export`.
+Consumer-specific capability-family applicability and Policy demand are checked
+after lookup; `absent:Pp` is not special-cased by mode. The generic policy
+parser and function-object stage lifting do not perform these operations.
 
 Namespace and Pattern consumers use three projections rather than treating
 export as one universal visibility bit:

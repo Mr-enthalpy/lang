@@ -328,14 +328,16 @@ the resolved layer later forms:
 ```text
 AutoCapture(C, s)
   = capture local binder s from source symbol s
-    after ExternalEligibility(s, requested capability)
+    after authority-appropriate stable namespace lookup
+    carrying requested Policy and required access capability
     with origin ImplicitEligible
 ```
 
 This automatic capture cannot run in Raw-to-Norm normalization. It requires
 name resolution, closure-local binder exclusion, value-facet selection, and
-external capability/visibility checking. A resolved semantic handoff therefore
-distinguishes:
+namespace visibility checking. Capability-specific capture legality remains a
+later ordinary consumer of the resolved requirement. A resolved semantic
+handoff therefore distinguishes:
 
 ```text
 CaptureOrigin
@@ -349,13 +351,14 @@ mode, not a universal writability grant; automatic capture does not manufacture
 write capability.
 
 An externally navigated name is a common case: external authority searches the
-namespace export view, then applies independent external eligibility.
+stable namespace export view. It does not filter that namespace view using this
+capture's requested capability.
 Internal explicit navigation instead searches the complete namespace-internal
 view and does not prove export membership:
 
 ```text
 ResolveExplicitNavigation(path, ExternalAuthority) = exported symbol s
-  -> AutoCapture(C, s, requested capability)
+  -> AutoCapture(C, s, requested policy, required access capability)
 
 ResolveExplicitNavigation(path, InternalAuthority)
   -> search Σ_full; export membership is independent
@@ -364,7 +367,7 @@ ResolveExplicitNavigation(path, InternalAuthority)
 External callable references may therefore enter an ordinary closure as
 automatic eligible dependencies rather than source-written capture bindings.
 Automatic capture and call resolution meet in the same problem domain because
-both reason about an external symbol's identity and eligible external view. This
+both reason about an external symbol's identity and stable external view. This
 observation imposes no pass ordering, data flow, shared intermediate object, or
 implementation dependency between them. Automatic capture does not itself
 choose an overload.
@@ -393,9 +396,14 @@ ResolvedCaptureRequirement {
   local_binder: BinderId,
   source: ResolvedValueRef,
   requested_policy: PolicySlice,
+  required_access_capability: AccessCapabilityRequirement,
   origin: Explicit | ExplicitInferredBinder | ImplicitEligible
 }
 ```
+
+The namespace resolver does not consume either request coordinate. A later
+ordinary capture-legality step applies the requested Policy demand and access
+capability to the candidates returned by stable lookup.
 
 It does not state that the dependency is a `self` field, a copied value, a
 reference, a receiver mode, or an ABI slot. Representation selection may later

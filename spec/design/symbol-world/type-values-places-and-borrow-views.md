@@ -1520,7 +1520,22 @@ implementation lookup carriers:
 
 `LiteralFamily`, `AtomicBuiltinType`, and `NumericTypeKey` remain useful Rust
 and registry shapes, but none defines the initial source-language semantic
-type. The canonical semantic path is:
+type. The abstract denotation types use the existing type ontology:
+
+```text
+TypeRole(integer)
+TypeRole(real)
+TypeRole(character)
+
+NoSeparateLiteralTypeUniverse
+```
+
+`integer`, `real`, and `character` are ordinary complete type values satisfying
+the existing Type role. They do not form a parallel `LiteralType` universe or a
+fourth semantic type ontology; ordinary construction consumes them through the
+same Type/call machinery as other type values.
+
+The canonical semantic path is:
 
 ```text
 token spelling

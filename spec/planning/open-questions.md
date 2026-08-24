@@ -149,8 +149,9 @@ Resolved future-design decisions:
   Generated receiver helpers therefore use `[self, val, ...]`, not
   `[val, ...]`.
 - A function-object binding with no written mode is `plain`. Export preserves
-  the complete internal `Pv:Pp` and `PolicyMode`; `ExternalEligibility`
-  independently checks capability plus path visibility. `Pv = absent` removes
+  the complete internal `Pv:Pp` and `PolicyMode`; stable external admission
+  uses export retention plus public path visibility, while consumer capability
+  and Policy checks occur after lookup. `Pv = absent` removes
   value stages and `SemanticValueId`, but does not erase the whole-slot mode.
   The former universal const-projection rule and the equation
   `plain = const || mut` are closed as retired semantics; current flat and
@@ -191,10 +192,11 @@ Resolved future-design decisions:
   or layout declarations. In-place candidates are preferred over otherwise tied
   non-in-place candidates after first-order-over-instantiated preference.
 - Internal explicit navigation searches `Σ_full`; external explicit navigation
-  searches `Σ_export` and checks independent capability/visibility eligibility;
+  searches stable `Σ_export`; a later consumer checks its requested capability
+  and Policy demand;
   neither is a Wpre/Wseal membership query. Automatic capture and call
-  resolution share a problem domain around symbol identity and external
-  eligibility, without implying pass ordering,
+  resolution share a problem domain around symbol identity and the stable
+  external view, without implying pass ordering,
   shared intermediate objects, or an implementation dependency. Explicit and
   automatic capture remain distinct dependency declarations even when they
   resolve to the same source; later layout alone may coalesce equivalent
@@ -216,8 +218,9 @@ Implemented substrate after this correction:
   substrate. The direct declaration `external_projection` remains a
   root-local `P1Projection` preview. External admission requires both
   symbol-level export-retention-closure membership and public path
-  reachability; among an admitted symbol's resolved candidates, mut-only
-  entries remain in `Σ_full` and are omitted from `Σ_export`. Namespace-graph
+  reachability; every resolved candidate of an admitted symbol enters
+  `Σ_export` with the same identity, pair, and mode. The current const-projected
+  adapter remains only a bounded implementation subset. Namespace-graph
   installation supplies the persistent admission facts. Retention membership
   is not itself export status; `Σ_export` is the external candidate set.
 - `lang_build` now also provides a parent-linked `SemanticOwnerGraph`,
@@ -305,9 +308,9 @@ Not implemented after this correction:
 The implementation work is intentionally split into three follow-up packages:
 
 1. **Policy carrier and 3×3 tests:** add first-class whole-slot `PolicyMode`,
-   external eligibility, all nine capability coordinates, plain ambiguity, and
-   asymmetric default/delete/custom fixtures without changing resolver retry
-   rules.
+   stable export admission/projection, later consumer capability checks, all
+   nine capability coordinates, plain ambiguity, and asymmetric
+   default/delete/custom fixtures without changing resolver retry rules.
 2. **Abstract literals and materialization:** add exact `integer`/`real`
    denotations, keep character spelling as a separate amendment, perform
    ordinary construction to the concrete machine Type, and enforce same-Type

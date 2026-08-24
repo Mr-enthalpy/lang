@@ -290,6 +290,27 @@ If the inner ordinary invocation fails, the failure is final for this
 candidate: the resolver does not go back and re-select another global
 `const` / `mut` overload.
 
+The three symmetric Policy preference points do not require three symmetric
+global reconstruction operators:
+
+```text
+NoPlainReconstructorRequirement:
+
+PolicyMode = {const, plain, mut}
+  !=>
+source language exposes one global reconstructor per mode
+
+global const / mut
+  = explicit ordinary reconstruction operations
+
+plain materialization
+  = normally a plain destination plus ordinary move/copy mechanical passing
+```
+
+There is no language requirement for a global `val plain` dispatcher. This is
+compatible with a full 3x3 capability space: selection coordinates and the
+surface inventory of explicit reconstruction operations are different facts.
+
 ## 2. Pattern alternative and policy operators
 
 Single `|` belongs to Pattern alternative:
@@ -379,6 +400,52 @@ additional source atom. A written choice such as `const || mut` is a Pattern
 over two PolicyMode points, not the meaning of plain and not an omitted-mode
 default.
 
+Surface elaboration must factor that whole-slot coordinate before building the
+pair:
+
+```text
+PolicySurfaceElaboration(surface)
+  -> FactorWholeSlotMode(surface)
+  -> <ModePattern?, PairSurface?>
+  -> <ModePattern?, PairSpec = Pv:Pp | InferPair>
+
+ModePattern
+  ::= const
+   |  mut
+   |  const || mut
+   |  any later well-formed Pattern over the same whole-slot coordinate
+```
+
+`FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
+Mode Pattern once, and removes those atoms before either colon side is
+elaborated. The residual `PairSurface`, if present, contains only pair/view
+coordinates. The well-formedness rules are:
+
+```text
+AtMostOneWholeSlotModePattern
+NoPolicyModeCoordinateInPv
+NoPolicyModeCoordinateInPp
+NoIndependentModePatternsAcrossColon
+
+colon written
+  => residual Pv side is non-empty
+  && residual Pp side is non-empty
+
+no residual pair/view atom
+  => PairSpec = InferPair
+```
+
+Thus `const || mut` alone is one whole-slot Mode Pattern with inferred pair;
+`const + runtime : compile` parses as `(const + runtime):compile` and factors
+to mode `const` plus pair `runtime:compile`. By contrast `const:compile`,
+`runtime:const`, `const:mut`, and `const || mut:compile` are invalid:
+factorization would leave
+an empty written colon side or produce two independent mode patterns. An
+implementation that places a mode atom in `Pv` or `Pp` is invalid even if the
+surface parser preserved that atom on one syntactic side. This is a semantic
+elaboration invariant and does not require the frozen Raw/Normalized Policy
+AST carrier to change immediately.
+
 ### 2.2 Algebra
 
 `||` selects alternatives within one dimension:
@@ -451,20 +518,45 @@ call-site demand formation produces the concrete demand compared with them.
 [P1] let x = expr;
 ```
 
-Ordinary binding elaboration separates pair projection from destination mode:
+Ordinary binding first forms its demand, then resolves/evaluates the RHS under
+that demand, and only afterward applies the existing pair-view projection:
 
 ```text
 OrdinaryBindingElaboration(prefix, expr, destination):
-  R := result(expr)
+  demand := BindingDemand(prefix)
+
+  demand.mode_pattern
+    := WrittenModePattern(prefix)  when one is written
+       plain                       for an unwritten mode / bare `let`
+    // singleton `const let` and `mut let` therefore demand const and mut
+
+  demand.pair_query
+    := WrittenPairProjection(prefix)
+
+  CallSitePolicyDemandFormation(binding_context, demand.mode_pattern)
+    -> delta_out
+
+  R := ResolveAndEvaluate(
+         expr,
+         result_mode_demand = delta_out)
+       // if expr is a call, delta_out is its output PolicyMode coordinate
+       // before ordinary overload maxima are chosen
 
   PairView(destination)
-    := ElabP1(WrittenPairProjection(prefix), R)
+    := ElabP1(demand.pair_query, R)
 
-  PolicyMode(destination)
-    := const  for singleton `const let`
-       mut    for singleton `mut let`
-       plain  for bare `let`
+  selected_mode
+    := ConcretizeOutputMode(demand.mode_pattern, SelectedCandidate(R))
+
+  PolicyMode(destination) := selected_mode
+
+  Bind(PairView(destination), destination)
 ```
+
+`ConcretizeOutputMode({mu}, candidate) = mu` for every singleton demand,
+including bare `let`'s `{plain}`. For a written multi-point Mode Pattern it is
+the unique concrete point delivered by the selected candidate under that
+Pattern; ambiguity is rejected before binding.
 
 `WrittenPairProjection` removes the orthogonal mode coordinate from the
 binding prefix and is absent when no pair/view constraint was written. Thus
@@ -472,8 +564,26 @@ omitted P1 retains the complete inferred RHS **pair view**, while bare `let`
 still produces the concrete destination mode `plain`; it does not inherit the
 RHS slot's mode. A written composite mode Pattern is an explicit
 `CallPolicyDemand`, not omission or inference; successful overload selection
-must still deliver one concrete destination mode. A single written pair/view policy is a value-dominant
-projection:
+must still deliver one concrete destination mode. A single written pair/view
+policy is a value-dominant projection.
+
+The ordering is load-bearing:
+
+```text
+BindingDemand.mode_pattern
+  -> RHS call output coordinate
+  -> ordinary CandidatePolicySig × CallPolicyDemand product order
+  -> unique selected RHS result
+  -> pair-view ProjectP1 / migration consumer
+  -> bind
+```
+
+It is forbidden to select an RHS callable first and discover the destination
+mode afterward. `ProjectP1` and atomic migration retain their existing-view-
+first semantics, but they consume the result of the already demand-aware call
+selection rather than creating that output-mode demand.
+
+Concretely:
 
 ```lang
 Q let x = expr;
@@ -1271,7 +1381,7 @@ reach the complete namespace-internal view. External explicit navigation is
 restricted to the export projection. Explicit-path success alone therefore
 does not prove export membership.
 
-### 9.2 Export roots and value projection
+### 9.2 Export roots and stable external projection
 
 `export` is allowed only on a direct top-level declaration of one namespace
 construction level:
@@ -1284,17 +1394,36 @@ Let `InternalView(s) = ⟨Pv:Pp, μ⟩`, where `μ` is the resolved whole-slot
 PolicyMode. Export derives, rather than replaces, a second view:
 
 ```text
-ExternalEligibility(candidate, authority, required_capability, policy_demand)
+ExportAdmission(symbol, path)
+  = InExportRetentionClosure(symbol)
+    && PubliclyReachable(path)
 
-ExternalEligibility(...) = admitted
-  => ExternalView(candidate) = resolved candidate view
+ExportAdmission(symbol, path)
+  => for each candidate in FullOverloadSet(symbol):
+       ExternalView(candidate) = ResolvedCandidateView(candidate)
 ```
 
-No PolicyMode is universally export-safe. A concrete export mechanism may
-realize const/plain/mut cells through ordinary default/delete/custom capability
-members, but it must state that family explicitly. Neither `const <= mut` nor
-the retired universal form
+`Σ_export` is therefore stable for one committed namespace snapshot. It depends
+on export retention and path visibility, never on a future consumer's
+`policy_demand` or requested read/call/capture capability. It preserves
+candidate identity, `Pv:Pp`, and `PolicyMode` without selecting an overload.
+
+No PolicyMode is universally safe for a later operation. A concrete consumer
+may realize const/plain/mut cells through ordinary default/delete/custom
+capability members, but that happens after lookup from `Σ_export`. Neither
+`const <= mut` nor the retired universal form
 `ExternalView = Project_const(InternalView)` is a foundation theorem.
+
+If a future language design introduces publication itself as a capability, it
+must be an explicit, demand-independent family:
+
+```text
+ExportCapability(candidate)
+```
+
+It must not consume a later caller's Policy demand and must not be disguised as
+ordinary namespace visibility. No such additional publication filter is
+defined by this document.
 
 It is forbidden in function/meta-function bodies, parameters, return slots,
 P2, Pattern interiors, expression policies, ordinary local P1, and any nested
@@ -1326,7 +1455,7 @@ RHS/result entries
      }
 ```
 
-Only the resolved complete view can enter the external-eligibility judgment.
+Only the resolved complete view can enter the stable external projection.
 `P1Projection::Infer` is a valid declaration request, and
 `P1Projection::ValueDominant` does not yet carry the associated `Pp`; neither
 is an external candidate view.
@@ -1347,13 +1476,10 @@ ExportAdmission {
 }
 
 if admission.in_export_retention_closure && admission.publicly_reachable:
-  internal_view := ResolveCandidateView(candidate)
-  require ExternalEligibility(
-      candidate,
-      admission,
-      required_capability,
-      policy_demand)
-  external_view := internal_view
+  for candidate in FullOverloadSet(symbol):
+    internal_view := ResolveCandidateView(candidate)
+    external_view := internal_view
+    insert identity-preserving external_view into Σ_export
 ```
 
 Export-retention-closure membership and public path reachability are separate
@@ -1367,12 +1493,22 @@ the symbol in the graph considered for interface construction. It does not by
 itself mean that the symbol is externally exported. `Σ_export` is the external
 candidate set.
 
-Admission does not arbitrarily select individual overloads. Within an admitted
-symbol's complete overload set, each resolved candidate is checked against the
-same explicit external capability family and Policy demand. Const, plain, and
-mut candidates may therefore be independently defaulted, deleted, or given a
-custom realization. No candidate is included or excluded merely because its
-mode has a global safety ordering.
+Admission does not select or filter individual overloads. Within an admitted
+symbol's complete overload set, every resolved candidate enters `Σ_export`
+with the same identity, pair, and mode. A concrete consumer then performs the
+ordinary sequence:
+
+```text
+candidate from Σ_export
+  -> CallSitePolicyDemandFormation
+  -> ordinary capability-family applicability
+  -> ordinary Policy overload / legality
+```
+
+Const, plain, and mut coordinates may be independently defaulted, deleted, or
+given a custom realization by that consumer family. No candidate is included
+or excluded from the stable namespace view merely because of its mode or a
+future caller's demand.
 
 Ancestors and descendants admitted by the final external-exposure check need
 not be export roots and may have used `P1Projection::Infer`; their resolved
@@ -1382,11 +1518,12 @@ direct-root validation/preview; `None` on a non-root declaration does not mean
 that the eventual namespace export view lacks that declaration.
 
 The current typed set carrier still implements a const-projected compatibility
-subset. It is implementation transport, not this source-semantic rule. Before
-end-to-end external resolver integration, a symbol-level diagnostic carrier
-must preserve admission facts and distinguish an unresolved name, a name
-outside the export-retention closure, a private path, and an admitted symbol
-with no eligible external candidate.
+subset. It is implementation transport, not this source-semantic rule. Its
+legacy `NoExternallyEligibleCandidate` failure name describes that narrower
+adapter only. Before end-to-end external resolver integration, a symbol-level
+diagnostic carrier must preserve admission facts and distinguish an unresolved
+name, a name outside the export-retention closure, and a private path; ordinary
+consumer capability/policy failure occurs only after stable external lookup.
 
 ### 9.3 Public/private
 
