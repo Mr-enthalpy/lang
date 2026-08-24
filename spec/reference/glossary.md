@@ -694,10 +694,11 @@ _See also: OverloadSpecificity, OverloadResolutionPipeline,
 
 An overload candidate that has passed every hard legality check for the current
 call: namespace/policy-view visibility, associated `()`, argument/Pattern shape,
-receiver and parameter policy pairs, stage legality, any target-result policy
-constraint, expected result class/facet, concept and ordinary require
-satisfaction, and other compile/type prerequisites. The set of all such
-candidates is `A`.
+receiver and parameter policy pairs, stage legality, any supplied target-result
+pair/type/rank/facet constraint, concept and ordinary require satisfaction, and
+other compile/type prerequisites. The set of all such candidates is `A`. The
+total `OutputModeDemand(call)` is a later PolicyMode-product preference
+coordinate, not an optional hard-admissibility constraint.
 
 Preference survivors are not a second meaning of "qualified." They are the
 successive subsets obtained by applying the fixed ordered preference filters to
@@ -2378,8 +2379,10 @@ dimensions. A scalar policy is surface shorthand or a derived summary and
 cannot reconstruct the pair plus mode.
 Surface elaboration factors at most one connected whole-slot `ModePattern`
 before elaborating the residual `Pv:Pp`; mode atoms cannot independently occupy
-the value or Pattern side of `:`. `const || mut` is one mode Pattern, not two
-pair components. Whether a colon spelling with an empty residual side is
+the value or Pattern side of `:`. `ModePattern` is a non-empty `||` choice over
+`ModeAtom ::= const | plain | mut`; explicit `plain`, all two-point choices,
+and `const || plain || mut` factor as one mode Pattern, not pair components.
+Whether a colon spelling with an empty residual side is
 rejected or contextually completed is still a surface question; the current
 rejection examples are provisional rather than a consequence of orthogonality.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
@@ -2519,6 +2522,11 @@ result as an ordinary actual and never reopens the inner call. Thus an outer
 formal PolicyMode Pattern cannot be assumed to select an inner call and then be
 used to decide the outer candidate; no cross-call fixed point exists.
 
+This `OutputModeDemand(call)` exists for every call and always participates in
+the PolicyMode product. Optional expected result pair/type/rank/facet facts are
+a separate `TargetResultConstraint(call)` used by hard admissibility only when
+the context supplies them.
+
 _See also: Policy Binding, PolicyMode, OverloadResolutionPipeline._
 
 ---
@@ -2535,7 +2543,9 @@ It has one preserved syntax/Normalized-AST boundary and two semantic
 projections. The inward projection forms `ResultPolicyDemand(PolicySpec)`
 before the operand root call's ordinary overload maxima. The outward
 projection applies ordinary Policy-demand satisfaction and exposes one
-completed concrete Policy view. Parentheses close the boundary; an outer call
+completed concrete Policy view through the node's ordinary expression-result
+slot. The slot is not a NameBinding, Symbol, hidden declaration, or
+independently addressable Place. Parentheses close the boundary; an outer call
 consumes that view as an ordinary actual and cannot reopen the operand call.
 
 `PolicyLet` creates no hidden binding, place, or declaration. It is not an
@@ -2547,6 +2557,15 @@ operation or by the mechanical transfer authorized for that demand kind. Such
 an action cannot create the preceding inward demand. The parser and Normalized
 AST preserve this node; the current build prototype does not yet execute its
 result-demand/cast semantics.
+
+For singleton `plain`, a `const` producer may win inward selection under
+`succ_plain` while retaining `ProducedMode=const`; this is not already an exact
+plain outward view. Canonical terminal move/copy transfers the value into the
+PolicyLet's ordinary plain expression-result slot. The source mode remains
+const, the result-slot mode is plain, and no global `val plain` or Policy tag
+rewrite is introduced. Missing move/copy/reconstruction evidence is a typed
+outward failure after producer selection, never permission to expose the wrong
+mode or reopen candidates.
 
 _See also: ResultPolicyDemand, Policy Demand Satisfaction,
 CallLocalPolicyClosure, PolicyMode._

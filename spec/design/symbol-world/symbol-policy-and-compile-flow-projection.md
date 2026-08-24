@@ -437,12 +437,13 @@ The parser is a strong-context parser. `meta`, `compile`, `seal`, `runtime`,
 spelling for `AbsentValuePattern` is provisional; implementation fixtures may
 use `S`, but source spelling is not frozen.
 
-Elaboration assigns atoms to typed coordinates. `const` and `mut` constrain the
-whole-slot PolicyMode pattern; they are not stored inside `Pv` or `Pp`.
-Unqualified `let` selects the concrete `plain` point and therefore needs no
-additional source atom. A written choice such as `const || mut` is a Pattern
-over two PolicyMode points, not the meaning of plain and not an omitted-mode
-default.
+Elaboration assigns atoms to typed coordinates. `const`, `plain`, and `mut`
+are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
+`Pv` or `Pp`. Unqualified `let` still selects the concrete `plain` point and
+therefore needs no additional source atom, while a written `plain` is an
+explicit spelling of that same point. A written choice such as
+`const || plain`, `plain || mut`, or `const || mut` is a Pattern over those
+PolicyMode points, never the meaning of omission or inference.
 
 Surface elaboration must factor that whole-slot coordinate before building the
 pair:
@@ -453,12 +454,22 @@ PolicySurfaceElaboration(surface)
   -> <ModePattern?, PairSurface?>
   -> <ModePattern?, PairSpec = Pv:Pp | InferPair>
 
-ModePattern
+ModeAtom
   ::= const
+   |  plain
    |  mut
-   |  const || mut
-   |  any later well-formed Pattern over the same whole-slot coordinate
+
+ModePattern
+  ::= ModeAtom
+   |  ModePattern "||" ModeAtom
 ```
+
+A `ModePattern` is exactly one non-empty choice over the single whole-slot
+PolicyMode dimension. It may denote any non-empty subset of
+`{const, plain, mut}`, including the three-point choice. It may not mix a stage,
+visibility, presence, or pair atom into that choice. `plain` therefore always
+factors as `ModePattern(plain)` when written; it can never remain as a residual
+`PolicyAtom` for `Pv` or `Pp`.
 
 `FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
 Mode Pattern once, and removes those atoms before either colon side is
@@ -475,7 +486,8 @@ no residual pair/view atom
   => PairSpec = InferPair
 ```
 
-Thus `const || mut` alone is one whole-slot Mode Pattern with inferred pair;
+Thus `plain`, `const || plain`, `plain || mut`, `const || mut`, and
+`const || plain || mut` alone are whole-slot Mode Patterns with inferred pair;
 `const + runtime : compile` parses as `(const + runtime):compile` and factors
 to mode `const` plus pair `runtime:compile`.
 
@@ -495,6 +507,9 @@ does not require the frozen Raw/Normalized Policy AST carrier to change.
 ```text
 runtime || compile
 meta || compile
+plain
+const || plain
+plain || mut
 const || mut
 runtime || S
 ```
@@ -503,6 +518,7 @@ It is not arbitrary clause-level Boolean disjunction. These are invalid:
 
 ```text
 runtime || const
+runtime || plain
 compile || public
 mut || export
 (const + runtime) || (mut + compile)
@@ -512,6 +528,7 @@ mut || export
 
 ```text
 const + runtime
+plain + runtime
 mut + (runtime || compile)
 public + compile
 ```
@@ -571,7 +588,7 @@ OrdinaryBindingElaboration(prefix, expr, destination):
   demand.mode_pattern
     := WrittenModePattern(prefix)  when one is written
        plain                       for an unwritten mode / bare `let`
-    // singleton `const let` and `mut let` therefore demand const and mut
+    // explicit `plain let` demands plain; const/mut demand their own points
 
   demand.pair_query
     := WrittenPairProjection(prefix)
@@ -592,7 +609,7 @@ OrdinaryBindingElaboration(prefix, expr, destination):
     := ElabP1(demand.pair_query, R)
 
   mu_destination := ElaborateDestinationMode(prefix)
-    // bare let -> plain; const let -> const; mut let -> mut
+    // bare let / plain let -> plain; const let -> const; mut let -> mut
     // a written multi-point destination Pattern is elaborated separately
     // and never changes mu_produced
 
@@ -708,6 +725,28 @@ For every call node c:
      and never reopens c.
 ```
 
+The always-present preference coordinate and optional expected-result
+constraints are distinct interfaces:
+
+```text
+OutputModeDemand(c)
+  = already-formed candidate-independent immediate-consumer ModePattern
+      when one exists
+  | plain
+
+TargetResultConstraint(c)
+  = optional expected Pv:Pp / result Type / rank / facet constraints
+
+Every call c:
+  OutputModeDemand(c) participates in the PolicyMode product before maxima(c)
+
+TargetResultConstraint(c) participates in hard admissibility
+  iff the context actually supplies it
+```
+
+`OutputModeDemand` is total. `TargetResultConstraint` is optional. The latter's
+absence may not be used to remove the former output coordinate.
+
 Thus every nested call closes locally as producer selection, concrete result,
 and then outer consumption/transfer; no cross-call fixed point is introduced.
 Using schematic call notation only (not source syntax):
@@ -751,11 +790,15 @@ The normative judgment is:
 PolicyLetFormation:
 
   pi := ElaboratePolicySpec(P, ResultPolicyContext)
+  sigma := ExpressionResultSlot(PolicyLet(P, e))
 
   Gamma ; ResultPolicyDemand = pi
     |- e ⇓ r
 
-  r' := SatisfyPolicyDemand(ResultPolicyDemand(pi), r)
+  r' := SatisfyPolicyDemand(
+          ResultPolicyDemand(pi),
+          r,
+          result_slot = sigma)
 
   --------------------------------------------------
   Gamma |- PolicyLet(P, e) ⇓ r'
@@ -765,13 +808,92 @@ The one syntax node has two projections. Its inward projection supplies `pi`
 before the maxima of the operand root call are chosen. Its outward projection
 forms a completed accepted Policy view; it does not leave an expected-result
 variable for an outer consumer. The selected operand producer keeps its
-concrete `ResultPolicyMode`. For a singleton Mode Pattern, `r'` exposes that
-one accepted concrete mode. For a multi-point Policy Pattern, ordinary demand
-satisfaction must yield one concrete accepted view or report ambiguity.
-Existing accepted views preserve identity. A required authorized
-reconstruction/migration uses the established type callspace or mechanical
-action and returns a new value when that operation requires one; it does not
-create a hidden `NameBinding`, `Place`, or declaration.
+concrete `ResultPolicyMode`.
+
+`sigma` is the ordinary semantic result position already owned by this
+expression node:
+
+```text
+PolicyLetResultSlot:
+
+sigma = ExpressionResultSlot(PolicyLet(P, e))
+
+sigma is not:
+  a NameBinding
+  a Symbol
+  a hidden declaration
+  an independently acquired or source-addressable Place
+
+PolicyMode(sigma) = the unique concrete mode selected by outward satisfaction
+```
+
+The slot is not an anonymous variable and creates no source entity. It is the
+ordinary result carrier through which a completed expression view is exposed
+to its parent expression. For a singleton Mode Pattern, `r'` exposes exactly
+that concrete mode. For a multi-point Mode Pattern, ordinary demand
+satisfaction must select one unique concrete member of the written choice or
+report ambiguity.
+
+Producer preference and outward acceptance are different relations:
+
+```text
+ProducerPreferredUnder(mu_demand, mu_candidate)
+  = preference by succ_mu_demand
+
+ExistingOutwardModeAccepted(ModePattern, mu_result)
+  iff mu_result is a member of that written ModePattern
+```
+
+Thus a `const` producer may uniquely win under a `plain` output preference, but
+its `const` result is not already an outward singleton-`plain` view. The
+producer fact remains frozen while the expression-result slot receives its own
+mode.
+
+Outward completion is:
+
+```text
+r := frozen operand result
+
+if ExactExistingAcceptedView(pi, r) = v:
+  ExposeInExpressionResult(sigma, v)
+  preserve identity(v)
+else:
+  require c = OrdinaryPolicyTransitionWitness(pi, r, sigma)
+  v := ApplyOrdinaryValueAlgebra(c, r)
+  InstallExpressionResult(sigma, v)
+
+PolicyMode(sigma) = ConcreteAcceptedMode(pi, v)
+ResultPolicyMode(r) remains unchanged
+```
+
+`ExposeInExpressionResult` is observation, not a copy into a new Place.
+`InstallExpressionResult` is the semantic result handoff of the selected
+ordinary operation, not a hidden binding. A required authorized
+reconstruction/migration uses the established Type callspace, Val2 action, or
+mechanical action and returns a new value when that operation requires one.
+
+Singleton `plain` has a closed ordinary realization without a global
+reconstructor:
+
+```text
+PlainPolicyLetResultTransfer:
+
+ProducedMode(r) = mu_r
+sigma_plain = ExpressionResultSlot(plain let e)
+PolicyMode(sigma_plain) = plain
+
+TransferToExpressionResult(r, sigma_plain, move | copy)
+  uses CanonicalMechanicalPassCore
+  preserves ProducedMode(r) = mu_r
+  exposes the transferred result through sigma_plain
+```
+
+A fresh consumable producer result may use terminal `Move`. A source that must
+be preserved requires the ordinary `CopyConstruct` plus terminal `Move`
+witness. If no permitted witness exists, outward satisfaction fails after the
+producer is frozen; that failure does not erase `sigma`, expose the producer's
+wrong mode, or reopen producer selection. This is why no global `val plain`
+dispatcher is required.
 
 ```text
 PolicyCastNotDerivedFromValueCall:
@@ -940,6 +1062,7 @@ unspecified variable or an instruction to infer one of the other two:
 
 ```text
 let x        -> FormalPolicyView(P2, PolicyMode = plain)
+plain let x  -> FormalPolicyView(P2, PolicyMode = plain)
 const let x  -> FormalPolicyView(P2, PolicyMode = const)
 mut let x    -> FormalPolicyView(P2, PolicyMode = mut)
 ```
@@ -994,6 +1117,7 @@ rule while leaving P1's stage/exposure pair unchanged:
 
 ```text
 return let x        -> inherited P1, PolicyMode = plain
+return plain let x  -> inherited P1, PolicyMode = plain
 return const let x  -> inherited P1, PolicyMode = const
 return mut let x    -> inherited P1, PolicyMode = mut
 ```
@@ -1076,6 +1200,13 @@ SatisfyPolicyDemand(demand, result):
   Qr = RuntimeBranch(Q)
   consider one language-authorized atomic runtime migration toward Qr
 ```
+
+When `Q` contains a whole-slot ModePattern, an existing outward view is
+accepted only when its concrete mode is a member of that Pattern. The
+`succ_const` / `succ_plain` / `succ_mut` relations rank producer candidates;
+they do not widen the set of concrete modes accepted by outward satisfaction.
+In particular, a `const` producer that wins under `plain` preference is not an
+existing singleton-`plain` outward view.
 
 The result relation is closed by an explicit witness rule:
 
@@ -1941,8 +2072,12 @@ All ordinary bindings and call targets use one selection trunk:
 C0 = CallableProjection(ResolveSymbol(path))
 C1 = ExposePhaseViews(C0, Phase)
 C2 = ProjectExpectedPolicy(C1, P1_or_expected_facet)
-A  = FullyAdmissible(C2, argument_frame, expected_result)
-M  = MaxPolicyAndOverloadOrder(A)
+T? = TargetResultConstraint(call)
+A  = FullyAdmissible(C2, argument_frame, T?)
+M  = MaxPolicyAndOverloadOrder(
+       A,
+       argument PolicyMode coordinates,
+       OutputModeDemand(call))
 ```
 
 Success requires exactly one maximal candidate. Failure can mean no exposed
@@ -1970,8 +2105,10 @@ Multiple positions form a product partial order: `f` dominates `g` iff `f` is
 not worse at every participating position and is strictly better at at least
 one. Crossed advantages remain incomparable. There is no score, exact-match
 count, parameter weighting, lexicographic order, input-before-output rule, or
-separate conversion rank. A result policy participates only when the call
-context supplies a target-result constraint.
+separate conversion rank. Every call contributes its total
+`OutputModeDemand(c)` as the output PolicyMode preference coordinate. Optional
+target-result pair/type/rank/facet constraints participate only when supplied,
+as hard admissibility in `A`; they are not the output-mode coordinate.
 
 Preference and capability are separate relations. Any operation with input and
 output modes has an expressible 3×3 capability space:

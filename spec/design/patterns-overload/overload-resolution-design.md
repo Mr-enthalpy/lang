@@ -670,13 +670,31 @@ plain context has one fully admissible `const` candidate and one fully
 admissible `mut` candidate but no `plain` candidate, both are co-maximal and
 the call is ambiguous.
 
-Across the first written self formal, later explicit parameters, and a target
-result policy when one is actually supplied, compare candidates by product
+Across the first written self formal, later explicit parameters, and the
+always-present call output `PolicyMode` demand, compare candidates by product
 order. The self actual is injected rather than taken from the call-site
 Product, but its formal PolicyMode restriction participates in the same order.
 Candidate `f`
 dominates `g` iff `f` is no worse at every compared position and strictly
 better at at least one.
+
+The total output preference and optional expected-result constraints are
+different inputs:
+
+```text
+OutputModeDemand(c)
+  = explicit or candidate-independent immediate-consumer ModePattern
+      when already formed
+  | plain
+
+TargetResultConstraint(c)
+  = optional expected Pv:Pp / result Type / rank / facet constraints
+```
+
+`OutputModeDemand(c)` exists for every call and always contributes the output
+PolicyMode coordinate to Bp'. `TargetResultConstraint(c)` contributes only
+when supplied and is consumed by hard admissibility in `A`; its absence never
+removes the output-mode coordinate.
 
 Crossed advantages remain incomparable. Phase-local stage specificity joins
 this product only after full admissibility: OpenStatic has `meta > compile` and
@@ -709,10 +727,12 @@ rank.
 
 An explicit `PolicyLet(P, e)` supplies a candidate-independent output demand
 to the root call of `e` before that call's maxima. It then closes by satisfying
-`P` and exposing one concrete ordinary actual view. Outer overload resolution
-may compare that actual but may not push a new demand through the PolicyLet
-boundary or reopen the inner candidate set. The outward satisfaction failure
-is not a conversion rank and does not select a runner-up producer.
+`P` into the node's ordinary expression-result slot and exposing one concrete
+ordinary actual view. That slot is not a NameBinding, Symbol, declaration, or
+independently addressable Place. Outer overload resolution may compare the
+completed actual but may not push a new demand through the PolicyLet boundary
+or reopen the inner candidate set. The outward satisfaction failure is not a
+conversion rank and does not select a runner-up producer.
 
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
@@ -879,7 +899,7 @@ A   = FullyAdmissible(
         C3,
         Phase,
         invocation_frame,
-        expected_result,
+        optional_target_result_constraint,
         compile_type_requirements
       )
 
@@ -889,7 +909,7 @@ Bp' = MaxPolicyProduct(
         D,
         Phase,
         invocation_frame,
-        target_result_policy,
+        output_mode_demand,
         optional_atomic_migration_endpoints
       )
 B1  = MaxEntryPreference(Bp')
@@ -1052,13 +1072,16 @@ Only candidates surviving declaration-side policy enter ordinary preference
 filtering:
 
 - **Bp' Policy product order**: retain maximal candidates under §4.5, including
-  phase-local stage specificity and whole-slot PolicyMode positions; include target-result
-  policy only when the context supplies one. For an authorized atomic
+  phase-local stage specificity and whole-slot PolicyMode positions; include
+  the total `OutputModeDemand(c)` for every call. Optional target-result
+  pair/type/rank/facet constraints are not Bp' coordinates and enter hard
+  admissibility only when the context supplies them. For an authorized atomic
   runtime-migration call, add input/output endpoint Policy fit as two product
   coordinates. Without those coordinates, this is exactly old Bp.
   Each parameter position is taken from its elaborated formal policy Pattern:
   the callable P2 pair is inherited first, then the written whole-slot mode
-  supplies `const` or `mut`; unwritten mode supplies the concrete `plain`. This carrier
+  supplies `const`, `plain`, or `mut`; unwritten mode also supplies the concrete
+  `plain`. This carrier
   is part of the externally compared candidate, not merely the body-entry
   environment.
 - **B1 Entry preference**: apply any configured entry preference.
@@ -1156,13 +1179,18 @@ C0  = CallSiteFamilyView(CallableProjection(CalleeSymbol), call_site_annotation)
 C1  = VisibleObjects(C0, V)
 C2  = ExposePhaseViews(C1, Phase)
 C3  = AssociatedCallEntryAndShapeMatch(C2, E)
-A   = FullyAdmissible(C3, Phase, invocation_frame, expected_result, Γ)
+A   = FullyAdmissible(
+        C3,
+        Phase,
+        invocation_frame,
+        TargetResultConstraint(call)?,
+        Γ)
 D   = DeclarationCandidatePolicy(A)
 Bp' = MaxPolicyProduct(
         D,
         Phase,
         invocation_frame,
-        target_result_policy,
+        OutputModeDemand(call),
         optional_atomic_migration_endpoints
       )
 B1  = MaxEntryPreference(Bp')

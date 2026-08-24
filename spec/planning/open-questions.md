@@ -155,10 +155,19 @@ Resolved future-design decisions:
   `[val, ...]`.
 - `PolicySpec let PipeExpression` is the explicit expression-level
   result-Policy boundary. It forms `ResultPolicyDemand` before the operand root
-  call's maxima, completes ordinary Policy satisfaction afterward, and closes
-  before an outer call consumes the concrete view. It is not a Val2 call,
-  hidden binding, or cross-call fixed point. Raw/Norm preservation is
+  call's maxima, completes ordinary Policy satisfaction afterward into the
+  node's ordinary expression-result slot, and closes before an outer call
+  consumes the concrete view. The slot has its own concrete mode but is not a
+  NameBinding, Symbol, declaration, or independently addressable Place.
+  Singleton plain uses ordinary terminal move/copy when the selected producer
+  has another mode; no global `val plain` is required. PolicyLet is not a Val2
+  call, hidden binding, or cross-call fixed point. Raw/Norm preservation is
   implemented; semantic execution remains part of the Policy carrier package.
+- Every call has a total `OutputModeDemand`: an already-formed
+  candidate-independent immediate-consumer demand when available, otherwise
+  concrete `plain`. Optional expected result pair/type/rank/facet constraints
+  are a separate hard-admissibility input and do not remove that output
+  coordinate when absent.
 - A function-object binding with no written mode is `plain`. Export preserves
   the complete internal `Pv:Pp` and `PolicyMode`; stable external admission
   uses export retention plus public path visibility, while consumer Policy
@@ -167,6 +176,10 @@ Resolved future-design decisions:
   The former universal const-projection rule and the equation
   `plain = const || mut` are closed as retired semantics; current flat and
   const-projected carriers remain explicitly bounded implementation adapters.
+- Explicit surface `plain` is `ModeAtom(plain)`. `ModePattern` is any non-empty
+  same-coordinate `||` choice over `const | plain | mut`, including every
+  two-point choice and the three-point set; no such atom may remain in `Pv` or
+  `Pp` after factorization.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
   unpack. Raw `...(a, b)` is preserved but rejected after P normalization

@@ -652,9 +652,12 @@ Product |> Expr
 8. Build invocation frame: implicit caller/self + explicit shaped product args
 9. Form fully admissible set A using all hard checks, including receiver and
    parameter pair compatibility, P2 result compatibility with any target
-   expectation, stage legality, and require legality
+   pair/type/rank/facet expectation actually supplied, stage legality, and
+   require legality
 10. Export every elaborated formal PolicyMode Pattern to its candidate position,
-    apply PolicyMode product-maximal filtering and the remaining fixed-order
+    add the always-present `OutputModeDemand(call)` (`plain` when no
+    candidate-independent immediate-consumer demand exists), apply PolicyMode
+    product-maximal filtering and the remaining fixed-order
     preference filters, including in-place over non-in-place after the
     first-order-over-instantiated filter, then named strategy rules and the
     must-select check
@@ -671,10 +674,12 @@ reopens the nested producer.
 
 `PolicyLet(P, e)` is the explicit expression boundary that may provide such a
 candidate-independent demand. Its complete operand pipe is resolved once under
-`P`, then ordinary Policy-demand satisfaction produces the concrete outward
-view consumed by this pipeline. A later outer candidate cannot propagate a
-formal-mode preference through the preserved `PolicyLet` node. The node is not
-an ordinary Val2 call or a hidden binding.
+`P`, then ordinary Policy-demand satisfaction installs the concrete outward
+view in the node's ordinary expression-result slot. That slot has its own mode
+but is not a NameBinding, Symbol, declaration, or independently addressable
+Place. A later outer candidate cannot propagate a formal-mode preference
+through the preserved `PolicyLet` node. The node is not an ordinary Val2 call
+or a hidden binding.
 
 A derived compile companion is a complete `Val2` function object with stable
 origin, its own type, and its own associated static `()`. For origin result

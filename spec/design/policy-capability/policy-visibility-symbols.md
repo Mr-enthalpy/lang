@@ -19,7 +19,9 @@ choice, `+` cross-dimension conjunction, and `:` pair structure.
 Semantic elaboration first factors one optional whole-slot `ModePattern` from
 the complete surface policy and only then elaborates the residual `PairSpec` as
 `Pv:Pp`. At most one connected mode Pattern is allowed; neither colon side may
-contain its own semantic mode coordinate. Thus `const || mut` is one whole-slot
+contain its own semantic mode coordinate. Its grammar is a non-empty `||`
+choice over `ModeAtom ::= const | plain | mut`, so explicit `plain`, every
+two-point choice, and `const || plain || mut` all factor as one whole-slot
 Pattern. The current rejection of `const:compile`, `runtime:const`,
 `const:mut`, and `const || mut:compile` is a provisional surface rule, not a
 consequence of orthogonality; a future contextual shorthand must still factor
