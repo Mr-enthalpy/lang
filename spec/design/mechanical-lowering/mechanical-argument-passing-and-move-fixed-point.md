@@ -44,11 +44,20 @@ ExplicitPassDominates:
 AutomaticPassDomain:
   automatic pass in {move, copy}
   automatic pass not in {ref, share, @}
+
+ProducerConsumerModeSeparation:
+  ProducedMode(source) = mu_source
+  PolicyMode(destination) = mu_destination
+  Transfer(source, destination, pass)
+    preserves ProducedMode(source) = mu_source
+    and installs the destination under mu_destination
 ```
 
 This core fixes action meaning and normalization only. It does not choose when
 an automatic slot moves or copies, prove copy/borrow legality, prescribe an IR
-instruction, or define an ABI.
+instruction, or define an ABI. `TransferToDestination` in the canonical binding
+judgment is the ordinary-binding specialization of `Transfer` above, not a
+second transfer algebra.
 
 ## 1. Purpose
 
@@ -301,7 +310,8 @@ NoPreMoveBeforeCopy:
 The const, plain, and mut destination cases use this same primitive. The
 destination mode may affect candidate preference or capability realization,
 but it does not introduce three different kinds of copy and never consumes
-`x` before `CopyConstruct(x)` has completed.
+`x` before `CopyConstruct(x)` has completed. Nor does transfer relabel the
+producer result: source and destination modes are independent slot facts.
 
 ## 8. Borrow movement preserves parent/origin
 

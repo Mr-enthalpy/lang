@@ -1680,6 +1680,10 @@ fact:
 ```text
 AbstractLiteralNoRuntimeMaterialization:
 
+ClosedAssociatedFamily(integer, MaterializeFamily)
+ClosedAssociatedFamily(real, MaterializeFamily)
+ClosedAssociatedFamily(character, MaterializeFamily)
+
 MaterializeFamily(integer):
   integer@compile -> integer@runtime => delete
 
@@ -1694,9 +1698,21 @@ RuntimeMaterializable(real)      = false
 RuntimeMaterializable(character) = false
 ```
 
-These deleted cells belong to each Type's ordinary associated callspace. They
-are not an ad hoc checker branch, but neither may an extension add a custom
-non-deleted same-Type runtime realization that defeats the negative fact.
+`ClosedAssociatedFamily(T, F)` is an ordinary family-admission property. Here
+the owner of `T` means the semantic owner that installs `T`'s associated
+callspace, not an arbitrary namespace extension target. Only members installed
+by that owner may enter `F`; an extension contribution to that family is
+inadmissible before ordinary overload candidate generation.
+It is unrelated to the `SealStatic` evaluation stage and does not add a
+post-selection checker rule. The intrinsic `delete` member remains an ordinary
+candidate, participates in the ordinary resolver/must-select pipeline, and is
+the only same-Type compile-to-runtime cell in each of these three closed
+families. Thus no more-specific custom extension candidate can outrank or
+replace it.
+
+These deleted cells belong to each Type's ordinary associated callspace. Their
+non-overridability follows mechanically from closed-family admission, not from
+an ad hoc abstract-literal checker branch or an unformalized global ban.
 Abstract denotations must first enter ordinary construction to another,
 concrete machine-semantic Type. A normal integer path is therefore
 `integer@compile -> Construct_int32 -> int32@compile -> Materialize_int32 ->

@@ -322,14 +322,16 @@ The implementation work is intentionally split into three follow-up packages:
 2. **Abstract literals and materialization:** add exact `integer`/`real`
    denotations, keep character spelling as a separate amendment, perform
    ordinary construction to the concrete machine Type, install the intrinsic
-   deleted same-Type runtime cells for all three abstract denotation Types, and
-   enforce concrete same-Type materialization plus
+   deleted same-Type runtime cells and owner-closed Materialize-family admission
+   for all three abstract denotation Types, and enforce concrete same-Type
+   materialization plus
    `StageInvariantTypeSemantics`.
 3. **Lifetime semantic model/checker:** represent LifeName generations,
-   the coinductive default entry universe plus finite Pre patch, exact
-   move-origin preservation, half-open Region, finite Color relations, cleanup
-   ordering, and Pre/Post summaries, then connect the checker without allowing
-   failure to reopen overload selection.
+   pairwise-distinct exclusive-write and same-root shared-read defaults plus
+   finite Pre patch, exact move-origin preservation, gapless half-open Region
+   boundaries, selected CopyConstruct lifecycle posts, finite Color relations,
+   cleanup ordering, and Pre/Post summaries, then connect the checker without
+   allowing failure to reopen overload selection.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:

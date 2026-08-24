@@ -381,21 +381,18 @@ U_entry = U_default ⊕ Delta_pre
 |Delta_pre| < infinity
 
 DefaultOriginUniverse:
-  exclusive borrow arguments
-    -> distinct anonymous origin roots by default
+  exclusive-write borrow roots e_i, e_j
+    -> DefaultRoot(e_i) and DefaultRoot(e_j) are anonymous
+    -> i != j => DefaultRoot(e_i) != DefaultRoot(e_j)
 
-  shared borrow arguments
-    -> use one shared anonymous-origin strategy G_shared
-    -> DefaultRoot(arg) is drawn from G_shared
-    -> for distinct shared arguments a and b:
-         StableArgumentIdentity(a) != StableArgumentIdentity(b)
-           =/=> DefaultRoot(a) != DefaultRoot(b)
-         DefaultRootIdentity(a, b) = Unknown
-            unless a finite Pre fact establishes Same or Distinct
+  shared-read borrow roots s_i, s_j
+    -> G_shared is one anonymous LifeName
+    -> DefaultRoot(s_i) = G_shared
+    -> DefaultRoot(s_j) = G_shared
 
-  a conservative representation may use one anonymous shared-read root for
-  all such arguments; it may not manufacture NoAlias/Distinct knowledge from
-  parameter position
+  therefore exclusive-write defaults are pairwise distinct while all
+  shared-read defaults have the same root; a finite Delta_pre may override
+  only the relations it states
 
   borrow name tree
     -> covers accessible structural subnames by default
@@ -440,30 +437,43 @@ move(old -> new)
 new@ = { name = n_new, origin = o, region = r_new }
 
 new@.origin = old@.origin
-end(Region_1(old))   = Pos(move)
-begin(Region_1(new)) > Pos(move)
+k := Boundary(move)
+k is a position in SemanticContinuation
+end(Region_1(old))   = k
+begin(Region_1(new)) = k
+
+Region_1(old) = [i, k)
+Region_1(new) = [k, j)
 ```
+
+`Boundary(move)` is the single continuation cut occupied by the move event.
+The old generation ends and the new generation begins at that same cut; no
+unowned interval or implicit position lies between them. A future IR may split
+one event into explicit `PrePos(move) < PostPos(move)` only if it uses those two
+positions consistently for both interval endpoints; the one-position semantic
+model above has no strict `>` edge.
 
 The new generation therefore does not acquire the old generation itself as its
-origin. Default copy is the contrasting derivation:
+origin. Origin effects of copy construction belong to the selected
+`CopyConstruct` candidate's lifecycle postcondition rather than to the
+lifetime calculus as a universal copy theorem:
 
 ```text
-DefaultCopyOrigin:
-  default CopyConstruct(old -> new)
-    => new@.origin = NameOf(old)
-       // the LifeName observed by old@
+DefaultCopyConstruct.lifecycle_post:
+  origin(result) = NameOf(source)
+  // the LifeName observed by source@
 
-CustomCopyOrigin:
-  custom CopyConstruct(old -> new)
-    => origin(new) is established by the callable's explicit lifecycle effects
-       and checked through the ordinary Pre/Post lifecycle boundary
+CustomCopyConstruct.lifecycle_post:
+  origin(result) = relation declared by the selected custom candidate
 ```
 
-The default equation is not an unoverridable theorem for every custom copy. A
-custom copy may, for example, re-root an internal self-reference in the new
-object when its declared lifecycle effects justify that relation. Mechanical
-`copy(x)` still means `CopyConstruct(x)` followed by terminal `Move(result)`;
-custom origin effects do not authorize a pre-move of `x`.
+Both posts use the ordinary Pre/Post lifecycle boundary. The builtin/default
+family member supplies the first post; a custom candidate may, for example,
+re-root an internal self-reference in the new object through its own explicit
+post. The lifetime calculus consumes the selected candidate's post and does not
+special-case the mechanical name `copy`. Mechanical `copy(x)` still means
+`CopyConstruct(x)` followed by terminal `Move(result)`; custom origin effects
+do not authorize a pre-move of `x`.
 
 `drop` ends the outstanding lifecycle/cleanup obligation for the current
 generation. Path-sensitive facts are represented by a region slice plus a
@@ -739,8 +749,9 @@ Still genuinely open engineering questions, not closed by this document:
 - automatic mechanical move-vs-copy pass selection, concrete borrow/copy
   representation, closure ABI, and environment layout, which remain the
   mechanical-lowering design's territory. The entry origin defaults, exact
-  move-origin equation, and default/custom copy-origin boundary above are
-  closed lifetime semantics, not items in that implementation debt.
+  move-origin/Region boundary, and selected CopyConstruct lifecycle-post
+  boundary above are closed lifetime semantics, not items in that
+  implementation debt.
 
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff

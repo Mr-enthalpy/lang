@@ -405,7 +405,9 @@ Stage(P1v) = Stage(P2v) union Stage(P2p)
 Bare ordinary binding forms output demand `PolicyMode=plain` before RHS call
 selection, so that coordinate participates in the same Policy product order as
 the inputs. After unique selection, omitted P1 retains the complete object pair
-view. Single P1 `Q` selects value
+view. The selected producer also retains its declared concrete result
+`PolicyMode`; a plain destination remains independently plain, and ordinary
+move/copy transfer between them is not a result-mode rewrite. Single P1 `Q` selects value
 slices visible under Q and follows their associated pattern components. Pair P1
 `Qv:Qp` filters both. A written P1 cannot manufacture a stage absent from the
 derived object.

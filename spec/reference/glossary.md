@@ -899,10 +899,11 @@ privilege. Explicit higher-level selection uses
 `t |> (type ref)` / `t |> (type share)`. Borrow-constructor composition
 preserves its resident target, but that is not a `@` overlap. The semantic core
 now closes `SemanticContinuation`, `LifeName`, `LifetimeValue`, `NameView<T>`,
-`origin`, half-open `Region`, use/move/drop generations, cleanup-before-
-lifetime, Pre/Post summaries, the coinductive default origin universe plus
-finite Pre patch, exact move-origin preservation, and finite/monotone Color
-relations. Concrete IR carriers, summary compression, and the checker remain
+`origin`, gapless half-open `Region`, use/move/drop generations, cleanup-before-
+lifetime, Pre/Post summaries, pairwise-distinct exclusive-write and same-root
+shared-read defaults plus finite Pre patch, exact move-origin preservation,
+selected CopyConstruct lifecycle posts, and finite/monotone Color relations.
+Concrete IR carriers, summary compression, and the checker remain
 unimplemented.
 
 _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
@@ -1364,10 +1365,11 @@ ordered and non-circular: ordinary selection inside the operand, then ordinary
 selection of `@` in the operand's policy stage, then lifetime validation, which
 may reject the first two but never reselects them.
 
-The lifetime core uses half-open `Region=[i,j)`, generation-resetting move,
-cleanup-before-lifetime ordering, Pre/Post call summaries, a coinductive default
-origin universe with finite Pre patch, exact move-origin preservation, and
-finite/monotone Color relations. Its concrete IR representation and checker are
+The lifetime core uses gapless half-open `Region=[i,j)`, generation-resetting
+move, cleanup-before-lifetime ordering, Pre/Post call summaries,
+pairwise-distinct exclusive-write and same-root shared-read defaults with finite
+Pre patch, exact move-origin preservation, selected CopyConstruct lifecycle
+posts, and finite/monotone Color relations. Its concrete IR representation and checker are
 not implemented. See
 [`lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 §1–§2.
@@ -1393,21 +1395,19 @@ implementation-open.
 
 Entry lifetime facts are `U_entry = U_default ⊕ Delta_pre`, where `Delta_pre`
 is finite. Borrow-origin ancestry continues coinductively unless an explicit
-`origin=None` terminates it; omission is not `None`. Exclusive borrow arguments
-receive distinct anonymous roots. Shared borrow arguments use one anonymous
-origin strategy, but parameter identity does not distinguish their roots:
-root equality remains `Unknown` unless a finite Pre fact establishes Same or
-Distinct. A conservative implementation may use one anonymous shared-read
-root. Accessible borrow subnames belong to the default name tree. Ordinary
+`origin=None` terminates it; omission is not `None`. Exclusive-write borrow
+roots are anonymous and pairwise distinct. All shared-read borrow roots default
+to the same anonymous `G_shared`; a finite Pre patch changes only the relations
+it states. Accessible borrow subnames belong to the default name tree. Ordinary
 non-borrow values default to `origin=None`.
 
-Moving a nontrivial value ends the old first-level generation and begins a
-successor generation with exactly the same deeper origin:
-`new@.origin = old@.origin`. Default copy instead establishes
-`new@.origin = NameOf(old)`, the LifeName observed by `old@`. A custom
-`CopyConstruct` may establish another
-origin relation through explicit lifecycle effects checked by the ordinary
-Pre/Post boundary; the default equation is not universal over custom copies.
+Moving a nontrivial value uses one boundary `k`: the old first-level Region is
+`[i,k)`, the successor Region is `[k,j)`, and the successor has exactly the
+same deeper origin, `new@.origin = old@.origin`. There is no gap between
+generations. Copy origin is not a lifetime-calculus theorem: the builtin/default
+`CopyConstruct.lifecycle_post` states
+`origin(result)=NameOf(source)`, while a custom candidate supplies its own
+explicit lifecycle post through the ordinary Pre/Post boundary.
 Whether generation identity and `LifeName` identity share one concrete
 representation is implementation-open. Drop ends the current generation after
 cleanup obligations. Color inheritance is monotone, and each compilation
@@ -1422,8 +1422,10 @@ _See also: `@`, Region, Lifetime Policy Boundary._
 ## Region
 
 The half-open semantic-continuation interval `[i,j)` over one `LifeName`
-generation. Uses must lie inside the live region; move or drop closes the
-current generation. Cleanup obligations are solved before lifetime closure.
+generation. A move is one shared boundary `k`: the old generation is `[i,k)`
+and the successor is `[k,j)`, with neither overlap nor an unowned gap. Uses must
+lie inside the live region; move or drop closes the current generation. Cleanup
+obligations are solved before lifetime closure.
 Call summaries expose Pre obligations and Post facts: a failed Pre check makes
 no state change, and lifetime failure never reopens ordinary overload
 selection.
@@ -2405,12 +2407,17 @@ The future P1 projection judgment for a binding:
 ```
 
 Before resolving/evaluating the RHS, binding spelling forms the output-mode
-demand: bare `let` gives concrete `plain`, while `const let` and `mut let` give
-singleton `const` and `mut`. That output coordinate participates with input
+selection preference: bare `let` gives concrete `plain`, while `const let` and
+`mut let` give singleton `const` and `mut`. That producer-selection coordinate participates with input
 Policy coordinates in ordinary call overload selection. Only after the unique
 RHS result has been selected does omitted P1 keep its fully inferred pair view
 or an explicit P1 apply the existing pair-view projection/migration machinery.
-The destination never inherits the RHS slot's mode.
+The selected producer retains its declared concrete `ResultPolicyMode`; the
+destination has its own mode from binding elaboration. Mechanical move/copy
+transfers the value between those slots without relabeling the producer result.
+Thus a `const` producer may win under plain preference while the destination
+remains `plain`. The destination never inherits the RHS slot's mode, and the
+RHS mode is never rewritten to the destination mode.
 A single `Q` selects values visible
 under `Q` and retains each value's associated Pattern component. An explicit
 `Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
@@ -2655,13 +2662,30 @@ These are ordinary complete type values satisfying the existing Type role, not
 members of a separate `LiteralType` universe parallel to ordinary types.
 Their ordinary same-Type compile-to-runtime materialization cells are
 intrinsically `delete`, so `RuntimeMaterializable(integer|real|character)` is
-false. They must first be constructed into another, concrete machine-semantic
-Type; a custom same-Type runtime materializer may not override this negative
-fact. Ranked string literals follow a separate existing path directly to
+false. Each Materialize family is owner-closed: extension members are rejected
+at ordinary family admission before candidate generation, so no custom
+same-Type runtime materializer can override the intrinsic delete. This is not a
+checker special case. The values must first be constructed into another,
+concrete machine-semantic Type. Ranked string literals follow a separate existing path directly to
 `str@compile`; they are not `character` tokens and do not belong to these three
 abstract scalar denotation Types.
 
-_See also: Concrete machine-semantic type, Convert/Construct._
+_See also: ClosedAssociatedFamily, Concrete machine-semantic type,
+Convert/Construct._
+
+---
+
+## ClosedAssociatedFamily
+
+An ordinary associated-family admission property owned by a Type. Here the
+owner is the semantic owner that installs the Type's associated callspace, not
+an arbitrary namespace extension target. Only members installed by that owner may enter the closed family; extension
+contributions are rejected before ordinary overload candidate generation. The
+property is unrelated to the `SealStatic` stage and does not bypass the normal
+resolver. For `integer`, `real`, and `character`, the Materialize family is
+closed and its same-Type compile-to-runtime member is intrinsic `delete`.
+
+_See also: Abstract literal type, CapabilityRealization._
 
 ---
 
@@ -2756,10 +2780,16 @@ copy(x) =
 
 automatic pass in {move, copy}
 automatic pass not in {ref, share, @}
+
+ProducedMode(source) = mu_source
+PolicyMode(destination) = mu_destination
+TransferToDestination(source, destination, pass)
+  preserves mu_source and installs the destination under mu_destination
 ```
 
 There is no move of `x` before `CopyConstruct(x)`, and an explicit pass action
-dominates automatic selection. These laws are canonical even though the
+dominates automatic selection. Transfer never rewrites the selected producer's
+result mode into the destination mode. These laws are canonical even though the
 selection algorithm, checker/normalizer integration, IR, and ABI are not yet
 implemented.
 

@@ -714,11 +714,15 @@ both components. Single P1 is not `Q:Q`. There is no general
 runtime let x = runtime_value;
 ```
 
-Bare `let` first forms output demand `PolicyMode=plain`, before RHS call
-selection; that demand participates with input Policy coordinates in the
-ordinary product order. After unique RHS selection, omitted P1 retains and
-infers the complete RHS pair view. The destination does not inherit the RHS
-mode or make runtime the only way to obtain a runtime binding.
+Bare `let` first forms output selection preference `PolicyMode=plain`, before
+RHS call selection; that preference participates with input Policy coordinates
+in the ordinary product order. After unique RHS selection, omitted P1 retains
+and infers the complete RHS pair view, while the selected producer retains its
+declared concrete `ResultPolicyMode`. The destination remains independently
+plain, and ordinary move/copy transfer between the two slots does not rewrite
+the producer mode. See the canonical binding judgment in
+`symbol-policy-and-compile-flow-projection.md` §3.1. The destination does not
+inherit the RHS mode or make runtime the only way to obtain a runtime binding.
 
 The bounded migration prototype does not reinterpret a P1 query as an exact
 target. Any non-empty `ProjectP1` result completes the binding and makes

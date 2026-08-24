@@ -540,8 +540,9 @@ call-site demand formation produces the concrete demand compared with them.
 [P1] let x = expr;
 ```
 
-Ordinary binding first forms its demand, then resolves/evaluates the RHS under
-that demand, and only afterward applies the existing pair-view projection:
+Ordinary binding first forms its producer-selection demand/preference, then
+resolves/evaluates the RHS under that preference, and only afterward applies
+the existing pair-view projection and mechanical destination transfer:
 
 ```text
 OrdinaryBindingElaboration(prefix, expr, destination):
@@ -560,50 +561,113 @@ OrdinaryBindingElaboration(prefix, expr, destination):
 
   R := ResolveAndEvaluate(
          expr,
-         result_mode_demand = delta_out)
+         result_mode_preference = delta_out)
        // if expr is a call, delta_out is its output PolicyMode coordinate
        // before ordinary overload maxima are chosen
+
+  mu_produced := ResultPolicyMode(SelectedCandidate(R))
+  // the selected producer retains this declared concrete result mode
 
   PairView(destination)
     := ElabP1(demand.pair_query, R)
 
-  selected_mode
-    := ConcretizeOutputMode(demand.mode_pattern, SelectedCandidate(R))
+  mu_destination := ElaborateDestinationMode(prefix)
+    // bare let -> plain; const let -> const; mut let -> mut
+    // a written multi-point destination Pattern is elaborated separately
+    // and never changes mu_produced
 
-  PolicyMode(destination) := selected_mode
+  mechanical_pass := SelectMechanicalPass(PairView(destination), destination)
 
-  Bind(PairView(destination), destination)
+  TransferToDestination(
+    source = PairView(destination),
+    produced_mode = mu_produced,
+    destination,
+    destination_mode = mu_destination,
+    mechanical_pass)
+
+  PolicyMode(destination) := mu_destination
+  BindTransferredValue(destination)
 ```
 
-`ConcretizeOutputMode({mu}, candidate) = mu` for every singleton demand,
-including bare `let`'s `{plain}`. For a written multi-point Mode Pattern it is
-the unique concrete point delivered by the selected candidate under that
-Pattern; ambiguity is rejected before binding.
+`SelectMechanicalPass` names either a preserved explicit pass or the future
+automatic move/copy choice. `CanonicalMechanicalPassCore` fixes its domain and
+action meaning; this binding judgment does not add a new selection algorithm.
+
+For a written multi-point destination Mode Pattern, destination elaboration
+must choose one concrete `mu_destination` through the ordinary destination/
+transfer rule or reject ambiguity. It must not implement that choice by
+rewriting `mu_produced`. In particular, the removed
+`ConcretizeOutputMode(demand, candidate)` operation is not a legal semantic
+step.
+
+```text
+ProducerConsumerModeSeparation:
+
+Call-site output PolicyMode selection preference
+  -> preference coordinate in producer overload selection
+
+ResultPolicyMode(SelectedCandidate(R)) = mu_produced
+  -> retained concrete fact of the selected producer result
+
+PolicyMode(destination) = mu_destination
+  -> independent fact of the destination slot
+
+TransferToDestination(R, destination, mechanical_pass)
+  =/=> rewrite ResultPolicyMode(R)
+```
+
+The producer result mode and destination mode may differ. A unique `const`
+candidate may win under `delta_out=plain` when no plain candidate survives;
+the result remains `const` while the destination remains `plain`.
 
 `WrittenPairProjection` removes the orthogonal mode coordinate from the
 binding prefix and is absent when no pair/view constraint was written. Thus
 omitted P1 retains the complete inferred RHS **pair view**, while bare `let`
 still produces the concrete destination mode `plain`; it does not inherit the
-RHS slot's mode. A written composite mode Pattern is an explicit
-`CallPolicyDemand`, not omission or inference; successful overload selection
-must still deliver one concrete destination mode. A single written pair/view
-policy is a value-dominant projection.
+RHS slot's mode and does not relabel it. A written composite mode Pattern is an
+explicit `CallPolicyDemand`, not omission or inference; producer selection and
+concrete destination-mode elaboration remain separate judgments. A single
+written pair/view policy is a value-dominant projection.
 
 The ordering is load-bearing:
 
 ```text
 BindingDemand.mode_pattern
-  -> RHS call output coordinate
+  -> RHS call output preference coordinate
   -> ordinary CandidatePolicySig × CallPolicyDemand product order
-  -> unique selected RHS result
+  -> unique selected RHS result with retained mu_produced
   -> pair-view ProjectP1 / migration consumer
-  -> bind
+  -> mechanical transfer into independent mu_destination
+  -> bind transferred value
 ```
 
 It is forbidden to select an RHS callable first and discover the destination
 mode afterward. `ProjectP1` and atomic migration retain their existing-view-
 first semantics, but they consume the result of the already demand-aware call
 selection rather than creating that output-mode demand.
+
+For a fresh consumable call result, transfer may be one terminal move:
+
+```text
+f() produces R with ResultPolicyMode(R) = const
+delta_out = plain selected that producer by preference
+Move(R) -> destination with PolicyMode = plain
+```
+
+For an existing source that must be preserved, explicit copy uses the same
+canonical mechanical core:
+
+```text
+let y = x copy
+  -> tmp := CopyConstruct(x)
+  -> Move(tmp)
+  -> y with PolicyMode = plain
+```
+
+There is no `x move; CopyConstruct(x); move` sequence and no implicit Policy
+conversion. Each nested call closes locally as producer selection, concrete
+result, and then outer consumption/transfer; no cross-call fixed point is
+introduced.
 
 Concretely:
 
