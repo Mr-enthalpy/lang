@@ -50,7 +50,7 @@ Read these for the completed public normalized surface behavior:
 | Document | Purpose |
 |---|---|
 | `spec/public/v0.5/README.md` | v0.5 public documentation index |
-| `spec/public/v0.5/normalized-surface-semantics-v0.5.md` | Published normalized surface semantics (call/product/pipe binding, value/pattern boundaries, origin visibility, non-goals) |
+| `spec/public/v0.5/normalized-surface-semantics-v0.5.md` | Published normalized surface semantics (call/product/pipe binding, PolicyLet preservation, value/pattern boundaries, origin visibility, non-goals) |
 | `spec/public/v0.5/agent-interpretation-guide-v0.5.md` | How agents should interpret source without conventional call assumptions |
 | `spec/contracts/v0.4-normalization-prototype-notes.md` | The v0.4 normalization boundary |
 | `spec/contracts/frontend-semantic-amendment-v0.5-a.md` | Versioned parser/Raw-AST amendment over the frozen v0.2 snapshot |

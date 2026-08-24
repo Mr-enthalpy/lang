@@ -1,0 +1,7 @@
+const let a |> f;
+plain let a |> f |> g;
+(mut let a |> f) |> g;
+(const let a) |> f;
+(public + compile):(runtime || compile) let a |> f;
+const let x = a |> f;
+const let A === B::C;

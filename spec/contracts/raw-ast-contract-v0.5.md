@@ -43,6 +43,7 @@ default
 delete
 strategy identifiers
 meta / compile / seal / runtime
+const / plain / mut / let
 ```
 
 are not lexer keywords.
@@ -291,6 +292,42 @@ Nested binders do not leak into this calculation.
 All initializers in one capture clause see the enclosing environment before
 the clause; captures are simultaneous, not a sequential let block.
 
+### 4.3 Expression PolicyLet
+
+The current expression grammar is:
+
+```text
+Expression          ::= PolicyLetExpression | PipeExpression
+PolicyLetExpression ::= PolicySpec "let" PipeExpression
+```
+
+Raw AST preserves the boundary directly:
+
+```text
+PolicyLetAst {
+  policy: PolicySpecAst,
+  operand: ExprAst,
+  span: Span
+}
+
+ExprKind::PolicyLet(PolicyLetAst)
+```
+
+The right operand covers the complete following pipe. Parentheses close that
+scope, so `P let a |> f`, `(P let a |> f) |> g`, and `(P let a) |> f` retain
+three distinct trees.
+
+At a declaration-capable form start, a top-level `=` after `PolicySpec let`
+selects the existing declaration parser. A top-level `===` selects only the
+frozen legacy alias-preservation path. Delimiters inside parentheses, products,
+or closures do not participate. Without either delimiter the form is a
+PolicyLet expression. Pure expression contexts never admit a nested
+declaration through this prefix.
+
+This strong-context amendment also means a former expression ending in
+`P let` (including inferred capture shorthand such as `[x let]`) is a
+PolicyLet with a missing operand and receives `ExpectedPolicyLetOperand`.
+
 ## 5. Dot closure and member forms
 
 The Raw AST contains:
@@ -502,18 +539,21 @@ storage while preserving binder, policy, and provenance.
 
 ## 10. Diagnostics
 
-The amended implementation has 33 `DiagnosticCode` variants. The v0.2 frozen
+The amended implementation has 34 `DiagnosticCode` variants. The v0.2 frozen
 diagnostic inventory remains 32 because it is a historical snapshot.
 
-The additional code is:
+The post-v0.2 codes are:
 
 ```text
 MultiplePackPatternsAtSameLevel
+ExpectedPolicyLetOperand
 ```
 
-This code is reserved for a consumer that projects normalized Pattern
+`MultiplePackPatternsAtSameLevel` is reserved for a consumer that projects normalized Pattern
 validation failures into the syntax diagnostic transport. The parser does not
-emit it or independently count packs. Every diagnostic retains a span.
+emit it or independently count packs. `ExpectedPolicyLetOperand` is emitted
+when `PolicySpec let` reaches its local expression boundary without an
+operand. Every diagnostic retains a span.
 Recovery remains error tolerant, but no recovery path may replace invalid
 callable syntax with a valid executable body.
 

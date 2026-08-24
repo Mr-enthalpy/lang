@@ -228,9 +228,17 @@ pub struct ExprAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprKind {
+    PolicyLet(PolicyLetAst),
     Pipe(PipeExprAst),
     Product(ProductExprAst),
     Error(ErrorAst),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PolicyLetAst {
+    pub policy: PolicySpecAst,
+    pub operand: Box<ExprAst>,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

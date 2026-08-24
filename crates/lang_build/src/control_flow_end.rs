@@ -64,7 +64,8 @@ fn form_origin(form: &NormForm) -> NormOrigin {
 
 fn expr_origin(expr: &lang_syntax::NormExpr) -> lang_syntax::NormOrigin {
     match expr {
-        lang_syntax::NormExpr::Call { origin, .. }
+        lang_syntax::NormExpr::PolicyLet { origin, .. }
+        | lang_syntax::NormExpr::Call { origin, .. }
         | lang_syntax::NormExpr::Product(lang_syntax::NormProduct { origin, .. })
         | lang_syntax::NormExpr::Name { origin, .. }
         | lang_syntax::NormExpr::Literal { origin, .. }

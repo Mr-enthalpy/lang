@@ -56,6 +56,16 @@ fn missing_equal() {
 }
 
 #[test]
+fn policy_let_missing_operand() {
+    assert_diagnostics_case("policy_let_missing_operand");
+}
+
+#[test]
+fn policy_let_nested_equal_is_not_a_declaration() {
+    assert_diagnostics_case("policy_let_nested_equal");
+}
+
+#[test]
 fn empty_pipe_segment() {
     assert_diagnostics_case("empty_pipe_segment");
 }

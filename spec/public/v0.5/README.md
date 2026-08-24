@@ -2,11 +2,11 @@
 
 ## Stage status
 
-v0.5 is the completed normalized surface baseline. It stabilizes the normalized
-surface semantics that the v0.4 normalizer already produces, and resets the
-public documentation structure so that current language behavior is explained
-in one place. The current active stage is v0.6 — Build / Namespace Graph
-Bootstrap.
+v0.5 is the completed normalized surface baseline plus its versioned frontend
+amendments. It stabilizes the v0.4 normalization rules, preserves later
+syntax-only boundaries such as `PolicyLet`, and resets the public documentation
+structure so that current language behavior is explained in one place. The
+current active stage is v0.6 — Build / Namespace Graph Bootstrap.
 
 v0.5 is still **non-semantic** in the later-compiler sense. It does not implement
 type checking, name resolution, operator lookup, pattern-head resolution, HIR,
@@ -24,6 +24,7 @@ behavior, especially:
 - let-shaped capture binding, callable implementation tails, and Pattern
   remainder packs including canonical Sequence children;
 - value-side vs pattern-side separation;
+- expression-level `PolicyLet` preservation and its pipe/parenthesis boundary;
 - annotation patterns and DeduceList holes;
 - origin / provenance and error / `Unsupported` visibility at the normalized
   layer;
@@ -36,7 +37,7 @@ behavior, especially:
 
 - [`normalized-surface-semantics-v0.5.md`](normalized-surface-semantics-v0.5.md)
   — the public, authoritative explanation of the normalized surface (published).
-  §1–§7 define call / product / pipe binding; §8–§10 define value-side /
+  §1–§7 define call / product / pipe binding and PolicyLet preservation; §8–§10 define value-side /
   pattern-side / annotation / alias boundaries; §11 defines origin / generated /
   derived / unsupported visibility; §12–§13 define non-goals and the v0.6+
   future boundary.

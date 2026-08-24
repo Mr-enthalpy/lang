@@ -921,6 +921,16 @@ fn policy_let_statement() {
 }
 
 #[test]
+fn policy_let_expression() {
+    assert_parser_case("policy_let_expression", false);
+}
+
+#[test]
+fn policy_let_nested_expression_contexts() {
+    assert_parser_case("policy_let_nested", false);
+}
+
+#[test]
 fn policy_pair() {
     assert_parser_case("policy_pair", false);
 }

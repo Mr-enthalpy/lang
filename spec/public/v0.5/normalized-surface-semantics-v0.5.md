@@ -1,6 +1,6 @@
 # Normalized Surface Semantics v0.5
 
-> **Status:** Published. The v0.5 public normalized surface semantics are
+> **Status:** Published and amended. The v0.5 public normalized surface semantics are
 > complete. §1–§7 define call / product / pipe binding; §8–§10 define
 > value-side / pattern-side / annotation / alias boundaries; §11 defines
 > origin / generated / derived / unsupported visibility; §12–§13 define the
@@ -414,6 +414,38 @@ generated binders, and the receiver becomes the call's source product (a
 `field::T` and `method::T` are unresolved navigation targets.
 No field lookup, method lookup, method dispatch, type checking, or overload resolution occurs.
 ```
+
+### PolicyLet preservation
+
+The expression-level Policy boundary is preserved rather than desugared:
+
+```text
+P let a |> f
+  -> PolicyLet(
+       policy = N(P),
+       operand = N(a |> f),
+       origin = Generated(PolicyLetPreserve))
+```
+
+`P` is the existing complete `PolicySpec` grammar. The operand is the complete
+following pipe expression. Parentheses close the boundary:
+
+```text
+(P let a |> f) |> g   // PolicyLet is an ordinary source actual for g
+(P let a) |> f        // only a is inside the PolicyLet
+```
+
+Normalization does not turn this node into a declaration, hidden variable,
+place, or ordinary value-side `const`/`mut` call. Policy atoms are normalized
+under the inherited DeduceList hole environment; the operand uses the same
+environment, and the node declares nothing. In Pattern/annotation material it
+surfaces as `PatternUnsupported "policy-let expression in pattern context"`.
+
+The normalized node records the future semantic ordering—form the operand's
+result-Policy demand before selecting its root call, then expose the completed
+Policy view—but does not execute overload resolution or Policy satisfaction.
+Current build prototypes treat the wrapper as an opaque unsupported semantic
+boundary rather than transparently selecting the inner call.
 
 ## 8. Value-Side vs Pattern-Side Material
 
@@ -1088,6 +1120,7 @@ alias examples in this document:
 
 ```text
 Generated:
+  PolicyLetPreserve
   ProductLift
   OperatorLowering
   PrefixNegativeLowering

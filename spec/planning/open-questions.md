@@ -153,6 +153,12 @@ Resolved future-design decisions:
   A head with no written formal retains an unbound semantic self-position.
   Generated receiver helpers therefore use `[self, val, ...]`, not
   `[val, ...]`.
+- `PolicySpec let PipeExpression` is the explicit expression-level
+  result-Policy boundary. It forms `ResultPolicyDemand` before the operand root
+  call's maxima, completes ordinary Policy satisfaction afterward, and closes
+  before an outer call consumes the concrete view. It is not a Val2 call,
+  hidden binding, or cross-call fixed point. Raw/Norm preservation is
+  implemented; semantic execution remains part of the Policy carrier package.
 - A function-object binding with no written mode is `plain`. Export preserves
   the complete internal `Pv:Pp` and `PolicyMode`; stable external admission
   uses export retention plus public path visibility, while consumer Policy
@@ -214,6 +220,10 @@ Implemented substrate after this correction:
 
 - Raw and Normalized AST preserve dedicated conjunction, choice, atom, pair,
   and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
+  `ExprKind::PolicyLet` and `NormExpr::PolicyLet` preserve an explicit local
+  result-Policy boundary with full-pipe precedence and inherited hole
+  normalization; call extractors keep it opaque rather than executing its
+  operand transparently.
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
   flow projection, Wpre/export-retention closure, and the legacy candidate-level
@@ -282,6 +292,9 @@ Not implemented after this correction:
   consumer. A consumer accepting `compile || runtime` is already satisfied by
   an available compile slice. If the complete accepted choice has no existing
   view, its runtime branch is the currently authorized constructible branch.
+- Executing `PolicyLetFormation`: form the inward result demand before the
+  operand root call, freeze that producer, perform outward Policy satisfaction,
+  and expose the completed concrete view without reopening the operand.
 - Completing every old ordinary Bp coordinate and every later B1..B6 filter in
   the connected `PreparedCallCandidate` carrier. The implemented slice already
   composes its ordinary formal/phase coordinates and optional migration
@@ -318,7 +331,9 @@ The implementation work is intentionally split into three follow-up packages:
 1. **Policy carrier and 3×3 tests:** add first-class whole-slot `PolicyMode`,
    stable export admission/projection, later selected-invocation dynamic-legality checks, all
    nine capability coordinates, plain ambiguity, and asymmetric
-   default/delete/custom fixtures without changing resolver retry rules.
+   default/delete/custom fixtures; consume the preserved `PolicyLet` boundary
+   with inward demand plus outward satisfaction without changing resolver retry
+   rules.
 2. **Abstract literals and materialization:** add exact `integer`/`real`
    denotations, keep character spelling as a separate amendment, perform
    ordinary construction to the concrete machine Type, install the intrinsic

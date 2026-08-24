@@ -2512,6 +2512,33 @@ _See also: Policy Binding, PolicyMode, OverloadResolutionPipeline._
 
 ---
 
+## PolicyLet
+
+The expression-level term former:
+
+```text
+PolicySpec let PipeExpression
+```
+
+It has one preserved syntax/Normalized-AST boundary and two semantic
+projections. The inward projection forms `ResultPolicyDemand(PolicySpec)`
+before the operand root call's ordinary overload maxima. The outward
+projection applies ordinary Policy-demand satisfaction and exposes one
+completed concrete Policy view. Parentheses close the boundary; an outer call
+consumes that view as an ordinary actual and cannot reopen the operand call.
+
+`PolicyLet` creates no hidden binding, place, or declaration. It is not an
+ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite. A
+Val2 action may realize value-side reconstruction after operand selection, but
+cannot create the preceding inward demand. The parser and Normalized AST
+preserve this node; the current build prototype does not yet execute its
+result-demand/cast semantics.
+
+_See also: ResultPolicyDemand, Policy Demand Satisfaction,
+CallLocalPolicyClosure, PolicyMode._
+
+---
+
 ## Policy Transition
 
 The current canonical transition case is the language-authorized atomic

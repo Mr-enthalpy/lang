@@ -726,6 +726,101 @@ g(f())
   -> resolve g without reopening f
 ```
 
+### 3.1.1 Explicit expression result-Policy context
+
+An expression can establish the missing candidate-independent result demand
+explicitly:
+
+```text
+PolicyLetExpression ::= PolicySpec "let" PipeExpression
+```
+
+`PolicySpec` is the existing typed Policy grammar, not an ordinary value
+expression. The operand covers the complete following pipe; parentheses close
+the boundary:
+
+```lang
+P let a |> f          // P let (a |> f)
+(P let a |> f) |> g   // f closes under P before g is selected
+(P let a) |> f        // only a is inside the boundary
+```
+
+The normative judgment is:
+
+```text
+PolicyLetFormation:
+
+  pi := ElaboratePolicySpec(P, ResultPolicyContext)
+
+  Gamma ; ResultPolicyDemand = pi
+    |- e ⇓ r
+
+  r' := SatisfyPolicyDemand(ResultPolicyDemand(pi), r)
+
+  --------------------------------------------------
+  Gamma |- PolicyLet(P, e) ⇓ r'
+```
+
+The one syntax node has two projections. Its inward projection supplies `pi`
+before the maxima of the operand root call are chosen. Its outward projection
+forms a completed accepted Policy view; it does not leave an expected-result
+variable for an outer consumer. The selected operand producer keeps its
+concrete `ResultPolicyMode`. For a singleton Mode Pattern, `r'` exposes that
+one accepted concrete mode. For a multi-point Policy Pattern, ordinary demand
+satisfaction must yield one concrete accepted view or report ambiguity.
+Existing accepted views preserve identity. A required authorized
+reconstruction/migration uses the established type callspace or mechanical
+action and returns a new value when that operation requires one; it does not
+create a hidden `NameBinding`, `Place`, or declaration.
+
+```text
+PolicyCastNotDerivedFromValueCall:
+
+An ordinary value-side Val2 action may realize the value algebra associated
+with the outward satisfaction step.
+
+ordinary Val2 action =/> creates the inward ResultPolicyDemand
+ordinary Val2 action =/> replaces PolicyLet
+```
+
+The reason is temporal: an ordinary call can be selected only after its input
+expression exists, while `PolicyLet` must contribute its demand before the
+operand root call is selected. “Policy cast” here names the complete outward
+Policy-view satisfaction projection. It is not the forbidden in-place
+`mutate-policy-tag(source)` operation of §1.2. `plain` satisfaction does not
+imply a global `val plain` dispatcher.
+
+```text
+NoCrossCallPolicyPropagation:
+
+PolicyLet(P, e)
+  -> establish ResultPolicyDemand(P)
+  -> select/evaluate e once under that demand
+  -> complete SatisfyPolicyDemand(P, result(e))
+  -> close the boundary
+
+outer consumer demand
+  =/> modify ResultPolicyDemand(e)
+  =/> reopen Candidates(e)
+```
+
+Failure of the outward satisfaction step is a typed failure after the operand
+selection and never reopens that selection. Thus `(P let a |> f) |> g` gives
+`g` one ordinary actual carrying the already-completed concrete view.
+
+The three operations are distinct:
+
+```text
+DeclarationSidePolicyInference
+  -> forms a callable's declared result policy
+
+CallSiteImplicitDemand
+  -> binding/call context supplies its candidate-independent default demand
+
+ExplicitExpressionDemandAndCast
+  -> PolicyLet supplies an explicit local demand and completed outward view
+```
+
 Concretely:
 
 ```lang

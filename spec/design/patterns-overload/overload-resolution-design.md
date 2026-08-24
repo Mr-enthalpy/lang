@@ -707,6 +707,13 @@ order to choose a nested actual and then reused to decide whether that outer
 candidate should win. This rule adds no cross-call fixed point or conversion
 rank.
 
+An explicit `PolicyLet(P, e)` supplies a candidate-independent output demand
+to the root call of `e` before that call's maxima. It then closes by satisfying
+`P` and exposing one concrete ordinary actual view. Outer overload resolution
+may compare that actual but may not push a new demand through the PolicyLet
+boundary or reopen the inner candidate set. The outward satisfaction failure
+is not a conversion rank and does not select a runner-up producer.
+
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
 than removing it before comparison.

@@ -61,6 +61,7 @@ pub fn extract_single_call_site(expr: &NormExpr) -> Result<NormalizedCallSite, D
 
 fn expr_kind_name(expr: &NormExpr) -> &'static str {
     match expr {
+        NormExpr::PolicyLet { .. } => "PolicyLet",
         NormExpr::Call { .. } => "Call",
         NormExpr::Name { .. } => "Name",
         NormExpr::Literal { .. } => "Literal",
@@ -70,5 +71,24 @@ fn expr_kind_name(expr: &NormExpr) -> &'static str {
         NormExpr::Closure(_) => "Closure",
         NormExpr::Unsupported { .. } => "Unsupported",
         NormExpr::Error(_) => "Error",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_single_call_site;
+
+    #[test]
+    fn policy_let_is_an_opaque_call_extraction_boundary() {
+        let parsed = lang_syntax::parse("const let value |> f;");
+        assert!(parsed.diagnostics.is_empty());
+        let normalized = lang_syntax::normalize_program(&parsed.program);
+        let [lang_syntax::NormForm::Expr(expr)] = normalized.forms.as_slice() else {
+            panic!("expected one expression form");
+        };
+
+        let diagnostic = extract_single_call_site(expr)
+            .expect_err("PolicyLet must not be transparently extracted as its inner call");
+        assert!(diagnostic.message.contains("got PolicyLet"));
     }
 }

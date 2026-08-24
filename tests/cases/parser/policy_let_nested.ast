@@ -1,0 +1,113 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            PolicyLet
+              policy:
+                PolicySpec
+                  value_policy:
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "mut"
+                  pattern_policy:
+                    None
+              operand:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name a
+                    Segment has_incoming=true
+                      OperatorExpr
+                        Atom
+                          Name f
+  ExprForm
+    Expr
+      Product
+        elements:
+          Expr
+            PolicyLet
+              policy:
+                PolicySpec
+                  value_policy:
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "plain"
+                  pattern_policy:
+                    None
+              operand:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name a
+          Expr
+            PolicyLet
+              policy:
+                PolicySpec
+                  value_policy:
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "const"
+                  pattern_policy:
+                    None
+              operand:
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        Atom
+                          Name b
+                    Segment has_incoming=true
+                      OperatorExpr
+                        Atom
+                          Name g
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Closure Ordinary
+                FnHeadPrefix
+                  params:
+                    ParamClause
+                      extract:
+                        elements:
+                BodyBlock
+                  forms:
+                    ExprForm
+                      Expr
+                        PolicyLet
+                          policy:
+                            PolicySpec
+                              value_policy:
+                                PolicyConjunction
+                                  PolicyChoice
+                                    PolicyAtom Name "plain"
+                              pattern_policy:
+                                None
+                          operand:
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name a
+                                Segment has_incoming=true
+                                  OperatorExpr
+                                    Atom
+                                      Name f

@@ -1,0 +1,189 @@
+Program
+  ExprForm
+    Expr
+      PolicyLet
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "const"
+            pattern_policy:
+              None
+        operand:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name a
+              Segment has_incoming=true
+                OperatorExpr
+                  Atom
+                    Name f
+  ExprForm
+    Expr
+      PolicyLet
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "plain"
+            pattern_policy:
+              None
+        operand:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name a
+              Segment has_incoming=true
+                OperatorExpr
+                  Atom
+                    Name f
+              Segment has_incoming=true
+                OperatorExpr
+                  Atom
+                    Name g
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Group
+                Expr
+                  PolicyLet
+                    policy:
+                      PolicySpec
+                        value_policy:
+                          PolicyConjunction
+                            PolicyChoice
+                              PolicyAtom Name "mut"
+                        pattern_policy:
+                          None
+                    operand:
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name a
+                          Segment has_incoming=true
+                            OperatorExpr
+                              Atom
+                                Name f
+        Segment has_incoming=true
+          OperatorExpr
+            Atom
+              Name g
+  ExprForm
+    Expr
+      Pipe
+        Segment has_incoming=false
+          OperatorExpr
+            Atom
+              Group
+                Expr
+                  PolicyLet
+                    policy:
+                      PolicySpec
+                        value_policy:
+                          PolicyConjunction
+                            PolicyChoice
+                              PolicyAtom Name "const"
+                        pattern_policy:
+                          None
+                    operand:
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              Atom
+                                Name a
+        Segment has_incoming=true
+          OperatorExpr
+            Atom
+              Name f
+  ExprForm
+    Expr
+      PolicyLet
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Group
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "public"
+                      PolicyChoice
+                        PolicyAtom Name "compile"
+            pattern_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Group
+                    PolicyConjunction
+                      PolicyChoice
+                        PolicyAtom Name "runtime"
+                        PolicyAtom Name "compile"
+        operand:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name a
+              Segment has_incoming=true
+                OperatorExpr
+                  Atom
+                    Name f
+  Let
+    slot:
+      BindingSlot let=true
+        policy:
+          PolicySpec
+            value_policy:
+              PolicyConjunction
+                PolicyChoice
+                  PolicyAtom Name "const"
+            pattern_policy:
+              None
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName x
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name a
+              Segment has_incoming=true
+                OperatorExpr
+                  Atom
+                    Name f
+  LetAlias
+    policy:
+      PolicySpec
+        value_policy:
+          PolicyConjunction
+            PolicyChoice
+              PolicyAtom Name "const"
+        pattern_policy:
+          None
+    binder:
+      Name A
+    target:
+      EntityRef
+        components:
+          component Name B
+          component Name C

@@ -1,0 +1,3 @@
+let x = mut let a |> f;
+(plain let a, const let b |> g);
+() => { plain let a |> f; };

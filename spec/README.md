@@ -51,7 +51,7 @@ documentation only; it adds no semantic passes.
 | File | Authority | Role |
 |---|---|---|
 | `README.md` | Stage workspace index | Entry point for v0.5 public documentation. |
-| `normalized-surface-semantics-v0.5.md` | Published; authoritative for current normalized surface behavior | Public explanation of the normalized surface: source-product continuation and call binding, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
+| `normalized-surface-semantics-v0.5.md` | Published; authoritative for current normalized surface behavior | Public explanation of the normalized surface: source-product continuation and call binding, PolicyLet preservation, product/group/target boundaries, sugar lowering, value/pattern separation, annotation patterns, origin/`Unsupported` visibility, and non-goals. |
 | `agent-interpretation-guide-v0.5.md` | Published; normative for agents | Normative guidance for coding/documentation agents: how to interpret source without importing conventional call assumptions. |
 
 ## Current Raw AST amendment and contract
@@ -60,7 +60,7 @@ The current frontend no longer claims to be the unchanged v0.2 parser. Read:
 
 | File | Authority | Role |
 |---|---|---|
-| `contracts/frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Classifies hard structural corrections separately from new syntax and preserves the v0.1/v0.2/v0.3 historical snapshots. |
+| `contracts/frontend-semantic-amendment-v0.5-a.md` | Normative versioned amendment | Classifies hard structural corrections and new syntax, including the expression-level PolicyLet boundary, while preserving the v0.1/v0.2/v0.3 historical snapshots. |
 | `contracts/raw-ast-contract-v0.5.md` | Normative current Raw AST contract | Defines the amended lexer/parser/Raw-AST surface, independent closure placement/provenance, and `PatternValidatedNormProgram` handoff. |
 | `contracts/v0.6-semantic-owner-namespace-graph.md` | Normative current semantic/build amendment | Defines callable/meta semantic owners, Pattern-root alpha identity, namespace views, structural member visibility, package boundaries, and mount redirects; supersedes the v0.5 active-ancestor no-shadow claim. |
 | `contracts/v0.6-cross-policy-value-transition.md` | Normative for the bounded connected implementation slice | Records T/Tnum helpers, complete-choice projection followed by runtime-branch extraction, semantic Symbol/Val2/TypeValue/Pattern-owner/associated-`()` routing, one connected Bp' carrier, source-backed atomic migration, fixture coverage for a future pre-Bp fallback strategy that current source cannot construct, and the retained algebra-only transition prototype. |

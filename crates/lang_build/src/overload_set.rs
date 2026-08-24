@@ -1204,6 +1204,9 @@ fn expr_refs_selected_or_local_binding(
     local_names: &BTreeSet<String>,
 ) -> bool {
     match expr {
+        NormExpr::PolicyLet { operand, .. } => {
+            expr_refs_selected_or_local_binding(operand, selected, local_names)
+        }
         NormExpr::Name { text, .. } => {
             selected.bindings.contains_key(text)
                 || selected.pack_bindings.contains_key(text)

@@ -669,6 +669,13 @@ otherwise it uses local `plain`. Its selected concrete result mode is then an
 ordinary actual fact for this pipeline. Outer ambiguity or failure never
 reopens the nested producer.
 
+`PolicyLet(P, e)` is the explicit expression boundary that may provide such a
+candidate-independent demand. Its complete operand pipe is resolved once under
+`P`, then ordinary Policy-demand satisfaction produces the concrete outward
+view consumed by this pipeline. A later outer candidate cannot propagate a
+formal-mode preference through the preserved `PolicyLet` node. The node is not
+an ordinary Val2 call or a hidden binding.
+
 A derived compile companion is a complete `Val2` function object with stable
 origin, its own type, and its own associated static `()`. For origin result
 `runtime:Qstatic`, that result pair is `Qstatic:Qstatic`. It is not a

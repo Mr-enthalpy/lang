@@ -4,7 +4,9 @@ use crate::{
 };
 
 use super::{
-    cursor::Cursor, expr::parse_expr_until, let_stmt::parse_let_form,
+    cursor::Cursor,
+    expr::{parse_expr_until, parse_policy_let_after_policy},
+    let_stmt::parse_let_form,
     policy::try_parse_policy_spec_before_let,
 };
 
@@ -80,25 +82,31 @@ impl<'tokens> Parser<'tokens> {
             return parse_let_form(self, None);
         }
 
-        if let Some(policy) = try_parse_policy_spec_before_let(self, |parser| {
+        let expr = if let Some(policy) = try_parse_policy_spec_before_let(self, |parser| {
             parser.is_form_boundary() || parser.cursor.at_name("return")
         }) {
-            return parse_let_form(self, Some(policy));
-        }
-
-        let expr = parse_expr_until(self, |parser| {
-            parser.cursor.at_name("let")
-                || parser.is_form_boundary()
-                || parser.cursor.at_name("return")
-        });
-        if self.cursor.at_name("let") {
-            self.error(
-                DiagnosticCode::UnexpectedToken,
-                "invalid policy prefix; policy choice uses `||`, conjunction uses `+`, and pair separation uses `:`",
-                expr.span,
-            );
-            return parse_let_form(self, None);
-        }
+            if policy_prefixed_form_has_binding_delimiter(&self.cursor) {
+                return parse_let_form(self, Some(policy));
+            }
+            parse_policy_let_after_policy(self, policy, |parser| {
+                parser.is_form_boundary() || parser.cursor.at_name("return")
+            })
+        } else {
+            let expr = parse_expr_until(self, |parser| {
+                parser.cursor.at_name("let")
+                    || parser.is_form_boundary()
+                    || parser.cursor.at_name("return")
+            });
+            if self.cursor.at_name("let") {
+                self.error(
+                    DiagnosticCode::UnexpectedToken,
+                    "invalid policy prefix; policy choice uses `||`, conjunction uses `+`, and pair separation uses `:`",
+                    expr.span,
+                );
+                return parse_let_form(self, None);
+            }
+            expr
+        };
 
         // Implicit return: `<value> return`
         if self.cursor.at_name("return") {
@@ -260,6 +268,7 @@ impl<'tokens> Parser<'tokens> {
 
 fn is_empty_expression(expr: &ExprAst) -> bool {
     match &expr.kind {
+        ExprKind::PolicyLet(policy_let) => is_empty_expression(&policy_let.operand),
         ExprKind::Pipe(pipe) => pipe.segments.iter().all(|s| s.elements.is_empty()),
         ExprKind::Product(_) => false,
         ExprKind::Error(_) => true,
@@ -362,6 +371,7 @@ fn extract_return_target_from_operator(
 
 pub(crate) fn expression_contains_name(expr: &ExprAst, name: &str) -> bool {
     match &expr.kind {
+        ExprKind::PolicyLet(policy_let) => expression_contains_name(&policy_let.operand, name),
         ExprKind::Pipe(pipe) => pipe.segments.iter().any(|seg| {
             seg.elements
                 .iter()
@@ -372,6 +382,39 @@ pub(crate) fn expression_contains_name(expr: &ExprAst, name: &str) -> bool {
             crate::ProductElementAst::Unit { .. } => false,
         }),
         ExprKind::Error(_) => false,
+    }
+}
+
+fn policy_prefixed_form_has_binding_delimiter(cursor: &Cursor<'_>) -> bool {
+    let (let_index, let_token) = cursor.peek_at_skip_trivia(cursor.current_index());
+    debug_assert!(matches!(let_token.kind, TokenKind::Name) && let_token.text == "let");
+
+    let mut index = let_index + 1;
+    let mut depth = 0usize;
+    loop {
+        let (next_index, token) = cursor.peek_at_skip_trivia(index);
+        index = next_index + 1;
+
+        match token.kind {
+            TokenKind::Symbol(Symbol::LParen | Symbol::LBracket | Symbol::LBrace) => {
+                depth += 1;
+            }
+            TokenKind::Symbol(Symbol::RParen | Symbol::RBracket | Symbol::RBrace) => {
+                if depth == 0 {
+                    return false;
+                }
+                depth -= 1;
+            }
+            TokenKind::Symbol(Symbol::Equal | Symbol::TripleEqual) if depth == 0 => {
+                return true;
+            }
+            TokenKind::Symbol(Symbol::Semicolon | Symbol::Comma) if depth == 0 => {
+                return false;
+            }
+            TokenKind::Name if depth == 0 && token.text == "return" => return false,
+            TokenKind::Eof => return false,
+            _ => {}
+        }
     }
 }
 

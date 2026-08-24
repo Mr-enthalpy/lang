@@ -1007,7 +1007,8 @@ mod tests {
 
 fn expr_origin(expr: &NormExpr) -> &NormOrigin {
     match expr {
-        NormExpr::Call { origin, .. }
+        NormExpr::PolicyLet { origin, .. }
+        | NormExpr::Call { origin, .. }
         | NormExpr::Name { origin, .. }
         | NormExpr::Literal { origin, .. }
         | NormExpr::Nav { origin, .. }

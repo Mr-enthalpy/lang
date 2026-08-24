@@ -204,7 +204,6 @@ fn capture_items_normalize_to_let_shaped_bindings() {
         ("let f = [x]() => { x };", "x"),
         ("let f = [x x]() => { x };", "x"),
         ("let f = [x y z]() => { x };", "x"),
-        ("let f = [x let]() => { x };", "x"),
         ("let f = [(x, x) |> x]() => { x };", "x"),
     ] {
         let closure = normalized_closure(fixture);
@@ -946,6 +945,7 @@ fn binding_slot_at(form: &NormForm) -> &NormBindingSlot {
 
 fn find_generated_closure(expr: &NormExpr, rule: NormRule) -> Option<&lang_syntax::NormClosure> {
     match expr {
+        NormExpr::PolicyLet { operand, .. } => find_generated_closure(operand, rule),
         NormExpr::Closure(closure)
             if matches!(
                 &closure.origin,
@@ -1764,6 +1764,9 @@ fn pattern_validation_certificate_does_not_claim_recovery_free_syntax() {
 
 fn expression_binding_shape(expr: &NormExpr) -> String {
     match expr {
+        NormExpr::PolicyLet { operand, .. } => {
+            format!("policy-let({})", expression_binding_shape(operand))
+        }
         NormExpr::Call { source, target, .. } => format!(
             "call([{}],{})",
             source
