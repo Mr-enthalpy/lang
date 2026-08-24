@@ -1,6 +1,8 @@
 # Mechanical Argument Passing and the Move Fixed Point
 
-**Status: Non-normative future design. Not implemented as current parser, normalizer, type checker, borrow checker, ABI, or IR lowering behavior.**
+**Status: Canonical target semantics for the named pass-action algebra below.
+The selection algorithm, parser/normalizer integration, checker, IR, ABI, and
+runtime lowering remain non-normative and unimplemented.**
 
 This document specifies the future *mechanical argument passing* layer: how a
 call argument is normalized into a concrete pass action (move or copy), while
@@ -10,10 +12,43 @@ pass modes are mechanically inserted, source-expressible actions — not backend
 ABI heuristics and not optimizer decisions — and that `move` is the fixed point
 of pass normalization.
 
-It is a future design note. It is not current public language behavior, not an
-implemented pass, not a parser or normalizer rule, and not an IR/ABI rule. The
-document is self-contained: it does not require the reader to assemble its
+It is not current public language behavior or an implemented pass. Only
+`CanonicalMechanicalPassCore` is normative target semantics; examples,
+selection heuristics, and lowering/IR descriptions are implementation guidance.
+The document is self-contained: it does not require the reader to assemble its
 meaning from other documents.
+
+## 0. Canonical pass-action core
+
+The following small algebra is normative and is consumed by Policy and ordinary
+binding semantics:
+
+```text
+CanonicalMechanicalPassCore:
+
+MoveFixedPoint:
+  move(move(x)) = move(x)
+
+CopyAction:
+  copy(x) =
+    tmp := CopyConstruct(x)
+    Move(tmp)
+
+NoPreMoveBeforeCopy:
+  copy(x) != Move(x)
+  copy(x) = CopyConstruct(x); Move(result)
+
+ExplicitPassDominates:
+  explicit pass present => preserve and check that action
+
+AutomaticPassDomain:
+  automatic pass in {move, copy}
+  automatic pass not in {ref, share, @}
+```
+
+This core fixes action meaning and normalization only. It does not choose when
+an automatic slot moves or copies, prove copy/borrow legality, prescribe an IR
+instruction, or define an ABI.
 
 ## 1. Purpose
 
@@ -36,8 +71,9 @@ in-language facts — types, traits, policy, meta-functions, and symbol lookup �
 not by an opaque backend convention.
 
 This document does **not** define a full type checker, a full borrow checker, an
-ABI, LLVM lowering, runtime overload resolution, or a full trait solver. It
-defines a future semantic direction only.
+ABI, LLVM lowering, runtime overload resolution, or a full trait solver. Those
+parts remain future design/implementation even though the named action algebra
+above is canonical target semantics.
 
 ## 2. Pass modes are mechanical source-level lowering, not ABI heuristics
 
@@ -247,7 +283,8 @@ that can then be `move`d. The only passing endpoint is `move`.
 - `copy(x)` consumes `tmp`, not `x`.
 - `ref(x)` / `share(x)` consume the borrow handle `b`, not `x`.
 - `move(x)` consumes `x` itself.
-- Every pass mode ultimately becomes a single terminal `move` action.
+- Every materialized pass handle ultimately reaches a single terminal `move`
+  action.
 
 Two additional invariants close the Policy-mode boundary:
 
@@ -319,9 +356,10 @@ As judgments:
 ```
 
 An explicit argument pass dominates automatic pass. A parameter's pass
-expectation participates in candidate compatibility. Automatic `in` is used only
-when there is no explicit argument pass and a concrete pass action must still be
-formed.
+expectation participates in candidate compatibility. Automatic `in` is only a
+pre-lowering placeholder, never a canonical automatic action. It appears only
+when there is no explicit argument pass and must resolve to one concrete action
+in `{move, copy}`.
 
 Conflict and adaptation examples:
 
@@ -401,7 +439,8 @@ If a source/meta layer produces a nested move, it must be canonicalized:
 move(move(x)) => move(x)
 ```
 
-This is a future design requirement, not a description of current behavior.
+This fixed-point equation is canonical target semantics, not a description of
+current implemented behavior.
 
 ## 12. Relation to later call modes
 

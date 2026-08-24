@@ -1542,8 +1542,13 @@ token spelling
   -> ParseLiteral
   -> AbstractLiteralValue : integer | real | character
   -> ordinary Convert/Construct to a concrete machine-semantic Type
-  -> optional same-Type Migrate/Materialize for another stage/policy view
+  -> optional same-Type Migrate/Materialize of that concrete Type
+     for another stage/policy view
 ```
+
+The optional final edge never applies while the value still has abstract Type
+`integer`, `real`, or `character`; their associated cells are normatively
+deleted in §4.1.4.
 
 The initial semantic result is normatively compile-known:
 
@@ -1643,9 +1648,8 @@ float32@compile
   -> float32@runtime with the same typed value semantics
 ```
 
-Abstract literal types do not automatically materialize to runtime. A legal
-same-Type static-to-runtime edge exists exactly when an ordinary non-deleted
-callable realizes it:
+Same-Type runtime materialization remains an ordinary associated callable
+family, not a compiler special case. The general mechanism is:
 
 ```text
 RuntimeMaterializable(T)
@@ -1653,9 +1657,34 @@ iff exists ordinary non-deleted callable realizing
     a legal same-Type static -> runtime transition of T
 ```
 
-A normal integer path is therefore `integer@compile -> Construct_int32 ->
-int32@compile -> Materialize_int32 -> int32@runtime`, not an implicit
-`integer@runtime` identity rewrite.
+The three abstract denotation Types close that family with an intrinsic negative
+fact:
+
+```text
+AbstractLiteralNoRuntimeMaterialization:
+
+MaterializeFamily(integer):
+  integer@compile -> integer@runtime => delete
+
+MaterializeFamily(real):
+  real@compile -> real@runtime => delete
+
+MaterializeFamily(character):
+  character@compile -> character@runtime => delete
+
+RuntimeMaterializable(integer)   = false
+RuntimeMaterializable(real)      = false
+RuntimeMaterializable(character) = false
+```
+
+These deleted cells belong to each Type's ordinary associated callspace. They
+are not an ad hoc checker branch, but neither may an extension add a custom
+non-deleted same-Type runtime realization that defeats the negative fact.
+Abstract denotations must first enter ordinary construction to another,
+concrete machine-semantic Type. A normal integer path is therefore
+`integer@compile -> Construct_int32 -> int32@compile -> Materialize_int32 ->
+int32@runtime`; `integer@runtime`, `real@runtime`, and `character@runtime` are
+not legal same-Type results.
 
 #### 4.1.5 Stage-invariant machine semantics
 

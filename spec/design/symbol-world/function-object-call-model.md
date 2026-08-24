@@ -575,8 +575,11 @@ exports `internal_state` nor requires an address field in every
 
 Before materialization, each requirement must lower to a lifetime-checkable
 form naming its source place, requested access view, origin/region relation,
-and storage-or-link category. This is only a handoff obligation; copy/move/
-borrow defaults, region construction, escape rules, and ABI remain unfrozen.
+and storage-or-link category. This is only a handoff obligation. Automatic
+mechanical move-vs-copy selection, concrete borrow/copy representation, Region
+IR construction, escape-check implementation, and ABI remain open; entry
+origin defaults and the move/copy origin equations are closed by the lifetime
+owner.
 
 ### 7.3 In-place closures are embedded callable candidates
 

@@ -46,6 +46,11 @@ Still open after this correction:
 - Character-literal spelling, extension of the exact-real carrier beyond the
   currently parsed finite forms, the concrete machine-Type catalog, and the
   source/context mechanism that selects ordinary literal construction targets.
+- Final surface treatment of colon Policy spellings whose whole-slot
+  `ModePattern` factorization leaves an empty residual `Pv` or `Pp` side. The
+  current rejection of forms such as `const:compile` is provisional; the closed
+  semantic requirement is only that mode factor exactly once and never inhabit
+  either pair coordinate.
 - Final syntax/API shape for resolver expected-role disambiguation; the current
   `lang_build` API is provisional.
 - Exact future implementation of independent place-writability and
@@ -313,12 +318,15 @@ The implementation work is intentionally split into three follow-up packages:
    default/delete/custom fixtures without changing resolver retry rules.
 2. **Abstract literals and materialization:** add exact `integer`/`real`
    denotations, keep character spelling as a separate amendment, perform
-   ordinary construction to the concrete machine Type, and enforce same-Type
-   materialization plus `StageInvariantTypeSemantics`.
+   ordinary construction to the concrete machine Type, install the intrinsic
+   deleted same-Type runtime cells for all three abstract denotation Types, and
+   enforce concrete same-Type materialization plus
+   `StageInvariantTypeSemantics`.
 3. **Lifetime semantic model/checker:** represent LifeName generations,
-   half-open Region, origin/Color, cleanup ordering, and Pre/Post summaries,
-   then connect the checker without allowing failure to reopen overload
-   selection.
+   the coinductive default entry universe plus finite Pre patch, exact
+   move-origin preservation, half-open Region, finite Color relations, cleanup
+   ordering, and Pre/Post summaries, then connect the checker without allowing
+   failure to reopen overload selection.
 
 Deferred materialization and mixed-stage work must preserve these
 already-recorded design constraints:

@@ -882,8 +882,9 @@ privilege. Explicit higher-level selection uses
 preserves its resident target, but that is not a `@` overlap. The semantic core
 now closes `SemanticContinuation`, `LifeName`, `LifetimeValue`, `NameView<T>`,
 `origin`, half-open `Region`, use/move/drop generations, cleanup-before-
-lifetime, Pre/Post summaries, lazy/coinductive origin, and monotone Color
-inheritance. Concrete IR carriers, summary compression, and the checker remain
+lifetime, Pre/Post summaries, the coinductive default origin universe plus
+finite Pre patch, exact move-origin preservation, and finite/monotone Color
+relations. Concrete IR carriers, summary compression, and the checker remain
 unimplemented.
 
 _See also: `@`, Escape check, `spec/design/lifetime/lifetime-policy-and-overload-boundary.md`._
@@ -1346,9 +1347,10 @@ selection of `@` in the operand's policy stage, then lifetime validation, which
 may reject the first two but never reselects them.
 
 The lifetime core uses half-open `Region=[i,j)`, generation-resetting move,
-cleanup-before-lifetime ordering, Pre/Post call summaries, lazy/coinductive
-origin, and monotone Color inheritance. Its concrete IR representation and
-checker are not implemented. See
+cleanup-before-lifetime ordering, Pre/Post call summaries, a coinductive default
+origin universe with finite Pre patch, exact move-origin preservation, and
+finite/monotone Color relations. Its concrete IR representation and checker are
+not implemented. See
 [`lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 §1–§2.
 
@@ -1371,12 +1373,24 @@ companion, and the projections commute: `@(f_V(x)) = f_N(x@)`. Companion
 existence is semantic; registry or IR representation remains
 implementation-open.
 
-Moving a nontrivial value ends the current generation and begins a successor
-generation whose corresponding `LifeName` observation and origin relation
-remain expressible. Whether generation identity and `LifeName` identity share
-one concrete representation is implementation-open. Drop ends the current
-generation after cleanup obligations. Origin may be represented lazily and
-coinductively, and Color information may only be inherited monotonically.
+Entry lifetime facts are `U_entry = U_default ⊕ Delta_pre`, where `Delta_pre`
+is finite. Borrow-origin ancestry continues coinductively unless an explicit
+`origin=None` terminates it; omission is not `None`. Exclusive borrow arguments
+receive distinct anonymous roots. Shared borrow arguments draw argument-keyed
+roots from one entry-scoped coinductive anonymous generator, so the generation
+strategy is shared without collapsing distinct argument identities. Accessible
+borrow subnames belong to the default name tree. Ordinary non-borrow values
+default to `origin=None`.
+
+Moving a nontrivial value ends the old first-level generation and begins a
+successor generation with exactly the same deeper origin:
+`new@.origin = old@.origin`. Copy instead establishes
+`new@.origin = NameOf(old)`. Whether generation identity and `LifeName` identity
+share one concrete representation is implementation-open. Drop ends the current
+generation after cleanup obligations. Color inheritance is monotone, and each
+compilation universe has a finite Color set with mechanically decidable
+compatibility/exclusion/exchange relations; Color is not an arbitrary
+proposition carrier.
 
 _See also: `@`, Region, Lifetime Policy Boundary._
 
@@ -2321,7 +2335,9 @@ cannot reconstruct the pair plus mode.
 Surface elaboration factors at most one connected whole-slot `ModePattern`
 before elaborating the residual `Pv:Pp`; mode atoms cannot independently occupy
 the value or Pattern side of `:`. `const || mut` is one mode Pattern, not two
-pair components.
+pair components. Whether a colon spelling with an empty residual side is
+rejected or contextually completed is still a surface question; the current
+rejection examples are provisional rather than a consequence of orthogonality.
 Ordinary policy notation does not use `@`, which remains reserved for lifetime
 policy syntax.
 
@@ -2612,6 +2628,11 @@ abstract-literal value. Character spelling is
 still a separate surface amendment and is not added by this semantic closure.
 These are ordinary complete type values satisfying the existing Type role, not
 members of a separate `LiteralType` universe parallel to ordinary types.
+Their ordinary same-Type compile-to-runtime materialization cells are
+intrinsically `delete`, so `RuntimeMaterializable(integer|real|character)` is
+false. They must first be constructed into another, concrete machine-semantic
+Type; a custom same-Type runtime materializer may not override this negative
+fact.
 
 _See also: Concrete machine-semantic type, Convert/Construct._
 
@@ -2676,7 +2697,9 @@ _See also: Migrate/Materialize, Abstract literal type._
 Operations that preserve Type while producing an eligible value at another
 stage or in a concrete storage form. They may change value/place identity but
 must satisfy `Type(output) = Type(input)`; they are not conversion or
-construction to a different Type.
+construction to a different Type. The abstract denotation Types `integer`,
+`real`, and `character` have deleted compile-to-runtime cells and therefore do
+not admit this same-Type runtime operation.
 
 _See also: Convert/Construct, StageInvariantTypeSemantics._
 
@@ -2690,6 +2713,30 @@ migrate a same-Type value, but it cannot switch the Type's range, rounding,
 equality, or interpretation.
 
 _See also: Concrete machine-semantic type, Migrate/Materialize._
+
+---
+
+## CanonicalMechanicalPassCore
+
+The normative target action algebra for ordinary value passing:
+
+```text
+move(move(x)) = move(x)
+
+copy(x) =
+  tmp := CopyConstruct(x)
+  Move(tmp)
+
+automatic pass in {move, copy}
+automatic pass not in {ref, share, @}
+```
+
+There is no move of `x` before `CopyConstruct(x)`, and an explicit pass action
+dominates automatic selection. These laws are canonical even though the
+selection algorithm, checker/normalizer integration, IR, and ABI are not yet
+implemented.
+
+_See also: PolicyMode, Migrate/Materialize._
 
 ---
 

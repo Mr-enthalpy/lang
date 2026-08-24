@@ -121,7 +121,7 @@ design-fusion staging area; non-normative, not current behavior). Start at
 | `spec/design/meta-invocation/` | Symbol-first callable invocation, policy-pair handoff, partial/strict demand, and residualization |
 | `spec/design/policy-capability/` | Mapping from current flat/2×2 implementation carriers to canonical pairs, whole-slot PolicyMode, and capability realization |
 | `spec/design/lifetime/` | Continuation-relative LifeName/Region semantics plus the boundary that prevents lifetime failure from reopening type/compile overload selection |
-| `spec/design/mechanical-lowering/` | Automatic argument passing, return normalization, normal/tco/loop call modes |
+| `spec/design/mechanical-lowering/` | Canonical move/copy pass-action core; future automatic selection/lowering, return normalization, and normal/tco/loop call modes |
 
 For the current future semantic baseline, read these canonical construction and
 flow documents in order:

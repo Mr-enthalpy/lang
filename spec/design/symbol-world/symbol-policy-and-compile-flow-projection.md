@@ -310,6 +310,10 @@ plain materialization
 There is no language requirement for a global `val plain` dispatcher. This is
 compatible with a full 3x3 capability space: selection coordinates and the
 surface inventory of explicit reconstruction operations are different facts.
+The normative action meaning is owned by
+[`CanonicalMechanicalPassCore`](../mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md#0-canonical-pass-action-core):
+copy performs `CopyConstruct` followed by one terminal Move, with no pre-move
+of the source.
 
 ## 2. Pattern alternative and policy operators
 
@@ -419,7 +423,7 @@ ModePattern
 `FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
 Mode Pattern once, and removes those atoms before either colon side is
 elaborated. The residual `PairSurface`, if present, contains only pair/view
-coordinates. The well-formedness rules are:
+coordinates. The closed semantic well-formedness rules are:
 
 ```text
 AtMostOneWholeSlotModePattern
@@ -427,24 +431,22 @@ NoPolicyModeCoordinateInPv
 NoPolicyModeCoordinateInPp
 NoIndependentModePatternsAcrossColon
 
-colon written
-  => residual Pv side is non-empty
-  && residual Pp side is non-empty
-
 no residual pair/view atom
   => PairSpec = InferPair
 ```
 
 Thus `const || mut` alone is one whole-slot Mode Pattern with inferred pair;
 `const + runtime : compile` parses as `(const + runtime):compile` and factors
-to mode `const` plus pair `runtime:compile`. By contrast `const:compile`,
-`runtime:const`, `const:mut`, and `const || mut:compile` are invalid:
-factorization would leave
-an empty written colon side or produce two independent mode patterns. An
-implementation that places a mode atom in `Pv` or `Pp` is invalid even if the
-surface parser preserved that atom on one syntactic side. This is a semantic
-elaboration invariant and does not require the frozen Raw/Normalized Policy
-AST carrier to change immediately.
+to mode `const` plus pair `runtime:compile`.
+
+How a written colon whose factorization leaves an empty residual side is handled
+is a separate surface decision, not a theorem of PolicyMode orthogonality. The
+current provisional surface rule rejects `const:compile`, `runtime:const`,
+`const:mut`, and `const || mut:compile`; a later surface amendment may instead
+define an unambiguous contextual shorthand while still satisfying the closed
+coordinate rules above. No semantic elaborator may place a mode atom in `Pv` or
+`Pp`, regardless of which surface completion is selected. This factorization
+does not require the frozen Raw/Normalized Policy AST carrier to change.
 
 ### 2.2 Algebra
 

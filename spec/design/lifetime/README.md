@@ -21,7 +21,9 @@ constructor composition, the escape check on borrow views, the
 `NoImplicitBorrowFormation` overload boundary, and the separation between
 lifetime rules and the type/compile overload pipeline. Borrow formation does
 not require or manufacture construction Open. The semantic core now closes
-LifeName/LifetimeValue/NameView, half-open Region, generations, cleanup,
-Pre/Post summaries, lazy/coinductive origin, and monotone Color inheritance.
+LifeName/LifetimeValue/NameView, the coinductive default entry universe plus
+finite Pre patch, half-open Region, move-origin preservation, generations,
+cleanup, Pre/Post summaries, and finite/monotone mechanically decidable Color
+relations.
 Concrete IR, checker implementation, summary compression, access-tree
 integration, diagnostics, and any extended Horae logic remain future work.

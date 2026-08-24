@@ -367,9 +367,50 @@ registry remains implementation-open; absence of a particular registry entry
 cannot make a semantically name-projectable operation fail this law.
 
 `origin : LifeName -> LifeName | None` records semantic provenance rather than
-source text or an address. Origin chains may be coinductive, but each
-`ReifyLife(n, k)` is a finite structural observation. A later `.origin`
-projection issues a new request; `@` never eagerly unfolds the whole chain.
+source text or an address. Borrow-origin ancestry is generated coinductively by
+default; omission is not `None`. `None` is an explicit termination proposition.
+Each `ReifyLife(n, k)` is nevertheless a finite structural observation. A later
+`.origin` projection issues a new request; `@` never eagerly unfolds the whole
+chain.
+
+Function entry begins from a default universe and applies the written lifetime
+precondition as a finite correction:
+
+```text
+U_entry = U_default ⊕ Delta_pre
+|Delta_pre| < infinity
+
+DefaultOriginUniverse:
+  exclusive borrow arguments
+    -> distinct anonymous origin roots by default
+
+  shared borrow arguments
+    -> draw their default roots from one entry-scoped anonymous generator
+       G_shared
+    -> DefaultRoot(arg)
+         = CoinductiveNode(G_shared, StableArgumentIdentity(arg))
+
+  therefore the shared-borrow strategy is one deterministic coinductive
+  generator, while argument identity still distinguishes its generated roots
+
+  borrow name tree
+    -> covers accessible structural subnames by default
+
+  ordinary non-borrow value
+    -> origin = None by default
+
+  unmentioned borrow-origin ancestry
+    -> continue the coinductive default generator
+       unless an explicit origin = None terminates it
+
+PreDoesNotConstructUniverseFromZero:
+  Delta_pre is a finite patch over U_default,
+  not the complete origin universe
+```
+
+Here `⊕` applies the finite declared corrections while retaining every
+unmentioned default rule. Thus a missing Pre fact cannot silently truncate a
+borrow origin chain to `None`.
 
 Neither origin nor a complete NameView enters `Norm(Object)` or adds a fourth
 Object axis.
@@ -384,12 +425,27 @@ Region(n) = [i, j)
 events    = use | move | drop
 ```
 
-`use` records an observation point. `move` ends the old first-level generation
-and creates a new generation whose region starts after the move. The new
-generation may retain an origin relation to the old one. `drop` ends the
-outstanding lifecycle/cleanup obligation for that generation. Path-sensitive
-facts are represented by a region slice plus a regular origin path, not by
-turning Region into an arbitrary CFG subgraph.
+`use` records an observation point. Affine move rebuilds only the first-level
+generation/Region and preserves the deeper origin exactly:
+
+```text
+MoveOriginPreservation:
+
+old@ = { name = n_old, origin = o, region = r_old }
+move(old -> new)
+new@ = { name = n_new, origin = o, region = r_new }
+
+new@.origin = old@.origin
+end(Region_1(old))   = Pos(move)
+begin(Region_1(new)) > Pos(move)
+```
+
+The new generation therefore does not acquire the old generation itself as its
+origin. Copy is the contrasting operation: `CopyConstruct(old -> new)` creates
+`new@.origin = NameOf(old)`. `drop` ends the outstanding lifecycle/cleanup
+obligation for the current generation. Path-sensitive facts are represented by
+a region slice plus a regular origin path, not by turning Region into an
+arbitrary CFG subgraph.
 
 #### 2.1.4 Cleanup placement precedes lifetime observation
 
@@ -439,10 +495,22 @@ closed:
 Color is a future-continuation constraint
 Color(child) includes inherited Color(ancestor)
 observation may slice the inherited region but may not remove the color
+
+FiniteColorPrinciple:
+  for each compilation semantic universe U:
+    ColorSet(U) is finite
+
+  Color is not an arbitrary proposition carrier
+
+  compatibility / exclusion / exchange
+    are finite, mechanically decidable relations over
+    ColorSet(U) and bounded observed origin topology
 ```
 
 Color does not enter Object core or `Norm(Object)`. Its concrete carrier and
-source syntax remain implementation/surface questions.
+source syntax remain implementation/surface questions. The concrete enumeration
+may evolve, but a Color implementation may not smuggle an unbounded theorem
+language into lifetime checking.
 
 ### 2.2 No implicit borrow formation
 
@@ -646,8 +714,11 @@ Still genuinely open engineering questions, not closed by this document:
 - whether a `LifetimeValue` is generally storable or exposed only to bounded
   compile-time observation;
 - diagnostics and caching identity for lifetime validation;
-- borrow/move/copy defaults, closure ABI, and environment layout, which remain
-  the mechanical-lowering design's territory.
+- automatic mechanical move-vs-copy pass selection, concrete borrow/copy
+  representation, closure ABI, and environment layout, which remain the
+  mechanical-lowering design's territory. The entry origin defaults and the
+  move/copy origin equations above are closed lifetime semantics, not items in
+  that implementation debt.
 
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff

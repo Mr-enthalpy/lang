@@ -414,7 +414,10 @@ carry current first-order
 TypeValue projections derived from installed Type symbols, not final canonical
 type-value identity. They do not define source literal Types: the target path is
 exact abstract `integer`/`real`/`character` denotation, ordinary construction
-to a concrete machine Type, then optional same-Type materialization. The
+to a concrete machine Type, then optional same-Type materialization for that
+concrete Type. The three abstract denotation Types themselves have intrinsic
+deleted compile-to-runtime materialization cells; the current registries do not
+implement those Types or cells. The
 implemented consumer is binding P1; future consumers
 must project the complete accepted choice first, then may construct its
 runtime branch only when the complete existing projection is empty.
