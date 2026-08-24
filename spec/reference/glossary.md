@@ -2379,9 +2379,13 @@ dimensions. A scalar policy is surface shorthand or a derived summary and
 cannot reconstruct the pair plus mode.
 Surface elaboration factors at most one connected whole-slot `ModePattern`
 before elaborating the residual `Pv:Pp`; mode atoms cannot independently occupy
-the value or Pattern side of `:`. `ModePattern` is a non-empty `||` choice over
-`ModeAtom ::= const | plain | mut`; explicit `plain`, all two-point choices,
-and `const || plain || mut` factor as one mode Pattern, not pair components.
+the value or Pattern side of `:`. A typed `ModePattern` is exactly one
+`ModeAtom ::= const | plain | mut`; a surface `PolicyChoice` containing multiple
+ModeAtoms is rejected during typed Policy elaboration. `plain` is the only
+neutral/default point and is not `const || mut`. This restriction leaves
+pair/view choices such as `compile || runtime` unchanged. In result-demand
+context, absence of a written ModeAtom independently defaults to `plain` and
+does not erase that residual pair/view choice.
 Whether a colon spelling with an empty residual side is
 rejected or contextually completed is still a surface question; the current
 rejection examples are provisional rather than a consequence of orthogonality.
@@ -2550,11 +2554,12 @@ consumes that view as an ordinary actual and cannot reopen the operand call.
 
 `PolicyLet` creates no hidden binding, place, or declaration. It is not an
 ordinary Val2 `const`/`mut` call and is not an in-place Policy tag rewrite.
-Existing accepted views require no value action. When reconstruction is
-required, outward satisfaction must carry an
-`OrdinaryPolicyTransitionWitness` supplied by the selected Type-callspace/Val2
-operation or by the mechanical transfer authorized for that demand kind. Such
-an action cannot create the preceding inward demand. The parser and Normalized
+`PolicyCast_P(result)` is a Policy judgment independent of ordinary value
+algebra. Existing accepted views give identity-preserving casts. When value
+reconstruction or transfer accompanies another cast, the selected
+Type-callspace/Val2 operation or canonical mechanical action must be coherent
+with the already-defined cast, but it neither defines nor proves that cast and
+cannot create the preceding inward demand. The parser and Normalized
 AST preserve this node; the current build prototype does not yet execute its
 result-demand/cast semantics.
 
@@ -2563,7 +2568,7 @@ For singleton `plain`, a `const` producer may win inward selection under
 plain outward view. Canonical terminal move/copy transfers the value into the
 PolicyLet's ordinary plain expression-result slot. The source mode remains
 const, the result-slot mode is plain, and no global `val plain` or Policy tag
-rewrite is introduced. Missing move/copy/reconstruction evidence is a typed
+rewrite is introduced. Missing required move/copy/reconstruction action is a typed
 outward failure after producer selection, never permission to expose the wrong
 mode or reopen candidates.
 

@@ -155,14 +155,16 @@ Resolved future-design decisions:
   `[val, ...]`.
 - `PolicySpec let PipeExpression` is the explicit expression-level
   result-Policy boundary. It forms `ResultPolicyDemand` before the operand root
-  call's maxima, completes ordinary Policy satisfaction afterward into the
+  call's maxima, forms the outward `PolicyCast` afterward into the
   node's ordinary expression-result slot, and closes before an outer call
   consumes the concrete view. The slot has its own concrete mode but is not a
   NameBinding, Symbol, declaration, or independently addressable Place.
   Singleton plain uses ordinary terminal move/copy when the selected producer
-  has another mode; no global `val plain` is required. PolicyLet is not a Val2
-  call, hidden binding, or cross-call fixed point. Raw/Norm preservation is
-  implemented; semantic execution remains part of the Policy carrier package.
+  has another mode; that action must be coherent with, but does not define or
+  prove, the Policy cast. No global `val plain` is required. PolicyLet is not a
+  Val2 call, hidden binding, or cross-call fixed point. Raw/Norm preservation
+  is implemented; semantic execution remains part of the Policy carrier
+  package.
 - Every call has a total `OutputModeDemand`: an already-formed
   candidate-independent immediate-consumer demand when available, otherwise
   concrete `plain`. Optional expected result pair/type/rank/facet constraints
@@ -176,10 +178,11 @@ Resolved future-design decisions:
   The former universal const-projection rule and the equation
   `plain = const || mut` are closed as retired semantics; current flat and
   const-projected carriers remain explicitly bounded implementation adapters.
-- Explicit surface `plain` is `ModeAtom(plain)`. `ModePattern` is any non-empty
-  same-coordinate `||` choice over `const | plain | mut`, including every
-  two-point choice and the three-point set; no such atom may remain in `Pv` or
-  `Pp` after factorization.
+- Explicit surface `plain` is `ModeAtom(plain)`. A typed `ModePattern` is one
+  singleton point from `const | plain | mut`; a surface `PolicyChoice` with
+  multiple ModeAtoms, including `const || mut`, is rejected after
+  factorization. This does not restrict pair/view choices such as
+  `compile || runtime`, and no mode atom may remain in `Pv` or `Pp`.
 - `...Q` is available in every let-shaped binding slot, not only parameters.
   It remains one Pattern remainder constructor, never a pack type or RHS
   unpack. Raw `...(a, b)` is preserved but rejected after P normalization
@@ -306,8 +309,10 @@ Not implemented after this correction:
   an available compile slice. If the complete accepted choice has no existing
   view, its runtime branch is the currently authorized constructible branch.
 - Executing `PolicyLetFormation`: form the inward result demand before the
-  operand root call, freeze that producer, perform outward Policy satisfaction,
-  and expose the completed concrete view without reopening the operand.
+  operand root call, freeze that producer, form the outward Policy cast, check
+  any required coherent accompanying value action, and expose the completed
+  concrete view without reopening the operand. The value action does not
+  define or prove the cast.
 - Completing every old ordinary Bp coordinate and every later B1..B6 filter in
   the connected `PreparedCallCandidate` carrier. The implemented slice already
   composes its ordinary formal/phase coordinates and optional migration

@@ -19,14 +19,17 @@ choice, `+` cross-dimension conjunction, and `:` pair structure.
 Semantic elaboration first factors one optional whole-slot `ModePattern` from
 the complete surface policy and only then elaborates the residual `PairSpec` as
 `Pv:Pp`. At most one connected mode Pattern is allowed; neither colon side may
-contain its own semantic mode coordinate. Its grammar is a non-empty `||`
-choice over `ModeAtom ::= const | plain | mut`, so explicit `plain`, every
-two-point choice, and `const || plain || mut` all factor as one whole-slot
-Pattern. The current rejection of `const:compile`, `runtime:const`,
-`const:mut`, and `const || mut:compile` is a provisional surface rule, not a
-consequence of orthogonality; a future contextual shorthand must still factor
-mode exactly once and leave no mode coordinate in `Pv` or `Pp`. This is not a
-new Raw/Normalized AST node.
+contain its own semantic mode coordinate. Its typed grammar is the singleton
+`ModeAtom ::= const | plain | mut`. A surface `PolicyChoice` containing more
+than one ModeAtom, including legacy-neutral `const || mut`, is preserved by
+Raw/Normalized syntax but rejected by typed Policy elaboration. This does not
+restrict same-coordinate pair/view choices such as `compile || runtime`. The
+current rejection of `const:compile`, `runtime:const`, and `const:mut` is a
+provisional empty-residual-side surface rule, not a consequence of
+orthogonality; a future contextual shorthand must still factor mode exactly
+once and leave no mode coordinate in `Pv` or `Pp`. This is not a new
+Raw/Normalized AST node. In a result-demand context, no written ModeAtom means
+the concrete `plain` point while the residual pair/view choice remains intact.
 
 P1 has three contextual elaborators:
 

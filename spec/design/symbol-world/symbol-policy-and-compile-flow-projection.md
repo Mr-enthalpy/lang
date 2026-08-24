@@ -442,8 +442,9 @@ are the three atoms of the whole-slot PolicyMode pattern; none is stored inside
 `Pv` or `Pp`. Unqualified `let` still selects the concrete `plain` point and
 therefore needs no additional source atom, while a written `plain` is an
 explicit spelling of that same point. A written choice such as
-`const || plain`, `plain || mut`, or `const || mut` is a Pattern over those
-PolicyMode points, never the meaning of omission or inference.
+`const || plain`, `plain || mut`, or `const || mut` is not a legal whole-slot
+mode demand. In particular, the legacy `const || mut` neutrality spelling does
+not return through the general PolicyChoice syntax.
 
 Surface elaboration must factor that whole-slot coordinate before building the
 pair:
@@ -461,15 +462,18 @@ ModeAtom
 
 ModePattern
   ::= ModeAtom
-   |  ModePattern "||" ModeAtom
 ```
 
-A `ModePattern` is exactly one non-empty choice over the single whole-slot
-PolicyMode dimension. It may denote any non-empty subset of
-`{const, plain, mut}`, including the three-point choice. It may not mix a stage,
-visibility, presence, or pair atom into that choice. `plain` therefore always
-factors as `ModePattern(plain)` when written; it can never remain as a residual
-`PolicyAtom` for `Pv` or `Pp`.
+A `ModePattern` denotes exactly one of the three whole-slot points. There is no
+set-lifted PolicyMode demand and no second neutral element beside `plain`. It
+may not mix a stage, visibility, presence, or pair atom into that coordinate.
+`plain` therefore always factors as `ModePattern(plain)` when written; it can
+never remain as a residual `PolicyAtom` for `Pv` or `Pp`.
+
+In a result-demand context, absence of a written ModeAtom elaborates to the
+concrete point `plain`. This default does not consume or invalidate the
+residual pair/view policy. Thus `compile || runtime let e` retains the complete
+stage choice and independently carries `PolicyMode = plain`.
 
 `FactorWholeSlotMode` walks the complete `PolicySpec`, extracts one connected
 Mode Pattern once, and removes those atoms before either colon side is
@@ -481,24 +485,29 @@ AtMostOneWholeSlotModePattern
 NoPolicyModeCoordinateInPv
 NoPolicyModeCoordinateInPp
 NoIndependentModePatternsAcrossColon
+NoMultiPointPolicyModeChoice
 
 no residual pair/view atom
   => PairSpec = InferPair
 ```
 
-Thus `plain`, `const || plain`, `plain || mut`, `const || mut`, and
-`const || plain || mut` alone are whole-slot Mode Patterns with inferred pair;
-`const + runtime : compile` parses as `(const + runtime):compile` and factors
-to mode `const` plus pair `runtime:compile`.
+Thus `const`, `plain`, and `mut` alone are singleton whole-slot Mode Patterns
+with inferred pair. `const + runtime : compile` parses as
+`(const + runtime):compile` and factors to mode `const` plus pair
+`runtime:compile`. A surface PolicyChoice containing more than one ModeAtom is
+preserved by Raw/Normalized syntax but rejected by typed Policy elaboration.
 
 How a written colon whose factorization leaves an empty residual side is handled
 is a separate surface decision, not a theorem of PolicyMode orthogonality. The
 current provisional surface rule rejects `const:compile`, `runtime:const`,
-`const:mut`, and `const || mut:compile`; a later surface amendment may instead
+and `const:mut`; a later surface amendment may instead
 define an unambiguous contextual shorthand while still satisfying the closed
 coordinate rules above. No semantic elaborator may place a mode atom in `Pv` or
-`Pp`, regardless of which surface completion is selected. This factorization
-does not require the frozen Raw/Normalized Policy AST carrier to change.
+`Pp`, regardless of which surface completion is selected. Independently,
+`const || mut:compile` is invalid because its mode choice violates
+`NoMultiPointPolicyModeChoice`, not because of the provisional empty-side rule. This
+factorization does not require the frozen Raw/Normalized Policy AST carrier to
+change.
 
 ### 2.2 Algebra
 
@@ -507,10 +516,6 @@ does not require the frozen Raw/Normalized Policy AST carrier to change.
 ```text
 runtime || compile
 meta || compile
-plain
-const || plain
-plain || mut
-const || mut
 runtime || S
 ```
 
@@ -519,6 +524,10 @@ It is not arbitrary clause-level Boolean disjunction. These are invalid:
 ```text
 runtime || const
 runtime || plain
+const || plain
+plain || mut
+const || mut
+const || plain || mut
 compile || public
 mut || export
 (const + runtime) || (mut + compile)
@@ -585,15 +594,15 @@ the existing pair-view projection and mechanical destination transfer:
 OrdinaryBindingElaboration(prefix, expr, destination):
   demand := BindingDemand(prefix)
 
-  demand.mode_pattern
-    := WrittenModePattern(prefix)  when one is written
+  demand.mode
+    := WrittenModeAtom(prefix)     when one is written
        plain                       for an unwritten mode / bare `let`
     // explicit `plain let` demands plain; const/mut demand their own points
 
   demand.pair_query
     := WrittenPairProjection(prefix)
 
-  CallSitePolicyDemandFormation(binding_context, demand.mode_pattern)
+  CallSitePolicyDemandFormation(binding_context, demand.mode)
     -> delta_out
 
   R := ResolveAndEvaluate(
@@ -610,8 +619,6 @@ OrdinaryBindingElaboration(prefix, expr, destination):
 
   mu_destination := ElaborateDestinationMode(prefix)
     // bare let / plain let -> plain; const let -> const; mut let -> mut
-    // a written multi-point destination Pattern is elaborated separately
-    // and never changes mu_produced
 
   mechanical_pass := SelectMechanicalPass(PairView(destination), destination)
 
@@ -630,10 +637,10 @@ OrdinaryBindingElaboration(prefix, expr, destination):
 automatic move/copy choice. `CanonicalMechanicalPassCore` fixes its domain and
 action meaning; this binding judgment does not add a new selection algorithm.
 
-For a written multi-point destination Mode Pattern, destination elaboration
-must choose one concrete `mu_destination` through the ordinary destination/
-transfer rule or reject ambiguity. It must not implement that choice by
-rewriting `mu_produced`. In particular, the removed
+Destination elaboration always produces one concrete `mu_destination`; a
+surface PolicyChoice containing more than one ModeAtom has already failed typed
+Policy elaboration. The destination must not obtain its mode by rewriting
+`mu_produced`. In particular, the removed
 `ConcretizeOutputMode(demand, candidate)` operation is not a legal semantic
 step.
 
@@ -730,7 +737,7 @@ constraints are distinct interfaces:
 
 ```text
 OutputModeDemand(c)
-  = already-formed candidate-independent immediate-consumer ModePattern
+  = already-formed candidate-independent immediate-consumer PolicyMode point
       when one exists
   | plain
 
@@ -795,13 +802,13 @@ PolicyLetFormation:
   Gamma ; ResultPolicyDemand = pi
     |- e ⇓ r
 
-  r' := SatisfyPolicyDemand(
-          ResultPolicyDemand(pi),
-          r,
-          result_slot = sigma)
+  rho := PolicyCast_pi(r, result_slot = sigma)
+  a? := AccompanyingValueAction_pi(r, rho)
+  require RequiredValueActionPresent(rho, a?)
+  require CoherentPolicyAndValueAction(rho, a?)
 
   --------------------------------------------------
-  Gamma |- PolicyLet(P, e) ⇓ r'
+  Gamma |- PolicyLet(P, e) ⇓ rho
 ```
 
 The one syntax node has two projections. Its inward projection supplies `pi`
@@ -824,15 +831,16 @@ sigma is not:
   a hidden declaration
   an independently acquired or source-addressable Place
 
-PolicyMode(sigma) = the unique concrete mode selected by outward satisfaction
+PolicyMode(sigma) = ConcreteMode(pi)
+ConcreteMode(pi) = written ModeAtom, or plain when P writes no ModeAtom
 ```
 
 The slot is not an anonymous variable and creates no source entity. It is the
 ordinary result carrier through which a completed expression view is exposed
-to its parent expression. For a singleton Mode Pattern, `r'` exposes exactly
-that concrete mode. For a multi-point Mode Pattern, ordinary demand
-satisfaction must select one unique concrete member of the written choice or
-report ambiguity.
+to its parent expression. The outward view exposes exactly the concrete
+whole-slot mode elaborated from `P` (default `plain` when unwritten); a
+PolicyChoice with multiple ModeAtoms is not a typed PolicyMode demand. Any
+residual `Pv:Pp` choice, including `compile || runtime`, remains part of `pi`.
 
 Producer preference and outward acceptance are different relations:
 
@@ -840,8 +848,8 @@ Producer preference and outward acceptance are different relations:
 ProducerPreferredUnder(mu_demand, mu_candidate)
   = preference by succ_mu_demand
 
-ExistingOutwardModeAccepted(ModePattern, mu_result)
-  iff mu_result is a member of that written ModePattern
+ExistingOutwardModeAccepted(mu_demand, mu_result)
+  iff mu_result = mu_demand
 ```
 
 Thus a `const` producer may uniquely win under a `plain` output preference, but
@@ -849,28 +857,36 @@ its `const` result is not already an outward singleton-`plain` view. The
 producer fact remains frozen while the expression-result slot receives its own
 mode.
 
-Outward completion is:
+Outward completion keeps the Policy judgment and any accompanying value action
+parallel rather than using one as evidence for the other:
 
 ```text
 r := frozen operand result
+rho := PolicyCast_pi(r, result_slot = sigma)
+a? := AccompanyingValueAction_pi(r, rho)
 
-if ExactExistingAcceptedView(pi, r) = v:
-  ExposeInExpressionResult(sigma, v)
-  preserve identity(v)
-else:
-  require c = OrdinaryPolicyTransitionWitness(pi, r, sigma)
-  v := ApplyOrdinaryValueAlgebra(c, r)
-  InstallExpressionResult(sigma, v)
+require RequiredValueActionPresent(rho, a?)
+require CoherentPolicyAndValueAction(rho, a?)
 
-PolicyMode(sigma) = ConcreteAcceptedMode(pi, v)
+ExposeInExpressionResult(sigma, rho)
+PolicyMode(sigma) = ConcreteMode(pi)
 ResultPolicyMode(r) remains unchanged
 ```
 
-`ExposeInExpressionResult` is observation, not a copy into a new Place.
-`InstallExpressionResult` is the semantic result handoff of the selected
-ordinary operation, not a hidden binding. A required authorized
-reconstruction/migration uses the established Type callspace, Val2 action, or
-mechanical action and returns a new value when that operation requires one.
+`PolicyCast_pi` is defined by the Policy algebra. An exact existing accepted
+view gives an identity-preserving cast. Otherwise the cast forms the completed
+Policy view in `sigma` according to the demand kind; it is not proved by finding
+a value operation. `ExposeInExpressionResult` is observation, not a copy into a
+new Place.
+
+`AccompanyingValueAction_pi` is a separate, optional judgment. When the cast's
+value projection or transport requires an ordinary value change, that action
+uses the established Type callspace, Val2 operation, or canonical mechanical
+action. `RequiredValueActionPresent` rejects a program when such an action is
+required but unavailable. `CoherentPolicyAndValueAction` checks that the
+action's result can inhabit the already-formed Policy view. Neither judgment
+defines or proves `PolicyCast_pi`, and their failure never reopens operand
+selection.
 
 Singleton `plain` has a closed ordinary realization without a global
 reconstructor:
@@ -882,7 +898,12 @@ ProducedMode(r) = mu_r
 sigma_plain = ExpressionResultSlot(plain let e)
 PolicyMode(sigma_plain) = plain
 
-TransferToExpressionResult(r, sigma_plain, move | copy)
+PolicyCast_plain(r, sigma_plain) = rho_plain
+
+AccompanyingValueAction_plain(r, rho_plain)
+  = TransferToExpressionResult(r, sigma_plain, move | copy)
+
+CoherentPolicyAndValueAction(rho_plain, move | copy)
   uses CanonicalMechanicalPassCore
   preserves ProducedMode(r) = mu_r
   exposes the transferred result through sigma_plain
@@ -890,22 +911,25 @@ TransferToExpressionResult(r, sigma_plain, move | copy)
 
 A fresh consumable producer result may use terminal `Move`. A source that must
 be preserved requires the ordinary `CopyConstruct` plus terminal `Move`
-witness. If no permitted witness exists, outward satisfaction fails after the
-producer is frozen; that failure does not erase `sigma`, expose the producer's
-wrong mode, or reopen producer selection. This is why no global `val plain`
-dispatcher is required.
+action. The action accompanies the already-defined `rho_plain`; it is not a
+witness for the cast. If no permitted action exists, outward completion fails
+after the producer is frozen; that failure does not erase `sigma`, expose the
+producer's wrong mode, or reopen producer selection. This is why no global
+`val plain` dispatcher is required.
 
 ```text
 PolicyCastNotDerivedFromValueCall:
 
-When outward satisfaction requires reconstruction, the result must carry an
-ordinary transition witness for the value algebra used by that step. The
-witness may be a selected Type-callspace/Val2 reconstruction or a
-language-prescribed mechanical transfer; it is not optional implementation
-magic.
+PolicyCast_pi(r) ⇓ rho
+
+AccompanyingValueAction_pi(r, rho) ⇓ a  // only when required
+
+CoherentPolicyAndValueAction(rho, a)
 
 ordinary Val2 action =/> creates the inward ResultPolicyDemand
+ordinary Val2 action =/> defines or proves PolicyCast
 ordinary Val2 action =/> replaces PolicyLet
+PolicyCast =/> ordinary Val2 call
 ```
 
 The reason is temporal: an ordinary call can be selected only after its input
@@ -921,7 +945,8 @@ NoCrossCallPolicyPropagation:
 PolicyLet(P, e)
   -> establish ResultPolicyDemand(P)
   -> select/evaluate e once under that demand
-  -> complete SatisfyPolicyDemand(P, result(e))
+  -> form PolicyCast_P(result(e))
+  -> check any required coherent accompanying value action
   -> close the boundary
 
 outer consumer demand
@@ -1192,42 +1217,49 @@ SatisfyPolicyDemand(demand, result):
   existing = ProjectExistingViewForDemand(Q, result)
 
   if existing != empty:
-    return existing
+    rho := IdentityPolicyCast(Q, existing)
+    return rho
 
   if runtime not in AcceptedValueStages(Q):
     fail
 
   Qr = RuntimeBranch(Q)
-  consider one language-authorized atomic runtime migration toward Qr
+  rho := PolicyCastToRuntimeBranch(Qr, result)
+  a := AccompanyingValueAction(Qr, result, rho)
+  require a is the one language-authorized atomic runtime migration toward Qr
+  require CoherentPolicyAndValueAction(rho, a)
+  return rho
 ```
 
-When `Q` contains a whole-slot ModePattern, an existing outward view is
-accepted only when its concrete mode is a member of that Pattern. The
+When `Q` contains a whole-slot ModeAtom, an existing outward view is accepted
+only when its concrete mode equals that point. The
 `succ_const` / `succ_plain` / `succ_mut` relations rank producer candidates;
 they do not widen the set of concrete modes accepted by outward satisfaction.
 In particular, a `const` producer that wins under `plain` preference is not an
 existing singleton-`plain` outward view.
 
-The result relation is closed by an explicit witness rule:
+Policy cast and value algebra are separate judgments:
 
 ```text
-SatisfyPolicyDemand(P, r) = r'
+PolicyCast_P(r) ⇓ rho
+
+AccompanyingValueAction_P(r, rho) ⇓ a  // when the cast requires value action
+
+SatisfyPolicyDemand(P, r) ⇓ rho
 iff
-  ExistingAcceptedView(P, r, r')
-or
-  (
-    NoExistingAcceptedView(P, r)
-    and exists c.
-      OrdinaryPolicyTransitionWitness(c, r, P, r')
-  )
+  PolicyCast_P(r) ⇓ rho
+  and RequiredValueActionPresent(rho, a?)
+  and CoherentPolicyAndValueAction(rho, a?)
 ```
 
-`OrdinaryPolicyTransitionWitness` is the selected ordinary Type-callspace or
-Val2 reconstruction candidate, or the particular mechanical transfer already
-authorized by the demand kind. It is not a new transition resolver, and it
-does not authorize an arbitrary search across these families. The
-existing-first rule fixes which disjunct is reachable; once `c` is selected,
-its failure does not reopen the operand candidate set.
+`PolicyCast_P` is a Policy relation, not an existential search for an ordinary
+operation. Each demand kind defines which existing or newly formed Policy view
+is its result. An accompanying action may be the selected ordinary
+Type-callspace/Val2 operation or the particular mechanical transfer already
+authorized by that demand kind, but the action neither defines nor proves the
+cast. The existing-first rule fixes which Policy-cast rule is reachable; once
+the cast is formed, failure to select or execute a required accompanying action
+does not reopen the operand candidate set.
 
 For every demand kind:
 
@@ -1236,6 +1268,7 @@ ProjectExistingViewForDemand(demand, R) != empty
   => no migration candidate enumeration
   => no migration invocation
   => no value reconstruction
+  => IdentityPolicyCast(demand, R)
   => Symbol / TypeValue / PatternValue / Place identity is unchanged
 ```
 
@@ -1246,8 +1279,9 @@ This is the **Existing-First, Constructible-Second** principle:
 2. language-constructible accepted views
 ```
 
-The current set of constructible stage branches is exactly `{ runtime }`.
-Construction does not mean every alternative in `Q` becomes an obligation.
+The current set of Policy-cast stage branches that may require construction is
+exactly `{ runtime }`. Construction does not mean every alternative in `Q`
+becomes an obligation.
 The original query may be `meta || runtime`; if its complete existing
 projection is empty, the derived migration target is only its runtime branch.
 

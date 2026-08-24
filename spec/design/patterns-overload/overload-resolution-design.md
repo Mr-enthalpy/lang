@@ -683,7 +683,7 @@ different inputs:
 
 ```text
 OutputModeDemand(c)
-  = explicit or candidate-independent immediate-consumer ModePattern
+  = explicit or candidate-independent immediate-consumer PolicyMode point
       when already formed
   | plain
 
@@ -733,6 +733,11 @@ independently addressable Place. Outer overload resolution may compare the
 completed actual but may not push a new demand through the PolicyLet boundary
 or reopen the inner candidate set. The outward satisfaction failure is not a
 conversion rank and does not select a runner-up producer.
+
+The outward `PolicyCast_P` is a Policy judgment. An ordinary Type-callspace,
+Val2, or mechanical value action may accompany it and must be coherent with
+the completed view, but the action does not define or prove the cast. In
+particular, an ordinary call cannot create the earlier inward result demand.
 
 Delete candidates participate in this same relation. If the unique maximal
 candidate is delete, selection reports the matched specific rejection rather
