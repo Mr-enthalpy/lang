@@ -181,11 +181,15 @@ through every
 path component. For each admitted symbol—including non-root ancestors or
 descendants—every resolved candidate is transformed into an identity-preserving
 `ExportCandidateView` whose external policy is another complete `PolicyPair`
-plus its unchanged `PolicyMode`. The Pattern component is preserved.
+plus its unchanged `PolicyMode`. The Pattern component and stable candidate/
+family `CapabilityRealization` facts are preserved; no context-indexed dynamic
+capability is stored.
 No later call/read/capture capability filters this stable `Σ_export`.
 Consumer-specific capability-family applicability and Policy demand are checked
-after lookup; `absent:Pp` is not special-cased by mode. The generic policy
-parser and function-object stage lifting do not perform these operations.
+after lookup, where the consumer forms `DynamicCapability_Γ_consumer` from its
+operation, place, lifetime, and authority facts. `absent:Pp` is not
+special-cased by mode. The generic policy parser and function-object stage
+lifting do not perform these operations.
 
 Namespace and Pattern consumers use three projections rather than treating
 export as one universal visibility bit:

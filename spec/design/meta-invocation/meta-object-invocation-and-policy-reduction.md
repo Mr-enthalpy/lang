@@ -406,10 +406,11 @@ exposes seal and compile but not meta. A single P2 runtime defaults to
 `runtime:compile`; explicit `runtime:seal` remains available when the Pattern
 must wait for SealStatic.
 
-There is no independent P3 and no scalar policy for the entire returned result.
-Every value/pattern result entry retains `Pv:Pp`; every returned Val2 object
-retains its own pair. Return positions inherit P1 and may refine whole-slot
-`PolicyMode` only; parameters symmetrically refine inherited P2 mode only. Current
+There is no independent P3 and no scalar replacement for `Pv:Pp`. Every
+value/pattern result entry retains `Pv:Pp`; every returned Val2 object retains
+its own pair. A result slot nevertheless has an independent scalar
+`PolicyMode`. Return positions inherit P1 and may refine that whole-slot mode
+only; parameters symmetrically refine inherited P2 mode only. Current
 `self_policy`, `body_entry_policy`, and
 `return_object_policy` fields are transitional compatibility transport.
 

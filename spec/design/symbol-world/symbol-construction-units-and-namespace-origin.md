@@ -459,11 +459,14 @@ visibility. An export descendant or ancestor may be externally exposed without
 being the original export root, while a private dependency may belong to Wpre
 without entering `Σ_export`.
 
-The current typed helper now carries:
+The canonical typed handoff is:
 
 ```text
-ResolvedCandidatePolicy {
+ResolvedCandidateSnapshot {
+  identity,
   pair: PolicyPair,
+  mode: PolicyMode,
+  realization_facts: CapabilityRealization[],
   provenance
 }
 
@@ -475,10 +478,14 @@ ExportAdmission {
 ExportCandidateView {
   identity,
   internal_candidate,
-  external_policy: PolicyPair,
-  policy_mode: PolicyMode
+  external_snapshot: ResolvedCandidateSnapshot
 }
 ```
+
+The snapshot contains declaration/intrinsic candidate-family realization facts,
+not a context-indexed `DynamicCapability_Γ`. Its `internal_candidate` link is
+identity/provenance, not an internal observation edge carried into the external
+consumer.
 
 Declaration-side `P1Projection` is first applied to actual RHS/result entries.
 Namespace external admission then requires both export-retention-closure
@@ -488,10 +495,11 @@ descendants behind it remain internal. This admission is symbol-level and does
 not act as an arbitrary per-candidate eligibility callback or consume a future
 call/read/capture demand.
 
-For each admitted symbol, canonical semantics preserve the resolved
-`PolicyPair` and whole-slot `PolicyMode`; every resolved candidate enters the
-stable external view with the same identity. Consumer capability and Policy
-checks happen after lookup and do not universally project mode to const. The
+For each admitted symbol, canonical semantics preserve candidate identity,
+resolved `PolicyPair`, whole-slot `PolicyMode`, declaration/intrinsic
+`CapabilityRealization` facts, and provenance. Consumer Policy demand and
+`DynamicCapability_Γ_consumer` are formed after lookup and do not universally
+project mode to const. The
 currently connected helper still admits candidates
 through a const-projected 2×2 compatibility carrier. That is an implementation
 subset only, not export semantics.

@@ -762,9 +762,27 @@ coordinate. A family may leave any of the nine 3×3 coordinates absent or
 realize it as `default`, `delete`, or `custom`. This grid is not the
 three-point Policy preference order: selecting `mut` may still select a
 `delete` member, and `mut` on a non-reference object does not universally imply
-writability.
+writability. Realization is a stable declaration/intrinsic candidate-family
+fact and may be retained in a namespace candidate snapshot. It is distinct
+from `DynamicCapability_Γ`, which is formed in a concrete consumer context from
+the operation, place, lifetime, access, and authority facts and is never stored
+in `Σ_export`.
 
-_See also: PolicyMode, Borrow view._
+_See also: PolicyMode, DynamicCapability_Γ, Borrow view._
+
+---
+
+## DynamicCapability_Γ
+
+The operation-specific applicability or legality fact formed in one consumer
+context `Γ`. It may depend on the requested operation, place state, lifetime,
+access, and construction authority. It is not declaration metadata, is not a
+3×3 default/delete/custom realization cell, and must never be copied from an
+internal observation edge into `Σ_export`. External lookup first returns the
+stable candidate snapshot; the consumer then forms its own
+`DynamicCapability_Γ_consumer`.
+
+_See also: CapabilityRealization, Namespace Symbol Views._
 
 ---
 
@@ -1376,19 +1394,24 @@ implementation-open.
 Entry lifetime facts are `U_entry = U_default ⊕ Delta_pre`, where `Delta_pre`
 is finite. Borrow-origin ancestry continues coinductively unless an explicit
 `origin=None` terminates it; omission is not `None`. Exclusive borrow arguments
-receive distinct anonymous roots. Shared borrow arguments draw argument-keyed
-roots from one entry-scoped coinductive anonymous generator, so the generation
-strategy is shared without collapsing distinct argument identities. Accessible
-borrow subnames belong to the default name tree. Ordinary non-borrow values
-default to `origin=None`.
+receive distinct anonymous roots. Shared borrow arguments use one anonymous
+origin strategy, but parameter identity does not distinguish their roots:
+root equality remains `Unknown` unless a finite Pre fact establishes Same or
+Distinct. A conservative implementation may use one anonymous shared-read
+root. Accessible borrow subnames belong to the default name tree. Ordinary
+non-borrow values default to `origin=None`.
 
 Moving a nontrivial value ends the old first-level generation and begins a
 successor generation with exactly the same deeper origin:
-`new@.origin = old@.origin`. Copy instead establishes
-`new@.origin = NameOf(old)`. Whether generation identity and `LifeName` identity
-share one concrete representation is implementation-open. Drop ends the current
-generation after cleanup obligations. Color inheritance is monotone, and each
-compilation universe has a finite Color set with mechanically decidable
+`new@.origin = old@.origin`. Default copy instead establishes
+`new@.origin = NameOf(old)`, the LifeName observed by `old@`. A custom
+`CopyConstruct` may establish another
+origin relation through explicit lifecycle effects checked by the ordinary
+Pre/Post boundary; the default equation is not universal over custom copies.
+Whether generation identity and `LifeName` identity share one concrete
+representation is implementation-open. Drop ends the current generation after
+cleanup obligations. Color inheritance is monotone, and each compilation
+universe has a finite Color set with mechanically decidable
 compatibility/exclusion/exchange relations; Color is not an arbitrary
 proposition carrier.
 
@@ -2305,9 +2328,11 @@ External admission requires both
 export-retention-closure membership and public reachability through the full
 path.
 Within each admitted full overload set, every resolved candidate enters the
-stable external view with the same identity, pair, and mode. A later concrete
-consumer applies ordinary capability-family and Policy checks without changing
-namespace membership.
+stable external view with the same identity, pair, mode, declaration/intrinsic
+realization facts, and provenance. It carries no context-indexed dynamic
+capability. A later concrete consumer forms `DynamicCapability_Γ_consumer` and
+applies ordinary capability-family and Policy checks without changing namespace
+membership.
 Publicly reachable export-retention-closure ancestors and descendants receive this
 projection even when they are not export roots. World membership does not
 imply export, and export does not imply that the binding itself was an export
@@ -2632,7 +2657,9 @@ Their ordinary same-Type compile-to-runtime materialization cells are
 intrinsically `delete`, so `RuntimeMaterializable(integer|real|character)` is
 false. They must first be constructed into another, concrete machine-semantic
 Type; a custom same-Type runtime materializer may not override this negative
-fact.
+fact. Ranked string literals follow a separate existing path directly to
+`str@compile`; they are not `character` tokens and do not belong to these three
+abstract scalar denotation Types.
 
 _See also: Concrete machine-semantic type, Convert/Construct._
 

@@ -75,7 +75,9 @@ recovery are retired.
   once the symbol world stabilizes it may be split further.
 - `type-values-places-and-borrow-views.md` — canonical `TypeValueId` /
   `PlaceId` / `SymbolId` distinction, object normal form, the borrow views
-  `ref` / `share`, and continuation-relative lifetime name reification `@`.
+  `ref` / `share`, abstract scalar literal/concrete-Type semantics, ranked
+  string `str@compile`, and continuation-relative lifetime name reification
+  `@`.
 - `type-associated-function-objects-and-access-trees.md` — field functions,
   same-name receiver overload families, and access-tree implications.
 - `entity-ref-design.md` — general `EntityRef` design (alias-RHS subset

@@ -1535,7 +1535,8 @@ the existing Type role. They do not form a parallel `LiteralType` universe or a
 fourth semantic type ontology; ordinary construction consumes them through the
 same Type/call machinery as other type values.
 
-The canonical semantic path is:
+The canonical semantic path for integer/real literals and any future character
+token is:
 
 ```text
 token spelling
@@ -1565,6 +1566,21 @@ runtime alternatives. `ParseLiteral(tok)` therefore cannot directly produce
 `PolicyMode` is supplied by the surrounding binding/call demand formation; it
 is not inferred from the token. Runtime availability requires the later
 ordinary construction/materialization path described below.
+
+Ranked strings retain their existing, separate canonical path:
+
+```text
+ParseRankedString(tok) = v : str
+InitialStringPolicyPair(v) = compile:compile
+```
+
+Thus a ranked string denotes `str@compile`; it does not first denote
+`character`, does not belong to the three abstract scalar denotation Types, and
+does not imply `str ref`, hidden storage, or a lifetime extension. The current
+`LiteralFamily::String` carrier preserves that source family. Whether the core
+bootstrap has installed a concrete `str` Type symbol is an implementation
+availability question recorded by the v0.6 transition contract, not the owner
+of this semantic path.
 
 The frozen lexer continues to preserve spelling only. It does not choose
 width, signedness, precision, encoding, overflow behavior, or a machine type.
@@ -1621,7 +1637,8 @@ character != char32
 This section does not add a character token to the frozen v0.2 lexer. The final
 source spelling, escape rules, and whether the carrier is exactly the Unicode
 scalar-value set require a current/future surface amendment. Ranked strings
-remain separate and are not reinterpreted as character tokens.
+remain the independent `str@compile` path above and are not reinterpreted as
+character tokens.
 
 #### 4.1.4 Construct versus materialize
 

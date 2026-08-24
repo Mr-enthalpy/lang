@@ -36,9 +36,27 @@ Policy is not a component of the object. It belongs to a complete slot/view
 edge between a context and an object:
 
 ```text
-View_Γ(slot, x)
-  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot), capability_Γ(slot, x) ⟩
+View_Γ(slot, x, operation)
+  = ⟨ x, Pv:Pp, PolicyMode_Γ(slot),
+       DynamicCapability_Γ(slot, x, operation) ⟩
 ```
+
+Two capability layers must not be collapsed:
+
+```text
+CapabilityRealization(candidate, family, input_mode, output_mode)
+  ∈ { absent, default, delete, custom }
+  // stable declaration/intrinsic fact of the candidate and associated family
+
+DynamicCapability_Γ(candidate, operation, place, lifetime, authority)
+  // consumer-context applicability/legality fact
+```
+
+`CapabilityRealization` is stable candidate/family metadata. It records how a
+3×3 cell is realized and may therefore be retained with a candidate snapshot.
+`DynamicCapability_Γ` is formed only in the current consumer context; it may
+depend on place state, lifetime, construction authority, access, and the
+requested operation. It is never frozen into a namespace export snapshot.
 
 The same object observed from two contexts is one object with two views. The
 policy of a result is always a pair:
@@ -50,8 +68,10 @@ Pv  policy of the value component observed at this edge
 Pp  policy of the Pattern/anonymous-type component observed at this edge
 ```
 
-There is no scalar replacement for this pair and no third policy slot. A
-result object carries its own `PolicyPair` when it re-enters the flow.
+There is no scalar replacement for this pair, no third `Pv`/`Pp` component, and
+no independent P3. A result slot nevertheless carries its orthogonal scalar
+`PolicyMode`; a result object carries its own `PolicyPair` when it re-enters the
+flow.
 
 The pair is an observation edge, but its two axes are constrained by whether the
 object actually has an independent value projection. This constraint does not
@@ -772,10 +792,12 @@ slots, P2, Pattern interiors, expression policies, and local declarations that
 are not namespace declaration positions.
 
 `export` has the narrower placement rule described in section 9. Export
-elaboration derives a separate external view; it does not crop the namespace's
-complete internal declaration view. External eligibility is not a universal
-const projection. It is a separate judgment over resolved visibility,
-capability, and the consumer's Policy demand.
+elaboration derives a separate stable external candidate snapshot; it does not
+crop the namespace's complete internal declaration view. Export admission is
+determined by retention plus public reachability, not by a universal const
+projection and not by a future consumer's Policy demand or
+`DynamicCapability_Γ`. Consumer capability is formed only after external
+lookup.
 
 Absence removes the complete value subspace of *this observation edge* rather
 than merely selecting a presence tag:
@@ -1402,7 +1424,8 @@ ExportAdmission(symbol, path)
 
 ExportAdmission(symbol, path)
   => for each candidate in FullOverloadSet(symbol):
-       ExternalView(candidate) = ResolvedCandidateView(candidate)
+       ExternalView(candidate)
+         = ExportSnapshotOf(ResolveCandidateSnapshot(candidate))
 ```
 
 `Σ_export` is therefore stable for one committed namespace snapshot. It depends
@@ -1410,9 +1433,10 @@ on export retention and path visibility, never on a future consumer's
 `policy_demand` or requested read/call/capture capability. It preserves
 candidate identity, `Pv:Pp`, and `PolicyMode` without selecting an overload.
 
-No PolicyMode is universally safe for a later operation. A concrete consumer
-may realize const/plain/mut cells through ordinary default/delete/custom
-capability members, but that happens after lookup from `Σ_export`. Neither
+No PolicyMode is universally safe for a later operation. Stable
+default/delete/custom `CapabilityRealization` facts may accompany a candidate,
+but a concrete consumer forms `DynamicCapability_Γ_consumer` only after lookup
+from `Σ_export`. Neither
 `const <= mut` nor the retired universal form
 `ExternalView = Project_const(InternalView)` is a foundation theorem.
 
@@ -1449,10 +1473,11 @@ declaration_projection: P1Projection
 
 RHS/result entries
   -> ApplyDeclarationProjection
-  -> ResolvedCandidateView {
+  -> ResolvedCandidateSnapshot {
+       identity,
        pair: PolicyPair,
        mode: PolicyMode,
-       capability,
+       realization_facts: CapabilityRealization[],
        provenance
      }
 ```
@@ -1469,7 +1494,7 @@ candidate transformation:
 ExportCandidateView {
   identity,
   internal_candidate,
-  external_view: ResolvedCandidateView
+  external_snapshot: ResolvedCandidateSnapshot
 }
 
 ExportAdmission {
@@ -1479,10 +1504,16 @@ ExportAdmission {
 
 if admission.in_export_retention_closure && admission.publicly_reachable:
   for candidate in FullOverloadSet(symbol):
-    internal_view := ResolveCandidateView(candidate)
-    external_view := internal_view
-    insert identity-preserving external_view into Σ_export
+    internal_snapshot := ResolveCandidateSnapshot(candidate)
+    external_snapshot := ExportSnapshotOf(internal_snapshot)
+    insert identity-preserving external_snapshot into Σ_export
 ```
+
+`ExportSnapshotOf` preserves candidate identity, pair, mode, declaration/
+intrinsic realization facts, and provenance. It has no
+`DynamicCapability_Γ_internal` field to copy. Equality here is equality of
+stable candidate facts, not equality of internal and consumer-context
+observation edges.
 
 Export-retention-closure membership and public path reachability are separate
 symbol/name-level facts; both are required before a symbol contributes to
@@ -1503,7 +1534,8 @@ ordinary sequence:
 ```text
 candidate from Σ_export
   -> CallSitePolicyDemandFormation
-  -> ordinary capability-family applicability
+  -> select ordinary candidate/family CapabilityRealization
+  -> form DynamicCapability_Γ_consumer for the requested operation
   -> ordinary Policy overload / legality
 ```
 

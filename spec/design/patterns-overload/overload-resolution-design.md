@@ -116,7 +116,8 @@ They are not three final source-level policy positions. In the final model,
 base path resolution produces `Symbol` before policy-view filtering; each
 projected candidate carries its own `Pv:Pp`, P2 describes the call result
 pair and derives the function-object stage view, and there is no independent
-`P3`. The
+`P3` or third `Pv`/`Pp` component. A result slot nevertheless carries its
+orthogonal scalar `PolicyMode`. The
 current return-object field is provisional transport until canonical component
 policy storage exists.
 

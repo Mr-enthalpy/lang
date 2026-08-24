@@ -385,13 +385,17 @@ DefaultOriginUniverse:
     -> distinct anonymous origin roots by default
 
   shared borrow arguments
-    -> draw their default roots from one entry-scoped anonymous generator
-       G_shared
-    -> DefaultRoot(arg)
-         = CoinductiveNode(G_shared, StableArgumentIdentity(arg))
+    -> use one shared anonymous-origin strategy G_shared
+    -> DefaultRoot(arg) is drawn from G_shared
+    -> for distinct shared arguments a and b:
+         StableArgumentIdentity(a) != StableArgumentIdentity(b)
+           =/=> DefaultRoot(a) != DefaultRoot(b)
+         DefaultRootIdentity(a, b) = Unknown
+            unless a finite Pre fact establishes Same or Distinct
 
-  therefore the shared-borrow strategy is one deterministic coinductive
-  generator, while argument identity still distinguishes its generated roots
+  a conservative representation may use one anonymous shared-read root for
+  all such arguments; it may not manufacture NoAlias/Distinct knowledge from
+  parameter position
 
   borrow name tree
     -> covers accessible structural subnames by default
@@ -441,11 +445,29 @@ begin(Region_1(new)) > Pos(move)
 ```
 
 The new generation therefore does not acquire the old generation itself as its
-origin. Copy is the contrasting operation: `CopyConstruct(old -> new)` creates
-`new@.origin = NameOf(old)`. `drop` ends the outstanding lifecycle/cleanup
-obligation for the current generation. Path-sensitive facts are represented by
-a region slice plus a regular origin path, not by turning Region into an
-arbitrary CFG subgraph.
+origin. Default copy is the contrasting derivation:
+
+```text
+DefaultCopyOrigin:
+  default CopyConstruct(old -> new)
+    => new@.origin = NameOf(old)
+       // the LifeName observed by old@
+
+CustomCopyOrigin:
+  custom CopyConstruct(old -> new)
+    => origin(new) is established by the callable's explicit lifecycle effects
+       and checked through the ordinary Pre/Post lifecycle boundary
+```
+
+The default equation is not an unoverridable theorem for every custom copy. A
+custom copy may, for example, re-root an internal self-reference in the new
+object when its declared lifecycle effects justify that relation. Mechanical
+`copy(x)` still means `CopyConstruct(x)` followed by terminal `Move(result)`;
+custom origin effects do not authorize a pre-move of `x`.
+
+`drop` ends the outstanding lifecycle/cleanup obligation for the current
+generation. Path-sensitive facts are represented by a region slice plus a
+regular origin path, not by turning Region into an arbitrary CFG subgraph.
 
 #### 2.1.4 Cleanup placement precedes lifetime observation
 
@@ -716,9 +738,9 @@ Still genuinely open engineering questions, not closed by this document:
 - diagnostics and caching identity for lifetime validation;
 - automatic mechanical move-vs-copy pass selection, concrete borrow/copy
   representation, closure ABI, and environment layout, which remain the
-  mechanical-lowering design's territory. The entry origin defaults and the
-  move/copy origin equations above are closed lifetime semantics, not items in
-  that implementation debt.
+  mechanical-lowering design's territory. The entry origin defaults, exact
+  move-origin equation, and default/custom copy-origin boundary above are
+  closed lifetime semantics, not items in that implementation debt.
 
 This revision still defines none of the following: lifetime overloads as a
 second selection step, lifetime specificity ordering, multiple-callable handoff

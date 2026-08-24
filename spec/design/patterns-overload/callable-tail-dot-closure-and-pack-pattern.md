@@ -435,8 +435,9 @@ lifetime-checkable form naming the source place, requested access view,
 origin/region relation, and storage-or-link category. This is a handoff
 obligation only. Automatic mechanical move-vs-copy selection, concrete
 borrow/copy representation, Region IR construction, escape-check
-implementation, and ABI remain open; entry origin defaults and the move/copy
-origin equations are closed by the lifetime owner.
+implementation, and ABI remain open; entry origin defaults, the exact
+move-origin equation, and the default/custom copy-origin boundary are closed by
+the lifetime owner.
 
 ### 2.5 DeduceList scope construction and alpha normalization
 

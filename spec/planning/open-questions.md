@@ -216,16 +216,19 @@ Implemented substrate after this correction:
   and absent-value policy nodes. Pattern `|` and policy `||` are distinct.
 - `lang_build` provides typed pair normalization and true slice restriction,
   three contextual P1 elaborators, three-phase exposure, structural compile
-  flow projection, Wpre/export-retention closure, candidate-level
+  flow projection, Wpre/export-retention closure, and the legacy candidate-level
   `ResolvedCandidatePolicy { pair: PolicyPair, provenance }` to
   `ExportCandidateView { identity, internal_candidate, external_policy:
   PolicyPair }` transformation, and phase/const-mut product-order test
-  substrate. The direct declaration `external_projection` remains a
-  root-local `P1Projection` preview. External admission requires both
+  substrate. These current Rust carriers do not yet implement canonical
+  `ResolvedCandidateSnapshot`, whole-slot mode/realization retention, or
+  consumer-context `DynamicCapability_Γ`; they remain the explicitly bounded
+  const-projected 2×2 adapter. The direct declaration `external_projection`
+  remains a root-local `P1Projection` preview. External admission requires both
   symbol-level export-retention-closure membership and public path
-  reachability; every resolved candidate of an admitted symbol enters
-  `Σ_export` with the same identity, pair, and mode. The current const-projected
-  adapter remains only a bounded implementation subset. Namespace-graph
+  reachability. Canonical `Σ_export` retains every admitted resolved candidate
+  with the same identity, pair, mode, stable realization facts, and provenance;
+  the current adapter does not yet realize that payload. Namespace-graph
   installation supplies the persistent admission facts. Retention membership
   is not itself export status; `Σ_export` is the external candidate set.
 - `lang_build` now also provides a parent-linked `SemanticOwnerGraph`,

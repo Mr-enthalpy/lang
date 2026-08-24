@@ -135,7 +135,8 @@ fields:
 These fields are implementation substrate. They do not establish final scalar
 policy planes. The future model stores `Pv:Pp`, elaborates P1 as a binding/view
 projection, normalizes P2 as the call-result pair, derives function-object stage
-views from P2, and has no independent P3.
+views from P2, and has no independent P3 or third `Pv`/`Pp` component. This does
+not remove the orthogonal scalar `PolicyMode` of a result slot.
 Return positions may nevertheless refine inherited P1 whole-slot `PolicyMode`
 only, symmetrically with parameter refinement of P2; no other policy dimension may
 change.
