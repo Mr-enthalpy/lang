@@ -367,11 +367,27 @@ registry remains implementation-open; absence of a particular registry entry
 cannot make a semantically name-projectable operation fail this law.
 
 `origin : LifeName -> LifeName | None` records semantic provenance rather than
-source text or an address. Borrow-origin ancestry is generated coinductively by
-default; omission is not `None`. `None` is an explicit termination proposition.
-Each `ReifyLife(n, k)` is nevertheless a finite structural observation. A later
+source text or an address. Origin ancestry is generated coinductively by the
+default generator of the semantic construction that produced the name;
+omission is not `None`. `None` is an explicit termination proposition. Each
+`ReifyLife(n, k)` is nevertheless a finite structural observation. A later
 `.origin` projection issues a new request; `@` never eagerly unfolds the whole
 chain.
+
+```text
+OriginDefaultPrinciple:
+  if no explicit origin(n) = None fact applies,
+  origin(n) continues through the default origin generator
+  of the semantic construction that produced n
+
+  origin(n) = None is a terminating fact,
+  not the interpretation of missing origin information
+```
+
+Construction, field projection, copy, move, and call-result formation may each
+provide the applicable name companion or lifecycle post. The general default
+therefore does not classify an ordinary non-borrow value as origin-free merely
+because no borrow-root rule applies to it.
 
 Function entry begins from a default universe and applies the written lifetime
 precondition as a finite correction:
@@ -397,12 +413,12 @@ DefaultOriginUniverse:
   borrow name tree
     -> covers accessible structural subnames by default
 
-  ordinary non-borrow value
-    -> origin = None by default
-
-  unmentioned borrow-origin ancestry
-    -> continue the coinductive default generator
+  unmentioned origin ancestry
+    -> continue the applicable semantic default generator
        unless an explicit origin = None terminates it
+
+  function-entry borrow roots
+    -> additionally receive the exclusive/shared default-root rules above
 
 PreDoesNotConstructUniverseFromZero:
   Delta_pre is a finite patch over U_default,
@@ -410,8 +426,8 @@ PreDoesNotConstructUniverseFromZero:
 ```
 
 Here `⊕` applies the finite declared corrections while retaining every
-unmentioned default rule. Thus a missing Pre fact cannot silently truncate a
-borrow origin chain to `None`.
+unmentioned default rule. Thus a missing Pre fact cannot silently truncate an
+origin chain to `None`.
 
 Neither origin nor a complete NameView enters `Norm(Object)` or adds a fourth
 Object axis.

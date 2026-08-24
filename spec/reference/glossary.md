@@ -1394,12 +1394,14 @@ existence is semantic; registry or IR representation remains
 implementation-open.
 
 Entry lifetime facts are `U_entry = U_default ⊕ Delta_pre`, where `Delta_pre`
-is finite. Borrow-origin ancestry continues coinductively unless an explicit
-`origin=None` terminates it; omission is not `None`. Exclusive-write borrow
-roots are anonymous and pairwise distinct. All shared-read borrow roots default
-to the same anonymous `G_shared`; a finite Pre patch changes only the relations
-it states. Accessible borrow subnames belong to the default name tree. Ordinary
-non-borrow values default to `origin=None`.
+is finite. Origin ancestry continues through the default generator of the
+semantic construction that produced the name unless an explicit `origin=None`
+terminates it; omission is not `None`. Exclusive-write borrow roots are
+anonymous and pairwise distinct. All shared-read borrow roots default to the
+same anonymous `G_shared`; a finite Pre patch changes only the relations it
+states. Accessible borrow subnames belong to the default name tree. The
+exclusive/shared root rules specialize function-entry borrows; they do not make
+ordinary non-borrow values origin-free by default.
 
 Moving a nontrivial value uses one boundary `k`: the old first-level Region is
 `[i,k)`, the successor Region is `[k,j)`, and the successor has exactly the
@@ -2661,31 +2663,20 @@ still a separate surface amendment and is not added by this semantic closure.
 These are ordinary complete type values satisfying the existing Type role, not
 members of a separate `LiteralType` universe parallel to ordinary types.
 Their ordinary same-Type compile-to-runtime materialization cells are
-intrinsically `delete`, so `RuntimeMaterializable(integer|real|character)` is
-false. Each Materialize family is owner-closed: extension members are rejected
-at ordinary family admission before candidate generation, so no custom
-same-Type runtime materializer can override the intrinsic delete. This is not a
-checker special case. The values must first be constructed into another,
-concrete machine-semantic Type. Ranked string literals follow a separate existing path directly to
+intrinsically `delete` in the immutable callspaces of `tau_integer`,
+`tau_real`, and `tau_character`, so
+`RuntimeMaterializable(integer|real|character)` is false. Canonical literal
+values are typed by exactly those snapshots. Later associated contributions
+form a new complete type snapshot instead of mutating an existing `V_tau`, and
+`NoForeignTypeMemberInjection` prevents importing foreign members. No mechanism
+beyond the ordinary snapshot and resolver rules is involved. The values must first be
+constructed into another, concrete machine-semantic Type. Ranked string
+literals follow a separate existing path directly to
 `str@compile`; they are not `character` tokens and do not belong to these three
 abstract scalar denotation Types.
 
-_See also: ClosedAssociatedFamily, Concrete machine-semantic type,
+_See also: Complete type closure (`tau`), Concrete machine-semantic type,
 Convert/Construct._
-
----
-
-## ClosedAssociatedFamily
-
-An ordinary associated-family admission property owned by a Type. Here the
-owner is the semantic owner that installs the Type's associated callspace, not
-an arbitrary namespace extension target. Only members installed by that owner may enter the closed family; extension
-contributions are rejected before ordinary overload candidate generation. The
-property is unrelated to the `SealStatic` stage and does not bypass the normal
-resolver. For `integer`, `real`, and `character`, the Materialize family is
-closed and its same-Type compile-to-runtime member is intrinsic `delete`.
-
-_See also: Abstract literal type, CapabilityRealization._
 
 ---
 

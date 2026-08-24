@@ -1674,23 +1674,23 @@ iff exists ordinary non-deleted callable realizing
     a legal same-Type static -> runtime transition of T
 ```
 
-The three abstract denotation Types close that family with an intrinsic negative
-fact:
+The three canonical abstract denotation type values carry an intrinsic negative
+fact in their immutable callspace snapshots:
 
 ```text
 AbstractLiteralNoRuntimeMaterialization:
 
-ClosedAssociatedFamily(integer, MaterializeFamily)
-ClosedAssociatedFamily(real, MaterializeFamily)
-ClosedAssociatedFamily(character, MaterializeFamily)
+CanonicalLiteralType(integer)   = tau_integer
+CanonicalLiteralType(real)      = tau_real
+CanonicalLiteralType(character) = tau_character
 
-MaterializeFamily(integer):
+CallSpace(tau_integer) contains:
   integer@compile -> integer@runtime => delete
 
-MaterializeFamily(real):
+CallSpace(tau_real) contains:
   real@compile -> real@runtime => delete
 
-MaterializeFamily(character):
+CallSpace(tau_character) contains:
   character@compile -> character@runtime => delete
 
 RuntimeMaterializable(integer)   = false
@@ -1698,21 +1698,35 @@ RuntimeMaterializable(real)      = false
 RuntimeMaterializable(character) = false
 ```
 
-`ClosedAssociatedFamily(T, F)` is an ordinary family-admission property. Here
-the owner of `T` means the semantic owner that installs `T`'s associated
-callspace, not an arbitrary namespace extension target. Only members installed
-by that owner may enter `F`; an extension contribution to that family is
-inadmissible before ordinary overload candidate generation.
-It is unrelated to the `SealStatic` evaluation stage and does not add a
-post-selection checker rule. The intrinsic `delete` member remains an ordinary
-candidate, participates in the ordinary resolver/must-select pipeline, and is
-the only same-Type compile-to-runtime cell in each of these three closed
-families. Thus no more-specific custom extension candidate can outrank or
-replace it.
+Parsing an abstract scalar literal assigns exactly `tau_integer`, `tau_real`,
+or `tau_character`; it does not contextually retarget the literal to a later
+snapshot. Each intrinsic `delete` member is an ordinary associated callable and
+participates in the ordinary resolver/must-select pipeline.
 
-These deleted cells belong to each Type's ordinary associated callspace. Their
-non-overridability follows mechanically from closed-family admission, not from
-an ad hoc abstract-literal checker branch or an unformalized global ban.
+The result follows solely from the existing complete-type snapshot invariants.
+As established in §2.2 and the canonical `NoForeignTypeMemberInjection` theorem in
+[`symbol-first-meta-construction-and-pattern-injection.md`](symbol-first-meta-construction-and-pattern-injection.md),
+`V_tau` is fixed when `tau` is formed and later associated contributions cannot
+mutate that existing snapshot:
+
+```text
+CallSpace(tau) = V_tau                         at tau formation
+LaterAssociatedContribution(tau, F)
+  -> forms some new complete tau' with V_tau'
+  -> tau' != tau
+  -> CallSpace(tau) remains V_tau
+```
+
+An `extend` may therefore form a different complete type value with a different
+`V_tau'`; it does not alter the canonical literal type value or the callspace
+used by canonical literal values. Consequently no later declaration can add a
+non-deleted same-Type materializer to `tau_integer`, `tau_real`, or
+`tau_character`.
+
+These deleted cells therefore belong to each canonical Type's ordinary
+associated callspace. Their non-overridability follows mechanically from
+immutable complete-type snapshots plus `NoForeignTypeMemberInjection`, not
+from an ad hoc abstract-literal checker branch or an unformalized global ban.
 Abstract denotations must first enter ordinary construction to another,
 concrete machine-semantic Type. A normal integer path is therefore
 `integer@compile -> Construct_int32 -> int32@compile -> Materialize_int32 ->

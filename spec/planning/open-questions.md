@@ -322,9 +322,10 @@ The implementation work is intentionally split into three follow-up packages:
 2. **Abstract literals and materialization:** add exact `integer`/`real`
    denotations, keep character spelling as a separate amendment, perform
    ordinary construction to the concrete machine Type, install the intrinsic
-   deleted same-Type runtime cells and owner-closed Materialize-family admission
-   for all three abstract denotation Types, and enforce concrete same-Type
-   materialization plus
+   deleted same-Type runtime cells in the immutable canonical `tau_integer`,
+   `tau_real`, and `tau_character` callspace snapshots, preserve the existing
+   no-retroactive-snapshot-mutation and `NoForeignTypeMemberInjection`
+   invariants, and enforce concrete same-Type materialization plus
    `StageInvariantTypeSemantics`.
 3. **Lifetime semantic model/checker:** represent LifeName generations,
    pairwise-distinct exclusive-write and same-root shared-read defaults plus
