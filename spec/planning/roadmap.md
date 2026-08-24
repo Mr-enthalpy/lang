@@ -380,7 +380,8 @@ with runtime-only bodies. The current implementation's legacy projection nodes
 are transitional; target field access uses one same-name associated Symbol with
 `T` / `T ref` / `T share` receiver candidates.
 The crate also implements a bounded cross-Policy demand preparer: ordinary omitted P1
-continues to preserve the complete RHS, explicit P1 first uses the canonical
+continues to preserve the complete RHS pair view while destination mode is
+separately concrete `plain`; explicit P1 first uses the canonical
 non-empty projection rule, absent entries lack transition capability without
 invalidating value-bearing siblings. Only after the complete query projects
 nothing can an accepted runtime alternative be extracted as the derived

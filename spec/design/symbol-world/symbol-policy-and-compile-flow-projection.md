@@ -107,12 +107,12 @@ export-root attribute        yes / no
 They are not members of one untyped atom bag. In particular, export-root and
 ordinary visibility are independent.
 
-### 1.1 There is no central mutability propagation pass
+### 1.1 There is no central PolicyMode propagation pass
 
-Mutability is a coordinate of an observation edge, never a quantity pushed
+`PolicyMode` is a whole-slot coordinate of an observation edge, never a quantity pushed
 through the object graph by a dedicated pass. The language defines no
 `const`/`mut` propagation analysis, no transitive const inference over members,
-and no whole-graph mutability closure.
+and no whole-graph PolicyMode closure.
 
 The only two mechanisms that produce a propagation-like effect are:
 
@@ -124,7 +124,7 @@ delete               — removing a candidate removes the corresponding
 ```
 
 Both are local and per-member. An observer that reaches a nested member composes
-the views it actually traverses; nothing recomputes an aggregate mutability for
+the views it actually traverses; nothing recomputes an aggregate PolicyMode for
 the host.
 
 Policy is a selection relation, never a capability grant. The accompanying
@@ -165,7 +165,7 @@ without policy carrying a writable/nonwritable promise (§1.1's two mechanisms
 `member overload` + `delete` remain the only local capability-exposure
 mechanisms, and the candidate schemas of `=` / field / `ref` / `share` in
 `symbol-first` §4.5.1 and `type-values` §5.1.3 reference exactly this rule
-rather than redefining a second mutability system).
+rather than redefining a second PolicyMode system).
 
 ## 1.2 Explicit `const` / `mut` are value reconstruction, not in-place policy casts
 
@@ -185,7 +185,8 @@ For example `val const` logically:
 3. obtain a new T value
 ```
 
-and `val mut` likewise produces a new mutable-view/value result. The old
+and `val mut` likewise produces a fresh `T` result carried by a result slot/view
+whose `PolicyMode` is `mut`. This does not assert `Writable(result)`. The old
 source-like schema remains usable as an explanatory realization:
 
 ```text
@@ -422,14 +423,57 @@ lowered to the same set insertion operation.
 Three policy contexts can occupy a binding-shaped surface slot, but use three
 different elaborators.
 
+Two named inference operations must remain distinct:
+
+```text
+DeclarationSidePolicyInference(declaration, initializer)
+  -> CandidatePolicySig
+  // when a callable declaration omits declared policy material, form the
+  // callable's own declared pair/mode; no call-site actual is consumed
+
+CallSitePolicyDemandFormation(context, written demand)
+  -> CallPolicyDemand
+  // form the actual demand at a call or binding site; bare let has mode plain
+
+PolicyOverload(
+  CandidatePolicySig × CallPolicyDemand
+)
+  -> product partial order over fully admissible candidates
+```
+
+`PolicyOverload` is not policy inference, and `plain` is never an inference
+variable. Declaration-side inference produces candidate signatures;
+call-site demand formation produces the concrete demand compared with them.
+
 ### 3.1 Ordinary binding projection
 
 ```lang
 [P1] let x = expr;
 ```
 
-Omitted P1 retains the complete inferred RHS result. A single policy is a
-value-dominant projection:
+Ordinary binding elaboration separates pair projection from destination mode:
+
+```text
+OrdinaryBindingElaboration(prefix, expr, destination):
+  R := result(expr)
+
+  PairView(destination)
+    := ElabP1(WrittenPairProjection(prefix), R)
+
+  PolicyMode(destination)
+    := const  for singleton `const let`
+       mut    for singleton `mut let`
+       plain  for bare `let`
+```
+
+`WrittenPairProjection` removes the orthogonal mode coordinate from the
+binding prefix and is absent when no pair/view constraint was written. Thus
+omitted P1 retains the complete inferred RHS **pair view**, while bare `let`
+still produces the concrete destination mode `plain`; it does not inherit the
+RHS slot's mode. A written composite mode Pattern is an explicit
+`CallPolicyDemand`, not omission or inference; successful overload selection
+must still deliver one concrete destination mode. A single written pair/view policy is a value-dominant
+projection:
 
 ```lang
 Q let x = expr;
@@ -462,8 +506,8 @@ It must not return the original `compile || runtime` entry. Symbol identity and
 Pattern identity do not change; only the visible slice is cropped.
 
 Atomic runtime Policy migration is a conservative extension of this query
-rule. For the old projection judgment `ProjectP1` and the extended binding
-elaborator `ElabP1`:
+rule. For the old pair-view projection judgment `ProjectP1` and the extended
+pair-view binding elaborator `ElabP1`:
 
 ```text
 ElabP1(None, R) = R

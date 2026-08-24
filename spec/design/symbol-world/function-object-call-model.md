@@ -100,8 +100,9 @@ output: Type=T, value stage=runtime, Pp=S, presence=present
 
 Other legal endpoint Policy coordinates belong to the ordinary callable and
 its overload declaration. In particular, input/output `PolicyMode` need not be
-equal: `const compile -> mut runtime` may construct a fresh mutable runtime
-object when such a candidate is the unique ordinary winner. The compiler
+equal: `const compile -> mut runtime` may construct a fresh runtime result
+whose output slot has `PolicyMode = mut` when such a candidate is the unique
+ordinary winner. This does not imply `Writable(result)`. The compiler
 authorizes the stage edge but does not synthesize the candidate's `mut`
 capability. Opposite const/mut endpoint Patterns remain fully admissible and
 participate in the same actual-relative ordinary Bp order as explicit

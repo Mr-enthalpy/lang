@@ -1357,10 +1357,12 @@ _See also: Borrow view, Open authority, Lifetime Policy Boundary, `type ref`._
 ## LifeName, LifetimeValue, and NameView
 
 `LifeName` is the stable semantic name of one value generation, including a
-generated name for a temporary. `LifetimeValue` is the first-class result of
+generated name for a temporary. `LifetimeValue` is the semantic result/value of
 reifying that name at `Pos(SemanticContinuation)`. `NameView<T>` is the typed
-observation that carries a `LifeName` and an `origin` relation for a value of
-`T`; it is neither a borrow view nor a place handle.
+observation that carries a `LifeName`, its half-open `Region=[i,j)`, and an
+`origin` relation for a value of `T`; it is neither a borrow view nor a place
+handle. This semantic-value wording does not decide whether arbitrary source
+storage of `LifetimeValue` is exposed.
 
 Moving a nontrivial value ends the current generation and creates a successor
 `LifeName`. Drop ends the current generation after cleanup obligations. Origin
@@ -2343,7 +2345,10 @@ The future P1 projection judgment for a binding:
 [P1] let x = expr
 ```
 
-Omitted P1 keeps the fully inferred result. A single `Q` selects values visible
+Omitted P1 keeps the fully inferred RHS pair view, while bare `let` gives the
+destination the concrete whole-slot mode `plain`; it does not inherit the RHS
+slot's mode. `const let` and `mut let` give singleton `const` and `mut` modes.
+A single `Q` selects values visible
 under `Q` and retains each value's associated Pattern component. An explicit
 `Qv:Qp` filters both components. Therefore single P1 `Q` is not pair `Q:Q`.
 The selected slice must be non-empty and admitted by the destination binding.
@@ -2579,7 +2584,9 @@ _See also: AnnotationTerm, CanonicalSkeleton, Type-object._
 One of the source-language denotation types `integer`, `real`, or `character`.
 An integer literal denotes an exact integer; a finite real literal denotes an
 exact rational value (`0.1 = 1/10`, `0x1.8p1 = 3`). These denotations precede
-machine-width, signedness, storage, and rounding choices. Character spelling is
+machine-width, signedness, storage, and rounding choices. Their unique initial
+Policy pair is `compile:compile`; parsing never directly creates a runtime
+abstract-literal value. Character spelling is
 still a separate surface amendment and is not added by this semantic closure.
 
 _See also: Concrete machine-semantic type, Convert/Construct._

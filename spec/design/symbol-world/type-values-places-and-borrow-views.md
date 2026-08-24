@@ -1530,6 +1530,22 @@ token spelling
   -> optional same-Type Migrate/Materialize for another stage/policy view
 ```
 
+The initial semantic result is normatively compile-known:
+
+```text
+ParseLiteral(tok) = v : Tlit
+Tlit ∈ {integer, real, character}
+
+InitialLiteralPolicyPair(v) = compile:compile
+```
+
+This is the unique initial pair, not one optional view among compile and
+runtime alternatives. `ParseLiteral(tok)` therefore cannot directly produce
+`integer@runtime`, `real@runtime`, or `character@runtime`. Whole-slot
+`PolicyMode` is supplied by the surrounding binding/call demand formation; it
+is not inferred from the token. Runtime availability requires the later
+ordinary construction/materialization path described below.
+
 The frozen lexer continues to preserve spelling only. It does not choose
 width, signedness, precision, encoding, overflow behavior, or a machine type.
 Expected-type-driven insertion of the ordinary construction is a separate
