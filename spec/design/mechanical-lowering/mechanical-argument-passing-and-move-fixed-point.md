@@ -80,6 +80,10 @@ a new opaque semantic primitive. The `~=` equations expose its existing value
 algebra. Concrete source spelling may differ, but ordinary values obtain a
 share/read view and clone it, while borrow values use their existing rebind
 path and clone the rebound view; both then perform exactly one terminal move.
+`CopyConstruct` contributes no additional lifecycle-origin law: its
+`lifecycle_post` is exactly the post of the selected share/rebind-plus-clone
+realization. Any `origin(result)=...` relation must be declared by that selected
+clone-family candidate.
 These share/rebind steps occur inside the selected copy realization. They do
 not authorize automatic argument adaptation to invent a borrow and do not
 enlarge `AutomaticPassDomain` beyond `{move, copy}`.

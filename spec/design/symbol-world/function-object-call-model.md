@@ -579,7 +579,8 @@ and storage-or-link category. This is only a handoff obligation. Automatic
 mechanical move-vs-copy selection, concrete borrow/copy representation, Region
 IR construction, escape-check implementation, and ABI remain open; entry
 origin defaults, the exact move-origin/Region boundary, and the selected
-CopyConstruct lifecycle-post boundary are closed by the lifetime owner.
+share/rebind-plus-clone realization lifecycle-post boundary are closed by the
+lifetime owner; `CopyConstruct` adds no default origin equation.
 
 ### 7.3 In-place closures are embedded callable candidates
 

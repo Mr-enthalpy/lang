@@ -904,8 +904,9 @@ now closes `SemanticContinuation`, `LifeName`, first-class ordinary
 `LifetimeValue`, `NameView<T>`, `origin`, gapless half-open `Region`,
 use/move/drop generations, cleanup-before-lifetime, Pre/Post summaries,
 pairwise-distinct exclusive-write and same-root shared-read defaults plus finite
-Pre patch, exact move-origin preservation, selected CopyConstruct lifecycle
-posts, and an extensible Color vocabulary with finite/monotone relations in
+Pre patch, exact move-origin preservation, lifecycle posts inherited from the
+selected share/rebind-plus-clone realization, and an extensible Color
+vocabulary with finite/monotone relations in
 each committed compilation semantic universe.
 Concrete IR carriers, summary compression, and the checker remain
 unimplemented.
@@ -1372,8 +1373,9 @@ may reject the first two but never reselects them.
 The lifetime core uses gapless half-open `Region=[i,j)`, generation-resetting
 move, cleanup-before-lifetime ordering, Pre/Post call summaries,
 pairwise-distinct exclusive-write and same-root shared-read defaults with finite
-Pre patch, exact move-origin preservation, selected CopyConstruct lifecycle
-posts, and an extensible Color vocabulary with finite/monotone relations in
+Pre patch, exact move-origin preservation, lifecycle posts inherited from the
+selected share/rebind-plus-clone realization, and an extensible Color
+vocabulary with finite/monotone relations in
 each committed compilation semantic universe. Its concrete IR representation
 and checker are not implemented. See
 [`lifetime-policy-and-overload-boundary.md`](../design/lifetime/lifetime-policy-and-overload-boundary.md)
@@ -1424,10 +1426,13 @@ ordinary non-borrow values origin-free by default.
 Moving a nontrivial value uses one boundary `k`: the old first-level Region is
 `[i,k)`, the successor Region is `[k,j)`, and the successor has exactly the
 same deeper origin, `new@.origin = old@.origin`. There is no gap between
-generations. Copy origin is not a lifetime-calculus theorem: the builtin/default
-`CopyConstruct.lifecycle_post` states
-`origin(result)=NameOf(source)`, while a custom candidate supplies its own
-explicit lifecycle post through the ordinary Pre/Post boundary.
+generations. Copy origin is not a lifetime-calculus theorem:
+`CopyConstruct.lifecycle_post` is exactly the lifecycle post of the selected
+`share -> clone` or `rebind -> clone` realization. A concrete clone-family
+candidate may declare `origin(result)=NameOf(source)`, an internal/re-rooted
+origin, or another legal relation; `copy` and `CopyConstruct` imply none of
+those equations by themselves. The selected post enters through the ordinary
+Pre/Post boundary.
 Whether generation identity and `LifeName` identity share one concrete
 representation is implementation-open. Drop ends the current generation after
 cleanup obligations. Color inheritance is monotone. The global Color vocabulary

@@ -536,24 +536,34 @@ origin. Origin effects of copy construction belong to the selected
 lifetime calculus as a universal copy theorem:
 
 ```text
-DefaultCopyConstruct.lifecycle_post:
-  origin(result) = NameOf(source)
-  // the LifeName observed by source@
+SelectedCopyRealization(T, source):
+  ordinary T
+    -> shared_view := share(source)
+    -> SelectedCloneCandidate(shared_view)
 
-CustomCopyConstruct.lifecycle_post:
-  origin(result) = relation declared by the selected custom candidate
+  T ref | T share
+    -> rebound_view := rebind(source)
+    -> SelectedRebindCloneCandidate(rebound_view)
+
+CopyLifecycle(copy_T, source)
+  = LifecyclePost(SelectedCopyRealization(T, source))
+
+CopyConstruct.lifecycle_post
+  = lifecycle_post of the selected share/rebind + clone realization
 ```
 
-Both posts use the ordinary Pre/Post lifecycle boundary. The builtin/default
-family member supplies the first post; a custom candidate may, for example,
-re-root an internal self-reference in the new object through its own explicit
-post. The lifetime calculus consumes the selected candidate's post and does not
-special-case the mechanical name `copy`. Mechanical `copy(x)` still means
-the selected ordinary `CopyConstruct(x)` realization followed by terminal
-`Move(result)`; `CopyConstruct` is the compact family name for the established
-ordinary `share -> clone` expansion, or `rebind -> clone` for `T ref` /
-`T share`, rather than a new opaque primitive. Custom origin effects do not
-authorize a pre-move of `x`.
+The selected clone-family realization owns the relation. A particular builtin,
+default, or custom clone candidate may declare
+`origin(result)=NameOf(source)`, `SomeInternalOrigin(source)`, a re-rooted
+relation, or another legal lifecycle post. None is implied merely by the names
+`copy` or `CopyConstruct`. The lifetime calculus consumes that selected post
+through the ordinary Pre/Post boundary and adds no copy-origin equation.
+
+Mechanical `copy(x)` still means that selected `CopyConstruct(x)` realization
+followed by terminal `Move(result)`; `CopyConstruct` is the compact family name
+for the established ordinary `share -> clone` expansion, or `rebind -> clone`
+for `T ref` / `T share`, rather than a new opaque primitive. Candidate-specific
+origin effects do not authorize a pre-move of `x`.
 
 `drop` ends the outstanding lifecycle/cleanup obligation for the current
 generation. Path-sensitive facts are represented by a region slice plus a
@@ -840,8 +850,8 @@ Still genuinely open engineering questions, not closed by this document:
 - automatic mechanical move-vs-copy pass selection, concrete borrow/copy
   representation, closure ABI, and environment layout, which remain the
   mechanical-lowering design's territory. The entry origin defaults, exact
-  move-origin/Region boundary, and selected CopyConstruct lifecycle-post
-  boundary above are closed lifetime semantics, not items in that
+  move-origin/Region boundary, and selected share/rebind-plus-clone realization
+  lifecycle-post boundary above are closed lifetime semantics, not items in that
   implementation debt.
 
 This revision still defines none of the following: lifetime overloads as a

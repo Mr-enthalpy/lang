@@ -381,7 +381,8 @@ The implementation work is intentionally split into three follow-up packages:
 3. **Lifetime semantic model/checker:** represent LifeName generations,
    pairwise-distinct exclusive-write and same-root shared-read defaults plus
    finite Pre patch, exact move-origin preservation, gapless half-open Region
-   boundaries, selected CopyConstruct lifecycle posts, an extensible global
+   boundaries, copy lifecycle posts inherited exactly from the selected
+   share/rebind-plus-clone realization, an extensible global
    Color vocabulary whose every committed compilation universe has finite,
    mechanically decidable compatibility/exclusion/exchange relations,
    cleanup ordering, Pre/Post summaries, and first-class `LifetimeValue`
